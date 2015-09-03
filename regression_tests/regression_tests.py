@@ -1910,6 +1910,13 @@ def main(options):
             # get the relative file name
             filename = os.path.basename(config_file)
 
+            # check whether the config file with the same name has been run
+            if filename in report:
+                print("ERROR: Config file '%s' already exists elsewhere." %
+                      filename)
+                print("Please choose an different name for the config file.")
+                sys.exit(1)
+
             test_manager.generate_tests(filename,
                                         options.suites,
                                         options.tests,
