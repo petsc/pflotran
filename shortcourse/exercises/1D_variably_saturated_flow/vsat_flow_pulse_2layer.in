@@ -1,7 +1,15 @@
 #Description: 1D variably saturated flow problem
 
-#=========================== flow mode ========================================
-MODE RICHARDS
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== solver options ===================================
 LINEAR_SOLVER FLOW
@@ -10,7 +18,7 @@ END
 
 #=========================== discretization ===================================
 GRID
-  TYPE structured
+  TYPE STRUCTURED
   NXYZ 1 1 100
   BOUNDS
     0.d0 0.d0 0.d0
@@ -25,7 +33,7 @@ MATERIAL_PROPERTY soil1
   PERMEABILITY
     PERM_ISO 1.d-12
   /
-  SATURATION_FUNCTION sf1
+  CHARACTERISTIC_CURVES cc1
 END
 
 MATERIAL_PROPERTY soil2
@@ -34,22 +42,32 @@ MATERIAL_PROPERTY soil2
   PERMEABILITY
     PERM_ISO 2.d-12
   /
-  SATURATION_FUNCTION sf2
+  CHARACTERISTIC_CURVES cc2
 END
 
-#=========================== saturation functions =============================
-SATURATION_FUNCTION sf1
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.1d0
-  LAMBDA 0.5d0
-  ALPHA 1.d-4
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA 1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
 END
 
-SATURATION_FUNCTION sf2
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.05d0
-  LAMBDA 0.6d0
-  ALPHA 2.d-4
+CHARACTERISTIC_CURVES cc2
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA 2.d-4
+    M 0.6d0
+    LIQUID_RESIDUAL_SATURATION 0.05d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.6d0
+    LIQUID_RESIDUAL_SATURATION 0.05d0
+  /
 END
 
 #=========================== observation points ===============================
@@ -117,7 +135,7 @@ END
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial_pressure
   TYPE
-    PRESSURE hydrostatic
+    PRESSURE HYDROSTATIC
   /
   DATUM 0.d0 0.d0 1.d0
   PRESSURE 101325.d0
@@ -125,7 +143,7 @@ END
 
 FLOW_CONDITION recharge
   TYPE
-    FLUX neumann
+    FLUX NEUMANN
   /
   FLUX LIST
     TIME_UNITS y
@@ -164,3 +182,4 @@ STRATA
 END
 
 
+END_SUBSURFACE
