@@ -67,7 +67,7 @@ END
 
 #=========================== discretization ===================================
 GRID
-  TYPE structured
+  TYPE STRUCTURED
   NXYZ 100 1 1
   BOUNDS
     0.d0 0.d0 0.d0
@@ -109,7 +109,7 @@ REGION all
 END
 
 REGION west
-  FACE west
+  FACE WEST
   COORDINATES
     0.d0 0.d0 0.d0
     0.d0 1.d0 1.d0
@@ -117,7 +117,7 @@ REGION west
 END
 
 REGION east
-  FACE east
+  FACE EAST
   COORDINATES
     100.d0 0.d0 0.d0
     100.d0 1.d0 1.d0
@@ -126,14 +126,14 @@ END
 
 #=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
-  TYPE zero_gradient
+  TYPE ZERO_GRADIENT
   CONSTRAINT_LIST
     0.d0 initial
   /
 END
 
 TRANSPORT_CONDITION inlet
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT_LIST
     0.d0 inlet
   /

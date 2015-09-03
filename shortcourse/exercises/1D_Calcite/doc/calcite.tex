@@ -197,6 +197,36 @@ I_j &\eq \text{mineral reaction rate for species } j
 \section{Description of Input Deck: Transport Only}
 
 
+%-----------------------------------------------------------------------------
+\subsection{SIMULATION}
+
+\begin{frame}[fragile]\frametitle{SIMULATION}
+
+\begin{itemize}
+  \item Specify subsurface simulation
+  \item Specify the use of the transport process model
+\end{itemize}
+
+
+\begin{semiverbatim}
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport \bluecomment{! process model name}
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+  ...
+END_SUBSURFACE
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
 \subsection{GRID}
 \begin{frame}[fragile,containsverbatim]\frametitle{GRID}
 
@@ -207,7 +237,7 @@ I_j &\eq \text{mineral reaction rate for species } j
 
 \begin{semiverbatim}
 GRID
-  TYPE structured     \bluecomment{! structured grid}
+  TYPE STRUCTURED     \bluecomment{! structured grid}
   NXYZ 100 1 1        \bluecomment{! NX, NY, NZ}
   BOUNDS              \bluecomment{! define the rectangular domain}
     0.d0 0.d0 0.d0    \bluecomment{! xmin ymin zmin}
@@ -354,7 +384,7 @@ CHEMISTRY
   /
   MINERAL_KINETICS
     Calcite       \bluecomment{! Note: mineral name opens block}
-      RATE_CONSTANT 1.d-6 mol/m^2-sec 
+      RATE_CONSTANT 1.d-6 mol/m^2-sec
     /
   /
 \end{semiverbatim}
@@ -369,8 +399,9 @@ CHEMISTRY
   ACTIVITY_COEFFICIENTS TIMESTEP  \bluecomment{! time step lagged}
   OUTPUT                          \bluecomment{!   activity}
     PH                            \bluecomment{!   coefficients}
-    all   \bluecomment{! print primary species (defaults to total}
-  /       \bluecomment{!   component concentrations)}
+    TOTAL     \bluecomment{! total component concentrations}
+    all       \bluecomment{! print primary species}
+  /
 END
 
 \end{semiverbatim}
@@ -396,7 +427,7 @@ CONSTRAINT initial_constraint \bluecomment{! named: \greencomment{initial_constr
   /  \bluecomment{    ! ^^^^^ \redcomment{5.e-4} is a guess}
   MINERALS               \bluecomment{! mineral block}
             \bluecomment{! vol. frac. = \redcomment{1.e-5}; area = \redcomment{1.}}
-    Calcite 1.d-5 1.d0 m^2/m^3  
+    Calcite 1.d-5 1.d0 m^2/m^3
   /  \bluecomment{! <-- closes out MINERAL block}
 END  \bluecomment{! <-- closes out CONSTRAINT card}
 
@@ -423,15 +454,15 @@ END
 \end{itemize}
 \begin{semiverbatim}
 TRANSPORT_CONDITION background_conc \bluecomment{! named \greencomment{background...}}
-  TYPE zero_gradient       \bluecomment{! this is a \redcomment{zero gradient} bc}
+  TYPE ZERO_GRADIENT       \bluecomment{! this is a \redcomment{zero gradient} bc}
   CONSTRAINT_LIST          \bluecomment{! list of constraints}
     \bluecomment{! start constraint \redcomment{initial_constraint} @ time = \redcomment{0.}}
-    0.d0 initial_constraint  
+    0.d0 initial_constraint
   /  \bluecomment{! <-- closes out CONSTRAINT\_LIST block}
 END  \bluecomment{! <-- closes out TRANSPORT\_CONDITION block}
 
 TRANSPORT_CONDITION inlet_conc  \bluecomment{! named \greencomment{inlet_conc}}
-  TYPE dirichlet_zero_gradient  \bluecomment{! \redcomment{dirichlet_zero_gradient}}
+  TYPE DIRICHLET_ZERO_GRADIENT  \bluecomment{! \redcomment{dirichlet_zero_gradient}}
   CONSTRAINT_LIST               \bluecomment{! inflow = Dirichlet}
     0.d0 inlet_constraint       \bluecomment{! outflow = zero grad.}
   /    \bluecomment{! ^^^^^ constraint and transport condition}
@@ -525,7 +556,7 @@ LINEAR_SOLVER TRANSPORT   \bluecomment{! transport solver}
 END
 
 \bluecomment{! could also use:}
-LINEAR_SOLVER TRANSPORT    
+LINEAR_SOLVER TRANSPORT
   KSP_TYPE PREONLY        \bluecomment{! turn off Krylov solver}
   PC_TYPE PCLU            \bluecomment{! LU preconditioner}
 END
@@ -605,41 +636,125 @@ UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr  \bluecomment{! 1 m/yr Darcy}
 \begin{frame}[fragile]\frametitle{Input File Modifications}
 
 \begin{itemize}
-\item Add cards:
-  \begin{itemize}
-    \item MODE
-    \item LINEAR\_SOLVER (for flow)
-    \item SATURATION\_FUNCTION
-    \item FLOW\_CONDITION
-  \end{itemize}
 \item Modify cards:
   \begin{itemize}
+    \item SIMULATION
     \item MATERIAL\_PROPERTY
     \item INITIAL\_CONDITION
     \item BOUNDARY\_CONDITION
    \end{itemize}
+\item Add cards:
+  \begin{itemize}
+    \item LINEAR\_SOLVER (for flow)
+    \item CHARACTERISTIC\_CURVES
+    \item FLOW\_CONDITION
+  \end{itemize}
 \item Remove cards:
   \begin{itemize}
     \item UNIFORM\_VELOCITY
-  \end{itemize}  
+  \end{itemize}
 \end{itemize}
 
 \end{frame}
 
 %-----------------------------------------------------------------------------
-\subsection{MODE}
+\subsection{SIMULATION}
 
-\begin{frame}[fragile]\frametitle{MODE}
+\begin{frame}[fragile]\frametitle{SIMULATION}
 
 \begin{itemize}
-\item Specify Richards flow mode
-\item Best to add card at top of file
+  \item Add flow process model
 \end{itemize}
 
 
 \begin{semiverbatim}
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow  \bluecomment{! flow process model}
+      MODE RICHARDS       \bluecomment{! single phase variably-}
+    /                     \bluecomment{!   saturated flow}
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
 
-MODE RICHARDS
+SUBSURFACE
+  ...
+END_SUBSURFACE
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\subsection{MATERIAL\_PROPERTY}
+
+\begin{frame}[fragile]\frametitle{MATERIAL\_PROPERTY}
+
+\begin{itemize}
+\item Add isotropic permeability of 1 Darcy (1.e-12 m$^2$)
+\end{itemize}
+
+\begin{semiverbatim}
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  \magentacomment{PERMEABILITY}     \bluecomment{! permeability is defined in a block}
+    \magentacomment{PERM_ISO 1.d-12}  \bluecomment{! isotropic permeability}
+  \magentacomment{/}
+  \magentacomment{CHARACTERISTIC_CURVES default}  \bluecomment{! couple the saturation}
+END                              \bluecomment{!   function}
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\subsection{INITIAL\_CONDITION}
+
+\begin{frame}[fragile]\frametitle{INITIAL\_CONDITION}
+
+\begin{itemize}
+\item Add the \greencomment{initial} flow condition
+\end{itemize}
+
+\begin{semiverbatim}
+
+INITIAL_CONDITION              \bluecomment{! flow and transport}
+  \magentacomment{FLOW_CONDITION initial_pressure}
+  TRANSPORT_CONDITION background_conc
+  REGION all
+END
+
+\end{semiverbatim}
+
+\end{frame}
+
+%-----------------------------------------------------------------------------
+\subsection{BOUNDARY\_CONDITION}
+
+\begin{frame}[fragile]\frametitle{BOUNDARY\_CONDITION}
+
+\begin{itemize}
+\item Add the \greencomment{inlet\_flux} flow condition to the \redcomment{inlet} boundary condition.
+\item Add the \greencomment{initial\_pressure} flow condition to the \redcomment{outlet} boundary condition.
+\end{itemize}
+
+\begin{semiverbatim}
+
+BOUNDARY_CONDITION outlet
+  \magentacomment{FLOW_CONDITION initial_pressure}
+  TRANSPORT_CONDITION background_conc
+  REGION east
+END
+
+BOUNDARY_CONDITION inlet
+  \magentacomment{FLOW_CONDITION inlet_flux}
+  TRANSPORT_CONDITION inlet_conc
+  REGION west
+END
+
 \end{semiverbatim}
 
 \end{frame}
@@ -668,19 +783,20 @@ END
 \end{frame}
 
 %-----------------------------------------------------------------------------
-\subsection{SATURATION\_FUNCTION}
+\subsection{CHARACTERISTIC\_CURVES}
 
-\begin{frame}[fragile]\frametitle{SATURATION\_FUNCTION}
+\begin{frame}[fragile]\frametitle{CHARACTERISTIC\_CURVES}
 
 \begin{itemize}
 \item Assume saturated flow
-\item Add default (dummy) saturation function
-\item For variably-saturated flow, one would include parameters such as the air entry pressure, residual saturation, van Genuchten ``n'', etc. in the saturation function definition, \gehcomment{but ignore this for now}.
+\item Add default (dummy) characteristic curves
+\item For variably-saturated flow, one would include parameters such as the air entry pressure, residual saturation, van Genuchten ``n'', etc. in the characteristic curves definition, \gehcomment{but ignore this for now}.
 \end{itemize}
 
 \begin{semiverbatim}
 
-SATURATION_FUNCTION default
+CHARACTERISTIC_CURVES default
+  DEFAULT
 END
 \end{semiverbatim}
 
@@ -699,89 +815,17 @@ END
 \begin{semiverbatim}
 FLOW_CONDITION initial_pressure \bluecomment{! named \greencomment{initial_pressure}}
   TYPE
-    PRESSURE dirichlet   \bluecomment{! type is \redcomment{dirichlet} for pressure}
+    PRESSURE DIRICHLET   \bluecomment{! type is \redcomment{dirichlet} for pressure}
   /                      \bluecomment{!   (constant pressure [Pa])}
   PRESSURE 201325.d0     \bluecomment{! greater than atmospheric}
 END                      \bluecomment{!   to ensure saturation}
 
 FLOW_CONDITION inlet_flux \bluecomment{! named \greencomment{inlet_flux}}
   TYPE
-    FLUX neumann          \bluecomment{! type is \redcomment{neumann} for a flux}
+    FLUX           \bluecomment{! type is \redcomment{neumann} for a flux}
   /
   FLUX 1.d0 m/yr          \bluecomment{! Darcy velocity of 1 m/y}
 END
-\end{semiverbatim}
-
-\end{frame}
-
-%-----------------------------------------------------------------------------
-\subsection{MATERIAL\_PROPERTY}
-
-\begin{frame}[fragile]\frametitle{MATERIAL\_PROPERTY}
-
-\begin{itemize}
-\item Add isotropic permeability of 1 Darcy (1.e-12 m$^2$)
-\end{itemize}
-
-\begin{semiverbatim}
-MATERIAL_PROPERTY soil1
-  ID 1
-  POROSITY 0.25d0
-  TORTUOSITY 1.d0
-  \magentacomment{PERMEABILITY}     \bluecomment{! permeability is defined in a block}
-    \magentacomment{PERM_ISO 1.d-12}  \bluecomment{! isotropic permeability}
-  \magentacomment{/}
-  \magentacomment{SATURATION_FUNCTION default}  \bluecomment{! couple the saturation}
-END                            \bluecomment{!   function}
-\end{semiverbatim}
-
-\end{frame}
-
-%-----------------------------------------------------------------------------
-\subsection{INITIAL\_CONDITION}
-
-\begin{frame}[fragile]\frametitle{INITIAL\_CONDITION}
-
-\begin{itemize}
-\item Add the \greencomment{initial} flow condition
-\end{itemize}
-
-\begin{semiverbatim}
-
-INITIAL_CONDITION              \bluecomment{! flow and transport} 
-  \magentacomment{FLOW_CONDITION initial_pressure}
-  TRANSPORT_CONDITION background_conc
-  REGION all
-END
- 
-\end{semiverbatim}
-
-\end{frame}
-
-%-----------------------------------------------------------------------------
-\subsection{BOUNDARY\_CONDITION}
-
-\begin{frame}[fragile]\frametitle{BOUNDARY\_CONDITION}
-
-\begin{itemize}
-\item Add the \greencomment{inlet\_flux} flow condition to the \redcomment{inlet} boundary condition.
-\item Add the \greencomment{initial\_pressure} flow condition to the \redcomment{outlet} boundary condition.
-\end{itemize}
-
-\begin{semiverbatim}
-
-BOUNDARY_CONDITION outlet      
-  \magentacomment{FLOW_CONDITION initial_pressure}
-  TRANSPORT_CONDITION background_conc 
-  REGION east
-END
-
-BOUNDARY_CONDITION inlet
-  \magentacomment{FLOW_CONDITION inlet_flux}
-  TRANSPORT_CONDITION inlet_conc
-  REGION west
-END
-
 \end{semiverbatim}
 
 \end{frame}
@@ -794,15 +838,15 @@ END
 \begin{frame}[fragile]\frametitle{Input File Modifications}
 
 \begin{itemize}
-\item Add cards:
-  \begin{itemize}
-    \item
-  \end{itemize}
+%\item Add cards:
+%  \begin{itemize}
+%    \item
+%  \end{itemize}
 \item Modify cards:
   \begin{itemize}
     \item GRID
     \item MATERIAL\_PROPERTY
-    \item SATURATION\_FUNCTION
+    \item CHARACTERISTIC\_CURVES
     \item FLOW\_CONDITION
     \item BOUNDARY\_CONDITION
    \end{itemize}
@@ -821,7 +865,7 @@ END
 
 \begin{semiverbatim}
 GRID
-  TYPE structured
+  TYPE STRUCTURED
   NXYZ \magentacomment{1} 1 \magentacomment{100}     \bluecomment{! Switch to Z}
   BOUNDS
     0.d0 0.d0 0.d0
@@ -849,29 +893,34 @@ MATERIAL_PROPERTY soil1
   PERMEABILITY
     PERM_ISO 1.d-12
   /
-  SATURATION_FUNCTION \magentacomment{sf1}
+  CHARACTERISTIC\_CURVES \magentacomment{cc1}
 END
 \end{semiverbatim}
 
 \end{frame}
 
 %-----------------------------------------------------------------------------
-\subsection{SATURATION\_FUNCTION}
+\subsection{CHARACTERISTIC\_CURVES}
 
-\begin{frame}[fragile]\frametitle{SATURATION\_FUNCTION}
+\begin{frame}[fragile]\frametitle{CHARACTERISTIC\_CURVES}
 
 \begin{itemize}
-\item Add van Genuchten parameters
-\item Assume Mualem permeability (default)
+\item Add van Genuchten saturation function parameters
+\item Assume Mualem relative permeability (default)
 \end{itemize}
 
 \begin{semiverbatim}
-SATURATION_FUNCTION \magentacomment{sf1
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.1d0
-  LAMBDA 0.5d0     \bluecomment{! van Genuchten m in n = 1/(1-m)}
-  ALPHA 1.d-4      \bluecomment{! [Pa^-1]}
-  MAX_CAPILLARY_PRESSURE 1.d8}
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA  1.d-4    \bluecomment{! [Pa^-1]}
+    M 0.5d0         \bluecomment{! van Genuchten m in n = 1/(1-m)}
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    MAX_CAPILLARY_PRESSURE 1.d8
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
 END
 \end{semiverbatim}
 
@@ -930,15 +979,15 @@ END}
 \begin{semiverbatim}
 FLOW_CONDITION initial_pressure
   TYPE
-    PRESSURE \magentacomment{hydrostatic}    \bluecomment{! pressure as a function}
+    PRESSURE \magentacomment{HYDROSTATIC}    \bluecomment{! pressure as a function}
   /                         \bluecomment{!   of elevation}
   \magentacomment{DATUM 0.d0 0.d0 1.d0}      \bluecomment{! location of water table}
-  PRESSURE \magentacomment{101325.d0}        \bluecomment{! atmospheric pressure} 
+  PRESSURE \magentacomment{101325.d0}        \bluecomment{! atmospheric pressure}
 END
 
 FLOW_CONDITION \magentacomment{recharge}
   TYPE
-    FLUX neumann
+    FLUX NEUMANN
   /
   FLUX \magentacomment{10 cm/y}              \bluecomment{! Darcy velocity}
 END
@@ -974,4 +1023,4 @@ END
 
 \end{frame}
 
-\end{document} 
+\end{document}
