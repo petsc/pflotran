@@ -159,7 +159,7 @@ END
 #=========================== discretization ===================================
 GRID
   TYPE STRUCTURED
-  NXYZ 8 8 1
+  NXYZ 32 32 1
   BOUNDS
     0.d0 0.d0 0.d0
     16.d0 16.d0 128.d0
@@ -190,6 +190,11 @@ END
 #=========================== output options ===================================
 OUTPUT
   PERIODIC_OBSERVATION TIMESTEP 1
+  TIMES h 1.
+  TIMES d 1.
+  TIMES w 1.
+  TIMES mo 1.
+  PERIODIC TIME 0.25 y
   FORMAT TECPLOT BLOCK
   VELOCITY_AT_CENTER
   PRINT_COLUMN_IDS
@@ -198,7 +203,7 @@ END
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 0.25d0 y
+  FINAL_TIME 2.d0 y
   INITIAL_TIMESTEP_SIZE 1.d-3 s
   MAXIMUM_TIMESTEP_SIZE 0.01 y
 END
