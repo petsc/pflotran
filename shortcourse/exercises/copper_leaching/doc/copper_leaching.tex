@@ -134,13 +134,13 @@ The ``2D Copper Leaching Problem'' simulates groundwater flow and solute transpo
   \item Fully saturated, isothermal
   \item 12 primary species
   \item Transport DOFs = 12,288
-  
+
   \begin{tabular}{ll}
   Scaling: & MacBook Pro\\
   \midrule
   1p&7.76 min\\
   2p&4.52 min\\
-  4p&3.85 min 
+  4p&3.85 min
   \end{tabular}
 \end{itemize}
 
@@ -296,7 +296,7 @@ q_{nn'} \Psi_{jn'}, & q_{nn'} < 0\\
 
 \item $\varphi D = \varphi (\a_L |q| + s \tau D^0)$: harmonic
 \BA
-\big(\varphi D\big)_{nn'} &\eq \big(\varphi \a_l\big)_{nn'} |q_{nn'}| \\ 
+\big(\varphi D\big)_{nn'} &\eq \big(\varphi \a_l\big)_{nn'} |q_{nn'}| \\
 &\qquad\qquad+\frac{\varphi_n\varphi_{n'} s_n s_{n'} \tau_n \tau_{n'} D_n^0D_{n'}^0 (d_n+d_{n'})}{d_{n'} \varphi_n s_n\tau_n D_n^0 + d_n \varphi_{n'} s_{n'}\tau_{n'} D_{n'}^0}
 \EA
 \end{itemize}
@@ -305,21 +305,30 @@ q_{nn'} \Psi_{jn'}, & q_{nn'} < 0\\
 %-----------------------------------------------------------------------------
 \section{Description of Input Deck}
 
-\subsection{MODE}
-\begin{frame}[fragile,containsverbatim]\frametitle{\bf MODE}
-
-\begin{semiverbatim}
-
-MODE RICHARDS
-
-CHEMISTRY
-\end{semiverbatim}
+\subsection{SIMULATION}
+\begin{frame}[fragile,containsverbatim]\frametitle{\bf SIMULATION}
 
 \begin{itemize}
   \item Single-phase fully saturated flow
   \item Flow coupled to multicomponent reactive transport
 \end{itemize}
+\begin{semiverbatim}
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
 
+SUBSURFACE
+  ...
+END_SUBSURFACE
+\end{semiverbatim}
 \end{frame}
 
 %-----------------------------------------------------------------------------
@@ -406,24 +415,20 @@ MATERIAL_PROPERTY oxide-ore
   PERMEABILITY
     PERM_ISO 1.5d-13 \bluecomment{! isotropic permeability tensor}
   /
-  SATURATION_FUNCTION default
+  CHARACTERISTIC_CURVES default
 END
 \end{semiverbatim}
 
 \end{frame}
 
 %-----------------------------------------------------------------------------
-\subsection{SATURATION\_FUNCTION}
+\subsection{CHARACTERISTIC\_CURVES}
 
-\begin{frame}[fragile]\frametitle{\bf SATURATION\_FUNCTION}
-
-%\begin{itemize}
-%\item Add van Genuchten parameters
-%\item Assume Mualem permeability (default)
-%\end{itemize}
+\begin{frame}[fragile]\frametitle{\bf CHARACTERISTIC\_CURVES}
 
 \begin{semiverbatim}
-SATURATION_FUNCTION default
+CHARACTERISTIC_CURVES default
+  DEFAULT
 END
 \end{semiverbatim}
 
@@ -554,7 +559,7 @@ and do not add to number of degrees of freedom
   /
 \end{semiverbatim}
   \end{columns}
-  
+
   \newpage
   ~
   \begin{itemize}
@@ -567,7 +572,7 @@ and do not add to number of degrees of freedom
     O2(g)
   /
 \end{semiverbatim}
-  
+
   \newpage
   ~
   \begin{itemize}
@@ -589,7 +594,7 @@ and do not add to number of degrees of freedom
     Chalcedony
     Chrysocolla2
     Cuprite
-    
+
 \end{semiverbatim}
     \column{0.5\linewidth}
 \begin{semiverbatim}
@@ -627,8 +632,8 @@ and do not add to number of degrees of freedom
         /
       /
     /
-    
-    
+
+
     Goethite
       SURFACE_AREA_VOL_FRAC_POWER 0.666666667d0
       RATE_CONSTANT 1.d-11
@@ -679,6 +684,7 @@ and do not add to number of degrees of freedom
   ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     pH
+    TOTAL
     all
   /
 END
@@ -693,25 +699,25 @@ END
 \begin{semiverbatim}
 FLOW_CONDITION initial
   TYPE
-    PRESSURE hydrostatic \bluecomment{! hydrostatic condition}
+    PRESSURE HYDROSTATIC \bluecomment{! hydrostatic condition}
   /
   PRESSURE 201325.d0
   DATUM 0.d0 0.d0 128.d0
 END
 
 \newpage
-! Note: Do not use scaled_volumetric_rate below.  
+! Note: Do not use scaled_volumetric_rate below.
 !       Mass balance blows up.
 FLOW_CONDITION inlet
   TYPE
-    RATE scaled_mass_rate
+    RATE SCALED_MASS_RATE
   /
   RATE 0.68 kg/s \bluecomment{! flow rate (injection)}
 END
 
 FLOW_CONDITION outlet
   TYPE
-    RATE scaled_mass_rate
+    RATE SCALED_MASS_RATE
   /
   RATE -0.68 kg/s \bluecomment{! flow rate (extraction)}
 END
@@ -733,17 +739,17 @@ END
 \end{itemize}
 \vspace{-3mm}
 \begin{semiverbatim}
-TRANSPORT_CONDITION initial
-  TYPE dirichlet_zero_gradient
-  CONSTRAINT_LIST
-    0.d0 initial
+TRANSPORT_CONDITION \greencomment{initial} 
+  TYPE ZERO_GRADIENT  \bluecomment{! Since these are different objects}
+  CONSTRAINT_LIST     \bluecomment{!   the same name can be used.}
+    0.d0 \greencomment{initial}
   /
 END
 \vspace{-3mm}
-TRANSPORT_CONDITION inlet
-  TYPE dirichlet_zero_gradient
+TRANSPORT_CONDITION \greencomment{inlet}
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT_LIST
-    0.d0 inlet
+    0.d0 \greencomment{inlet}
   /
 END
 \end{semiverbatim}
@@ -760,7 +766,7 @@ CONSTRAINT initial
     Na+        5.0d-3   T
     K+         2.5d-5   M Muscovite
     Ca++       6.5d-4   M Calcite
-    H+         8.d0    pH
+    H+         8.d0     P
     Cu++       6.4d-9   M Chrysocolla2
     Al+++      2.8d-17  M Kaolinite
     Fe++       1.2d-23  M Goethite
@@ -797,9 +803,9 @@ CONSTRAINT inlet
     Na+        5.0d-3   T
     K+         1.3d-4   M Jarosite
     Ca++       1.1d-2   M Gypsum
-    H+         1.d0    pH
-    Cu++       1.0d-8   T 
-    Al+++      2.5d-2   T 
+    H+         1.d0     P
+    Cu++       1.0d-8   T
+    Al+++      2.5d-2   T
     Fe++       3.4d-9   M Goethite
     SiO2(aq)   1.9d-3   M SiO2(am)
     HCO3-      -2.d0    G CO2(g)
@@ -878,9 +884,9 @@ END
 
 \begin{semiverbatim}
 
-SOURCE_SINK inlet
-  FLOW_CONDITION inlet
-  TRANSPORT_CONDITION inlet
+SOURCE_SINK \greencomment{inlet}
+  FLOW_CONDITION \greencomment{inlet}
+  TRANSPORT_CONDITION \greencomment{inlet}
   REGION inlet
 END
 
@@ -948,8 +954,8 @@ END
 OUTPUT
   TIMES h  1. \bluecomment{! print output at specific times}
   TIMES d  1.
-  TIMES w  1.
-  TIMES mo 1.
+  TIMES w  1.          \bluecomment{! w = 7 days}
+  TIMES mo 1.          \bluecomment{! mo (month) = 1/12 year}
   PERIODIC TIME 0.25 y     \bluecomment{! solution every year}
   PERIODIC_OBSERVATION TIMESTEP 1  \bluecomment{! observ. every step}
   FORMAT TECPLOT BLOCK \bluecomment{! Tecplot BLOCK format}
@@ -995,4 +1001,4 @@ END
 \end{center}
 }
 
-\end{document} 
+\end{document}
