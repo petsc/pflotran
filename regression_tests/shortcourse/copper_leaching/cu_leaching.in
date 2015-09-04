@@ -19,8 +19,6 @@ REGRESSION
   CELLS_PER_PROCESS 5
 END
 
-#=========================== flow mode ========================================
-
 #=========================== checkpointing ====================================
 
 #=========================== chemistry ========================================
@@ -167,7 +165,7 @@ END
 
 #=========================== discretization ===================================
 GRID
-  TYPE structured
+  TYPE STRUCTURED
   NXYZ 8 8 1
   BOUNDS
     0.d0 0.d0 0.d0
@@ -246,7 +244,7 @@ END
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
-    PRESSURE hydrostatic
+    PRESSURE HYDROSTATIC
   /
   PRESSURE 201325.d0
   DATUM 0.d0 0.d0 128.d0
@@ -256,28 +254,28 @@ END
 
 FLOW_CONDITION inlet
   TYPE
-    RATE scaled_mass_rate
+    RATE SCALED_MASS_RATE
   /
   RATE 0.68 kg/s
 END
 
 FLOW_CONDITION outlet
   TYPE
-    RATE scaled_mass_rate
+    RATE SCALED_MASS_RATE
   /
   RATE -0.68 kg/s
 END
 
 #=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
-  TYPE zero_gradient
+  TYPE ZERO_GRADIENT
   CONSTRAINT_LIST
     0.d0 initial
   /
 END
 
 TRANSPORT_CONDITION inlet
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT_LIST
     0.d0 inlet
   /
@@ -289,7 +287,7 @@ CONSTRAINT initial
     Na+        5.0d-3   T
     K+         2.5d-5   M Muscovite
     Ca++       6.5d-4   M Calcite
-    H+         8.d0    pH
+    H+         8.d0     P
     Cu++       6.4d-9   M Chrysocolla2
     Al+++      2.8d-17  M Kaolinite
     Fe++       1.2d-23  M Goethite
@@ -318,7 +316,7 @@ CONSTRAINT inlet
     Na+        5.0d-3   T
     K+         1.3d-4   M Jarosite
     Ca++       1.1d-2   M Gypsum
-    H+         1.d0    pH
+    H+         1.d0     P
     Cu++       1.0d-8   T
     Al+++      2.5d-2   T
     Fe++       3.4d-9   M Goethite

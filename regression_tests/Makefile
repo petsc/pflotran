@@ -41,6 +41,7 @@ STANDARD_CFG = \
 	default/543/543.cfg \
 	default/anisothermal/anisothermal.cfg \
 	default/column/column.cfg \
+	default/batch/batch.cfg \
 	default/eos/eos.cfg \
 	default/materials/materials.cfg \
 	default/materials/soil_compressibility/soil_compressibility.cfg \
@@ -78,6 +79,7 @@ GEOCHEMISTRY_CFG = \
 	default/543/543.cfg \
 	default/anisothermal/anisothermal.cfg \
 	default/column/column.cfg \
+	default/batch/batch.cfg \
 	default/multicontinuum/multicontinuum.cfg \
 	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\
         ngee/ngee.cfg \

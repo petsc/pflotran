@@ -91,11 +91,11 @@ MATERIAL_PROPERTY soil1
   PERMEABILITY
     PERM_ISO 1.d-12
   /
-  CHARACTERISTIC_CURVES sf1
+  CHARACTERISTIC_CURVES cc1
 END
 
 #=========================== characteristic curves =============================
-CHARACTERISTIC_CURVES sf1
+CHARACTERISTIC_CURVES cc1
   SATURATION_FUNCTION VAN_GENUCHTEN
     ALPHA  1.d-4
     M 0.5d0
@@ -131,7 +131,7 @@ REGION all
 END
 
 REGION top
-  FACE top
+  FACE TOP
   COORDINATES
     0.d0 0.d0 10.d0
     1.d0 1.d0 10.d0
@@ -139,7 +139,7 @@ REGION top
 END
 
 REGION bottom
-  FACE bottom
+  FACE BOTTOM
   COORDINATES
     0.d0 0.d0 0.d0
     1.d0 1.d0 0.d0
@@ -149,7 +149,7 @@ END
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
-    PRESSURE hydrostatic
+    PRESSURE HYDROSTATIC
   /
   DATUM 0.d0 0.d0 1.d0
   PRESSURE 101325.d0
@@ -157,21 +157,21 @@ END
 
 FLOW_CONDITION recharge
   TYPE
-    FLUX neumann
+    FLUX NEUMANN
   /
   FLUX 10 cm/y
 END
 
 #=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
-  TYPE zero_gradient
+  TYPE ZERO_GRADIENT
   CONSTRAINT_LIST
     0.d0 initial
   /
 END
 
 TRANSPORT_CONDITION inlet
-  TYPE dirichlet_zero_gradient
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT_LIST
     0.d0 inlet
   /

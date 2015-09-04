@@ -141,8 +141,8 @@ The ``1D Variably Saturated Flow Scenario'' simulates single phase groundwater f
     \begin{itemize}
       \scriptsize
       \item $\alpha \eq 10^{-4}$ [Pa$^{-1}$]
-      \item $m \eq 0.5$ 
-      \item $s_r \eq 0.1$ 
+      \item $m \eq 0.5$
+      \item $s_r \eq 0.1$
     \end{itemize}
     \item Permeability function: Mualem
   \end{itemize}
@@ -241,19 +241,25 @@ The ``1D Variably Saturated Flow Scenario'' simulates single phase groundwater f
 \section{Description of Input Deck}
 
 %-----------------------------------------------------------------------------
-\subsection{MODE}
+\subsection{SIMULATION}
 
-\begin{frame}[fragile]\frametitle{MODE}
+\begin{frame}[fragile]\frametitle{SIMULATION}
 
 \begin{itemize}
 \item Specify Richards flow mode
-\item Best to add card at top of file
 \end{itemize}
 
 
 \begin{semiverbatim}
 
-MODE RICHARDS
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
 \end{semiverbatim}
 
 \end{frame}
@@ -269,7 +275,7 @@ MODE RICHARDS
 
 \begin{semiverbatim}
 GRID
-  TYPE structured        \bluecomment{! structured grid}
+  TYPE STRUCTURED        \bluecomment{! structured grid}
   NXYZ 1 1 100           \bluecomment{! NX, NY, NZ}
   BOUNDS             \bluecomment{! define the rectangular domain}
     0.d0 0.d0 0.d0   \bluecomment{! xmin ymin zmin}
@@ -343,16 +349,16 @@ MATERIAL_PROPERTY soil1  \bluecomment{! define a material:} \greencomment{soil1}
   PERMEABILITY     \bluecomment{! permeability is defined in a block}
     PERM_ISO 1.d-12  \bluecomment{! isotropic permeability}
   /
-  SATURATION_FUNCTION sf1  \bluecomment{! couple the saturation}
-END                        \bluecomment{!   function}
+  CHARACTERISTIC\_CURVES cc1  \bluecomment{! couple the characteristic}
+END                        \bluecomment{!   curve}
 \end{semiverbatim}
 
 \end{frame}
 
 %-----------------------------------------------------------------------------
-\subsection{SATURATION\_FUNCTION}
+\subsection{CHARACTERISTIC\_CURVES}
 
-\begin{frame}[fragile]\frametitle{SATURATION\_FUNCTION}
+\begin{frame}[fragile]\frametitle{CHARACTERISTIC\_CURVES}
 
 \begin{itemize}
 \item Set van Genuchten parameters
@@ -360,11 +366,16 @@ END                        \bluecomment{!   function}
 \end{itemize}
 
 \begin{semiverbatim}
-SATURATION_FUNCTION sf1
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.1d0
-  LAMBDA 0.5d0     \bluecomment{! van Genuchten m in n = 1/(1-m)}
-  ALPHA 1.d-4      \bluecomment{! [Pa^-1]}
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA  1.d-4   \bluecomment{! [Pa^-1]}
+    M 0.5d0        \bluecomment{! van Genuchten m in n = 1/(1-m)}
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
 END
 \end{semiverbatim}
 
@@ -404,7 +415,7 @@ END
 \begin{semiverbatim}
 FLOW_CONDITION initial_pressure \bluecomment{! named \greencomment{initial_pressure}}
   TYPE
-    PRESSURE hydrostatic \bluecomment{! type is \redcomment{hydrostatic}}
+    PRESSURE HYDROSTATIC \bluecomment{! type is \redcomment{hydrostatic}}
   /                      \bluecomment{!   for pressure}
   DATUM 0.d0 0.d0 1.d0   \bluecomment{! water table at 1 m}
   PRESSURE 101325.d0     \bluecomment{! pressure set to atmospheric}
@@ -412,7 +423,7 @@ END                      \bluecomment{!   at water table}
 
 FLOW_CONDITION recharge  \bluecomment{! named \greencomment{recharge}}
   TYPE
-    FLUX neumann         \bluecomment{! type is \redcomment{neumann} for a flux}
+    FLUX NEUMANN         \bluecomment{! type is \redcomment{neumann} for a flux}
   /
   FLUX 10.d0 cm/y        \bluecomment{! Darcy velocity of 10 cm/y}
 END
@@ -568,7 +579,7 @@ END                       \bluecomment{!   converted to SI}
 
 FLOW_CONDITION recharge
   TYPE
-    FLUX neumann
+    FLUX NEUMANN
   /
   \magentacomment{:}FLUX 3.170979d-9  \bluecomment{! comment out constant value}
   \magentacomment{FLUX LIST          \bluecomment{! flux is now a transient dataset}
@@ -623,7 +634,7 @@ END
   \begin{itemize}
     \item STRATA
     \item OUTPUT
-   \end{itemize}  
+   \end{itemize}
 \end{itemize}
 
 \end{frame}
@@ -646,16 +657,16 @@ MATERIAL_PROPERTY soil2    \bluecomment{! new soil name}
   PERMEABILITY
     PERM_ISO 2.d-12
   /
-  SATURATION_FUNCTION sf2  \bluecomment{! new saturation function name}
+  CHARACTERISTIC\_CURVES cc2  \bluecomment{! new saturation function name}
 END}
 \end{semiverbatim}
 
 \end{frame}
 
 %-----------------------------------------------------------------------------
-\subsection{SATURATION\_FUNCTION}
+\subsection{CHARACTERISTIC\_CURVES}
 
-\begin{frame}[fragile]\frametitle{SATURATION\_FUNCTION}
+\begin{frame}[fragile]\frametitle{CHARACTERISTIC\_CURVES}
 
 \begin{itemize}
 \item Note the new van Genuchten parameters
@@ -663,11 +674,16 @@ END}
 
 \begin{semiverbatim}
 \magentacomment{
-SATURATION_FUNCTION sf2
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.05d0
-  LAMBDA 0.6d0
-  ALPHA 2.d-4
+CHARACTERISTIC_CURVES cc2
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA 2.d-4
+    M 0.6d0
+    LIQUID_RESIDUAL_SATURATION 0.05d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.6d0
+    LIQUID_RESIDUAL_SATURATION 0.05d0
+  /
 END}
 
 \end{semiverbatim}
@@ -753,7 +769,7 @@ END}
 
 \magentacomment{
 OBSERVATION
-  REGION middle  
+  REGION middle
   VELOCITY      \bluecomment{! print flow velocities}
 END}
 

@@ -1935,7 +1935,8 @@ def main(options):
                                    options.check_only,
                                    testlog)
 
-            report[filename] = test_manager.run_status()
+            report_entry = config_file.split('regression_tests/')[1]
+            report[report_entry] = test_manager.run_status()
             os.chdir(root_dir)
         except Exception as error:
             message = txtwrap.fill(

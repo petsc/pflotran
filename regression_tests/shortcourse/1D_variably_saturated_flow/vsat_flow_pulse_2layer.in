@@ -16,8 +16,6 @@ REGRESSION
   CELLS_PER_PROCESS 5
 END
 
-#=========================== flow mode ========================================
-
 #=========================== solver options ===================================
 LINEAR_SOLVER FLOW
   SOLVER DIRECT
@@ -25,7 +23,7 @@ END
 
 #=========================== discretization ===================================
 GRID
-  TYPE structured
+  TYPE STRUCTURED
   NXYZ 1 1 100
   BOUNDS
     0.d0 0.d0 0.d0
@@ -40,7 +38,7 @@ MATERIAL_PROPERTY soil1
   PERMEABILITY
     PERM_ISO 1.d-12
   /
-  CHARACTERISTIC_CURVES sf1
+  CHARACTERISTIC_CURVES cc1
 END
 
 MATERIAL_PROPERTY soil2
@@ -49,11 +47,11 @@ MATERIAL_PROPERTY soil2
   PERMEABILITY
     PERM_ISO 2.d-12
   /
-  CHARACTERISTIC_CURVES sf2
+  CHARACTERISTIC_CURVES cc2
 END
 
 #=========================== characteristic curves ============================
-CHARACTERISTIC_CURVES sf1
+CHARACTERISTIC_CURVES cc1
   SATURATION_FUNCTION VAN_GENUCHTEN
     ALPHA 1.d-4
     M 0.5d0
@@ -65,7 +63,7 @@ CHARACTERISTIC_CURVES sf1
   /
 END
 
-CHARACTERISTIC_CURVES sf2
+CHARACTERISTIC_CURVES cc2
   SATURATION_FUNCTION VAN_GENUCHTEN
     ALPHA 2.d-4
     M 0.6d0
@@ -120,7 +118,7 @@ REGION bottom_layer
 END
 
 REGION top
-  FACE top
+  FACE TOP
   COORDINATES
     0.d0 0.d0 10.d0
     1.d0 1.d0 10.d0
@@ -132,7 +130,7 @@ REGION middle
 END
 
 REGION bottom
-  FACE bottom
+  FACE BOTTOM
   COORDINATES
     0.d0 0.d0 0.d0
     1.d0 1.d0 0.d0
@@ -142,7 +140,7 @@ END
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
   TYPE
-    PRESSURE hydrostatic
+    PRESSURE HYDROSTATIC
   /
   DATUM 0.d0 0.d0 1.d0
   PRESSURE 101325.d0
@@ -150,7 +148,7 @@ END
 
 FLOW_CONDITION recharge
   TYPE
-    FLUX neumann
+    FLUX NEUMANN
   /
   FLUX LIST
     TIME_UNITS y

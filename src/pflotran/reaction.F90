@@ -751,6 +751,9 @@ subroutine ReactionReadPass1(reaction,input,option)
                            'CHEMISTRY,DATABASE FILENAME')  
       case('LOG_FORMULATION')
         reaction%use_log_formulation = PETSC_TRUE
+      case('TRUNCATE_CONCENTRATION')
+        call InputReadDouble(input,option,reaction%truncated_concentration)
+        call InputErrorMsg(input,option,'truncate_concentration','CHEMISTRY')
       case('GEOTHERMAL_HPT')
         reaction%use_geothermal_hpt = PETSC_TRUE           
       case('NO_CHECK_UPDATE')

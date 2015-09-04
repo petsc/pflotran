@@ -1,7 +1,15 @@
 #Description: 1D Calcite dissolution problem
 
-#=========================== flow mode ========================================
-# Uniform velocity (see below). No flow mode specified.
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== useful tranport parameters ==================
 UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr
@@ -29,7 +37,7 @@ CHEMISTRY
   /
   MINERAL_KINETICS
     Calcite
-      RATE_CONSTANT 1.d-6 mol/m^2-sec
+      RATE_CONSTANT 1.d-6
     /
   /
   DATABASE ../../../database/hanford.dat
@@ -38,6 +46,7 @@ CHEMISTRY
   ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     PH
+    TOTAL
     all
   /
 END
@@ -49,7 +58,7 @@ END
 
 #=========================== discretization ===================================
 GRID
-  TYPE structured
+  TYPE STRUCTURED
   NXYZ 100 1 1
   BOUNDS
     0.d0 0.d0 0.d0
@@ -58,7 +67,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -107,54 +116,54 @@ REGION east
 END
 
 #=========================== transport conditions =============================
-TRANSPORT_CONDITION background_conc
-  TYPE zero_gradient
+TRANSPORT_CONDITION initial
+  TYPE ZERO_GRADIENT
   CONSTRAINT_LIST
-    0.d0 initial_constraint
+    0.d0 initial
   /
 END
 
-TRANSPORT_CONDITION inlet_conc
-  TYPE dirichlet_zero_gradient
+TRANSPORT_CONDITION inlet
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT_LIST
-    0.d0 inlet_constraint
+    0.d0 inlet
   /
 END
 
 #=========================== constraints ======================================
-CONSTRAINT initial_constraint
+CONSTRAINT initial
   CONCENTRATIONS
     H+     1.d-8      F
     HCO3-  1.d-3      G  CO2(g)
     Ca++   5.d-4      M  Calcite
   /
   MINERALS
-    Calcite 1.d-5 1.d0 m^2/m^3
+    Calcite 1.d-5 1.d0
   /
 END
 
-CONSTRAINT inlet_constraint
+CONSTRAINT inlet
   CONCENTRATIONS
     H+     5.         P
-    HCO3-  1.d-3      T 
-    Ca++   1.d-6      Z 
+    HCO3-  1.d-3      T
+    Ca++   1.d-6      Z
   /
 END
 
 #=========================== condition couplers ===============================
 # initial condition
 INITIAL_CONDITION
-  TRANSPORT_CONDITION background_conc
+  TRANSPORT_CONDITION initial
   REGION all
 END
 
 BOUNDARY_CONDITION outlet
-  TRANSPORT_CONDITION background_conc
+  TRANSPORT_CONDITION initial
   REGION east
 END
 
 BOUNDARY_CONDITION inlet
-  TRANSPORT_CONDITION inlet_conc
+  TRANSPORT_CONDITION inlet
   REGION west
 END
 
@@ -165,3 +174,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

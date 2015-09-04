@@ -1,7 +1,18 @@
 #Description: 1D Calcite dissolution problem
 
-#=========================== flow mode ========================================
-MODE RICHARDS
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
 
 #=========================== chemistry ========================================
 CHEMISTRY
@@ -26,7 +37,7 @@ CHEMISTRY
   /
   MINERAL_KINETICS
     Calcite
-      RATE_CONSTANT 1.d-6 mol/m^2-sec
+      RATE_CONSTANT 1.d-6
     /
   /
   DATABASE ../../../database/hanford.dat
@@ -35,6 +46,7 @@ CHEMISTRY
   ACTIVITY_COEFFICIENTS TIMESTEP
   OUTPUT
     PH
+    TOTAL
     all
   /
 END
@@ -50,7 +62,7 @@ END
 
 #=========================== discretization ===================================
 GRID
-  TYPE structured
+  TYPE STRUCTURED
   NXYZ 100 1 1
   BOUNDS
     0.d0 0.d0 0.d0
@@ -59,7 +71,7 @@ GRID
 END
 
 #=========================== fluid properties =================================
-FLUID_PROPERTY 
+FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
 END
 
@@ -71,11 +83,12 @@ MATERIAL_PROPERTY soil1
   PERMEABILITY
     PERM_ISO 1.d-12
   /
-  SATURATION_FUNCTION default
+  CHARACTERISTIC_CURVES default
 END
 
-#=========================== saturation functions =============================
-SATURATION_FUNCTION default
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  DEFAULT
 END
 
 #=========================== output options ===================================
@@ -117,72 +130,72 @@ REGION east
 END
 
 #=========================== flow conditions ==================================
-FLOW_CONDITION initial_pressure
+FLOW_CONDITION initial
   TYPE
-    PRESSURE dirichlet
+    PRESSURE DIRICHLET
   /
   PRESSURE 201325.d0
 END
 
-FLOW_CONDITION recharge
+FLOW_CONDITION inlet
   TYPE
-    FLUX neumann
+    FLUX NEUMANN
   /
   FLUX 1.d0 m/y
 END
 
 #=========================== transport conditions =============================
-TRANSPORT_CONDITION background_conc
-  TYPE zero_gradient
+TRANSPORT_CONDITION initial
+  TYPE ZERO_GRADIENT
   CONSTRAINT_LIST
-    0.d0 initial_constraint
+    0.d0 initial
   /
 END
 
-TRANSPORT_CONDITION inlet_conc
-  TYPE dirichlet_zero_gradient
+TRANSPORT_CONDITION inlet
+  TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT_LIST
-    0.d0 inlet_constraint
+    0.d0 inlet
   /
 END
 
 #=========================== constraints ======================================
-CONSTRAINT initial_constraint
+CONSTRAINT initial
   CONCENTRATIONS
     H+     1.d-8      F
     HCO3-  1.d-3      G  CO2(g)
     Ca++   5.d-4      M  Calcite
   /
   MINERALS
-    Calcite 1.d-5 1.d0 m^2/m^3
+    Calcite 1.d-5 1.d0
   /
 END
 
-CONSTRAINT inlet_constraint
+CONSTRAINT inlet
   CONCENTRATIONS
     H+     5.         P
-    HCO3-  1.d-3      T 
-    Ca++   1.d-6      Z 
+    HCO3-  1.d-3      T
+    Ca++   1.d-6      Z
   /
 END
 
 #=========================== condition couplers ===============================
 # initial condition
 INITIAL_CONDITION
-  FLOW_CONDITION initial_pressure
-  TRANSPORT_CONDITION background_conc
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
   REGION all
 END
 
 BOUNDARY_CONDITION outlet
-  FLOW_CONDITION initial_pressure
-  TRANSPORT_CONDITION background_conc
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
   REGION east
 END
 
 BOUNDARY_CONDITION inlet
-  FLOW_CONDITION recharge
-  TRANSPORT_CONDITION inlet_conc
+  FLOW_CONDITION inlet
+  TRANSPORT_CONDITION inlet
   REGION west
 END
 
@@ -193,3 +206,4 @@ STRATA
 END
 
 
+END_SUBSURFACE

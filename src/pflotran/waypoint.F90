@@ -589,7 +589,7 @@ subroutine WaypointListPrint(list,option,output_option)
   enddo
 
   if (OptionPrintToScreen(option)) then
-    write(option%fid_out,20) 'Total Waypoints:', icount
+    write(*,20) 'Total Waypoints:', icount
     write(*,100)
   endif
 
@@ -714,7 +714,6 @@ subroutine WaypointPrint(waypoint,option,output_option)
     write(*,30) 'Print Tr. Output', waypoint%print_tr_output
     write(*,30) 'Print Checkpoint', waypoint%print_checkpoint
     write(*,30) 'Update Conditions', waypoint%update_conditions
-    write(*,30) 'Print Output', waypoint%print_output
     write(string,*) 'Max DT [' // trim(adjustl(output_option%tunit)) // ']'
     write(*,10) trim(string), waypoint%dt_max/output_option%tconv
     write(*,30) 'Final', waypoint%final
@@ -730,7 +729,6 @@ subroutine WaypointPrint(waypoint,option,output_option)
     write(option%fid_out,30) 'Print Tr. Output', waypoint%print_tr_output
     write(option%fid_out,30) 'Print Checkpoint', waypoint%print_checkpoint
     write(option%fid_out,30) 'Update Conditions', waypoint%update_conditions
-    write(option%fid_out,30) 'Print Output', waypoint%print_output
     write(string,*) 'Max DT [' // trim(adjustl(output_option%tunit)) // ']'
     write(option%fid_out,10) trim(string), waypoint%dt_max/output_option%tconv
     write(option%fid_out,30) 'Final', waypoint%final
