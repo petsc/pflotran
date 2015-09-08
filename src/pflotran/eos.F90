@@ -3,6 +3,7 @@ module EOS_module
   use PFLOTRAN_Constants_module
   use EOS_Water_module
   use EOS_Gas_module
+  use EOS_Oil_module 
   
   implicit none
 
@@ -23,6 +24,7 @@ subroutine EOSInit()
   
   call EOSWaterInit()
   call EOSGasInit()
+  call EOSOilInit()
   
 end subroutine EOSInit
 
