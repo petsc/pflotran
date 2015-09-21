@@ -671,9 +671,7 @@ subroutine InputReadPflotranStringSlave(input, option)
   ! Check for comment midway along a string
   if (.not.InputError(input)) then
     tempstring = input%buf
-    do i=1,MAXSTRINGLENGTH
-      input%buf(i:i) = ' '
-    enddo
+    input%buf = repeat(' ',MAXSTRINGLENGTH)
     do i=1,len_trim(tempstring)
       if (tempstring(i:i) /= '#' .and. tempstring(i:i) /= '!') then
         input%buf(i:i) = tempstring(i:i)
