@@ -302,7 +302,6 @@ subroutine InitSubsurfAssignMatIDsToRegns(realization)
               ! if not active, set material id to zero
               cur_patch%imat(ghosted_id) = 0
             endif
-            material_auxvars(ghosted_id)%id = cur_patch%imat(ghosted_id)
           enddo
         endif
       endif
@@ -313,6 +312,20 @@ subroutine InitSubsurfAssignMatIDsToRegns(realization)
   
   ! ensure that ghosted values for material ids are up to date
   call RealLocalToLocalWithArray(realization,MATERIAL_ID_ARRAY)
+  
+  ! set material ids in material auxvar.  this must come after the update of 
+  ! ghost values.
+  cur_patch => realization%patch_list%first
+  do
+    if (.not.associated(cur_patch)) exit
+    ! set material ids to uninitialized
+    material_auxvars => cur_patch%aux%Material%auxvars
+    grid => cur_patch%grid
+    do ghosted_id = 1, grid%ngmax
+      material_auxvars(ghosted_id)%id = cur_patch%imat(ghosted_id)
+    enddo
+    cur_patch => cur_patch%next
+  enddo
 
 end subroutine InitSubsurfAssignMatIDsToRegns
 
