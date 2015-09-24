@@ -287,7 +287,7 @@ subroutine FracturePoroEvaluate(auxvar,pressure,compressed_porosity, &
       phi0 * (Ci + ((Ca-Ci)*(pressure-Pi)) / (Pa-Pi))
   else if (pressure >= Pa) then
     compressed_porosity = phia
-    dcompressed_porosity_dp = 0
+    dcompressed_porosity_dp = 0.d0
   endif
 
 end subroutine FracturePoroEvaluate
