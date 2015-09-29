@@ -1118,7 +1118,6 @@ recursive subroutine PMCBaseRestartHDF5(this, chk_grp_id)
   class(pmc_base_type) :: this
   integer :: chk_grp_id
   PetscInt :: id
-  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
   print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
         'restart from HDF5 formatted checkpoint file.'
   stop

@@ -106,7 +106,9 @@ subroutine SimulationBaseInitializeRun(this)
 
   use Logging_module
   use Option_module
+#if defined(PETSC_HAVE_HDF5)
   use hdf5
+#endif
 
   implicit none
   
@@ -114,7 +116,7 @@ subroutine SimulationBaseInitializeRun(this)
 
   class(simulation_base_type) :: this
 
-#if defined(SCORPIO_WRITE)
+#if defined(SCORPIO_WRITE) || !defined(PETSC_HAVE_HDF5)
   integer :: chk_grp_id
 #else
   integer(HID_T) :: chk_grp_id
