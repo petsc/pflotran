@@ -671,9 +671,7 @@ subroutine InputReadPflotranStringSlave(input, option)
   ! Check for comment midway along a string
   if (.not.InputError(input)) then
     tempstring = input%buf
-    do i=1,MAXSTRINGLENGTH
-      input%buf(i:i) = ' '
-    enddo
+    input%buf = repeat(' ',MAXSTRINGLENGTH)
     do i=1,len_trim(tempstring)
       if (tempstring(i:i) /= '#' .and. tempstring(i:i) /= '!') then
         input%buf(i:i) = tempstring(i:i)
@@ -702,9 +700,6 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
   character(len=MAXWORDLENGTH) :: word
   PetscBool :: return_blank_error
   
-  PetscInt :: i, begins, ends, lenword
-  character(len=1) :: tab, backslash
-
   if (InputError(input)) return
   
   call InputReadWord2(input%buf, word, return_blank_error, input%ierr)
@@ -730,13 +725,10 @@ subroutine InputReadWord2(string, word, return_blank_error, ierr)
   PetscErrorCode :: ierr
   
   PetscInt :: i, begins, ends, length
-  character(len=1) :: tab, backslash  
+  character(len=1), parameter :: tab = achar(9), backslash = achar(92)
 
   if (ierr /= 0) return
 
-  tab = achar(9)
-  backslash = achar(92)
-  
   ! Initialize character string to blank.
   ! Initialize character string to blank.  len_trim(word) is not
   ! defined if word is allocated but not initialized.  This works on
@@ -846,17 +838,12 @@ subroutine InputReadNChars2(string, chars, n, return_blank_error, ierr)
   PetscInt :: i, n, begins, ends
   character(len=n) :: chars
   PetscErrorCode :: ierr
-  character(len=1) :: tab, backslash    
+  character(len=1), parameter :: tab = achar(9), backslash = achar(92)
 
   if (InputError(ierr)) return
 
-  tab = achar(9)
-  backslash = achar(92)
-
   ! Initialize character string to blank.
-  do i=1,n
-    chars(i:i) = ' '
-  enddo
+  chars(1:n) = repeat(' ',n)
 
   ierr = len_trim(string)
   if (.not.InputError(ierr)) then
@@ -915,23 +902,19 @@ subroutine InputReadQuotedWord(input, option, word, return_blank_error)
 
   type(input_type) :: input
   type(option_type) :: option
-  PetscInt :: i, begins, ends, realends
+  PetscInt :: i, begins, ends, realends, len_trim_word
   PetscBool :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: word
   PetscBool :: openquotefound
-  character(len=1) :: tab, backslash    
+  character(len=1), parameter :: tab = achar(9), backslash = achar(92)
 
   if (InputError(input)) return
 
-  tab = achar(9)
-  backslash = achar(92)
-
   openquotefound = PETSC_FALSE
   ! Initialize character string to blank.
-  do i=1,len_trim(word)
-    word(i:i) = ' '
-  enddo
+  len_trim_word = len_trim(word)
+  word(1:len_trim_word) = repeat(' ',len_trim_word)
   
   if (len_trim(input%buf) == 0) then
     if (return_blank_error) then
@@ -1001,18 +984,14 @@ subroutine InputReadPath(string, word, return_blank_error, ierr)
   PetscBool :: return_blank_error
   PetscErrorCode :: ierr
   
-  PetscInt :: i, begins, ends
-  character(len=1) :: slash, backslash  
+  PetscInt :: i, begins, ends, len_trim_word
+  character(len=1), parameter :: slash = achar(47), backslash = achar(92)
 
   if (ierr /= 0) return
 
-  slash = achar(47)
-  backslash = achar(92)
-
   ! Initialize character string to blank.
-  do i=1,len_trim(word)
-    word(i:i) = ' '
-  enddo
+  len_trim_word = len_trim(word)
+  word(1:len_trim_word) = repeat(' ',len_trim_word)
 
   ierr = len_trim(string)
   

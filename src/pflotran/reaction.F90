@@ -3675,7 +3675,7 @@ end subroutine CO2AqActCoeff
 
 ! ************************************************************************** !
 
-PetscReal function RSumMoles(rt_auxvar,reaction,option)
+function RSumMoles(rt_auxvar,reaction,option)
   ! 
   ! Sums the total moles of primary and secondary aqueous species
   ! 
@@ -3690,6 +3690,7 @@ PetscReal function RSumMoles(rt_auxvar,reaction,option)
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
+  PetscReal :: RSumMoles
 
   PetscInt :: i
   
@@ -3706,7 +3707,7 @@ end function RSumMoles
 
 ! ************************************************************************** !
 
-PetscReal function RCO2MoleFraction(rt_auxvar,global_auxvar,reaction,option)
+function RCO2MoleFraction(rt_auxvar,global_auxvar,reaction,option)
   ! 
   ! Sums the total moles of primary and secondary aqueous species
   ! 
@@ -3722,6 +3723,7 @@ PetscReal function RCO2MoleFraction(rt_auxvar,global_auxvar,reaction,option)
   type(global_auxvar_type) :: global_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
+  PetscReal :: RCO2MoleFraction
 
   PetscInt :: i
   PetscInt :: icplx
