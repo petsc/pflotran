@@ -2114,15 +2114,25 @@ subroutine PatchUpdateCouplerFromDataset(coupler,option,grid,dataset,dof)
   PetscInt :: iconn
   PetscInt :: local_id
   PetscInt :: ghosted_id
+  PetscReal :: x
+  PetscReal :: y
+  PetscReal :: z
+  PetscReal :: dist(-1:3)
   
   do iconn = 1, coupler%connection_set%num_connections
     local_id = coupler%connection_set%id_dn(iconn)
     ghosted_id = grid%nL2G(local_id)
-    call DatasetGriddedHDF5InterpolateReal(dataset, &
-                                            grid%x(ghosted_id), &
-                                            grid%y(ghosted_id), &
-                                            grid%z(ghosted_id), &
-                                            0.d0,temp_real,option)
+    x = grid%x(ghosted_id)
+    y = grid%y(ghosted_id)
+    z = grid%z(ghosted_id)
+    if (associated(coupler%connection_set%dist)) then
+      dist = coupler%connection_set%dist(:,iconn)
+      x = x-dist(0)*dist(1)
+      y = y-dist(0)*dist(2)
+      z = z-dist(0)*dist(3)
+    endif
+    call DatasetGriddedHDF5InterpolateReal(dataset,x,y,z, &
+                                           0.d0,temp_real,option)
     coupler%flow_aux_real_var(dof,iconn) = temp_real
   enddo
   
