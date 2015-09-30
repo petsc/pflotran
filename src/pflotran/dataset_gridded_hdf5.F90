@@ -14,6 +14,7 @@ module Dataset_Gridded_HDF5_class
     PetscBool :: is_cell_centered
     PetscInt :: data_dim
     PetscReal, pointer :: origin(:)
+    PetscReal, pointer :: extent(:)
     PetscReal, pointer :: discretization(:)
   end type dataset_gridded_hdf5_type
   
@@ -82,6 +83,7 @@ subroutine DatasetGriddedHDF5Init(this)
   this%is_cell_centered = PETSC_FALSE
   this%data_dim = DIM_NULL
   nullify(this%origin)
+  nullify(this%extent)
   nullify(this%discretization)
     
 end subroutine DatasetGriddedHDF5Init
@@ -304,9 +306,10 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   endif
 #endif
 
+  num_spatial_dims = DatasetGriddedHDF5GetNDimensions(this)
+  
   ! num_times and time_dim must be calcualted by all processes; does not 
   ! require communication  
-  num_spatial_dims = DatasetGriddedHDF5GetNDimensions(this)
   time_dim = -1
   num_times = 1
   if (associated(this%time_storage)) then
@@ -354,6 +357,15 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     enddo
     deallocate(dims_h5)
     deallocate(max_dims_h5) 
+    
+    allocate(this%extent(num_spatial_dims))
+    do i = 1, num_spatial_dims
+      temp_int = this%dims(i)
+      if (.not.this%is_cell_centered) then
+        temp_int = temp_int - 1
+      endif
+      this%extent(i) = this%origin(i) + this%discretization(i) * temp_int
+    enddo
   
     call h5sget_simple_extent_npoints_f(file_space_id,num_data_values,hdf5_err)
   
@@ -772,20 +784,20 @@ subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
       x = yy
       y = zz
   end select
-
+  
   if (this%is_cell_centered) then
     i = int((x - this%origin(1))/ &
             this%discretization(1) + 0.5d0)
-    i = max(1,min(i,this%dims(1)-1))
+!    i = max(1,min(i,this%dims(1)-1))
     if (this%data_dim > DIM_Z) then ! at least 2D
       j = int((y - this%origin(2))/ &
               this%discretization(2) + 0.5d0)
-      j = max(1,min(j,this%dims(2)-1))
+!      j = max(1,min(j,this%dims(2)-1))
     endif
     if (this%data_dim > DIM_YZ) then ! at least 3D
       k = int((z - this%origin(3))/ &
               this%discretization(3) + 0.5d0)
-      k = max(1,min(k,this%dims(3)-1))
+!      k = max(1,min(k,this%dims(3)-1))
     endif
   else
     i = int((x - this%origin(1))/ &
@@ -799,6 +811,23 @@ subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
               this%discretization(3) + 1.d0)
     endif
   endif
+  
+  ! if indices are out of bounds, check if on boundary and reset index
+  if (i < 1 .or. i+1 > this%dims(1)) then
+    if (x >= this%origin(1) .and. x <= this%extent(1)) then
+      i = min(max(i,1),this%dims(1)-1)
+    endif
+  endif
+  if (this%data_dim > DIM_Z) then ! at least 2D
+    if (y >= this%origin(2) .and. y <= this%extent(2)) then
+      j = min(max(j,1),this%dims(2)-1)
+    endif
+  endif  
+  if (this%data_dim > DIM_YZ) then ! at least 2D
+    if (z >= this%origin(3) .and. z <= this%extent(3)) then
+      k = min(max(k,1),this%dims(3)-1)
+    endif
+  endif  
   
 end subroutine DatasetGriddedHDF5GetIndices
 
@@ -856,6 +885,7 @@ subroutine DatasetGriddedHDF5Strip(this)
   call DatasetCommonHDF5Strip(this)
   
   call DeallocateArray(this%origin)
+  call DeallocateArray(this%extent)
   call DeallocateArray(this%discretization)
   
 end subroutine DatasetGriddedHDF5Strip
