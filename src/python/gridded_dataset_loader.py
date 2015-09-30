@@ -13,7 +13,7 @@ ny = 3
 nz = 1
 nt = 50
 
-h5grp.attrs['Dimension'] = ['XY']
+h5grp.attrs['Dimension'] = numpy.string_('XY')
 h5grp.attrs['Discretization'] = [2.5,2.5]
 h5grp.attrs['Origin'] = [0.,0.]
 h5grp.attrs['Transient'] = [True]
@@ -34,6 +34,22 @@ for t in range(nt):
 h5dset = h5grp.create_dataset('data', data=rarray)
 
 # 1d line
+h5grp = h5file.create_group('x_line')
+
+nx = 5
+
+h5grp.attrs['Dimension'] = numpy.string_('X')
+h5grp.attrs['Discretization'] = [2.]
+h5grp.attrs['Origin'] = [-1.]
+h5grp.attrs['Max Buffer Size'] = [2]
+
+rarray = numpy.zeros(nx,'=f8')
+
+for i in range(nx):
+  rarray[i] = 5. - 0.1*float(i)
+h5dset = h5grp.create_dataset('data', data=rarray)
+ 
+# 1d line
 h5grp = h5file.create_group('y_line')
 
 nx = 1
@@ -41,9 +57,9 @@ ny = 5
 nz = 1
 nt = 30
 
-h5grp.attrs['Dimension'] = ['Y']
+h5grp.attrs['Dimension'] = numpy.string_('Y')
 h5grp.attrs['Discretization'] = [2.]
-h5grp.attrs['Origin'] = [-1.,]
+h5grp.attrs['Origin'] = [-1.] 
 h5grp.attrs['Transient'] = [True]
 h5grp.attrs['Max Buffer Size'] = [2]
 
@@ -61,4 +77,4 @@ h5dset = h5grp.create_dataset('data', data=rarray)
  
 h5file.close()
 
-print 'done'
+print('done')
