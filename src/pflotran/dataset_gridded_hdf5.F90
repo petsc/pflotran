@@ -819,13 +819,17 @@ subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
     endif
   endif
   if (this%data_dim > DIM_Z) then ! at least 2D
-    if (y >= this%origin(2) .and. y <= this%extent(2)) then
-      j = min(max(j,1),this%dims(2)-1)
+    if (j < 1 .or. j+1 > this%dims(2)) then
+      if (y >= this%origin(2) .and. y <= this%extent(2)) then
+         j = min(max(j,1),this%dims(2)-1)
+      endif
     endif
   endif  
   if (this%data_dim > DIM_YZ) then ! at least 2D
-    if (z >= this%origin(3) .and. z <= this%extent(3)) then
-      k = min(max(k,1),this%dims(3)-1)
+    if (k < 1 .or. k+1 > this%dims(3)) then
+      if (z >= this%origin(3) .and. z <= this%extent(3)) then
+        k = min(max(k,1),this%dims(3)-1)
+      endif
     endif
   endif  
   
