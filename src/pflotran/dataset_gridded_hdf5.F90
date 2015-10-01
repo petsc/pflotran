@@ -763,6 +763,7 @@ subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
   PetscReal :: x, y, z
   
   PetscReal :: tol
+  PetscReal, parameter :: tolerance_scale = 1.d-3
 
   select case(this%data_dim)
     ! since these are 1D array, always use first dimension
@@ -815,16 +816,16 @@ subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
   endif
   
   ! if indices are out of bounds, check if on boundary and reset index
-  !geh: the tolerance (set through the DATASET card) allows one to
-  !     go outside the bounds by the tolerance amount.
-  tol = this%boundary_tolerance
+  !geh: the tolerance allows one to go outside the bounds 
   if (i < 1 .or. i+1 > this%dims(1)) then
+    tol = this%discretization(1) * tolerance_scale
     if (x >= this%origin(1)-tol .and. x <= this%extent(1)+tol) then
       i = min(max(i,1),this%dims(1)-1)
     endif
   endif
   if (this%data_dim > DIM_Z) then ! at least 2D
     if (j < 1 .or. j+1 > this%dims(2)) then
+      tol = this%discretization(2) * tolerance_scale
       if (y >= this%origin(2)-tol .and. y <= this%extent(2)+tol) then
          j = min(max(j,1),this%dims(2)-1)
       endif
@@ -832,6 +833,7 @@ subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
   endif  
   if (this%data_dim > DIM_YZ) then ! at least 2D
     if (k < 1 .or. k+1 > this%dims(3)) then
+      tol = this%discretization(3) * tolerance_scale
       if (z >= this%origin(3)-tol .and. z <= this%extent(3)+tol) then
         k = min(max(k,1),this%dims(3)-1)
       endif
