@@ -14,6 +14,7 @@ module Dataset_Common_HDF5_class
     character(len=MAXWORDLENGTH) :: hdf5_dataset_name
     PetscBool :: realization_dependent
     PetscInt :: max_buffer_size
+    PetscReal :: boundary_tolerance
     PetscBool :: is_cell_indexed
   end type dataset_common_hdf5_type
 
@@ -76,6 +77,7 @@ subroutine DatasetCommonHDF5Init(this)
   this%hdf5_dataset_name = ''
   this%realization_dependent = PETSC_FALSE
   this%max_buffer_size = UNINITIALIZED_INTEGER
+  this%boundary_tolerance = 0.d0 ! this should be zero
   this%is_cell_indexed = PETSC_FALSE
   this%data_type = DATASET_REAL
     
@@ -100,6 +102,7 @@ subroutine DatasetCommonHDF5Copy(this, that)
   that%hdf5_dataset_name = this%hdf5_dataset_name
   that%realization_dependent = this%realization_dependent
   that%max_buffer_size = this%max_buffer_size
+  that%boundary_tolerance = this%boundary_tolerance
   that%is_cell_indexed = this%is_cell_indexed
     
 end subroutine DatasetCommonHDF5Copy
@@ -216,6 +219,9 @@ subroutine DatasetCommonHDF5ReadSelectCase(this,input,keyword,found,option)
     case('MAX_BUFFER_SIZE') 
       call InputReadInt(input,option,this%max_buffer_size)
       call InputErrorMsg(input,option,'max_buffer_size','DATASET')
+    case('BOUNDARY_TOLERANCE') 
+      call InputReadDouble(input,option,this%boundary_tolerance)
+      call InputErrorMsg(input,option,'boundary_tolerance','DATASET')
     case default
       found = PETSC_FALSE
   end select  
