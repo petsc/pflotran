@@ -1,0 +1,225 @@
+#Description: 3D test problem for testing chemical reactions
+#             based on chemistry from Hammond and Lichtner, WRR, 2010
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 9
+END
+
+#=========================== flow mode ========================================
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  MAX_STEPS 1
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 6 6 6
+  BOUNDS
+    0.d0 0.d0 0.d0
+    3.d0 3.d0 3.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== datasets =========================================
+DATASET temperature
+  HDF5_DATASET_NAME x_line_node_centered
+  FILENAME dataset.h5
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2650.d0
+  THERMAL_CONDUCTIVITY_DRY 0.5d0
+  THERMAL_CONDUCTIVITY_WET 2.d0
+  HEAT_CAPACITY 830.d0
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+  CHARACTERISTIC_CURVES cc1
+END
+
+#=========================== saturation functions =============================
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    ALPHA 1.d-4
+    M 0.5d0
+  /
+  PERMEABILITY_FUNCTION MUALEM
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_GAS
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    GAS_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  TIME_UNITS y
+  FORMAT HDF5
+  FORMAT TECPLOT BLOCK
+  VARIABLES
+    TEMPERATURE
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 100.d0 d
+  INITIAL_TIMESTEP_SIZE 1.d-10 d
+  MAXIMUM_TIMESTEP_SIZE 10.d0 d
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    3.d0 3.d0 3.d0
+  /
+END
+
+REGION top
+  FACE TOP
+  COORDINATES
+    0.d0 0.d0 3.d0
+    3.d0 3.d0 3.d0
+  /
+END
+
+REGION bottom
+  FACE BOTTOM
+  COORDINATES
+    0.d0 0.d0 0.d0
+    3.d0 3.d0 0.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 3.d0 3.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    3.d0 0.d0 0.d0
+    3.d0 3.d0 3.d0
+  /
+END
+
+REGION north
+  FACE NORTH
+  COORDINATES
+    0.d0 3.d0 0.d0
+    3.d0 3.d0 3.d0
+  /
+END
+
+REGION south
+  FACE SOUTH
+  COORDINATES
+    0.d0 0.d0 0.d0
+    3.d0 0.d0 3.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial2
+  TYPE
+    LIQUID_PRESSURE DIRICHLET
+    TEMPERATURE DIRICHLET
+    MOLE_FRACTION DIRICHLET
+  /
+  LIQUID_PRESSURE 1.d6
+  TEMPERATURE 25.d0
+  MOLE_FRACTION 1.d-8
+END
+
+FLOW_CONDITION initial
+  TYPE
+    LIQUID_PRESSURE DIRICHLET
+    TEMPERATURE DIRICHLET
+    MOLE_FRACTION DIRICHLET
+  /
+  LIQUID_PRESSURE 1.d6
+  TEMPERATURE DATASET temperature
+  MOLE_FRACTION 1.d-8
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+# west boundary condition
+BOUNDARY_CONDITION west
+  FLOW_CONDITION initial
+  REGION west
+END
+
+# east boundary condition
+BOUNDARY_CONDITION east
+  FLOW_CONDITION initial
+  REGION east
+END
+
+# south boundary condition
+BOUNDARY_CONDITION south
+  FLOW_CONDITION initial
+  REGION south
+END
+
+# north boundary condition
+BOUNDARY_CONDITION north
+  FLOW_CONDITION initial
+  REGION north
+END
+
+# top boundary condition
+BOUNDARY_CONDITION top
+  FLOW_CONDITION initial
+  REGION top
+END
+
+# bottom boundary condition
+BOUNDARY_CONDITION bottom
+  FLOW_CONDITION initial
+  REGION bottom
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil1
+  REGION all
+END
+
+END_SUBSURFACE
