@@ -547,7 +547,7 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: iphase
-  PetscInt :: i, icomp, imnrl, ncomp, irate, irxn
+  PetscInt :: i, icomp, imnrl, ncomp, irate, irxn, naqcomp
 
   iphase = 1
   option => realization%option
@@ -562,52 +562,59 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   material_auxvars => patch%aux%Material%auxvars
 
   mass_balance = 0.d0
+  naqcomp = reaction%naqcomp
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
     do iphase = 1, option%nphase
+    
 !     mass_balance(:,iphase) = mass_balance(:,iphase) + &
-      mass_balance(:,1) = mass_balance(:,1) + &
+      mass_balance(1:naqcomp,1) = &
+        mass_balance(1:naqcomp,1) + &
         rt_auxvars(ghosted_id)%total(:,iphase) * &
         global_auxvars(ghosted_id)%sat(iphase) * &
         material_auxvars(ghosted_id)%porosity * &
         material_auxvars(ghosted_id)%volume*1000.d0
-
+        
       if (iphase == 1) then
-      ! add contribution of equilibrium sorption
+        ! add contribution of equilibrium sorption
         if (reaction%neqsorb > 0) then
-          mass_balance(:,iphase) = mass_balance(:,iphase) + &
+          mass_balance(1:naqcomp,iphase) = mass_balance(1:naqcomp,iphase) + &
             rt_auxvars(ghosted_id)%total_sorb_eq(:) * &
             material_auxvars(ghosted_id)%volume
         endif
 
-      ! add contribution of kinetic multirate sorption
-        if (reaction%surface_complexation%nkinmrsrfcplxrxn > 0) then
-          do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
-            do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
-              mass_balance(:,iphase) = mass_balance(:,iphase) + &
-                rt_auxvars(ghosted_id)%kinmr_total_sorb(:,irate,irxn) * &
-                material_auxvars(ghosted_id)%volume
-            enddo
+        ! add contribution of kinetic multirate sorption
+        do irxn = 1, reaction%surface_complexation%nkinmrsrfcplxrxn
+          do irate = 1, reaction%surface_complexation%kinmr_nrate(irxn)
+            mass_balance(1:naqcomp,iphase) = mass_balance(1:naqcomp,iphase) + &
+              rt_auxvars(ghosted_id)%kinmr_total_sorb(:,irate,irxn) * &
+              material_auxvars(ghosted_id)%volume
           enddo
-        endif
+        enddo
 
-      ! add contribution from mineral volume fractions
-        if (reaction%mineral%nkinmnrl > 0) then
-          do imnrl = 1, reaction%mineral%nkinmnrl
-            ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
-            do i = 1, ncomp
-              icomp = reaction%mineral%kinmnrlspecid(i,imnrl)
-              mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
-              + reaction%mineral%kinmnrlstoich(i,imnrl) &
-              * rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) &
-              * material_auxvars(ghosted_id)%volume &
-              / reaction%mineral%kinmnrl_molar_vol(imnrl)
-            enddo
+        ! add contribution from mineral volume fractions
+        do imnrl = 1, reaction%mineral%nkinmnrl
+          ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
+          do i = 1, ncomp
+            icomp = reaction%mineral%kinmnrlspecid(i,imnrl)
+            mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
+            + reaction%mineral%kinmnrlstoich(i,imnrl) &
+            * rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) &
+            * material_auxvars(ghosted_id)%volume &
+            / reaction%mineral%kinmnrl_molar_vol(imnrl)
           enddo
-        endif
+        enddo
+
+        ! add contribution of immobile mass (still considered aqueous phase)
+        do i = 1, reaction%nimcomp
+          mass_balance(reaction%offset_immobile+i,iphase) = &
+            mass_balance(reaction%offset_immobile+i,iphase) + &
+            rt_auxvars(ghosted_id)%immobile(i) * &
+            material_auxvars(ghosted_id)%volume
+        enddo
       endif
     enddo
   enddo
