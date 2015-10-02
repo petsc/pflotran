@@ -2008,6 +2008,13 @@ subroutine OutputMassBalance(realization_base)
           endif
         enddo
 
+        do i=1,reaction%nimcomp
+          if (reaction%immobile%print_me(i)) then
+            string = 'Global ' // trim(reaction%immobile%names(i))
+            call OutputWriteToHeader(fid,string,'mol','',icol)
+          endif
+        enddo
+
         if (option%mass_bal_detailed) then
           do i=1,reaction%mineral%nkinmnrl
             if (reaction%mineral%kinmnrl_print(i)) then
@@ -2245,6 +2252,13 @@ subroutine OutputMassBalance(realization_base)
           endif
         enddo
 !      enddo
+        ! immobile species
+        do icomp = 1, reaction%nimcomp
+          if (reaction%immobile%print_me(icomp)) then
+            write(fid,110,advance="no") &
+              sum_mol_global(reaction%offset_immobile+icomp,iphase)
+          endif
+        enddo
     endif
 
 !   print out mineral contribution to mass balance
