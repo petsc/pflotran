@@ -4349,24 +4349,36 @@ subroutine RTSetPlotVariables(realization)
       units = ''
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &
                                    reaction%species_idx%h_ion_id)
+    else
+      option%io_buffer = 'pH may not be printed when H+ is not ' // &
+        'defined as a species.'
+      call printErrMsg(option)
     endif
   endif  
   
   if (reaction%print_EH .and. associated(reaction%species_idx)) then
-    if (reaction%species_idx%h_ion_id > 0) then
+    if (reaction%species_idx%o2_gas_id > 0) then
       name = 'Eh'
       units = 'V'
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,EH, &
                                    reaction%species_idx%h_ion_id)
+    else
+      option%io_buffer = 'Eh may not be printed when O2(g) is not ' // &
+        'defined as a species.'
+      call printErrMsg(option)
     endif
   endif  
   
   if (reaction%print_pe .and. associated(reaction%species_idx)) then
-    if (reaction%species_idx%h_ion_id > 0) then
+    if (reaction%species_idx%o2_gas_id > 0) then
       name = 'pe'
       units = ''
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PE, &
                                    reaction%species_idx%h_ion_id)
+    else
+      option%io_buffer = 'pe may not be printed when O2(g) is not ' // &
+        'defined as a species.'
+      call printErrMsg(option)   
     endif
   endif  
   
@@ -4376,6 +4388,10 @@ subroutine RTSetPlotVariables(realization)
       units = 'bars'
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,O2, &
                                    reaction%species_idx%o2_gas_id)
+    else
+      option%io_buffer = 'logfO2 may not be printed when O2(g) is not ' // &
+        'defined as a species.'
+      call printErrMsg(option)
     endif
   endif  
   
