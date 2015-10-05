@@ -3028,7 +3028,7 @@ subroutine ReactionReadOutput(reaction,input,option)
  !       reaction%print_all_gas_species = PETSC_TRUE
         reaction%mineral%print_all = PETSC_TRUE
         reaction%immobile%print_all = PETSC_TRUE
-        reaction%print_pH = PETSC_TRUE
+!        reaction%print_pH = PETSC_TRUE
       case('PRIMARY_SPECIES')
         reaction%print_all_primary_species = PETSC_TRUE
         reaction%print_pH = PETSC_TRUE
