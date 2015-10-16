@@ -20,7 +20,8 @@ module Region_module
   PetscInt, parameter, public :: DEFINED_BY_VERTEX_IDS = 5
   PetscInt, parameter, public :: DEFINED_BY_SIDESET_UGRID = 6
   PetscInt, parameter, public :: DEFINED_BY_FACE_UGRID_EXP = 7
-  PetscInt, parameter, public :: DEFINED_BY_POLY_VOL_UGRID = 8
+  PetscInt, parameter, public :: DEFINED_BY_POLY_BOUNDARY_FACE = 8
+  PetscInt, parameter, public :: DEFINED_BY_POLY_CELL_CENTER = 9
 
   type, public :: block_type        
     PetscInt :: i1,i2,j1,j2,k1,k2    
@@ -465,7 +466,19 @@ subroutine RegionRead(region,input,option)
         call GeometryReadCoordinates(input,option,region%name, &
                                      region%coordinates)
       case('POLYGON')
-        region%def_type = DEFINED_BY_POLY_VOL_UGRID
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'polygon type','REGION')
+        call StringToUpper(word)
+        select case(word)
+          case('BOUNDARY_FACES_IN_VOLUME')
+            region%def_type = DEFINED_BY_POLY_BOUNDARY_FACE
+          case('CELL_CENTERS_IN_VOLUME')
+            region%def_type = DEFINED_BY_POLY_CELL_CENTER
+          case default
+            option%io_buffer = 'REGION->POLYGON->"' // trim(word) // &
+              '" not recognized.'
+            call printErrMsg(option)
+        end select
         if (.not.associated(region%polygonal_volume)) then
           region%polygonal_volume => GeometryCreatePolygonalVolume()
         endif
