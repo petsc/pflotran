@@ -282,13 +282,27 @@ Compile Option & \multicolumn{1}{c}{Description}\\
 \verb|scorpio=1|: & --enable parallel IO\\
 \verb|coll=1|: & --enable colloid-facilitated transport option\\
 %\verb|temp|: & --enable temperature dependent log $K$ capability\\
-\verb|mfd=1|: & --enable MFD full permeability tensor capability (not operational)
+%\verb|mfd=1|: & --enable MFD full permeability tensor capability (not operational)
 %\verb|ice|:& --enable permafrost hydrology (works only in THC mode)
 \end{tabular}
 
 \noindent
 Thus for compiling with the supercritical CO$_2$ option use: {\tt make ssco2=1 pflotran}.
 See the PFLOTRAN \verb|makefile| for additional options.
+
+\noindent
+Compiling in parallel can be achieved using the modified {\tt make} command:
+
+\verb|make -j # pflotran|
+
+\noindent
+where \# denotes the number of cores. A comparison of the speedup possible on Linux-Mint and MacOSX 10.11 is shown in Figure~\ref{fcompile}. The Linux-Mint results are obtained on an 8-core machine; whereas the Mac has 4 cores which could explain the slightly better performance at 8 cores on Linux.
+
+\begin{figure}[h]\centering
+\includegraphics[scale=0.5]{./figs/linux-mac.png}
+\caption{Parallel compile time as a function of number of cores for Intel and Gnu compilers on Linux-Mint and the Gnu compiler on MacOSX 10.11. The Mac results are based on gfortran 4.9.1.}
+\label{fcompile}
+\end{figure}
 
 \subsection{Updating PFLOTRAN}
 
