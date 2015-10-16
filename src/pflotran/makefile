@@ -391,7 +391,11 @@ pflotran_obj = $(util_obj) $(eos_obj) $(mode_aux_obj) $(mode_obj) \
 
 pflotran_rxn_obj = ${pflotran_src}pflotran_rxn.o
 
-pflotran : $(pflotran_obj)
+pflotran :
+	@echo "Building PFLOTRAN with ${MAKE_NP} build threads"
+	@${MAKE} -j${MAKE_NP} make_pflotran
+
+make_pflotran : $(pflotran_obj)
 	${FLINKER} -o pflotran $(pflotran_obj) ${PETSC_LIB} ${LIBS} 
 
 libpflotran.a : $(pflotran_obj)
