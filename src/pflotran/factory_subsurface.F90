@@ -323,6 +323,7 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
   use PM_Mphase_class
   use PM_Richards_class
   use PM_TH_class
+  use PM_TOilIms_class
 
   implicit none 
 
@@ -366,6 +367,25 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
 
       option%nflowdof = 3
       option%nflowspec = 2
+      option%use_isothermal = PETSC_FALSE
+    class is (pm_toil_ims_type)
+      option%iflowmode = TOIL_IMS_MODE
+      option%nphase = 2
+      option%liquid_phase = 1  ! liquid_pressure
+      option%oil_phase = 2     ! oil_pressure
+
+      option%capillary_pressure_id = 3
+      option%saturation_pressure_id = 4
+
+      ! do we need this, thhese are component indices?? 
+      !option%water_id = 1
+      !option%oil_id = 2
+      !option%energy_id = 3
+
+      option%nflowdof = 3
+      option%nflowspec = 2 ! need to check what's required durign allocation
+                           ! might be subsurface routines allocating 
+                           ! nflowdof * nflowspec, in such case nflowspec = 1 
       option%use_isothermal = PETSC_FALSE
     class is (pm_immis_type)
       option%iflowmode = IMS_MODE
@@ -440,6 +460,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
   use PM_Mphase_class
   use PM_Richards_class
   use PM_TH_class
+  use PM_TOilIms_class
   
   use Init_Common_module
 
@@ -483,6 +504,8 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             pm => PMRichardsCreate()
           case('TH')
             pm => PMTHCreate()
+          case('TOIL_IMS')
+            pm => PMToilImsCreate() 
           case default
             error_string = trim(error_string) // ',MODE'
             call InputKeywordUnrecognized(word,error_string,option)
@@ -501,6 +524,11 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             input%buf = 'dummy_word'
             call pm%Read(input)
           class is(pm_th_type)
+            call pm%Read(input)
+          class is(pm_toil_ims_type)
+            ! inorder to not immediately return out of GeneralRead
+            ! check what ahppen if I remove this dummy_word
+            input%buf = 'dummy_word'
             call pm%Read(input)
           class default
             option%io_buffer = 'OPTIONS not set up for PM.'

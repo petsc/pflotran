@@ -58,6 +58,7 @@ module Option_module
     PetscInt :: nphase
     PetscInt :: liquid_phase
     PetscInt :: gas_phase
+    PetscInt :: oil_phase
     PetscInt :: nflowdof
     PetscInt :: nflowspec
     PetscInt :: nmechdof

@@ -1454,7 +1454,9 @@ subroutine InitSubsurfaceReadInput(simulation)
         call printMsg(option,flow_condition%name)
         if (option%iflowmode == G_MODE) then
           call FlowConditionGeneralRead(flow_condition,input,option)
-        else
+        else if(option%iflowmode == TOIL_IMS_MODE) then
+          call FlowConditionTOilImsRead(flow_condition,input,option)
+        else 
           call FlowConditionRead(flow_condition,input,option)
         endif
         call FlowConditionAddToList(flow_condition,realization%flow_conditions)

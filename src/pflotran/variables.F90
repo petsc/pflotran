@@ -129,4 +129,8 @@ module Variables_module
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_CENT = 58
 !  PetscInt, parameter, public :: LIQUID_VELOCITY_CELL_FACE = 59
 
+  PetscInt, parameter, public :: OIL_PRESSURE            = 108
+  PetscInt, parameter, public :: OIL_SATURATION          = 109
+
+
 end module Variables_module

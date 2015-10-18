@@ -156,12 +156,14 @@ mode_aux_obj = \
 	${common_src}auxiliary.o \
 	${common_src}flash2_aux.o \
 	${common_src}general_aux.o \
+	${common_src}toil_ims_aux.o \
 	${common_src}immis_aux.o \
 	${common_src}miscible_aux.o \
 	${common_src}mphase_aux.o \
 	${common_src}pm_base.o \
 	${common_src}pm_base_pointer.o \
 	${common_src}pm_general.o \
+	${common_src}pm_toil_ims.o \
 	${common_src}pm_flash2.o \
 	${common_src}pm_immis.o \
 	${common_src}pm_mphase.o \
@@ -181,6 +183,7 @@ mode_aux_obj = \
 mode_obj = \
 	${common_src}flash2.o \
 	${common_src}general.o \
+	${common_src}toil_ims.o \
 	${common_src}global.o \
 	${common_src}immis.o \
 	${common_src}miscible.o \
@@ -838,6 +841,9 @@ pm_general.o : checkpoint.o field.o general.o general_aux.o global.o \
                global_aux.o grid.o input_aux.o material.o option.o \
                pflotran_constants.o pm_base.o pm_subsurface.o realization.o \
                realization_base.o solver.o string.o variables.o
+pm_toil_ims : input_aux.o option.o \
+              pflotran_constants.o pm_base.o pm_subsurface.o variables.o \
+              string.o toil_ims_aux.o
 pm_geomechanics_force.o : checkpoint.o communicator_base.o \
                           communicator_structured.o \
                           communicator_unstructured.o condition.o \
@@ -1171,6 +1177,8 @@ timestepper_steady.o : convergence.o option.o output.o pflotran_constants.o \
 timestepper_surface.o : option.o output.o pflotran_constants.o pm_base.o \
                         pm_surface_flow.o solver.o surface_flow.o \
                         timestepper_base.o waypoint.o
+toil_ims_aux.o : pflotran_constants.o
+toil_ims.o : global_aux.o pflotran_constants.o toil_ims_aux.o
 transport.o : connection.o global_aux.o material_aux.o matrix_block_aux.o \
               option.o pflotran_constants.o reactive_transport_aux.o
 transport_constraint.o : global_aux.o input_aux.o logging.o option.o \

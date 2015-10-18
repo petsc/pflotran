@@ -510,6 +510,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
               temp_int = 1
             endif
           endif
+          if (associated(coupler%flow_condition%toil_ims)) then          
+            if (associated(coupler%flow_condition%toil_ims%rate)) then
+              temp_int = 1
+            endif
+          end if
           if (temp_int == 0) then
             option%io_buffer = 'FLOW_CONDITIONs associated with ' // &
               'SOURCE_SINKs must have a RATE or WELL expression within them.'
@@ -1045,6 +1050,8 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             call PatchUpdateCouplerAuxVarsMIS(patch,coupler,option)
           case(RICHARDS_MODE)
             call PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
+          case(TOIL_IMS_MODE)
+            ! TOIL_IMS specific  
         end select
       endif
     endif
@@ -1430,6 +1437,216 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   endif
 
 end subroutine PatchUpdateCouplerAuxVarsG
+
+! ************************************************************************** !
+
+subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
+  ! 
+  ! Updates flow auxiliary variables associated
+  ! with a coupler for TOIL_IMS_MODE
+  ! only ascii database option currenlty available 
+  !
+  ! Author: Paolo Orsini
+  ! Date: 09/09/15
+  ! 
+
+  use Option_module
+  use Condition_module
+  use Hydrostatic_module
+  use Saturation_module
+  !use EOS_Water_module
+  
+  use TOilIms_Aux_module
+  use Grid_module
+  use Dataset_Common_HDF5_class
+  use Dataset_Gridded_HDF5_class
+  use Dataset_Ascii_class
+  use Dataset_module
+
+  implicit none
+  
+  type(patch_type) :: patch
+  type(coupler_type), pointer :: coupler
+  type(option_type) :: option
+  
+  type(flow_condition_type), pointer :: flow_condition
+  !type(tran_condition_type), pointer :: tran_condition
+
+  type(flow_toil_ims_condition_type), pointer :: toil_ims
+
+  PetscBool :: dof1, dof2, dof3
+
+  PetscErrorCode :: ierr
+  
+  PetscInt :: idof, num_connections
+  PetscInt :: iconn, local_id, ghosted_id
+  ! use to map flow_aux_map to the flow_aux_real_var array
+  PetscInt :: real_count 
+  
+  num_connections = coupler%connection_set%num_connections
+
+  flow_condition => coupler%flow_condition
+
+  toil_ims => flow_condition%toil_ims
+  dof1 = PETSC_FALSE
+  dof2 = PETSC_FALSE
+  dof3 = PETSC_FALSE
+
+  real_count = 0
+
+  ! pressure is either hydrostatic or dirichlet
+  if (toil_ims%pressure%itype == HYDROSTATIC_BC) then
+    if (toil_ims%saturation%itype /= DIRICHLET_BC) then
+          option%io_buffer = &
+            'Hydrostatic pressure bc for flow condition "' // &
+            trim(flow_condition%name) // &
+            '" requires a saturation bc of type dirichlet'
+          call printErrMsg(option)
+    endif 
+    if (toil_ims%temperature%itype /= DIRICHLET_BC) then
+          option%io_buffer = &
+            'Hydrostatic pressure bc for flow condition "' // &
+            trim(flow_condition%name) // &
+            '" requires a temperature bc of type dirichlet'
+          call printErrMsg(option)
+    endif
+    ! at the moment hydrostatic pressure is valid only for regions
+    ! fully saturated in water Sw=Sw_max, where Pw=Po (i.e. Pc=0)
+    coupler%flow_aux_mapping(TOIL_IMS_OIL_SATURATION_INDEX) = 2
+    coupler%flow_aux_real_var(2,1:num_connections) = 0.d0 
+    dof2 = PETSC_TRUE
+    coupler%flow_bc_type(TOIL_IMS_OIL_EQUATION_INDEX) = DIRICHLET_BC  
+    ! PO TODO: HydrostaticOilWaterUpdateCoupler (read OWC and OCW_pc first)   
+    call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+    coupler%flow_bc_type(TOIL_IMS_LIQUID_EQUATION_INDEX) = HYDROSTATIC_BC
+    coupler%flow_bc_type(TOIL_IMS_ENERGY_EQUATION_INDEX) = DIRICHLET_BC
+    dof1 = PETSC_TRUE
+    dof3 = PETSC_TRUE
+  else
+    real_count = real_count + 1
+    select case(toil_ims%pressure%itype)
+      case(DIRICHLET_BC)
+        coupler%flow_aux_mapping(TOIL_IMS_PRESSURE_INDEX) = real_count
+        coupler%flow_bc_type(TOIL_IMS_LIQUID_EQUATION_INDEX) = DIRICHLET_BC
+        select type(selector => toil_ims%pressure%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
+              selector%rarray(1)
+            dof1 = PETSC_TRUE
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               real_count)
+            dof1 = PETSC_TRUE
+          class default
+            option%io_buffer = 'Unknown dataset class (toil_ims%' // &
+                               'pressure%itype,DIRICHLET_BC)'
+            call printErrMsg(option)
+        end select
+      case default
+        option%io_buffer = 'Unknown case (toil_ims%pressure%itype)' 
+        call printErrMsg(option)
+    end select
+
+    real_count = real_count + 1
+    select case(toil_ims%saturation%itype)
+      case(DIRICHLET_BC)
+        coupler%flow_aux_mapping(TOIL_IMS_OIL_SATURATION_INDEX) = real_count
+        !coupler%flow_aux_real_var(real_count,1:num_connections) = &
+        !  toil_ims%saturation%dataset%rarray(1)
+        !dof2 = PETSC_TRUE
+        coupler%flow_bc_type(TOIL_IMS_OIL_EQUATION_INDEX) = DIRICHLET_BC
+        select type(selector => toil_ims%saturation%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
+              selector%rarray(1)
+            dof2 = PETSC_TRUE
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               real_count)
+            dof2 = PETSC_TRUE
+          class default
+            option%io_buffer = 'Unknown dataset class (toil_ims%' // &
+                               'saturation%itype,DIRICHLET_BC)'
+            call printErrMsg(option)
+        end select
+      case default
+        option%io_buffer = 'Unknown case (toil_ims%saturation%itype)' 
+        call printErrMsg(option)
+    end select
+ 
+    real_count = real_count + 1
+    select case(toil_ims%temperature%itype)
+      case(DIRICHLET_BC)
+        coupler%flow_aux_mapping(TOIL_IMS_TEMPERATURE_INDEX) = real_count
+        !temperature = toil_ims%temperature%dataset%rarray(1)
+        !coupler%flow_aux_real_var(real_count,1:num_connections) = &
+        !  temperature
+        !dof3 = PETSC_TRUE
+        coupler%flow_bc_type(TOIL_IMS_ENERGY_EQUATION_INDEX) = DIRICHLET_BC
+        select type(selector => toil_ims%temperature%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
+              selector%rarray(1)
+            dof3 = PETSC_TRUE
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               real_count)
+            dof3 = PETSC_TRUE
+          class default
+            option%io_buffer = 'Unknown dataset class (toil_ims%' // &
+                               'temperature%itype,DIRICHLET_BC)'
+            call printErrMsg(option)
+        end select
+      ! to add here therma gradient option
+      case default
+        option%io_buffer = 'Unknown case (toil_ims%temperature%itype)' 
+        call printErrMsg(option)
+    end select
+
+  end if ! end else branch for pressure /= HYDROSTATIC_BC
+
+  
+  if (associated(toil_ims%liquid_flux)) then
+    coupler%flow_bc_type(TOIL_IMS_LIQUID_EQUATION_INDEX) = NEUMANN_BC
+    real_count = real_count + 1
+    coupler%flow_aux_mapping(TOIL_IMS_LIQUID_FLUX_INDEX) = real_count
+    coupler%flow_aux_real_var(real_count,1:num_connections) = &
+      toil_ims%liquid_flux%dataset%rarray(1)
+    dof1 = PETSC_TRUE
+  endif
+  if (associated(toil_ims%oil_flux)) then
+    coupler%flow_bc_type(TOIL_IMS_OIL_EQUATION_INDEX) = NEUMANN_BC
+    real_count = real_count + 1
+    coupler%flow_aux_mapping(TOIL_IMS_OIL_FLUX_INDEX) = real_count
+    coupler%flow_aux_real_var(real_count,1:num_connections) = &
+      toil_ims%oil_flux%dataset%rarray(1)
+    dof2 = PETSC_TRUE
+  endif
+  if (associated(toil_ims%energy_flux)) then
+    coupler%flow_bc_type(TOIL_IMS_ENERGY_EQUATION_INDEX) = NEUMANN_BC
+    real_count = real_count + 1
+    coupler%flow_aux_mapping(TOIL_IMS_ENERGY_FLUX_INDEX) = real_count
+    coupler%flow_aux_real_var(real_count,1:num_connections) = &
+      toil_ims%energy_flux%dataset%rarray(1)
+    dof3 = PETSC_TRUE
+  endif
+
+  if (associated(toil_ims%rate)) then
+    select case(toil_ims%rate%itype)
+      case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+        call PatchScaleSourceSink(patch,coupler,option)
+    end select
+  endif
+
+  ! if not all primary variables updated for toil_ims, it returns an error
+  !if (.not.dof1 .or. .not.dof2 .or. .not.dof3) then
+  !  option%io_buffer = 'Error with themal oil phase boundary condition'
+  !endif
+
+end subroutine PatchUpdateCouplerAuxVarsTOI
 
 ! ************************************************************************** !
 
@@ -2188,6 +2405,8 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   select case(option%iflowmode)
     case(G_MODE)
       iscale_type = source_sink%flow_condition%general%rate%isubtype
+    case(TOIL_IMS_MODE)
+      iscale_type = source_sink%flow_condition%toil_ims%rate%isubtype
     case default
       iscale_type = source_sink%flow_condition%rate%isubtype
   end select
@@ -2265,7 +2484,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   do iconn = 1, cur_connection_set%num_connections      
     local_id = cur_connection_set%id_dn(iconn)
     select case(option%iflowmode)
-      case(RICHARDS_MODE,G_MODE)
+      case(RICHARDS_MODE,G_MODE,TOIL_IMS_MODE)
         source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
           vec_ptr(local_id)
       case(TH_MODE)
