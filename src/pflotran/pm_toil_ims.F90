@@ -147,11 +147,12 @@ subroutine PMTOilImsRead(this,input)
       case('WINDOW_EPSILON') 
         call InputReadDouble(input,option,toil_ims_window_epsilon)
         call InputErrorMsg(input,option,'window epsilon','TOIL_IMS_MODE')
-      case('OIL_COMPONENT_FORMULA_WEIGHT')
-        !geh: assuming oil component is index 2, H2O ois index 1
-        call InputReadDouble(input,option,toil_ims_fmw_comp(2))
-        call InputErrorMsg(input,option,'oil component formula wt.', &
-                           'TOIL_IMS_MODE')
+      ! consider to move in this in eos_oil, since this is an eos property
+      !case('OIL_COMPONENT_FORMULA_WEIGHT')
+      !  !assuming oil component is index 2, H2O ois index 1
+      !  call InputReadDouble(input,option,toil_ims_fmw_comp(2))
+      !  call InputErrorMsg(input,option,'oil component formula wt.', &
+      !                     'TOIL_IMS_MODE')
       case('ISOTHERMAL')
         toil_ims_isothermal = PETSC_TRUE
       case('MAXIMUM_PRESSURE_CHANGE')

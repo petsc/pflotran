@@ -9,7 +9,7 @@ module TOilIms_Aux_module
 #include "finclude/petscsys.h"
 
   PetscReal, public :: toil_ims_window_epsilon = 1.d-4
-  PetscReal, public :: toil_ims_fmw_comp(2) = [FMWH2O,FMWOIL]
+  !PetscReal, public :: toil_ims_fmw_comp(2) = [FMWH2O,FMWOIL]
   PetscReal, public :: toil_ims_max_pressure_change = 5.d4
   PetscInt, public :: toil_ims_max_it_before_damping = UNINITIALIZED_INTEGER
   PetscReal, public :: toil_ims_damping_factor = 0.6d0

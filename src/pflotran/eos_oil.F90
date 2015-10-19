@@ -8,10 +8,14 @@ module EOS_Oil_module
   
 #include "finclude/petscsys.h"
 
+  ! public oil eos variables
+  PetscReal, public :: fmw_oil
+
   ! module variables
   PetscReal :: constant_density
   PetscReal :: constant_enthalpy
   PetscReal :: constant_viscosity
+  PetscReal :: constant_sp_heat
 
   ! In order to support generic EOS subroutines, we need the following:
   ! 1. An interface declaration that defines the argument list (best to have 
@@ -109,8 +113,8 @@ module EOS_Oil_module
 
   public :: EOSOilSetViscosityConstant, &
             EOSOilSetDensityConstant, &
-            EOSOilSetEnthalpyConstant
-        
+            EOSOilSetEnthalpyConstant, &
+            EOSOilSetEnthalpyLinearTemp
 
 contains
 
@@ -123,6 +127,7 @@ subroutine EOSOilInit()
   constant_density = UNINITIALIZED_DOUBLE
   constant_viscosity = UNINITIALIZED_DOUBLE
   constant_enthalpy = UNINITIALIZED_DOUBLE
+  fmw_oil = FMWOIL
 
   EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms
 
@@ -176,6 +181,22 @@ subroutine EOSOilSetEnthalpyConstant(enthalpy)
   EOSOilEnthalpyPtr => EOSOilEnthalpyConstant
   
 end subroutine EOSOilSetEnthalpyConstant
+
+! ************************************************************************** !
+
+subroutine EOSOilSetEnthalpyLinearTemp(specific_heat)
+
+  implicit none
+  
+  PetscReal :: specific_heat 
+  
+  constant_sp_heat = specific_heat  
+  EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms
+  EOSOilEnthalpyPtr => EOSOilEnthalpyLinearTemp
+
+  !write(*,*) "I am in EOS oil linear set up"  
+
+end subroutine EOSOilSetEnthalpyLinearTemp
 
 ! ************************************************************************** !
 
@@ -291,6 +312,30 @@ subroutine EOSOilEnthalpyConstant(T,P,deriv,H,dH_dT,dH_dP,ierr)
   dH_dT = 0.d0
 
 end subroutine EOSOilEnthalpyConstant
+
+! ************************************************************************** !
+
+subroutine EOSOilEnthalpyLinearTemp(T,P,deriv,H,dH_dT,dH_dP,ierr)
+  implicit none
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscBool, intent(in) :: deriv    ! indicate if derivatives are needed or not
+  PetscReal, intent(out) :: H       ! enthalpy [J/kmol]
+  PetscReal, intent(out) :: dH_dT   ! derivative enthalpy wrt temperature
+  PetscReal, intent(out) :: dH_dP   ! derivative enthalpy wrt pressure
+  PetscErrorCode, intent(out) :: ierr
+
+  H = constant_sp_heat * T * fmw_oil ! J/(kg °C) °C * Kg/Kmol = J/Kmol 
+
+  dH_dT = UNINITIALIZED_DOUBLE
+  dH_dP = UNINITIALIZED_DOUBLE
+
+  if(deriv) then
+    dH_dP = 0.d0
+    dH_dT = constant_sp_heat * fmw_oil
+  end if
+
+end subroutine EOSOilEnthalpyLinearTemp
 
 ! ************************************************************************** !
 
