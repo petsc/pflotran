@@ -262,19 +262,10 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   ! Date: 03/18/13
   ! 
 
-#if  !defined(PETSC_HAVE_HDF5)
-  implicit none
-  class(pmc_base_type), target :: this
-  PetscReal :: sync_time
-  PetscInt :: stop_flag
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
-
   use Timestepper_Base_class
+#if defined (PETSC_HAVE_HDF5)
   use hdf5
-  
+#endif
   implicit none
   
 #include "finclude/petscviewer.h"  
@@ -292,12 +283,19 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   PetscViewer :: viewer
   PetscErrorCode :: ierr
 
+#if defined(PETSC_HAVE_HDF5)
 #if defined(SCORPIO_WRITE)
+  ! HDF5 + SCORPIO available
   integer :: chk_grp_id
 #else
+  ! HDF5 available
   integer(HID_T) :: chk_grp_id
 #endif
-  
+#else
+  ! HDF5 unavailable
+  integer :: chk_grp_id
+#endif
+
   if (this%stage /= 0) then
     call PetscLogStagePush(this%stage,ierr);CHKERRQ(ierr)
   endif
@@ -420,7 +418,6 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   if (this%stage /= 0) then
     call PetscLogStagePop(ierr);CHKERRQ(ierr)
   endif
-#endif
   
 end subroutine PMCBaseRunToTime
 
@@ -1118,7 +1115,6 @@ recursive subroutine PMCBaseRestartHDF5(this, chk_grp_id)
   class(pmc_base_type) :: this
   integer :: chk_grp_id
   PetscInt :: id
-  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
   print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
         'restart from HDF5 formatted checkpoint file.'
   stop

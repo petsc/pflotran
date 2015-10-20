@@ -48,9 +48,11 @@ STANDARD_CFG = \
 	default/materials/mineral_volume/mineral_volume.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	default/condition/condition.cfg \
+	default/condition/dataset/dataset.cfg \
 	default/multicontinuum/multicontinuum.cfg \
 	default/scco2/mphase/mphase.cfg \
 	default/scco2/flash2/flash2.cfg \
+	default/regions/regions.cfg \
 	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\
         general/general.cfg \
         hydrogeophysics/hydrogeophysics.cfg \

@@ -3575,26 +3575,11 @@ subroutine UGridMapBoundFacesInPolVol(unstructured_grid,polygonal_volume, &
     mapped_face_count = 0
     do iface = 1, boundary_face_count
       face_id = boundary_faces(iface)
-      found = PETSC_TRUE
-#if 0      
-      do ivertex = 1, MAX_VERT_PER_FACE
-        vertex_id = unstructured_grid%face_to_vertex(ivertex,face_id)
-        if (vertex_id == 0) exit
-        vertex = unstructured_grid%vertices(vertex_id)
-        if (.not.GeometryPointInPolygonalVolume(vertex%x,vertex%y,vertex%z, &
-                                                polygonal_volume,option)) then
-          GeometryPointInPolygon1 = &
-          found = PETSC_FALSE
-          exit
-        endif
-      enddo
-#else
       found = GeometryPointInPolygonalVolume( &
                 unstructured_grid%face_centroid(face_id)%x, &
                 unstructured_grid%face_centroid(face_id)%y, &
                 unstructured_grid%face_centroid(face_id)%z, &
                 polygonal_volume,option)
-#endif
       if (found) then
         mapped_face_count = mapped_face_count + 1
         ! if inside, shift the face earlier in the array to same array space
