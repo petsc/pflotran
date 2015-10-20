@@ -2983,6 +2983,7 @@ function FlowConditionIsTransient(condition)
       FlowSubConditionIsTransient(condition%well) .or. &
       FlowSubConditionIsTransient(condition%enthalpy) .or. &
       FlowSubConditionIsTransient(condition%energy_rate) .or. &
+      FlowConditionTOilImsIsTransient(condition%toil_ims) .or. &
       FlowConditionGeneralIsTransient(condition%general)) then
     FlowConditionIsTransient = PETSC_TRUE
   endif
@@ -3024,6 +3025,40 @@ function FlowConditionGeneralIsTransient(condition)
   endif
   
 end function FlowConditionGeneralIsTransient
+
+! ************************************************************************** !
+
+function FlowConditionTOilImsIsTransient(condition)
+  ! 
+  ! Returns PETSC_TRUE
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/20/15
+  ! 
+
+  use Dataset_module
+
+  implicit none
+  
+  type(flow_toil_ims_condition_type), pointer :: condition
+  
+  PetscBool :: FlowConditionTOilImsIsTransient
+  
+  FlowConditionTOilImsIsTransient = PETSC_FALSE
+
+  if (.not.associated(condition)) return
+  
+  if (FlowSubConditionIsTransient(condition%pressure) .or. &
+      FlowSubConditionIsTransient(condition%saturation) .or. &
+      FlowSubConditionIsTransient(condition%temperature) .or. &
+      FlowSubConditionIsTransient(condition%rate) .or. &
+      FlowSubConditionIsTransient(condition%liquid_flux) .or. &
+      FlowSubConditionIsTransient(condition%oil_flux) .or. &
+      FlowSubConditionIsTransient(condition%energy_flux)) then
+    FlowConditionTOilImsIsTransient = PETSC_TRUE
+  endif
+  
+end function FlowConditionTOilImsIsTransient
 
 ! ************************************************************************** !
 
