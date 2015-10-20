@@ -56,7 +56,7 @@ module TOilIms_Aux_module
 
 
   type, public :: toil_ims_auxvar_type
-    PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
+    !PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
     PetscReal, pointer :: pres(:)   ! (iphase)
     PetscReal, pointer :: sat(:)    ! (iphase)
     PetscReal, pointer :: den(:)    ! (iphase) kmol/m^3 phase
@@ -95,20 +95,265 @@ module TOilIms_Aux_module
     type(toil_ims_auxvar_type), pointer :: auxvars_ss(:)
   end type toil_ims_type
 
-! uncomment as needed
-!  interface TOilImsAuxVarDestroy
-!    module procedure TOilImsAuxVarSingleDestroy
-!    module procedure TOilImsAuxVarArray1Destroy
-!    module procedure TOilImsAuxVarArray2Destroy
-!  end interface TOilImsAuxVarDestroy
+  interface TOilImsAuxVarDestroy
+    module procedure TOilImsAuxVarSingleDestroy
+    module procedure TOilImsAuxVarArray1Destroy
+    module procedure TOilImsAuxVarArray2Destroy
+  end interface TOilImsAuxVarDestroy
   
 !  interface TOilImsOutputAuxVars
 !    module procedure TOilImsOutputAuxVars1
 !    module procedure TOilImsOutputAuxVars2
 !  end interface TOilImsOutputAuxVars
-
+  public :: TOilImsAuxCreate, &
+            TOilImsAuxDestroy, &
+            TOilImsAuxVarInit, &
+            TOilImsAuxVarDestroy, &
+            TOilImsAuxVarStrip
+            
 
 contains
+
+
+! ************************************************************************** !
+
+function TOilImsAuxCreate(option)
+  ! 
+  ! Allocate and initialize auxiliary object
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/20/25
+  ! 
+
+  use Option_module
+
+  implicit none
+
+  type(option_type) :: option
+    
+  type(toil_ims_type), pointer :: TOilImsAuxCreate
+  
+  type(toil_ims_type), pointer :: aux
+
+  ! there is no variable switch, do i need this?? 
+  ! It could be handy only if changing primary variable set 
+  toil_ims_dof_to_primary_vars(1:3) = &
+       [TOIL_IMS_PRESSURE_INDEX, TOIL_IMS_OIL_SATURATION_INDEX, &
+        TOIL_IMS_TEMPERATURE_INDEX]
+  
+  allocate(aux) 
+  aux%auxvars_up_to_date = PETSC_FALSE
+  aux%inactive_cells_exist = PETSC_FALSE
+  aux%num_aux = 0
+  aux%num_aux_bc = 0
+  aux%num_aux_ss = 0
+  nullify(aux%auxvars)
+  nullify(aux%auxvars_bc)
+  nullify(aux%auxvars_ss)
+  aux%n_inactive_rows = 0
+  nullify(aux%inactive_rows_local)
+  nullify(aux%inactive_rows_local_ghosted)
+  nullify(aux%row_zeroing_array)
+
+  !allocate(aux%general_parameter)
+  !allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
+  !geh: there is no point in setting default lquid diffusion coeffcient values 
+  !     here as they will be overwritten by the fluid property defaults.
+  !aux%general_parameter%diffusion_coefficient(LIQUID_PHASE) = &
+  !                                                         UNINITIALIZED_DOUBLE
+  !aux%general_parameter%diffusion_coefficient(GAS_PHASE) = 2.13d-5
+  !aux%general_parameter%newton_inf_scaled_res_tol = 1.d-50
+  !aux%general_parameter%check_post_converged = PETSC_FALSE
+
+  TOilImsAuxCreate => aux
+  
+end function TOilImsAuxCreate
+
+! ************************************************************************** !
+
+subroutine TOilImsAuxVarInit(auxvar,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: PAolo Orsini
+  ! Date: 10/20/15
+  ! 
+
+  use Option_module
+
+  implicit none
+  
+  type(toil_ims_auxvar_type) :: auxvar
+  type(option_type) :: option
+
+  !auxvar%istate_store = NULL_STATE
+  auxvar%temp = 0.d0
+  auxvar%effective_porosity = 0.d0
+  auxvar%pert = 0.d0
+  
+  ! pressure for the two phases (water,oil) and capillary pressure
+  allocate(auxvar%pres(option%nphase+ONE_INTEGER))
+  auxvar%pres = 0.d0
+  allocate(auxvar%sat(option%nphase))
+  auxvar%sat = 0.d0
+  allocate(auxvar%den(option%nphase))
+  auxvar%den = 0.d0
+  allocate(auxvar%den_kg(option%nphase))
+  auxvar%den_kg = 0.d0
+  allocate(auxvar%H(option%nphase))
+  auxvar%H = 0.d0
+  allocate(auxvar%U(option%nphase))
+  auxvar%U = 0.d0
+  allocate(auxvar%mobility(option%nphase))
+  auxvar%mobility = 0.d0
+  
+end subroutine TOilImsAuxVarInit
+
+! ************************************************************************** !
+
+subroutine TOilImsAuxVarSingleDestroy(auxvar)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! this could be generalised for different modes 
+  ! using class(*) (unlimited polymorphic)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/20/15
+  ! 
+
+  implicit none
+
+  type(toil_ims_auxvar_type), pointer :: auxvar
+  
+  if (associated(auxvar)) then
+    call TOilImsAuxVarStrip(auxvar)
+    deallocate(auxvar)
+  endif
+  nullify(auxvar)  
+
+end subroutine TOilImsAuxVarSingleDestroy
+
+! ************************************************************************** !
+
+subroutine TOilImsAuxVarArray1Destroy(auxvars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! this could be generalised for different modes 
+  ! using class(*) (unlimited polymorphic)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/20/15
+  ! 
+
+  implicit none
+
+  type(toil_ims_auxvar_type), pointer :: auxvars(:)
+  
+  PetscInt :: iaux
+  
+  if (associated(auxvars)) then
+    do iaux = 1, size(auxvars)
+      call TOilImsAuxVarStrip(auxvars(iaux))
+    enddo  
+    deallocate(auxvars)
+  endif
+  nullify(auxvars)  
+
+end subroutine TOilImsAuxVarArray1Destroy
+
+! ************************************************************************** !
+
+subroutine TOilImsAuxVarArray2Destroy(auxvars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! this could be generalised for different modes 
+  ! using class(*) (unlimited polymorphic)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/20/15
+  ! 
+
+  implicit none
+
+  type(toil_ims_auxvar_type), pointer :: auxvars(:,:)
+  
+  PetscInt :: iaux, idof
+  
+  if (associated(auxvars)) then
+    do iaux = 1, size(auxvars,2)
+      do idof = 1, size(auxvars,1)
+        call TOilImsAuxVarStrip(auxvars(idof-1,iaux))
+      enddo
+    enddo  
+    deallocate(auxvars)
+  endif
+  nullify(auxvars)  
+
+end subroutine TOilImsAuxVarArray2Destroy
+
+! ************************************************************************** !
+
+subroutine TOilImsAuxVarStrip(auxvar)
+  ! 
+  ! TOilImsAuxVarDestroy: Deallocates a general auxiliary object
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/20/15
+  ! 
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+
+  type(toil_ims_auxvar_type) :: auxvar
+  
+  call DeallocateArray(auxvar%pres)  
+  call DeallocateArray(auxvar%sat)  
+  call DeallocateArray(auxvar%den)  
+  call DeallocateArray(auxvar%den_kg)  
+  call DeallocateArray(auxvar%H)  
+  call DeallocateArray(auxvar%U)  
+  call DeallocateArray(auxvar%mobility)  
+  
+end subroutine TOilImsAuxVarStrip
+
+! ************************************************************************** !
+
+subroutine TOilImsAuxDestroy(aux)
+  ! 
+  ! Deallocates a general auxiliary object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/07/11
+  ! 
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+
+  type(TOil_ims_type), pointer :: aux
+  PetscInt :: iaux, idof
+  
+  if (.not.associated(aux)) return
+  
+  call TOilImsAuxVarDestroy(aux%auxvars)
+  call TOilImsAuxVarDestroy(aux%auxvars_bc)
+  call TOilImsAuxVarDestroy(aux%auxvars_ss)
+
+  call DeallocateArray(aux%inactive_rows_local)
+  call DeallocateArray(aux%inactive_rows_local_ghosted)
+  call DeallocateArray(aux%row_zeroing_array)
+
+  !if (associated(aux%general_parameter)) then
+  !  call DeallocateArray(aux%general_parameter%diffusion_coefficient)
+  !  deallocate(aux%general_parameter)
+  !endif
+  !nullify(aux%general_parameter)
+  
+  deallocate(aux)
+  nullify(aux)
+  
+end subroutine TOilImsAuxDestroy
+
+! ************************************************************************** !
 
 end module TOilIms_Aux_module
 

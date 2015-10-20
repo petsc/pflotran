@@ -430,7 +430,7 @@ endif
 auxiliary.o : flash2_aux.o general_aux.o global_aux.o immis_aux.o \
               material_aux.o miscible_aux.o mphase_aux.o pflotran_constants.o \
               reactive_transport_aux.o richards_aux.o \
-              secondary_continuum_aux.o th_aux.o
+              secondary_continuum_aux.o th_aux.o toil_ims_aux.o
 block_solve.o :
 block_tridiag.o : pflotran_constants.o
 characteristic_curves.o : input_aux.o option.o pflotran_constants.o string.o \
@@ -718,7 +718,7 @@ init_subsurface_flow.o : co2_sw.o condition_control.o convergence.o \
                          discretization.o field.o flash2.o general.o grid.o \
                          hdf5.o immis.o init_common.o material.o miscible.o \
                          mphase.o option.o patch.o pflotran_constants.o \
-                         realization.o richards.o solver.o th.o
+                         realization.o richards.o solver.o th.o toil_ims.o
 init_subsurface_transport.o : condition_control.o convergence.o \
                               discretization.o global.o init_common.o option.o \
                               pflotran_constants.o reactive_transport.o \

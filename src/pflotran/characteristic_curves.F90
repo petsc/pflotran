@@ -988,6 +988,8 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
         CharCurvesGetGetResidualSats(2) = rpf%Sr
       class is(rpf_BRAGFLO_KRP9_gas_type)
         CharCurvesGetGetResidualSats(2) = rpf%Srg
+      class is(rpf_TOUGH2_Linear_Oil_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Sro
       class default
         option%io_buffer = 'Relative permeability class not supported in ' // &
           'CharCurvesGetGetResidualSats.'

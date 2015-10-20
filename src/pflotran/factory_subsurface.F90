@@ -371,13 +371,11 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
     class is (pm_toil_ims_type)
       option%iflowmode = TOIL_IMS_MODE
       option%nphase = 2
-      option%liquid_phase = 1  ! liquid_pressure
-      option%oil_phase = 2     ! oil_pressure
+      option%liquid_phase = 1           ! liquid_pressure
+      option%oil_phase = 2              ! oil_pressure
+      option%capillary_pressure_id = 3  ! capillary pressure
 
-      option%capillary_pressure_id = 3
-      option%saturation_pressure_id = 4
-
-      ! do we need this, thhese are component indices?? 
+      ! do we need these component indices?? 
       !option%water_id = 1
       !option%oil_id = 2
       !option%energy_id = 3
