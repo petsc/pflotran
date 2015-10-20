@@ -558,10 +558,13 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         call GridLocalizeRegionFromCoordinates(grid,region,option)
       case (DEFINED_BY_CELL_IDS)
         select case(grid%itype)
-          case(IMPLICIT_UNSTRUCTURED_GRID)
-            call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
-          case(EXPLICIT_UNSTRUCTURED_GRID)
-            call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
+!         case(STRUCTURED_GRID)
+!           The region is localized in InitCommonReadRegionFiles->
+!             HDF5ReadRegionFromFile->HDF5MapLocalToNaturalIndices      
+          case(IMPLICIT_UNSTRUCTURED_GRID,EXPLICIT_UNSTRUCTURED_GRID)
+            if (region%hdf5_ugrid_kludge) then
+              call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
+            endif
         end select
       case (DEFINED_BY_CELL_AND_FACE_IDS)
         select case(grid%itype)
