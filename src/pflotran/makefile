@@ -466,7 +466,7 @@ condition_control.o : condition.o connection.o coupler.o dataset_base.o \
                       reactive_transport_aux.o realization.o region.o \
                       surface_field.o surface_global_aux.o \
                       surface_realization.o surface_th_aux.o \
-                      transport_constraint.o variables.o
+                      toil_ims_aux.o transport_constraint.o variables.o
 connection.o : pflotran_constants.o utility.o
 convergence.o : grid.o option.o pflotran_constants.o solver.o
 coupler.o : condition.o connection.o dataset_base.o dataset_gridded_hdf5.o \

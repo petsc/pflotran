@@ -809,6 +809,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   use Condition_module
   use Transport_Constraint_module
   use General_Aux_module
+  use TOilIms_Aux_module
   
   implicit none
   
@@ -846,6 +847,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
               associated(coupler%flow_condition%saturation) .or. &
               associated(coupler%flow_condition%rate) .or. &
               associated(coupler%flow_condition%temperature) .or. &
+              associated(coupler%flow_condition%toil_ims) .or. & 
               associated(coupler%flow_condition%general)) then
 
             ! allocate arrays that match the number of connections
@@ -881,6 +883,15 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                 coupler%flow_bc_type = 0
                 coupler%flow_aux_real_var = 0.d0
                 coupler%flow_aux_int_var = 0
+
+              case(TOIL_IMS_MODE)
+                allocate(coupler%flow_aux_mapping(TOIL_IMS_MAX_INDEX))
+                allocate(coupler%flow_bc_type(THREE_INTEGER))
+                allocate(coupler%flow_aux_real_var(option%nflowdof, &
+                                                   num_connections))
+                coupler%flow_aux_mapping = 0
+                coupler%flow_bc_type = 0
+                coupler%flow_aux_real_var = 0.d0
                 
               case default
             end select
@@ -1051,7 +1062,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
           case(RICHARDS_MODE)
             call PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
           case(TOIL_IMS_MODE)
-            ! TOIL_IMS specific  
+            call PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
         end select
       endif
     endif

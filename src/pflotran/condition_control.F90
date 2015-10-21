@@ -51,6 +51,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   use Global_module
   use Global_Aux_module
   use General_Aux_module
+  use TOilIms_Aux_module
   
   implicit none
 
@@ -74,6 +75,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   type(coupler_type), pointer :: initial_condition
   type(patch_type), pointer :: cur_patch
   type(flow_general_condition_type), pointer :: general
+  type(flow_toil_ims_condition_type), pointer :: toil_ims
   class(dataset_base_type), pointer :: dataset
   type(global_auxvar_type) :: global_aux
   type(general_auxvar_type) :: general_aux
@@ -253,6 +255,117 @@ subroutine CondControlAssignFlowInitCond(realization)
               enddo
               iphase_loc_p(ghosted_id) = istate
               cur_patch%aux%Global%auxvars(ghosted_id)%istate = istate
+            enddo
+          endif
+          initial_condition => initial_condition%next
+        enddo
+     
+        call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+        call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p, &
+                                ierr);CHKERRQ(ierr)
+
+      case(TOIL_IMS_MODE)
+
+        call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+        call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
+      
+        xx_p = UNINITIALIZED_DOUBLE
+      
+        initial_condition => cur_patch%initial_condition_list%first
+
+        do
+      
+          if (.not.associated(initial_condition)) exit
+
+          if (.not.associated(initial_condition%flow_aux_real_var)) then
+            if (.not.associated(initial_condition%flow_condition)) then
+              option%io_buffer = 'Flow condition is NULL in initial condition'
+              call printErrMsg(option)
+            endif
+              
+            toil_ims => initial_condition%flow_condition%toil_ims
+              
+            string = 'in flow condition "' // &
+              trim(initial_condition%flow_condition%name) // &
+              '" within initial condition "' // &
+              trim(initial_condition%flow_condition%name) // &
+              '" must be of type Dirichlet or Hydrostatic'
+            ! check pressure condition  
+            if (.not. &
+               (toil_ims%pressure%itype == DIRICHLET_BC .or. &
+                 toil_ims%pressure%itype == HYDROSTATIC_BC)) then
+                 option%io_buffer = 'Oil pressure ' // trim(string)
+                 call printErrMsg(option)
+            endif
+            ! check saturation condition
+            if (.not. &
+               (toil_ims%saturation%itype == DIRICHLET_BC .or. &
+                 toil_ims%saturation%itype == HYDROSTATIC_BC)) then
+                 option%io_buffer = 'Oil saturation ' // trim(string)
+                call printErrMsg(option)
+            endif
+            ! check temperature condition 
+            if (.not. &
+                (toil_ims%temperature%itype == DIRICHLET_BC .or. &
+                  toil_ims%temperature%itype == HYDROSTATIC_BC)) then
+              option%io_buffer = 'Temperature ' // trim(string)
+              call printErrMsg(option)
+            endif                              
+            ! error checking.
+            do icell=1,initial_condition%region%num_cells
+              local_id = initial_condition%region%cell_ids(icell)
+              ghosted_id = grid%nL2G(local_id)
+              iend = local_id*option%nflowdof
+              ibegin = iend-option%nflowdof+1
+              if (cur_patch%imat(ghosted_id) <= 0) then
+                xx_p(ibegin:iend) = 0.d0
+                iphase_loc_p(ghosted_id) = 0
+                cycle
+              endif
+              ! decrement ibegin to give a local offset of 0
+              ibegin = ibegin - 1
+              ! assign initial conditions
+              xx_p(ibegin+TOIL_IMS_PRESSURE_DOF) = &
+                 toil_ims%pressure%dataset%rarray(1)
+              xx_p(ibegin+TOIL_IMS_SATURATION_DOF) = &
+                 toil_ims%saturation%dataset%rarray(1)
+              xx_p(ibegin+TOIL_IMS_ENERGY_DOF) = & 
+                 toil_ims%temperature%dataset%rarray(1)
+              ! iphase not required  
+              ! assign 0 to pass internal routine test at the end
+              iphase_loc_p(ghosted_id) = 0
+              !iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
+              !cur_patch%aux%Global%auxvars(ghosted_id)%istate = &
+              !  initial_condition%flow_condition%iphase
+            enddo
+          else ! if initial condition values not defined in condition databases
+            do iconn=1,initial_condition%connection_set%num_connections
+              local_id = initial_condition%connection_set%id_dn(iconn)
+              ghosted_id = grid%nL2G(local_id)
+              if (cur_patch%imat(ghosted_id) <= 0) then
+                iend = local_id*option%nflowdof
+                ibegin = iend-option%nflowdof+1
+                xx_p(ibegin:iend) = 0.d0
+                ! iphase not required 
+                ! assign 0 to pass internal routine test at the end
+                iphase_loc_p(ghosted_id) = 0
+                cycle
+              endif
+              offset = (local_id-1)*option%nflowdof
+              !istate = initial_condition%flow_aux_int_var(1,iconn)
+              do idof = 1, option%nflowdof
+                xx_p(offset+idof) = &
+                  initial_condition%flow_aux_real_var( &
+                    initial_condition%flow_aux_mapping( &
+                      toil_ims_dof_to_primary_vars(idof)),iconn)
+                      !dof_to_primary_variable(idof,istate)),iconn)
+                      !toil_ims_dof_to_primary_vars(3)
+              enddo
+              ! iphase not required 
+              ! assign 0 to pass internal routine test at the end
+              iphase_loc_p(ghosted_id) = 0 
+              !iphase_loc_p(ghosted_id) = istate
+              !cur_patch%aux%Global%auxvars(ghosted_id)%istate = istate
             enddo
           endif
           initial_condition => initial_condition%next

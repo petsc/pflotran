@@ -24,8 +24,8 @@ module TOilIms_Aux_module
 
   ! Primary DOF indices 
   PetscInt, parameter, public :: TOIL_IMS_PRESSURE_DOF = 1
-  PetscInt, parameter, public :: TOIL_IMS_SATURATION = 2
-  PetscInt, parameter, public :: TOIL_IMS_TEMPERATURE = 3
+  PetscInt, parameter, public :: TOIL_IMS_SATURATION_DOF = 2
+  PetscInt, parameter, public :: TOIL_IMS_ENERGY_DOF = 3
 
   ! Equation indices   
   PetscInt, parameter, public :: TOIL_IMS_LIQUID_EQUATION_INDEX = 1
