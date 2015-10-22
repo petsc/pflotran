@@ -1859,9 +1859,17 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
     call printErrMsg(option)
   endif
 
- allocate(indices(grid%nlmax))
- ! Read Cell Ids
+  allocate(indices(grid%nlmax))
+  ! Read Cell Ids
   string = "Cell Ids"
+
+  ! Check if the region dataset has "Cell Ids" group
+  call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
+  if (.not.grp_exists) then
+    option%io_buffer = 'HDF5 group: "Regions/' // trim(region%name) // '/Cell Ids" not found.'
+    call printErrMsg(option)
+  endif
+
   ! num_indices <= 0 indicates that the array size is uncertain and
   ! the size will be returned in num_indices
   num_indices = -1
