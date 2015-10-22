@@ -42,12 +42,14 @@ module HDF5_module
             HDF5ReadRegionFromFile, &       
             HDF5ReadUnstructuredGridRegionFromFile, &
             HDF5ReadCellIndexedIntegerArray, & 
-            HDF5ReadCellIndexedRealArray
+            HDF5ReadCellIndexedRealArray, &
+            HDF5QueryRegionDefinition
 #else
   public :: HDF5ReadRegionFromFile, &
             HDF5ReadUnstructuredGridRegionFromFile, &
             HDF5ReadCellIndexedIntegerArray, &
-            HDF5ReadCellIndexedRealArray
+            HDF5ReadCellIndexedRealArray, &
+            HDF5QueryRegionDefinition
 #endif            
 
 contains
@@ -1692,6 +1694,104 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
 end subroutine HDF5ReadArray
 
 #endif
+
+! ************************************************************************** !
+
+subroutine HDF5QueryRegionDefinition(realization, region, filename, &
+     cell_ids_exists, face_ids_exists, vert_ids_exists)
+
+  !
+  ! Queries HDF5 to determine with region definition includes which groups:
+  !
+  ! cell_ids_exits = true if "Regions/<Region Name>/Cell Ids" exists
+  ! face_ids_exits = true if "Regions/<Region Name>/Face Ids" exists
+  ! vert_ids_exits = true if "Regions/<Region Name>/Vertex Ids" exists
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 10/21/2015
+  !
+
+#if defined(PETSC_HAVE_HDF5)
+  use hdf5
+#endif
+
+  use Realization_class
+  use Option_module
+  use Grid_module
+  use Region_module
+  use Patch_module
+  use HDF5_Aux_module
+
+  implicit none
+
+  class(realization_type) :: realization
+  type(region_type) :: region
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscBool, intent (out) :: cell_ids_exists
+  PetscBool, intent (out) :: face_ids_exists
+  PetscBool, intent (out) :: vert_ids_exists
+
+  type(option_type), pointer :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+
+#if defined(PETSC_HAVE_HDF5)
+  integer(HID_T) :: file_id
+  integer(HID_T) :: grp_id, grp_id2
+  integer(HID_T) :: prop_id
+#endif
+
+  PetscBool :: grp_exists
+
+#if !defined(PETSC_HAVE_HDF5)
+  call printMsg(option,'')
+  write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
+                           &"read HDF5 formatted structured grids.")')
+  call printErrMsg(option)
+#else
+
+  option => realization%option
+
+  ! initialize fortran hdf5 interface
+  call h5open_f(hdf5_err)
+  option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
+  call printMsg(option)
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+  call HDF5OpenFileReadOnly(filename,file_id,prop_id,option)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  ! Open the Regions group
+  string = 'Regions'
+  call h5gopen_f(file_id,string,grp_id,hdf5_err)
+
+  ! Open the Regions group
+  string = trim(region%name)
+  call h5gopen_f(grp_id,string,grp_id2,hdf5_err)
+  if (hdf5_err /= 0) then
+    option%io_buffer = 'HDF5 group "' // trim(region%name) // '" not found.'
+    call printErrMsg(option)
+  endif
+
+  ! Querry region definition
+  string = "Cell Ids"
+  call h5lexists_f(grp_id2, string, cell_ids_exists, hdf5_err)
+
+  string = "Face Ids"
+  call h5lexists_f(grp_id2, string, face_ids_exists, hdf5_err)
+
+  string = "Vertex Ids"
+  call h5lexists_f(grp_id2, string, vert_ids_exists, hdf5_err)
+
+  call h5gclose_f(grp_id2,hdf5_err)
+  call h5gclose_f(grp_id,hdf5_err)
+  call h5fclose_f(file_id,hdf5_err)
+  call h5close_f(hdf5_err)
+#endif
+
+end subroutine HDF5QueryRegionDefinition
 
 ! ************************************************************************** !
 
