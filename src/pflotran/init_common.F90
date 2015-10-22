@@ -457,10 +457,8 @@ subroutine InitCommonReadRegionFiles(realization)
            if (cell_ids_exists .or. face_ids_exists) then
               call HDF5ReadRegionFromFile(realization,region,region%filename)
            else
-              option%io_buffer = '"Regions/' // trim(region%name) // '" is defined by vertices.'
-              call printMsg(option)
-              option%io_buffer = 'Add code to read a region defined by vertices.'
-              call printErrMsg(option)
+              call HDF5ReadRegionDefinedByVertex(realization%option, &
+                   region, region%filename)
            end if
         else
           !geh: Do not skip this subroutine if PETSC_HAVE_HDF5 is not
