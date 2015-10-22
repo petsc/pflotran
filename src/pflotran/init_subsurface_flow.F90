@@ -114,6 +114,8 @@ subroutine InitSubsurfFlowSetupRealization(realization)
         !     assigned as the initial conditin if the state changes. therefore,
         !     pass in PETSC_FALSE
         call GeneralUpdateAuxVars(realization,PETSC_FALSE)
+      case(TOIL_IMS_MODE)
+        call TOilImsUpdateAuxVars(realization)
     end select
   else ! no flow mode specified
     if (len_trim(realization%nonuniform_velocity_filename) > 0) then
@@ -200,7 +202,8 @@ subroutine InitSubsurfFlowSetupSolvers(realization,convergence_context,solver)
         write(*,'(" mode = TH: p, T")')
       case(RICHARDS_MODE)
         write(*,'(" mode = Richards: p")')  
-      case(G_MODE)    
+      case(G_MODE) 
+      case(TOIL_IMS_MODE)   
     end select
   endif
 

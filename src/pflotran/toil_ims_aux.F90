@@ -108,6 +108,7 @@ module TOilIms_Aux_module
   public :: TOilImsAuxCreate, &
             TOilImsAuxDestroy, &
             TOilImsAuxVarInit, &
+            TOilImsAuxVarCompute, &
             TOilImsAuxVarDestroy, &
             TOilImsAuxVarStrip
             
@@ -208,6 +209,170 @@ subroutine TOilImsAuxVarInit(auxvar,option)
   auxvar%mobility = 0.d0
   
 end subroutine TOilImsAuxVarInit
+
+! ************************************************************************** !
+
+subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
+                                characteristic_curves,ghosted_id,option)
+  ! 
+  ! Computes auxiliary variables for each grid cell
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/21/15
+  ! 
+
+  use Option_module
+  use Global_Aux_module
+  use EOS_Water_module
+  use EOS_Oil_module
+  use Characteristic_Curves_module
+  use Material_Aux_class
+  
+  implicit none
+
+  type(option_type) :: option
+  class(characteristic_curves_type) :: characteristic_curves
+  PetscReal :: x(option%nflowdof)
+  type(toil_ims_auxvar_type) :: toil_auxvar
+  type(global_auxvar_type) :: global_auxvar ! passing this for salt conc.
+                                            ! not currenty used  
+  class(material_auxvar_type) :: material_auxvar
+  PetscInt :: ghosted_id
+
+  PetscInt :: lid, oid, cpid
+  PetscReal :: cell_pressure, wat_sat_pres
+  PetscReal :: krl, visl, dkrl_Se
+  PetscReal :: kro, viso, dkro_Se
+  PetscReal :: dummy
+  PetscReal :: Uoil_J_kg, Hoil_J_kg
+  PetscErrorCode :: ierr
+
+  ! from SubsurfaceSetFlowMode
+!    class is (pm_toil_ims_type)
+!      option%iflowmode = TOIL_IMS_MODE
+!      option%nphase = 2
+!      option%liquid_phase = 1           ! liquid_pressure
+!      option%oil_phase = 2              ! oil_pressure
+!      option%capillary_pressure_id = 3  ! capillary pressure
+!
+ 
+  lid = option%liquid_phase
+  oid = option%oil_phase
+  cpid = option%capillary_pressure_id
+
+  ! do we need this initializations? All values are overwritten below 
+  toil_auxvar%H = 0.d0
+  toil_auxvar%U = 0.d0
+  toil_auxvar%pres = 0.d0
+  toil_auxvar%sat = 0.d0
+  toil_auxvar%den = 0.d0
+  toil_auxvar%den_kg = 0.d0
+  toil_auxvar%effective_porosity = 0.d0
+
+  toil_auxvar%mobility = 0.d0
+
+  !assing auxvars given by the solution variables
+  toil_auxvar%pres(oid) = x(TOIL_IMS_PRESSURE_DOF)
+  toil_auxvar%sat(oid) = x(TOIL_IMS_SATURATION_DOF)
+  toil_auxvar%temp = x(TOIL_IMS_ENERGY_DOF)
+
+  toil_auxvar%sat(lid) = 1.d0 - toil_auxvar%sat(oid)
+      
+  call characteristic_curves%saturation_function% &
+             CapillaryPressure(toil_auxvar%sat(lid),toil_auxvar%pres(cpid), &
+                               option)                             
+  !toil_auxvar%pres(lid) = toil_auxvar%pres(oid) - &
+  !                        toil_auxvar%pres(cpid)
+
+  ! Testing zero capillary pressure
+  toil_auxvar%pres(cpid) = 0.d0
+
+  cell_pressure = max(toil_auxvar%pres(lid),toil_auxvar%pres(oid))
+
+
+  ! calculate effective porosity as a function of pressure
+  if (option%iflag /= TOIL_IMS_UPDATE_FOR_BOUNDARY) then
+    toil_auxvar%effective_porosity = material_auxvar%porosity_base
+
+    if (soil_compressibility_index > 0) then
+      call MaterialCompressSoil(material_auxvar,cell_pressure, &
+                                toil_auxvar%effective_porosity,dummy)
+    endif
+    if (option%iflag /= TOIL_IMS_UPDATE_FOR_DERIVATIVE) then
+      material_auxvar%porosity = toil_auxvar%effective_porosity
+    endif
+  endif
+
+  ! UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!
+
+  ! Liquid phase thermodynamic properties
+  ! must use cell_pressure as the pressure, not %pres(lid)
+  call EOSWaterDensityEnthalpy(toil_auxvar%temp,cell_pressure, &
+                               toil_auxvar%den_kg(lid),toil_auxvar%den(lid), &
+                               toil_auxvar%H(lid),ierr)
+  toil_auxvar%H(lid) = toil_auxvar%H(lid) * 1.d-6 ! J/kmol -> MJ/kmol
+  ! MJ/kmol comp
+  toil_auxvar%U(lid) = toil_auxvar%H(lid) - &
+                       ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
+                       (cell_pressure / toil_auxvar%den(lid) * &
+                        1.d-6)
+
+  ! ADD HERE BRINE dependency. Two options (see mphase)
+  ! - salinity constant in space and time (passed in option%option%m_nacl)
+  ! - salt can be trasnported by RT (sequential coupling) and passed 
+  !   and passed with global_auxvar%m_nacl 
+  !  ! Assign salinity 
+  !  m_na=option%m_nacl; m_cl=m_na; m_nacl=m_na 
+  !  if (option%ntrandof > 0) then
+  !    m_na = global_auxvar%m_nacl(1)
+  !    m_cl = global_auxvar%m_nacl(2)
+  !    m_nacl = m_na
+  !    if (m_cl > m_na) m_nacl = m_cl
+  !  endif    
+  !
+  !  ! calculate density for pure water
+  !  call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,ierr)
+  !  !..................
+  !  xm_nacl = m_nacl*FMWNACL
+  !  xm_nacl = xm_nacl/(1.D3 + xm_nacl)
+  !  ! corrects water densit previously calculated as pure water
+  !  call EOSWaterDensityNaCl(t,p,xm_nacl,dw_kg)  
+  !  ! water viscosity dependence on salt concetration, but no derivatives
+  !  !  call EOSWaterViscosityNaCl(t,p,xm_nacl,visl)
+  !  call EOSWaterViscosity(t,pw,sat_pressure,0.d0,visl,dvdt,dvdp,dvdps,ierr)
+
+  call EOSOilDensityEnergy(toil_auxvar%temp,toil_auxvar%pres(oid),&
+                           toil_auxvar%den(oid),toil_auxvar%H(oid), &
+                           toil_auxvar%H(oid),ierr)
+
+  toil_auxvar%den_kg(oid) = toil_auxvar%den(oid) * fmw_oil 
+
+  toil_auxvar%H(oid) = toil_auxvar%H(oid) * 1.d-6 ! J/kmol -> MJ/kmol
+  toil_auxvar%U(oid) = toil_auxvar%U(oid) * 1.d-6 ! J/kmol -> MJ/kmol
+
+  ! compute water mobility (rel. perm / viscostiy)
+  call characteristic_curves%liq_rel_perm_function% &
+         RelativePermeability(toil_auxvar%sat(lid),krl,dkrl_Se,option)
+                            
+  call EOSWaterSaturationPressure(toil_auxvar%temp, wat_sat_pres,ierr)                   
+
+  ! use cell_pressure; cell_pressure - psat calculated internally
+  call EOSWaterViscosity(toil_auxvar%temp,cell_pressure,wat_sat_pres,visl,ierr)
+
+  toil_auxvar%mobility(lid) = krl/visl
+
+
+  ! compute oil mobility (rel. perm / viscostiy)
+  call characteristic_curves%oil_rel_perm_function% &
+         RelativePermeability(toil_auxvar%sat(lid),kro,dkro_Se,option)
+
+  call EOSOilViscosity(toil_auxvar%temp,toil_auxvar%pres(oid), &
+                       toil_auxvar%den(oid), viso, ierr)
+
+  toil_auxvar%mobility(oid) = kro/viso
+
+
+end subroutine TOilImsAuxVarCompute
 
 ! ************************************************************************** !
 

@@ -727,6 +727,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   use PM_RT_class
   use PM_Waste_Form_class
   use PM_UFD_Decay_class
+  use PM_TOilIms_class
 
   use Timestepper_BE_class
   
@@ -892,6 +893,11 @@ subroutine InitSubsurfaceSimulation(simulation)
                                                    ierr);CHKERRQ(ierr)
                   endif              
                 class is(pm_general_type)
+                  call SNESLineSearchSetPreCheck(linesearch, &
+                                                 PMCheckUpdatePrePtr, &
+                                             cur_process_model_coupler%pm_ptr, &
+                                                 ierr);CHKERRQ(ierr)
+                class is(pm_toil_ims_type)
                   call SNESLineSearchSetPreCheck(linesearch, &
                                                  PMCheckUpdatePrePtr, &
                                              cur_process_model_coupler%pm_ptr, &

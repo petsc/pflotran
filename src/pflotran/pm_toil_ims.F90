@@ -37,7 +37,7 @@ module PM_TOilIms_class
     !procedure, public :: UpdateTimestep => PMGeneralUpdateTimestep
     !procedure, public :: PreSolve => PMGeneralPreSolve
     !procedure, public :: PostSolve => PMGeneralPostSolve
-    !procedure, public :: CheckUpdatePre => PMGeneralCheckUpdatePre
+    procedure, public :: CheckUpdatePre => PMTOilImsCheckUpdatePre
     !procedure, public :: CheckUpdatePost => PMGeneralCheckUpdatePost
     !procedure, public :: TimeCut => PMGeneralTimeCut
     !procedure, public :: UpdateSolution => PMGeneralUpdateSolution
@@ -197,7 +197,30 @@ subroutine PMTOilImsRead(this,input)
   
 end subroutine PMTOilImsRead
 
+! ************************************************************************** !
 
+subroutine PMTOilImsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
+
+  use TOilIms_module, only : TOilImsCheckUpdatePre
+
+  implicit none
+  
+  class(pm_toil_ims_type) :: this
+  SNESLineSearch :: line_search
+  Vec :: P
+  Vec :: dP
+  PetscBool :: changed
+  PetscErrorCode :: ierr
+  
+  call TOilImsCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+
+end subroutine PMTOilImsCheckUpdatePre
+
+! ************************************************************************** !
 
 end module PM_TOilIms_class
 
