@@ -21,7 +21,7 @@ import time
 def abaqus_to_pflotran_mesh():
   start_time = time.time()
 #  infilename = sys.argv[1]
-  infilename = 'DBH_Mesh_C.inp'
+  infilename = 'filename.inp'
   outfilename = infilename.split('.')[0] + '_usg.h5'
 #  if len(sys.argv) != 2:
 #    print("ERROR: Command line arguments not provided.\n")
@@ -69,8 +69,6 @@ def abaqus_to_pflotran_mesh():
         for inode in range(8):
           node_ids[inode] = int(w[inode+1])
         elements.append([[element_id,material_id],node_ids])
-        if element_id != len(element):
-          sys.exit('Non-contiguous element ids.')
         if len(elements) % 10000 == 0:
           print('Element %d' % len(elements))
     else:
@@ -104,6 +102,9 @@ def abaqus_to_pflotran_mesh():
   for i in range(len(elements)):
     element_nodes = elements[mapping[i]][1]
     int_array[i][1:9] = element_nodes
+    if i+1 != elements[mapping[i]][0][0]:
+      sys.exit('Non-contiguous element ids.')
+
   if numpy.amax(int_array) > len(nodes):
     sys.exit('Node ids do not match elements.')
   # create element data set
