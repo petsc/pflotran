@@ -9,13 +9,14 @@ module TOilIms_Aux_module
 #include "finclude/petscsys.h"
 
   PetscReal, public :: toil_ims_window_epsilon = 1.d-4
-  !PetscReal, public :: toil_ims_fmw_comp(2) = [FMWH2O,FMWOIL]
+  PetscReal, public :: toil_ims_fmw_comp(2) = & ! initialised after EOSread
+                        [UNINITIALIZED_DOUBLE,UNINITIALIZED_DOUBLE]
   PetscReal, public :: toil_ims_max_pressure_change = 5.d4
   PetscInt, public :: toil_ims_max_it_before_damping = UNINITIALIZED_INTEGER
   PetscReal, public :: toil_ims_damping_factor = 0.6d0
   PetscReal, public :: toil_ims_tgh2_itol_scld_res_e1 = 1.d-5
   PetscReal, public :: toil_ims_tgh2_itol_scld_res_e2 = 1.d0
-  PetscBool, public :: toil_ims_tgh2_conv_criteria = PETSC_FALSE
+  PetscBool, public :: toil_ims_tough2_conv_criteria = PETSC_FALSE
   PetscInt, public :: toil_ims_debug_cell_id = UNINITIALIZED_INTEGER
 
   ! if needed must be specifi to toil_ims (e.g. TOIL_IMS_PREV_TS)
@@ -127,6 +128,7 @@ function TOilImsAuxCreate(option)
   ! 
 
   use Option_module
+  use EOS_Oil_module
 
   implicit none
 
@@ -136,11 +138,14 @@ function TOilImsAuxCreate(option)
   
   type(toil_ims_type), pointer :: aux
 
-  ! there is no variable switch, do i need this?? 
-  ! It could be handy only if changing primary variable set 
+  ! there is no variable switch, but this map can be used 
+  ! to change the primary variable set 
   toil_ims_dof_to_primary_vars(1:3) = &
        [TOIL_IMS_PRESSURE_INDEX, TOIL_IMS_OIL_SATURATION_INDEX, &
         TOIL_IMS_TEMPERATURE_INDEX]
+
+  toil_ims_fmw_comp(1) = FMWH2O
+  toil_ims_fmw_comp(2) = fmw_oil ! this defines the dead oil
   
   allocate(aux) 
   aux%auxvars_up_to_date = PETSC_FALSE
@@ -156,6 +161,7 @@ function TOilImsAuxCreate(option)
   nullify(aux%inactive_rows_local_ghosted)
   nullify(aux%row_zeroing_array)
 
+  ! fluid diffusion not needed 
   !allocate(aux%general_parameter)
   !allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
   !geh: there is no point in setting default lquid diffusion coeffcient values 

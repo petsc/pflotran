@@ -373,17 +373,17 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%nphase = 2
       option%liquid_phase = 1           ! liquid_pressure
       option%oil_phase = 2              ! oil_pressure
+
       option%capillary_pressure_id = 3  ! capillary pressure
 
-      ! do we need these component indices?? 
-      !option%water_id = 1
-      !option%oil_id = 2
-      !option%energy_id = 3
-
       option%nflowdof = 3
-      option%nflowspec = 2 ! need to check what's required durign allocation
-                           ! might be subsurface routines allocating 
-                           ! nflowdof * nflowspec, in such case nflowspec = 1 
+      !two species (H2O,OIL): each present only in its own rich phase
+      option%nflowspec = 2  
+
+      option%water_id = 1
+      option%oil_id = 2
+      option%energy_id = 3
+
       option%use_isothermal = PETSC_FALSE
     class is (pm_immis_type)
       option%iflowmode = IMS_MODE

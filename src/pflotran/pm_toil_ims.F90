@@ -30,18 +30,18 @@ module PM_TOilIms_class
     ! all the routines below needs to be replaced, uncomment as I develop them
     procedure, public :: Read => PMTOilImsRead
     !procedure, public :: SetupSolvers => PMGeneralSetupSolvers
-    !procedure, public :: InitializeRun => PMGeneralInitializeRun
-    !procedure, public :: InitializeTimestep => PMGeneralInitializeTimestep
+    procedure, public :: InitializeRun => PMTOilImsInitializeRun
+    procedure, public :: InitializeTimestep => PMTOilImsInitializeTimestep
     !procedure, public :: Residual => PMGeneralResidual
     !procedure, public :: Jacobian => PMGeneralJacobian
     !procedure, public :: UpdateTimestep => PMGeneralUpdateTimestep
-    !procedure, public :: PreSolve => PMGeneralPreSolve
+    procedure, public :: PreSolve => PMTOilImsPreSolve
     !procedure, public :: PostSolve => PMGeneralPostSolve
     procedure, public :: CheckUpdatePre => PMTOilImsCheckUpdatePre
     !procedure, public :: CheckUpdatePost => PMGeneralCheckUpdatePost
     !procedure, public :: TimeCut => PMGeneralTimeCut
-    !procedure, public :: UpdateSolution => PMGeneralUpdateSolution
-    !procedure, public :: UpdateAuxVars => PMGeneralUpdateAuxVars
+    procedure, public :: UpdateSolution => PMTOilImsUpdateSolution
+    procedure, public :: UpdateAuxVars => PMTOilImsUpdateAuxVars
     !procedure, public :: MaxChange => PMGeneralMaxChange
     !procedure, public :: ComputeMassBalance => PMGeneralComputeMassBalance
     !procedure, public :: CheckpointBinary => PMGeneralCheckpointBinary
@@ -143,7 +143,7 @@ subroutine PMTOilImsRead(this,input)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e1')
         call InputReadDouble(input,option,toil_ims_tgh2_itol_scld_res_e2)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e2')
-        toil_ims_tgh2_conv_criteria = PETSC_TRUE
+        toil_ims_tough2_conv_criteria = PETSC_TRUE
       case('WINDOW_EPSILON') 
         call InputReadDouble(input,option,toil_ims_window_epsilon)
         call InputErrorMsg(input,option,'window epsilon','TOIL_IMS_MODE')
@@ -199,10 +199,135 @@ end subroutine PMTOilImsRead
 
 ! ************************************************************************** !
 
-subroutine PMTOilImsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+recursive subroutine PMTOilImsInitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/23/15
+
+  use Realization_Base_class
+  
+  implicit none
+  
+  class(pm_toil_ims_type) :: this
+  
+  PetscInt :: i
+  PetscErrorCode :: ierr
+
+  ! need to allocate vectors for max change
+  call VecDuplicateVecsF90(this%realization%field%work,FOUR_INTEGER, &
+                           this%realization%field%max_change_vecs, &
+                           ierr);CHKERRQ(ierr)
+  ! set initial values
+  do i = 1, 4
+    call RealizationGetVariable(this%realization, &
+                                this%realization%field%max_change_vecs(i), &
+                                this%max_change_ivar(i), &
+                                this%max_change_isubvar(i))
+  enddo
+
+
+  ! call parent implementation
+  call PMSubsurfaceInitializeRun(this)
+
+end subroutine PMTOilImsInitializeRun
+
+! ************************************************************************** !
+
+subroutine PMTOilImsInitializeTimestep(this)
+  ! 
+  ! Should not need this as it is called in PreSolve.
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
+  ! 
+
+  use TOilIms_module, only : TOilImsInitializeTimestep
+  use Global_module
+  use Variables_module, only : TORTUOSITY
+  use Material_module, only : MaterialAuxVarCommunicate
+  
+  implicit none
+  
+  class(pm_toil_ims_type) :: this
+
+  call PMSubsurfaceInitializeTimestepA(this)                                 
+!geh:remove   everywhere                                
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc,TORTUOSITY,0)
+                                 
+  if (this%option%print_screen_flag) then
+    write(*,'(/,2("=")," TOIL_IMS FLOW ",64("="))')
+  endif
+  
+  call TOilImsInitializeTimestep(this%realization)
+
+  call PMSubsurfaceInitializeTimestepB(this)                                 
+  
+end subroutine PMTOilImsInitializeTimestep
+
+! ************************************************************************** !
+
+subroutine PMTOilImsPreSolve(this)
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/23/15
+
+  implicit none
+
+  class(pm_toil_ims_type) :: this
+
+  ! currently does nothing - could add here explicit iitialization
+  ! for highly het. problems
+
+end subroutine PMTOilImsPreSolve
+
+! ************************************************************************** !
+
+subroutine PMTOilImsUpdateAuxVars(this)
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/23/15
+
+  use TOilIms_module, only : TOilImsUpdateAuxVars
+
+  implicit none
+  
+  class(pm_toil_ims_type) :: this
+
+  call TOilImsUpdateAuxVars(this%realization)
+
+end subroutine PMTOilImsUpdateAuxVars   
+
+! ************************************************************************** !
+
+subroutine PMTOilImsUpdateSolution(this)
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/23/15
+  ! 
+
+  use TOilIms_module, only : TOilImsUpdateSolution, &
+                             TOilImsMapBCAuxVarsToGlobal 
+
+  implicit none
+  
+  class(pm_toil_ims_type) :: this
+  
+  call PMSubsurfaceUpdateSolution(this)
+  call TOilImsUpdateSolution(this%realization)
+  call TOilImsMapBCAuxVarsToGlobal(this%realization)
+
+end subroutine PMTOilImsUpdateSolution     
+
+! ************************************************************************** !
+
+subroutine PMTOilImsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/22/15
   ! 
 
   use TOilIms_module, only : TOilImsCheckUpdatePre

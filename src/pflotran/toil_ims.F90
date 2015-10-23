@@ -26,7 +26,10 @@ module TOilIms_module
 
   public :: TOilImsSetup, &
             TOilImsUpdateAuxVars, &
-            TOilImsCheckUpdatePre
+            TOilImsInitializeTimestep, &
+            TOilImsCheckUpdatePre, &
+            TOilImsUpdateSolution, &
+            TOilImsMapBCAuxVarsToGlobal
 
 contains
 
@@ -192,6 +195,27 @@ subroutine TOilImsSetup(realization)
   !endif
 
 end subroutine TOilImsSetup
+
+! ************************************************************************** !
+
+subroutine TOilImsInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/10/11
+  ! 
+
+  use Realization_class
+  
+  implicit none
+  
+  type(realization_type) :: realization
+
+  call TOilImsUpdateFixedAccum(realization)
+  
+
+end subroutine TOilImsInitializeTimestep
 
 ! ************************************************************************** !
 
@@ -634,8 +658,387 @@ subroutine TOilImsUpdateAuxVars(realization)
 
   patch%aux%TOil_ims%auxvars_up_to_date = PETSC_TRUE
 
-
 end subroutine TOilImsUpdateAuxVars
+
+! ************************************************************************** !
+
+subroutine TOilImsUpdateFixedAccum(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/23/15
+  ! 
+
+  use Realization_class
+  use Patch_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Material_Aux_class
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
+
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(material_parameter_type), pointer :: material_parameter
+
+  PetscInt :: ghosted_id, local_id, local_start, local_end
+  PetscInt :: imat
+  PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
+  PetscReal, pointer :: accum_p(:), accum_p2(:)
+                          
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+
+  toil_auxvars => patch%aux%TOil_ims%auxvars
+
+  global_auxvars => patch%aux%Global%auxvars
+
+  material_auxvars => patch%aux%Material%auxvars
+  material_parameter => patch%aux%Material%material_parameter
+    
+  call VecGetArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+
+  !Tough2 conv. creteria: initialize accumulation term for every iteration
+  if (toil_ims_tough2_conv_criteria) then
+    call VecGetArrayF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  endif
+  
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    imat = patch%imat(ghosted_id)
+    if (imat <= 0) cycle
+    local_end = local_id*option%nflowdof
+    local_start = local_end - option%nflowdof + 1
+    ! TOIL_IMS_UPDATE_FOR_FIXED_ACCUM indicates call from non-perturbation
+    option%iflag = TOIL_IMS_UPDATE_FOR_FIXED_ACCUM ! not currently used
+    call TOilImsAuxVarCompute(xx_p(local_start:local_end), &
+                              toil_auxvars(ZERO_INTEGER,ghosted_id), &
+                              global_auxvars(ghosted_id), &
+                              material_auxvars(ghosted_id), &
+                              patch%characteristic_curves_array( &
+                                patch%sat_func_id(ghosted_id))%ptr, &
+                              ghosted_id, &
+                              option)
+    call TOilImsAccumulation(toil_auxvars(ZERO_INTEGER,ghosted_id), &
+                             material_auxvars(ghosted_id), &
+                             material_parameter%soil_heat_capacity(imat), &
+                             option,accum_p(local_start:local_end) )
+  enddo
+  
+  !Tough2 conv. creteria: initialize accumulation term for every iteration
+  if (toil_ims_tough2_conv_criteria) then
+    accum_p2 = accum_p
+  endif
+  
+  call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  
+  !Tough2 conv. creteria: initialize accumulation term for every iteration
+  if (toil_ims_tough2_conv_criteria) then
+    call VecRestoreArrayF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  endif
+  
+end subroutine TOilImsUpdateFixedAccum
+
+! ************************************************************************** !
+
+subroutine TOilImsUpdateSolution(realization)
+  ! 
+  ! Updates data in module after a successful time
+  ! step: currently it updates only mass balance
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/23/15
+  ! 
+
+  use Realization_class
+  !use Field_module
+  !use Patch_module
+  !use Discretization_module
+  !use Option_module
+  !use Grid_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+
+  !type(option_type), pointer :: option
+  !type(patch_type), pointer :: patch
+  !type(grid_type), pointer :: grid
+  !type(field_type), pointer :: field
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
+  !type(global_auxvar_type), pointer :: global_auxvars(:)  
+  !PetscInt :: local_id, ghosted_id
+  !PetscErrorCode :: ierr
+  
+  !option => realization%option
+  !field => realization%field
+  !patch => realization%patch
+  !grid => patch%grid
+  !gen_auxvars => patch%aux%General%auxvars  
+  !global_auxvars => patch%aux%Global%auxvars
+  
+  if (realization%option%compute_mass_balance_new) then
+    call TOilImsUpdateMassBalance(realization)
+  endif
+  
+  
+  
+end subroutine TOilImsUpdateSolution
+
+! ************************************************************************** !
+
+subroutine TOilImsUpdateMassBalance(realization)
+  ! 
+  ! Updates mass balance
+  ! Using existing data structure for two phase compositional
+  ! For memory efficiency define new data structure 
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/23/15
+  ! 
+ 
+  use Realization_class
+  use Option_module
+  use Patch_module
+  use Grid_module
+  use EOS_Oil_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
+  
+  PetscInt :: iconn
+  PetscInt :: icomp
+
+  option => realization%option
+  patch => realization%patch
+
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
+
+  ! option%nflowspec = 2,
+  ! two species (H2O,OIL): each present only in its own rich phase
+
+  ! updating with mass balance, assuming molar quantity loaded in:
+  ! mass_balance and mass_balance_delta
+
+  !write(*,*) "toil fmw", toil_ims_fmw_comp(1), toil_ims_fmw_comp(2)
+
+  do iconn = 1, patch%aux%TOil_ims%num_aux_bc
+    do icomp = 1, option%nflowspec
+      global_auxvars_bc(iconn)%mass_balance(icomp,:) = &
+        global_auxvars_bc(iconn)%mass_balance(icomp,:) + &
+        global_auxvars_bc(iconn)%mass_balance_delta(icomp,:)* &
+        toil_ims_fmw_comp(icomp)*option%flow_dt
+    enddo
+  enddo
+  do iconn = 1, patch%aux%TOil_ims%num_aux_ss
+    do icomp = 1, option%nflowspec
+      global_auxvars_ss(iconn)%mass_balance(icomp,:) = &
+        global_auxvars_ss(iconn)%mass_balance(icomp,:) + &
+        global_auxvars_ss(iconn)%mass_balance_delta(icomp,:)* &
+        toil_ims_fmw_comp(icomp)*option%flow_dt
+    enddo
+  enddo
+
+end subroutine TOilImsUpdateMassBalance
+
+! ************************************************************************** !
+
+subroutine TOilImsZeroMassBalanceDelta(realization)
+  ! 
+  ! Zeros mass balance delta array
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/23/15
+  ! 
+ 
+  use Realization_class
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
+
+  do iconn = 1, patch%aux%General%num_aux_bc
+    global_auxvars_bc(iconn)%mass_balance_delta = 0.d0
+  enddo
+  do iconn = 1, patch%aux%General%num_aux_ss
+    global_auxvars_ss(iconn)%mass_balance_delta = 0.d0
+  enddo
+
+end subroutine TOilImsZeroMassBalanceDelta
+
+! ************************************************************************** !
+
+subroutine TOilImsMapBCAuxVarsToGlobal(realization)
+  ! 
+  ! Maps toil_ims BC Auxvars to global auxvars
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/23/15
+  ! 
+
+  use Realization_class
+  use Option_module
+  use Patch_module
+  use Coupler_module
+  use Connection_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_type), pointer :: cur_connection_set
+  type(toil_ims_auxvar_type), pointer :: toil_auxvars_bc(:)  
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)  
+
+  PetscInt :: sum_connection, iconn
+  
+  option => realization%option
+  patch => realization%patch
+
+  !NOTE: this is called only if cpoupling to RT
+  if (option%ntrandof == 0) return ! no need to update
+  
+  toil_auxvars_bc => patch%aux%TOil_ims%auxvars_bc
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  
+  boundary_condition => patch%boundary_condition_list%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      global_auxvars_bc(sum_connection)%sat = &
+        toil_auxvars_bc(sum_connection)%sat
+      global_auxvars_bc(sum_connection)%den_kg = &
+        toil_auxvars_bc(sum_connection)%den_kg
+      global_auxvars_bc(sum_connection)%temp = &
+        toil_auxvars_bc(sum_connection)%temp
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+  
+end subroutine TOilImsMapBCAuxVarsToGlobal
+
+! ************************************************************************** !
+
+subroutine TOilImsAccumulation(toil_auxvar,material_auxvar, &
+                               soil_heat_capacity,option,Res)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/23/15
+  ! 
+
+  use Option_module
+  use Material_module
+  use Material_Aux_class
+  
+  implicit none
+
+  type(toil_ims_auxvar_type) :: toil_auxvar
+  class(material_auxvar_type) :: material_auxvar
+  PetscReal :: soil_heat_capacity
+  type(option_type) :: option
+  PetscReal :: Res(option%nflowdof) 
+  !PetscBool :: debug_cell
+  
+  PetscInt :: iphase, energy_id
+  
+  PetscReal :: porosity
+  PetscReal :: v_over_t
+  
+  energy_id = option%energy_id
+  
+  ! v_over_t[m^3 bulk/sec] = vol[m^3 bulk] / dt[sec]
+  v_over_t = material_auxvar%volume / option%flow_dt
+  ! must use toil_auxvar%effective porosity here as it enables numerical 
+  ! derivatives to be employed 
+  porosity = toil_auxvar%effective_porosity
+  
+  ! flow accumulation term units = kmol/s
+  Res = 0.d0
+  do iphase = 1, option%nphase
+    ! Res[kmol comp/m^3 void] = sat[m^3 phase/m^3 void] * 
+    !                           den[kmol phase/m^3 phase] 
+    ! molar balance formulation (kmol)
+    Res(iphase) = Res(iphase) + toil_auxvar%sat(iphase) * &
+                                toil_auxvar%den(iphase)  
+  enddo
+
+  ! scale by porosity * volume / dt
+  ! Res[kmol/sec] = Res[kmol/m^3 void] * por[m^3 void/m^3 bulk] * 
+  !                 vol[m^3 bulk] / dt[sec]
+  Res(1:option%nphase) = Res(1:option%nphase) * &
+                            porosity * v_over_t
+
+  ! energy accumulation term units = MJ/s
+  do iphase = 1, option%nphase
+    ! Res[MJ/m^3 void] = sat[m^3 phase/m^3 void] *
+    !                    den[kmol phase/m^3 phase] * U[MJ/kmol phase]
+    Res(energy_id) = Res(energy_id) + toil_auxvar%sat(iphase) * &
+                                      toil_auxvar%den(iphase) * &
+                                      toil_auxvar%U(iphase)
+  enddo
+  ! Res[MJ/sec] = (Res[MJ/m^3 void] * por[m^3 void/m^3 bulk] + 
+  !                (1-por)[m^3 rock/m^3 bulk] * 
+  !                  dencpr[kg rock/m^3 rock * MJ/kg rock-K] * T[C]) &
+  !               vol[m^3 bulk] / dt[sec]
+  Res(energy_id) = (Res(energy_id) * porosity + &
+                    (1.d0 - porosity) * &
+                    material_auxvar%soil_particle_density * &
+                    soil_heat_capacity * toil_auxvar%temp) * v_over_t
+                    
+end subroutine TOilImsAccumulation
 
 ! ************************************************************************** !
 
