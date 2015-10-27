@@ -20,7 +20,8 @@ module Region_module
   PetscInt, parameter, public :: DEFINED_BY_VERTEX_IDS = 5
   PetscInt, parameter, public :: DEFINED_BY_SIDESET_UGRID = 6
   PetscInt, parameter, public :: DEFINED_BY_FACE_UGRID_EXP = 7
-  PetscInt, parameter, public :: DEFINED_BY_POLY_VOL_UGRID = 8
+  PetscInt, parameter, public :: DEFINED_BY_POLY_BOUNDARY_FACE = 8
+  PetscInt, parameter, public :: DEFINED_BY_POLY_CELL_CENTER = 9
 
   type, public :: block_type        
     PetscInt :: i1,i2,j1,j2,k1,k2    
@@ -30,6 +31,7 @@ module Region_module
   type, public :: region_type
     PetscInt :: id
     PetscInt :: def_type
+    PetscBool :: hdf5_ugrid_kludge  !TODO(geh) tear this out!!!!!
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXSTRINGLENGTH) :: filename
     PetscInt :: i1,i2,j1,j2,k1,k2
@@ -109,6 +111,7 @@ function RegionCreateWithNothing()
   allocate(region)
   region%id = 0
   region%def_type = 0
+  region%hdf5_ugrid_kludge = PETSC_FALSE
   region%name = ""
   region%filename = ""
   region%i1 = 0
@@ -267,6 +270,7 @@ function RegionCreateWithRegion(region)
   
   new_region%id = region%id
   new_region%def_type = region%def_type
+  new_region%hdf5_ugrid_kludge = region%hdf5_ugrid_kludge
   new_region%name = region%name
   new_region%filename = region%filename
   new_region%i1 = region%i1
@@ -465,31 +469,54 @@ subroutine RegionRead(region,input,option)
         call GeometryReadCoordinates(input,option,region%name, &
                                      region%coordinates)
       case('POLYGON')
-        region%def_type = DEFINED_BY_POLY_VOL_UGRID
         if (.not.associated(region%polygonal_volume)) then
           region%polygonal_volume => GeometryCreatePolygonalVolume()
         endif
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'plane','REGION')
-        call StringToUpper(word)
-        select case(word)
-          case('XY')
-            call GeometryReadCoordinates(input,option,region%name, &
-                                       region%polygonal_volume%xy_coordinates)
-          case('XZ')
-            call GeometryReadCoordinates(input,option,region%name, &
-                                       region%polygonal_volume%xz_coordinates)
-          case('YZ')
-            call GeometryReadCoordinates(input,option,region%name, &
-                                       region%polygonal_volume%yz_coordinates)
-          case default
-            option%io_buffer = 'PLANE not recognized for REGION POLYGON.  ' // &
-              'Use either XY, XZ or YZ.'
-            call printErrMsg(option)
-        end select
+        do
+          call InputReadPflotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','REGION')
+          call StringToUpper(word)   
+          select case(trim(word))
+            case('TYPE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'polygon type','REGION')
+              call StringToUpper(word)
+              select case(word)
+                case('BOUNDARY_FACES_IN_VOLUME')
+                  region%def_type = DEFINED_BY_POLY_BOUNDARY_FACE
+                case('CELL_CENTERS_IN_VOLUME')
+                  region%def_type = DEFINED_BY_POLY_CELL_CENTER
+                case default
+                  option%io_buffer = 'REGION->POLYGON->"' // trim(word) // &
+                    '" not recognized.'
+                  call printErrMsg(option)
+              end select
+            case('XY')
+              call GeometryReadCoordinates(input,option,region%name, &
+                                         region%polygonal_volume%xy_coordinates)
+            case('XZ')
+              call GeometryReadCoordinates(input,option,region%name, &
+                                         region%polygonal_volume%xz_coordinates)
+            case('YZ')
+              call GeometryReadCoordinates(input,option,region%name, &
+                                         region%polygonal_volume%yz_coordinates)
+            case default
+              option%io_buffer = 'Keyword not recognized for REGION POLYGON.'
+              call printErrMsg(option)
+          end select
+        enddo
       case('FILE')
         call InputReadNChars(input,option,region%filename,MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'filename','REGION')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          if (StringCompareIgnoreCase(word,'OLD_FORMAT')) then
+            region%hdf5_ugrid_kludge = PETSC_TRUE
+          endif
+        endif
       case('LIST')
         option%io_buffer = 'REGION LIST currently not implemented'
         call printErrMsg(option)

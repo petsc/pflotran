@@ -108,7 +108,8 @@ module Grid_module
             GridGetLocalGhostedIdFromHash, &
             GridIndexToCellID, &
             GridGetGhostedNeighbors, &
-            GridGetGhostedNeighborsWithCorners
+            GridGetGhostedNeighborsWithCorners, &
+            GridMapCellsInPolVol
   
 contains
 
@@ -557,8 +558,13 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         call GridLocalizeRegionFromCoordinates(grid,region,option)
       case (DEFINED_BY_CELL_IDS)
         select case(grid%itype)
+!         case(STRUCTURED_GRID)
+!           The region is localized in InitCommonReadRegionFiles->
+!             HDF5ReadRegionFromFile->HDF5MapLocalToNaturalIndices      
           case(IMPLICIT_UNSTRUCTURED_GRID)
-            call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
+            if (region%hdf5_ugrid_kludge) then
+              call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
+            endif
           case(EXPLICIT_UNSTRUCTURED_GRID)
             call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
 !         case(STRUCTURED_GRID)
@@ -586,11 +592,17 @@ subroutine GridLocalizeRegions(grid,region_list,option)
       case (DEFINED_BY_FACE_UGRID_EXP)
           call GridLocalizeExplicitFaceset(grid%unstructured_grid,region, &
                                            option)
-      case (DEFINED_BY_POLY_VOL_UGRID)
+      case (DEFINED_BY_POLY_BOUNDARY_FACE)
         call UGridMapBoundFacesInPolVol(grid%unstructured_grid, &
                                         region%polygonal_volume, &
                                         region%name,option, &
                                         region%cell_ids,region%faces)
+        region%num_cells = size(region%cell_ids)
+      case (DEFINED_BY_POLY_CELL_CENTER)
+        call GridMapCellsInPolVol(grid, &
+                                  region%polygonal_volume, &
+                                  region%name,option, &
+                                  region%cell_ids)
         region%num_cells = size(region%cell_ids)
       case default
         option%io_buffer = 'GridLocalizeRegions: Region definition not recognized'
@@ -641,10 +653,16 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                            option,region%cell_ids,region%faces) 
       region%num_cells = size(region%cell_ids)
     else if (associated(region%polygonal_volume)) then
-      call UGridMapBoundFacesInPolVol(grid%unstructured_grid, &
-                                      region%polygonal_volume, &
-                                      region%name,option, &
-                                      region%cell_ids,region%faces)
+      select case(region%def_type)
+        case(DEFINED_BY_POLY_BOUND_UGRID)
+          call UGridMapBoundFacesInPolVol(grid%unstructured_grid, &
+                                          region%polygonal_volume, &
+                                          region%name,option, &
+                                          region%cell_ids,region%faces)
+        case(DEFINED_BY_POLY_VOLUME)
+          call GridMapCellsInPolVol(grid,region%polygonal_volume, &
+                                    region%name,option,region%cell_ids)
+      end select
       region%num_cells = size(region%cell_ids)
     else if (associated(region%cell_ids)) then
       select case(grid%itype) 
@@ -1956,5 +1974,50 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
   endif
 
 end subroutine GridLocalizeRegionFromCoordinates
+
+! ************************************************************************** !
+
+subroutine GridMapCellsInPolVol(grid,polygonal_volume, &
+                                region_name,option,cell_ids)
+  ! 
+  ! Maps all global boundary cells within a polygonal volume to a region
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/16/15
+  ! 
+  use Option_module
+  use Geometry_module
+
+  implicit none
+
+  type(grid_type) :: grid
+  type(polygonal_volume_type) :: polygonal_volume
+  character(len=MAXWORDLENGTH) :: region_name
+  type(option_type) :: option
+  PetscInt, pointer :: cell_ids(:)
+
+  PetscInt :: local_id, ghosted_id, icount
+  PetscBool :: found
+  PetscInt, allocatable :: temp_int(:)
+  
+  allocate(temp_int(grid%nlmax))
+  temp_int = 0
+  icount = 0
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    found = GeometryPointInPolygonalVolume(grid%x(ghosted_id), &
+                                           grid%y(ghosted_id), &
+                                           grid%z(ghosted_id), &
+                                           polygonal_volume,option)
+    if (found) then
+      icount = icount + 1
+      temp_int(icount) = local_id  
+    endif
+  enddo
+  allocate(cell_ids(icount))
+  cell_ids = temp_int(1:icount)
+  deallocate(temp_int)
+  
+end subroutine GridMapCellsInPolVol
 
 end module Grid_module

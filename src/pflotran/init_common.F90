@@ -435,7 +435,7 @@ subroutine InitCommonReadRegionFiles(realization)
     if (.not.associated(region)) exit
     if (len_trim(region%filename) > 1) then
       if (index(region%filename,'.h5') > 0) then
-        if (region%grid_type == STRUCTURED_GRID_REGION) then
+        if (.not.region%hdf5_ugrid_kludge) then
           call HDF5ReadRegionFromFile(realization,region,region%filename)
         else
           !geh: Do not skip this subroutine if PETSC_HAVE_HDF5 is not

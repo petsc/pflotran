@@ -42,11 +42,11 @@ REGION all
   /
 END
 REGION top
-  FILE ./mesh_simple1D.h5
+  FILE ./mesh_simple1D.h5 old_format
   GRID unstructured
 END
 REGION bottom
-  FILE ./mesh_simple1D.h5
+  FILE ./mesh_simple1D.h5 old_format
   GRID unstructured
 END
 #=========================== solver ===================================
