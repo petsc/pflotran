@@ -134,11 +134,14 @@ subroutine PFLOTRANReadSimulation(simulation,option)
 
   class(pmc_base_type), pointer :: pmc_master
   
+  PetscBool :: print_ekg
+  
   nullify(pm_master)
   nullify(cur_pm)
   nullify(new_pm)
   
   nullify(pmc_master)
+  print_ekg = PETSC_FALSE
   
   input => InputCreate(IN_UNIT,option%input_filename,option)
 
@@ -218,6 +221,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
         enddo
       case('MASTER')
         call PFLOTRANSetupPMCHierarchy(input,option,pmc_master)
+      case('PRINT_EKG')
+        print_ekg = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(word,'SIMULATION',option)            
     end select
@@ -226,6 +231,15 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   if (.not.associated(pm_master)) then
     option%io_buffer = 'No process models defined in SIMULATION block.'
     call printErrMsg(option)
+  endif
+  
+  if (print_ekg) then
+    cur_pm => pm_master
+    do
+      if (.not.associated(cur_pm)) exit
+      cur_pm%print_ekg = PETSC_TRUE
+      cur_pm => cur_pm%next
+    enddo
   endif
 
   select case(simulation_type)
@@ -344,6 +358,7 @@ subroutine PFLOTRANFinalize(option)
 !
   use Option_module
   use Logging_module
+  use Output_EKG_module
   
   implicit none
   
@@ -353,8 +368,9 @@ subroutine PFLOTRANFinalize(option)
   ! pushed in FinalizeRun()
   call PetscLogStagePop(ierr);CHKERRQ(ierr)
   call OptionEndTiming(option)
-  if (option%myrank == option%io_rank .and. option%print_to_file) then
+  if (OptionPrintToFile(option)) then
     close(option%fid_out)
+    call OutputEKGFinalize()
   endif
 
 end subroutine PFLOTRANFinalize

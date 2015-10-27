@@ -1385,8 +1385,8 @@ end subroutine SecondaryRTResJacMulti
 
 ! ************************************************************************** !
 
-subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
-                                    P1_changed,realization,ierr)
+subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dX_changed, &
+                                    X1_changed,realization,ierr)
   ! 
   ! Checks update after the update is done
   ! 
@@ -1409,8 +1409,8 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
   Vec :: P1
   class(realization_type) :: realization
   ! ignore changed flag for now.
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
   
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -1434,8 +1434,8 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dP_changed, &
     rt_sec_transport_vars => realization%patch%aux%SC_RT%sec_transport_vars
   endif  
   
-  dP_changed = PETSC_FALSE
-  P1_changed = PETSC_FALSE
+  dX_changed = PETSC_FALSE
+  X1_changed = PETSC_FALSE
   
   max_inf_norm_sec = 0.d0
   

@@ -393,7 +393,7 @@ end subroutine PMTHJacobian
 
 ! ************************************************************************** !
 
-subroutine PMTHCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMTHCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! 
   ! This routine
   ! 
@@ -407,19 +407,19 @@ subroutine PMTHCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   
   class(pm_th_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P
-  Vec :: dP
+  Vec :: X
+  Vec :: dX
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-  call THCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+  call THCheckUpdatePre(line_search,X,dX,changed,this%realization,ierr)
 
 end subroutine PMTHCheckUpdatePre
 
 ! ************************************************************************** !
 
-subroutine PMTHCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
-                                  P1_changed,ierr)
+subroutine PMTHCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
+                                  X1_changed,ierr)
   ! 
   ! This routine
   ! 
@@ -433,15 +433,15 @@ subroutine PMTHCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   
   class(pm_th_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P0
-  Vec :: dP
-  Vec :: P1
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  Vec :: X0
+  Vec :: dX
+  Vec :: X1
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
   PetscErrorCode :: ierr
   
-  call THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-                               P1_changed,this%realization,ierr)
+  call THCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
+                               X1_changed,this%realization,ierr)
 
 end subroutine PMTHCheckUpdatePost
 

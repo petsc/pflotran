@@ -155,7 +155,7 @@ subroutine SubsurfaceSimulationJumpStart(this)
   endif
 
   ! print initial condition output if not a restarted sim
-  call OutputInit(master_timestepper%steps)
+  call OutputInit(option,master_timestepper%steps)
   if (output_option%plot_number == 0 .and. &
       master_timestepper%max_time_step >= 0 .and. &
       output_option%print_initial) then

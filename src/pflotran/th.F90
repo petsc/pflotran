@@ -485,8 +485,8 @@ end subroutine THCheckUpdatePre
 
 ! ************************************************************************** !
 
-subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-                                   P1_changed,realization,ierr)
+subroutine THCheckUpdatePost(line_search,P0,dP,P1,dX_changed, &
+                                   X1_changed,realization,ierr)
   ! 
   ! Checks update after each update
   ! 
@@ -508,8 +508,8 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   Vec :: P1
   type(realization_type) :: realization
   ! ignore changed flag for now.
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
   
   PetscReal, pointer :: P1_p(:)
   PetscReal, pointer :: dP_p(:)
@@ -540,8 +540,8 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   TH_sec_heat_vars => realization%patch%aux%SC_heat%sec_heat_vars
   material_auxvars => realization%patch%aux%Material%auxvars
   
-  dP_changed = PETSC_FALSE
-  P1_changed = PETSC_FALSE
+  dX_changed = PETSC_FALSE
+  X1_changed = PETSC_FALSE
   
   if (option%flow%check_post_convergence) then
     call VecGetArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)

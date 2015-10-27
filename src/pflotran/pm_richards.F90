@@ -256,7 +256,7 @@ end subroutine PMRichardsJacobian
 
 ! ************************************************************************** !
 
-subroutine PMRichardsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMRichardsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -268,19 +268,19 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   
   class(pm_richards_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P
-  Vec :: dP
+  Vec :: X
+  Vec :: dX
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-  call RichardsCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+  call RichardsCheckUpdatePre(line_search,X,dX,changed,this%realization,ierr)
 
 end subroutine PMRichardsCheckUpdatePre
 
 ! ************************************************************************** !
 
-subroutine PMRichardsCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
-                                  P1_changed,ierr)
+subroutine PMRichardsCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
+                                     X1_changed,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -292,15 +292,15 @@ subroutine PMRichardsCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   
   class(pm_richards_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P0
-  Vec :: dP
-  Vec :: P1
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  Vec :: X0
+  Vec :: dX
+  Vec :: X1
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
   PetscErrorCode :: ierr
   
-  call RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-                               P1_changed,this%realization,ierr)
+  call RichardsCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
+                               X1_changed,this%realization,ierr)
 
 end subroutine PMRichardsCheckUpdatePost
 

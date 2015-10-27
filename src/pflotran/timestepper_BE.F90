@@ -183,7 +183,9 @@ subroutine TimestepperBERead(this,input,option)
         call TimestepperBaseProcessKeyword(this,input,option,keyword)
     end select 
   
-  enddo  
+  enddo
+  
+  this%solver%print_ekg = this%print_ekg
 
 end subroutine TimestepperBERead
 
@@ -254,6 +256,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   use PM_Base_class
   use Option_module
   use Output_module, only : Output
+  use Output_EKG_module, only : IUNIT_EKG
   
   implicit none
 
@@ -430,10 +433,19 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
       this%cumulative_newton_iterations,sum_linear_iterations, &
       this%cumulative_linear_iterations,icut, &
       this%cumulative_time_step_cuts
-  endif  
+  endif
   
   option%time = this%target_time
   call process_model%FinalizeTimestep()
+  
+  if (this%print_ekg .and. OptionPrintToFile(option)) then
+100 format(a32," TIMESTEP ",i10,2es16.8,a3,i3,i5,i3,i5,i5,i10)
+    write(IUNIT_EKG,100) trim(this%name), this%steps, this%target_time/tconv, &
+      this%dt/tconv, tunit, &
+      icut, this%cumulative_time_step_cuts, &
+      sum_newton_iterations, this%cumulative_newton_iterations, &
+      sum_linear_iterations, this%cumulative_linear_iterations
+  endif
   
   if (option%print_screen_flag) print *, ""  
   

@@ -48,24 +48,26 @@ contains
 
 ! ************************************************************************** !
 
-subroutine OutputInit(num_steps)
+subroutine OutputInit(option,num_steps)
   ! 
   ! Initializes variables
   ! 
   ! Author: Glenn Hammond
   ! Date: 01/22/09
   ! 
-
   use Option_module
   use Output_Common_module
+  use Output_EKG_module
 
   implicit none
   
+  type(option_type) :: option
   PetscInt :: num_steps
   
   call OutputCommonInit()
   call OutputObservationInit(num_steps)
   call OutputHDF5Init(num_steps)
+  call OutputEKGInit(option,num_steps)
 
 end subroutine OutputInit
 

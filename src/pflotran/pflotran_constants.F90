@@ -22,6 +22,7 @@ module PFLOTRAN_Constants_module
   ! for embedded input files.
   PetscInt, parameter, public :: MAX_IN_UNIT = 25
   PetscInt, parameter, public :: IUNIT_TEMP = 86
+  ! EKG_UNIT = 87
   PetscInt, parameter, public :: HHISTORY_LENGTH = 1000
   ! HHISTORY_LENGTH is the length of the array used to store the differencing
   ! values h.

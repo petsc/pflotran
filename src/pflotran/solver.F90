@@ -81,6 +81,7 @@ module Solver_module
     PetscBool :: print_detailed_convergence
     PetscBool :: print_linear_iterations
     PetscBool :: check_infinity_norm
+    PetscBool :: print_ekg
             
   end type solver_type
   
@@ -167,6 +168,7 @@ function SolverCreate()
   solver%print_detailed_convergence = PETSC_FALSE
   solver%print_linear_iterations = PETSC_FALSE
   solver%check_infinity_norm = PETSC_TRUE
+  solver%print_ekg = PETSC_FALSE
     
   SolverCreate => solver
   

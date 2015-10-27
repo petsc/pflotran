@@ -51,8 +51,6 @@ module General_module
             GeneralJacobian, &
             GeneralGetTecplotHeader, &
             GeneralSetPlotVariables, &
-            GeneralCheckUpdatePre, &
-            GeneralCheckUpdatePost, &
             GeneralMapBCAuxVarsToGlobal, &
             GeneralSetReferencePressures, &
             GeneralDestroy
@@ -3218,7 +3216,7 @@ subroutine GeneralCreateZeroArray(patch,option)
 end subroutine GeneralCreateZeroArray
 
 ! ************************************************************************** !
-
+#if 0
 subroutine GeneralCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
   ! 
   ! Checks update prior to update
@@ -3993,7 +3991,7 @@ subroutine GeneralCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   endif
 
 end subroutine GeneralCheckUpdatePost
-
+#endif
 ! ************************************************************************** !
 
 function GeneralGetTecplotHeader(realization,icolumn)

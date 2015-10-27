@@ -337,8 +337,8 @@ end subroutine RichardsCheckUpdatePre
 
 ! ************************************************************************** !
 
-subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-                                   P1_changed,realization,ierr)
+subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dX_changed, &
+                                   X1_changed,realization,ierr)
   ! 
   ! Checks update after to update
   ! 
@@ -359,8 +359,8 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   Vec :: P1
   type(realization_type) :: realization
   ! ignore changed flag for now.
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
   
   PetscReal, pointer :: P0_p(:)
   PetscReal, pointer :: dP_p(:)
@@ -384,8 +384,8 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
   global_auxvars => realization%patch%aux%Global%auxvars
   material_auxvars => realization%patch%aux%Material%auxvars
   
-  dP_changed = PETSC_FALSE
-  P1_changed = PETSC_FALSE
+  dX_changed = PETSC_FALSE
+  X1_changed = PETSC_FALSE
   
   option%converged = PETSC_FALSE
   if (option%flow%check_post_convergence) then
