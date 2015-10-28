@@ -19,6 +19,7 @@ module PM_Richards_class
 
   type, public, extends(pm_subsurface_type) :: pm_richards_type
   contains
+    procedure, public :: Read => PMRichardsRead
     procedure, public :: InitializeTimestep => PMRichardsInitializeTimestep
     procedure, public :: Residual => PMRichardsResidual
     procedure, public :: Jacobian => PMRichardsJacobian
@@ -62,6 +63,56 @@ function PMRichardsCreate()
   PMRichardsCreate => richards_pm
   
 end function PMRichardsCreate
+
+! ************************************************************************** !
+
+subroutine PMRichardsRead(this,input)
+  ! 
+  ! Reads input file parameters associated with the Richards process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/15
+  use Input_Aux_module
+  use String_module
+  use Utility_module
+  use EOS_Water_module  
+  use Option_module
+  use Richards_Aux_module, only : richards_itol_scaled_res
+ 
+  implicit none
+  
+  class(pm_richards_type) :: this
+  type(input_type) :: input
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  type(option_type), pointer :: option
+
+  option => this%option
+  
+  error_string = 'Richards Options'
+  
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+    
+    select case(trim(word))
+      case('ITOL_SCALED_RESIDUAL')
+        call InputReadDouble(input,option,richards_itol_scaled_res)
+        call InputDefaultMsg(input,option,'itol_scaled_residual')
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    end select
+  enddo
+  
+end subroutine PMRichardsRead
 
 ! ************************************************************************** !
 

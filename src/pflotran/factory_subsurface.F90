@@ -495,10 +495,12 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
           call printErrMsg(option)
         endif
         select type(pm)
+!          class is(pm_general_type,pm_richards_type,pm_th_type)
+          !geh: why I cannot shove all these in a single 'class is' statement
+          !     is beyond me.
           class is(pm_general_type)
-            ! inorder to not immediately return out of GeneralRead
-            !TODO(geh): remove dummy word
-            input%buf = 'dummy_word'
+            call pm%Read(input)
+          class is(pm_richards_type)
             call pm%Read(input)
           class is(pm_th_type)
             call pm%Read(input)

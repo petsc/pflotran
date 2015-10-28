@@ -125,13 +125,12 @@ subroutine PMGeneralRead(this,input)
   character(len=MAXWORDLENGTH) :: keyword, word
   class(pm_general_type) :: this
   type(option_type), pointer :: option
+  PetscReal :: tempreal
+  character(len=MAXSTRINGLENGTH) :: error_string
 
   option => this%option
 
-  call InputReadWord(input,option,keyword,PETSC_TRUE)
-  if (input%ierr /= 0) then
-    return
-  endif
+  error_string = 'General Options'
   
   input%ierr = 0
   do
@@ -141,27 +140,37 @@ subroutine PMGeneralRead(this,input)
     if (InputCheckExit(input,option)) exit  
 
     call InputReadWord(input,option,keyword,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','GENERAL_MODE')
+    call InputErrorMsg(input,option,'keyword',error_string)
     call StringToUpper(keyword)   
       
     select case(trim(keyword))
+      case('ITOL_SCALED_RESIDUAL')
+        call InputReadDouble(input,option,general_itol_scaled_res)
+        call InputDefaultMsg(input,option,'itol_scaled_residual')
       case('TOUGH2_ITOL_SCALED_RESIDUAL')
-        call InputReadDouble(input,option,general_tough2_itol_scaled_res_e1)
+        call InputReadDouble(input,option,tempreal)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e1')
+        general_tough2_itol_scaled_res_e1 = tempreal
         call InputReadDouble(input,option,general_tough2_itol_scaled_res_e2)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e2')
         general_tough2_conv_criteria = PETSC_TRUE
+      case('T2_ITOL_SCALED_RESIDUAL_TEMP')
+        call InputReadDouble(input,option,tempreal)
+        call InputErrorMsg(input,option, &
+                           'tough_itol_scaled_residual_e1 for temperature', &
+                           error_string)
+        general_tough2_itol_scaled_res_e1(3,:) = tempreal
       case('WINDOW_EPSILON') 
         call InputReadDouble(input,option,window_epsilon)
-        call InputErrorMsg(input,option,'window epsilon','GENERAL_MODE')
+        call InputErrorMsg(input,option,'window epsilon',error_string)
       case('GAS_COMPONENT_FORMULA_WEIGHT')
         !geh: assuming gas component is index 2
         call InputReadDouble(input,option,fmw_comp(2))
         call InputErrorMsg(input,option,'gas component formula wt.', &
-                           'GENERAL_MODE')
+                           error_string)
       case('TWO_PHASE_ENERGY_DOF')
         call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'two_phase_energy_dof','GENERAL_MODE')
+        call InputErrorMsg(input,option,'two_phase_energy_dof',error_string)
         call GeneralAuxSetEnergyDOF(word,option)
       case('ISOTHERMAL')
         general_isothermal = PETSC_TRUE
@@ -170,35 +179,35 @@ subroutine PMGeneralRead(this,input)
       case('MAXIMUM_PRESSURE_CHANGE')
         call InputReadDouble(input,option,general_max_pressure_change)
         call InputErrorMsg(input,option,'maximum pressure change', &
-                           'GENERAL_MODE')
+                           error_string)
       case('MAX_ITERATION_BEFORE_DAMPING')
         call InputReadInt(input,option,general_max_it_before_damping)
         call InputErrorMsg(input,option,'maximum iteration before damping', &
-                           'GENERAL_MODE')
+                           error_string)
       case('DAMPING_FACTOR')
         call InputReadDouble(input,option,general_damping_factor)
-        call InputErrorMsg(input,option,'damping factor','GENERAL_MODE')
+        call InputErrorMsg(input,option,'damping factor',error_string)
       case('GOVERN_MAXIMUM_PRESSURE_CHANGE')
         call InputReadDouble(input,option,this%dPmax_allowable)
         call InputErrorMsg(input,option,'maximum allowable pressure change', &
-                           'GENERAL_MODE')
+                           error_string)
       case('GOVERN_MAXIMUM_TEMPERATURE_CHANGE')
         call InputReadDouble(input,option,this%dTmax_allowable)
         call InputErrorMsg(input,option, &
                            'maximum allowable temperature change', &
-                           'GENERAL_MODE')
+                           error_string)
       case('GOVERN_MAXIMUM_SATURATION_CHANGE')
         call InputReadDouble(input,option,this%dSmax_allowable)
         call InputErrorMsg(input,option,'maximum allowable saturation change', &
-                           'GENERAL_MODE')
+                           error_string)
       case('GOVERN_MAXIMUM_MOLE_FRACTION_CHANGE')
         call InputReadDouble(input,option,this%dXmax_allowable)
         call InputErrorMsg(input,option, &
                            'maximum allowable mole fraction change', &
-                           'GENERAL_MODE')
+                           error_string)
       case('DEBUG_CELL')
         call InputReadInt(input,option,general_debug_cell_id)
-        call InputErrorMsg(input,option,'debug cell id','GENERAL_MODE')
+        call InputErrorMsg(input,option,'debug cell id',error_string)
       case('NO_TEMP_DEPENDENT_DIFFUSION')
         general_temp_dep_gas_air_diff = PETSC_FALSE
       case('DIFFUSE_XMASS')
@@ -1111,22 +1120,26 @@ subroutine PMGeneralCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
 #endif
 
     converged_abs_update = PETSC_TRUE
+    converged_scaled_residual = PETSC_TRUE
     do istate = 1, 3
       do idof = 1, option%nflowdof
         if (global_inf_norm_update(idof,istate) > &
           inf_norm_update_tol(idof,istate)) then
           converged_abs_update = PETSC_FALSE
         endif
+        if (general_tough2_conv_criteria) then
+          if (global_inf_norm_scaled_residual(idof,istate) > &
+            general_tough2_itol_scaled_res_e1(idof,istate)) then
+            converged_scaled_residual = PETSC_FALSE
+          endif
+        endif
       enddo  
     enddo  
     converged_rel_update = maxval(global_inf_norm_rel_update) < &
                            option%flow%inf_rel_update_tol
-    if (general_tough2_conv_criteria) then
+    if (.not.general_tough2_conv_criteria) then
       converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
-                                  general_tough2_itol_scaled_res_e1
-    else
-      converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
-                                  option%flow%inf_scaled_res_tol
+                                  general_itol_scaled_res
     endif
 #if 0
     do idof = 1, option%nflowdof
@@ -1224,8 +1237,8 @@ subroutine PMGeneralCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
     call VecRestoreArrayReadF90(field%flow_accum2,accum_p2,ierr);CHKERRQ(ierr)
                                
     if (this%print_ekg) then
+      call VecNorm(field%flow_r,NORM_2,two_norm,ierr);CHKERRQ(ierr)
       if (OptionPrintToFile(option)) then
-         call VecNorm(field%flow_r,NORM_2,two_norm,ierr);CHKERRQ(ierr)
   100 format("GENERAL NEWTON_ITERATION ",100es11.3)
         write(IUNIT_EKG,100) &
           global_inf_norm_update(:,:), &

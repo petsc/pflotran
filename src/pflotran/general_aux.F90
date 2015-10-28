@@ -13,7 +13,8 @@ module General_Aux_module
   PetscReal, public :: general_max_pressure_change = 5.d4
   PetscInt, public :: general_max_it_before_damping = UNINITIALIZED_INTEGER
   PetscReal, public :: general_damping_factor = 0.6d0
-  PetscReal, public :: general_tough2_itol_scaled_res_e1 = 1.d-5
+  PetscReal, public :: general_itol_scaled_res = 1.d-5
+  PetscReal, public :: general_tough2_itol_scaled_res_e1(3,3) = 1.d-5
   PetscReal, public :: general_tough2_itol_scaled_res_e2 = 1.d0
   PetscBool, public :: general_tough2_conv_criteria = PETSC_FALSE
   PetscInt, public :: general_debug_cell_id = UNINITIALIZED_INTEGER

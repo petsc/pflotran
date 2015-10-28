@@ -8,6 +8,8 @@ module TH_Aux_module
 
 #include "finclude/petscsys.h"
 
+  PetscReal, public :: th_itol_scaled_res = 1.d-5
+
   type, public :: TH_auxvar_type
     PetscReal :: avgmw
     PetscReal :: h

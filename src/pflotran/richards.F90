@@ -411,7 +411,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dX_changed, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
     option%converged = PETSC_TRUE
-    if (global_inf_norm > option%flow%inf_scaled_res_tol) &
+    if (global_inf_norm > richards_itol_scaled_res) &
       option%converged = PETSC_FALSE
     call VecRestoreArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(P0,P0_p,ierr);CHKERRQ(ierr)

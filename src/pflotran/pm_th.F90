@@ -91,6 +91,7 @@ subroutine PMTHRead(this,input)
   use Utility_module
   use EOS_Water_module  
   use Option_module
+  use TH_Aux_module, only : th_itol_scaled_res
  
   implicit none
   
@@ -117,6 +118,9 @@ subroutine PMTHRead(this,input)
     call StringToUpper(word)
     
     select case(trim(word))
+      case('ITOL_SCALED_RESIDUAL')
+        call InputReadDouble(input,option,th_itol_scaled_res)
+        call InputDefaultMsg(input,option,'itol_scaled_residual')
       case('FREEZING')
         option%use_th_freezing = PETSC_TRUE
         option%io_buffer = ' TH: using FREEZING submode!'

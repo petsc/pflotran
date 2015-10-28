@@ -773,6 +773,12 @@ subroutine SolverReadNewton(solver,input,option)
         call InputErrorMsg(input,option,'newton_inf_upd_tol','NEWTON_SOLVER')
 
       case('ITOL_SCALED_RESIDUAL')
+        if (solver%itype == FLOW_CLASS) then
+          option%io_buffer = 'Flow NEWTON_SOLVER ITOL_SCALED_RESIDUAL is ' // &
+            'now specific to each process model and must be defined in ' // &
+            'the SIMULATION/PROCESS_MODELS/SUBSURFACE_FLOW/OPTIONS block.'
+          call printErrMsg(option)
+        endif
         solver%check_post_convergence = PETSC_TRUE
         call InputReadDouble(input,option,solver%newton_inf_scaled_res_tol)
         call InputErrorMsg(input,option, &
