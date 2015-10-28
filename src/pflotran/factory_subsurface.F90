@@ -843,7 +843,8 @@ subroutine InitSubsurfaceSimulation(simulation)
               select type(cur_process_model)
                 ! flow solutions
                 class is(pm_subsurface_type)
-                  if (ts%solver%check_post_convergence) then
+                  if (ts%solver%check_post_convergence .or. &
+                      cur_process_model%check_post_convergence) then
                     call SNESLineSearchSetPostCheck(linesearch, &
                                                     PMCheckUpdatePostPtr, &
                                              cur_process_model_coupler%pm_ptr, &

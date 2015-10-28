@@ -147,6 +147,7 @@ subroutine PMGeneralRead(this,input)
       case('ITOL_SCALED_RESIDUAL')
         call InputReadDouble(input,option,general_itol_scaled_res)
         call InputDefaultMsg(input,option,'itol_scaled_residual')
+        this%check_post_convergence = PETSC_TRUE
       case('TOUGH2_ITOL_SCALED_RESIDUAL')
         call InputReadDouble(input,option,tempreal)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e1')
@@ -154,6 +155,7 @@ subroutine PMGeneralRead(this,input)
         call InputReadDouble(input,option,general_tough2_itol_scaled_res_e2)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e2')
         general_tough2_conv_criteria = PETSC_TRUE
+        this%check_post_convergence = PETSC_TRUE
       case('T2_ITOL_SCALED_RESIDUAL_TEMP')
         call InputReadDouble(input,option,tempreal)
         call InputErrorMsg(input,option, &
@@ -1035,7 +1037,7 @@ subroutine PMGeneralCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   X1_changed = PETSC_FALSE
   
   option%converged = PETSC_FALSE
-  if (option%flow%check_post_convergence) then
+  if (this%check_post_convergence) then
     call VecGetArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
     call VecGetArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)

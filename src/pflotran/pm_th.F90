@@ -121,6 +121,7 @@ subroutine PMTHRead(this,input)
       case('ITOL_SCALED_RESIDUAL')
         call InputReadDouble(input,option,th_itol_scaled_res)
         call InputDefaultMsg(input,option,'itol_scaled_residual')
+        this%check_post_convergence = PETSC_TRUE
       case('FREEZING')
         option%use_th_freezing = PETSC_TRUE
         option%io_buffer = ' TH: using FREEZING submode!'

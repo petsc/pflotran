@@ -27,6 +27,7 @@ module PM_Subsurface_class
     PetscBool :: transient_permeability
     PetscBool :: store_porosity_for_ts_cut
     PetscBool :: store_porosity_for_transport
+    PetscBool :: check_post_convergence
   contains
 !geh: commented out subroutines can only be called externally
     procedure, public :: Setup => PMSubsurfaceSetup
@@ -84,6 +85,7 @@ subroutine PMSubsurfaceCreate(this)
   this%transient_permeability = PETSC_FALSE
   this%store_porosity_for_ts_cut = PETSC_FALSE
   this%store_porosity_for_transport = PETSC_FALSE
+  this%check_post_convergence = PETSC_FALSE
   
   call PMBaseInit(this)
 

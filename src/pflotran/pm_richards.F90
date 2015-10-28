@@ -107,6 +107,7 @@ subroutine PMRichardsRead(this,input)
       case('ITOL_SCALED_RESIDUAL')
         call InputReadDouble(input,option,richards_itol_scaled_res)
         call InputDefaultMsg(input,option,'itol_scaled_residual')
+        this%check_post_convergence = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
@@ -143,7 +144,7 @@ subroutine PMRichardsSetupSolvers(this,solver)
                                    RichardsCheckUpdatePre, &
                                    this%realization,ierr);CHKERRQ(ierr)
   endif
-  if (solver%check_post_convergence) then
+  if (this%check_post_convergence) then
     call SNESLineSearchSetPostCheck(linesearch, &
                                     RichardsCheckUpdatePost, &
                                     this%realization,ierr);CHKERRQ(ierr)
