@@ -1,0 +1,78 @@
+
+\section*{Appendix D: Python Tools}
+\addcontentsline{toc}{section}{\protect\numberline{}{\bf Appendix D: Python Tools}} 
+
+\setcounter{section}{4}
+\setcounter{subsection}{0}
+\setcounter{equation}{0}
+\setcounter{table}{0}
+\setcounter{figure}{0}
+
+\subsection{Extracting Aqueous Secondary Species, Minerals and Gases from a Thermodynamic Database}
+%\addcontentsline{toc}{subsection}{\protect\numberline{}{\bf Extracting Aqueous Secondary Species, Minerals and Gases}} 
+
+A python script is available to help the user extract secondary species, gases and minerals from the thermodynamic database for a given set of primary species. Surface complexation reactions are not included. The python script can be found in {\tt ./tools/contrib/sec\_species/rxn.py} in the PFLOTRAN mercurial repository. 
+The current implementation is based on the {\tt hanford.dat} database.
+Input files are {\tt aq\_sec.dat}, {\tt gases.dat} and {\tt minerals.dat}. In addition, for each of these files there is a corresponding file containing a list of species to be skipped: {\tt aq\_skip.dat}, {\tt gas\_skip.dat} and {\tt min.dat}.
+Before running the script it is advisable to copy the entire directory {\tt sec\_species} to the local hard drive to avoid conflicts when updating the PFLOTRAN repository. To run the script simply type in a terminal window: 
+
+{\tt python rxn.py}
+
+\noindent
+The user has to edit the {\tt rxn.py} file to set the list of primary species. For example,
+
+{\tt pri=['Fe++','Fe+++','H+','H2O']}
+
+\noindent
+Note that the species H2O must be include in the list of primary species.
+Output appears on the screen and also in the file {\tt chem.out}, a listing of which appears below. The number of primary and secondary species, gases and minerals is printed out at the end of the {\tt chem.out} file.
+
+\noindent
+{\tt chem.out} 
+
+\footnotesize
+\begin{verbatim}
+PRIMARY_SPECIES
+Fe++
+Fe+++
+H+
+H2O
+/
+SECONDARY_SPECIES
+O2(aq)
+H2(aq)
+Fe(OH)2(aq)
+Fe(OH)2+
+Fe(OH)3(aq)
+Fe(OH)3-
+Fe(OH)4-
+Fe(OH)4--
+Fe2(OH)2++++
+Fe3(OH)4(5+)
+FeOH+
+FeOH++
+HO2-
+OH-
+/
+GASES
+H2(g)
+H2O(g)
+O2(g)
+/
+MINERALS
+Fe
+Fe(OH)2
+Fe(OH)3
+FeO
+Ferrihydrite
+Goethite
+Hematite
+Magnetite
+Wustite
+/
+================================================
+npri =  4  nsec =  14  ngas =  3  nmin =  9
+
+Finished!
+\end{verbatim}
+\normalsize
