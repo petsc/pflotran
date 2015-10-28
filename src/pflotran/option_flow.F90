@@ -13,7 +13,6 @@ module Option_Flow_module
 
   type, public :: flow_option_type 
   
-    PetscReal :: inf_rel_update_tol
     PetscBool :: store_fluxes
     PetscBool :: transient_porosity
     PetscBool :: only_vertical_flow
@@ -94,7 +93,6 @@ subroutine OptionFlowInitRealization(option)
   ! These variables should be initialized once at the beginning of every 
   ! PFLOTRAN realization or simulation of a single realization
     
-  option%inf_rel_update_tol = UNINITIALIZED_DOUBLE
   option%store_fluxes = PETSC_FALSE
   option%transient_porosity = PETSC_FALSE
   option%only_vertical_flow = PETSC_FALSE

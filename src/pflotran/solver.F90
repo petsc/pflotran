@@ -786,6 +786,12 @@ subroutine SolverReadNewton(solver,input,option)
                            'NEWTON_SOLVER')
           
       case('ITOL_RELATIVE_UPDATE')
+        if (solver%itype == FLOW_CLASS) then
+          option%io_buffer = 'Flow NEWTON_SOLVER ITOL_RELATIVE_UPDATE is ' // &
+            'now specific to each process model and must be defined in ' // &
+            'the SIMULATION/PROCESS_MODELS/SUBSURFACE_FLOW/OPTIONS block.'
+          call printErrMsg(option)
+        endif
         solver%check_post_convergence = PETSC_TRUE
         call InputReadDouble(input,option,solver%newton_inf_rel_update_tol)
         call InputErrorMsg(input,option, &

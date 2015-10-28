@@ -30,7 +30,6 @@ module PM_General_class
     PetscInt, pointer :: max_change_isubvar(:)
   contains
     procedure, public :: Read => PMGeneralRead
-    procedure, public :: SetupSolvers => PMGeneralSetupSolvers
     procedure, public :: InitializeRun => PMGeneralInitializeRun
     procedure, public :: InitializeTimestep => PMGeneralInitializeTimestep
     procedure, public :: Residual => PMGeneralResidual
@@ -146,8 +145,12 @@ subroutine PMGeneralRead(this,input)
     select case(trim(keyword))
       case('ITOL_SCALED_RESIDUAL')
         call InputReadDouble(input,option,general_itol_scaled_res)
-        call InputDefaultMsg(input,option,'itol_scaled_residual')
+        call InputDefaultMsg(input,option,'general_itol_scaled_res')
         this%check_post_convergence = PETSC_TRUE
+      case('ITOL_RELATIVE_UPDATE')
+        call InputReadDouble(input,option,general_itol_rel_update)
+        call InputDefaultMsg(input,option,'general_itol_rel_update')
+        this%check_post_convergence = PETSC_TRUE        
       case('TOUGH2_ITOL_SCALED_RESIDUAL')
         call InputReadDouble(input,option,tempreal)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e1')
@@ -232,42 +235,6 @@ subroutine PMGeneralRead(this,input)
   endif
 
 end subroutine PMGeneralRead
-
-! ************************************************************************** !
-
-subroutine PMGeneralSetupSolvers(this,solver)
-  ! 
-  ! Sets up SNES solvers.
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 12/03/14
-
-  use Solver_module
-  
-  implicit none
-  
-  class(pm_general_type) :: this
-  type(solver_type) :: solver
-  
-  SNESLineSearch :: linesearch
-  PetscErrorCode :: ierr
-  
-  call PMSubsurfaceSetupSolvers(this,solver)
-
-#if 0 
-!TODO(geh): remove
-  call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
-  call SNESLineSearchSetPreCheck(linesearch, &
-                                 GeneralCheckUpdatePre, &
-                                 this%realization,ierr);CHKERRQ(ierr)
-  if (solver%check_post_convergence) then
-    call SNESLineSearchSetPostCheck(linesearch, &
-                                    GeneralCheckUpdatePost, &
-                                    this%realization,ierr);CHKERRQ(ierr)
-  endif
-#endif
-  
-end subroutine PMGeneralSetupSolvers
 
 ! ************************************************************************** !
 
@@ -1138,7 +1105,7 @@ subroutine PMGeneralCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
       enddo  
     enddo  
     converged_rel_update = maxval(global_inf_norm_rel_update) < &
-                           option%flow%inf_rel_update_tol
+                                  general_itoL_rel_update
     if (.not.general_tough2_conv_criteria) then
       converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
                                   general_itol_scaled_res

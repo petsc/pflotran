@@ -33,8 +33,7 @@ module TH_module
          THComputeMassBalance, THResidualToMass, &
          THSecondaryHeat, THSecondaryHeatJacobian, & 
          THUpdateAuxVars, THDestroy, &
-         THCheckUpdatePost, THCheckUpdatePre, &
-         THUpdateSurfaceBC
+         THUpdateSurfaceBC, THAccumulation
          
   PetscInt, parameter :: jh2o = 1
 
@@ -330,7 +329,7 @@ subroutine THSetupPatch(realization)
 end subroutine THSetupPatch
 
 ! ************************************************************************** !
-
+#if 0
 subroutine THCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
   ! 
   ! Checks update prior to update
@@ -586,7 +585,7 @@ subroutine THCheckUpdatePost(line_search,P0,dP,P1,dX_changed, &
   endif
   
 end subroutine THCheckUpdatePost
-
+#endif
 ! ************************************************************************** !
 
 subroutine THComputeMassBalance(realization, mass_balance)

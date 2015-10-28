@@ -40,8 +40,6 @@ module Richards_module
          RichardsUpdateSolution, &
          RichardsComputeMassBalance, &
          RichardsDestroy, &
-         RichardsCheckUpdatePre, &
-         RichardsCheckUpdatePost, &
          RichardsUpdateSurfacePress
 
 contains
@@ -208,7 +206,7 @@ subroutine RichardsSetupPatch(realization)
 end subroutine RichardsSetupPatch
 
 ! ************************************************************************** !
-
+#if 0
 subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
   ! 
   ! Checks update prior to update
@@ -419,7 +417,7 @@ subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dX_changed, &
   endif
   
 end subroutine RichardsCheckUpdatePost
-
+#endif
 ! ************************************************************************** !
 
 subroutine RichardsComputeMassBalance(realization,mass_balance)
