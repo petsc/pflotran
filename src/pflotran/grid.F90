@@ -802,8 +802,8 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
       cell_id_max_local = max(cell_id_max_local, region%cell_ids(ii))
     enddo
 
-    call MPI_AllReduce(cell_id_max_local, cell_id_max_global, ONE_INTEGER_MPI, MPI_INTEGER, &
-                       MPI_MAX, option%mycomm,ierr)
+    call MPI_Allreduce(cell_id_max_local, cell_id_max_global, ONE_INTEGER_MPI, &
+                       MPI_INTEGER, MPI_MAX, option%mycomm,ierr)
     if (cell_id_max_global > grid%nmax) then
        option%io_buffer = 'The following region includes a cell-id that is greater than ' // &
             'number of control volumes present in the grid: ' // trim(region%name)
