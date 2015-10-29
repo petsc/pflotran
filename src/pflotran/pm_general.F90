@@ -1105,7 +1105,7 @@ subroutine PMGeneralCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
       enddo  
     enddo  
     converged_rel_update = maxval(global_inf_norm_rel_update) < &
-                                  general_itoL_rel_update
+                                  general_itol_rel_update
     if (.not.general_tough2_conv_criteria) then
       converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
                                   general_itol_scaled_res
