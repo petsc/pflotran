@@ -839,7 +839,7 @@ pm_general.o : checkpoint.o field.o general.o general_aux.o global.o \
                global_aux.o grid.o input_aux.o material.o material_aux.o \
                option.o output_ekg.o patch.o pflotran_constants.o pm_base.o \
                pm_subsurface.o realization.o realization_base.o \
-               saturation_function.o solver.o string.o variables.o
+               saturation_function.o string.o variables.o
 pm_geomechanics_force.o : checkpoint.o communicator_base.o \
                           communicator_structured.o \
                           communicator_unstructured.o condition.o \
@@ -851,9 +851,10 @@ pm_miscible.o : miscible.o pflotran_constants.o pm_base.o pm_subsurface.o
 pm_mphase.o : connection.o coupler.o global_aux.o grid.o mphase.o option.o \
               patch.o pflotran_constants.o pm_base.o pm_subsurface.o \
               reaction_aux.o reactive_transport_aux.o
-pm_richards.o : eos_water.o input_aux.o option.o pflotran_constants.o \
-                pm_base.o pm_subsurface.o richards.o richards_aux.o solver.o \
-                string.o utility.o
+pm_richards.o : characteristic_curves.o eos_water.o field.o global_aux.o \
+                grid.o input_aux.o material_aux.o option.o patch.o \
+                pflotran_constants.o pm_base.o pm_subsurface.o realization.o \
+                richards.o richards_aux.o richards_common.o string.o utility.o
 pm_rt.o : checkpoint.o communicator_base.o communicator_structured.o \
           communicator_unstructured.o condition.o condition_control.o \
           data_mediator.o discretization.o field.o global.o grid.o hdf5.o \
@@ -877,10 +878,11 @@ pm_surface_th.o : communicator_base.o condition.o discretization.o grid.o \
                   realization.o surface_field.o surface_realization.o \
                   surface_th.o
 pm_th.o : communicator_base.o communicator_structured.o \
-          communicator_unstructured.o discretization.o eos_water.o global.o \
-          grid.o input_aux.o option.o pflotran_constants.o pm_base.o \
-          pm_subsurface.o realization.o solver.o string.o th.o th_aux.o \
-          utility.o
+          communicator_unstructured.o discretization.o eos_water.o field.o \
+          global.o global_aux.o grid.o input_aux.o material_aux.o option.o \
+          patch.o pflotran_constants.o pm_base.o pm_subsurface.o realization.o \
+          saturation_function.o secondary_continuum_aux.o string.o th.o \
+          th_aux.o utility.o
 pm_ufd_decay.o : global.o global_aux.o grid.o grid_structured.o \
                  grid_unstructured.o input_aux.o material_aux.o option.o \
                  patch.o pflotran_constants.o pm_base.o reaction_aux.o \
