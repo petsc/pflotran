@@ -9,6 +9,7 @@ SIMULATION
     SUBSURFACE_FLOW flow
       MODE GENERAL
       OPTIONS
+        ITOL_RELATIVE_UPDATE 1.d-30  ! Turn off ITOL_RELATIVE_UPDATE criteria
         ISOTHERMAL                        ! BF is fundamentally isothermal
         TWO_PHASE_ENERGY_DOF TEMPERATURE  ! isothermal ignores this but needs to be specified
         GAS_COMPONENT_FORMULA_WEIGHT 2.01588D0 ! hydrogen gas that BF uses (kg/kmol)
@@ -47,7 +48,6 @@ NEWTON_SOLVER FLOW
   RTOL 1.d-30       ! Turn off RTOL criteria
   ATOL 1.d-30       ! Turn off ATOL criteria
   STOL 1.d-30       ! Turn off STOL criteria
-  ITOL_RELATIVE_UPDATE 1.d-30  ! Turn off ITOL_RELATIVE_UPDATE criteria
   MAXIT 20          ! Maximum newton iteration number
 /
 

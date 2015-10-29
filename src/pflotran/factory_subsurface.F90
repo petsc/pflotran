@@ -849,6 +849,9 @@ subroutine InitSubsurfaceSimulation(simulation)
                                                     PMCheckUpdatePostPtr, &
                                              cur_process_model_coupler%pm_ptr, &
                                                     ierr);CHKERRQ(ierr)
+                    !geh: it is possible that the other side has not been set
+                    ts%solver%check_post_convergence = PETSC_TRUE
+                    cur_process_model%check_post_convergence = PETSC_TRUE
                   endif
                 class is(pm_rt_type)
                   if (ts%solver%check_post_convergence .or. option%use_mc) then
