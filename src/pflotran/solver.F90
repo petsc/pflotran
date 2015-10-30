@@ -81,6 +81,7 @@ module Solver_module
     PetscBool :: print_detailed_convergence
     PetscBool :: print_linear_iterations
     PetscBool :: check_infinity_norm
+    PetscBool :: print_ekg
             
   end type solver_type
   
@@ -167,6 +168,7 @@ function SolverCreate()
   solver%print_detailed_convergence = PETSC_FALSE
   solver%print_linear_iterations = PETSC_FALSE
   solver%check_infinity_norm = PETSC_TRUE
+  solver%print_ekg = PETSC_FALSE
     
   SolverCreate => solver
   
@@ -771,6 +773,12 @@ subroutine SolverReadNewton(solver,input,option)
         call InputErrorMsg(input,option,'newton_inf_upd_tol','NEWTON_SOLVER')
 
       case('ITOL_SCALED_RESIDUAL')
+        if (solver%itype == FLOW_CLASS) then
+          option%io_buffer = 'Flow NEWTON_SOLVER ITOL_SCALED_RESIDUAL is ' // &
+            'now specific to each process model and must be defined in ' // &
+            'the SIMULATION/PROCESS_MODELS/SUBSURFACE_FLOW/OPTIONS block.'
+          call printErrMsg(option)
+        endif
         solver%check_post_convergence = PETSC_TRUE
         call InputReadDouble(input,option,solver%newton_inf_scaled_res_tol)
         call InputErrorMsg(input,option, &
@@ -778,6 +786,12 @@ subroutine SolverReadNewton(solver,input,option)
                            'NEWTON_SOLVER')
           
       case('ITOL_RELATIVE_UPDATE')
+        if (solver%itype == FLOW_CLASS) then
+          option%io_buffer = 'Flow NEWTON_SOLVER ITOL_RELATIVE_UPDATE is ' // &
+            'now specific to each process model and must be defined in ' // &
+            'the SIMULATION/PROCESS_MODELS/SUBSURFACE_FLOW/OPTIONS block.'
+          call printErrMsg(option)
+        endif
         solver%check_post_convergence = PETSC_TRUE
         call InputReadDouble(input,option,solver%newton_inf_rel_update_tol)
         call InputErrorMsg(input,option, &

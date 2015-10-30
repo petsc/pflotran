@@ -241,7 +241,7 @@ end subroutine PMMiscibleJacobian
 
 ! ************************************************************************** !
 
-subroutine PMMiscibleCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMMiscibleCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! 
   ! Author: Gautam Bisht
   ! Date: 11/27/13
@@ -253,19 +253,19 @@ subroutine PMMiscibleCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   
   class(pm_miscible_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P
-  Vec :: dP
+  Vec :: X
+  Vec :: dX
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-  call MiscibleCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+  call MiscibleCheckUpdatePre(line_search,X,dX,changed,this%realization,ierr)
 
 end subroutine PMMiscibleCheckUpdatePre
 
 ! ************************************************************************** !
 
-subroutine PMMiscibleCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
-                                  P1_changed,ierr)
+subroutine PMMiscibleCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
+                                  X1_changed,ierr)
   ! 
   ! Author: Gautam Bisht
   ! Date: 11/27/13
@@ -277,15 +277,15 @@ subroutine PMMiscibleCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   
   class(pm_miscible_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P0
-  Vec :: dP
-  Vec :: P1
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  Vec :: X0
+  Vec :: dX
+  Vec :: X1
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
   PetscErrorCode :: ierr
   
-  call MiscibleCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-                               P1_changed,this%realization,ierr)
+  call MiscibleCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
+                               X1_changed,this%realization,ierr)
 
 end subroutine PMMiscibleCheckUpdatePost
 #endif

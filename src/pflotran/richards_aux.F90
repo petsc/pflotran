@@ -12,6 +12,9 @@ module Richards_Aux_module
 
 #include "finclude/petscsys.h"
 
+  PetscReal, public :: richards_itol_scaled_res = 1.d-5
+  PetscReal, public :: richards_itol_rel_update = UNINITIALIZED_DOUBLE
+
   type, public :: richards_auxvar_type
   
     PetscReal :: pc

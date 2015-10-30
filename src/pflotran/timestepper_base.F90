@@ -49,6 +49,7 @@ module Timestepper_Base_class
     PetscInt :: start_time_step ! the first time step of a given run
     PetscReal :: time_step_tolerance ! scalar used in determining time step size
     PetscReal :: target_time    ! time at end of "synchronized" time step 
+    PetscBool :: print_ekg
 
     type(waypoint_type), pointer :: cur_waypoint
     type(waypoint_type), pointer :: prev_waypoint
@@ -168,6 +169,7 @@ subroutine TimestepperBaseInit(this)
   nullify(this%prev_waypoint)
   this%revert_dt = PETSC_FALSE
   this%num_contig_revert_due_to_sync = 0
+  this%print_ekg = PETSC_FALSE
   
 end subroutine TimestepperBaseInit
 
@@ -306,6 +308,9 @@ subroutine TimestepperBaseProcessKeyword(this,input,option,keyword)
       call InputReadDouble(input,option,option%temperature_change_limit)
       call InputErrorMsg(input,option,'TEMPERATURE_CHANGE_LIMIT', &
                           'TIMESTEPPER')
+
+    case('PRINT_EKG')
+      this%print_ekg = PETSC_TRUE
 
     case default
       call InputKeywordUnrecognized(keyword,'TIMESTEPPER',option)
@@ -885,6 +890,25 @@ function TimestepperBaseWallClockStop(this,option)
   endif
   
 end function TimestepperBaseWallClockStop
+
+
+! ************************************************************************** !
+
+subroutine TimestepperBasePrintEKG(this)
+  ! 
+  ! Deallocates members of a time stepper
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/22/13
+  ! 
+
+  implicit none
+  
+  class(timestepper_base_type) :: this
+  
+  
+  
+end subroutine TimestepperBasePrintEKG
 
 ! ************************************************************************** !
 

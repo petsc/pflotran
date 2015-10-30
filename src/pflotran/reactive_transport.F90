@@ -44,8 +44,6 @@ module Reactive_Transport_module
             RTCalculateRHS_t1, &
             RTCalculateTransportMatrix, &
             RTReact, &
-            RTCheckUpdatePre, &
-            RTCheckUpdatePost, &
             RTJumpStartKineticSorption, &
             RTCheckpointKineticSorptionBinary, &
             RTCheckpointKineticSorptionHDF5, &
@@ -319,6 +317,8 @@ subroutine RTSetup(realization)
   
 end subroutine RTSetup
 
+#if 0
+!TODO(geh): remove
 ! ************************************************************************** !
 
 subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
@@ -516,6 +516,7 @@ subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
   endif
        
 end subroutine RTCheckUpdatePost
+#endif
 
 ! ************************************************************************** !
 
