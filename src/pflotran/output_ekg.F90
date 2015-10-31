@@ -35,6 +35,8 @@ subroutine OutputEKGInit(option,num_steps)
 
   character(len=MAXSTRINGLENGTH) :: filename
   
+  if (.not.option%print_ekg) return
+
   filename = trim(option%global_prefix) // trim(option%group_prefix) // '.ekg'
   if (OptionPrintToFile(option)) then
     if (num_steps == 0) then

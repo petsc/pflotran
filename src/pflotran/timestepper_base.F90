@@ -311,6 +311,7 @@ subroutine TimestepperBaseProcessKeyword(this,input,option,keyword)
 
     case('PRINT_EKG')
       this%print_ekg = PETSC_TRUE
+      option%print_ekg = PETSC_TRUE
 
     case default
       call InputKeywordUnrecognized(keyword,'TIMESTEPPER',option)

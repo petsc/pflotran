@@ -207,7 +207,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
       case('MASTER')
         call PFLOTRANSetupPMCHierarchy(input,option,pmc_master)
       case('PRINT_EKG')
-        print_ekg = PETSC_TRUE
+        option%print_ekg = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(word,'SIMULATION',option)            
     end select
@@ -218,7 +218,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     call printErrMsg(option)
   endif
   
-  if (print_ekg) then
+  if (option%print_ekg) then
     cur_pm => pm_master
     do
       if (.not.associated(cur_pm)) exit
