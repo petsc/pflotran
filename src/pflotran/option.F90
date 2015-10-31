@@ -217,6 +217,8 @@ module Option_module
     ! when the scaling factor is too small, stop in reactive transport 
     PetscReal :: min_allowable_scale
 
+    PetscBool :: print_ekg
+
   end type option_type
   
   PetscInt, parameter, public :: SUBSURFACE_SIM_TYPE = 1
@@ -571,6 +573,8 @@ subroutine OptionInitRealization(option)
   
   ! when the scaling factor is too small, stop in reactive transport 
   option%min_allowable_scale = 1.0d-10
+
+  option%print_ekg = PETSC_FALSE
   
 end subroutine OptionInitRealization
 
