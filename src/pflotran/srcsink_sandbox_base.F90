@@ -7,7 +7,7 @@ module SrcSink_Sandbox_Base_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, abstract, public :: srcsink_sandbox_base_type
     character(len=MAXWORDLENGTH) :: region_name

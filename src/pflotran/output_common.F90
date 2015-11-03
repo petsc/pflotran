@@ -12,9 +12,9 @@ module Output_Common_module
 
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   PetscInt, save, public :: max_local_size_saved = -1
 
@@ -165,9 +165,9 @@ subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
 
   class(realization_base_type) :: realization_base
   Vec :: vec
@@ -201,8 +201,8 @@ subroutine ConvertArrayToNatural(indices,array,local_size,global_size,option)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   PetscInt :: local_size, global_size
   PetscInt :: indices(:)
@@ -316,8 +316,8 @@ subroutine OutputGetCellCenteredVelocities(realization_base,vec_x,vec_y, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(realization_base_type) :: realization_base
   Vec :: vec_x,vec_y,vec_z
@@ -368,8 +368,8 @@ subroutine GetCellCoordinates(grid,vec,direction)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   type(grid_type) :: grid
   Vec :: vec
@@ -415,8 +415,8 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   type(grid_type) :: grid
   Vec :: vec
@@ -493,8 +493,8 @@ subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   type(grid_type) :: grid
   Vec :: vec
@@ -572,8 +572,8 @@ subroutine GetCellConnections(grid, vec)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   type(grid_type) :: grid
   type(unstructured_grid_type),pointer :: ugrid
@@ -664,8 +664,8 @@ subroutine GetCellConnectionsExplicit(grid, vec)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   type(grid_type) :: grid
   type(unstructured_grid_type),pointer :: ugrid
@@ -1071,10 +1071,10 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   PetscBool :: save_velocity
@@ -1444,10 +1444,10 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -1601,10 +1601,10 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -1690,10 +1690,10 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -1799,10 +1799,10 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option

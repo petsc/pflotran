@@ -10,14 +10,14 @@ module PM_Geomechanics_Force_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscts.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscts.h"
 
   type, public, extends(pm_base_type) :: pm_geomech_force_type
     class(geomech_realization_type), pointer :: geomech_realization
@@ -336,7 +336,7 @@ subroutine PMGeomechForceCheckpointBinary(this,viewer)
   use Checkpoint_module
 
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
 
   class(pm_geomech_force_type) :: this
   PetscViewer :: viewer
@@ -358,7 +358,7 @@ subroutine PMGeomechForceRestartBinary(this,viewer)
   use Checkpoint_module
 
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
 
   class(pm_geomech_force_type) :: this
   PetscViewer :: viewer

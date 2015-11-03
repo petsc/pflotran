@@ -6,8 +6,8 @@
 # If PYTHON defined from petsc is not correct, override it on the
 # command line with: make PYTHON=python3.3 test
 
-include ${PETSC_DIR}/conf/variables
-include ${PETSC_DIR}/conf/rules
+include ${PETSC_DIR}/lib/petsc/conf/variables
+include ${PETSC_DIR}/lib/petsc/conf/rules
 
 
 TEST_MANAGER = regression_tests.py

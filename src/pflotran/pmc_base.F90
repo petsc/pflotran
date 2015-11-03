@@ -13,7 +13,7 @@ module PMC_Base_class
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   private
   
@@ -70,7 +70,7 @@ module PMC_Base_class
     subroutine PetscBagGetData(bag,header,ierr)
       import :: pmc_base_header_type
       implicit none
-#include "finclude/petscbag.h"      
+#include "petsc/finclude/petscbag.h"      
       PetscBag :: bag
       class(pmc_base_header_type), pointer :: header
       PetscErrorCode :: ierr
@@ -268,7 +268,7 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
 #endif
   implicit none
   
-#include "finclude/petscviewer.h"  
+#include "petsc/finclude/petscviewer.h"  
 
   class(pmc_base_type), target :: this
   PetscReal :: sync_time
@@ -568,7 +568,7 @@ recursive subroutine PMCBaseCheckpointBinary(this,viewer,id,id_stamp)
 
   implicit none
   
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(pmc_base_type) :: this
   PetscViewer :: viewer
@@ -653,8 +653,8 @@ subroutine PMCBaseRegisterHeader(this,bag,header)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(pmc_base_type) :: this
   class(pmc_base_header_type) :: header
@@ -684,8 +684,8 @@ subroutine PMCBaseSetHeader(this,bag,header)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(pmc_base_type) :: this
   class(pmc_base_header_type) :: header
@@ -729,8 +729,8 @@ subroutine PMCBaseSetHeaderHDF5(this, chk_grp_id, option)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(pmc_base_type) :: this
 #if defined(SCORPIO_WRITE)
@@ -815,8 +815,8 @@ subroutine PMCBaseGetHeaderHDF5(this, chk_grp_id, option)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(pmc_base_type) :: this
 #if defined(SCORPIO_WRITE)
@@ -888,7 +888,7 @@ recursive subroutine PMCBaseRestartBinary(this,viewer)
 
   implicit none
   
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(pmc_base_type) :: this
   PetscViewer :: viewer
@@ -1255,8 +1255,8 @@ subroutine PMCBaseGetHeader(this,header)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(pmc_base_type) :: this
   class(pmc_base_header_type) :: header

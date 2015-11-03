@@ -12,12 +12,12 @@ module Output_Geomechanics_module
   
   private
   
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscdm.h"
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petsclog.h"
 
   PetscInt, save, public :: max_local_node_size_saved = -1
   PetscBool :: geomech_hdf5_first
@@ -586,8 +586,8 @@ subroutine GetVertexCoordinatesGeomech(grid,vec,direction,option)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   type(geomech_grid_type) :: grid
   Vec :: vec
@@ -665,9 +665,9 @@ subroutine OutputGeomechGetVarFromArray(geomech_realization,vec,ivar,isubvar, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
 
   class(geomech_realization_type) :: geomech_realization
   Vec :: vec
@@ -1225,9 +1225,9 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
 
   type(geomech_realization_type) :: geomech_realization
   PetscInt :: var_list_type
@@ -1515,9 +1515,9 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
 
   type(geomech_realization_type) :: geomech_realization
   type(option_type), pointer :: option

@@ -8,7 +8,7 @@ module Reaction_Microbial_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: INHIBITION_THRESHOLD = 1
   PetscInt, parameter, public :: INHIBITION_THERMODYNAMIC = 2

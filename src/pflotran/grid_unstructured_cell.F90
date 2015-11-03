@@ -6,7 +6,7 @@ module Grid_Unstructured_Cell_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! grid cell type
   PetscInt, parameter, public :: HEX_TYPE          = 1

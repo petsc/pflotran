@@ -6,7 +6,7 @@ module Wrapper_Hydrogeophysics_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: HydrogeophysicsWrapperInit, &
             HydrogeophysicsWrapperStart, &
@@ -44,8 +44,8 @@ subroutine HydrogeophysicsWrapperInit(option, &
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   type(option_type) :: option
   Vec :: pflotran_tracer_vec_mpi_
@@ -121,8 +121,8 @@ subroutine HydrogeophysicsWrapperStep(time, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   PetscReal :: time
   Vec :: tracer_mpi

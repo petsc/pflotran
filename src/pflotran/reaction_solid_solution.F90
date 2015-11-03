@@ -10,7 +10,7 @@ module Reaction_Solid_Solution_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: SolidSolutionReadFromInputFile, &
             SolidSolutionLinkNamesToIDs

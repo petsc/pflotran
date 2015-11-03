@@ -9,7 +9,7 @@ module SrcSink_Sandbox_WIPP_Well_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: WIPP_WELL_LIQUID_MOBILITY = 1
   PetscInt, parameter, public :: WIPP_WELL_GAS_MOBILITY = 2

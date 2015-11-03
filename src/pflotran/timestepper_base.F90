@@ -8,7 +8,7 @@ module Timestepper_Base_class
 
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
  
   PetscInt, parameter, public :: TS_CONTINUE = 0
   PetscInt, parameter, public :: TS_STOP_END_SIMULATION = 1
@@ -602,7 +602,7 @@ subroutine TimestepperBaseCheckpointBinary(this,viewer,option)
 
   implicit none
 
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(timestepper_base_type) :: this
   PetscViewer :: viewer
@@ -639,7 +639,7 @@ subroutine TimestepperBaseCheckpointHDF5(this, chk_grp_id, option)
 
   implicit none
 
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(timestepper_base_type) :: this
 #if defined(SCORPIO_WRITE)
@@ -681,7 +681,7 @@ subroutine TimestepperBaseRestartHDF5(this, chk_grp_id, option)
 
   implicit none
 
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(timestepper_base_type) :: this
 #if defined(SCORPIO_WRITE)
@@ -711,7 +711,7 @@ subroutine TimestepperBaseRegisterHeader(this,bag,header)
 
   implicit none
   
-#include "finclude/petscbag.h"  
+#include "petsc/finclude/petscbag.h"  
 
   class(timestepper_base_type) :: this
   class(stepper_base_header_type) :: header
@@ -752,7 +752,7 @@ subroutine TimestepperBaseSetHeader(this,bag,header)
 
   implicit none
   
-#include "finclude/petscbag.h"  
+#include "petsc/finclude/petscbag.h"  
 
   class(timestepper_base_type) :: this
   class(stepper_base_header_type) :: header
@@ -789,7 +789,7 @@ subroutine TimestepperBaseRestartBinary(this,viewer,option)
 
   implicit none
 
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(timestepper_base_type) :: this
   PetscViewer :: viewer
@@ -814,7 +814,7 @@ subroutine TimestepperBaseGetHeader(this,header)
 
   implicit none
   
-#include "finclude/petscbag.h"  
+#include "petsc/finclude/petscbag.h"  
 
   class(timestepper_base_type) :: this
   class(stepper_base_header_type) :: header

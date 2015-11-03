@@ -6,8 +6,8 @@ module Communicator_Base_module
 
   private
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   type, abstract, public :: communicator_type
   contains
@@ -80,7 +80,7 @@ subroutine CommCreateProcessorGroups(option,num_groups)
   
   implicit none
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type(option_type) :: option
   PetscInt :: num_groups

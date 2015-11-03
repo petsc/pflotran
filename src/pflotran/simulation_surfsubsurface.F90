@@ -16,7 +16,7 @@ module Simulation_Surf_Subsurf_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public, extends(subsurface_simulation_type) :: surfsubsurface_simulation_type
     class(pmc_surface_type), pointer    :: surf_flow_process_model_coupler
@@ -101,7 +101,7 @@ subroutine SurfSubsurfaceInitializeRun(this)
 
   implicit none
   
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(surfsubsurface_simulation_type) :: this
 
@@ -151,7 +151,7 @@ subroutine SurfSubsurfaceExecuteRun(this)
 
   implicit none
   
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(surfsubsurface_simulation_type) :: this
 
@@ -265,7 +265,7 @@ subroutine SurfSubsurfaceSimulationRunToTime(this,target_time)
 
   implicit none
 
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(surfsubsurface_simulation_type) :: this
   PetscReal :: target_time

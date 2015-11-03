@@ -13,9 +13,9 @@ module Condition_Control_module
 
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   public :: CondControlAssignFlowInitCond, &
             CondControlAssignTranInitCond, &
@@ -54,8 +54,8 @@ subroutine CondControlAssignFlowInitCond(realization)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   class(realization_type) :: realization
   
@@ -408,8 +408,8 @@ subroutine CondControlAssignTranInitCond(realization)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   class(realization_type) :: realization
   
@@ -851,8 +851,8 @@ subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"  
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"  
   
   class(realization_type) :: realization
   class(dataset_base_type), pointer :: dataset
@@ -922,9 +922,9 @@ subroutine CondControlScaleSourceSink(realization)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscdmda.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscdmda.h"
 
   
   class(realization_type) :: realization
@@ -1081,8 +1081,8 @@ subroutine CondControlReadTransportIC(realization,filename)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   class(realization_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
@@ -1170,8 +1170,8 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   class(surface_realization_type) :: surf_realization
   

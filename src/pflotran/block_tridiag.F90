@@ -1,6 +1,6 @@
 module Block_Tridiag_module
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   private
 

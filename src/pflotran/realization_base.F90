@@ -18,7 +18,7 @@ module Realization_Base_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   type, public :: realization_base_type
 
     PetscInt :: id
@@ -102,8 +102,8 @@ subroutine RealizationGetVariable(realization_base,vec,ivar,isubvar,isubvar1)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(realization_base_type) :: realization_base
   Vec :: vec
@@ -166,8 +166,8 @@ subroutine RealizationSetVariable(realization_base,vec,vec_format,ivar,isubvar)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(realization_base_type) :: realization_base
   Vec :: vec

@@ -8,7 +8,7 @@ module Immis_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
 type, public :: Immis_auxvar_elem_type
   PetscReal :: pres

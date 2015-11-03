@@ -9,7 +9,7 @@ module HDF5_Aux_module
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   private
 

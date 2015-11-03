@@ -8,7 +8,7 @@ module Factory_Subsurface_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: SubsurfaceInitialize, &
             SubsurfaceInitializePostPETSc, &
@@ -708,7 +708,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   
   implicit none
   
-#include "finclude/petscsnes.h" 
+#include "petsc/finclude/petscsnes.h" 
 
   class(subsurface_simulation_type) :: simulation
   

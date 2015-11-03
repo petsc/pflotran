@@ -6,7 +6,7 @@ module Hydrostatic_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: HydrostaticUpdateCoupler, &
             HydrostaticTest

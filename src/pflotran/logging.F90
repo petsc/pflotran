@@ -8,7 +8,7 @@ module Logging_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! stages
   PetscInt, parameter, public :: INIT_STAGE = 1

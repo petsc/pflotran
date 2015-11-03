@@ -8,7 +8,7 @@ module Matrix_Block_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
  
   type, public :: matrix_block_auxvar_type
 

@@ -10,7 +10,7 @@ module Coupler_module
 
   private
  
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! coupler types
   PetscInt, parameter, public :: INITIAL_COUPLER_TYPE = 1

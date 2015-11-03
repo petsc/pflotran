@@ -8,7 +8,7 @@ module Reaction_Solid_Soln_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: solid_solution_type
     character(len=MAXWORDLENGTH) :: name

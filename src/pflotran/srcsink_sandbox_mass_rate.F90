@@ -11,7 +11,7 @@ module SrcSink_Sandbox_Mass_Rate_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public, &
     extends(srcsink_sandbox_base_type) :: srcsink_sandbox_mass_rate_type

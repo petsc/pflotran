@@ -6,24 +6,24 @@ module Solver_module
 
   private
  
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscksp.h"
-#include "finclude/petscpc.h"
-#include "finclude/petscsnes.h"
-#include "finclude/petscts.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscksp.h"
+#include "petsc/finclude/petscpc.h"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscts.h"
 ! If the PETSc release is 3.3 or lower, then include petscpcmg.h.
 ! If using an older version of petsc-dev and petscpcmg.h is required, 
 ! it can be used by having the makefile turn on HAVE_PETSCPCMG_H.
 #if (((PETSC_VERSION_RELEASE) && ((PETSC_VERSION_MAJOR<3) || ((PETSC_VERSION_MAJOR==3) && (PETSC_VERSION_MINOR<=3)))) || (HAVE_PETSCPCMG_H))
-#include "finclude/petscpcmg.h"
+#include "petsc/finclude/petscpcmg.h"
 #endif
 
-!#include "finclude/petscpcmg.h"
+!#include "petsc/finclude/petscpcmg.h"
 
   type, public :: solver_type
     PetscInt :: itype            ! type: flow or transport

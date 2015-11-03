@@ -7,7 +7,7 @@ module Factory_Geomechanics_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: GeomechanicsInitialize
 
@@ -75,8 +75,8 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   use Logging_module
 
   implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(geomechanics_simulation_type) :: simulation
   type(option_type), pointer :: option
@@ -929,8 +929,8 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   use Option_module
 
   implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   class(geomech_realization_type) :: geomech_realization
   
@@ -1144,12 +1144,12 @@ subroutine GeomechInitSetupSolvers(geomech_realization,realization, &
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscpc.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscpc.h"
   
   class(geomech_realization_type), pointer :: geomech_realization
   class(realization_type), pointer :: realization

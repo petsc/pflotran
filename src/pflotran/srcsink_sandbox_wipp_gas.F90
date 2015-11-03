@@ -9,7 +9,7 @@ module SrcSink_Sandbox_WIPP_Gas_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: WIPP_GAS_WATER_SATURATION_INDEX = 1
   PetscInt, parameter, public :: WIPP_GAS_TEMPERATURE_INDEX = 2

@@ -10,7 +10,7 @@ module Output_VTK_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter :: VTK_INTEGER = 0
   PetscInt, parameter :: VTK_REAL = 1
@@ -37,8 +37,8 @@ subroutine OutputVTK(realization_base)
  
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(realization_base_type) :: realization_base
   
@@ -179,8 +179,8 @@ subroutine OutputVelocitiesVTK(realization_base)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(realization_base_type) :: realization_base
   
@@ -300,8 +300,8 @@ subroutine WriteVTKGrid(fid,realization_base)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   PetscInt :: fid
   class(realization_base_type) :: realization_base
@@ -403,8 +403,8 @@ subroutine WriteVTKDataSetFromVec(fid,realization_base,dataset_name,vec,datatype
   use Realization_Base_class, only : realization_base_type
   
   implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   PetscInt :: fid
   class(realization_base_type) :: realization_base

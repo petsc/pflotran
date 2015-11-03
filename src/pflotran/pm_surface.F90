@@ -10,14 +10,14 @@ module PM_Surface_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscts.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscts.h"
 
   type, public, extends(pm_base_type) :: pm_surface_type
     class(surface_realization_type), pointer :: surf_realization
@@ -228,7 +228,7 @@ subroutine PMSurfaceCheckpointBinary(this,viewer)
   use Checkpoint_Surface_module
 
   implicit none
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(pm_surface_type) :: this
   PetscViewer :: viewer
@@ -250,7 +250,7 @@ subroutine PMSurfaceRestartBinary(this,viewer)
   use Checkpoint_Surface_module
 
   implicit none
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(pm_surface_type) :: this
   PetscViewer :: viewer

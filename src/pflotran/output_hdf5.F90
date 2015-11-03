@@ -10,7 +10,7 @@ module Output_HDF5_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscMPIInt, private, parameter :: ON=1, OFF=0
 
@@ -106,9 +106,9 @@ subroutine OutputHDF5(realization_base,var_list_type)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
 
   class(realization_base_type) :: realization_base
   PetscInt :: var_list_type
@@ -402,7 +402,7 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
   !
   use Option_module, only : option_type, printMsg, printErrMsg
 
-#include "finclude/petscsysdef.h"
+#include "petsc/finclude/petscsysdef.h"
 
 #if  !defined(PETSC_HAVE_HDF5)
   implicit none
@@ -617,9 +617,9 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
 
   class(realization_base_type) :: realization_base
   PetscInt :: var_list_type
@@ -1039,9 +1039,9 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
 
   class(realization_base_type) :: realization_base
   PetscInt :: var_list_type
@@ -1382,9 +1382,9 @@ subroutine WriteHDF5FluxVelocities(name,realization_base,iphase,direction,file_i
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
 
   character(len=32) :: name
   class(realization_base_type) :: realization_base
@@ -1664,9 +1664,9 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1974,9 +1974,9 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -2505,9 +2505,9 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -2790,10 +2790,10 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -3059,10 +3059,10 @@ subroutine WriteHDF5FaceVelUGrid(realization_base,option,file_id,var_list_type)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petsclog.h"
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
 
   class(realization_base_type) :: realization_base
   type(option_type), pointer :: option
@@ -3299,7 +3299,7 @@ subroutine OutputHDF5Provenance(option, output_option, file_id)
   use Output_Aux_module, only : output_option_type
   use PFLOTRAN_Provenance_module, only : provenance_max_str_len
 
-#include "finclude/petscsysdef.h"
+#include "petsc/finclude/petscsysdef.h"
 
   use hdf5
 

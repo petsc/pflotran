@@ -9,7 +9,7 @@ module Dataset_Global_HDF5_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public, extends(dataset_common_hdf5_type) :: dataset_global_hdf5_type
     PetscInt :: local_size    ! local number of entries on this process
@@ -172,12 +172,12 @@ subroutine DatasetGlobalHDF5ReadData(this,option,data_type)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscdm.h"
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petscdmda.h"
+#include "petsc/finclude/petscviewer.h"
 
 ! Default HDF5 Mechanism 
  

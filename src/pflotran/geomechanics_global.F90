@@ -7,7 +7,7 @@ module Geomechanics_Global_module
 
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: GeomechGlobalSetup, &
             GeomechGlobalSetAuxVarScalar, &
@@ -173,8 +173,8 @@ subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar,isubvar
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"  
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"  
 
   class(geomech_realization_type) :: geomech_realization
   Vec :: vec_loc
@@ -209,8 +209,8 @@ subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,is
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(geomech_realization_type) :: geomech_realization
   Vec :: vec_loc

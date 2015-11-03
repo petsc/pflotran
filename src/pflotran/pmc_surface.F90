@@ -9,7 +9,7 @@ module PMC_Surface_class
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   private
 
@@ -98,7 +98,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Output_Surface_module
   
   implicit none
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
   
   class(pmc_surface_type), target :: this
   PetscReal :: sync_time
@@ -270,8 +270,8 @@ subroutine PMCSurfaceGetAuxData(this)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(pmc_surface_type) :: this
 
@@ -350,8 +350,8 @@ subroutine PMCSurfaceSetAuxData(this)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(pmc_surface_type) :: this
 
@@ -506,8 +506,8 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(pmc_surface_type) :: this
 

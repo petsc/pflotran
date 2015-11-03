@@ -6,7 +6,7 @@ module Fluid_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
  
   type, public :: fluid_property_type
     PetscReal :: tort_bin_diff

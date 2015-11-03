@@ -12,7 +12,7 @@ module Simulation_Subsurface_class
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   private
 

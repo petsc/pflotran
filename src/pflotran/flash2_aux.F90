@@ -8,7 +8,7 @@ module Flash2_Aux_module
 !#define GARCIA 1
 #define DUANDEN 1
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: Flash2_auxvar_elem_type
     PetscReal :: pres

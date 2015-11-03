@@ -10,7 +10,7 @@ module Output_Observation_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! flags signifying the first time a routine is called during a given
   ! simulation

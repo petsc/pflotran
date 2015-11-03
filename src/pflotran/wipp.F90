@@ -6,7 +6,7 @@ module Fracture_module
   
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: frac_init_pres_index = 1
   PetscInt, parameter, public :: frac_alt_pres_index = 2
@@ -390,7 +390,7 @@ module Creep_Closure_module
   
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: creep_closure_type
     character(len=MAXWORDLENGTH) :: material_name
@@ -688,7 +688,7 @@ module Klinkenberg_module
   
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: klinkenberg_type
     PetscReal :: a
@@ -902,7 +902,7 @@ module WIPP_module
   
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type :: wipp_type
     PetscBool :: cell_by_cell_soil_ref_pres

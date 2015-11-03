@@ -13,7 +13,7 @@ module Reaction_Database_hpt_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: DatabaseRead_hpt, BasisInit_hpt
             

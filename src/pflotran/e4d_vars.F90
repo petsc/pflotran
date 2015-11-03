@@ -1,15 +1,15 @@
 module vars
 
   implicit none
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscviewer.h"
-#include "finclude/petscviewer.h90"  
-#include "finclude/petscksp.h"
-#include "finclude/petscksp.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h90"  
+#include "petsc/finclude/petscksp.h"
+#include "petsc/finclude/petscksp.h90"
 
   integer, dimension(:), allocatable :: e4d_ranks,pf_e4d_ranks
   integer :: mpi_comm_grp,mpi_e4d_grp,mpi_pfe4d_grp,i

@@ -6,8 +6,8 @@ regression_test_dir = ../../regression_tests
 unit_test_dir = ./unittests
 
 
-include ${PETSC_DIR}/conf/variables
-include ${PETSC_DIR}/conf/rules
+include ${PETSC_DIR}/lib/petsc/conf/variables
+include ${PETSC_DIR}/lib/petsc/conf/rules
 
 MYFLAGS = -I.
 

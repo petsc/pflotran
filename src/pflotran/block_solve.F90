@@ -1,6 +1,6 @@
 module Block_Solve_module
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   private
   

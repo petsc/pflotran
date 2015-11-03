@@ -7,7 +7,7 @@ module PMC_Material_class
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   private
 
@@ -91,7 +91,7 @@ recursive subroutine PMCMaterialRunToTime(this,sync_time,stop_flag)
   
   implicit none
   
-#include "finclude/petscviewer.h"  
+#include "petsc/finclude/petscviewer.h"  
 
   class(pmc_material_type), target :: this
   PetscReal :: sync_time

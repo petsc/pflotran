@@ -6,7 +6,7 @@ module Debug_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: debug_type
     PetscBool :: vecview_residual
@@ -138,8 +138,8 @@ subroutine DebugCreateViewer(debug,viewer_name_prefix,option,viewer)
   use Option_module
   implicit none
 
-#include "finclude/petscsys.h"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscviewer.h"
 
   type(debug_type), pointer :: debug
   character(len=MAXSTRINGLENGTH), intent(in) :: viewer_name_prefix

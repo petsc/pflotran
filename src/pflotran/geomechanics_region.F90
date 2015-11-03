@@ -7,7 +7,7 @@ module Geomechanics_Region_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
  
   type, public :: gm_region_type
     PetscInt :: id
