@@ -11,7 +11,7 @@ module Simulation_Surface_class
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   private
 

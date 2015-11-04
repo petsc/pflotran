@@ -8,7 +8,7 @@ module Dataset_Ascii_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public, extends(dataset_base_type) :: dataset_ascii_type
     PetscInt :: array_width

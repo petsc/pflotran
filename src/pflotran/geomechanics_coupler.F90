@@ -8,7 +8,7 @@ module Geomechanics_Coupler_module
 
   private
  
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! coupler types
   ! SK: Note that there is no initial coupler since we solve 

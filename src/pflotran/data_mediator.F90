@@ -6,7 +6,7 @@ module Data_Mediator_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: DataMediatorInit, &
             DataMediatorUpdate, &
@@ -47,8 +47,8 @@ subroutine DataMediatorUpdate(data_mediator_list,vec,option)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"  
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"  
   
   class(data_mediator_base_type), pointer :: data_mediator_list
   Vec :: vec

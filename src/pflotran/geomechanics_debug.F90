@@ -6,7 +6,7 @@ module Geomechanics_Debug_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: geomech_debug_type
     PetscBool :: vecview_residual

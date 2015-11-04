@@ -6,7 +6,7 @@ module TH_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscReal, public :: th_itol_scaled_res = 1.d-5
   PetscReal, public :: th_itol_rel_update = UNINITIALIZED_DOUBLE

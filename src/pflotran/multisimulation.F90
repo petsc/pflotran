@@ -6,7 +6,7 @@ module Multi_Simulation_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   type, public :: multi_simulation_type
     PetscInt :: num_groups

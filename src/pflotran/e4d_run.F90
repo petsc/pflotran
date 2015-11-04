@@ -131,8 +131,8 @@ contains
   !____________________________________________________________________
   subroutine get_pf_sol
     implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
     integer ::  status(MPI_STATUS_SIZE)
     PetscReal, pointer :: vec_ptr(:)
 
@@ -408,8 +408,8 @@ num_calls = num_calls + 1
   !__________________________________________________________________
   subroutine build_ksp
     implicit none
-#include "finclude/petscksp.h"
-#include "finclude/petscksp.h90"
+#include "petsc/finclude/petscksp.h"
+#include "petsc/finclude/petscksp.h90"
     real*8 :: rtol = 1e-6
     real*8 :: atol = 1e-35
     real*8 :: dtol = 500

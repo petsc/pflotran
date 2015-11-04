@@ -14,7 +14,7 @@ module Reaction_Sandbox_Example_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
 ! 2. Add module variables here.  Note that one must use the PETSc data types 
 !    PetscInt, PetscReal, PetscBool to declare variables of type integer

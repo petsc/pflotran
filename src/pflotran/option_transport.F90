@@ -8,7 +8,7 @@ module Option_Transport_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
 
   type, public :: transport_option_type 

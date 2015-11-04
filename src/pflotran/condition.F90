@@ -17,7 +17,7 @@ module Condition_module
 
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: flow_condition_type
     PetscInt :: id                          ! id from which condition can be referenced

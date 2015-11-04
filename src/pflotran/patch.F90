@@ -25,7 +25,7 @@ module Patch_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: patch_type 
     
@@ -2159,9 +2159,9 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscdmda.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscdmda.h"
   
   type(patch_type) :: patch
   type(coupler_type) :: source_sink
@@ -2314,9 +2314,9 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscdmda.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscdmda.h"
 
   type(patch_type) :: patch
   type(coupler_type) :: coupler
@@ -2412,11 +2412,11 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
   use Option_module
   
   implicit none
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscviewer.h"
 
   type(grid_type) :: grid
   class(dataset_map_hdf5_type) :: dataset_map_hdf5
@@ -2831,8 +2831,8 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
@@ -3894,8 +3894,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   PetscReal :: PatchGetVariableValueAtCell
   type(option_type), pointer :: option
@@ -4581,8 +4581,8 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -5397,8 +5397,8 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   type(patch_type) :: patch
   type(option_type) :: option
@@ -5582,8 +5582,8 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   type(option_type), pointer :: option
   !type(reaction_type), pointer :: reaction

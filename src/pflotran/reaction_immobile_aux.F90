@@ -8,7 +8,7 @@ module Reaction_Immobile_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: immobile_species_type
     PetscInt :: id

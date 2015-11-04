@@ -10,7 +10,7 @@ module Option_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
 
   type, public :: option_type 
@@ -1151,7 +1151,7 @@ subroutine OptionBeginTiming(option)
   
   implicit none
   
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petsclog.h"
   
   type(option_type) :: option
   
@@ -1177,7 +1177,7 @@ subroutine OptionEndTiming(option)
   
   implicit none
   
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petsclog.h"
   
   type(option_type) :: option
   

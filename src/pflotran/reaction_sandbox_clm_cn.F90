@@ -11,7 +11,7 @@ module Reaction_Sandbox_CLM_CN_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
                           ! 14.00674d0 / 12.011d0
   PetscReal, parameter :: CN_ratio_mass_to_mol = 1.16616d0 

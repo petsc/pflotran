@@ -1,6 +1,6 @@
   module spline_module
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   public
   

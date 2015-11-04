@@ -14,16 +14,16 @@ module Discretization_module
 
   private
  
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmshell.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscdm.h"
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petscdmda.h"
+#include "petsc/finclude/petscdmshell.h90"
 
   type, public :: discretization_type
     PetscInt :: itype  ! type of discretization (e.g. structured, unstructured, etc.)
@@ -809,8 +809,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   
   implicit none
   
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
 
   type(discretization_type) :: discretization
   PetscInt :: dm_index
@@ -947,8 +947,8 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
   
   implicit none
 
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
   
   type(discretization_type) :: discretization
   PetscInt :: dm_index
@@ -1424,7 +1424,7 @@ subroutine DiscretAOApplicationToPetsc(discretization,int_array)
 
   implicit none
   
-#include "finclude/petscao.h"  
+#include "petsc/finclude/petscao.h"  
   
   type(discretization_type) :: discretization
   PetscInt :: int_array(:)

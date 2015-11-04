@@ -4,7 +4,7 @@ module Utility_module
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   interface DotProduct
     module procedure DotProduct1

@@ -6,9 +6,9 @@ module Data_Mediator_Vec_class
 
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
  
   type, public, extends(data_mediator_base_type) :: data_mediator_vec_type
     VecScatter :: scatter_ctx ! scatter context from vec to residual_vec
@@ -61,8 +61,8 @@ recursive subroutine DataMediatorVecUpdate(this,data_mediator_vec,option)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"  
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"  
   
   class(data_mediator_vec_type) :: this
   Vec :: data_mediator_vec

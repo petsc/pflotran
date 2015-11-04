@@ -8,9 +8,9 @@ module Data_Mediator_Base_class
 
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
  
   type, public :: data_mediator_base_type
     character(len=MAXWORDLENGTH) :: name
@@ -81,8 +81,8 @@ recursive subroutine DataMediatorBaseUpdate(this,data_mediator_vec,option)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"  
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"  
 
   class(data_mediator_base_type) :: this
   Vec :: data_mediator_vec

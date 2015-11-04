@@ -6,7 +6,7 @@ module Reaction_Sandbox_Base_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, abstract, public :: reaction_sandbox_base_type
     class(reaction_sandbox_base_type), pointer :: next

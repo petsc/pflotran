@@ -10,7 +10,7 @@ module Secondary_Continuum_Aux_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: slab_type
     PetscReal :: length                       ! input - length of slab

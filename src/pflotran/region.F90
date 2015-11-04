@@ -8,7 +8,7 @@ module Region_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: STRUCTURED_GRID_REGION = 1
   PetscInt, parameter, public :: UNSTRUCTURED_GRID_REGION = 2

@@ -7,7 +7,7 @@ module Saturation_Function_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
  
   type, public :: saturation_function_type
     PetscInt :: id

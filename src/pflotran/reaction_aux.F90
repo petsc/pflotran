@@ -16,7 +16,7 @@ module Reaction_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! activity coefficients
   PetscInt, parameter, public :: ACT_COEF_FREQUENCY_OFF = 0

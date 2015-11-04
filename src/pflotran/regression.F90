@@ -8,9 +8,9 @@ module Regression_module
 
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
  
   type, public :: regression_type
     type(regression_variable_type), pointer :: variable_list
@@ -198,9 +198,9 @@ subroutine RegressionCreateMapping(regression,realization)
   
   implicit none
   
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscviewer.h"
 
   type(regression_type), pointer :: regression
   class(realization_type) :: realization

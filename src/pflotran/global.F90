@@ -8,7 +8,7 @@ module Global_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   public GlobalSetup, &
          GlobalSetAuxVarScalar, &
@@ -209,8 +209,8 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(realization_type) :: realization
   Vec :: vec_loc
@@ -418,8 +418,8 @@ subroutine GlobalGetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(realization_type) :: realization
   Vec :: vec_loc

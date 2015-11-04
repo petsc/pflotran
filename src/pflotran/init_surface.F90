@@ -4,7 +4,7 @@ module Init_Surface_module
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: InitSurfaceSetupRealization, &
             InitSurfaceSetupSolvers
@@ -129,13 +129,13 @@ subroutine InitSurfaceSetupSolvers(surf_realization,solver)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscpc.h"
-#include "finclude/petscts.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscpc.h"
+#include "petsc/finclude/petscts.h"
   
   class(surface_realization_type) :: surf_realization
   type(solver_type), pointer :: solver
@@ -189,8 +189,8 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(surface_realization_type) :: surf_realization
   

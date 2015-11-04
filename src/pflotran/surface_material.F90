@@ -6,7 +6,7 @@ module Surface_Material_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: surface_material_property_type
     

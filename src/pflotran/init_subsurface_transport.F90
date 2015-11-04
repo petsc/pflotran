@@ -6,7 +6,7 @@ module Init_Subsurface_Tran_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: InitSubsurfTranSetupRealization, &
             InitSubsurfTranSetupSolvers
@@ -81,12 +81,12 @@ subroutine InitSubsurfTranSetupSolvers(realization,convergence_context,solver)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscpc.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscpc.h"
   
   class(realization_type) :: realization
   type(convergence_context_type), pointer :: convergence_context

@@ -14,7 +14,7 @@ module Transport_Constraint_module
 
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! concentration subcondition types
   PetscInt, parameter, public :: CONSTRAINT_NULL = 0

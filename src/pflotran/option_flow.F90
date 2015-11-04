@@ -8,7 +8,7 @@ module Option_Flow_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
 
   type, public :: flow_option_type 

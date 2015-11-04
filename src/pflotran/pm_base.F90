@@ -10,14 +10,14 @@ module PM_Base_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscts.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscts.h"
 
   type, public :: pm_base_type
     character(len=MAXWORDLENGTH) :: name
@@ -262,7 +262,7 @@ end subroutine PMBaseRHSFunction
 
 subroutine PMBaseCheckpointBinary(this,viewer)
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
   class(pm_base_type) :: this
   PetscViewer :: viewer
   print *, 'Must extend PMBaseCheckpointBinary/RestartBinary.'

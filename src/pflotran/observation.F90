@@ -9,7 +9,7 @@ module Observation_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: OBSERVATION_SCALAR = 1
   PetscInt, parameter, public :: OBSERVATION_FLUX = 2

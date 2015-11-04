@@ -9,7 +9,7 @@ module Waypoint_module
   
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! linked-list for waypoints in the simulation
   type, public :: waypoint_type

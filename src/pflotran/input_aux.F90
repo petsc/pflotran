@@ -8,7 +8,7 @@ module Input_Aux_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: input_type 
     PetscInt :: fid

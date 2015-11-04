@@ -9,14 +9,14 @@ module General_module
   
   private 
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petsclog.h"
 
 #define CONVECTION
 #define DIFFUSION
@@ -728,7 +728,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_auxvars => patch%aux%Material%auxvars
     
-  call VecGetArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
 #ifdef DEBUG_AUXVARS
   icall = icall + 1
@@ -927,7 +927,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
     boundary_condition => boundary_condition%next
   enddo
 
-  call VecRestoreArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
   patch%aux%General%auxvars_up_to_date = PETSC_TRUE
 
@@ -2442,8 +2442,10 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   patch%aux%General%auxvars_up_to_date = PETSC_FALSE 
 
   ! always assume variables have been swapped; therefore, must copy back
+  call VecLockPop(xx,ierr); CHKERRQ(ierr)
   call DiscretizationLocalToGlobal(discretization,field%flow_xx_loc,xx, &
                                    NFLOWDOF)
+  call VecLockPush(xx,ierr); CHKERRQ(ierr)
 
   if (option%compute_mass_balance_new) then
     call GeneralZeroMassBalanceDelta(realization)
@@ -3500,10 +3502,10 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
 
   PetscBool :: compute_derivative
   Vec :: residual

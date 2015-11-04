@@ -13,7 +13,7 @@ module PM_Waste_Form_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscBool, public :: bypass_warning_message = PETSC_FALSE
 
@@ -201,10 +201,10 @@ end subroutine PMWasteFormSetRealization
   
   implicit none
 
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(pm_waste_form_type) :: this
   
@@ -868,10 +868,10 @@ recursive subroutine PMWFGlassInitializeRun(this)
   
   implicit none
 
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(pm_waste_form_glass_type) :: this
   
@@ -957,8 +957,8 @@ subroutine PMGlassSolve(this,time,ierr)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(pm_waste_form_glass_type) :: this
   PetscReal :: time
@@ -1069,7 +1069,7 @@ subroutine PMGlassCheckpoint(this,viewer)
   use Option_module
 
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
 
   class(pm_waste_form_glass_type) :: this
   PetscViewer :: viewer
@@ -1112,7 +1112,7 @@ subroutine PMGlassRestart(this,viewer)
   ! Date: 08/26/15
 
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
 
   class(pm_waste_form_glass_type) :: this
   PetscViewer :: viewer
@@ -1460,10 +1460,10 @@ recursive subroutine PMFMDMInitializeRun(this)
   
   implicit none
 
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(pm_waste_form_fmdm_type) :: this
   
@@ -1570,8 +1570,8 @@ subroutine PMFMDMSolve(this,time,ierr)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   interface
     subroutine AMP_step ( burnup, sTme, temperature_C, conc, initialRun, &
@@ -1763,7 +1763,7 @@ subroutine PMFMDMCheckpointBinary(this,viewer)
   ! Date: 08/26/15
 
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
 
   class(pm_waste_form_fmdm_type) :: this
   PetscViewer :: viewer
@@ -1780,7 +1780,7 @@ subroutine PMFMDMRestartBinary(this,viewer)
   ! Date: 08/26/15
 
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
 
   class(pm_waste_form_fmdm_type) :: this
   PetscViewer :: viewer

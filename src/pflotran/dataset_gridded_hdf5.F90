@@ -8,7 +8,7 @@ module Dataset_Gridded_HDF5_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public, extends(dataset_common_hdf5_type) :: dataset_gridded_hdf5_type
     PetscBool :: is_cell_centered

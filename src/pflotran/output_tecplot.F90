@@ -10,17 +10,17 @@ module Output_Tecplot_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   PetscInt, parameter, public :: TECPLOT_POINT_FORMAT = 1
   PetscInt, parameter, public :: TECPLOT_BLOCK_FORMAT = 2
   PetscInt, parameter, public :: TECPLOT_FEBRICK_FORMAT = 3
   PetscInt, parameter, public :: TECPLOT_FEQUADRILATERAL_FORMAT = 4  
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscdm.h"
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petsclog.h"
 
   public :: OutputTecplotBlock, & 
             OutputTecplotPoint, &

@@ -8,7 +8,7 @@ module Geomechanics_Strata_module
 
   private
  
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
  
   type, public :: geomech_strata_type
     PetscInt :: id                                                        ! id of strata

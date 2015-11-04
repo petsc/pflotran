@@ -10,7 +10,7 @@ module PM_UFD_Decay_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   
   type, public, extends(pm_base_type) :: pm_ufd_decay_type
@@ -605,7 +605,7 @@ subroutine PMUFDDecayCheckpoint(this,viewer)
   ! Date: 06/24/15
 
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
 
   class(pm_ufd_decay_type) :: this
   PetscViewer :: viewer
@@ -622,7 +622,7 @@ subroutine PMUFDDecayRestart(this,viewer)
   ! Date: 06/24/15
 
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
 
   class(pm_ufd_decay_type) :: this
   PetscViewer :: viewer

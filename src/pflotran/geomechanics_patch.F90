@@ -16,7 +16,7 @@ module Geomechanics_Patch_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: geomech_patch_type
     PetscInt                                      :: id
@@ -562,8 +562,8 @@ subroutine GeomechPatchGetDataset(patch,geomech_field,option,output_option, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   type(option_type), pointer :: option
   !type(reaction_type), pointer :: reaction

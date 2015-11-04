@@ -6,7 +6,7 @@ module Characteristic_Curves_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscReal, parameter :: DEFAULT_PCMAX = 1.d9
   

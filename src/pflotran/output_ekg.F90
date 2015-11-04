@@ -8,7 +8,7 @@ module Output_EKG_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: IUNIT_EKG = 87
 

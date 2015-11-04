@@ -8,7 +8,7 @@ module Reaction_Mineral_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! mineral types
   PetscInt, parameter, public :: MINERAL_REFERENCE = 1

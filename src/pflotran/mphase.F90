@@ -9,28 +9,28 @@ module Mphase_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
 !#include "include/petscf90.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
   ! Otherwise some very strange things will happen and PETSc will give no
   ! indication of what the problem is.
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscdm.h"
+#include "petsc/finclude/petscdm.h90"
 !#ifdef USE_PETSC216
-!#include "finclude/petscsles.h"
+!#include "petsc/finclude/petscsles.h"
 !#endiff
-#include "finclude/petscsnes.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsysdef.h"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petsclog.h"
-#include "finclude/petscerror.h"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscsysdef.h"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscerror.h"
 
 ! Cutoff parameters
   PetscReal, parameter :: formeps = 1.D-4
@@ -651,7 +651,7 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
   re = 1
  
 ! if (re > 0) then
-    call VecGetArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr);CHKERRQ(ierr)
   
@@ -715,7 +715,7 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
     end do
   
 !   if (re <= 0) print *,'Sat or Con out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
-    call VecRestoreArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr);CHKERRQ(ierr)
 
@@ -807,7 +807,7 @@ end subroutine MPhaseUpdateReason
     option => realization%option
     field => realization%field
     
-    call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
     
     ipass=1
     do local_id = 1, grid%nlmax
@@ -832,8 +832,10 @@ end subroutine MPhaseUpdateReason
       endif
     enddo
 
-    call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+
     MphaseInitGuessCheckPatch = ipass
+
   end function MphaseInitGuessCheckPatch
 
 ! ************************************************************************** !
@@ -2236,7 +2238,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 #endif
     
 ! mphase code need assemble 
+  call VecLockPop(xx,ierr); CHKERRQ(ierr)
   call VecGetArrayF90(xx, xx_p, ierr);CHKERRQ(ierr)
+  call VecLockPush(xx,ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr);CHKERRQ(ierr)
   
@@ -2476,7 +2480,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     end select
   enddo
 
-  call VecRestoreArrayF90(xx, xx_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayReadF90(xx, xx_p, ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr);CHKERRQ(ierr)
 
@@ -4007,7 +4011,7 @@ subroutine MphaseMaxChangePatch(realization,  max_c, max_s)
   
  
 
-  call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%flow_yy,yy_p, ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p, ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_old_loc,iphase_old_loc_p,  &
@@ -4030,7 +4034,7 @@ subroutine MphaseMaxChangePatch(realization,  max_c, max_s)
    end if
   end do
 
-  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%flow_yy,yy_p, ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p, ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%iphas_old_loc,iphase_old_loc_p,  &

@@ -18,7 +18,7 @@ module Auxiliary_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: auxiliary_type 
     type(global_type), pointer :: Global

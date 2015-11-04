@@ -8,7 +8,7 @@ module Timestepper_Surface_class
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   private
 
@@ -37,7 +37,7 @@ module Timestepper_Surface_class
     subroutine PetscBagGetData(bag,header,ierr)
       import :: timestepper_surface_header_type
       implicit none
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscbag.h"
       PetscBag :: bag
       class(timestepper_surface_header_type), pointer :: header
       PetscErrorCode :: ierr
@@ -215,9 +215,9 @@ subroutine TimestepperSurfaceStepDT(this,process_model,stop_flag)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscsnes.h"
 
   class(timestepper_surface_type) :: this
   class(pm_base_type) :: process_model
@@ -268,8 +268,8 @@ subroutine TimestepperSurfaceCheckpointBinary(this,viewer,option)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(timestepper_surface_type) :: this
   PetscViewer :: viewer
@@ -302,8 +302,8 @@ subroutine TimestepperSurfaceRestartBinary(this,viewer,option)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(timestepper_surface_type) :: this
   PetscViewer :: viewer
@@ -336,8 +336,8 @@ subroutine TimestepperSurfaceRegisterHeader(this,bag,header)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(timestepper_surface_type) :: this
   class(timestepper_surface_header_type) :: header
@@ -370,8 +370,8 @@ subroutine TimestepperSurfaceSetHeader(this,bag,header)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(timestepper_surface_type) :: this
   class(timestepper_surface_header_type) :: header
@@ -400,7 +400,7 @@ subroutine TimestepperSurfaceGetHeader(this,header)
 
   implicit none
 
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscviewer.h"
 
   class(timestepper_surface_type) :: this
   class(timestepper_surface_header_type) :: header
@@ -454,7 +454,7 @@ subroutine TimestepperSurfacePrintInfo(this,option)
 
   implicit none
   
-#include "finclude/petscts.h"  
+#include "petsc/finclude/petscts.h"  
 
   class(timestepper_surface_type) :: this
   type(option_type) :: option

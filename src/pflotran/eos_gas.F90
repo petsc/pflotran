@@ -6,7 +6,7 @@ module EOS_Gas_module
 
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! module variables
   PetscReal :: constant_density

@@ -6,7 +6,7 @@ module Geomechanics_Global_Aux_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: geomech_global_auxvar_type
     PetscReal, pointer :: disp_vector(:)       ! [m]
