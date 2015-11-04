@@ -34,12 +34,14 @@ subroutine OutputEKGInit(option,num_steps)
   PetscInt :: num_steps
 
   character(len=MAXSTRINGLENGTH) :: filename
+  PetscBool :: lexists
   
   if (.not.option%print_ekg) return
 
   filename = trim(option%global_prefix) // trim(option%group_prefix) // '.ekg'
   if (OptionPrintToFile(option)) then
-    if (num_steps == 0) then
+    inquire(IUNIT_EKG,exist=lexists)
+    if (num_steps == 0 .or. .not. lexists) then
       open(unit=IUNIT_EKG,file=filename,action="write",status="replace")
     else
       open(unit=IUNIT_EKG,file=filename,action="write",status="old", &
