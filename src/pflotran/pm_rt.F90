@@ -830,8 +830,8 @@ subroutine PMRTCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
     call MPI_Allreduce(max_relative_change_by_dof,MPI_IN_PLACE,mpi_int, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,this%option%mycomm,ierr)
     if (OptionPrintToFile(option)) then
-100 format(a32," NEWTON_ITERATION ",30es16.8)
-      write(IUNIT_EKG,100) trim(this%name), max_relative_change_by_dof(:)
+100 format("REACTIVE TRANSPORT  NEWTON_ITERATION ",30es16.8)
+      write(IUNIT_EKG,100) max_relative_change_by_dof(:)
     endif    
   endif
 
