@@ -842,9 +842,6 @@ pm_general.o : checkpoint.o field.o general.o general_aux.o global.o \
                global_aux.o grid.o input_aux.o material.o option.o \
                pflotran_constants.o pm_base.o pm_subsurface.o realization.o \
                realization_base.o solver.o string.o variables.o
-pm_toil_ims.o : input_aux.o option.o pflotran_constants.o pm_base.o \
-                pm_subsurface.o realization_base.o string.o toil_ims.o \
-                toil_ims_aux.o variables.o
 pm_geomechanics_force.o : checkpoint.o communicator_base.o \
                           communicator_structured.o \
                           communicator_unstructured.o condition.o \
@@ -883,6 +880,10 @@ pm_th.o : communicator_base.o communicator_structured.o \
           communicator_unstructured.o discretization.o eos_water.o global.o \
           grid.o input_aux.o option.o pflotran_constants.o pm_base.o \
           pm_subsurface.o realization.o solver.o string.o th.o utility.o
+pm_toil_ims.o : field.o grid.o input_aux.o option.o patch.o  \
+                pflotran_constants.o pm_base.o pm_subsurface.o realization.o \
+                realization_base.o string.o toil_ims.o toil_ims_aux.o \
+                variables.o
 pm_ufd_decay.o : global.o global_aux.o grid.o grid_structured.o \
                  grid_unstructured.o input_aux.o material_aux.o option.o \
                  patch.o pflotran_constants.o pm_base.o reaction_aux.o \
@@ -1179,9 +1180,9 @@ timestepper_surface.o : option.o output.o pflotran_constants.o pm_base.o \
                         pm_surface_flow.o solver.o surface_flow.o \
                         timestepper_base.o waypoint.o
 toil_ims_aux.o : eos_oil.o eos_water.o pflotran_constants.o
-toil_ims.o : eos_oil.o field.o global_aux.o grid.o connection.o coupler.o \
-             material_aux.o option.o patch.o pflotran_constants.o \
-             realization.o toil_ims_aux.o
+toil_ims.o : condition.o connection.o coupler.o eos_oil.o eos_water.o field.o \
+             global_aux.o grid.o material_aux.o option.o patch.o \
+              pflotran_constants.o realization.o toil_ims_aux.o
 transport.o : connection.o global_aux.o material_aux.o matrix_block_aux.o \
               option.o pflotran_constants.o reactive_transport_aux.o
 transport_constraint.o : global_aux.o input_aux.o logging.o option.o \

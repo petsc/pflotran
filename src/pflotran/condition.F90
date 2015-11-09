@@ -69,6 +69,7 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: pressure
     type(flow_sub_condition_type), pointer :: saturation
     type(flow_sub_condition_type), pointer :: temperature
+    type(flow_sub_condition_type), pointer :: enthalpy
     type(flow_sub_condition_type), pointer :: rate
     !PO: to add well when adding well capabilities.
     type(flow_sub_condition_type), pointer :: liquid_flux
@@ -281,6 +282,7 @@ function FlowTOilImsConditionCreate(option)
   nullify(toil_ims_condition%pressure)
   nullify(toil_ims_condition%saturation)
   nullify(toil_ims_condition%temperature)
+  nullify(toil_ims_condition%enthalpy)
   nullify(toil_ims_condition%rate)
   nullify(toil_ims_condition%liquid_flux)
   nullify(toil_ims_condition%oil_flux)
@@ -433,6 +435,13 @@ function FlowTOilImsSubConditionPtr(sub_condition_name,toil_ims, &
         sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
         toil_ims%temperature => sub_condition_ptr
       endif
+    case('ENTHALPY')
+      if (associated(toil_ims%enthalpy)) then
+        sub_condition_ptr => toil_ims%enthalpy
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        toil_ims%enthalpy => sub_condition_ptr
+      endif
     case('LIQUID_FLUX')
       if (associated(toil_ims%liquid_flux)) then
         sub_condition_ptr => toil_ims%liquid_flux
@@ -458,7 +467,7 @@ function FlowTOilImsSubConditionPtr(sub_condition_name,toil_ims, &
       if (associated(toil_ims%rate)) then
         sub_condition_ptr => toil_ims%rate
       else
-        ! temperature is loaded in the third record
+        ! energy rate is loaded in the third record
         sub_condition_ptr => FlowSubConditionCreate(THREE_INTEGER)
         toil_ims%rate => sub_condition_ptr
       endif
@@ -1901,8 +1910,12 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               sub_condition_ptr%itype = CONDUCTANCE_BC
             case('seepage')
               sub_condition_ptr%itype = SEEPAGE_BC
+            case('zero_gradient')
+              sub_condition_ptr%itype = ZERO_GRADIENT_BC
             case('mass_rate')
-              sub_condition_ptr%itype = MASS_RATE_SS
+              sub_condition_ptr%itype = MASS_RATE_SS 
+            !case('mass_rate_enthalpy')
+            !  sub_condition_ptr%itype = MASS_RATE_ENTHALPY_SS
             case('scaled_mass_rate')
               sub_condition_ptr%itype = SCALED_MASS_RATE_SS
               call InputReadWord(input,option,word,PETSC_TRUE)
@@ -2005,7 +2018,7 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         call InputErrorMsg(input,option,'LIQUID_CONDUCTANCE','CONDITION')   
       case('PRESSURE','LIQUID_SATURATION', &
            'OIL_SATURATION','TEMPERATURE','RATE', &
-           'LIQUID_FLUX','OIL_FLUX','ENERGY_FLUX')
+           'LIQUID_FLUX','OIL_FLUX','ENERGY_FLUX','ENTHALPY')
         select case(option%iflowmode)
           case(TOIL_IMS_MODE)
             sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
@@ -2060,6 +2073,48 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
     endif
   endif
 
+  ! control that enthalpy is used for src/sink only
+  if ( (.not.associated(toil_ims%rate)) .and. &
+        associated(toil_ims%enthalpy)  ) then
+      option%io_buffer = 'TOilIms Enthlapy condition is not' // &
+       'currently supported for boundary & initial conditions'
+      call printErrMsg(option)          
+  end if
+  ! within a src/sink either temp or enthalpy can be defined   
+  if (associated(toil_ims%rate)) then
+    if( associated(toil_ims%temperature).and. &
+        associated(toil_ims%enthalpy) &
+      ) then
+      option%io_buffer = 'TOilIms Rate condition can ' // &
+       'have either temp or enthalpy'
+      call printErrMsg(option)      
+    end if
+    ! only dirich condition supported for src/sink temp or enthalpy
+    if( ( associated(toil_ims%temperature).and. &
+          (toil_ims%temperature%itype /= DIRICHLET_BC) &
+        ) .or. &
+        ( associated(toil_ims%enthalpy).and. &
+          (toil_ims%enthalpy%itype /= DIRICHLET_BC ) &
+        ) &
+      ) then
+      option%io_buffer = 'TOilIms Src/Sink; only dirichlet type ' // &
+       'is supported for temperature and enthalpy conditions'
+      call printErrMsg(option)      
+    end if
+
+    ! in the casew below enthalpy or temperature overwrite energy rate
+    !if( ( associated(toil_ims%temperature).or. &
+    !      associated(toil_ims%enthalpy) &
+    !    ) .and. &
+    !    ( size(toil_ims%rate%dataset%rarray) == THREE_INTEGER ) &
+    !  ) then 
+    !  option%io_buffer = 'TOilIms Src/Sink error: ' // &
+    !   'either define enery rate or temperature/enthalpy value'
+    !  call printErrMsg(option)      
+    !end if
+  end if ! end if rate
+
+
   ! verify the datasets
   word = 'pressure'
   call FlowSubConditionVerify(option,condition,word,toil_ims%pressure, &
@@ -2071,6 +2126,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
                               PETSC_TRUE)
   word = 'temperature'
   call FlowSubConditionVerify(option,condition,word,toil_ims%temperature, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'enthalpy'
+  call FlowSubConditionVerify(option,condition,word,toil_ims%enthalpy, &
                               default_time_storage, &
                               PETSC_TRUE)
   word = 'liquid flux'
@@ -2098,6 +2157,8 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
     i = i + 1
   if (associated(toil_ims%temperature)) &
     i = i + 1
+  if (associated(toil_ims%enthalpy)) &
+    i = i + 1
   if (associated(toil_ims%liquid_flux)) &
     i = i + 1
   if (associated(toil_ims%oil_flux)) &
@@ -2124,6 +2185,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   if (associated(toil_ims%temperature)) then
     i = i + 1
     condition%sub_condition_ptr(i)%ptr => toil_ims%temperature
+  endif 
+  if (associated(toil_ims%enthalpy)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => toil_ims%enthalpy
   endif  
   if (associated(toil_ims%liquid_flux)) then
     i = i + 1
@@ -3242,6 +3307,7 @@ subroutine FlowToilConditionDestroy(toil_ims_condition)
   call FlowSubConditionDestroy(toil_ims_condition%pressure)
   call FlowSubConditionDestroy(toil_ims_condition%saturation)
   call FlowSubConditionDestroy(toil_ims_condition%temperature)
+  call FlowSubConditionDestroy(toil_ims_condition%enthalpy)
   call FlowSubConditionDestroy(toil_ims_condition%liquid_flux)
   call FlowSubConditionDestroy(toil_ims_condition%oil_flux)
   call FlowSubConditionDestroy(toil_ims_condition%energy_flux)

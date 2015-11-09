@@ -936,6 +936,15 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                   coupler%flow_aux_real_var = 0.d0
               end select
             endif
+          ! source/sinks for toil_ims
+          else if (associated(coupler%flow_condition%toil_ims)) then
+            if (associated(coupler%flow_condition%toil_ims%rate)) then
+              select case(coupler%flow_condition%toil_ims%rate%itype)
+                case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                  allocate(coupler%flow_aux_real_var(1,num_connections))
+                  coupler%flow_aux_real_var = 0.d0
+              end select
+            endif
           endif ! associated(coupler%flow_condition%rate)
         endif ! coupler%itype == SRC_SINK_COUPLER_TYPE
       endif ! associated(coupler%flow_condition)
@@ -1554,6 +1563,8 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
                                'pressure%itype,DIRICHLET_BC)'
             call printErrMsg(option)
         end select
+      !case(CONDUCTANCE_BC) !not implemented yet
+      !case(SEEPAGE_BC) !not implemented yet
       case default
         option%io_buffer = 'Unknown case (toil_ims%pressure%itype)' 
         call printErrMsg(option)
