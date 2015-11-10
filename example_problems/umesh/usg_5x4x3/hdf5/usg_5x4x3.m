@@ -32,8 +32,8 @@ count = 0;
 for kk = 1 : nz
     for jj = 1 : ny
         for ii = 1 : nx
-            cell_id(ii,jj,kk) = count; % O-based
             count = count + 1;
+            cell_id(ii,jj,kk) = count; % 1-based
             cell_connections(count,1) = 8;
             cell_connections(count,2) = vert_id(ii  , jj  , kk  );
             cell_connections(count,3) = vert_id(ii+1, jj  , kk  );
@@ -55,10 +55,10 @@ for jj = 1 : ny
         count = count + 1;
         top_cell_id(count,1) = cell_id(ii,jj,kk);
         top_sideset(count,1) = 4;
-        top_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 6);
-        top_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 7);
-        top_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 8);
-        top_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 9);
+        top_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 6);
+        top_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 7);
+        top_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 8);
+        top_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 9);
     end
 end
 
@@ -70,10 +70,10 @@ for jj = 1 : ny
         count = count + 1;
         bot_cell_id(count,1) = cell_id(ii,jj,kk);
         bot_sideset(count,1) = 4;
-        bot_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 2);
-        bot_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 5);
-        bot_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 4);
-        bot_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 3);
+        bot_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 2);
+        bot_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 5);
+        bot_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 4);
+        bot_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 3);
     end
 end
 
@@ -85,10 +85,10 @@ for kk = 1 : nz
         count = count + 1;
         west_cell_id(count,1) = cell_id(ii,jj,kk);
         west_sideset(count,1) = 4;
-        west_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 5);
-        west_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 2);
-        west_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 6);
-        west_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 9);
+        west_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 5);
+        west_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 2);
+        west_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 6);
+        west_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 9);
     end
 end
 
@@ -100,10 +100,10 @@ for kk = 1 : nz
         count = count + 1;
         east_cell_id(count,1) = cell_id(ii,jj,kk);
         east_sideset(count,1) = 4;
-        east_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 3);
-        east_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 4);
-        east_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 8);
-        east_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 7);
+        east_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 3);
+        east_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 4);
+        east_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 8);
+        east_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 7);
     end
 end
 
@@ -115,10 +115,10 @@ for kk = 1 : nz
         count = count + 1;
         south_cell_id(count,1) = cell_id(ii,jj,kk);
         south_sideset(count,1) = 4;
-        south_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 2);
-        south_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 3);
-        south_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 7);
-        south_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 6);
+        south_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 2);
+        south_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 3);
+        south_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 7);
+        south_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 6);
     end
 end
 
@@ -130,10 +130,10 @@ for kk = 1 : nz
         count = count + 1;
         north_cell_id(count,1) = cell_id(ii,jj,kk);
         north_sideset(count,1) = 4;
-        north_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 4);
-        north_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 5);
-        north_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 9);
-        north_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 8);
+        north_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 4);
+        north_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 5);
+        north_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 9);
+        north_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 8);
     end
 end
 
