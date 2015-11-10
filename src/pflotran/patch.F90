@@ -2275,10 +2275,9 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   do iconn = 1, cur_connection_set%num_connections      
     local_id = cur_connection_set%id_dn(iconn)
     select case(option%iflowmode)
-      case(RICHARDS_MODE,G_MODE)
+      case(RICHARDS_MODE,G_MODE,TH_MODE)
         source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
           vec_ptr(local_id)
-      case(TH_MODE)
       case(MPH_MODE)
       case(IMS_MODE)
       case(MIS_MODE)

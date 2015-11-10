@@ -3647,7 +3647,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     
     if (source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
       qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
-      qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     endif
 
     cur_connection_set => source_sink%connection_set
@@ -3663,15 +3662,23 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       Res = 0.d0
       select case (source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
+          qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
           Res(jh2o) = qsrc1
-!          r_p((local_id-1)*option%nflowdof + jh2o) = &
-!            r_p((local_id-1)*option%nflowdof + jh2o) - &
-!            qsrc1
+        case(SCALED_MASS_RATE_SS)
+          qsrc1 = qsrc1 / FMWH2O * & 
+            source_sink%flow_aux_real_var(ONE_INTEGER,iconn) ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+          Res(jh2o) = qsrc1
+        case(VOLUMETRIC_RATE_SS)  ! assume local density for now
+          ! qsrc1 = m^3/sec
+          qsrc1 = qsrc1*global_auxvars(ghosted_id)%den(1) ! den = kmol/m^3
+          Res(jh2o) = qsrc1	
+        case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
+          ! qsrc1 = m^3/sec
+          qsrc1 = qsrc1*global_auxvars(ghosted_id)%den(1)* & ! den = kmol/m^3
+            source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
+          Res(jh2o) = qsrc1
         case(HET_MASS_RATE_SS)
           qsrc1 = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O
-!          r_p((local_id-1)*option%nflowdof + jh2o) = &
-!            r_p((local_id-1)*option%nflowdof + jh2o) - &
-!            qsrc1
           Res(jh2o) = qsrc1
         case default
           write(string,*) source_sink%flow_condition%rate%itype
