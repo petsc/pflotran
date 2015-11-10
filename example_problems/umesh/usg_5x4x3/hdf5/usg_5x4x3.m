@@ -32,8 +32,8 @@ count = 0;
 for kk = 1 : nz
     for jj = 1 : ny
         for ii = 1 : nx
-            cell_id(ii,jj,kk) = count; % O-based
             count = count + 1;
+            cell_id(ii,jj,kk) = count; % 1-based
             cell_connections(count,1) = 8;
             cell_connections(count,2) = vert_id(ii  , jj  , kk  );
             cell_connections(count,3) = vert_id(ii+1, jj  , kk  );
@@ -55,10 +55,10 @@ for jj = 1 : ny
         count = count + 1;
         top_cell_id(count,1) = cell_id(ii,jj,kk);
         top_sideset(count,1) = 4;
-        top_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 6);
-        top_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 7);
-        top_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 8);
-        top_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 9);
+        top_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 6);
+        top_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 7);
+        top_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 8);
+        top_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 9);
     end
 end
 
@@ -70,10 +70,10 @@ for jj = 1 : ny
         count = count + 1;
         bot_cell_id(count,1) = cell_id(ii,jj,kk);
         bot_sideset(count,1) = 4;
-        bot_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 2);
-        bot_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 5);
-        bot_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 4);
-        bot_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 3);
+        bot_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 2);
+        bot_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 5);
+        bot_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 4);
+        bot_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 3);
     end
 end
 
@@ -85,10 +85,10 @@ for kk = 1 : nz
         count = count + 1;
         west_cell_id(count,1) = cell_id(ii,jj,kk);
         west_sideset(count,1) = 4;
-        west_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 5);
-        west_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 2);
-        west_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 6);
-        west_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 9);
+        west_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 5);
+        west_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 2);
+        west_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 6);
+        west_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 9);
     end
 end
 
@@ -100,10 +100,10 @@ for kk = 1 : nz
         count = count + 1;
         east_cell_id(count,1) = cell_id(ii,jj,kk);
         east_sideset(count,1) = 4;
-        east_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 3);
-        east_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 4);
-        east_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 8);
-        east_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 7);
+        east_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 3);
+        east_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 4);
+        east_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 8);
+        east_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 7);
     end
 end
 
@@ -115,10 +115,10 @@ for kk = 1 : nz
         count = count + 1;
         south_cell_id(count,1) = cell_id(ii,jj,kk);
         south_sideset(count,1) = 4;
-        south_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 2);
-        south_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 3);
-        south_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 7);
-        south_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 6);
+        south_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 2);
+        south_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 3);
+        south_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 7);
+        south_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 6);
     end
 end
 
@@ -130,10 +130,10 @@ for kk = 1 : nz
         count = count + 1;
         north_cell_id(count,1) = cell_id(ii,jj,kk);
         north_sideset(count,1) = 4;
-        north_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) + 1, 4);
-        north_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) + 1, 5);
-        north_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) + 1, 9);
-        north_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) + 1, 8);
+        north_sideset(count,2) = cell_connections( cell_id(ii,jj,kk) , 4);
+        north_sideset(count,3) = cell_connections( cell_id(ii,jj,kk) , 5);
+        north_sideset(count,4) = cell_connections( cell_id(ii,jj,kk) , 9);
+        north_sideset(count,5) = cell_connections( cell_id(ii,jj,kk) , 8);
     end
 end
 
@@ -217,167 +217,173 @@ fclose(fid);
 
 % 2) Write regions:
 %
-% 2.1) Bottom
-fid = fopen('Bottom.dat','w');
-for ii = 1 : length(bot_cell_id)
-    fprintf(fid,'%d\n',bot_cell_id(ii));
-end
-fclose(fid)
-
-fid = fopen('Bottom_faceid.dat','w');
-for ii = 1 : size(bot_faceid,1)
-    fprintf(fid,'%d %d\n',bot_faceid(ii,1), bot_faceid(ii,2));
-end
-fclose(fid)
-
-fid = fopen('Bottom_sidesets.dat','w');
-for ii = 1 : size(bot_sideset,1)
-    for jj = 1 : size(bot_sideset,2)
-        fprintf(fid,'%d ',bot_sideset(ii,jj));
-    end
-    fprintf(fid,'\n');
-end
-fclose(fid)
-
-% 2.2) Top
-fid = fopen('Top.dat','w');
-for ii = 1 : length(top_cell_id)
-    fprintf(fid,'%d\n',top_cell_id(ii));
-end
-fclose(fid)
-
-fid = fopen('Top_faceid.dat','w');
-for ii = 1 : size(top_faceid,1)
-    fprintf(fid,'%d %d\n',top_faceid(ii,1), top_faceid(ii,2));
-end
-fclose(fid)
-
-fid = fopen('Top_sidesets.dat','w');
-for ii = 1 : size(top_sideset,1)
-    for jj = 1 : size(top_sideset,2)
-        fprintf(fid,'%d ',top_sideset(ii,jj));
-    end
-    fprintf(fid,'\n');
-end
-fclose(fid)
-
-% 2.3) South
-fid = fopen('South.dat','w');
-for ii = 1 : length(south_cell_id)
-    fprintf(fid,'%d\n',south_cell_id(ii));
-end
-fclose(fid)
-
-fid = fopen('South_faceid.dat','w');
-for ii = 1 : size(south_faceid,1)
-    fprintf(fid,'%d %d\n',south_faceid(ii,1), south_faceid(ii,2));
-end
-fclose(fid)
-
-fid = fopen('South_sidesets.dat','w');
-for ii = 1 : size(south_sideset,1)
-    for jj = 1 : size(south_sideset,2)
-        fprintf(fid,'%d ',south_sideset(ii,jj));
-    end
-    fprintf(fid,'\n');
-end
-fclose(fid)
-
-% 2.4) North
-fid = fopen('North.dat','w');
-for ii = 1 : length(north_cell_id)
-    fprintf(fid,'%d\n',north_cell_id(ii));
-end
-fclose(fid)
-
-fid = fopen('North_faceid.dat','w');
-for ii = 1 : size(north_faceid,1)
-    fprintf(fid,'%d %d\n',north_faceid(ii,1), north_faceid(ii,2));
-end
-fclose(fid)
-
-fid = fopen('North_sidesets.dat','w');
-for ii = 1 : size(north_sideset,1)
-    for jj = 1 : size(north_sideset,2)
-        fprintf(fid,'%d ',north_sideset(ii,jj));
-    end
-    fprintf(fid,'\n');
-end
-fclose(fid)
-
-% 2.5) West
-fid = fopen('West.dat','w');
-for ii = 1 : length(west_cell_id)
-    fprintf(fid,'%d\n',west_cell_id(ii));
-end
-fclose(fid)
-
-fid = fopen('West_faceid.dat','w');
-for ii = 1 : size(west_faceid,1)
-    fprintf(fid,'%d %d\n',west_faceid(ii,1), west_faceid(ii,2));
-end
-fclose(fid)
-
-fid = fopen('West_sidesets.dat','w');
-for ii = 1 : size(west_sideset,1)
-    for jj = 1 : size(west_sideset,2)
-        fprintf(fid,'%d ',west_sideset(ii,jj));
-    end
-    fprintf(fid,'\n');
-end
-fclose(fid)
-
-% 2.6) East
-fid = fopen('East.dat','w');
-for ii = 1 : length(east_cell_id)
-    fprintf(fid,'%d\n',east_cell_id(ii));
-end
-fclose(fid)
-
-fid = fopen('East_faceid.dat','w');
-for ii = 1 : size(east_faceid,1)
-    fprintf(fid,'%d %d\n',east_faceid(ii,1), east_faceid(ii,2));
-end
-fclose(fid)
-
-fid = fopen('East_sidesets.dat','w');
-for ii = 1 : size(east_sideset,1)
-    for jj = 1 : size(east_sideset,2)
-        fprintf(fid,'%d ',east_sideset(ii,jj));
-    end
-    fprintf(fid,'\n');
-end
-fclose(fid)
-
-% 2.7) All
-fid = fopen('All.dat','w');
-for ii = 1 : length(all)
-    fprintf(fid,'%d\n',all(ii))
-end
-fclose(fid);
+% % % 2.1) Bottom
+% % fid = fopen('Bottom.dat','w');
+% % for ii = 1 : length(bot_cell_id)
+% %     fprintf(fid,'%d\n',bot_cell_id(ii));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('Bottom_faceid.dat','w');
+% % for ii = 1 : size(bot_faceid,1)
+% %     fprintf(fid,'%d %d\n',bot_faceid(ii,1), bot_faceid(ii,2));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('Bottom_sidesets.dat','w');
+% % for ii = 1 : size(bot_sideset,1)
+% %     for jj = 1 : size(bot_sideset,2)
+% %         fprintf(fid,'%d ',bot_sideset(ii,jj));
+% %     end
+% %     fprintf(fid,'\n');
+% % end
+% % fclose(fid)
+% % 
+% % % 2.2) Top
+% % fid = fopen('Top.dat','w');
+% % for ii = 1 : length(top_cell_id)
+% %     fprintf(fid,'%d\n',top_cell_id(ii));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('Top_faceid.dat','w');
+% % for ii = 1 : size(top_faceid,1)
+% %     fprintf(fid,'%d %d\n',top_faceid(ii,1), top_faceid(ii,2));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('Top_sidesets.dat','w');
+% % for ii = 1 : size(top_sideset,1)
+% %     for jj = 1 : size(top_sideset,2)
+% %         fprintf(fid,'%d ',top_sideset(ii,jj));
+% %     end
+% %     fprintf(fid,'\n');
+% % end
+% % fclose(fid)
+% % 
+% % % 2.3) South
+% % fid = fopen('South.dat','w');
+% % for ii = 1 : length(south_cell_id)
+% %     fprintf(fid,'%d\n',south_cell_id(ii));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('South_faceid.dat','w');
+% % for ii = 1 : size(south_faceid,1)
+% %     fprintf(fid,'%d %d\n',south_faceid(ii,1), south_faceid(ii,2));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('South_sidesets.dat','w');
+% % for ii = 1 : size(south_sideset,1)
+% %     for jj = 1 : size(south_sideset,2)
+% %         fprintf(fid,'%d ',south_sideset(ii,jj));
+% %     end
+% %     fprintf(fid,'\n');
+% % end
+% % fclose(fid)
+% % 
+% % % 2.4) North
+% % fid = fopen('North.dat','w');
+% % for ii = 1 : length(north_cell_id)
+% %     fprintf(fid,'%d\n',north_cell_id(ii));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('North_faceid.dat','w');
+% % for ii = 1 : size(north_faceid,1)
+% %     fprintf(fid,'%d %d\n',north_faceid(ii,1), north_faceid(ii,2));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('North_sidesets.dat','w');
+% % for ii = 1 : size(north_sideset,1)
+% %     for jj = 1 : size(north_sideset,2)
+% %         fprintf(fid,'%d ',north_sideset(ii,jj));
+% %     end
+% %     fprintf(fid,'\n');
+% % end
+% % fclose(fid)
+% % 
+% % % 2.5) West
+% % fid = fopen('West.dat','w');
+% % for ii = 1 : length(west_cell_id)
+% %     fprintf(fid,'%d\n',west_cell_id(ii));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('West_faceid.dat','w');
+% % for ii = 1 : size(west_faceid,1)
+% %     fprintf(fid,'%d %d\n',west_faceid(ii,1), west_faceid(ii,2));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('West_sidesets.dat','w');
+% % for ii = 1 : size(west_sideset,1)
+% %     for jj = 1 : size(west_sideset,2)
+% %         fprintf(fid,'%d ',west_sideset(ii,jj));
+% %     end
+% %     fprintf(fid,'\n');
+% % end
+% % fclose(fid)
+% % 
+% % % 2.6) East
+% % fid = fopen('East.dat','w');
+% % for ii = 1 : length(east_cell_id)
+% %     fprintf(fid,'%d\n',east_cell_id(ii));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('East_faceid.dat','w');
+% % for ii = 1 : size(east_faceid,1)
+% %     fprintf(fid,'%d %d\n',east_faceid(ii,1), east_faceid(ii,2));
+% % end
+% % fclose(fid)
+% % 
+% % fid = fopen('East_sidesets.dat','w');
+% % for ii = 1 : size(east_sideset,1)
+% %     for jj = 1 : size(east_sideset,2)
+% %         fprintf(fid,'%d ',east_sideset(ii,jj));
+% %     end
+% %     fprintf(fid,'\n');
+% % end
+% % fclose(fid)
+% % 
+% % % 2.7) All
+% % fid = fopen('All.dat','w');
+% % for ii = 1 : length(all)
+% %     fprintf(fid,'%d\n',all(ii))
+% % end
+% % fclose(fid);
 
 %
 % Write HDF5 file
 %
 hdf5write('usg_5x4x3.h5', '/Domain/Cells', tmp', ...
     '/Domain/Vertices',vert_1d', ...
-    '/Region/Bottom',uint64(bot_cell_id), ...
-    '/Region/Top',uint64(top_cell_id), ...
-    '/Region/South',uint64(south_cell_id), ...
-    '/Region/North',uint64(north_cell_id), ...
-    '/Region/West',uint64(west_cell_id), ...
-    '/Region/East',uint64(east_cell_id), ...
-    '/Region/Bottom_sidesets',uint64(bot_sideset_1'), ...
-    '/Region/Top_sidesets',uint64(top_sideset_1'), ...
-    '/Region/South_sidesets',uint64(south_sideset_1'), ...
-    '/Region/North_sidesets',uint64(north_sideset_1'), ...
-    '/Region/West_sidesets',uint64(west_sideset_1'), ...
-    '/Region/East_sidesets',uint64(east_sideset_1'), ...
-    '/Region/Bottom_faceid',uint64(bot_faceid'), ...
-    '/Region/Top_faceid',uint64(top_faceid'), ...
-    '/Region/South_faceid',uint64(south_faceid'), ...
-    '/Region/North_faceid',uint64(north_faceid'), ...
-    '/Region/West_faceid',uint64(west_faceid'), ...
-    '/Region/East_faceid',uint64(east_faceid'), ...
-    '/Region/All',uint64(all)');
+    '/Regions/Bottom',uint64(bot_cell_id), ...
+    '/Regions/Top',uint64(top_cell_id), ...
+    '/Regions/South/Cell Ids',uint64(south_cell_id), ...
+    '/Regions/North/Cell Ids',uint64(north_cell_id), ...
+    '/Regions/West/Cell Ids',uint64(west_cell_id), ...
+    '/Regions/East/Cell Ids',uint64(east_cell_id), ...
+    '/Regions/Bottom_sidesets/Vertex Ids',uint64(bot_sideset_1'), ...
+    '/Regions/Top_sidesets/Vertex Ids',uint64(top_sideset_1'), ...
+    '/Regions/South_sidesets/Vertex Ids',uint64(south_sideset_1'), ...
+    '/Regions/North_sidesets/Vertex Ids',uint64(north_sideset_1'), ...
+    '/Regions/West_sidesets/Vertex Ids',uint64(west_sideset_1'), ...
+    '/Regions/East_sidesets/Vertex Ids',uint64(east_sideset_1'), ...
+    '/Regions/Bottom_faceid/Cell Ids',uint64(bot_cell_id'), ...
+    '/Regions/Bottom_faceid/Face Ids',uint64(bot_faceid'), ...
+    '/Regions/Top_faceid/Cell Ids',uint64(top_cell_id'), ...
+    '/Regions/Top_faceid/Face Ids',uint64(top_faceid(:,2)'), ...
+    '/Regions/South_faceid/Cell Ids',uint64(south_cell_id'), ...
+    '/Regions/South_faceid/Face Ids',uint64(south_faceid(:,2)'), ...
+    '/Regions/North_faceid/Cell Ids',uint64(north_cell_id'), ...
+    '/Regions/North_faceid/Face Ids',uint64(north_faceid(:,2)'), ...
+    '/Regions/West_faceid/Cell Ids',uint64(west_cell_id'), ...
+    '/Regions/West_faceid/Face Ids',uint64(west_faceid(:,2)'), ...
+    '/Regions/East_faceid/Cell Ids',uint64(east_cell_id'), ...
+    '/Regions/East_faceid/Face Ids',uint64(east_faceid(:,2)'), ...
+    '/Regions/All/Cell Ids',uint64(all)');
 

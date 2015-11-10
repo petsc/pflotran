@@ -40,7 +40,7 @@ subroutine OutputEKGInit(option,num_steps)
 
   filename = trim(option%global_prefix) // trim(option%group_prefix) // '.ekg'
   if (OptionPrintToFile(option)) then
-    inquire(IUNIT_EKG,exist=lexists)
+    inquire(file=filename,exist=lexists)
     if (num_steps == 0 .or. .not. lexists) then
       open(unit=IUNIT_EKG,file=filename,action="write",status="replace")
     else
