@@ -1888,6 +1888,8 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                   num_connections,TH_PRESSURE_DOF,option)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
         call PatchScaleSourceSink(patch,coupler,option)
+      case(MASS_RATE_SS,VOLUMETRIC_RATE_SS)
+      ! do nothing here
       case default
         write(string,*) flow_condition%rate%itype
         string = GetSubConditionName(flow_condition%rate%itype)
