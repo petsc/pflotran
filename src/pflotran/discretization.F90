@@ -665,15 +665,8 @@ subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
       call StructGridCreateDM(discretization%grid%structured_grid, &
                               dm_ptr%dm,ndof,stencil_width,stencil_type,option)
     case(UNSTRUCTURED_GRID)
-      call UGridCreateUGDM(discretization%grid%unstructured_grid, &
-                           dm_ptr%ugdm,ndof,option)
-      call DMShellCreate(option%mycomm,dm_ptr%dm,ierr);CHKERRQ(ierr)
-      call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm,dm_ptr%ugdm%scatter_gtol, &
-                                             ierr);CHKERRQ(ierr)
-      call DMShellSetLocalToGlobalVecScatter(dm_ptr%dm,dm_ptr%ugdm%scatter_ltog, &
-                                             ierr);CHKERRQ(ierr)
-      call DMShellSetLocalToLocalVecScatter(dm_ptr%dm,dm_ptr%ugdm%scatter_ltol, &
-                                            ierr);CHKERRQ(ierr)
+      call UGridCreateUGDMShell(discretization%grid%unstructured_grid, &
+                           dm_ptr%dm,dm_ptr%ugdm,ndof,option)
   end select
 
 end subroutine DiscretizationCreateDM
@@ -704,21 +697,22 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
   
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
-  select case(discretization%itype)
-    case(STRUCTURED_GRID)
-      select case (vector_type)
-        case(GLOBAL)
-          call DMCreateGlobalVector(dm_ptr%dm,vector,ierr);CHKERRQ(ierr)
-        case(LOCAL)
-          call DMCreateLocalVector(dm_ptr%dm,vector,ierr);CHKERRQ(ierr)
-        case(NATURAL)
+  select case (vector_type)
+    case(GLOBAL)
+      call DMCreateGlobalVector(dm_ptr%dm,vector,ierr);CHKERRQ(ierr)
+    case(LOCAL)
+      call DMCreateLocalVector(dm_ptr%dm,vector,ierr);CHKERRQ(ierr)
+    case(NATURAL)
+      select case(discretization%itype)
+        case(STRUCTURED_GRID)
           call DMDACreateNaturalVector(dm_ptr%dm,vector,ierr);CHKERRQ(ierr)
-      end select
-    case(UNSTRUCTURED_GRID)
-      call UGridDMCreateVector(discretization%grid%unstructured_grid, &
-                               dm_ptr%ugdm,vector, &
-                               vector_type,option)
+        case(UNSTRUCTURED_GRID)
+          call UGridDMCreateVector(discretization%grid%unstructured_grid, &
+                                   dm_ptr%ugdm,vector, &
+                                   vector_type,option)
+        end select
   end select
+
   call VecSet(vector,0.d0,ierr);CHKERRQ(ierr)
   
 end subroutine DiscretizationCreateVector
