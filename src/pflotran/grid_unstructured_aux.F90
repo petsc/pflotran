@@ -165,6 +165,7 @@ module Grid_Unstructured_Aux_module
             UGridDMCreateVector, &
             UGridDestroy, &
             UGridCreateUGDM, &
+            UGridCreateUGDMShell, &
             UGridDMDestroy, &
             UGridPartition, &
             UGridNaturalToPetsc, &
@@ -717,6 +718,64 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ugdm%ao_natural_to_petsc = unstructured_grid%ao_natural_to_petsc
 
 end subroutine UGridCreateUGDM
+
+! ************************************************************************** !
+
+subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option)
+
+  ! 
+  ! Sets up PETSc DM Shell for unstructured grid
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 11/10/15
+  ! 
+
+  use Option_module
+  use Utility_module, only: reallocateIntArray
+  
+  implicit none
+
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petscdmda.h"
+
+  type(unstructured_grid_type) :: unstructured_grid
+  DM :: da
+  type(ugdm_type), pointer :: ugdm
+  PetscInt :: ndof
+  type(option_type) :: option
+
+  Vec :: global_vec, local_vec
+  !Mat :: jac
+  PetscErrorCode :: ierr
+
+  ! Create UGDM
+  call UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
+
+  ! Create the DMShell
+  call DMShellCreate(option%mycomm,da,ierr);CHKERRQ(ierr)
+
+  ! Set VecScatters
+  call DMShellSetGlobalToLocalVecScatter(da,ugdm%scatter_gtol,ierr);CHKERRQ(ierr)
+  call DMShellSetLocalToGlobalVecScatter(da,ugdm%scatter_ltog,ierr);CHKERRQ(ierr)
+  call DMShellSetLocalToLocalVecScatter(da,ugdm%scatter_ltol,ierr);CHKERRQ(ierr)
+
+  ! Create vectors
+  call UGridDMCreateVector(unstructured_grid,ugdm,global_vec,GLOBAL,option)
+  call UGridDMCreateVector(unstructured_grid,ugdm,local_vec,LOCAL,option)
+
+  ! Set vectors
+  call DMShellSetGlobalVector(da,global_vec,ierr);CHKERRQ(ierr)
+  call DMShellSetLocalVector(da,local_vec,ierr);CHKERRQ(ierr)
+
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(local_vec,ierr);CHKERRQ(ierr)
+
+  ! GB: Can mat_type passed as an argument to this subroutine?
+  !call UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,jac,option)
+  !call DMShellSetMatrix(J,ierr);CHKERRQ(ierr)
+  !call MatDestroy(J,ierr);CHKERRQ(ierr)
+
+end subroutine UGridCreateUGDMShell
 
 ! ************************************************************************** !
 

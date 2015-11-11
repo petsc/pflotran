@@ -3519,7 +3519,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: qsrc1, csrc1, enth_src_h2o, enth_src_co2 , esrc1
 
   PetscReal :: upweight
-  PetscReal :: Res(realization%option%nflowdof), v_darcy
+  PetscReal :: Res(realization%option%nflowdof)
   PetscViewer :: viewer
 
   type(grid_type), pointer :: grid
@@ -3537,6 +3537,14 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   type(connection_set_type), pointer :: cur_connection_set  
   type(sec_heat_type), pointer :: TH_sec_heat_vars(:)
   character(len=MAXSTRINGLENGTH) :: string
+  PetscReal, pointer :: mmsrc(:)
+  PetscReal :: well_status
+  PetscReal :: well_factor
+  PetscReal :: pressure_bh
+  PetscReal :: pressure_max
+  PetscReal :: pressure_min
+  PetscReal :: well_inj_water
+  PetscReal :: Dq, dphi, v_darcy, ukvr
 
   PetscInt :: iconn, idof, istart, iend
   PetscInt :: sum_connection
@@ -3645,7 +3653,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    if (source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
+    if (source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS .and. &
+        source_sink%flow_condition%itype(1)/=WELL_SS) then
       qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
     endif
 
@@ -3670,8 +3679,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
           Res(jh2o) = qsrc1
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           ! qsrc1 = m^3/sec
-          qsrc1 = qsrc1*global_auxvars(ghosted_id)%den(1) ! den = kmol/m^3
-          Res(jh2o) = qsrc1	
+          qsrc1 = qsrc1*global_auxvars(ghosted_id)%den(1) ! den = kmol/m^3 
+          Res(jh2o) = qsrc1
         case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
           ! qsrc1 = m^3/sec
           qsrc1 = qsrc1*global_auxvars(ghosted_id)%den(1)* & ! den = kmol/m^3
@@ -3680,6 +3689,40 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
         case(HET_MASS_RATE_SS)
           qsrc1 = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O
           Res(jh2o) = qsrc1
+        case(WELL_SS) ! production well, Karra 11/10/2015
+          ! if node pessure is lower than the given extraction pressure, shut it down
+          !  well parameter explanation
+          !   1. well status. 1 injection; -1 production; 0 shut in!
+          !   2. well factor [m^3],  the effective permeability [m^2/s]
+          !   3. bottomhole pressure:  [Pa]
+          !   4. max pressure: [Pa]
+          !   5. min pressure: [Pa]   
+          mmsrc => source_sink%flow_condition%well%dataset%rarray
+
+          well_status = mmsrc(1)
+          well_factor = mmsrc(2)
+          pressure_bh = mmsrc(3)
+          pressure_max = mmsrc(4)
+          pressure_min = mmsrc(5)
+    
+          ! production well (well status = -1)
+          if (dabs(well_status + 1.d0) < 1.d-1) then
+            if (global_auxvars(ghosted_id)%pres(1) > pressure_min) then
+              Dq = well_factor 
+              dphi = global_auxvars(ghosted_id)%pres(1) - pressure_bh
+              if (dphi >= 0.d0) then ! outflow only
+                ukvr = auxvars(ghosted_id)%kvr
+                if (ukvr < 1.d-20) ukvr = 0.d0
+                v_darcy = 0.d0
+                if (ukvr*Dq > floweps) then
+                  v_darcy = Dq * ukvr * dphi
+                  ! store volumetric rate for ss_fluid_fluxes()
+                  qsrc1 = -1.d0*v_darcy*global_auxvars(ghosted_id)%den(1)
+                endif
+              endif
+            endif
+          endif 
+
         case default
           write(string,*) source_sink%flow_condition%rate%itype
           option%io_buffer='TH mode source_sink%flow_condition%rate%itype = ' // &
