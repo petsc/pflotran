@@ -665,6 +665,8 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = MASS_RATE_SS
             case('energy_rate')
               sub_condition_ptr%itype = ENERGY_RATE_SS
+            case('scaled_energy_rate')
+              sub_condition_ptr%itype = SCALED_ENERGY_RATE_SS
             case('heterogeneous_energy_rate')
               sub_condition_ptr%itype = HET_ENERGY_RATE_SS
             case('scaled_mass_rate')
@@ -2194,6 +2196,8 @@ function GetSubConditionName(subcon_itype)
       string = 'heterogeneous dirichlet'
     case(ENERGY_RATE_SS)
       string = 'energy rate'
+    case(SCALED_ENERGY_RATE_SS)
+      string = 'scaled energy rate'
     case(HET_ENERGY_RATE_SS)
       string = 'heterogeneous energy rate'
     case(HET_SURF_SEEPAGE_BC)

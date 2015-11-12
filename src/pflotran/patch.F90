@@ -1774,6 +1774,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   character(len=MAXSTRINGLENGTH) :: string, string2
   PetscErrorCode :: ierr
   PetscBool :: apply_temp_cond
+  PetscInt :: rate_scale_type
   
   PetscInt :: idof, num_connections,sum_connection
   PetscInt :: iconn, local_id, ghosted_id
@@ -1880,6 +1881,10 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         call printErrMsg(option)
     end select
   endif
+  
+  !geh: we set this flag to ensure that we are not scaling mass and energy
+  !     differently
+  rate_scale_type = 0
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case (HET_MASS_RATE_SS,HET_VOL_RATE_SS)
@@ -1888,6 +1893,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                   num_connections,TH_PRESSURE_DOF,option)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
         call PatchScaleSourceSink(patch,coupler,option)
+        rate_scale_type = flow_condition%rate%itype
       case(MASS_RATE_SS,VOLUMETRIC_RATE_SS)
       ! do nothing here
       case default
@@ -1901,8 +1907,21 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   if (associated(flow_condition%energy_rate)) then
     select case (flow_condition%energy_rate%itype)
       case (ENERGY_RATE_SS)
+        !geh: this is pointless as %dataset%rarray(1) is reference in TH, 
+        !     not the flow_aux_real_var!
         coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
                   flow_condition%energy_rate%dataset%rarray(1)
+      case (SCALED_ENERGY_RATE_SS)
+        if (rate_scale_type == 0) then
+          call PatchScaleSourceSink(patch,coupler,option)
+        else if (rate_scale_type == flow_condition%energy_rate%itype) then
+          !geh: do nothing as it is taken care of later.
+        else
+          option%io_buffer = 'MASS and ENERGY scaling mismatch in ' // &
+            'FLOW_CONDITION "' // trim(flow_condition%name) // '".'
+          call printErrMsg(option)
+        endif
+        !geh: do nothing as the
       case (HET_ENERGY_RATE_SS)
         call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                 flow_condition%energy_rate%dataset, &
@@ -2279,12 +2298,10 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
       case(RICHARDS_MODE,G_MODE,TH_MODE)
         source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
           vec_ptr(local_id)
-      case(MPH_MODE)
-      case(IMS_MODE)
-      case(MIS_MODE)
-      case(FLASH2_MODE)
+      case(MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
+        option%io_buffer = 'PatchScaleSourceSink not set up for flow mode'
+        call printErrMsg(option)
     end select 
-
   enddo
   call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
 

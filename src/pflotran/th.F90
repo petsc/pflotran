@@ -752,7 +752,7 @@ subroutine THUpdateAuxVarsPatch(realization)
           tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
         case (DIRICHLET_BC)
           tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
-        case (ENERGY_RATE_SS,HET_ENERGY_RATE_SS)
+        case (ENERGY_RATE_SS,SCALED_ENERGY_RATE_SS,HET_ENERGY_RATE_SS)
           tsrc1 = xx_loc_p((ghosted_id-1)*option%nflowdof+2)
         case default
           option%io_buffer='Unsupported temperature flow condtion for ' // &
@@ -3733,6 +3733,9 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
         case (ENERGY_RATE_SS)
           esrc1 = source_sink%flow_condition%energy_rate%dataset%rarray(1)
+        case (SCALED_ENERGY_RATE_SS)
+          esrc1 = source_sink%flow_condition%energy_rate%dataset%rarray(1) * &
+                  source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
         case (HET_ENERGY_RATE_SS)
           esrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
       end select
