@@ -147,7 +147,9 @@ def clean_provenance(provenance, max_string_length):
     for p in provenance:
         line = provenance[p]
         line = line.strip()
-        line = line.replace('"', '""')
+#fix suggested by Kris Kuhlman 11-11-15
+#        line = line.replace('"', '""')
+	info = info.replace('"', "'")
         provenance[p] = fmt_str.format(line)
 
 
