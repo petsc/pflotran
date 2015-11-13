@@ -3755,6 +3755,15 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
           global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - &
           Res(1:2)
       endif
+      if (associated(patch%ss_flow_vol_fluxes)) then
+        ! fluid flux [m^3/sec] = qsrc_mol [kmol/sec] / den [kmol/m^3]
+        patch%ss_flow_vol_fluxes(1,sum_connection) = qsrc1 / &
+                                           global_auxvars(ghosted_id)%den(1)
+      endif
+      if (associated(patch%ss_flow_fluxes)) then
+        patch%ss_flow_fluxes(1,sum_connection) = qsrc1
+      endif
+
 
     enddo
     source_sink => source_sink%next
