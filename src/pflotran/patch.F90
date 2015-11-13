@@ -1420,7 +1420,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   if (associated(general%rate)) then
     select case(general%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler,general%rate%isubtype,option)
     end select
   endif
 
@@ -1521,7 +1521,8 @@ subroutine PatchUpdateCouplerAuxVarsMPH(patch,coupler,option)
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler,flow_condition%rate%isubtype, &
+                                  option)
     end select
   endif
   if (associated(flow_condition%saturation)) then
@@ -1622,7 +1623,8 @@ subroutine PatchUpdateCouplerAuxVarsIMS(patch,coupler,option)
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler,flow_condition%rate%isubtype, &
+                                  option)
     end select
   endif
   if (associated(flow_condition%saturation)) then
@@ -1723,7 +1725,8 @@ subroutine PatchUpdateCouplerAuxVarsFLASH2(patch,coupler,option)
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler,flow_condition%rate%isubtype, &
+                                  option)
     end select
   endif
   if (associated(flow_condition%saturation)) then
@@ -1892,8 +1895,9 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                   flow_condition%rate%dataset, &
                   num_connections,TH_PRESSURE_DOF,option)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
-        rate_scale_type = flow_condition%rate%itype
+        call PatchScaleSourceSink(patch,coupler,flow_condition%rate%isubtype, &
+                                  option)
+        rate_scale_type = flow_condition%rate%isubtype
       case(MASS_RATE_SS,VOLUMETRIC_RATE_SS)
       ! do nothing here
       case default
@@ -1913,8 +1917,9 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                   flow_condition%energy_rate%dataset%rarray(1)
       case (SCALED_ENERGY_RATE_SS)
         if (rate_scale_type == 0) then
-          call PatchScaleSourceSink(patch,coupler,option)
-        else if (rate_scale_type == flow_condition%energy_rate%itype) then
+          call PatchScaleSourceSink(patch,coupler, &
+                                    flow_condition%energy_rate%isubtype,option)
+        else if (rate_scale_type == flow_condition%energy_rate%isubtype) then
           !geh: do nothing as it is taken care of later.
         else
           option%io_buffer = 'MASS and ENERGY scaling mismatch in ' // &
@@ -2014,7 +2019,8 @@ subroutine PatchUpdateCouplerAuxVarsMIS(patch,coupler,option)
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler, &
+                                  flow_condition%rate%isubtype,option)
     end select
   endif  
 
@@ -2097,7 +2103,8 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler, &
+                                  flow_condition%rate%isubtype,option)
       case (HET_VOL_RATE_SS,HET_MASS_RATE_SS)
         call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                 flow_condition%rate%dataset, &
@@ -2160,7 +2167,7 @@ end subroutine PatchUpdateCouplerFromDataset
 
 ! ************************************************************************** !
 
-subroutine PatchScaleSourceSink(patch,source_sink,option)
+subroutine PatchScaleSourceSink(patch,source_sink,iscale_type,option)
   ! 
   ! Scales select source/sinks based on perms*volume
   ! 
@@ -2185,6 +2192,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   
   type(patch_type) :: patch
   type(coupler_type) :: source_sink
+  PetscInt :: iscale_type
   type(option_type) :: option
   
   PetscErrorCode :: ierr
@@ -2197,7 +2205,6 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   PetscInt :: local_id
   PetscInt :: ghosted_id, neighbor_ghosted_id
   PetscInt :: iconn
-  PetscInt :: iscale_type
   PetscReal :: scale, sum
   PetscInt :: icount, x_count, y_count, z_count
   PetscInt, parameter :: x_width = 1, y_width = 1, z_width = 0
@@ -2215,13 +2222,6 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
 
   cur_connection_set => source_sink%connection_set
 
-  select case(option%iflowmode)
-    case(G_MODE)
-      iscale_type = source_sink%flow_condition%general%rate%isubtype
-    case default
-      iscale_type = source_sink%flow_condition%rate%isubtype
-  end select
-  
   select case(iscale_type)
     case(SCALE_BY_VOLUME)
       do iconn = 1, cur_connection_set%num_connections
@@ -2284,10 +2284,19 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
         enddo
         vec_ptr(local_id) = vec_ptr(local_id) + sum
       enddo
+    case(0)
+      option%io_buffer = 'Unknown scaling type in PatchScaleSourceSink ' // &
+        'for FLOW_CONDITION "' // trim(source_sink%flow_condition%name) // '".'
+      call printErrMsg(option)
   end select
 
   call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
   call VecNorm(field%work,NORM_1,scale,ierr);CHKERRQ(ierr)
+  if (scale < 1.d-40) then
+    option%io_buffer = 'Zero infinity norm in PatchScaleSourceSink for ' // &
+      'FLOW_CONDITION "' // trim(source_sink%flow_condition%name) // '".'
+    call printErrMsg(option)
+  endif
   scale = 1.d0/scale
   call VecScale(field%work,scale,ierr);CHKERRQ(ierr)
 

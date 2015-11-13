@@ -665,12 +665,20 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = MASS_RATE_SS
             case('energy_rate')
               sub_condition_ptr%itype = ENERGY_RATE_SS
-            case('scaled_energy_rate')
-              sub_condition_ptr%itype = SCALED_ENERGY_RATE_SS
             case('heterogeneous_energy_rate')
               sub_condition_ptr%itype = HET_ENERGY_RATE_SS
-            case('scaled_mass_rate')
-              sub_condition_ptr%itype = SCALED_MASS_RATE_SS
+            case('scaled_mass_rate','scaled_volumetric_rate', &
+                 'scaled_energy_rate')
+              select case(word)
+                case('scaled_mass_rate')
+                  sub_condition_ptr%itype = SCALED_MASS_RATE_SS
+                case('scaled_volumetric_rate')
+                  sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
+                case('scaled_energy_rate')
+                  sub_condition_ptr%itype = SCALED_ENERGY_RATE_SS
+              end select
+              ! store name of type for error messaging below.
+              string = word
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -684,14 +692,14 @@ subroutine FlowConditionRead(condition,input,option)
                     sub_condition_ptr%isubtype = SCALE_BY_PERM
                   case default
                     string = 'flow condition "' // trim(condition%name) // &
-                      '" scaled_mass_rate type'
+                      '" ' // trim(string)
                     call InputKeywordUnrecognized(word,string,option)
                 end select
               else
                 option%io_buffer = 'Specify one of NEIGHBOR_PERM, ' // &
                   'VOLUME, PERM subtypes in '// &
                   'flow condition "' // trim(condition%name) // &
-                  '" scaled_mass_rate type'
+                  '" ' // trim(string)
                 call printErrMsg(option)              
                 endif
             case('hydrostatic')
@@ -706,31 +714,6 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = SEEPAGE_BC
             case('volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
-            case('scaled_volumetric_rate')
-              sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              if (input%ierr == 0) then
-                call StringToLower(word)
-                sub_condition_ptr%ctype = trim(sub_condition_ptr%ctype) // word
-                select case(word)
-                  case('neighbor_perm')
-                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
-                  case('volume')
-                    sub_condition_ptr%isubtype = SCALE_BY_VOLUME
-                  case('perm')
-                    sub_condition_ptr%isubtype = SCALE_BY_PERM
-                  case default
-                    string = 'flow condition "' // trim(condition%name) // &
-                      '" scaled_volumetric_rate type'
-                    call InputKeywordUnrecognized(word,string,option)
-                end select
-              else
-                option%io_buffer = 'Specify one of NEIGHBOR_PERM, ' // &
-                  'VOLUME, PERM subtypes in '// &
-                  'flow condition "' // trim(condition%name) // &
-                  '" scaled_volumetric_rate type'
-                call printErrMsg(option)              
-                endif
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
             case('unit_gradient')
