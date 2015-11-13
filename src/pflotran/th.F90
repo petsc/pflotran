@@ -3652,11 +3652,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   sum_connection = 0
   do 
     if (.not.associated(source_sink)) exit
-    
-    if (source_sink%flow_condition%rate%itype /= HET_MASS_RATE_SS .and. &
-        source_sink%flow_condition%itype(1) /= WELL_SS) then
-      qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
-    endif
 
     cur_connection_set => source_sink%connection_set
     
@@ -3667,28 +3662,27 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       istart = iend - option%nflowdof + 1
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
+       
+      if (source_sink%flow_condition%rate%itype /= HET_MASS_RATE_SS .and. &
+        source_sink%flow_condition%itype(1) /= WELL_SS) &
+        qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
       
       Res = 0.d0
       select case (source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
           qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-          Res(jh2o) = qsrc1
         case(SCALED_MASS_RATE_SS)
           qsrc1 = qsrc1 / FMWH2O * & 
             source_sink%flow_aux_real_var(ONE_INTEGER,iconn) ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-          Res(jh2o) = qsrc1
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           ! qsrc1 = m^3/sec
           qsrc1 = qsrc1*global_auxvars(ghosted_id)%den(1) ! den = kmol/m^3 
-          Res(jh2o) = qsrc1
         case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
           ! qsrc1 = m^3/sec
           qsrc1 = qsrc1*global_auxvars(ghosted_id)%den(1)* & ! den = kmol/m^3
             source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
-          Res(jh2o) = qsrc1
         case(HET_MASS_RATE_SS)
           qsrc1 = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O
-          Res(jh2o) = qsrc1
         case(WELL_SS) ! production well, Karra 11/10/2015
           ! if node pessure is lower than the given extraction pressure, shut it down
           !  well parameter explanation
@@ -3729,6 +3723,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
           trim(adjustl(string)) // ', not implemented.'
       end select
 
+      Res(TH_PRESSURE_DOF) = qsrc1
+
       esrc1 = 0.d0
       select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
         case (ENERGY_RATE_SS)
@@ -3736,24 +3732,26 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
         case (HET_ENERGY_RATE_SS)
           esrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
       end select
+      
       ! convert J/s --> MJ/s
-      Res(2) = esrc1*option%scale
+      Res(TH_TEMPERATURE_DOF) = esrc1*option%scale
 
       ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
-        Res(2) = Res(2) + qsrc1*auxvars_ss(sum_connection)%h
+        Res(TH_TEMPERATURE_DOF) = Res(TH_TEMPERATURE_DOF) + &
+          qsrc1*auxvars_ss(sum_connection)%h
       else
         ! extraction
-        Res(2) = Res(2) + qsrc1*auxvars(ghosted_id)%h
+        Res(TH_TEMPERATURE_DOF) = Res(TH_TEMPERATURE_DOF) + &
+          qsrc1*auxvars(ghosted_id)%h
       endif
 
-      r_p(istart:iend) = r_p(istart:iend) - Res(1:2)
+      r_p(istart:iend) = r_p(istart:iend) - Res
 
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
         global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) = &
-          global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - &
-          Res(1:2)
+          global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - Res
       endif
       if (associated(patch%ss_flow_vol_fluxes)) then
         ! fluid flux [m^3/sec] = qsrc_mol [kmol/sec] / den [kmol/m^3]
@@ -3938,6 +3936,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 
+  ! scale the residual by the volume
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
@@ -4225,11 +4224,6 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   sum_connection = 0
   do
     if (.not.associated(source_sink)) exit
- 
-       if (source_sink%flow_condition%rate%itype /= HET_MASS_RATE_SS .and. &
-        source_sink%flow_condition%itype(1) /= WELL_SS) then
-          qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
-      endif
 
     cur_connection_set => source_sink%connection_set
     
@@ -4240,6 +4234,10 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
       ghosted_id = grid%nL2G(local_id)
 
       if (patch%imat(ghosted_id) <= 0) cycle
+
+      if (source_sink%flow_condition%rate%itype /= HET_MASS_RATE_SS .and. &
+        source_sink%flow_condition%itype(1) /= WELL_SS) &
+        qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
       
       select case (source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
@@ -4278,6 +4276,9 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
         istart = ghosted_id*option%nflowdof
       endif
       
+      ! scale by the volume of the cell
+      Jsrc = Jsrc/material_auxvars(ghosted_id)%volume
+         
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jsrc, &
                                     ADD_VALUES,ierr);CHKERRQ(ierr)
 
@@ -4475,7 +4476,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
                               patch%saturation_function_array(icap_dn)%ptr,&
                               Diff_dn,Dk_dry_dn,Dk_ice_dn, &
                               Jdn)
-    Jdn = -Jdn
+      Jdn = -Jdn
   
       !  scale by the volume of the cell
       Jdn = Jdn/material_auxvars(ghosted_id)%volume
