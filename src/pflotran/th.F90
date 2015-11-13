@@ -752,7 +752,7 @@ subroutine THUpdateAuxVarsPatch(realization)
           tsrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
         case (DIRICHLET_BC)
           tsrc1 = source_sink%flow_condition%temperature%dataset%rarray(1)
-        case (ENERGY_RATE_SS,HET_ENERGY_RATE_SS)
+        case (ENERGY_RATE_SS,HET_ENERGY_RATE_SS,ZERO_GRADIENT_BC)
           tsrc1 = xx_loc_p((ghosted_id-1)*option%nflowdof+2)
         case default
           option%io_buffer='Unsupported temperature flow condtion for ' // &
@@ -3653,8 +3653,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    if (source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS .and. &
-        source_sink%flow_condition%itype(1)/=WELL_SS) then
+    if (source_sink%flow_condition%rate%itype /= HET_MASS_RATE_SS .and. &
+        source_sink%flow_condition%itype(1) /= WELL_SS) then
       qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
     endif
 
@@ -3737,19 +3737,14 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
           esrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
       end select
       ! convert J/s --> MJ/s
-!      r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - esrc1*option%scale
       Res(2) = esrc1*option%scale
 
       ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
-!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-        Res(2) = Res(2) - &
-              qsrc1*auxvars_ss(sum_connection)%h
+        Res(2) = Res(2) + qsrc1*auxvars_ss(sum_connection)%h
       else
         ! extraction
-!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - &
-        Res(2) = Res(2) - &
-              qsrc1*auxvars(ghosted_id)%h
+        Res(2) = Res(2) + qsrc1*auxvars(ghosted_id)%h
       endif
 
       r_p(istart:iend) = r_p(istart:iend) - Res(1:2)
@@ -4221,11 +4216,11 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   sum_connection = 0
   do
     if (.not.associated(source_sink)) exit
-    
-    if (source_sink%flow_condition%rate%itype/=HET_MASS_RATE_SS) then
-      qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
-      qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-    endif
+ 
+       if (source_sink%flow_condition%rate%itype /= HET_MASS_RATE_SS .and. &
+        source_sink%flow_condition%itype(1) /= WELL_SS) then
+          qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
+      endif
 
     cur_connection_set => source_sink%connection_set
     
@@ -4239,6 +4234,17 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
       
       select case (source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
+          qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+        case(SCALED_MASS_RATE_SS)
+          qsrc1 = qsrc1 / FMWH2O * & 
+            source_sink%flow_aux_real_var(ONE_INTEGER,iconn) ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+        case(VOLUMETRIC_RATE_SS)  ! assume local density for now
+          ! qsrc1 = m^3/sec
+          qsrc1 = qsrc1*global_auxvars(ghosted_id)%den(1) ! den = kmol/m^3 
+        case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
+          ! qsrc1 = m^3/sec
+          qsrc1 = qsrc1*global_auxvars(ghosted_id)%den(1)* & ! den = kmol/m^3
+                   source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
         case(HET_MASS_RATE_SS)
           qsrc1 = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)/FMWH2O
         case default
@@ -4248,7 +4254,6 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
       end select
 
       if (qsrc1 > 0.d0) then ! injection
-        !dresT_dp = -qsrc1*hw_dp
         dresT_dp = -qsrc1*auxvars_ss(sum_connection)%dh_dp
         ! dresT_dt = -qsrc1*hw_dt ! since tsrc1 is prescribed, there is no derivative
         istart = ghosted_id*option%nflowdof
