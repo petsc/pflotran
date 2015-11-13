@@ -162,6 +162,7 @@ subroutine THSetupPatch(realization)
   !Copy the values in the TH_parameter from the global realization 
   do i = 1, size(patch%material_property_array)
     material_id = patch%material_property_array(i)%ptr%internal_id
+    ! kg rock/m^3 rock * J/kg rock-K * 1.e-6 MJ/J = MJ/m^3-K
     patch%aux%TH%TH_parameter%dencpr(material_id) = &
       patch%material_property_array(i)%ptr%rock_density*option%scale* &
         patch%material_property_array(i)%ptr%specific_heat
@@ -410,7 +411,6 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
     ! mass = volume*saturation*density
 
@@ -651,7 +651,6 @@ subroutine THUpdateAuxVarsPatch(realization)
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
 
-    !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
@@ -1023,7 +1022,6 @@ subroutine THUpdateFixedAccumPatch(realization)
   
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
 
     iend = local_id*option%nflowdof
@@ -1454,6 +1452,7 @@ subroutine THAccumulation(auxvar,global_auxvar, &
 !  mol(2) = global_auxvar%sat(1)*global_auxvar%den(1)*auxvar%xmol(2)*porXvol
 
 ! TechNotes, TH Mode: First term of Equation 9
+  ! rock_dencpr [MJ/m^3 rock-K]
   eng = global_auxvar%sat(1) * &
         global_auxvar%den(1) * &
         auxvar%u * porXvol + &
@@ -3368,8 +3367,9 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
       endif ! if (use_th_freezing)
 
     case(NEUMANN_BC)
-      fluxe = fluxe + auxvars(TH_TEMPERATURE_DOF)*area*option%scale ! added by SK 10/18/11
-      fluxe_cond = auxvars(TH_TEMPERATURE_DOF)*area*option%scale
+      !geh: default internal energy units are MJ (option%scale = 1.d-6 is for J->MJ)
+      fluxe = fluxe + auxvars(TH_TEMPERATURE_DOF)*area*(1.d6*option%scale) ! added by SK 10/18/11
+      fluxe_cond = auxvars(TH_TEMPERATURE_DOF)*area*(1.d6*option%scale)
     case(ZERO_GRADIENT_BC)
       ! No change in fluxe
     case default
@@ -3605,7 +3605,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
@@ -3739,9 +3738,9 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
         case (HET_ENERGY_RATE_SS)
           esrc1 = source_sink%flow_aux_real_var(TWO_INTEGER,iconn)
       end select
-      ! convert J/s --> MJ/s
 !      r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - esrc1*option%scale
-      Res(2) = esrc1*option%scale
+      !geh: default internal energy units are MJ (option%scale = 1.d-6 is for J->MJ)
+      Res(2) = esrc1*1.d6*option%scale
 
       ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
@@ -3948,7 +3947,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   if (option%use_isothermal) then
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
-      !geh - Ignore inactive cells with inactive materials
       if (patch%imat(ghosted_id) <= 0) cycle
       istart = TWO_INTEGER + (local_id-1)*option%nflowdof
       r_p(istart)=xx_loc_p(2 + (ghosted_id-1)*option%nflowdof)-yy_p(istart-1)
@@ -5468,7 +5466,8 @@ subroutine THUpdateSurfaceBC(realization)
         eflux_cond = patch%boundary_energy_flux(2,sum_connection) ! [MJ/s]
 
         ! [MJ/s] to [J/s]
-        eflux      = eflux/option%scale
+        !geh: default internal energy units are MJ (option%scale = 1.d-6 is for J->MJ)
+        eflux      = eflux/(1.d6*option%scale)
         area = cur_connection_set%area(iconn) ! [m^2]
 
         surfpress_old = &
@@ -5513,7 +5512,8 @@ subroutine THUpdateSurfaceBC(realization)
             ! 1) Find new surface-temperature due to heat transfer via conduction.
             den = den_surf_at_Told
             eng_per_unitvol_old = den*Cwi*(surftemp_old + 273.15d0)
-            eng_per_unitvol_new = eng_per_unitvol_old - eflux_cond/option%scale*option%flow_dt/area
+            !geh: default internal energy units are MJ (option%scale = 1.d-6 is for J->MJ)
+            eng_per_unitvol_new = eng_per_unitvol_old - eflux_cond/(1.d6*option%scale)*option%flow_dt/area
 
             TL = -100.d0
             TR =  100.d0
@@ -5548,7 +5548,8 @@ subroutine THUpdateSurfaceBC(realization)
             if (abs(patch%boundary_velocities(1,sum_connection))<1.d-14) then ! avoid division by zero
               enthalpy = 0.d0 
             else
-              enthalpy = eflux_bulk/option%scale/den_aveg/area/patch%boundary_velocities(1,sum_connection)
+              !geh: default internal energy units are MJ (option%scale = 1.d-6 is for J->MJ)
+              enthalpy = eflux_bulk/(1.d6*option%scale)/den_aveg/area/patch%boundary_velocities(1,sum_connection)
             endif
 
             surftemp_old = surftemp_new

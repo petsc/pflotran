@@ -812,9 +812,11 @@ subroutine FlowConditionRead(condition,input,option)
                                      rate%dataset, &
                                      rate%units)
       case('ENERGY_RATE')
+        input%force_units = PETSC_TRUE
         call ConditionReadValues(input,option,word, &
                                      energy_rate%dataset, &
                                      energy_rate%units)
+        input%force_units = PETSC_FALSE
       case('WELL')
         call ConditionReadValues(input,option,word, &
                                      well%dataset, &
@@ -2024,6 +2026,7 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units)
     enddo
     call InputReadWord(input,option,word,PETSC_TRUE)
     if (InputError(input)) then
+      call InputCheckMandatoryUnits(input,option)
       word = trim(keyword) // ' UNITS'
       call InputDefaultMsg(input,option,word)
     else

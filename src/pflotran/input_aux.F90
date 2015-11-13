@@ -18,6 +18,7 @@ module Input_Aux_module
     character(len=MAXSTRINGLENGTH) :: err_buf
     character(len=MAXSTRINGLENGTH) :: err_buf2
     PetscBool :: broadcast_read
+    PetscBool :: force_units ! force user to declare units on datasets
   end type input_type
 
   type :: input_dbase_type
@@ -108,6 +109,7 @@ module Input_Aux_module
             InputReadToBuffer, &
             InputReadASCIIDbase, &
             InputKeywordUnrecognized, &
+            InputCheckMandatoryUnits, &
             InputDbaseDestroy
 
 contains
@@ -143,6 +145,7 @@ function InputCreate(fid,filename,option)
   input%err_buf = ''
   input%err_buf2 = ''
   input%broadcast_read = PETSC_FALSE
+  input%force_units = PETSC_FALSE
   
   if (fid == MAX_IN_UNIT) then
     option%io_buffer = 'MAX_IN_UNIT in pflotran_constants.h must be increased to' // &
@@ -1894,6 +1897,33 @@ subroutine InputKeywordUnrecognized(keyword,string,option)
   call printErrMsg(option)
   
 end subroutine InputKeywordUnrecognized
+
+! ************************************************************************** !
+
+subroutine InputCheckMandatoryUnits(input,option)
+  ! 
+  ! Looks up double precision value in database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  if (input%force_units) then
+    option%io_buffer = 'Missing units'
+    if (len_trim(input%err_buf) > 1) then
+      option%io_buffer = trim(option%io_buffer) // ' in ' // &
+                         trim(input%err_buf) // '.'
+    endif
+    call printErrMsg(option)
+  endif
+  
+end subroutine InputCheckMandatoryUnits
 
 ! ************************************************************************** !
 

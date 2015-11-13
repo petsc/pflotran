@@ -291,6 +291,8 @@ subroutine DatasetAsciiLoad(this,input,option)
       endif
       temp_array(i+1,:) = conversion * temp_array(i+1,:)
     enddo
+  else
+    call InputCheckMandatoryUnits(input,option)
   endif
 
   ! now that the data units conversion has taken place with temp_array, copy
