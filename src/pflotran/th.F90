@@ -4090,7 +4090,6 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   PetscReal :: qsrc1,csrc1
   PetscReal :: dd_up, dd_dn, dd, f_up, f_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: dw_dp,dw_dt,hw_dp,hw_dt,dresT_dp,dresT_dt
   PetscReal :: D_up, D_dn  ! thermal conductivity wet constants at upstream, downstream faces.
   PetscReal :: Dk_dry_up, Dk_dry_dn ! dry thermal conductivities
   PetscReal :: Dk_ice_up, Dk_ice_dn ! frozen soil thermal conductivities
@@ -4105,7 +4104,8 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   PetscInt :: ghosted_id_up, ghosted_id_dn
   
   PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
-            Jdn(realization%option%nflowdof,realization%option%nflowdof)
+            Jdn(realization%option%nflowdof,realization%option%nflowdof), &
+            Jsrc(realization%option%nflowdof,realization%option%nflowdof)
   
   PetscInt :: istart, iend
   
@@ -4253,22 +4253,25 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
           trim(adjustl(string)) // ', not implemented.'
       end select
 
+      Jsrc = 0.d0
+
       if (qsrc1 > 0.d0) then ! injection
-        dresT_dp = -qsrc1*auxvars_ss(sum_connection)%dh_dp
+        Jsrc(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = & 
+          -qsrc1*auxvars_ss(sum_connection)%dh_dp
         ! dresT_dt = -qsrc1*hw_dt ! since tsrc1 is prescribed, there is no derivative
         istart = ghosted_id*option%nflowdof
-        call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES, &
-                               ierr);CHKERRQ(ierr)
       else
         ! extraction
-        dresT_dp = -qsrc1*auxvars(ghosted_id)%dh_dp
-        dresT_dt = -qsrc1*auxvars(ghosted_id)%dh_dt
+        Jsrc(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = &
+          -qsrc1*auxvars(ghosted_id)%dh_dp
+        Jsrc(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = &
+          -qsrc1*auxvars(ghosted_id)%dh_dt
         istart = ghosted_id*option%nflowdof
-        call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES, &
-                               ierr);CHKERRQ(ierr)
-        call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES, &
-                               ierr);CHKERRQ(ierr)
       endif
+      
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jsrc, &
+                                    ADD_VALUES,ierr);CHKERRQ(ierr)
+
     
     enddo
     source_sink => source_sink%next
