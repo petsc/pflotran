@@ -192,7 +192,7 @@ function UnitsConvert(unit,option)
     case('KW')   
       UnitsConvert = 1.d-3
     case('MW')   
-      UnitsConvert = 1.d-6
+      UnitsConvert = 1.d0
     case default
        option%io_buffer = 'Unit "' // trim(unit) // '" not recognized.'
        call printErrMsg(option)

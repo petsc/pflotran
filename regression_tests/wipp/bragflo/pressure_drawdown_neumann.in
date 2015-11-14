@@ -215,7 +215,7 @@ FLOW_CONDITION well
   TYPE
     RATE mass_rate
   /
-  RATE -1.0 0.0 0.0 kg/s
+  RATE -1.0 0.0 0.0 kg/s kg/s MW
 END
 
 ! farfield boundary condition is no flow as a default.

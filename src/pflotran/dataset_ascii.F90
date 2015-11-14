@@ -188,7 +188,6 @@ subroutine DatasetAsciiLoad(this,input,option)
           input%ierr = ierr
           call InputErrorMsg(input,option,'TIME_UNITS', &
                              'CONDITION (LIST or FILE)')
-          call StringToLower(time_units) 
           cycle
         case('INTERPOLATION')
         call InputReadWord(input,option,word,PETSC_TRUE)
@@ -212,7 +211,6 @@ subroutine DatasetAsciiLoad(this,input,option)
             call InputErrorMsg(input,option,'DATA_UNITS', &
                                'CONDITION (LIST or FILE)')
           endif
-          call StringToLower(data_units) 
           cycle
         case default
           ! copy the first row of actual data and count up the number of 

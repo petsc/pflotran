@@ -1822,7 +1822,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
     end select
     if (associated(flow_condition%temperature)) then
       select case(flow_condition%temperature%itype)
-        case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+        case(DIRICHLET_BC,ZERO_GRADIENT_BC)
           if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
              (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
              flow_condition%temperature%itype /= DIRICHLET_BC)) then
@@ -1839,6 +1839,10 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
             trim(adjustl(string)) // '", not implemented.'
           call printErrMsg(option)
       end select
+    endif
+    if (associated(flow_condition%energy_flux)) then
+      coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
+        flow_condition%energy_flux%dataset%rarray(1)
     endif
   endif
 
@@ -1857,7 +1861,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
 
   if (associated(flow_condition%temperature) .and. apply_temp_cond) then
     select case(flow_condition%temperature%itype)
-      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+      case(DIRICHLET_BC,ZERO_GRADIENT_BC)
         select type(selector =>flow_condition%temperature%dataset)
           class is(dataset_ascii_type)
             coupler%flow_aux_real_var(TH_TEMPERATURE_DOF, &
@@ -1880,6 +1884,32 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         write(string,*) flow_condition%temperature%itype
         string = GetSubConditionName(flow_condition%temperature%itype)
         option%io_buffer='For TH mode: flow_condition%temperature%itype = "' // &
+          trim(adjustl(string)) // '", not implemented.'
+        call printErrMsg(option)
+    end select
+  endif
+
+  if (associated(flow_condition%energy_flux)) then
+    select case(flow_condition%energy_flux%itype)
+      case(NEUMANN_BC)
+        select type(selector =>flow_condition%energy_flux%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(TH_TEMPERATURE_DOF, &
+                                      1:num_connections) = &
+              selector%rarray(1)
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               TH_TEMPERATURE_DOF)
+          class default
+            option%io_buffer = 'Unknown dataset class (TH%' // &
+              'pressure%itype,NEUMANN_BC)'
+            call printErrMsg(option)
+        end select
+      case default
+        write(string,*) flow_condition%energy_flux%itype
+        string = GetSubConditionName(flow_condition%energy_flux%itype)
+        option%io_buffer='For TH mode: flow_condition%energy_flux%itype = "' // &
           trim(adjustl(string)) // '", not implemented.'
         call printErrMsg(option)
     end select

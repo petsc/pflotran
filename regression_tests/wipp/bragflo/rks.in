@@ -89,7 +89,7 @@ FLOW_CONDITION well  ! INJQ in BF
   TYPE
     RATE mass_rate
   /
-  RATE 0.d0 1.d-3 0.d0
+  RATE 0.d0 1.d-3 0.d0 kg/s kg/s MW
 /
 
 !=========================== material properties ==============================
