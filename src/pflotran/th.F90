@@ -3760,7 +3760,6 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       endif
 
       r_p(istart:iend) = r_p(istart:iend) - Res_src
-      print *, 'Res_src:', Res_src
 
       if (option%compute_mass_balance_new) then
         global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) = &

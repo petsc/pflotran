@@ -121,13 +121,13 @@ subroutine OutputVTK(realization_base)
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
 
 #if 1
-  if (output_option%print_tecplot_vel_cent) then
+  if (output_option%print_vtk_vel_cent) then
     call OutputVelocitiesVTK(realization_base)
   endif
 #endif
   
 #if 0  
-  if (output_option%print_tecplot_vel_face) then
+  if (output_option%print_vtk_vel_cent) then
     if (grid%structured_grid%nx > 1) then
       call OutputFluxVelocitiesVTK(realization_base,LIQUID_PHASE, &
                                           X_DIRECTION)
