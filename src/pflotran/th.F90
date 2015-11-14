@@ -487,6 +487,11 @@ subroutine THZeroMassBalDeltaPatch(realization)
       global_auxvars_bc(iconn)%mass_balance_delta = 0.d0
     enddo
   endif
+  if (patch%aux%TH%num_aux_ss > 0) then
+    do iconn = 1, patch%aux%TH%num_aux_ss
+      global_auxvars_ss(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
  
 end subroutine THZeroMassBalDeltaPatch
 
@@ -536,6 +541,13 @@ subroutine THUpdateMassBalancePatch(realization)
       global_auxvars_bc(iconn)%mass_balance = &
         global_auxvars_bc(iconn)%mass_balance + &
         global_auxvars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    enddo
+  endif
+  if (patch%aux%TH%num_aux_ss > 0) then
+    do iconn = 1, patch%aux%TH%num_aux_ss
+      global_auxvars_ss(iconn)%mass_balance = &
+        global_auxvars_ss(iconn)%mass_balance + &
+        global_auxvars_ss(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
     enddo
   endif
 
@@ -3520,6 +3532,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
   PetscReal :: upweight
   PetscReal :: Res(realization%option%nflowdof)
+  PetscReal :: Res_src(realization%option%nflowdof)
   PetscViewer :: viewer
 
   type(grid_type), pointer :: grid
@@ -3667,7 +3680,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
         source_sink%flow_condition%itype(1) /= WELL_SS) &
         qsrc1 = source_sink%flow_condition%rate%dataset%rarray(1)
       
-      Res = 0.d0
+      Res_src = 0.d0
       select case (source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
           qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
@@ -3723,7 +3736,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
           trim(adjustl(string)) // ', not implemented.'
       end select
 
-      Res(TH_PRESSURE_DOF) = qsrc1
+      Res_src(TH_PRESSURE_DOF) = qsrc1
 
       esrc1 = 0.d0
       select case(source_sink%flow_condition%itype(TH_TEMPERATURE_DOF))
@@ -3734,24 +3747,24 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       end select
       
       ! convert J/s --> MJ/s
-      Res(TH_TEMPERATURE_DOF) = esrc1*option%scale
+      Res_src(TH_TEMPERATURE_DOF) = esrc1*option%scale
 
       ! Update residual term associated with T
       if (qsrc1 > 0.d0) then ! injection
-        Res(TH_TEMPERATURE_DOF) = Res(TH_TEMPERATURE_DOF) + &
+        Res_src(TH_TEMPERATURE_DOF) = Res_src(TH_TEMPERATURE_DOF) + &
           qsrc1*auxvars_ss(sum_connection)%h
       else
         ! extraction
-        Res(TH_TEMPERATURE_DOF) = Res(TH_TEMPERATURE_DOF) + &
+        Res_src(TH_TEMPERATURE_DOF) = Res_src(TH_TEMPERATURE_DOF) + &
           qsrc1*auxvars(ghosted_id)%h
       endif
 
-      r_p(istart:iend) = r_p(istart:iend) - Res
+      r_p(istart:iend) = r_p(istart:iend) - Res_src
+      print *, 'Res_src:', Res_src
 
       if (option%compute_mass_balance_new) then
-        ! contribution to boundary
         global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) = &
-          global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - Res
+          global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - Res_src
       endif
       if (associated(patch%ss_flow_vol_fluxes)) then
         ! fluid flux [m^3/sec] = qsrc_mol [kmol/sec] / den [kmol/m^3]
