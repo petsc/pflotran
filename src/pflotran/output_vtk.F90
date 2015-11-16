@@ -121,13 +121,13 @@ subroutine OutputVTK(realization_base)
   if (option%myrank == option%io_rank) close(OUTPUT_UNIT)
 
 #if 1
-  if (output_option%print_tecplot_vel_cent) then
+  if (output_option%print_vtk_vel_cent) then
     call OutputVelocitiesVTK(realization_base)
   endif
 #endif
   
 #if 0  
-  if (output_option%print_tecplot_vel_face) then
+  if (output_option%print_vtk_vel_cent) then
     if (grid%structured_grid%nx > 1) then
       call OutputFluxVelocitiesVTK(realization_base,LIQUID_PHASE, &
                                           X_DIRECTION)
@@ -237,6 +237,10 @@ subroutine OutputVelocitiesVTK(realization_base)
 
   ! write out coordinates
   call WriteVTKGrid(OUTPUT_UNIT,realization_base)
+
+  if (option%myrank == option%io_rank) then
+    write(OUTPUT_UNIT,'(''CELL_DATA'',i8)') grid%nmax
+  endif
 
   word = 'Vlx'
   call OutputGetCellCenteredVelocities(realization_base,global_vec_vx, &
@@ -508,8 +512,6 @@ subroutine WriteVTKDataSet(fid,realization_base,dataset_name,array,datatype, &
   
   ! communicate data to processor 0, round robin style
   if (option%myrank == option%io_rank) then
-
-!    write(fid,'(''CELL_DATA'',i8)') grid%nmax
 
     if (datatype == VTK_INTEGER) then
       write(fid,'(''SCALARS '',a20,'' int 1'')') dataset_name
