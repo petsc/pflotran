@@ -2947,9 +2947,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
               vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%den_kg(1)
             enddo
           case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY,GAS_VISCOSITY) ! still needs implementation
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = 0.d0
-            enddo
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by TH')
           case(GAS_SATURATION)
             do local_id=1,grid%nlmax
               if (option%use_th_freezing) then
@@ -2979,9 +2977,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
               vec_ptr(local_id) = patch%aux%TH%auxvars(grid%nL2G(local_id))%kvr
             enddo
           case(LIQUID_MOLE_FRACTION)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%TH%auxvars(grid%nL2G(local_id))%xmol(isubvar)
-            enddo
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by TH')
           case(LIQUID_ENERGY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TH%auxvars(grid%nL2G(local_id))%u
@@ -4016,7 +4012,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(LIQUID_MOBILITY)
             value = patch%aux%TH%auxvars(ghosted_id)%kvr
           case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
-            value = 0.d0
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by TH')
           case(GAS_SATURATION)
             if (option%use_th_freezing) then
               value = patch%aux%TH%auxvars(ghosted_id)%sat_gas
@@ -4032,7 +4028,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
               value = patch%aux%TH%auxvars(ghosted_id)%den_ice*FMWH2O
             endif
           case(LIQUID_MOLE_FRACTION)
-            value = patch%aux%TH%auxvars(ghosted_id)%xmol(isubvar)
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by TH')
           case(LIQUID_ENERGY)
             value = patch%aux%TH%auxvars(ghosted_id)%u
           case(SECONDARY_TEMPERATURE)
@@ -4717,6 +4713,7 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
               enddo
             endif
           case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by TH')
           case(GAS_SATURATION)
             if (option%use_th_freezing) then
               if (vec_format == GLOBAL) then
@@ -4756,15 +4753,7 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
           case(LIQUID_VISCOSITY)
           case(GAS_VISCOSITY)
           case(LIQUID_MOLE_FRACTION)
-            if (vec_format == GLOBAL) then
-              do local_id=1,grid%nlmax
-                patch%aux%TH%auxvars(grid%nL2G(local_id))%xmol(isubvar) = vec_ptr(local_id)
-              enddo
-            else if (vec_format == LOCAL) then
-              do ghosted_id=1,grid%ngmax
-                patch%aux%TH%auxvars(ghosted_id)%xmol(isubvar) = vec_ptr(ghosted_id)
-              enddo
-            endif
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by TH')
           case(LIQUID_ENERGY)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax
