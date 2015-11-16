@@ -427,6 +427,10 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option, &
   force_to_match_waypoint = WaypointForceMatchToTime(cur_waypoint)
   equal_to_or_exceeds_waypoint = target_time + tolerance*dt >= cur_waypoint%time
   equal_to_or_exceeds_sync_time = target_time + tolerance*dt >= sync_time
+  if (equal_to_or_exceeds_sync_time .and. sync_time < cur_waypoint%time) then
+    ! flip back if the sync time arrives before the waypoint time.
+    equal_to_or_exceeds_waypoint = PETSC_FALSE
+  endif
   do ! we cycle just in case the next waypoint is beyond the target_time
     if (equal_to_or_exceeds_sync_time .or. &
         (equal_to_or_exceeds_waypoint .and. force_to_match_waypoint)) then
