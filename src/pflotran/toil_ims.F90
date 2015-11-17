@@ -30,6 +30,7 @@ module TOilIms_module
   public :: TOilImsSetup, &
             TOilImsUpdateAuxVars, &
             TOilImsInitializeTimestep, &
+            TOilImsComputeMassBalance, &
             TOilImsResidual, &
             ToilImsJacobian, &
             TOilImsUpdateSolution, &
@@ -667,7 +668,7 @@ subroutine TOilImsSetPlotVariables(realization)
   name = 'Oil Density'
   units = 'kg/m^3'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
-                               GAS_DENSITY)
+                               OIL_DENSITY)
   
   
   name = 'Liquid Energy'
@@ -1030,6 +1031,74 @@ subroutine TOilImsUpdateSolution(realization)
   
   
 end subroutine TOilImsUpdateSolution
+
+! ************************************************************************** !
+
+subroutine TOilImsComputeMassBalance(realization,mass_balance)
+  ! 
+  ! Initializes mass balance
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 11/12/15
+  ! 
+ 
+  use Realization_class
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+  use Material_Aux_class
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nflowspec, &
+                            realization%option%nphase)
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iphase !, icomp
+  PetscReal :: vol_phase
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  toil_auxvars => patch%aux%TOil_ims%auxvars
+  material_auxvars => patch%aux%Material%auxvars
+
+  mass_balance = 0.d0
+  ! note ::  only first column of mass_balance(1:2,1) is used
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (patch%imat(ghosted_id) <= 0) cycle
+    do iphase = 1, option%nphase
+      ! volume_phase = saturation*porosity*volume
+      vol_phase = &
+        toil_auxvars(ZERO_INTEGER,ghosted_id)%sat(iphase)* &
+        toil_auxvars(ZERO_INTEGER,ghosted_id)%effective_porosity* &
+        material_auxvars(ghosted_id)%volume
+      ! mass = volume_phase*density
+
+        mass_balance(iphase,1) = mass_balance(iphase,1) + &
+          toil_auxvars(ZERO_INTEGER,ghosted_id)%den(iphase)* &
+          toil_ims_fmw_comp(iphase)*vol_phase
+
+    enddo
+  enddo
+
+end subroutine TOilImsComputeMassBalance
 
 ! ************************************************************************** !
 
@@ -1413,10 +1482,12 @@ subroutine TOilImsFlux(toil_auxvar_up,global_auxvar_up, &
       mobility = toil_auxvar_up%mobility(iphase)
       H_ave = toil_auxvar_up%H(iphase)
       uH = H_ave
+      !density_ave = toil_auxvar_up%den(iphase)
     else
       mobility = toil_auxvar_dn%mobility(iphase)
       H_ave = toil_auxvar_dn%H(iphase)
       uH = H_ave
+      !density_ave = toil_auxvar_dn%den(iphase)
     endif      
 
     if (mobility > floweps) then
@@ -1424,8 +1495,10 @@ subroutine TOilImsFlux(toil_auxvar_up,global_auxvar_up, &
       !                    dP[Pa]]
       v_darcy(iphase) = perm_ave_over_dist(iphase) * mobility * delta_pressure
 
+      ! if comments below, use upwinding value
       density_ave = 0.5d0*( toil_auxvar_up%den(iphase) + &
                             toil_auxvar_dn%den(iphase))
+       
  
       !density_ave = GeneralAverageDensity(iphase, &
       !                                    global_auxvar_up%istate, &
@@ -1483,8 +1556,7 @@ subroutine TOilImsFlux(toil_auxvar_up,global_auxvar_up, &
 !  debug_flux = 0.d0
 !#endif                    
 
-
-#ifdef CONDUCTION
+#ifdef TOIL_CONDUCTION
   ! model for liquid + gas
   ! add heat conduction flux
   ! based on Somerton et al., 1974:
@@ -1676,7 +1748,7 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
           select case(iphase)
             case(LIQUID_PHASE)
               idof = auxvar_mapping(TOIL_IMS_LIQ_CONDUCTANCE_INDEX)
-            case(TOIL_OIL_PHASE)
+            case(TOIL_IMS_OIL_PHASE)
               idof = auxvar_mapping(TOIL_IMS_OIL_CONDUCTANCE_INDEX)
           end select        
           perm_ave_over_dist = auxvars(idof)
@@ -1734,9 +1806,11 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
           if (delta_pressure >= 0.D0) then
             mobility = toil_auxvar_up%mobility(iphase)
             uH = toil_auxvar_up%H(iphase)
+            !density_ave = toil_auxvar_up%den(iphase)
           else
             mobility = toil_auxvar_dn%mobility(iphase)
             uH = toil_auxvar_dn%H(iphase)
+            !density_ave = toil_auxvar_dn%den(iphase)
           endif      
 
           if (mobility > floweps) then
@@ -1745,6 +1819,7 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
             v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
             ! only need average density if velocity > 0.
 
+            ! when this is commented - using upwinding value
             density_ave = 0.5d0 * (toil_auxvar_up%den(iphase) + &
                                    toil_auxvar_dn%den(iphase) )
 
@@ -1762,7 +1837,7 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
         select case(iphase)
           case(LIQUID_PHASE)
             idof = auxvar_mapping(TOIL_IMS_LIQUID_FLUX_INDEX)
-          case(TOIL_OIL_PHASE)
+          case(TOIL_IMS_OIL_PHASE)
             idof = auxvar_mapping(TOIL_IMS_OIL_FLUX_INDEX)
         end select
         
@@ -1975,7 +2050,7 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
   ! approximates BHP with local pressure
   ! to compute BHP we need to solve an IPR equation
   if( ( (flow_src_sink_type == VOLUMETRIC_RATE_SS) .or. &
-        (size(qsrc) /= THREE_INTEGER) & !energy rate not defined
+        ( associated(src_sink_condition%temperature) ) &
       ) .and. &
       ( (qsrc(option%liquid_phase) > 0.d0).or. &
         (qsrc(option%oil_phase) > 0.d0) &
@@ -2001,7 +2076,7 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
       select case(iphase)
         case(LIQUID_PHASE)
           call EOSWaterDensity(temperature,cell_pressure,den_kg,den,ierr)
-        case(TOIL_OIL_PHASE)
+        case(TOIL_IMS_OIL_PHASE)
             call EOSOilDensity(temperature,cell_pressure,den,ierr)
       end select 
     else
@@ -2711,7 +2786,7 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
         patch%ss_flow_fluxes(:,sum_connection) = Res(:)
       endif      
       if (option%compute_mass_balance_new) then
-        ! contribution to boundary
+        ! src/sinks contribution
         global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) = &
           global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - &
           Res(1:2)
@@ -3159,7 +3234,7 @@ end subroutine ToilImsJacobian
 
 subroutine TOilImsDestroy(realization)
   ! 
-  ! Deallocates variables associated with Richard
+  ! Deallocates variables associated with TOilIms
   ! 
   ! Author: Paolo Orsini
   ! Date: 11/09/15

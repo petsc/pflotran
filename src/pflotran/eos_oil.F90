@@ -12,7 +12,7 @@ module EOS_Oil_module
   PetscReal, public :: fmw_oil
 
   ! module variables
-  PetscReal :: constant_density
+  PetscReal :: constant_density  !kg/m3
   PetscReal :: constant_enthalpy
   PetscReal :: constant_viscosity
   PetscReal :: constant_sp_heat
@@ -251,8 +251,8 @@ subroutine EOSOilDensityConstant(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
   PetscReal, intent(out) :: dRho_dT ! derivative oil density wrt temperature
   PetscReal, intent(out) :: dRho_dP ! derivative oil density wrt pressure
   PetscErrorCode, intent(out) :: ierr
-
-  Rho = constant_density ! kmol/m^3
+        ! kg/m3 * kmol/kg  = kmol/m3
+  Rho = constant_density / fmw_oil ! kmol/m^3
 
   dRho_dT = 0.d0
   dRho_dP = 0.d0

@@ -798,7 +798,7 @@ output_observation.o : connection.o coupler.o discretization.o field.o \
                        pflotran_constants.o reaction_aux.o \
                        reactive_transport.o reactive_transport_aux.o \
                        realization.o realization_base.o region.o richards.o \
-                       th.o utility.o variables.o
+                       th.o toil_ims.o toil_ims_aux.o utility.o variables.o
 output_surface.o : connection.o coupler.o discretization.o field.o grid.o \
                    grid_unstructured_aux.o grid_unstructured_cell.o hdf5.o \
                    hdf5_aux.o input_aux.o logging.o option.o output_aux.o \

@@ -62,7 +62,7 @@ module TOilIms_Aux_module
   ! 2 for brine/oil
   ! 3 for brine/gas/oil (can be 2 again, but then GAS_PHASE requires
   !                      a different index). Need mapping in any case
-  PetscInt, parameter, public :: TOIL_OIL_PHASE = 2
+  PetscInt, parameter, public :: TOIL_IMS_OIL_PHASE = 2
 
   type, public :: toil_ims_auxvar_type
     !PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
@@ -155,8 +155,8 @@ function TOilImsAuxCreate(option)
        [TOIL_IMS_PRESSURE_INDEX, TOIL_IMS_OIL_SATURATION_INDEX, &
         TOIL_IMS_TEMPERATURE_INDEX]
 
-  toil_ims_fmw_comp(1) = FMWH2O
-  toil_ims_fmw_comp(2) = fmw_oil ! this defines the dead oil
+  toil_ims_fmw_comp(LIQUID_PHASE) = FMWH2O
+  toil_ims_fmw_comp(TOIL_IMS_OIL_PHASE) = fmw_oil ! this defines the dead oil
   
   allocate(aux) 
   aux%auxvars_up_to_date = PETSC_FALSE
