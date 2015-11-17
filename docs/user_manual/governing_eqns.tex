@@ -1042,24 +1042,61 @@ Sorption reactions incorporated into PFLOTRAN consist of ion exchange and surfac
 
 Ion exchange reactions may be represented either in terms of bulk- or mineral-specific rock properties.  Changes in bulk sorption properties can be expected as a result of mineral reactions.  However, only the mineral-based formulation enables these effects to be captured in the model.  The bulk rock sorption site concentration $\omega_\a$, in units of moles of sites per bulk sediment volume (mol/dm$^3$), is related to the bulk cation exchange capacity $Q_\a$ (mol/kg) by the expression
 \EQ
-\omega_\a \eq \frac{N_{\rm site}}{V} \eq \frac{N_{\rm site}}{M_s} \frac{M_s}{V_s} \frac{V_s}{V} \eq Q_\a \rho_s (1-\phi).
+\omega_\a \eq \frac{N_{\rm site}}{V} \eq \frac{N_{\rm site}}{M_s} \frac{M_s}{V_s} \frac{V_s}{V} \eq (1-\phi) \rho_s Q_\a,
 \EN
+with solid density $\rho_s$ and porosity $\varphi$. 
 The cation exchange capacity associated with the $m$th mineral is defined on a molar basis as
 \EQ
 \omega_m^{\rm CEC} \eq \frac{N_m}{V} \eq \frac{N_m}{M_m} \frac{M_m}{V_m} \frac{V_m}{V} \eq Q_m^{\rm CEC} \rho_m \phi_m.
 \EN
+The site concentration $\omega_\a$ is related to the sorbed concentrations $S_k^\a$ by the expression
+\EQ
+\omega_\a^{} = \sum_k z_k^{} S_k^\a.
+\EN
 
-In PFLOTRAN ion exchange reactions are expressed in the form
+In PFLOTRAN ion exchange reactions are expressed in the form with the reference cation denoted by $\A_j^{z_j+}$ on the right-hand side of the reaction
 \EQ\label{ex1}
 z_j^{} \A_i^{z_i+} + z_i^{} (\chi_\a)_{z_j} \A_j \arrows z_i^{} \A_j^{z_j+} + z_j^{} (\chi_\a)_{z_i} \A_i,
 \EN
-with valencies $z_j$, $z_i$ of cations $\A_j^{z_j+}$ and $\A_i^{z_i+}$, respectively, and exchange site $\chi_\a^-$ on the solid surface. The reference cation is denoted by $\A_j^{z_j+}$ and $\A_i^{z_i+}, \,i\!\ne\! j$ represents all other cations. 
+with valencies $z_j$, $z_i$ of cations $\A_j^{z_j+}$ and $\A_i^{z_i+}$, respectively, and exchange site $\chi_\a^-$ on the solid surface. The cations $\A_i^{z_i+}, \,i\!\ne\! j$ represents all other cations besides the reference cation. 
 The corresponding mass action equation is given by
 \EQ\label{ionexmassact}
-K_{ij}^\a \eq \left(\frac{X_i^\a}{a_i}\right)^{z_j}
-\left(\frac{a_j}{X_j^\a}\right)^{z_i},
+K_{ij}^\a \eq \left(\frac{\lambda_i^\a X_i^\a}{a_i}\right)^{z_j}
+\left(\frac{a_j}{\lambda_j^\a X_j^\a}\right)^{z_i},
 \EN
-with selectivity coefficient $K_{ij}^\a$ and mole fraction $X_l^\a$ of the $l$th cation of site $\a$. For $N_c$ cations participating in exchange reactions, there are $N_c\!-\!1$ independent reactions and thus $N_c\!-\!1$ independent selectivity coefficients. The selectivity coefficients satisfy the relations
+with selectivity coefficient $K_{ij}^\a$, solid phase activity coefficients $\lambda_l^\a$ (taken as unity in what follows), and mole fraction $X_l^\a$ of the $l$th cation of site $\a$. For $N_c$ cations participating in exchange reactions, there are $N_c\!-\!1$ independent reactions and thus $N_c\!-\!1$ independent selectivity coefficients. 
+
+The exchange reactions may also be expressed as half reactions in the form
+\EQ
+z_j^{} \chi_\a^- + \A_j^{z_j+} \arrows (\chi_\a)_{z_j} \A_j^{},
+\EN
+with corresponding selectivity coefficient $k_j^\a$. The half-reaction selectivity coefficients are related to the $K_{ij}^\a$ by
+\EQ
+\log K_{ij}^\a \eq z_j^{} \log k_i^\a - z_i^{} \log k_j^\a,
+\EN
+or
+\EQ
+K_{ij}^\a \eq \frac{(k_i^\a)^{z_j}}{(k_j^\a)^{z_i}}.
+\EN
+This relation is obtained by multiplying the half reaction for cation $\A_j$ by the valence $z_i$ and subtracting from the half reaction for $\A_i$ multiplied by $z_j$, resulting in cancelation of the empty site $X^\a$, to obtain the complete exchange reaction \ref{ex1}. It should be noted that the coefficients $k_l^\a$ are not unique since, although there are $N_c$ coefficients in number, only $N_c\!-\!1$ are independent and one may be chosen arbitrarily, usually taken as unity. 
+
+An alternative form of reactions \ref{ex1} often found in the literature is
+\EQ\label{rxn2}
+\frac{1}{z_i} \,\A_i + \frac{1}{z_j}\, (\chi_\a)_{z_j} \A_j \arrows \frac{1}{z_j} \,\A_j + \frac{1}{z_i}\, (\chi_\a)_{z_i} \A_i,
+\EN
+obtained by dividing reaction \ref{ex1} through by the product $z_i z_j$. 
+The mass action equations corresponding to reactions \ref{rxn2} have the form
+\EQ
+{\widetilde K}_{ij}^\a \eq \frac{({\widetilde k}_i^\a)^{1/z_i}}{({\widetilde k}_j^\a)^{1/z_j}} \eq 
+\left(\frac{a_j}{X_j^\a}\right)^{1/z_j} \left(\frac{X_i^\a}{a_i}\right)^{1/z_i}.
+\EN
+The selectivity coefficients corresponding to the two forms are related by the expression
+\EQ
+{\widetilde K}_{ij}^\a \eq \left(K_{ij}^\a\right)^{1/(z_i z_j)},
+\EN
+and similarly for $k_i^\a$, $k_j^\a$. When comparing with other formulations it is important that the user determine which form of the ion exchange reactions are being used and make the appropriate transformations.
+
+The selectivity coefficients satisfy the relations
 \EQ
 K_{ji}^\a \eq \big(K_{ij}^\a\big)^{-1},
 \EN
@@ -1077,24 +1114,49 @@ the following relation is obtained
 \EQ
 K_{ij}^\a \eq \big(K_{il}^\a\big)^{z_j/z_l}\big(K_{lj}^\a\big)^{z_i/z_l}.
 \EN
-The exchange reactions may also be expressed as half reactions in the form
+
+To see how the selectivity coefficients change when changing the reference cation from $\A_j^{z_j+}$ to $\A_k^{z_k+}$ note that
 \EQ
-z_j^{} \chi_\a^- + \A_j^{z_j+} \arrows (\chi_\a)_{z_j} \A_j^{},
+\widetilde K_{jk}^\a \eq \big(\widetilde K_{kj}^\a\big)^{-1},
 \EN
-with corresponding selectivity coefficient $k_j^\a$. The half-reaction selectivity coefficients are related to the $K_{ij}^\a$ by
+and
 \EQ
-\log K_{ij}^\a \eq z_j^{} \log k_i^\a - z_i^{} \log k_j^\a,
+\widetilde K_{ik}^\a \eq \widetilde K_{ij}^\a \, \widetilde K_{jk}^\a.
+\EN
+This latter relation follows from adding the two reactions
+\begin{subequations}
+\BA
+\frac{1}{z_i} \,\A_i + \frac{1}{z_j}\, (\chi_\a)_{z_j} \A_j &\arrows \frac{1}{z_j} \,\A_j + \frac{1}{z_i}\, (\chi_\a)_{z_i} \A_i,\\
+\frac{1}{z_j} \,\A_j + \frac{1}{z_k}\, (\chi_\a)_{z_k} \A_k &\arrows \frac{1}{z_k} \,\A_k + \frac{1}{z_j}\, (\chi_\a)_{z_j} \A_j,
+\EA
+\end{subequations}
+to give
+\EQ
+\frac{1}{z_i} \,\A_i + \frac{1}{z_k}\, (\chi_\a)_{z_k} \A_k \arrows \frac{1}{z_k} \,\A_k + \frac{1}{z_i}\, (\chi_\a)_{z_i} \A_i,
+\EN
+with $\A_k^{z_k+}$ as reference species. In terms of the selectivity coefficients $K_{ij}^\a$ it follows that
+\EQ
+\big(K_{ik}^\a\big)^{1/(z_i z_k)} \eq \big(K_{ij}^\a\big)^{1/(z_i z_j)} \big(K_{jk}^\a\big)^{1/(z_j z_k)},
 \EN
 or
 \EQ
-K_{ij}^\a \eq \frac{(k_i^\a)^{z_j}}{(k_j^\a)^{z_i}}.
+K_{ik}^\a \eq \big(K_{ij}^\a\big)^{z_k /z_j} \big(K_{jk}^\a\big)^{z_i/ z_j}.
 \EN
-This relation is obtained by multiplying the half reaction for cation $\A_j$ by the valence $z_i$ and subtracting from the half reaction for $\A_i$ multiplied by $z_j$, resulting in cancelation of the empty site $X^\a$, to obtain the complete exchange reaction \ref{ex1}. It should be noted that the coefficients $k_l^\a$ are not unique since, although there are $N_c$ coefficients in number, only $N_c\!-\!1$ are independent and one may be chosen arbitrarily, usually taken as unity. 
+In terms of the coefficients $k_i^\a$ and $\bar k_i^\a$ corresponding to reference cation $\A_k$ the transformation becomes
+\EQ
+\frac{\big(\bar k_i^\a\big)^{z_k}}{\big(\bar k_i^\a\big)^{z_i}} \eq
+\left(\frac{\big(k_i^\a\big)^{z_j}}{\big(k_i^\a\big)^{z_j}}\right)^{z_k/z_j}
+\left(\frac{\big(k_j^\a\big)^{z_k}}{\big(k_k^\a\big)^{z_j}}\right)^{z_i/z_j}.
+\EN
 
-In terms of the coefficients $k_l^\a$ from the mass action equations the sorbed concentration for the $i$th cation can be expressed as a function of the reference cation according to
+In terms of the coefficients $k_l^\a$ the sorbed concentration for the $i$th cation can be expressed as a function of the reference cation from the mass action equations according to
 \EQ
 X_i^\a \eq k_i^\a a_i^{} \left(\frac{X_j^\a}{k_j^\a a_j^{}}\right)^{z_i/z_j}.
 \EN
+For a given reference species $\A_{J_0}$ the coefficients $K_{iJ_0}$ are uniquely determined. For some other choice of reference species, say $\A_{I_0}$, the coefficients $K_{iI_0}$ are related to the original coefficients by the expressions
+\BA
+\log K_{J_0I_0} &\eq -\log K_{I_0J_0},\\
+\EA
 
 Taking the reference cation as $\A_j$ then $k_i^\a$ is given by
 \begin{subequations}
@@ -1108,7 +1170,7 @@ As an example consider the ion-exchange reactions with Ca$^{2+}$ as reference sp
 \begin{subequations}
 \BA
 \rm 2 \, Na^+ + \chi_2 Ca &\arrows \rm Ca^{2+} + 2 \, \chi Na,\\
-\rm Mg^{2+} + \chi_2 Ca &\arrows \rm Ca^{2+} + \chi_2 Mg.
+\rm 2\,Mg^{2+} + 2\,\chi_2 Ca &\arrows \rm 2\,Ca^{2+} + 2\,\chi_2 Mg,
 \EA
 \end{subequations}
 with selectivity coefficients $K_{\rm NaCa}$ and $K_{\rm MgCa}$.
@@ -1124,7 +1186,7 @@ The selectivity coefficients are related by the equations
 \begin{subequations}
 \BA
 \log K_{\rm CaNa} & \eq -\log K_{\rm NaCa},\\
-\log K_{\rm MgNa} &\eq \log K_{\rm MgCa} - \log K_{\rm NaCa}.
+\log K_{\rm MgNa} &\eq \frac{1}{2} \, \log K_{\rm MgCa} - \log K_{\rm NaCa}.
 \EA
 \end{subequations}
 
@@ -1136,30 +1198,6 @@ with
 \EQ
 \sum_k X_k^\a = 1.
 \EN
-The site concentration $\omega_\a$ is defined by
-\EQ
-\omega_\a = \sum_k z_k S_k^\a,
-\EN
-where $\omega_\a$ is related to the cation exchange capacity $Q_\a$ (CEC) by the expression
-\EQ
-\omega_\a = (1-\varphi) \rho_s \, Q_\a,
-\EN
-with solid density $\rho_s$ and porosity $\varphi$. 
-
-An alternative form of reactions \ref{ex1} often found in the literature is
-\EQ\label{rxn2}
-\frac{1}{z_j} \,\A_j + \frac{1}{z_i}\, (\chi_\a)_{z_i} \A_i \arrows \frac{1}{z_i} \,\A_i + \frac{1}{z_j}\, (\chi_\a)_{z_j} \A_j,
-\EN
-obtained by dividing reaction \ref{ex1} through by the product $z_i z_j$.  In addition the reaction may be written in reverse order.
-The mass action equations corresponding to reactions \ref{rxn2} have the form
-\EQ
-{K'}_{ji}^\a \eq \frac{({k'}_j^\a)^{1/z_j}}{({k'}_i^\a)^{1/z_i}} \eq \left(\frac{X_j^\a}{a_j}\right)^{1/z_j} \left(\frac{a_i}{X_i^\a}\right)^{1/z_i}.
-\EN
-The selectivity coefficients corresponding to the two forms are related by the expression
-\EQ
-K_{ji}^\a \eq \left({K'}_{ji}^\a\right)^{z_i z_j},
-\EN
-and similarly for $k_i^\a$, $k_j^\a$. When comparing with other formulations it is important that the user determine which form of the ion exchange reactions are being used and make the appropriate transformations.
 
 For equivalent exchange $(z_j\!=\!z_i\!=\!z)$, an explicit expression exists for the sorbed concentrations given by
 \EQ

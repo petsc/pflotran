@@ -575,13 +575,13 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           case (STRUCTURED_GRID)
             ! Do nothing since the region was localized during the reading process
           case default
-            option%io_buffer = 'Extended GridLocalizeRegions() for region ' // &
-            'DEFINED_BY_CELL_AND_FACE_IDS'
+            option%io_buffer = 'GridLocalizeRegions() must tbe extended ' // &
+            'for unstructured region DEFINED_BY_CELL_AND_FACE_IDS'
             call printErrMsg(option)
         end select
       case (DEFINED_BY_VERTEX_IDS)
-        option%io_buffer = 'Extended GridLocalizeRegions() for region ' // &
-          'DEFINED_BY_VERTEX_IDS'
+        option%io_buffer = 'GridLocalizeRegions() must tbe extended ' // &
+          'for unstructured region DEFINED_BY_VERTEX_IDS'
         call printErrMsg(option)
       case (DEFINED_BY_SIDESET_UGRID)
         call UGridMapSideSet(grid%unstructured_grid, &

@@ -442,7 +442,7 @@ subroutine InitCommonReadRegionFiles(realization)
       if (index(region%filename,'.h5') > 0) then
         if (.not.region%hdf5_ugrid_kludge) then
 
-           call HDF5QueryRegionDefinition(realization, region, region%filename, &
+           call HDF5QueryRegionDefinition(region, region%filename, realization%option, &
                 cell_ids_exists, face_ids_exists, vert_ids_exists)
 
            if ( (.not. cell_ids_exists) .and. &
@@ -455,7 +455,7 @@ subroutine InitCommonReadRegionFiles(realization)
            end if
 
            if (cell_ids_exists .or. face_ids_exists) then
-              call HDF5ReadRegionFromFile(realization,region,region%filename)
+              call HDF5ReadRegionFromFile(realization%patch%grid,region,region%filename,option)
            else
               call HDF5ReadRegionDefinedByVertex(realization%option, &
                    region, region%filename)

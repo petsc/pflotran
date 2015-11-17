@@ -207,14 +207,14 @@ FLOW_CONDITION injection
   TYPE
     RATE mass_rate
   /
-  RATE 0.1d0 0.0d0 0.0d0 kg/s
+  RATE 0.1d0 0.0d0 0.0d0 kg/s kg/s MW
 END
 
 FLOW_CONDITION extraction
   TYPE
     RATE mass_rate
   /
-  RATE -0.1d0 0.0d0 0.0d0 kg/s
+  RATE -0.1d0 0.0d0 0.0d0 kg/s kg/s MW
 END
 
 !=========================== condition couplers ===============================

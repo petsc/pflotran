@@ -76,6 +76,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   use Option_module
   use Grid_module
   use HDF5_Aux_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
 
@@ -179,7 +180,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
             !reallocate if array grows too large and num_indices <= 0
             allocate(temp(index_count))
             temp(1:index_count) = indices(1:index_count)
-            deallocate(indices)
+            call DeallocateArray(indices)
             indices_array_size = 2*indices_array_size
             allocate(indices(indices_array_size))
             indices = 0
@@ -204,14 +205,17 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     call printErrMsg(option)        
   endif
   
-  if (index_count < indices_array_size .and. num_indices <= 0) then
+  if (index_count > 0 .and. index_count < indices_array_size .and. &
+      num_indices <= 0) then
     ! resize to index count
     allocate(temp(index_count))
     temp(1:index_count) = indices(1:index_count)
-    deallocate(indices)
+    call DeallocateArray(indices)
     allocate(indices(index_count))
     indices(1:index_count) = temp(1:index_count)
     deallocate(temp)
+  else
+    call DeallocateArray(indices)
   endif
   
   if (num_indices <= 0) num_indices = index_count
@@ -334,7 +338,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
             !reallocate if array grows too large and num_indices <= 0
             allocate(temp(index_count))
             temp(1:index_count) = indices(1:index_count)
-            deallocate(indices)
+            call DeallocateArray(indices)
             indices_array_size = 2*indices_array_size
             allocate(indices(indices_array_size))
             indices = 0
@@ -364,14 +368,17 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     call printErrMsg(option)        
   endif
   
-  if (index_count < indices_array_size .and. num_indices <= 0) then
+  if (index_count > 0 .and. index_count < indices_array_size .and. &
+      num_indices <= 0) then
     ! resize to index count
     allocate(temp(index_count))
     temp(1:index_count) = indices(1:index_count)
-    deallocate(indices)
+    call DeallocateArray(indices)
     allocate(indices(index_count))
     indices(1:index_count) = temp(1:index_count)
     deallocate(temp)
+  else
+    call DeallocateArray(indices)
   endif
   
   if (num_indices <= 0) num_indices = index_count
@@ -399,6 +406,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   
   use Option_module
   use HDF5_Aux_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
   
@@ -678,6 +686,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   use Grid_module
   use Option_module
   use HDF5_Aux_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
 
@@ -956,6 +965,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
 
   use hdf5
   use Option_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
   
@@ -1078,7 +1088,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
       !call h5dwrite_f(data_set_id,data_type,double_array,dims, &
                       !hdf5_err,memory_space_id,file_space_id,prop_id)  
       call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
-      deallocate(double_array)
+      call DeallocateArray(double_array)
     else if (data_type == HDF_NATIVE_INTEGER) then
       allocate(int_array_i4(nx_local*ny_local*nz_local))
       count = 0
@@ -1102,7 +1112,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
       !!call h5dwrite_f(data_set_id,data_type,int_array_i4,dims, &
       !                hdf5_err,memory_space_id,file_space_id,prop_id)
       call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
-      deallocate(int_array_i4)
+      call DeallocateArray(int_array_i4)
     endif
   endif
 
@@ -1190,7 +1200,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
       call h5dwrite_f(data_set_id,data_type,int_array_i4,dims, &
                       hdf5_err,memory_space_id,file_space_id,prop_id)
       call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
-      deallocate(int_array_i4)
+      call DeallocateArray(int_array_i4)
     else
       allocate(double_array(nx_local*ny_local*nz_local))
       count = 0
@@ -1207,7 +1217,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
       call h5dwrite_f(data_set_id,data_type,double_array,dims, &
                       hdf5_err,memory_space_id,file_space_id,prop_id)  
       call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
-      deallocate(double_array)
+      call DeallocateArray(double_array)
     endif
     call h5pclose_f(prop_id,hdf5_err)
   endif
@@ -1240,6 +1250,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   
   use Option_module
   use Grid_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
 
@@ -1453,6 +1464,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   use Option_module
   use Grid_module
   use Discretization_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
 
@@ -1699,7 +1711,7 @@ end subroutine HDF5ReadArray
 
 ! ************************************************************************** !
 
-subroutine HDF5QueryRegionDefinition(realization, region, filename, &
+subroutine HDF5QueryRegionDefinition(region, filename, option, &
      cell_ids_exists, face_ids_exists, vert_ids_exists)
 
   !
@@ -1717,7 +1729,6 @@ subroutine HDF5QueryRegionDefinition(realization, region, filename, &
   use hdf5
 #endif
 
-  use Realization_class
   use Option_module
   use Grid_module
   use Region_module
@@ -1726,7 +1737,6 @@ subroutine HDF5QueryRegionDefinition(realization, region, filename, &
 
   implicit none
 
-  class(realization_type) :: realization
   type(region_type) :: region
   character(len=MAXSTRINGLENGTH) :: filename
   PetscBool, intent (out) :: cell_ids_exists
@@ -1751,8 +1761,6 @@ subroutine HDF5QueryRegionDefinition(realization, region, filename, &
                            &"read HDF5 formatted structured grids.")')
   call printErrMsg(option)
 #else
-
-  option => realization%option
 
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
@@ -1797,7 +1805,7 @@ end subroutine HDF5QueryRegionDefinition
 
 ! ************************************************************************** !
 
-subroutine HDF5ReadRegionFromFile(realization,region,filename)
+subroutine HDF5ReadRegionFromFile(grid,region,filename,option)
   ! 
   ! PETSC_HAVE_HDF5
   ! Reads a region from an hdf5 file
@@ -1816,17 +1824,17 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   use Region_module
   use Patch_module
   use HDF5_Aux_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
 
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  type(option_type), pointer :: option
   type(region_type) :: region
   character(len=MAXSTRINGLENGTH) :: filename
 
-  type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch  
 
@@ -1844,17 +1852,12 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 
   PetscBool :: grp_exists
 
-  option => realization%option
-
 #if !defined(PETSC_HAVE_HDF5)
   call printMsg(option,'')
   write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
                            &"read HDF5 formatted structured grids.")')
   call printErrMsg(option)
 #else
-
-  patch => realization%patch
-  grid => patch%grid
 
   call PetscLogEventBegin(logging%event_region_read_hdf5,ierr);CHKERRQ(ierr)
                           
@@ -1920,8 +1923,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
     region%def_type = DEFINED_BY_CELL_AND_FACE_IDS
   endif
   region%num_cells = num_indices
-  deallocate(indices)
-  nullify(indices)
+  call DeallocateArray(indices)
 
    if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
        option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
@@ -1995,14 +1997,14 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   region%cell_ids => integer_array
   region%def_type = DEFINED_BY_CELL_IDS
                             
-  allocate(integer_array(num_indices))
-  integer_array = 0
   string = "Face Ids"
   ! Check if the region dataset has "Face Ids" group
   call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
   if (grp_exists) then
     option%io_buffer = 'Reading dataset: ' // trim(string)
     call printMsg(option)
+    allocate(integer_array(num_indices))
+    integer_array = 0
     call HDF5ReadIntegerArray(option,grp_id2,string, &
                               ZERO_INTEGER,indices,num_indices, &
                               integer_array)
@@ -2011,8 +2013,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
     region%def_type = DEFINED_BY_CELL_AND_FACE_IDS
   endif
   region%num_cells = num_indices
-  deallocate(indices)
-  nullify(indices)
+  call DeallocateArray(indices)
 
   option%io_buffer = 'Closing group: ' // trim(region%name)
   call printMsg(option)  
@@ -2496,6 +2497,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   use Field_module
   use Patch_module
   use HDF5_Aux_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
 
@@ -2596,8 +2598,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
     tend-tstart
   call printMsg(option)  
 
-  if (associated(indices)) deallocate(indices)
-  nullify(indices)
+  call DeallocateArray(indices)
 
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
     option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
@@ -2668,8 +2669,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
     tend-tstart
   call printMsg(option)  
 
-  if (associated(indices)) deallocate(indices)
-  nullify(indices)
+  call DeallocateArray(indices)
 
   if (file_id /= grp_id) then
     option%io_buffer = 'Closing group: ' // trim(group_name)
@@ -2714,6 +2714,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   use Field_module
   use Patch_module
   use HDF5_Aux_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
 
@@ -2816,8 +2817,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
     tend-tstart
   call printMsg(option)  
 
-  if (associated(indices)) deallocate(indices)
-  nullify(indices)
+  call DeallocateArray(indices)
 
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
     option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
@@ -2886,8 +2886,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
     tend-tstart
   call printMsg(option)  
 
-  if (associated(indices)) deallocate(indices)
-  nullify(indices)
+  call DeallocateArray(indices)
 
   if (file_id /= grp_id) then
     option%io_buffer = 'Closing group: ' // trim(group_name)
@@ -2927,6 +2926,7 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization_base,vec,file_id,data_
   use Grid_module
   use Option_module
   use Patch_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
 
@@ -2983,6 +2983,7 @@ subroutine HDF5WriteDataSetFromVec(name,option,vec,file_id,data_type)
   use Grid_module
   use Option_module
   use Patch_module
+  use Utility_module, only : DeallocateArray
   
   implicit none
 
@@ -3077,7 +3078,7 @@ subroutine HDF5WriteDataSetFromVec(name,option,vec,file_id,data_type)
                     hdf5_err,memory_space_id,file_space_id,prop_id)
     call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
 
-    deallocate(double_array)
+    call DeallocateArray(double_array)
     call h5pclose_f(prop_id,hdf5_err)
   endif
 
@@ -3094,7 +3095,7 @@ subroutine HDF5WriteDataSetFromVec(name,option,vec,file_id,data_type)
                     hdf5_err,memory_space_id,file_space_id,prop_id)
     call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
 
-    deallocate(int_array)
+    call DeallocateArray(int_array)
     call h5pclose_f(prop_id,hdf5_err)
   endif
 
@@ -3118,6 +3119,7 @@ subroutine HDF5ReadDataSetInVec(name, option, vec, file_id, data_type)
   use Grid_module
   use Option_module
   use Patch_module
+  use Utility_module, only : DeallocateArray
 
   implicit none
 
@@ -3213,7 +3215,7 @@ subroutine HDF5ReadDataSetInVec(name, option, vec, file_id, data_type)
     enddo
     call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
 
-    deallocate(double_array)
+    call DeallocateArray(double_array)
     call h5pclose_f(prop_id,hdf5_err)
   endif
 
@@ -3231,7 +3233,7 @@ subroutine HDF5ReadDataSetInVec(name, option, vec, file_id, data_type)
     enddo
     call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
 
-    deallocate(int_array)
+    call DeallocateArray(int_array)
     call h5pclose_f(prop_id,hdf5_err)
   endif
 

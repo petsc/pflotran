@@ -1,5 +1,18 @@
 # 3D CO2 injection by Hannah
-MODE MPHASE
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE MPHASE
+    /
+  /
+END
+
+
+SUBSURFACE
+
+CO2_DATABASE ../../../database/co2data0.dat
 
 #CHECKPOINT 100
 #RESTART pflotran.chk500
@@ -18,7 +31,7 @@ END
 
 #
 #=======define solver======
-TIMESTEPPER
+TIMESTEPPER FLOW
   TS_ACCELERATION 8
 /
 
@@ -275,3 +288,4 @@ STRATA
   MATERIAL sandstone
 END
 
+END_SUBSURFACE

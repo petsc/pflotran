@@ -1420,7 +1420,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   if (associated(general%rate)) then
     select case(general%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler,general%rate%isubtype,option)
     end select
   endif
 
@@ -1521,7 +1521,8 @@ subroutine PatchUpdateCouplerAuxVarsMPH(patch,coupler,option)
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler,flow_condition%rate%isubtype, &
+                                  option)
     end select
   endif
   if (associated(flow_condition%saturation)) then
@@ -1622,7 +1623,8 @@ subroutine PatchUpdateCouplerAuxVarsIMS(patch,coupler,option)
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler,flow_condition%rate%isubtype, &
+                                  option)
     end select
   endif
   if (associated(flow_condition%saturation)) then
@@ -1723,7 +1725,8 @@ subroutine PatchUpdateCouplerAuxVarsFLASH2(patch,coupler,option)
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler,flow_condition%rate%isubtype, &
+                                  option)
     end select
   endif
   if (associated(flow_condition%saturation)) then
@@ -1774,6 +1777,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   character(len=MAXSTRINGLENGTH) :: string, string2
   PetscErrorCode :: ierr
   PetscBool :: apply_temp_cond
+  PetscInt :: rate_scale_type
   
   PetscInt :: idof, num_connections,sum_connection
   PetscInt :: iconn, local_id, ghosted_id
@@ -1818,7 +1822,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
     end select
     if (associated(flow_condition%temperature)) then
       select case(flow_condition%temperature%itype)
-        case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+        case(DIRICHLET_BC,ZERO_GRADIENT_BC)
           if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
              (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
              flow_condition%temperature%itype /= DIRICHLET_BC)) then
@@ -1835,6 +1839,10 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
             trim(adjustl(string)) // '", not implemented.'
           call printErrMsg(option)
       end select
+    endif
+    if (associated(flow_condition%energy_flux)) then
+      coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
+        flow_condition%energy_flux%dataset%rarray(1)
     endif
   endif
 
@@ -1853,7 +1861,7 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
 
   if (associated(flow_condition%temperature) .and. apply_temp_cond) then
     select case(flow_condition%temperature%itype)
-      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+      case(DIRICHLET_BC,ZERO_GRADIENT_BC)
         select type(selector =>flow_condition%temperature%dataset)
           class is(dataset_ascii_type)
             coupler%flow_aux_real_var(TH_TEMPERATURE_DOF, &
@@ -1880,15 +1888,48 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         call printErrMsg(option)
     end select
   endif
+
+  if (associated(flow_condition%energy_flux)) then
+    select case(flow_condition%energy_flux%itype)
+      case(NEUMANN_BC)
+        select type(selector =>flow_condition%energy_flux%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(TH_TEMPERATURE_DOF, &
+                                      1:num_connections) = &
+              selector%rarray(1)
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               TH_TEMPERATURE_DOF)
+          class default
+            option%io_buffer = 'Unknown dataset class (TH%' // &
+              'pressure%itype,NEUMANN_BC)'
+            call printErrMsg(option)
+        end select
+      case default
+        write(string,*) flow_condition%energy_flux%itype
+        string = GetSubConditionName(flow_condition%energy_flux%itype)
+        option%io_buffer='For TH mode: flow_condition%energy_flux%itype = "' // &
+          trim(adjustl(string)) // '", not implemented.'
+        call printErrMsg(option)
+    end select
+  endif
+  
+  !geh: we set this flag to ensure that we are not scaling mass and energy
+  !     differently
+  rate_scale_type = 0
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case (HET_MASS_RATE_SS,HET_VOL_RATE_SS)
         call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                   flow_condition%rate%dataset, &
                   num_connections,TH_PRESSURE_DOF,option)
-      case (MASS_RATE_SS,VOLUMETRIC_RATE_SS)
-          coupler%flow_aux_real_var(TH_PRESSURE_DOF,1:num_connections) = &
-                  flow_condition%rate%dataset%rarray(1)
+      case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+        call PatchScaleSourceSink(patch,coupler,flow_condition%rate%isubtype, &
+                                  option)
+        rate_scale_type = flow_condition%rate%isubtype
+      case(MASS_RATE_SS,VOLUMETRIC_RATE_SS)
+      ! do nothing here
       case default
         write(string,*) flow_condition%rate%itype
         string = GetSubConditionName(flow_condition%rate%itype)
@@ -1900,8 +1941,22 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   if (associated(flow_condition%energy_rate)) then
     select case (flow_condition%energy_rate%itype)
       case (ENERGY_RATE_SS)
+        !geh: this is pointless as %dataset%rarray(1) is reference in TH, 
+        !     not the flow_aux_real_var!
         coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
                   flow_condition%energy_rate%dataset%rarray(1)
+      case (SCALED_ENERGY_RATE_SS)
+        if (rate_scale_type == 0) then
+          call PatchScaleSourceSink(patch,coupler, &
+                                    flow_condition%energy_rate%isubtype,option)
+        else if (rate_scale_type == flow_condition%energy_rate%isubtype) then
+          !geh: do nothing as it is taken care of later.
+        else
+          option%io_buffer = 'MASS and ENERGY scaling mismatch in ' // &
+            'FLOW_CONDITION "' // trim(flow_condition%name) // '".'
+          call printErrMsg(option)
+        endif
+        !geh: do nothing as the
       case (HET_ENERGY_RATE_SS)
         call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                 flow_condition%energy_rate%dataset, &
@@ -1994,7 +2049,8 @@ subroutine PatchUpdateCouplerAuxVarsMIS(patch,coupler,option)
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler, &
+                                  flow_condition%rate%isubtype,option)
     end select
   endif  
 
@@ -2077,7 +2133,8 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   if (associated(flow_condition%rate)) then
     select case(flow_condition%rate%itype)
       case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
-        call PatchScaleSourceSink(patch,coupler,option)
+        call PatchScaleSourceSink(patch,coupler, &
+                                  flow_condition%rate%isubtype,option)
       case (HET_VOL_RATE_SS,HET_MASS_RATE_SS)
         call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                 flow_condition%rate%dataset, &
@@ -2140,7 +2197,7 @@ end subroutine PatchUpdateCouplerFromDataset
 
 ! ************************************************************************** !
 
-subroutine PatchScaleSourceSink(patch,source_sink,option)
+subroutine PatchScaleSourceSink(patch,source_sink,iscale_type,option)
   ! 
   ! Scales select source/sinks based on perms*volume
   ! 
@@ -2165,6 +2222,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   
   type(patch_type) :: patch
   type(coupler_type) :: source_sink
+  PetscInt :: iscale_type
   type(option_type) :: option
   
   PetscErrorCode :: ierr
@@ -2177,7 +2235,6 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   PetscInt :: local_id
   PetscInt :: ghosted_id, neighbor_ghosted_id
   PetscInt :: iconn
-  PetscInt :: iscale_type
   PetscReal :: scale, sum
   PetscInt :: icount, x_count, y_count, z_count
   PetscInt, parameter :: x_width = 1, y_width = 1, z_width = 0
@@ -2195,13 +2252,6 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
 
   cur_connection_set => source_sink%connection_set
 
-  select case(option%iflowmode)
-    case(G_MODE)
-      iscale_type = source_sink%flow_condition%general%rate%isubtype
-    case default
-      iscale_type = source_sink%flow_condition%rate%isubtype
-  end select
-  
   select case(iscale_type)
     case(SCALE_BY_VOLUME)
       do iconn = 1, cur_connection_set%num_connections
@@ -2264,10 +2314,19 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
         enddo
         vec_ptr(local_id) = vec_ptr(local_id) + sum
       enddo
+    case(0)
+      option%io_buffer = 'Unknown scaling type in PatchScaleSourceSink ' // &
+        'for FLOW_CONDITION "' // trim(source_sink%flow_condition%name) // '".'
+      call printErrMsg(option)
   end select
 
   call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
   call VecNorm(field%work,NORM_1,scale,ierr);CHKERRQ(ierr)
+  if (scale < 1.d-40) then
+    option%io_buffer = 'Zero infinity norm in PatchScaleSourceSink for ' // &
+      'FLOW_CONDITION "' // trim(source_sink%flow_condition%name) // '".'
+    call printErrMsg(option)
+  endif
   scale = 1.d0/scale
   call VecScale(field%work,scale,ierr);CHKERRQ(ierr)
 
@@ -2275,16 +2334,13 @@ subroutine PatchScaleSourceSink(patch,source_sink,option)
   do iconn = 1, cur_connection_set%num_connections      
     local_id = cur_connection_set%id_dn(iconn)
     select case(option%iflowmode)
-      case(RICHARDS_MODE,G_MODE)
+      case(RICHARDS_MODE,G_MODE,TH_MODE)
         source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
           vec_ptr(local_id)
-      case(TH_MODE)
-      case(MPH_MODE)
-      case(IMS_MODE)
-      case(MIS_MODE)
-      case(FLASH2_MODE)
+      case(MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
+        option%io_buffer = 'PatchScaleSourceSink not set up for flow mode'
+        call printErrMsg(option)
     end select 
-
   enddo
   call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
 
@@ -2891,9 +2947,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
               vec_ptr(local_id) = patch%aux%Global%auxvars(grid%nL2G(local_id))%den_kg(1)
             enddo
           case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY,GAS_VISCOSITY) ! still needs implementation
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = 0.d0
-            enddo
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by TH')
           case(GAS_SATURATION)
             do local_id=1,grid%nlmax
               if (option%use_th_freezing) then
@@ -2923,9 +2977,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
               vec_ptr(local_id) = patch%aux%TH%auxvars(grid%nL2G(local_id))%kvr
             enddo
           case(LIQUID_MOLE_FRACTION)
-            do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%TH%auxvars(grid%nL2G(local_id))%xmol(isubvar)
-            enddo
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by TH')
           case(LIQUID_ENERGY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TH%auxvars(grid%nL2G(local_id))%u
@@ -3960,7 +4012,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(LIQUID_MOBILITY)
             value = patch%aux%TH%auxvars(ghosted_id)%kvr
           case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
-            value = 0.d0
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by TH')
           case(GAS_SATURATION)
             if (option%use_th_freezing) then
               value = patch%aux%TH%auxvars(ghosted_id)%sat_gas
@@ -3976,7 +4028,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
               value = patch%aux%TH%auxvars(ghosted_id)%den_ice*FMWH2O
             endif
           case(LIQUID_MOLE_FRACTION)
-            value = patch%aux%TH%auxvars(ghosted_id)%xmol(isubvar)
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by TH')
           case(LIQUID_ENERGY)
             value = patch%aux%TH%auxvars(ghosted_id)%u
           case(SECONDARY_TEMPERATURE)
@@ -4661,6 +4713,7 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
               enddo
             endif
           case(GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by TH')
           case(GAS_SATURATION)
             if (option%use_th_freezing) then
               if (vec_format == GLOBAL) then
@@ -4700,15 +4753,7 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
           case(LIQUID_VISCOSITY)
           case(GAS_VISCOSITY)
           case(LIQUID_MOLE_FRACTION)
-            if (vec_format == GLOBAL) then
-              do local_id=1,grid%nlmax
-                patch%aux%TH%auxvars(grid%nL2G(local_id))%xmol(isubvar) = vec_ptr(local_id)
-              enddo
-            else if (vec_format == LOCAL) then
-              do ghosted_id=1,grid%ngmax
-                patch%aux%TH%auxvars(ghosted_id)%xmol(isubvar) = vec_ptr(ghosted_id)
-              enddo
-            endif
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by TH')
           case(LIQUID_ENERGY)
             if (vec_format == GLOBAL) then
               do local_id=1,grid%nlmax

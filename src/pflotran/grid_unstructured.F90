@@ -649,12 +649,12 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   !
   
   ! Open group
-  group_name = "Regions"
+  group_name = "/Regions/top/Vertex Ids"
   option%io_buffer = 'Opening group: ' // trim(group_name)
   call printMsg(option)
 
   ! Open dataset
-  call h5dopen_f(file_id, "Regions/top", data_set_id, hdf5_err)
+  call h5dopen_f(file_id, "/Regions/top/Vertex Ids", data_set_id, hdf5_err)
 
   ! Get dataset's dataspace
   call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
@@ -729,8 +729,10 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   unstructured_grid%cell_vertices = -1
   
   do ii = 1, num_cells_local
-    do jj = 2, int_buffer(1,ii) + 1
-      unstructured_grid%cell_vertices(jj-1, ii) = int_buffer(jj, ii)
+    do jj = 1, INT(dims_h5(1))
+      if (int_buffer(jj, ii) > 0) then
+        unstructured_grid%cell_vertices(jj, ii) = int_buffer(jj, ii)
+      end if
     enddo
   enddo
   
