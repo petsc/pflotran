@@ -649,7 +649,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   !
   
   ! Open group
-  group_name = "/Regions/top"
+  group_name = "/Regions/top/Vertex Ids"
   option%io_buffer = 'Opening group: ' // trim(group_name)
   call printMsg(option)
 

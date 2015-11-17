@@ -1711,7 +1711,7 @@ end subroutine HDF5ReadArray
 
 ! ************************************************************************** !
 
-subroutine HDF5QueryRegionDefinition(realization, region, filename, &
+subroutine HDF5QueryRegionDefinition(region, filename, option, &
      cell_ids_exists, face_ids_exists, vert_ids_exists)
 
   !
@@ -1729,7 +1729,6 @@ subroutine HDF5QueryRegionDefinition(realization, region, filename, &
   use hdf5
 #endif
 
-  use Realization_class
   use Option_module
   use Grid_module
   use Region_module
@@ -1738,7 +1737,6 @@ subroutine HDF5QueryRegionDefinition(realization, region, filename, &
 
   implicit none
 
-  class(realization_type) :: realization
   type(region_type) :: region
   character(len=MAXSTRINGLENGTH) :: filename
   PetscBool, intent (out) :: cell_ids_exists
@@ -1763,8 +1761,6 @@ subroutine HDF5QueryRegionDefinition(realization, region, filename, &
                            &"read HDF5 formatted structured grids.")')
   call printErrMsg(option)
 #else
-
-  option => realization%option
 
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
@@ -1809,7 +1805,7 @@ end subroutine HDF5QueryRegionDefinition
 
 ! ************************************************************************** !
 
-subroutine HDF5ReadRegionFromFile(realization,region,filename)
+subroutine HDF5ReadRegionFromFile(grid,region,filename,option)
   ! 
   ! PETSC_HAVE_HDF5
   ! Reads a region from an hdf5 file
@@ -1835,11 +1831,10 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  type(option_type), pointer :: option
   type(region_type) :: region
   character(len=MAXSTRINGLENGTH) :: filename
 
-  type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch  
 
@@ -1857,17 +1852,12 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 
   PetscBool :: grp_exists
 
-  option => realization%option
-
 #if !defined(PETSC_HAVE_HDF5)
   call printMsg(option,'')
   write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
                            &"read HDF5 formatted structured grids.")')
   call printErrMsg(option)
 #else
-
-  patch => realization%patch
-  grid => patch%grid
 
   call PetscLogEventBegin(logging%event_region_read_hdf5,ierr);CHKERRQ(ierr)
                           
