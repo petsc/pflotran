@@ -82,7 +82,7 @@ REGION all
 END 
 
 REGION top
-  FILE sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5 old_format
+  FILE sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
   GRID unstructured
 END
 
