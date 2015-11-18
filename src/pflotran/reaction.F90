@@ -674,7 +674,6 @@ subroutine ReactionReadPass1(reaction,input,option)
             case('SURFACE_COMPLEXATION_RXN')
               call SurfaceComplexationRead(reaction,input,option)
             case('ION_EXCHANGE_RXN')
-            
               ionx_rxn => IonExchangeRxnCreate()
               do
                 call InputReadPflotranString(input,option)
@@ -682,18 +681,22 @@ subroutine ReactionReadPass1(reaction,input,option)
                 if (InputCheckExit(input,option)) exit
 
                 call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN')
+                call InputErrorMsg(input,option,'keyword', &
+                                   'CHEMISTRY,ION_EXCHANGE_RXN')
                 call StringToUpper(word)
                 
                 select case(trim(word))
                   case('MINERAL')
-                    call InputReadWord(input,option,ionx_rxn%mineral_name,PETSC_TRUE)
+                    call InputReadWord(input,option,ionx_rxn%mineral_name, &
+                                       PETSC_TRUE)
                     call InputErrorMsg(input,option,'keyword', &
                       'CHEMISTRY,ION_EXCHANGE_RXN,MINERAL_NAME')
                   case('CEC')
                     call InputReadDouble(input,option,ionx_rxn%CEC)
-                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,CEC')                   
+                    call InputErrorMsg(input,option,'keyword', &
+                                       'CHEMISTRY,ION_EXCHANGE_RXN,CEC')
                   case('CATIONS')
+                    string = '' ! string denotes the reference cation 
                     nullify(prev_cation)
                     do
                       call InputReadPflotranString(input,option)
@@ -706,8 +709,17 @@ subroutine ReactionReadPass1(reaction,input,option)
                       call InputErrorMsg(input,option,'keyword', &
                         'CHEMISTRY,ION_EXCHANGE_RXN,CATION_NAME')
                       call InputReadDouble(input,option,cation%k)
-                      call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,K')                   
-    
+                      call InputErrorMsg(input,option,'keyword', &
+                                         'CHEMISTRY,ION_EXCHANGE_RXN,K')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      if (input%ierr == 0) then
+                        if (StringCompareIgnoreCase(word,'REFERENCE')) then
+                          string = cation%name
+                        else
+                          call InputKeywordUnrecognized(word, &
+                                  'CHEMISTRY,ION_EXCHANGE_RXN,CATIONS',option)
+                        endif
+                      endif
                       if (.not.associated(ionx_rxn%cation_list)) then
                         ionx_rxn%cation_list => cation
                       endif
@@ -716,6 +728,33 @@ subroutine ReactionReadPass1(reaction,input,option)
                       endif
                       prev_cation => cation
                       nullify(cation)
+                    enddo
+                    if (len_trim(string) == 0) then
+                      option%io_buffer = &
+                        'Reference cation missing in Ion Exchange reaction.'
+                      call printErrMsg(option)
+                    endif
+                    cation => ionx_rxn%cation_list
+                    do
+                      if (.not.associated(cation)) exit
+                      if (StringCompare(cation%name,string)) then
+                        if (dabs(cation%k - 1.d0) > 1.d-40) then
+                          option%io_buffer = 'Reference cation "' // &
+                            trim(cation%name) // '" must have k = 1.d0.'
+                          call printErrMsg(option)
+                        endif
+                        ! move it to the front of the list
+                        if (associated(prev_cation)) then
+                          prev_cation%next => cation%next
+                          cation%next => ionx_rxn%cation_list
+                          ionx_rxn%cation_list => cation
+                        else
+                          ! nothing to do as it is at the front of the list
+                        endif
+                        exit
+                      endif
+                      prev_cation => cation
+                      cation => cation%next
                     enddo
                   case default
                     call InputKeywordUnrecognized(word, &
@@ -4381,7 +4420,8 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
       ref_cation_conc = rt_auxvar%pri_molal(icomp)*rt_auxvar%pri_act_coef(icomp)
       ref_cation_Z = reaction%primary_spec_Z(icomp)
       ref_cation_k = reaction%eqionx_rxn_k(1,irxn)
-      ref_cation_X = ref_cation_Z*rt_auxvar%eqionx_ref_cation_sorbed_conc(irxn)/omega
+      ref_cation_X = ref_cation_Z* &
+                     rt_auxvar%eqionx_ref_cation_sorbed_conc(irxn)/omega
 
       one_more = PETSC_FALSE
       cation_X = 0.d0
@@ -4389,12 +4429,13 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
 
         if (ref_cation_X <= 0.d0) ref_cation_X = 0.99d0
         cation_X(1) = ref_cation_X
-        ref_cation_quotient = ref_cation_X*ref_cation_k/ref_cation_conc
+        ref_cation_quotient = ref_cation_X/(ref_cation_k*ref_cation_conc)
         total = ref_cation_X
 
         do j = 2, ncomp
           icomp = reaction%eqionx_rxn_cationid(j,irxn)
-          cation_X(j) = rt_auxvar%pri_molal(icomp)*rt_auxvar%pri_act_coef(icomp)/ &
+          cation_X(j) = rt_auxvar%pri_molal(icomp)* &
+                        rt_auxvar%pri_act_coef(icomp)* &
                         reaction%eqionx_rxn_k(j,irxn)* &
                         ref_cation_quotient** &
                         (reaction%primary_spec_Z(icomp)/ref_cation_Z)
@@ -4411,13 +4452,15 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
   ! test derivative
         pert = 1.d-6 * ref_cation_X
         ref_cation_X_pert = ref_cation_X + pert
-        ref_cation_quotient_pert = ref_cation_X_pert*ref_cation_k/ref_cation_conc
+        ref_cation_quotient_pert = ref_cation_X_pert/ &
+        (ref_cation_k*ref_cation_conc)
         total_pert = ref_cation_X_pert
 
           do j = 2, ncomp
             icomp = reaction%eqionx_rxn_cationid(j,irxn)
             total_pert = total_pert + &
-                         rt_auxvar%pri_molal(icomp)*rt_auxvar%pri_act_coef(icomp)/ &
+                         rt_auxvar%pri_molal(icomp)* &
+                         rt_auxvar%pri_act_coef(icomp)* &
                          reaction%eqionx_rxn_k(j,irxn)* &
                          ref_cation_quotient_pert** &
                          (reaction%primary_spec_Z(icomp)/ref_cation_Z)
@@ -4452,7 +4495,8 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
       
       do j = 1, ncomp  
         icomp = reaction%eqionx_rxn_cationid(j,irxn)
-        cation_X(j) = rt_auxvar%pri_molal(icomp)*rt_auxvar%pri_act_coef(icomp)/ &
+        cation_X(j) = rt_auxvar%pri_molal(icomp)* &
+                      rt_auxvar%pri_act_coef(icomp)* &
                       reaction%eqionx_rxn_k(j,irxn)
         sumkm = sumkm + cation_X(j)
       enddo
