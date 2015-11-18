@@ -4427,7 +4427,7 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
       cation_X = 0.d0
       do
 
-        if (ref_cation_X <= 0.d0) ref_cation_X = 0.99d0
+        if (ref_cation_X <= 0.d0) ref_cation_X = 1.d-8
         cation_X(1) = ref_cation_X
         ref_cation_quotient = ref_cation_X/(ref_cation_k*ref_cation_conc)
         total = ref_cation_X
