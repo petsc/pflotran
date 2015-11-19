@@ -735,6 +735,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                       call printErrMsg(option)
                     endif
                     cation => ionx_rxn%cation_list
+                    nullify(prev_cation)
                     do
                       if (.not.associated(cation)) exit
                       if (StringCompare(cation%name,string)) then
