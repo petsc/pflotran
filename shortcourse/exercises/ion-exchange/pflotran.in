@@ -65,12 +65,13 @@ ION_EXCHANGE_RXN
 CEC 71.004  ! mol/m^3
 CATIONS
 Na+   7.94328
-Ca++  1.
+Ca++  1. REFERENCE
 Mg++  1.44544
 /
 /
 /
-DATABASE /Users/lichtner/pflotran/pflotran-dev/database/hanford.dat
+#DATABASE /Users/lichtner/pflotran/pflotran-dev/database/hanford.dat
+DATABASE ../../..//database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS ! NEWTON_ITERATION
 MOLAL
