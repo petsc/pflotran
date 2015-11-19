@@ -4431,12 +4431,13 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
       KDj = ref_cation_X /(ref_cation_k*ref_cation_conc)
       it = 0
 !geh: Change from 0 to 1 to run new implementation.
-#if 0
+#if 1
       do
         it = it + 1
         ref_cation_X = KDj*(ref_cation_k*ref_cation_conc)
         cation_X(1) = ref_cation_X
         total = ref_cation_X
+        dres_dKDj = 0.d0
         do j = 2, ncomp
           icomp = reaction%eqionx_rxn_cationid(j,irxn)
           cation_X(j) = reaction%eqionx_rxn_k(j,irxn)* &
