@@ -4431,9 +4431,13 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
       KDj = ref_cation_X /(ref_cation_k*ref_cation_conc)
       it = 0
 !geh: Change from 0 to 1 to run new implementation.
-#if 0
+#if 1
       do
         it = it + 1
+        if (it > 20000) then
+          option%io_buffer = 'Too many Newton iterations in ion exchange.'
+          call printErrMsgByRank(option)
+        endif
         ref_cation_X = KDj*(ref_cation_k*ref_cation_conc)
         cation_X(1) = ref_cation_X
         total = ref_cation_X
@@ -4456,6 +4460,7 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
         ! no need to negate since res is subtracted above.
         delta_KDj = res/dres_dKDj
         KDj = KDj + delta_KDj
+        KDj = max(KDj,1.d-40) ! prevent from going negative
         if (dabs(delta_KDj/KDj) < tol) then
           one_more = PETSC_TRUE
         endif
