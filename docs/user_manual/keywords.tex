@@ -1329,13 +1329,13 @@ The keyword SORPTION specifies parameters for ion-exchange and surface-complexat
 \item [ION\_EXCHANGE\_RXN] ~
 \begin{deflist}{000}
 %\item [EQUILIBRIUM]
-\item [MINERAL] {\tt Mineral Name}
+\item [MINERAL] {\tt Mineral Name} \ \ \ (Currently not implemented)
 \begin{deflist}{000}
 \item [CEC] {\tt <float>} \ [mol/m$^3$]
 %\item[SITE/CATION] {\tt Name} \ \ \ {\tt Site Density} [mol/m$^3$]
-\item[CATIONS] Exchange reactions must be written in terms of a single reference cation which must appear first in the list of cations [see \eqref{ex1}].
+\item[CATIONS] Exchange reactions must be written in terms of a single reference cation to which is appended the keyword REFERENCE in the list of cations [see example below and Eqn.\eqref{ex1}]. Order is not important.
 \begin{deflist}{000}
-\item[\tt Cation Name]  \ \ \ {\tt Selectivity\_Coefficient}
+\item[\tt Cation Name]  \ \ \ {\tt Selectivity\_Coefficient} \ \ \ [REFERENCE]
 \end{deflist}
 \item [\keyend] ~
 \end{deflist}
@@ -1403,8 +1403,8 @@ The keyword SORPTION specifies parameters for ion-exchange and surface-complexat
     ION_EXCHANGE_RXN
       CEC 0.11 ! eq/m3bulk
       CATIONS
-        Na+   1.
         Ca++  0.158489
+        Na+   1. REFERENCE
         K+    0.199526
       /
     /
