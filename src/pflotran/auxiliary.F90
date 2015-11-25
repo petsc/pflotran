@@ -104,6 +104,7 @@ subroutine AuxDestroy(aux)
   nullify(aux%Material)
   nullify(aux%SC_Heat)
   nullify(aux%SC_RT)
+
 end subroutine AuxDestroy
 
 end module Auxiliary_module
