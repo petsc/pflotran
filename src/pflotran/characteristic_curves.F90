@@ -79,6 +79,7 @@ module Characteristic_Curves_module
   contains
     procedure, public :: Verify => SF_BF_KRP4_Verify
     procedure, public :: CapillaryPressure => SF_BF_KRP4_CapillaryPressure
+    procedure, public :: Saturation => SF_BF_KRP4_Saturation
   end type sat_func_BF_KRP4_type
   ! BRAGFLO KRP11 modified Brooks-Corey Model
   type, public, extends(sat_func_base_type) :: sat_func_BF_KRP11_type
@@ -2240,6 +2241,7 @@ subroutine SF_Linear_CapillaryPressure(this,liquid_saturation, &
   ! Computes the capillary_pressure as a function of saturation
   ! 
   !   
+
   ! Author: Bwalya Malama, Heeho Park
   ! Date: 11/14/14
   !
@@ -2565,10 +2567,70 @@ subroutine SF_BF_KRP4_CapillaryPressure(this,liquid_saturation, &
 
 end subroutine SF_BF_KRP4_CapillaryPressure
 
-! End SF: BRAGFLO KRP4 Model
-  
 ! ************************************************************************** !
 
+subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
+                            dsat_dpres,option)
+  ! 
+  ! Computes the capillary_pressure as a function of saturation using the
+  ! Brooks-Corey formulation
+  ! 
+  ! Modified according to KRP=4 option of BRAGFLO
+  ! Explanation: residual gas saturation in the calculation of effective 
+  ! saturation
+  ! There is no usage of Pc Max unless KPC card is defined as 2. If KPC = 0,
+  ! then there is no cut off in Pc Max
+  ! Author: Heeho Park
+  ! Date: 11/14/15
+  ! 
+  use Option_module
+  use Utility_module
+  
+  implicit none
+
+  class(sat_func_BF_KRP4_type) :: this
+  PetscReal, intent(in) :: capillary_pressure
+  PetscReal, intent(out) :: liquid_saturation
+  PetscReal, intent(out) :: dsat_dpres
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: pc_alpha_neg_lambda
+  PetscReal :: Se
+  PetscReal :: dSe_dpc
+  
+  dsat_dpres = 0.d0
+  
+  ! reference #1
+  if (associated(this%pres_poly)) then
+    if (capillary_pressure < this%pres_poly%low) then
+      liquid_saturation = 1.d0
+      return
+    else if (capillary_pressure < this%pres_poly%high) then
+      call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
+                                   capillary_pressure,Se,dSe_dpc)
+      liquid_saturation = this%Sr + (1.d0-this%Sr-this%Srg)*Se
+      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+      return
+    endif
+  else
+    if (capillary_pressure < 1.d0/this%alpha) then
+      liquid_saturation = 1.d0
+      dsat_dpres = 0.d0
+      return
+    endif
+  endif
+
+  pc_alpha_neg_lambda = (capillary_pressure*this%alpha)**(-this%lambda)
+  Se = pc_alpha_neg_lambda
+  dSe_dpc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
+  liquid_saturation = this%Sr + (1.d0-this%Sr-this%Srg)*Se
+  dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+  
+end subroutine SF_BF_KRP4_Saturation
+
+! End SF: BRAGFLO KRP4 Model
+
+! ************************************************************************** !
 ! Begin SF: BRAGFLO KRP11 Model
 function SF_BF_KRP11_Create()
 
