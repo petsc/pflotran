@@ -1823,12 +1823,24 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
     if (associated(flow_condition%temperature)) then
       select case(flow_condition%temperature%itype)
         case(DIRICHLET_BC,ZERO_GRADIENT_BC)
-          if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
-             (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
-             flow_condition%temperature%itype /= DIRICHLET_BC)) then
-            coupler%flow_aux_real_var(TH_TEMPERATURE_DOF,1:num_connections) = &
-                    flow_condition%temperature%dataset%rarray(1)
-          endif
+          select type(selector =>flow_condition%temperature%dataset)
+            class is(dataset_ascii_type)
+              if (flow_condition%pressure%itype /= HYDROSTATIC_BC .or. &
+                 (flow_condition%pressure%itype == HYDROSTATIC_BC .and. &
+                 flow_condition%temperature%itype /= DIRICHLET_BC)) then
+                coupler%flow_aux_real_var(TH_TEMPERATURE_DOF, &
+                                          1:num_connections) = &
+                  selector%rarray(1)
+              endif
+            class is(dataset_gridded_hdf5_type)
+              call PatchUpdateCouplerFromDataset(coupler,option, &
+                                                 patch%grid,selector, &
+                                                 TH_TEMPERATURE_DOF)
+            class default
+              option%io_buffer = 'Unknown dataset class (TH%' // &
+                'temperature%itype,DIRICHLET_BC)'
+              call printErrMsg(option)
+          end select
         case (HET_DIRICHLET)
           call PatchUpdateHetroCouplerAuxVars(patch,coupler, &
                   flow_condition%temperature%dataset, &
