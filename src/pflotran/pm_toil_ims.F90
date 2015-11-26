@@ -894,7 +894,7 @@ subroutine PMTOilImsMaxChange(this)
       max_change_global(1:4)
   endif
   if (OptionPrintToFile(option)) then
-    write(option%fid_out,'("  --> max chng: dpl= ",1pe12.4, " dpg= ",1pe12.4,&
+    write(option%fid_out,'("  --> max chng: dpl= ",1pe12.4, " dpo= ",1pe12.4,&
       & "  dso= ",1pe12.4, &
       & " dt= ",1pe12.4)') &
       max_change_global(1:4)
