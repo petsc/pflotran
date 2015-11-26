@@ -2168,8 +2168,8 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
     end if
 
   else !if not temp or enthalpy are given
-    ! if energy rate is given, loaded in qsrc(3) in J/sec 
-    Res(option%energy_id) = qsrc(THREE_INTEGER)* 1.d-6 * scale ! MJ/s
+    ! if energy rate is given, loaded in qsrc(3) in MJ/sec 
+    Res(option%energy_id) = qsrc(THREE_INTEGER)* scale ! MJ/s
   end if
 
 

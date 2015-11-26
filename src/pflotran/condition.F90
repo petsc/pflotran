@@ -2071,9 +2071,15 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
             sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
                                                             option)
         end select
+        select case(trim(word))
+          case('RATE','ENERGY_FLUX')
+            input%force_units = PETSC_TRUE
+            input%err_buf = word
+        end select
         call ConditionReadValues(input,option,word, &
                                  sub_condition_ptr%dataset, &
                                  sub_condition_ptr%units)
+        input%force_units = PETSC_FALSE
         select case(word)
           case('LIQUID_SATURATION') ! convert to oil saturation
             if (associated(sub_condition_ptr%dataset%rbuffer)) then

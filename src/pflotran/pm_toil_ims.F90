@@ -44,7 +44,7 @@ module PM_TOilIms_class
     procedure, public :: UpdateAuxVars => PMTOilImsUpdateAuxVars
     procedure, public :: MaxChange => PMTOilImsMaxChange
     !procedure, public :: ComputeMassBalance => PMGeneralComputeMassBalance
-    procedure, public :: CheckpointBinary => PMTOilImsRestartBinary
+    procedure, public :: CheckpointBinary => PMTOilImsCheckpointBinary
     procedure, public :: RestartBinary => PMTOilImsRestartBinary
     procedure, public :: Destroy => PMTOilImsDestroy
   end type pm_toil_ims_type
