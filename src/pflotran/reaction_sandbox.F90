@@ -13,7 +13,7 @@ module Reaction_Sandbox_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   class(reaction_sandbox_base_type), pointer, public :: rxn_sandbox_list
 

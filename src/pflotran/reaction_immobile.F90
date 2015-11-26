@@ -8,7 +8,7 @@ module Reaction_Immobile_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: ImmobileRead, &
             ImmobileDecayRxnRead, &

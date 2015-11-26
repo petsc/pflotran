@@ -4,7 +4,7 @@ module Utility_module
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   interface DotProduct
     module procedure DotProduct1
@@ -1224,21 +1224,11 @@ function FileExists(filename)
 
   implicit none
   
-  PetscBool FileExists
+  PetscBool :: FileExists
 
   character(len=*) :: filename
-  PetscInt :: fid
-  PetscInt :: ios
   
-  ios = 0
-  fid = 86
-  open(unit=fid,file=filename,action="read",status="old",iostat=ios)
-  if (ios == 0) then
-    close(fid)
-    FileExists = PETSC_TRUE
-  else
-    FileExists = PETSC_FALSE
-  endif
+  inquire(file=filename,exist=FileExists)
 
 end function FileExists
 

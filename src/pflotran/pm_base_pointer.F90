@@ -8,7 +8,7 @@ module PM_Base_Pointer_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! Since the context (ctx) for procedures passed to PETSc must be declared 
   ! as a "type" instead of a "class", object is a workaround for passing the 
@@ -51,9 +51,9 @@ subroutine PMResidual(snes,xx,r,this,ierr)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscsnes.h"
 
   SNES :: snes
   Vec :: xx
@@ -82,9 +82,9 @@ subroutine PMResidualPtr(snes,xx,r,this,ierr)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscsnes.h"
 
   SNES :: snes
   Vec :: xx
@@ -112,10 +112,10 @@ subroutine PMJacobian(snes,xx,A,B,this,ierr)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscsnes.h"
 
   SNES :: snes
   Vec :: xx
@@ -143,10 +143,10 @@ subroutine PMJacobianPtr(snes,xx,A,B,this,ierr)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscsnes.h"
 
   SNES :: snes
   Vec :: xx
@@ -172,9 +172,9 @@ subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscts.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscts.h"
 
   TS :: ts
   PetscReal :: time
@@ -201,9 +201,9 @@ subroutine PMRHSFunctionPtr(ts,time,xx,ff,this,ierr)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscts.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscts.h"
 
   TS :: ts
   PetscReal :: time
@@ -232,9 +232,9 @@ subroutine PMCheckUpdatePre(line_search,X,dX,changed,this,ierr)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscsnes.h"
 
   SNESLineSearch :: line_search
   Vec :: X
@@ -263,9 +263,9 @@ subroutine PMCheckUpdatePrePtr(line_search,X,dX,changed,this,ierr)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscsnes.h"
 
   SNESLineSearch :: line_search
   Vec :: X
@@ -295,9 +295,9 @@ subroutine PMCheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,this, &
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscsnes.h"
 
   SNESLineSearch :: line_search
   Vec :: X0
@@ -329,9 +329,9 @@ subroutine PMCheckUpdatePostPtr(line_search,X0,dX,X1,dX_changed,X1_changed, &
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscsnes.h"
 
   SNESLineSearch :: line_search
   Vec :: X0

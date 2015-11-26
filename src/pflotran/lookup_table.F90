@@ -6,7 +6,7 @@ module Lookup_Table_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, abstract, public :: lookup_table_base_type
     PetscInt :: dim

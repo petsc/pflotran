@@ -14,9 +14,9 @@ module Simulation_Geomechanics_class
 
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   type, public, extends(subsurface_simulation_type) :: geomechanics_simulation_type
     ! pointer to geomechanics coupler

@@ -8,7 +8,7 @@ module Factory_Subsurface_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: SubsurfaceInitialize, &
             SubsurfaceInitializePostPETSc, &
@@ -516,17 +516,16 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
           call printErrMsg(option)
         endif
         select type(pm)
+!          class is(pm_general_type,pm_richards_type,pm_th_type)
+          !geh: why I cannot shove all these in a single 'class is' statement
+          !     is beyond me.
           class is(pm_general_type)
-            ! inorder to not immediately return out of GeneralRead
-            !TODO(geh): remove dummy word
-            input%buf = 'dummy_word'
+            call pm%Read(input)
+          class is(pm_richards_type)
             call pm%Read(input)
           class is(pm_th_type)
             call pm%Read(input)
           class is(pm_toil_ims_type)
-            ! inorder to not immediately return out of GeneralRead
-            ! check what ahppen if I remove this dummy_word
-            input%buf = 'dummy_word'
             call pm%Read(input)
           class default
             option%io_buffer = 'OPTIONS not set up for PM.'
@@ -733,7 +732,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   
   implicit none
   
-#include "finclude/petscsnes.h" 
+#include "petsc/finclude/petscsnes.h" 
 
   class(subsurface_simulation_type) :: simulation
   
@@ -868,18 +867,28 @@ subroutine InitSubsurfaceSimulation(simulation)
               select type(cur_process_model)
                 ! flow solutions
                 class is(pm_subsurface_type)
-                  if (ts%solver%check_post_convergence) then
+                  if (ts%solver%check_post_convergence .or. &
+                      cur_process_model%check_post_convergence) then
                     call SNESLineSearchSetPostCheck(linesearch, &
                                                     PMCheckUpdatePostPtr, &
                                              cur_process_model_coupler%pm_ptr, &
                                                     ierr);CHKERRQ(ierr)
+                    !geh: it is possible that the other side has not been set
+                    ts%solver%check_post_convergence = PETSC_TRUE
+                    cur_process_model%check_post_convergence = PETSC_TRUE
                   endif
                 class is(pm_rt_type)
-                  if (ts%solver%check_post_convergence .or. option%use_mc) then
+                  if (ts%solver%check_post_convergence .or. &
+                      cur_process_model%print_EKG .or. &
+                      option%use_mc) then
                     call SNESLineSearchSetPostCheck(linesearch, &
                                                     PMCheckUpdatePostPtr, &
                                              cur_process_model_coupler%pm_ptr, &
                                                     ierr);CHKERRQ(ierr)
+                    if (cur_process_model%print_EKG) then
+                      ts%solver%check_post_convergence = PETSC_TRUE
+                      option%transport%check_post_convergence = PETSC_TRUE
+                    endif
                   endif
               end select
               ! Pre

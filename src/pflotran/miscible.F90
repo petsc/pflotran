@@ -9,28 +9,28 @@ module Miscible_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
 !#include "include/petscf90.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
   ! Otherwise some very strange things will happen and PETSc will give no
   ! indication of what the problem is.
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscdm.h"
+#include "petsc/finclude/petscdm.h90"
 !#ifdef USE_PETSC216
-!#include "finclude/petscsles.h"
+!#include "petsc/finclude/petscsles.h"
 !#endif
-#include "finclude/petscsnes.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsysdef.h"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petsclog.h"
-#include "finclude/petscerror.h"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscsysdef.h"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscerror.h"
 
 ! Cutoff parameters
   PetscReal, parameter :: formeps = 1.D-4
@@ -500,7 +500,8 @@ end function MiscibleInitGuessCheck
     option => realization%option
     field => realization%field
     
-    call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+!geh: not sure why this is here, therefore, commenting out.
+!    call VecGetArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
     
     ipass=1
     MiscibleInitGuessCheckPatch = ipass
@@ -815,7 +816,7 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
   Miscible_parameter => patch%aux%Miscible%Miscible_parameter
   auxvars => patch%aux%Miscible%auxvars
     
-  call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
 !geh refactor  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
 !geh refactor  call VecGetArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)
@@ -840,7 +841,7 @@ subroutine MiscibleUpdateFixedAccumPatch(realization)
                               option,accum_p(istart:iend)) 
   enddo
 
-  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
 !geh refactor  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
 !geh refactor  call VecRestoreArrayF90(field%tortuosity_loc,tortuosity_loc_p,ierr)

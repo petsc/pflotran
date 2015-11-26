@@ -4,7 +4,7 @@ module Variables_module
 
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   ! variables definitions
   PetscInt, parameter, public :: X_COORDINATE =             1

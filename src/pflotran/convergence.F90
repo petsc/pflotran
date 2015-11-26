@@ -10,12 +10,12 @@ module Convergence_module
 
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscksp.h"
-#include "finclude/petscsnes.h"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscksp.h"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petsclog.h"
 
   type, public :: convergence_context_type
     type(solver_type), pointer :: solver

@@ -6,7 +6,7 @@ module Material_Aux_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: perm_xx_index = 1
   PetscInt, parameter, public :: perm_yy_index = 2

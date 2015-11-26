@@ -10,6 +10,7 @@ SIMULATION
     SUBSURFACE_FLOW flow
       MODE GENERAL
       OPTIONS
+        ITOL_RELATIVE_UPDATE 1.d-30  ! Turn off ITOL_RELATIVE_UPDATE criteria
         !  WINDOW_EPSILON 1.d-4
         ISOTHERMAL
         TWO_PHASE_ENERGY_DOF TEMPERATURE
@@ -33,7 +34,6 @@ NEWTON_SOLVER FLOW
   RTOL 1.d-30       ! Turn off RTOL criteria
   ATOL 1.d-30       ! Turn off ATOL criteria
   STOL 1.d-30       ! Turn off STOL criteria
-  ITOL_RELATIVE_UPDATE 1.d-30  ! Turn off ITOL_RELATIVE_UPDATE criteria
   MAXIT 20          ! Maximum newton iteration number
 /
 
@@ -89,7 +89,7 @@ FLOW_CONDITION well  ! INJQ in BF
   TYPE
     RATE mass_rate
   /
-  RATE 0.d0 1.d-3 0.d0
+  RATE 0.d0 1.d-3 0.d0 kg/s kg/s MW
 /
 
 !=========================== material properties ==============================

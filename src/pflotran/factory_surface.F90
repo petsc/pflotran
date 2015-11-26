@@ -8,7 +8,7 @@ module Factory_Surface_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: SurfaceInitialize, &
             SurfaceInitializePostPETSc, &

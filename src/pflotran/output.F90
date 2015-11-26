@@ -15,12 +15,12 @@ module Output_module
 
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscdm.h"
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petsclog.h"
 
 #if defined(SCORPIO_WRITE)
   include "scorpiof.h"
@@ -48,24 +48,26 @@ contains
 
 ! ************************************************************************** !
 
-subroutine OutputInit(num_steps)
+subroutine OutputInit(option,num_steps)
   ! 
   ! Initializes variables
   ! 
   ! Author: Glenn Hammond
   ! Date: 01/22/09
   ! 
-
   use Option_module
   use Output_Common_module
+  use Output_EKG_module
 
   implicit none
   
+  type(option_type) :: option
   PetscInt :: num_steps
   
   call OutputCommonInit()
   call OutputObservationInit(num_steps)
   call OutputHDF5Init(num_steps)
+  call OutputEKGInit(option,num_steps)
 
 end subroutine OutputInit
 

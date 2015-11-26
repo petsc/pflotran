@@ -8,6 +8,7 @@ SIMULATION
     SUBSURFACE_FLOW flow
       MODE GENERAL
       OPTIONS
+        ITOL_RELATIVE_UPDATE 1.d-30
         ISOTHERMAL                        ! BF is fundamentally isothermal
         TWO_PHASE_ENERGY_DOF TEMPERATURE  ! isothermal ignores this but needs to be specified
         GAS_COMPONENT_FORMULA_WEIGHT 2.01588D0 ! hydrogen gas that BF uses (kg/kmol)
@@ -28,7 +29,6 @@ NEWTON_SOLVER FLOW
   RTOL 1.d-30
   ATOL 1.d-30
   STOL 1.d-30
-  ITOL_RELATIVE_UPDATE 1.d-30
   MAXIT 20
 END
 
@@ -207,14 +207,14 @@ FLOW_CONDITION injection
   TYPE
     RATE mass_rate
   /
-  RATE 0.1d0 0.0d0 0.0d0 kg/s
+  RATE 0.1d0 0.0d0 0.0d0 kg/s kg/s MW
 END
 
 FLOW_CONDITION extraction
   TYPE
     RATE mass_rate
   /
-  RATE -0.1d0 0.0d0 0.0d0 kg/s
+  RATE -0.1d0 0.0d0 0.0d0 kg/s kg/s MW
 END
 
 !=========================== condition couplers ===============================

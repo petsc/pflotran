@@ -11,7 +11,7 @@ module Geomechanics_Condition_module
 
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
 #if 0
 !geh: no longer needed

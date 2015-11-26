@@ -10,9 +10,9 @@ module PMC_Hydrogeophysics_class
 
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   type, public, extends(pmc_base_type) :: pmc_hydrogeophysics_type
     class(realization_type), pointer :: realization
@@ -180,9 +180,9 @@ subroutine PMCHydrogeophysicsSynchronize(this)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscviewer.h"
 
   class(pmc_hydrogeophysics_type) :: this
 

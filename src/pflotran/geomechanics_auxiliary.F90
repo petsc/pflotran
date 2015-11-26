@@ -7,7 +7,7 @@ module Geomechanics_Auxiliary_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: geomech_auxiliary_type
     type(geomech_global_type), pointer :: GeomechGlobal

@@ -6,7 +6,7 @@ module EOS_Oil_module
 
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! public oil eos variables
   PetscReal, public :: fmw_oil

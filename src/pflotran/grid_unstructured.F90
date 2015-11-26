@@ -10,11 +10,11 @@ module Grid_Unstructured_module
 
   private 
   
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
 #if defined(SCORPIO)
   include "scorpiof.h"
 #endif
@@ -649,12 +649,12 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   !
   
   ! Open group
-  group_name = "Regions"
+  group_name = "/Regions/top/Vertex Ids"
   option%io_buffer = 'Opening group: ' // trim(group_name)
   call printMsg(option)
 
   ! Open dataset
-  call h5dopen_f(file_id, "Regions/top", data_set_id, hdf5_err)
+  call h5dopen_f(file_id, "/Regions/top/Vertex Ids", data_set_id, hdf5_err)
 
   ! Get dataset's dataspace
   call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
@@ -729,8 +729,10 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   unstructured_grid%cell_vertices = -1
   
   do ii = 1, num_cells_local
-    do jj = 2, int_buffer(1,ii) + 1
-      unstructured_grid%cell_vertices(jj-1, ii) = int_buffer(jj, ii)
+    do jj = 1, INT(dims_h5(1))
+      if (int_buffer(jj, ii) > 0) then
+        unstructured_grid%cell_vertices(jj, ii) = int_buffer(jj, ii)
+      end if
     enddo
   enddo
   
@@ -1140,7 +1142,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   use hdf5
 #endif
 
-!#include "finclude/petscsys.h"
+!#include "petsc/finclude/petscsys.h"
 
 ! 64-bit stuff
 #ifdef PETSC_USE_64BIT_INDICES
@@ -1243,15 +1245,15 @@ subroutine UGridDecompose(unstructured_grid,option)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h" 
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscdm.h" 
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscviewer.h"
   
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
@@ -3223,10 +3225,10 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
 
   type(unstructured_grid_type) :: unstructured_grid
   PetscInt :: face_vertices(:,:)
@@ -3638,10 +3640,10 @@ subroutine UGridGetBoundaryFaces(unstructured_grid,option,boundary_faces)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
 
   type(unstructured_grid_type) :: unstructured_grid
   PetscInt, pointer :: boundary_faces(:)
@@ -3709,10 +3711,10 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
 
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
@@ -3968,10 +3970,10 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
 
   type(option_type) :: option
   Mat :: Mat_vert_to_cell
@@ -4133,10 +4135,10 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
 
   type(unstructured_grid_type) :: unstructured_grid
   PetscInt :: cids_new(:)
@@ -4381,10 +4383,10 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
 
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option

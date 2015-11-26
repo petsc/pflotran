@@ -299,8 +299,8 @@ END
 
 FLOW_CONDITION injection_well
   TYPE
-    RATE scaled_volumetric_rate
-  /
+    RATE scaled_volumetric_rate neighbor_perm
+ /
   RATE 1 m^3/hr
 END
 

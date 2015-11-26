@@ -6,7 +6,7 @@ module Reaction_Database_Aux_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: database_rxn_type
     PetscInt :: nspec

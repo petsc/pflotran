@@ -8,7 +8,7 @@ module String_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: StringCompare, &
             StringCompareIgnoreCase, &

@@ -9,7 +9,7 @@ module CLM_Rxn_Base_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, abstract, public :: clm_rxn_base_type
     class(clm_rxn_base_type), pointer :: next
@@ -236,7 +236,7 @@ module CLM_Rxn_Common_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: CalNLimitFunc
 
@@ -322,7 +322,7 @@ module CLM_Rxn_Decomp_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter :: LITTER_DECOMP_CLMCN = 1 
   PetscInt, parameter :: LITTER_DECOMP_CLMMICROBE = 2 
@@ -3119,7 +3119,7 @@ module CLM_Rxn_PlantN_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public, &
     extends(clm_rxn_base_type) :: clm_rxn_plantn_type
@@ -3723,7 +3723,7 @@ module CLM_Rxn_Nitr_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter :: TEMPERATURE_RESPONSE_FUNCTION_CLM4 = 1
   PetscInt, parameter :: TEMPERATURE_RESPONSE_FUNCTION_Q10 = 2
@@ -4440,7 +4440,7 @@ module CLM_Rxn_Deni_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter :: TEMPERATURE_RESPONSE_FUNCTION_CLM4 = 1
   PetscInt, parameter :: TEMPERATURE_RESPONSE_FUNCTION_Q10 = 2
@@ -4856,7 +4856,7 @@ module CLM_Rxn_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   class(clm_rxn_base_type), pointer, public :: clmrxn_list
 

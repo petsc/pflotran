@@ -8,7 +8,7 @@ module Integral_Flux_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: INTEGRATE_FLOW = 1
   PetscInt, parameter, public :: INTEGRATE_TRANSPORT = 2

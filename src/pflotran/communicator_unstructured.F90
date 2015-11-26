@@ -11,15 +11,15 @@ module Communicator_Unstructured_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmshell.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscdm.h"
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petscdmshell.h90"
 
 
   type, public, extends(communicator_type) :: unstructured_communicator_type

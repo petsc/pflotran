@@ -10,7 +10,7 @@ module Timestepper_BE_class
 
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
  
   type, public, extends(timestepper_base_type) :: timestepper_BE_type
   
@@ -57,7 +57,7 @@ module Timestepper_BE_class
     subroutine PetscBagGetData(bag,header,ierr)
       import :: stepper_BE_header_type
       implicit none
-#include "finclude/petscbag.h"      
+#include "petsc/finclude/petscbag.h"      
       PetscBag :: bag
       class(stepper_BE_header_type), pointer :: header
       PetscErrorCode :: ierr
@@ -183,7 +183,9 @@ subroutine TimestepperBERead(this,input,option)
         call TimestepperBaseProcessKeyword(this,input,option,keyword)
     end select 
   
-  enddo  
+  enddo
+  
+  this%solver%print_ekg = this%print_ekg
 
 end subroutine TimestepperBERead
 
@@ -254,12 +256,13 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   use PM_Base_class
   use Option_module
   use Output_module, only : Output
+  use Output_EKG_module, only : IUNIT_EKG
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscsnes.h"
 
   class(timestepper_BE_type) :: this
   class(pm_base_type) :: process_model
@@ -430,10 +433,19 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
       this%cumulative_newton_iterations,sum_linear_iterations, &
       this%cumulative_linear_iterations,icut, &
       this%cumulative_time_step_cuts
-  endif  
+  endif
   
   option%time = this%target_time
   call process_model%FinalizeTimestep()
+  
+  if (this%print_ekg .and. OptionPrintToFile(option)) then
+100 format(a32," TIMESTEP ",i10,2es16.8,a3,i3,i5,i3,i5,i5,i10)
+    write(IUNIT_EKG,100) trim(this%name), this%steps, this%target_time/tconv, &
+      this%dt/tconv, tunit, &
+      icut, this%cumulative_time_step_cuts, &
+      sum_newton_iterations, this%cumulative_newton_iterations, &
+      sum_linear_iterations, this%cumulative_linear_iterations
+  endif
   
   if (option%print_screen_flag) print *, ""  
   
@@ -454,8 +466,8 @@ subroutine TimestepperBECheckpointBinary(this,viewer,option)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
   
   class(timestepper_BE_type) :: this
   PetscViewer :: viewer
@@ -493,8 +505,8 @@ subroutine TimestepperBERegisterHeader(this,bag,header)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(timestepper_BE_type) :: this
   class(stepper_BE_header_type) :: header
@@ -529,8 +541,8 @@ subroutine TimestepperBESetHeader(this,bag,header)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(timestepper_BE_type) :: this
   class(stepper_BE_header_type) :: header
@@ -703,8 +715,8 @@ subroutine TimestepperBERestartBinary(this,viewer,option)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(timestepper_BE_type) :: this
   PetscViewer :: viewer
@@ -883,8 +895,8 @@ subroutine TimestepperBEGetHeader(this,header)
 
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscbag.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
 
   class(timestepper_BE_type) :: this
   class(stepper_BE_header_type) :: header

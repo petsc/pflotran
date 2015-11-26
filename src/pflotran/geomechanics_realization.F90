@@ -19,7 +19,7 @@ module Geomechanics_Realization_class
 
 private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public, extends(realization_base_type) :: geomech_realization_type
 
@@ -221,8 +221,8 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(geomech_realization_type)                 :: geomech_realization
   type(geomech_discretization_type), pointer     :: geomech_discretization
@@ -334,13 +334,13 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscdm.h"  
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscdm.h"  
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscviewer.h"
 
   class(realization_type), pointer              :: realization
   class(geomech_realization_type), pointer      :: geomech_realization
@@ -581,8 +581,8 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(geomech_realization_type) :: geomech_realization
   type(geomech_grid_type), pointer :: grid

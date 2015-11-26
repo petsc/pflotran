@@ -27,7 +27,7 @@ module SrcSink_Sandbox_Downreg_class
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public, &
     extends(srcsink_sandbox_base_type) :: srcsink_sandbox_downreg_type

@@ -6,7 +6,7 @@ module Surface_TH_Aux_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: Surface_TH_auxvar_type
     PetscReal :: h        ! enthalpy -- not currently used

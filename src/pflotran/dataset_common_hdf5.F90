@@ -8,7 +8,7 @@ module Dataset_Common_HDF5_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public, extends(dataset_base_type) :: dataset_common_hdf5_type
     character(len=MAXWORDLENGTH) :: hdf5_dataset_name

@@ -1,8 +1,16 @@
 #Description: Surface-Subsurface flow with process-model approach
 
-#=========================== flow mode ========================================
-MODE RICHARDS
+SIMULATION
+  SIMULATION_TYPE SURFACE_SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SURFACE_SUBSURFACE flow
+  /
+END
 
+SUBSURFACE
 #=========================== discretization ===================================
 GRID
   TYPE unstructured ../surface_flow_only/sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
@@ -18,7 +26,7 @@ MATERIAL_PROPERTY soil1
   ID 1
   POROSITY 0.40d0
   TORTUOSITY 0.5d0
-  SATURATION_FUNCTION sf1
+  SATURATION_FUNCTION default
   PERMEABILITY
     PERM_X 1.171d-13
     PERM_Y 1.171d-13
@@ -26,13 +34,17 @@ MATERIAL_PROPERTY soil1
   /
 END
 
-#=========================== saturation functions =============================
-SATURATION_FUNCTION sf1
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.2d0
-  LAMBDA 0.5d0
-  ALPHA 1.0194d-04
-  MAX_CAPILLARY_PRESSURE 1.d8
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.5d0
+    ALPHA  1.0194d-04
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+  /
 END
 
 #=========================== output options ===================================
@@ -99,6 +111,8 @@ STRATA
   MATERIAL soil1
 END
 
+END_SUBSURFACE
+
 #===============================================================================
 #=========================== surface flow ======================================
 #===============================================================================
@@ -135,7 +149,7 @@ END
 SURF_REGION surf_all
   COORDINATES
     0.d0 0.d0 0.d0
-    400.d0 320.d0 100.d0
+    400.d0 320.d0 1000.d0
   /
 END 
 
@@ -197,4 +211,4 @@ STRATA
   MATERIAL surf1
 END
 
-END
+END_SURFACE_FLOW

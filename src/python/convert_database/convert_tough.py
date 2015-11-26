@@ -54,7 +54,7 @@ species = open(filename,'w')
 filename = 'species_dict.dat'
 spec = open(filename,'r')
 
-t2p = {}
+t2p = {} # initialize dictionary
 for line in spec:
   w = line.strip().split(':')
   t2p[w[0].strip()] = w[1].strip()
@@ -82,7 +82,7 @@ for i in range(1,100):
   w = s.split()
   name_tough = w[0]
   if name_tough == name_exit:
-  	  break
+  	break
 
   name = t2p[name_tough]
   npri = npri + 1

@@ -9,13 +9,13 @@ module PM_Flash2_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_subsurface_type) :: pm_flash2_type
   contains
@@ -233,7 +233,7 @@ end subroutine PMFlash2Jacobian
 
 ! ************************************************************************** !
 
-subroutine PMFlash2CheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMFlash2CheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! 
   ! Author: Gautam Bisht
   ! Date: 11/27/13
@@ -245,19 +245,19 @@ subroutine PMFlash2CheckUpdatePre(this,line_search,P,dP,changed,ierr)
   
   class(pm_flash2_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P
-  Vec :: dP
+  Vec :: X
+  Vec :: dX
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-  call Flash2CheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+  call Flash2CheckUpdatePre(line_search,X,dX,changed,this%realization,ierr)
 
 end subroutine PMFlash2CheckUpdatePre
 
 ! ************************************************************************** !
 
-subroutine PMFlash2CheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
-                                   P1_changed,ierr)
+subroutine PMFlash2CheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
+                                   X1_changed,ierr)
   ! 
   ! Author: Gautam Bisht
   ! Date: 11/27/13
@@ -269,15 +269,15 @@ subroutine PMFlash2CheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   
   class(pm_flash2_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P0
-  Vec :: dP
-  Vec :: P1
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  Vec :: X0
+  Vec :: dX
+  Vec :: X1
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
   PetscErrorCode :: ierr
   
-  call Flash2CheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-                             P1_changed,this%realization,ierr)
+  call Flash2CheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
+                             X1_changed,this%realization,ierr)
 
 end subroutine PMFlash2CheckUpdatePost
 #endif

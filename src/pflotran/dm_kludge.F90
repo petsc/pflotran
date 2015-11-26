@@ -8,12 +8,12 @@ module DM_Kludge_module
 
   private
  
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscdmda.h"
-#include "finclude/petscdmshell.h90"
+#include "petsc/finclude/petscdm.h"
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petscdmda.h"
+#include "petsc/finclude/petscdmshell.h90"
 
   type, public :: dm_ptr_type
     DM :: dm  ! PETSc DM

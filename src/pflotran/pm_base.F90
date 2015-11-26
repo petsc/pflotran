@@ -10,14 +10,14 @@ module PM_Base_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscts.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscts.h"
 
   type, public :: pm_base_type
     character(len=MAXWORDLENGTH) :: name
@@ -25,6 +25,7 @@ module PM_Base_class
     type(output_option_type), pointer :: output_option
     Vec :: solution_vec
     Vec :: residual_vec
+    PetscBool :: print_ekg
     class(realization_base_type), pointer :: realization_base
     class(pm_base_type), pointer :: next
   contains
@@ -84,6 +85,7 @@ subroutine PMBaseInit(this)
   nullify(this%realization_base)
   this%solution_vec = 0
   this%residual_vec = 0
+  this%print_ekg = PETSC_FALSE
   nullify(this%next)
   
 end subroutine PMBaseInit
@@ -162,12 +164,12 @@ end subroutine PMBaseUpdateTimestep
 
 ! ************************************************************************** !
 
-subroutine PMBaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMBaseCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   implicit none
   class(pm_base_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P
-  Vec :: dP
+  Vec :: X
+  Vec :: dX
   PetscBool :: changed
   PetscErrorCode :: ierr
   print *, 'Must extend PMBaseCheckUpdatePre.'
@@ -176,16 +178,16 @@ end subroutine PMBaseCheckUpdatePre
 
 ! ************************************************************************** !
 
-subroutine PMBaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
-                                  P1_changed,ierr)
+subroutine PMBaseCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
+                                 X1_changed,ierr)
   implicit none
   class(pm_base_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P0
-  Vec :: dP
-  Vec :: P1
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  Vec :: X0
+  Vec :: dX
+  Vec :: X1
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
   PetscErrorCode :: ierr
   print *, 'Must extend PMBaseCheckUpdatePost.'
   stop
@@ -260,7 +262,7 @@ end subroutine PMBaseRHSFunction
 
 subroutine PMBaseCheckpointBinary(this,viewer)
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
   class(pm_base_type) :: this
   PetscViewer :: viewer
   print *, 'Must extend PMBaseCheckpointBinary/RestartBinary.'

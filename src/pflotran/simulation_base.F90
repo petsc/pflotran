@@ -12,7 +12,7 @@ module Simulation_Base_class
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   private
 
@@ -112,7 +112,7 @@ subroutine SimulationBaseInitializeRun(this)
 
   implicit none
   
-#include "finclude/petscviewer.h"  
+#include "petsc/finclude/petscviewer.h"  
 
   class(simulation_base_type) :: this
 
@@ -261,7 +261,7 @@ subroutine RunToTime(this,target_time)
 
   implicit none
   
-#include "finclude/petscviewer.h" 
+#include "petsc/finclude/petscviewer.h" 
 
   class(simulation_base_type) :: this
   PetscReal :: target_time

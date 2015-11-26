@@ -6,15 +6,15 @@ module Init_Common_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscpc.h"
-#include "finclude/petscts.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscpc.h"
+#include "petsc/finclude/petscts.h"
 
   public :: &
 !            Init, &
@@ -422,21 +422,44 @@ subroutine InitCommonReadRegionFiles(realization)
   use Realization_class
   use Region_module
   use HDF5_module
+  use Option_module
 
   implicit none
 
   class(realization_type) :: realization
-  
+
+  type(option_type), pointer :: option
   type(region_type), pointer :: region
+  PetscBool :: cell_ids_exists
+  PetscBool :: face_ids_exists
+  PetscBool :: vert_ids_exists
  
-  
+  option => realization%option
   region => realization%region_list%first
   do 
     if (.not.associated(region)) exit
     if (len_trim(region%filename) > 1) then
       if (index(region%filename,'.h5') > 0) then
-        if (region%grid_type == STRUCTURED_GRID_REGION) then
-          call HDF5ReadRegionFromFile(realization,region,region%filename)
+        if (.not.region%hdf5_ugrid_kludge) then
+
+           call HDF5QueryRegionDefinition(region, region%filename, realization%option, &
+                cell_ids_exists, face_ids_exists, vert_ids_exists)
+
+           if ( (.not. cell_ids_exists) .and. &
+                (.not. face_ids_exists) .and. &
+                (.not. vert_ids_exists)) then
+
+              option%io_buffer = '"Regions/' // trim(region%name) // &
+                   ' is not defined by "Cell Ids" or "Face Ids" or "Vertex Ids".'
+              call printErrMsg(option)
+           end if
+
+           if (cell_ids_exists .or. face_ids_exists) then
+              call HDF5ReadRegionFromFile(realization%patch%grid,region,region%filename,option)
+           else
+              call HDF5ReadRegionDefinedByVertex(realization%option, &
+                   region, region%filename)
+           end if
         else
           !geh: Do not skip this subroutine if PETSC_HAVE_HDF5 is not
           !     defined.  The subroutine prints an error message if not defined

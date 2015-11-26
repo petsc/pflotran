@@ -8,7 +8,7 @@ module Dataset_Ascii_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public, extends(dataset_base_type) :: dataset_ascii_type
     PetscInt :: array_width
@@ -188,7 +188,6 @@ subroutine DatasetAsciiLoad(this,input,option)
           input%ierr = ierr
           call InputErrorMsg(input,option,'TIME_UNITS', &
                              'CONDITION (LIST or FILE)')
-          call StringToLower(time_units) 
           cycle
         case('INTERPOLATION')
         call InputReadWord(input,option,word,PETSC_TRUE)
@@ -212,7 +211,6 @@ subroutine DatasetAsciiLoad(this,input,option)
             call InputErrorMsg(input,option,'DATA_UNITS', &
                                'CONDITION (LIST or FILE)')
           endif
-          call StringToLower(data_units) 
           cycle
         case default
           ! copy the first row of actual data and count up the number of 
@@ -291,6 +289,8 @@ subroutine DatasetAsciiLoad(this,input,option)
       endif
       temp_array(i+1,:) = conversion * temp_array(i+1,:)
     enddo
+  else
+    call InputCheckMandatoryUnits(input,option)
   endif
 
   ! now that the data units conversion has taken place with temp_array, copy

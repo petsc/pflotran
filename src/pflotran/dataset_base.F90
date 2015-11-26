@@ -8,7 +8,7 @@ module Dataset_Base_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: dataset_base_type
     character(len=MAXWORDLENGTH) :: name

@@ -9,7 +9,7 @@ module Timestepper_Steady_class
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
  
   type, public, extends(timestepper_BE_type) :: timestepper_steady_type
   
@@ -200,11 +200,11 @@ subroutine TimestepperSteadyStepDT(this, process_model, stop_flag)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscsnes.h"
 
   class(timestepper_steady_type) :: this
   class(pm_base_type) :: process_model

@@ -9,13 +9,13 @@ module PM_Immis_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_subsurface_type) :: pm_immis_type
   contains
@@ -233,7 +233,7 @@ end subroutine PMImmisJacobian
 
 ! ************************************************************************** !
 
-subroutine PMImmisCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMImmisCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! 
   ! Author: Gautam Bisht
   ! Date: 11/27/13
@@ -245,19 +245,19 @@ subroutine PMImmisCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   
   class(pm_immis_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P
-  Vec :: dP
+  Vec :: X
+  Vec :: dX
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-  call ImmisCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+  call ImmisCheckUpdatePre(line_search,X,dX,changed,this%realization,ierr)
 
 end subroutine PMImmisCheckUpdatePre
 
 ! ************************************************************************** !
 
-subroutine PMImmisCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
-                                  P1_changed,ierr)
+subroutine PMImmisCheckUpdatePost(this,line_search,P0,dP,P1,dX_changed, &
+                                  X1_changed,ierr)
   ! 
   ! Author: Gautam Bisht
   ! Date: 11/27/13
@@ -272,12 +272,12 @@ subroutine PMImmisCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   Vec :: P0
   Vec :: dP
   Vec :: P1
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
   PetscErrorCode :: ierr
   
-  call ImmisCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-                               P1_changed,this%realization,ierr)
+  call ImmisCheckUpdatePost(line_search,P0,dP,P1,dX_changed, &
+                               X1_changed,this%realization,ierr)
 
 end subroutine PMImmisCheckUpdatePost
 #endif

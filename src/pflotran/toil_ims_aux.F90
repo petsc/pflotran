@@ -6,7 +6,7 @@ module TOilIms_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   !BEGINNING-Paramters to move into toil_ims_paramters 
   PetscReal, public :: toil_ims_window_epsilon = 1.d-4
@@ -15,7 +15,9 @@ module TOilIms_Aux_module
   PetscReal, public :: toil_ims_max_pressure_change = 5.d4
   PetscInt, public :: toil_ims_max_it_before_damping = UNINITIALIZED_INTEGER
   PetscReal, public :: toil_ims_damping_factor = 0.6d0
-  PetscReal, public :: toil_ims_tgh2_itol_scld_res_e1 = 1.d-5
+  PetscReal, public :: toil_ims_itol_rel_update = UNINITIALIZED_DOUBLE
+  PetscReal, public :: toil_ims_itol_scaled_res = 1.d-5
+  PetscReal, public :: toil_ims_tgh2_itol_scld_res_e1(3) = 1.d-5
   PetscReal, public :: toil_ims_tgh2_itol_scld_res_e2 = 1.d0
   PetscBool, public :: toil_ims_tough2_conv_criteria = PETSC_FALSE
   PetscInt, public :: toil_ims_debug_cell_id = UNINITIALIZED_INTEGER

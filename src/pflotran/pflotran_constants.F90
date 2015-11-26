@@ -6,7 +6,7 @@ module PFLOTRAN_Constants_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   ! MUST INCREMENT THIS NUMBER EVERYTIME A CHECKPOINT FILE IS MODIFIED TO PREVENT
   ! COMPATIBILITY ISSUES - geh.
@@ -22,6 +22,7 @@ module PFLOTRAN_Constants_module
   ! for embedded input files.
   PetscInt, parameter, public :: MAX_IN_UNIT = 25
   PetscInt, parameter, public :: IUNIT_TEMP = 86
+  ! EKG_UNIT = 87
   PetscInt, parameter, public :: HHISTORY_LENGTH = 1000
   ! HHISTORY_LENGTH is the length of the array used to store the differencing
   ! values h.
@@ -146,10 +147,11 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: HET_MASS_RATE_SS = 17
   PetscInt, parameter, public :: HET_DIRICHLET = 18
   PetscInt, parameter, public :: ENERGY_RATE_SS = 19
-  PetscInt, parameter, public :: HET_ENERGY_RATE_SS = 20
-  PetscInt, parameter, public :: HET_SURF_SEEPAGE_BC = 21
+  PetscInt, parameter, public :: SCALED_ENERGY_RATE_SS = 20
+  PetscInt, parameter, public :: HET_ENERGY_RATE_SS = 21
+  PetscInt, parameter, public :: HET_SURF_SEEPAGE_BC = 22
   PetscInt, parameter, public :: WELL_SS = 100
-  PetscInt, parameter, public :: SPILLOVER_BC = 22
+  PetscInt, parameter, public :: SPILLOVER_BC = 23
   
   ! source/sink scaling options
   PetscInt, parameter, public :: SCALE_BY_PERM = 1

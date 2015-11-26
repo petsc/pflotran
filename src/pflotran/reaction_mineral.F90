@@ -11,7 +11,7 @@ module Reaction_Mineral_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   

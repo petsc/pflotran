@@ -8,7 +8,7 @@ module Surface_Global_module
 
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public SurfaceGlobalSetup, &
          SurfaceGlobalSetAuxVarScalar, &
@@ -240,8 +240,8 @@ subroutine SurfaceGlobalSetAuxVarVecLoc(surf_realization,vec_loc,ivar,isubvar)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"  
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"  
 
   class(surface_realization_type) :: surf_realization
   Vec :: vec_loc
@@ -280,8 +280,8 @@ subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubv
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(surface_realization_type) :: surf_realization
   Vec :: vec_loc

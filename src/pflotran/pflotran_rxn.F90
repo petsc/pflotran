@@ -47,7 +47,7 @@ module BatchChem
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public :: BatchChemInitializeReactions, &
             BatchChemProcessConstraints
@@ -67,8 +67,8 @@ subroutine BatchChemInitializeReactions(option, input, reaction)
 
   implicit none
 
-#include "finclude/petscsys.h"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petsclog.h"
 
   type(option_type), pointer :: option
   type(input_type), pointer :: input
@@ -127,8 +127,8 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
 
   implicit none
 
-#include "finclude/petscsys.h"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petsclog.h"
 
   type(option_type), pointer :: option
   type(input_type), pointer :: input
@@ -262,8 +262,8 @@ program pflotran_rxn
 
   implicit none
 
-#include "finclude/petscsys.h"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petsclog.h"
 
   PetscErrorCode :: ierr
   PetscBool :: option_found  

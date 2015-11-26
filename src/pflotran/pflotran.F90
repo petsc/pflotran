@@ -55,7 +55,7 @@ program pflotran
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   class(simulation_base_type), pointer :: simulation
   ! multisimulation enables multiple simulations to be run concurrently

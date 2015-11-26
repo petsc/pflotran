@@ -6,7 +6,7 @@ module Geomechanics_Material_module
   
   private
   
-#include "finclude/petscsys.h"  
+#include "petsc/finclude/petscsys.h"  
 
   type, public :: geomech_material_property_type
     character(len=MAXWORDLENGTH)   :: name

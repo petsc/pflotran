@@ -14,15 +14,15 @@ module Reactive_Transport_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petsclog.h"
 
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   
@@ -44,8 +44,6 @@ module Reactive_Transport_module
             RTCalculateRHS_t1, &
             RTCalculateTransportMatrix, &
             RTReact, &
-            RTCheckUpdatePre, &
-            RTCheckUpdatePost, &
             RTJumpStartKineticSorption, &
             RTCheckpointKineticSorptionBinary, &
             RTCheckpointKineticSorptionHDF5, &
@@ -318,204 +316,6 @@ subroutine RTSetup(realization)
   call RTSetPlotVariables(realization)
   
 end subroutine RTSetup
-
-! ************************************************************************** !
-
-subroutine RTCheckUpdatePre(line_search,C,dC,changed,realization,ierr)
-  ! 
-  ! In the case of the log formulation, ensures that the update
-  ! vector does not exceed a prescribed tolerance
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/16/09
-  ! 
- 
-  use Realization_class
-  use Grid_module
-  use Option_module
-  use Reaction_Aux_module
- 
-  implicit none
-  
-  SNESLineSearch :: line_search
-  Vec :: C
-  Vec :: dC
-  type(realization_type) :: realization
-  PetscBool :: changed
-  
-  PetscReal, pointer :: C_p(:)
-  PetscReal, pointer :: dC_p(:)
-  type(grid_type), pointer :: grid
-  type(reaction_type), pointer :: reaction
-  PetscReal :: ratio, min_ratio
-  PetscReal, parameter :: min_allowable_scale = 1.d-10
-  character(len=MAXSTRINGLENGTH) :: string
-  PetscInt :: i, n
-  PetscErrorCode :: ierr
-  
-  grid => realization%patch%grid
-  reaction => realization%reaction
-  
-  call VecGetArrayF90(dC,dC_p,ierr);CHKERRQ(ierr)
-
-  if (reaction%use_log_formulation) then
-    ! C and dC are actually lnC and dlnC
-    dC_p = dsign(1.d0,dC_p)*min(dabs(dC_p),reaction%max_dlnC)
-    ! at this point, it does not matter whether "changed" is set to true, 
-    ! since it is not checkied in PETSc.  Thus, I don't want to spend 
-    ! time checking for changes and performing an allreduce for log 
-    ! formulation.
-  else
-    call VecGetLocalSize(C,n,ierr);CHKERRQ(ierr)
-    call VecGetArrayReadF90(C,C_p,ierr);CHKERRQ(ierr)
-    
-    if (Initialized(reaction%truncated_concentration)) then
-      dC_p = min(dC_p,C_p-reaction%truncated_concentration)
-    else
-      ! C^p+1 = C^p - dC^p
-      ! if dC is positive and abs(dC) larger than C
-      ! we need to scale the update
-      
-      ! compute smallest ratio of C to dC
-#if 0
-      min_ratio = 1.d0/maxval(dC_p/C_p)
-#else
-      min_ratio = 1.d20 ! large number
-      do i = 1, n
-        if (C_p(i) <= dC_p(i)) then
-          ratio = abs(C_p(i)/dC_p(i))
-          if (ratio < min_ratio) min_ratio = ratio
-        endif
-      enddo
-#endif
-      ratio = min_ratio
-    
-      ! get global minimum
-      call MPI_Allreduce(ratio,min_ratio,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
-                         MPI_MIN,realization%option%mycomm,ierr)
-                       
-      ! scale if necessary
-      if (min_ratio < 1.d0) then
-        if (min_ratio < realization%option%min_allowable_scale) then
-          write(string,'(es9.3)') min_ratio
-          string = 'The update of primary species concentration is being ' // &
-            'scaled by a very small value (i.e. ' // &
-            trim(adjustl(string)) // &
-            ') to prevent negative concentrations.  This value is too ' // &
-            'small and will likely cause the solver to mistakenly ' // &
-            'converge based on the infinity norm of the update vector. ' // &
-            'In this case, it is recommended that you use the ' // &
-            'LOG_FORMULATION for chemistry or truncate concentrations ' // &
-            '(TRUNCATE_CONCENTRATION <float> in CHEMISTRY block). ' // &
-            'If that does not work, please send your input deck to ' // &
-            'pflotran-dev@googlegroups.com and ask for help.'
-          realization%option%io_buffer = string
-          call printErrMsg(realization%option)
-        endif
-        ! scale by 0.99 to make the update slightly smaller than the min_ratio
-        dC_p = dC_p*min_ratio*0.99d0
-        changed = PETSC_TRUE
-      endif
-    endif
-    call VecRestoreArrayReadF90(C,C_p,ierr);CHKERRQ(ierr)
-  endif
-
-  call VecRestoreArrayF90(dC,dC_p,ierr);CHKERRQ(ierr)
-
-end subroutine RTCheckUpdatePre
-
-! ************************************************************************** !
-
-subroutine RTCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
-                             X1_changed,realization,ierr)
-  ! 
-  ! Checks convergence after to update
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/04/14
-  ! 
-  use Realization_class
-  use Grid_module
-  use Field_module
-  use Patch_module
-  use Option_module
-  use Secondary_Continuum_module, only : SecondaryRTUpdateIterate
-
-  implicit none
-  
-  SNESLineSearch :: line_search
-  Vec :: X0
-  Vec :: dX
-  Vec :: X1
-  type(realization_type) :: realization
-  ! ignore changed flag for now.
-  PetscBool :: dX_changed
-  PetscBool :: X1_changed
-  
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(patch_type), pointer :: patch  
-  PetscReal, pointer :: X0_p(:)
-  PetscReal, pointer :: dX_p(:)
-  PetscReal, pointer :: r_p(:)
-  PetscReal, pointer :: accum_p(:)  
-  PetscBool :: converged_due_to_rel_update
-  PetscBool :: converged_due_to_residual
-  PetscReal :: max_relative_change
-  PetscReal :: max_scaled_residual
-  PetscInt :: converged_flag
-  PetscInt :: temp_int
-  PetscErrorCode :: ierr
-  
-  grid => realization%patch%grid
-  option => realization%option
-  field => realization%field
-  patch => realization%patch
-  
-  dX_changed = PETSC_FALSE
-  X1_changed = PETSC_FALSE
-  
-  converged_flag = 0
-  if (option%transport%check_post_convergence) then
-    converged_due_to_rel_update = PETSC_FALSE
-    converged_due_to_residual = PETSC_FALSE
-    call VecGetArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
-    max_relative_change = maxval(dabs(dX_p(:)/X0_p(:)))
-    call VecRestoreArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayReadF90(field%tran_r,r_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayReadF90(field%tran_accum,accum_p,ierr);CHKERRQ(ierr)
-    max_scaled_residual = maxval(dabs(r_p(:)/accum_p(:)))
-    call VecRestoreArrayReadF90(field%tran_r,r_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayReadF90(field%tran_accum,accum_p,ierr);CHKERRQ(ierr)
-    converged_due_to_rel_update = &
-      (option%transport%inf_rel_update_tol > 0.d0 .and. &
-       max_relative_change < option%transport%inf_rel_update_tol)
-    converged_due_to_residual = &
-      (option%transport%inf_scaled_res_tol  > 0.d0 .and. &
-       max_scaled_residual < option%transport%inf_scaled_res_tol)
-    if (converged_due_to_rel_update .or. converged_due_to_residual) then
-      converged_flag = 1
-    endif
-  endif
-
-  ! get global minimum
-  call MPI_Allreduce(converged_flag,temp_int,ONE_INTEGER_MPI,MPI_INTEGER, &
-                     MPI_MIN,realization%option%mycomm,ierr)
-
-  option%converged = PETSC_FALSE
-  if (temp_int == 1) then
-    option%converged = PETSC_TRUE
-  endif
-  
-  if (option%use_mc) then  
-    call SecondaryRTUpdateIterate(line_search,X0,dX,X1,dX_changed, &
-                                  X1_changed,realization,ierr)
-  endif
-       
-end subroutine RTCheckUpdatePost
 
 ! ************************************************************************** !
 

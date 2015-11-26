@@ -3,7 +3,7 @@ module Gas_EOS_module
 
   implicit none
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   public
  

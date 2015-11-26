@@ -9,13 +9,13 @@ module PM_TOilIms_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_subsurface_type) :: pm_toil_ims_type
     PetscReal :: dPmax
@@ -118,14 +118,13 @@ subroutine PMTOilImsRead(this,input)
   character(len=MAXWORDLENGTH) :: keyword, word
   
   type(option_type), pointer :: option
+  PetscReal :: tempreal
+  character(len=MAXSTRINGLENGTH) :: error_string
 
   option => this%option
 
-  call InputReadWord(input,option,keyword,PETSC_TRUE)
-  if (input%ierr /= 0) then
-    return
-  endif
-  
+  error_string = 'TOilIms Options'  
+
   input%ierr = 0
   do
   
@@ -134,19 +133,29 @@ subroutine PMTOilImsRead(this,input)
     if (InputCheckExit(input,option)) exit  
 
     call InputReadWord(input,option,keyword,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','TOIL_IMS_MODE')
+    call InputErrorMsg(input,option,'keyword',error_string)
     call StringToUpper(keyword)   
       
     select case(trim(keyword))
+      case('ITOL_SCALED_RESIDUAL')
+        call InputReadDouble(input,option,toil_ims_itol_scaled_res)
+        call InputDefaultMsg(input,option,'toil_ims_itol_scaled_res')
+        this%check_post_convergence = PETSC_TRUE
+      case('ITOL_RELATIVE_UPDATE')
+        call InputReadDouble(input,option,toil_ims_itol_rel_update)
+        call InputDefaultMsg(input,option,'toil_ims_itol_rel_update')
+        this%check_post_convergence = PETSC_TRUE        
       case('TOUGH2_ITOL_SCALED_RESIDUAL')
-        call InputReadDouble(input,option,toil_ims_tgh2_itol_scld_res_e1)
+        call InputReadDouble(input,option,tempreal)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e1')
+        toil_ims_tgh2_itol_scld_res_e1 = tempreal
         call InputReadDouble(input,option,toil_ims_tgh2_itol_scld_res_e2)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e2')
         toil_ims_tough2_conv_criteria = PETSC_TRUE
+        this%check_post_convergence = PETSC_TRUE
       case('WINDOW_EPSILON') 
         call InputReadDouble(input,option,toil_ims_window_epsilon)
-        call InputErrorMsg(input,option,'window epsilon','TOIL_IMS_MODE')
+        call InputErrorMsg(input,option,'window epsilon',error_string)
       ! consider to move in this in eos_oil, since this is an eos property
       !case('OIL_COMPONENT_FORMULA_WEIGHT')
       !  !assuming oil component is index 2, H2O ois index 1
@@ -158,30 +167,30 @@ subroutine PMTOilImsRead(this,input)
       case('MAXIMUM_PRESSURE_CHANGE')
         call InputReadDouble(input,option,toil_ims_max_pressure_change)
         call InputErrorMsg(input,option,'maximum pressure change', &
-                           'TOIL_IMS_MODE')
+                           error_string)
       case('MAX_ITERATION_BEFORE_DAMPING')
         call InputReadInt(input,option,toil_ims_max_it_before_damping)
         call InputErrorMsg(input,option,'maximum iteration before damping', &
-                           'TOIL_IMS_MODE')
+                           error_string)
       case('DAMPING_FACTOR')
         call InputReadDouble(input,option,toil_ims_damping_factor)
-        call InputErrorMsg(input,option,'damping factor','TOIL_IMS_MODE')
+        call InputErrorMsg(input,option,'damping factor',error_string)
       case('GOVERN_MAXIMUM_PRESSURE_CHANGE')
         call InputReadDouble(input,option,this%dPmax_allowable)
         call InputErrorMsg(input,option,'maximum allowable pressure change', &
-                           'TOIL_IMS_MODE')
+                           error_string)
       case('GOVERN_MAXIMUM_TEMPERATURE_CHANGE')
         call InputReadDouble(input,option,this%dTmax_allowable)
         call InputErrorMsg(input,option, &
                            'maximum allowable temperature change', &
-                           'TOIL_IMS_MODE')
+                           error_string)
       case('GOVERN_MAXIMUM_SATURATION_CHANGE')
         call InputReadDouble(input,option,this%dSmax_allowable)
         call InputErrorMsg(input,option,'maximum allowable saturation change', &
-                           'TOIL_IMS_MODE')
+                           error_string)
       case('DEBUG_CELL')
         call InputReadInt(input,option,toil_ims_debug_cell_id)
-        call InputErrorMsg(input,option,'debug cell id','TOIL_IMS_MODE')
+        call InputErrorMsg(input,option,'debug cell id',error_string)
       ! might need some input here for the thermal diffusion model
       !case('NO_TEMP_DEPENDENT_DIFFUSION')
       !  general_temp_dep_gas_air_diff = PETSC_FALSE
@@ -416,472 +425,376 @@ end subroutine PMTOilImsJacobian
 
 ! ************************************************************************** !
 
-subroutine PMTOilImsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
-  ! 
-  ! Author: Paolo Orsini (OGS)
-  ! Date: 10/22/15
-  ! 
-
-  use TOilIms_module, only : TOilImsCheckUpdatePre
-
-  implicit none
-  
-  class(pm_toil_ims_type) :: this
-  SNESLineSearch :: line_search
-  Vec :: P
-  Vec :: dP
-  PetscBool :: changed
-  PetscErrorCode :: ierr
-  
-  call TOilImsCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
-
-end subroutine PMTOilImsCheckUpdatePre
-
-! ************************************************************************** !
-! use function below when switching to latest code
-!subroutine PMTOilImsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
+!subroutine PMTOilImsCheckUpdatePre(this,line_search,P,dP,changed,ierr)
 !  ! 
 !  ! Author: Paolo Orsini (OGS)
-!  ! Date: 11/09/15
+!  ! Date: 10/22/15
 !  ! 
-!  !use Realization_class
-!  use Grid_module
-!  !use Global_Aux_module
-!  use Field_module
-!  use Option_module
-!  use Patch_module
+!
+!  use TOilIms_module, only : TOilImsCheckUpdatePre
 !
 !  implicit none
 !  
 !  class(pm_toil_ims_type) :: this
 !  SNESLineSearch :: line_search
-!  Vec :: X
-!  Vec :: dX
+!  Vec :: P
+!  Vec :: dP
 !  PetscBool :: changed
 !  PetscErrorCode :: ierr
 !  
 !  call TOilImsCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
 !
-!  PetscReal, pointer :: X_p(:), dX_p(:)
-!
-!  type(grid_type), pointer :: grid
-!  type(option_type), pointer :: option
-!  type(patch_type), pointer :: patch
-!  type(field_type), pointer :: field
-
-!  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
-!  !type(global_auxvar_type), pointer :: global_auxvars(:)  
-
-!  PetscInt :: local_id, ghosted_id
-!  PetscInt :: offset
-
-!  PetscInt :: pressure_index, saturation_index, temperature_index
-
-!  PetscReal :: pressure0, pressure1, del_pressure
-!  PetscReal :: temperature0, temperature1, del_temperature
-!  PetscReal :: saturation0, saturation1, del_saturation
-
-!  PetscReal :: max_saturation_change = 0.125d0
-!  PetscReal :: max_temperature_change = 10.d0
-!  PetscReal :: scale, temp_scale, temp_real
-!  PetscReal, parameter :: tolerance = 0.99d0
-!  PetscReal, parameter :: initial_scale = 1.d0
-!  SNES :: snes
-!  PetscInt :: newton_iteration
-!
-!  
-!  grid => this%realization%patch%grid
-!  option => this%realization%option
-!  field => this%realization%field
-!  !toil_auxvars => this%realization%patch%aux%TOil_ims%auxvars
-!  !global_auxvars => this%realization%patch%aux%Global%auxvars
-
-!  patch => this%realization%patch
-
-!  call SNESLineSearchGetSNES(line_search,snes,ierr)
-!  call SNESGetIterationNumber(snes,newton_iteration,ierr)
-!
-!  call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
-!  call VecGetArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
-!
-!  changed = PETSC_TRUE
-!
-!  scale = initial_scale
-!  if (toil_ims_max_it_before_damping > 0 .and. &
-!      newton_iteration > toil_ims_max_it_before_damping) then
-!    scale = toil_ims_damping_factor
-!  endif
-!
-!#define LIMIT_MAX_PRESSURE_CHANGE
-!#define LIMIT_MAX_SATURATION_CHANGE
-!!!#define LIMIT_MAX_TEMPERATURE_CHANGE
-!!! TRUNCATE_PRESSURE is needed for times when the solve wants
-!!! to pull them negative.
-!!#define TRUNCATE_PRESSURE
-!
-!  ! scaling
-!  do local_id = 1, grid%nlmax
-!    ghosted_id = grid%nL2G(local_id)
-!    offset = (local_id-1)*option%nflowdof
-!    temp_scale = 1.d0
-!    pressure_index = offset + TOIL_IMS_PRESSURE_DOF
-!    saturation_index = offset + TOIL_IMS_SATURATION_DOF
-!    temperature_index  = offset + TOIL_IMS_ENERGY_DOF
-!    dX_p(pressure_index) = dX_p(pressure_index) * toil_ims_pressure_scale
-!    temp_scale = 1.d0
-!    del_pressure = dX_p(pressure_index)
-!    pressure0 = X_p(pressure_index)
-!    pressure1 = pressure0 - del_pressure
-!    del_saturation = dX_p(saturation_index)
-!    saturation0 = X_p(saturation_index)
-!    saturation1 = saturation0 - del_saturation
-!#ifdef LIMIT_MAX_PRESSURE_CHANGE
-!    if (dabs(del_pressure) > toil_ims_max_pressure_change) then
-!      temp_real = dabs(toil_ims_max_pressure_change/del_pressure)
-!      temp_scale = min(temp_scale,temp_real)
-!     endif
-!#endif
-!#ifdef TRUNCATE_PRESSURE
-!    if (pressure1 <= 0.d0) then
-!      if (dabs(del_pressure) > 1.d-40) then
-!        temp_real = tolerance * dabs(pressure0 / del_pressure)
-!        temp_scale = min(temp_scale,temp_real)
-!      endif
-!    endif
-!#endif !TRUNCATE_PRESSURE
-!
-!#ifdef LIMIT_MAX_SATURATION_CHANGE
-!    if (dabs(del_saturation) > max_saturation_change) then
-!       temp_real = dabs(max_saturation_change/del_saturation)
-!       temp_scale = min(temp_scale,temp_real)
-!    endif
-!#endif !LIMIT_MAX_SATURATION_CHANGE        
-!    scale = min(scale,temp_scale) 
-!  enddo
-!
-!  temp_scale = scale
-!  call MPI_Allreduce(temp_scale,scale,ONE_INTEGER_MPI, &
-!                     MPI_DOUBLE_PRECISION, &
-!                     MPI_MIN,option%mycomm,ierr)
-!
-!  ! it performs an homogenous scaling using the smallest scaling factor
-!  ! over all subdomains domains
-!  if (scale < 0.9999d0) then
-!    dX_p = scale*dX_p
-!  endif
-!
-!  call VecRestoreArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
-!  call VecRestoreArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
-!
 !end subroutine PMTOilImsCheckUpdatePre
 
 ! ************************************************************************** !
-
-! ************************************************************************** !
-
-subroutine PMTOilImsCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
-                                    P1_changed,ierr)
+! use function below when switching to latest code
+subroutine PMTOilImsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! 
-  ! Author: Paolo Orsini
+  ! Author: Paolo Orsini (OGS)
   ! Date: 11/09/15
   ! 
-
-  use TOilIms_module, only : TOilImsCheckUpdatePost
+  !use Realization_class
+  use Grid_module
+  use TOilIms_Aux_module
+  !use Global_Aux_module
+  use Field_module
+  use Option_module
+  use Patch_module
 
   implicit none
   
   class(pm_toil_ims_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P0
-  Vec :: dP
-  Vec :: P1
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  Vec :: X
+  Vec :: dX
+  PetscBool :: changed
   PetscErrorCode :: ierr
   
-  call TOilImsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-                                   P1_changed,this%realization,ierr)
+  PetscReal, pointer :: X_p(:), dX_p(:)
 
-end subroutine PMTOilImsCheckUpdatePost
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
+  !type(global_auxvar_type), pointer :: global_auxvars(:)  
+
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: offset
+
+  PetscInt :: pressure_index, saturation_index, temperature_index
+
+  PetscReal :: pressure0, pressure1, del_pressure
+  PetscReal :: temperature0, temperature1, del_temperature
+  PetscReal :: saturation0, saturation1, del_saturation
+
+  PetscReal :: max_saturation_change = 0.125d0
+  PetscReal :: max_temperature_change = 10.d0
+  PetscReal :: scale, temp_scale, temp_real
+  PetscReal, parameter :: tolerance = 0.99d0
+  PetscReal, parameter :: initial_scale = 1.d0
+  SNES :: snes
+  PetscInt :: newton_iteration
+
+  
+  grid => this%realization%patch%grid
+  option => this%realization%option
+  field => this%realization%field
+  !toil_auxvars => this%realization%patch%aux%TOil_ims%auxvars
+  !global_auxvars => this%realization%patch%aux%Global%auxvars
+
+  patch => this%realization%patch
+
+  call SNESLineSearchGetSNES(line_search,snes,ierr)
+  call SNESGetIterationNumber(snes,newton_iteration,ierr)
+
+  call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
+
+  changed = PETSC_TRUE
+
+  scale = initial_scale
+  if (toil_ims_max_it_before_damping > 0 .and. &
+      newton_iteration > toil_ims_max_it_before_damping) then
+    scale = toil_ims_damping_factor
+  endif
+
+#define LIMIT_MAX_PRESSURE_CHANGE
+#define LIMIT_MAX_SATURATION_CHANGE
+!!#define LIMIT_MAX_TEMPERATURE_CHANGE
+!! TRUNCATE_PRESSURE is needed for times when the solve wants
+!! to pull them negative.
+!#define TRUNCATE_PRESSURE
+
+  ! scaling
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    offset = (local_id-1)*option%nflowdof
+    temp_scale = 1.d0
+    pressure_index = offset + TOIL_IMS_PRESSURE_DOF
+    saturation_index = offset + TOIL_IMS_SATURATION_DOF
+    temperature_index  = offset + TOIL_IMS_ENERGY_DOF
+    dX_p(pressure_index) = dX_p(pressure_index) * toil_ims_pressure_scale
+    temp_scale = 1.d0
+    del_pressure = dX_p(pressure_index)
+    pressure0 = X_p(pressure_index)
+    pressure1 = pressure0 - del_pressure
+    del_saturation = dX_p(saturation_index)
+    saturation0 = X_p(saturation_index)
+    saturation1 = saturation0 - del_saturation
+#ifdef LIMIT_MAX_PRESSURE_CHANGE
+    if (dabs(del_pressure) > toil_ims_max_pressure_change) then
+      temp_real = dabs(toil_ims_max_pressure_change/del_pressure)
+      temp_scale = min(temp_scale,temp_real)
+     endif
+#endif
+#ifdef TRUNCATE_PRESSURE
+    if (pressure1 <= 0.d0) then
+      if (dabs(del_pressure) > 1.d-40) then
+        temp_real = tolerance * dabs(pressure0 / del_pressure)
+        temp_scale = min(temp_scale,temp_real)
+      endif
+    endif
+#endif !TRUNCATE_PRESSURE
+
+#ifdef LIMIT_MAX_SATURATION_CHANGE
+    if (dabs(del_saturation) > max_saturation_change) then
+       temp_real = dabs(max_saturation_change/del_saturation)
+       temp_scale = min(temp_scale,temp_real)
+    endif
+#endif !LIMIT_MAX_SATURATION_CHANGE        
+    scale = min(scale,temp_scale) 
+  enddo
+
+  temp_scale = scale
+  call MPI_Allreduce(temp_scale,scale,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION, &
+                     MPI_MIN,option%mycomm,ierr)
+
+  ! it performs an homogenous scaling using the smallest scaling factor
+  ! over all subdomains domains
+  if (scale < 0.9999d0) then
+    dX_p = scale*dX_p
+  endif
+
+  call VecRestoreArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
+
+end subroutine PMTOilImsCheckUpdatePre
 
 ! ************************************************************************** !
-! use function below when switching to the latest code
-!subroutine PMTOilImsCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
-!                                    X1_changed,ierr)
+
+! ************************************************************************** !
+
+!subroutine PMTOilImsCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
+!                                    P1_changed,ierr)
 !  ! 
 !  ! Author: Paolo Orsini
 !  ! Date: 11/09/15
 !  ! 
-!  !use Global_Aux_module
-!  use Grid_module
-!  use Option_module
-!  !use Realization_class
-!  use Grid_module
-!  use Field_module
-!  use Patch_module
-!  use Option_module
-!  use Material_Aux_class  
-!  !use Output_EKG_module
-!  
+!
+!  use TOilIms_module, only : TOilImsCheckUpdatePost
+!
 !  implicit none
 !  
 !  class(pm_toil_ims_type) :: this
 !  SNESLineSearch :: line_search
-!  Vec :: X0
-!  Vec :: dX
-!  Vec :: X1
-!  PetscBool :: dX_changed
-!  PetscBool :: X1_changed
+!  Vec :: P0
+!  Vec :: dP
+!  Vec :: P1
+!  PetscBool :: dP_changed
+!  PetscBool :: P1_changed
 !  PetscErrorCode :: ierr
-!
-!  PetscReal, pointer :: X0_p(:)
-!  PetscReal, pointer :: X1_p(:)
-!  PetscReal, pointer :: dX_p(:)
-!  PetscReal, pointer :: r_p(:)
-!  PetscReal, pointer :: accum_p(:), accum_p2(:)
-!  type(grid_type), pointer :: grid
-!  type(option_type), pointer :: option
-!  type(field_type), pointer :: field
-!  type(patch_type), pointer :: patch
-!  class(material_auxvar_type), pointer :: material_auxvars(:)  
-!  PetscInt :: local_id, ghosted_id
-!  PetscInt :: offset , ival, idof
-!!#ifdef DEBUG_GENERAL_INFO
-!!  PetscInt :: icell_max_rel_update(3), icell_max_scaled_residual(3)
-!!  PetscInt :: istate_max_rel_update(3), istate_max_scaled_residual(3)
-!!  character(len=2) :: state_char
-!!#endif
-!  PetscReal :: dX_X0, R_A, R
-!
-!  PetscReal :: inf_norm_rel_update(3), global_inf_norm_rel_update(3)
-!  PetscReal :: inf_norm_scaled_residual(3), global_inf_norm_scaled_residual(3)
-!  PetscReal :: inf_norm_update(3), global_inf_norm_update(3)
-!  PetscReal :: inf_norm_residual(3), global_inf_norm_residual(3)
-!  PetscReal :: two_norm_residual(3), global_two_norm_residual(3)
-!  PetscReal, parameter :: inf_pres_tol = 1.d-1
-!  PetscReal, parameter :: inf_temp_tol = 1.d-5
-!  PetscReal, parameter :: inf_sat_tol = 1.d-6
-!  !geh: note the scaling by 0.d0 several lines down which prevent false 
-!  !     convergence 
-!  ! PO scaling by 0 kill the inf_norm_update convergence criteria
-!  PetscReal, parameter :: inf_norm_update_tol(3) = &
-!    reshape([inf_pres_tol,inf_sat_tol,inf_temp_tol], &
-!            shape(inf_norm_update_tol)) * &
-!            0.d0
-!  PetscReal :: temp(12), global_temp(12)
-!  PetscMPIInt :: mpi_int
-!  PetscBool :: converged_abs_update
-!  PetscBool :: converged_rel_update
-!  PetscBool :: converged_scaled_residual
-!  PetscReal :: t_over_v
-! 
-!  grid => this%realization%patch%grid 
-!  option => this%realization%option
-!  field => this%realization%field
-!  patch => this%realization%patch ! in patch imat for active/inactive cells
-!  material_auxvars => patch%aux%Material%auxvars 
-! 
-!  ! it indicates that neither dX of the updated solution are modified 
-!  dX_changed = PETSC_FALSE
-!  X1_changed = PETSC_FALSE
 !  
-!  option%converged = PETSC_FALSE
-!  if (option%flow%check_post_convergence) then
-!    call VecGetArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
-!    call VecGetArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
-!    call VecGetArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-!    call VecGetArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
-!    call VecGetArrayReadF90(field%flow_accum2,accum_p2,ierr);CHKERRQ(ierr)
-!
-!!#ifdef DEBUG_GENERAL_INFO
-!!    icell_max_rel_update = 0
-!!    istate_max_rel_update = 0
-!!    icell_max_scaled_residual = 0
-!!    istate_max_scaled_residual = 0
-!!#endif
-!             
-!    inf_norm_update(:) = -1.d20
-!    inf_norm_rel_update(:) = -1.d20
-!    inf_norm_scaled_residual(:) = -1.d20
-!    inf_norm_residual(:) = -1.d20
-!    two_norm_residual(:) = 0.d0
-!    do local_id = 1, grid%nlmax
-!      offset = (local_id-1)*option%nflowdof
-!      ghosted_id = grid%nL2G(local_id)
-!      if (patch%imat(ghosted_id) <= 0) cycle
-!      do idof = 1, option%nflowdof
-!        ival = offset+idof
-!        R = r_p(ival)
-!!#ifdef DEBUG_GENERAL_INFO
-!!        two_norm_residual(idof,istate) = two_norm_residual(idof,istate) + R*R
-!!#endif
-!        inf_norm_residual(idof) = max(inf_norm_residual(idof),dabs(R))
-!        if (toil_ims_tough2_conv_criteria) then
-!          !geh: scale by t_over_v to match TOUGH2 residual units. see equation
-!          !     B.5 of TOUGH2 user manual (LBNL-43134)
-!          t_over_v = option%flow_dt/material_auxvars(ghosted_id)%volume
-!          if (accum_p2(ival)*t_over_v < toil_ims_tgh2_itol_scld_res_e2) then
-!            R_A = dabs(R*t_over_v)
-!          else
-!            R_A = dabs(R/accum_p2(ival))
-!          endif
-!        else
-!          R_A = dabs(R/accum_p(ival))
-!        endif
-!        dX_X0 = dabs(dX_p(ival)/X0_p(ival))
-!        inf_norm_update(idof) = max(inf_norm_update(idof),dabs(dX_p(ival)))
-!        if (inf_norm_rel_update(idof) < dX_X0) then
-!!#ifdef DEBUG_GENERAL_INFO
-!!          if (maxval(inf_norm_rel_update(idof,:)) < dX_X0) then
-!!            icell_max_rel_update(idof) = grid%nG2A(ghosted_id)
-!!            istate_max_rel_update(idof) = global_auxvars(ghosted_id)%istate
-!!          endif
-!!#endif
-!          inf_norm_rel_update(idof) = dX_X0
-!        endif
-!        if (inf_norm_scaled_residual(idof) < R_A) then
-!!#ifdef DEBUG_GENERAL_INFO
-!!          if (maxval(inf_norm_scaled_residual(idof,:)) < R_A) then
-!!            icell_max_scaled_residual(idof) = grid%nG2A(ghosted_id)
-!!            istate_max_scaled_residual(idof) = global_auxvars(ghosted_id)%istate
-!!          endif
-!!#endif
-!          inf_norm_scaled_residual(idof) = R_A
-!        endif
-!      enddo
-!    enddo
-!    temp(1:3) = inf_norm_update(:)
-!    temp(4:6) = inf_norm_rel_update(:)
-!    temp(7:9) = inf_norm_scaled_residual(:)
-!    temp(10:12) = inf_norm_residual(:)
-!    mpi_int = 12
-!    call MPI_Allreduce(temp,global_temp,mpi_int, &
-!                       MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-!    global_inf_norm_update(:) = global_temp(1:3)
-!    global_inf_norm_rel_update(:) = global_temp(4:6)
-!    global_inf_norm_scaled_residual(:) = global_temp(7:9)
-!    global_inf_norm_residual(:) = global_temp(10:12)
-!
-!!#ifdef DEBUG_GENERAL_INFO
-!!    mpi_int = 9
-!!    call MPI_Allreduce(two_norm_residual,global_two_norm_residual,mpi_int, &
-!!                       MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
-!!    global_two_norm_residual = sqrt(global_two_norm_residual)
-!!#endif
-!
-!    converged_abs_update = PETSC_TRUE
-!    do idof = 1, option%nflowdof
-!      ! imposing inf_norm_update <= inf_norm_update_tol for convergence
-!      if (global_inf_norm_update(idof) > inf_norm_update_tol(idof)) then
-!        converged_abs_update = PETSC_FALSE
-!      endif
-!    enddo  
-!    converged_rel_update = maxval(global_inf_norm_rel_update) < &
-!                           option%flow%inf_rel_update_tol
-!    if (toil_ims_tough2_conv_criteria) then
-!      converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
-!                                  toil_ims_tgh2_itol_scld_res_e1
-!    else
-!      converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
-!                                  option%flow%inf_scaled_res_tol
-!    endif
-!#if 0
-!    do idof = 1, option%nflowdof
-!      if (global_inf_norm(idof) > option%flow%post_convergence_tol) then
-!        converged_rel_update = PETSC_FALSE
-!#ifdef DEBUG_GENERAL_INFO
-!        select case(istate_max(idof))
-!          case(1)
-!            state_char = 'L'
-!          case(2)
-!            state_char = 'G'
-!          case(3)
-!            state_char = '2P'
-!        end select
-!        write(*,'(''-+ '',a3,i2,''('',i5,''):'',es12.4, &
-!                 &'' dX_X/dX/X:'',3es12.4, &
-!                 &'' R_A/R/A:'',3es12.4)') state_char,idof, &
-!           icell_max(idof),global_inf_norm(idof), &
-!           dX_X1_max(idof), dX_max(idof),  X1_max(idof), &
-!           R_A_max(idof), R_max(idof), A_max(idof)
-!#endif
-!      endif
-!    enddo
-!#endif
-!#ifdef DEBUG_GENERAL_INFO
-!    write(*,'(4x,''-+  dpl:'',es12.4,''  dxa:'',es12.4,''  dt:'',es12.4)') &
-!      (max(global_inf_norm_update(idof,1),0.d0),idof=1,3)
-!    write(*,'(4x,''-+  dpg:'',es12.4,''  dpa:'',es12.4,''  dt:'',es12.4)') &
-!      (max(global_inf_norm_update(idof,2),0.d0),idof=1,3)
-!    if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
-!      write(*,'(4x,''-+  dpg:'',es12.4,''  dsg:'',es12.4,''  dt:'',es12.4)') &
-!        (max(global_inf_norm_update(idof,3),0.d0),idof=1,3)
-!    else
-!      write(*,'(4x,''-+  dpg:'',es12.4,''  dsg:'',es12.4,'' dpa:'',es12.4)') &
-!        (max(global_inf_norm_update(idof,3),0.d0),idof=1,3)
-!    endif
-!    write(*,'(4x,''-+ rupl:'',es12.4,'' ruxa:'',es12.4,'' rut:'',es12.4)') &
-!      (max(global_inf_norm_rel_update(idof,1),0.d0),idof=1,3)
-!    write(*,'(4x,''-+ rupg:'',es12.4,'' rupa:'',es12.4,'' rut:'',es12.4)') &
-!      (max(global_inf_norm_rel_update(idof,2),0.d0),idof=1,3)
-!    write(*,'(4x,''-+ rupg:'',es12.4,'' rusg:'',es12.4,'' rut:'',es12.4)') &
-!      (max(global_inf_norm_rel_update(idof,3),0.d0),idof=1,3)
-!    write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
-!      (max(global_inf_norm_scaled_residual(idof,1),0.d0),idof=1,3)
-!    write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
-!      (max(global_inf_norm_scaled_residual(idof,2),0.d0),idof=1,3)
-!    write(*,'(4x,''-+  srl:'',es12.4,''  srg:'',es12.4,'' sre:'',es12.4)') &
-!      (max(global_inf_norm_scaled_residual(idof,3),0.d0),idof=1,3)
-!    write(*,'(4x,''-+ ru1 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
-!              &''  dX:'',es11.3,''  R:'',es11.3)') &
-!      icell_max_rel_update(1), istate_max_rel_update(1), &
-!      X0_p((icell_max_rel_update(1)-1)*3+1), &
-!      -1.d0*dX_p((icell_max_rel_update(1)-1)*3+1), &
-!      r_p((icell_max_rel_update(1)-1)*3+1)
-!    write(*,'(4x,''-+ ru2 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
-!              &''  dX:'',es11.3,''  R:'',es11.3)') &
-!      icell_max_rel_update(2), istate_max_rel_update(2), &
-!      X0_p((icell_max_rel_update(2)-1)*3+2), &
-!      -1.d0*dX_p((icell_max_rel_update(2)-1)*3+2), &
-!      r_p((icell_max_rel_update(2)-1)*3+2)
-!    write(*,'(4x,''-+ ru3 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
-!              &''  dX:'',es11.3,''  R:'',es11.3)') &
-!      icell_max_rel_update(3), istate_max_rel_update(3), &
-!      X0_p((icell_max_rel_update(3)-1)*3+3), &
-!      -1.d0*dX_p((icell_max_rel_update(3)-1)*3+3), &
-!      r_p((icell_max_rel_update(3)-1)*3+3)
-!    write(*,'(4x,''-+ sr1 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
-!              &''  dX:'',es11.3,''  R:'',es11.3)') &
-!      icell_max_scaled_residual(1), istate_max_scaled_residual(1), &
-!      X0_p((icell_max_scaled_residual(1)-1)*3+1), &
-!      -1.d0*dX_p((icell_max_scaled_residual(1)-1)*3+1), &
-!      r_p((icell_max_scaled_residual(1)-1)*3+1)
-!    write(*,'(4x,''-+ sr2 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
-!              &''  dX:'',es11.3,''  R:'',es11.3)') &
-!      icell_max_scaled_residual(2), istate_max_scaled_residual(2), &
-!      X0_p((icell_max_scaled_residual(2)-1)*3+2), &
-!      -1.d0*dX_p((icell_max_scaled_residual(2)-1)*3+2), &
-!      r_p((icell_max_scaled_residual(2)-1)*3+2)
-!    write(*,'(4x,''-+ sr3 icell:'',i7,''  st:'',i3,''  X:'',es11.3, &
-!              &''  dX:'',es11.3,''  R:'',es11.3)') &
-!      icell_max_scaled_residual(3), istate_max_scaled_residual(3), &
-!      X0_p((icell_max_scaled_residual(3)-1)*3+3), &
-!      -1.d0*dX_p((icell_max_scaled_residual(3)-1)*3+3), &
-!      r_p((icell_max_scaled_residual(3)-1)*3+3)
-!#endif
-!    option%converged = PETSC_FALSE
-!    if (converged_abs_update .or. converged_rel_update .or. &
-!        converged_scaled_residual) then
-!      option%converged = PETSC_TRUE
-!    endif
-!    call VecRestoreArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
-!    call VecRestoreArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
-!    call VecRestoreArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-!    call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
-!    call VecRestoreArrayReadF90(field%flow_accum2,accum_p2,ierr);CHKERRQ(ierr)
-!  endif
+!  call TOilImsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
+!                                   P1_changed,this%realization,ierr)
 !
 !end subroutine PMTOilImsCheckUpdatePost
+
+! ************************************************************************** !
+! use function below when switching to the latest code
+subroutine PMTOilImsCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
+                                    X1_changed,ierr)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 11/09/15
+  ! 
+  !use Global_Aux_module
+  use TOilIms_Aux_module
+  use Grid_module
+  use Option_module
+  !use Realization_class
+  use Grid_module
+  use Field_module
+  use Patch_module
+  use Option_module
+  use Material_Aux_class  
+  !use Output_EKG_module
+  
+  implicit none
+  
+  class(pm_toil_ims_type) :: this
+  SNESLineSearch :: line_search
+  Vec :: X0
+  Vec :: dX
+  Vec :: X1
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
+  PetscErrorCode :: ierr
+
+  PetscReal, pointer :: X0_p(:)
+  PetscReal, pointer :: X1_p(:)
+  PetscReal, pointer :: dX_p(:)
+  PetscReal, pointer :: r_p(:)
+  PetscReal, pointer :: accum_p(:), accum_p2(:)
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  class(material_auxvar_type), pointer :: material_auxvars(:)  
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: offset , ival, idof
+  PetscReal :: dX_X0, R_A, R
+
+  PetscReal :: inf_norm_rel_update(3), global_inf_norm_rel_update(3)
+  PetscReal :: inf_norm_scaled_residual(3), global_inf_norm_scaled_residual(3)
+  PetscReal :: inf_norm_update(3), global_inf_norm_update(3)
+  PetscReal :: inf_norm_residual(3), global_inf_norm_residual(3)
+  PetscReal :: two_norm_residual(3), global_two_norm_residual(3)
+  PetscReal, parameter :: inf_pres_tol = 1.d-1
+  PetscReal, parameter :: inf_temp_tol = 1.d-5
+  PetscReal, parameter :: inf_sat_tol = 1.d-6
+  !geh: note the scaling by 0.d0 several lines down which prevent false 
+  !     convergence 
+  ! PO scaling by 0 kill the inf_norm_update convergence criteria
+  PetscReal, parameter :: inf_norm_update_tol(3) = &
+    reshape([inf_pres_tol,inf_sat_tol,inf_temp_tol], &
+            shape(inf_norm_update_tol)) * &
+            0.d0
+  PetscReal :: temp(12), global_temp(12)
+  PetscMPIInt :: mpi_int
+  PetscBool :: converged_abs_update
+  PetscBool :: converged_rel_update
+  PetscBool :: converged_scaled_residual
+  PetscReal :: t_over_v
+ 
+  grid => this%realization%patch%grid 
+  option => this%realization%option
+  field => this%realization%field
+  patch => this%realization%patch ! in patch imat for active/inactive cells
+  material_auxvars => patch%aux%Material%auxvars 
+ 
+  ! it indicates that neither dX of the updated solution are modified 
+  dX_changed = PETSC_FALSE
+  X1_changed = PETSC_FALSE
+  
+  option%converged = PETSC_FALSE
+  if (this%check_post_convergence) then
+    call VecGetArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%flow_accum2,accum_p2,ierr);CHKERRQ(ierr)
+
+    inf_norm_update(:) = -1.d20
+    inf_norm_rel_update(:) = -1.d20
+    inf_norm_scaled_residual(:) = -1.d20
+    inf_norm_residual(:) = -1.d20
+    two_norm_residual(:) = 0.d0
+    do local_id = 1, grid%nlmax
+      offset = (local_id-1)*option%nflowdof
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+      do idof = 1, option%nflowdof
+        ival = offset+idof
+        R = r_p(ival)
+        inf_norm_residual(idof) = max(inf_norm_residual(idof),dabs(R))
+        if (toil_ims_tough2_conv_criteria) then
+          !geh: scale by t_over_v to match TOUGH2 residual units. see equation
+          !     B.5 of TOUGH2 user manual (LBNL-43134)
+          t_over_v = option%flow_dt/material_auxvars(ghosted_id)%volume
+          if (accum_p2(ival)*t_over_v < toil_ims_tgh2_itol_scld_res_e2) then
+            R_A = dabs(R*t_over_v)
+          else
+            R_A = dabs(R/accum_p2(ival))
+          endif
+        else
+          R_A = dabs(R/accum_p(ival))
+        endif
+        dX_X0 = dabs(dX_p(ival)/X0_p(ival))
+        inf_norm_update(idof) = max(inf_norm_update(idof),dabs(dX_p(ival)))
+        if (inf_norm_rel_update(idof) < dX_X0) then
+          inf_norm_rel_update(idof) = dX_X0
+        endif
+        if (inf_norm_scaled_residual(idof) < R_A) then
+          inf_norm_scaled_residual(idof) = R_A
+        endif
+      enddo
+    enddo
+    temp(1:3) = inf_norm_update(:)
+    temp(4:6) = inf_norm_rel_update(:)
+    temp(7:9) = inf_norm_scaled_residual(:)
+    temp(10:12) = inf_norm_residual(:)
+    mpi_int = 12
+    call MPI_Allreduce(temp,global_temp,mpi_int, &
+                       MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+    global_inf_norm_update(:) = global_temp(1:3)
+    global_inf_norm_rel_update(:) = global_temp(4:6)
+    global_inf_norm_scaled_residual(:) = global_temp(7:9)
+    global_inf_norm_residual(:) = global_temp(10:12)
+
+    converged_abs_update = PETSC_TRUE
+    converged_scaled_residual = PETSC_TRUE
+    do idof = 1, option%nflowdof
+      ! imposing inf_norm_update <= inf_norm_update_tol for convergence
+      if (global_inf_norm_update(idof) > inf_norm_update_tol(idof)) then
+        converged_abs_update = PETSC_FALSE
+      endif
+      if (toil_ims_tough2_conv_criteria) then
+        if (global_inf_norm_scaled_residual(idof) > &
+            toil_ims_tgh2_itol_scld_res_e1(idof)) then
+          converged_scaled_residual = PETSC_FALSE
+        endif
+      endif
+    enddo  
+
+    if (.not.toil_ims_tough2_conv_criteria) then
+      converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
+                                  toil_ims_itol_scaled_res
+    endif
+
+
+   ! converged_rel_update = maxval(global_inf_norm_rel_update) < &
+   !                        option%flow%inf_rel_update_tol
+   ! if (toil_ims_tough2_conv_criteria) then
+   !   converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
+   !                               toil_ims_tgh2_itol_scld_res_e1
+   ! else
+   !   converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
+   !                               option%flow%inf_scaled_res_tol
+   ! endif
+#if 0
+    do idof = 1, option%nflowdof
+      if (global_inf_norm(idof) > option%flow%post_convergence_tol) then
+        converged_rel_update = PETSC_FALSE
+      endif
+    enddo
+#endif
+    option%converged = PETSC_FALSE
+    if (converged_abs_update .or. converged_rel_update .or. &
+        converged_scaled_residual) then
+      option%converged = PETSC_TRUE
+    endif
+    call VecRestoreArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%flow_accum2,accum_p2,ierr);CHKERRQ(ierr)
+
+  endif
+
+end subroutine PMTOilImsCheckUpdatePost
 
 ! ************************************************************************** !
 
@@ -1006,7 +919,7 @@ subroutine PMTOilImsCheckpointBinary(this,viewer)
   use Variables_module, only : STATE
 
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
 
   class(pm_toil_ims_type) :: this
   PetscViewer :: viewer
@@ -1033,7 +946,7 @@ subroutine PMTOilImsRestartBinary(this,viewer)
   use Variables_module, only : STATE
 
   implicit none
-#include "finclude/petscviewer.h"      
+#include "petsc/finclude/petscviewer.h"      
 
   class(pm_toil_ims_type) :: this
   PetscViewer :: viewer

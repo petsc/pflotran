@@ -1,5 +1,17 @@
-#Description: 1D Ion Exchange Problem
+#Description: 1D ion exchange problem
 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
+# m/s
 UNIFORM_VELOCITY 5.69333e-4 0.d0 0.d0
 
 #=========================== runtime ==========================================
@@ -8,280 +20,346 @@ UNIFORM_VELOCITY 5.69333e-4 0.d0 0.d0
 
 # == chemistry ================================================================
 CHEMISTRY
-#  OPERATOR_SPLIT
-  PRIMARY_SPECIES
-    Na+
-#    K+
-    Ca++
-    Mg++
-    H+
-    HCO3-
-    Cl-
-    Tracer
-  /
-  SECONDARY_SPECIES
-    OH-
-    CO3--
-    CO2(aq)
-    CaOH+
-    CaCO3(aq)
-    CaHCO3+
-    CaCl+
-    MgCO3(aq)
-    MgHCO3+
-    MgCl+
-    HCl(aq)
-#    KCl(aq)
-    NaCl(aq)
-    NaOH(aq)
-  /
-  GAS_SPECIES
-    CO2(g)
-  /
-  MINERALS
-    Halite
-  /
+#OPERATOR_SPLIT
+PRIMARY_SPECIES
+Na+
+Ca++
+#K+
+Mg++
+H+
+HCO3-
+Cl-
+Tracer
+/
+SECONDARY_SPECIES
+OH-
+CO3--
+CO2(aq)
+CaOH+
+CaCO3(aq)
+CaHCO3+
+CaCl+
+MgCO3(aq)
+MgHCO3+
+MgCl+
+HCl(aq)
+#KCl(aq)
+NaCl(aq)
+NaOH(aq)
+/
+GAS_SPECIES
+CO2(g)
+/
+MINERALS
+Halite
+/
 #
-  MINERAL_KINETICS
-    Halite
-      RATE_CONSTANT 1.e-30 mol/cm^2-sec
-    /
-    /
-    SORPTION
-      ION_EXCHANGE_RXN
-        MINERAL Halite
-        CEC 60. ! mol/kg
-        CATIONS
-        Na+   7.94328
-        Ca++  1.
-        Mg++  1.44544
-      /
-    /
-  /
-  DATABASE ../../../database/hanford.dat
-  LOG_FORMULATION
-  ACTIVITY_COEFFICIENTS ! NEWTON_ITERATION
-  MOLAL
-  OUTPUT
-    All
-  /
-END
+MINERAL_KINETICS
+Halite
+RATE_CONSTANT 1.e-30
+/
+/
+SORPTION
+ION_EXCHANGE_RXN
+#MINERAL Halite
+CEC 71.004  ! mol/m^3
+CATIONS
+Na+   7.94328
+Ca++  1. REFERENCE
+Mg++  1.44544
+/
+/
+/
+#DATABASE /Users/lichtner/pflotran/pflotran-dev/database/hanford.dat
+DATABASE ../../..//database/hanford.dat
+LOG_FORMULATION
+ACTIVITY_COEFFICIENTS ! NEWTON_ITERATION
+MOLAL
+OUTPUT
+All
+FREE_ION
+TOTAL
+/
+/
 
 # == reference variables ======================================================
 REFERENCE_POROSITY 0.61d0
 
 # == time stepping ============================================================
-TIMESTEPPER
-  TS_ACCELERATION 8
-  MAX_STEPS 100000
-#  MAX_STEPS 1
-END
+TIMESTEPPER TRANSPORT
+TS_ACCELERATION 8
+MAX_STEPS 100000
+#MAX_STEPS 1
+/
 
 # == discretization ===========================================================
 GRID
-  TYPE structured 
-  NXYZ 250 1 1
-  BOUNDS
-    0.d0 0.d0 0.d0
-    0.481d0 1.d0 1.d0
-  /
-END
+TYPE structured 
+NXYZ 250 1 1
+BOUNDS
+0.d0 0.d0 0.d0
+0.481d0 1.d0 1.d0
+/
+/
+
+# == flow solvers =============================================================
+NEWTON_SOLVER FLOW
+PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-8
+ATOL 1.d-8
+STOL 1.d-30
+ITOL_UPDATE 1.d0
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER FLOW
+#KSP_TYPE PREONLY
+#PC_TYPE LU
+#KSP_TYPE FGMRES !samrai
+#PC_TYPE SHELL !samrai
+/
 
 # == transport solvers ========================================================
 NEWTON_SOLVER TRANSPORT
-  PRECONDITIONER_MATRIX_TYPE AIJ
-  RTOL 1.d-8
-  ATOL 1.d-8
-  STOL 1.d-30
-#  NO_INFINITY_NORM
-#  NO_PRINT_CONVERGENCE
-#  PRINT_DETAILED_CONVERGENCE
-END
+PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-8
+ATOL 1.d-8
+STOL 1.d-30
+#NO_INFINITY_NORM
+#NO_PRINT_CONVERGENCE
+#PRINT_DETAILED_CONVERGENCE
+/
 
 LINEAR_SOLVER TRANSPORT
-#  SOLVER DIRECT
-END
+#PC_TYPE LU
+#KSP_TYPE PREONLY
+#KSP_TYPE FGMRES ! samrai
+#PC_TYPE SHELL !samrai
+/
 
 # == fluid properties =========================================================
 FLUID_PROPERTY
-  DIFFUSION_COEFFICIENT 1.d-9
-#  DIFFUSION_COEFFICIENT 9.33333e-7
-END
+DIFFUSION_COEFFICIENT 1.d-9
+#DIFFUSION_COEFFICIENT 9.33333e-7
+/
 
 # == material properties ======================================================
 MATERIAL_PROPERTY HD
-  ID 1
-  SATURATION_FUNCTION default
-  POROSITY 0.61
-  TORTUOSITY 1.0
-#  LONGITUDINAL_DISPERSIVITY 0.001
-  PERMEABILITY
-    PERM_ISO 5.43d-13
-  /
-END
+ID 1
+SATURATION_FUNCTION default
+POROSITY 0.61
+TORTUOSITY 1.0
+#LONGITUDINAL_DISPERSIVITY 0.001
+PERMEABILITY
+PERM_ISO 5.43d-13
+/
+/
 
 # == saturation / permeability functions ======================================
 SATURATION_FUNCTION HD
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.115
-  LAMBDA 0.286
-  ALPHA 1.9401d-4
-END
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.115
+LAMBDA 0.286
+ALPHA 1.9401d-4
+/
 
 #=========================== saturation functions =============================
 SATURATION_FUNCTION default
-END
+/
 
 # == output ===================================================================
 OUTPUT
-  TIMES s 10307.1 33498.2 41228.6
-  PERIODIC_OBSERVATION TIMESTEP 1
-#  PERIODIC TIMESTEP 1
-#  PERIODIC TIME 0.04 y
-  SCREEN PERIODIC 10
-#  FORMAT HDF5
-  FORMAT TECPLOT POINT
-  VELOCITY_AT_CENTER
-END
+TIMES s 10307.1 33498.2 41228.6
+PRINT_COLUMN_IDS
+PERIODIC_OBSERVATION TIMESTEP 1
+#PERIODIC TIMESTEP 1
+#PERIODIC TIME 0.04 y
+SCREEN PERIODIC 10
+#FORMAT HDF5
+FORMAT TECPLOT POINT
+#VELOCITIES
+/
 
 # == times ====================================================================
 TIME
-  FINAL_TIME 41228.6 s
-  INITIAL_TIMESTEP_SIZE 1. s
-  MAXIMUM_TIMESTEP_SIZE 20. s
-  MAXIMUM_TIMESTEP_SIZE 1. s at 10200. s
-  MAXIMUM_TIMESTEP_SIZE 20. s at 10350 s
-  MAXIMUM_TIMESTEP_SIZE 1. s at 33300 s
-  MAXIMUM_TIMESTEP_SIZE 20. s at 33600 s
-END
+FINAL_TIME 41228.6 s
+INITIAL_TIMESTEP_SIZE 1. s
+MAXIMUM_TIMESTEP_SIZE 20. s
+MAXIMUM_TIMESTEP_SIZE 1. s at 10200. s
+MAXIMUM_TIMESTEP_SIZE 20. s at 10350 s
+MAXIMUM_TIMESTEP_SIZE 1. s at 33300 s
+MAXIMUM_TIMESTEP_SIZE 20. s at 33600 s
+/
 
 # == regions ==================================================================
 REGION all
-  COORDINATES
-    0.d0 0.d0 0.d0
-    0.481d0 1.d0 1.d0
-  /
-END
+COORDINATES
+0.d0 0.d0 0.d0
+0.481d0 1.d0 1.d0
+/
+/
 
 REGION west
-  FACE WEST
-  COORDINATES
-    0. 0. 0.
-    0. 1. 1. 
-  /
-END
+FACE WEST
+COORDINATES
+0. 0. 0.
+0. 1. 1. 
+/
+/
 
 REGION east
-  FACE EAST
-  COORDINATES
-    0.481 0. 0.
-    0.481 1. 1.
-  /
-END
+FACE EAST
+COORDINATES
+0.481 0. 0.
+0.481 1. 1.
+/
+/
 
 OBSERVATION 
-  REGION east
+REGION east
+/
+
+# == flow conditions ==========================================================
+skip
+FLOW_CONDITION west
+TYPE
+FLUX neumann
+/
+FLUX 0.317098d-7 ! 1 m/y
+#FLUX 1.5855d-9 ! 5 cm/y
+#FLUX file 200w_recharge_1951-2000_daily.dat
+/
+noskip
+
+FLOW_CONDITION Initial
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 0.d0
+PRESSURE 101325.d0
+/
+
+FLOW_CONDITION west
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 0.d0
+PRESSURE 101425.d0
+END
+
+FLOW_CONDITION east
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 0.d0
+PRESSURE 101325.d0
 END
 
 # == transport conditions =====================================================
 TRANSPORT_CONDITION Initial
-  TYPE dirichlet
-  CONSTRAINT_LIST
-    0.d0 Initial
-  /
-END
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Initial
+/
+/
 
 TRANSPORT_CONDITION east
-  TYPE dirichlet
-  CONSTRAINT_LIST
-    0.d0 Initial
-  /
-END
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Initial
+/
+/
 
 TRANSPORT_CONDITION west
-  TYPE dirichlet
-  CONSTRAINT_LIST
-    0.d0    Inlet1
-    10307.1 Inlet2
-    33498.2 Inlet3
-  /
-END
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0    Inlet1
+10307.1 Inlet2
+33498.2 Inlet3
+/
+/
 
 # == couplers =================================================================
-
 INITIAL_CONDITION Initial
-  TRANSPORT_CONDITION Initial
-  REGION all
+#FLOW_CONDITION Initial
+TRANSPORT_CONDITION Initial
+REGION all
+/
+
+BOUNDARY_CONDITION
+#FLOW_CONDITION west
+TRANSPORT_CONDITION west
+REGION west
 END
 
 BOUNDARY_CONDITION
-  TRANSPORT_CONDITION west
-  REGION west
-END
-
-BOUNDARY_CONDITION
-  TRANSPORT_CONDITION east
-  REGION east
+#FLOW_CONDITION east
+TRANSPORT_CONDITION east
+REGION east
 END
 
 # == stratigraphy =============================================================
 STRATA
-  MATERIAL HD
-  REGION all
-END
+MATERIAL HD
+REGION all
+/
 
 # == transport constraints ====================================================
 CONSTRAINT Initial
-  CONCENTRATIONS
-    Na+           4.65d-3  T
-#    K+            2.d-4    T
-    Ca++          5.2d-3   T
-    Mg++          4.55e-3  T
-    H+            4.6     pH
-    HCO3-        -3.5      G   CO2(g)
-    Cl-           1.d-3    Z
-    Tracer        4.65d-3  T
-  /
-  MINERALS
-    Halite        0.5 1. cm^2/cm^3
-  /
-END
+CONCENTRATIONS
+Na+           4.65d-3  T
+#K+            2.d-4    T
+Ca++          5.2d-3   T
+Mg++          4.55e-3  T
+H+            4.6     pH
+HCO3-        -3.5      G   CO2(g)
+Cl-           1.d-3    Z
+Tracer        4.65d-3  T
+/
+MINERALS
+Halite        0.5 1.
+/
+/
 
 CONSTRAINT Inlet1
-  CONCENTRATIONS
-    Na+           1.d-16  T
-#    K+            1.d-10  T
-    Ca++          5.3d-3  T
-    Mg++          1.e-16  T
-    H+            4.6    pH
-    HCO3-        -3.5     G   CO2(g)
-    Cl-           3.d-4   Z
-    Tracer        9.4d-3  T
-  /
-END
+CONCENTRATIONS
+Na+           1.d-16  T
+#K+            1.d-10  T
+Ca++          5.3d-3  T
+Mg++          1.e-16  T
+H+            4.6    pH
+HCO3-        -3.5     G   CO2(g)
+Cl-           3.d-4   Z
+Tracer        9.4d-3  T
+/
+/
 
 CONSTRAINT Inlet2
-  CONCENTRATIONS
-    Na+           4.6d-3  T
-#    K+            1.d-10  T
-    Ca++          1.d-16  T
-    Mg++          2.4e-3  T
-    H+            4.6    pH
-    HCO3-        -3.5     G   CO2(g)
-    Cl-           3.d-4   Z
-    Tracer        9.4d-3  T
-  /
-END
+CONCENTRATIONS
+Na+           4.6d-3  T
+#K+            1.d-10  T
+Ca++          1.d-16  T
+Mg++          2.4e-3  T
+H+            4.6    pH
+HCO3-        -3.5     G   CO2(g)
+Cl-           3.d-4   Z
+Tracer        9.4d-3  T
+/
+/
 
 CONSTRAINT Inlet3
-  CONCENTRATIONS
-    Na+           4.65d-3 T
-#    K+            1.d-10  T
-    Ca++          5.2d-3  T
-    Mg++          4.55e-3 T
-    H+            4.6    pH
-    HCO3-        -3.5     G   CO2(g)
-    Cl-           3.d-4   Z
-    Tracer        9.4d-3  T
-  /
-END
+CONCENTRATIONS
+Na+           4.65d-3 T
+#K+            1.d-10  T
+Ca++          5.2d-3  T
+Mg++          4.55e-3 T
+H+            4.6    pH
+HCO3-        -3.5     G   CO2(g)
+Cl-           3.d-4   Z
+Tracer        9.4d-3  T
+/
+/
+
+END_SUBSURFACE

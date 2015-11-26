@@ -170,7 +170,9 @@ def clean_details(details, max_string_length):
     for d in details:
         data = []
         info = details[d].strip()
-        info = info.replace('"', '""')
+#fix suggested by Kris Kuhlman 11-11-15
+#        info = info.replace('"', '""')
+	info = info.replace('"', "'")
         temp = info.split("\n")
         if isinstance(temp, basestring):
             # FIXME: still must run textwrap on this incase it is avery long line!

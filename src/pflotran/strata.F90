@@ -10,7 +10,7 @@ module Strata_module
 
   private
  
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
  
   type, public :: strata_type

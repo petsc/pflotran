@@ -13,7 +13,7 @@ module Timestepper_module
 
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: TIMESTEPPER_INIT_PROCEED = 0
   PetscInt, parameter, public :: TIMESTEPPER_INIT_DONE = 1
@@ -823,11 +823,11 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   
   implicit none
 
-#include "finclude/petsclog.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscsnes.h"
 
   class(realization_type) :: realization
   type(timestepper_type) :: stepper
@@ -1144,11 +1144,11 @@ subroutine FlowStepperStepToSteadyState(realization,stepper,failure)
   
   implicit none
 
-#include "finclude/petsclog.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscsnes.h"
 
   class(realization_type) :: realization
   type(timestepper_type) :: stepper
@@ -1312,12 +1312,12 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   
   implicit none
 
-#include "finclude/petsclog.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscsnes.h"
 
   class(realization_type) :: realization
   type(timestepper_type) :: stepper
@@ -1747,12 +1747,12 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   
   implicit none
 
-#include "finclude/petsclog.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscsnes.h"
 
   class(realization_type) :: realization
   type(timestepper_type) :: stepper
@@ -2042,12 +2042,12 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
 
   implicit none
 
-#include "finclude/petsclog.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscsnes.h"
 
   class(realization_type) :: realization
   type(timestepper_type) :: stepper
@@ -2450,11 +2450,11 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscsnes.h"
 
   class(realization_type) :: realization
   type(timestepper_type) :: stepper
@@ -2597,11 +2597,11 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscsnes.h"
 
   class(realization_type) :: realization
   type(timestepper_type) :: stepper

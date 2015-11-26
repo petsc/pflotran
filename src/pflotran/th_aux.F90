@@ -6,7 +6,10 @@ module TH_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
+
+  PetscReal, public :: th_itol_scaled_res = 1.d-5
+  PetscReal, public :: th_itol_rel_update = UNINITIALIZED_DOUBLE
 
   type, public :: TH_auxvar_type
     PetscReal :: avgmw
@@ -27,8 +30,6 @@ module TH_Aux_module
     PetscReal :: dh_dt
     PetscReal :: du_dp
     PetscReal :: du_dt
-    PetscReal, pointer :: xmol(:)
-    PetscReal, pointer :: diff(:)
     PetscReal :: transient_por
     PetscReal :: Dk_eff
     PetscReal :: Ke
@@ -206,10 +207,6 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%dKe_dt    = uninit_value
   auxvar%dKe_fr_dp = uninit_value
   auxvar%dKe_fr_dt = uninit_value
-  allocate(auxvar%xmol(option%nflowspec))
-  auxvar%xmol      = uninit_value
-  allocate(auxvar%diff(option%nflowspec))
-  auxvar%diff      = 1.d-9
   ! NOTE(bja, 2013-12) always initialize ice variables to zero, even if not used!
   auxvar%sat_ice       = uninit_value
   auxvar%sat_gas       = uninit_value
@@ -291,8 +288,6 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%dKe_fr_dp = auxvar%dKe_fr_dp
   auxvar2%dKe_dt = auxvar%dKe_dt
   auxvar2%dKe_fr_dt = auxvar%dKe_fr_dt
-  auxvar2%xmol = auxvar%xmol
-  auxvar2%diff = auxvar%diff
   if (option%use_th_freezing) then
      auxvar2%sat_ice = auxvar%sat_ice 
      auxvar2%sat_gas = auxvar%sat_gas
@@ -381,9 +376,7 @@ subroutine THAuxVarComputeNoFreezing(x,auxvar,global_auxvar, &
   auxvar%h = 0.d0
   auxvar%u = 0.d0
   auxvar%avgmw = 0.d0
-  auxvar%xmol = 0.d0
   auxvar%kvr = 0.d0
-  auxvar%diff = 0.d0
   kr = 0.d0
  
 ! auxvar%pres = x(1)  
@@ -393,8 +386,6 @@ subroutine THAuxVarComputeNoFreezing(x,auxvar,global_auxvar, &
  
 ! auxvar%pc = option%reference_pressure - auxvar%pres
   auxvar%pc = option%reference_pressure - global_auxvar%pres(1)
-  auxvar%xmol(1) = 1.d0
-  if (option%nflowspec > 1) auxvar%xmol(2:option%nflowspec) = x(3:option%nflowspec+1)   
 
 !***************  Liquid phase properties **************************
   auxvar%avgmw = FMWH2O
@@ -571,9 +562,7 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   auxvar%h = 0.d0
   auxvar%u = 0.d0
   auxvar%avgmw = 0.d0
-  auxvar%xmol = 0.d0
   auxvar%kvr = 0.d0
-  auxvar%diff = 0.d0
    
   global_auxvar%pres = x(1)  
   global_auxvar%temp = x(2)
@@ -586,8 +575,6 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
 
  
   auxvar%pc = option%reference_pressure - global_auxvar%pres(1)
-  auxvar%xmol(1) = 1.d0
-  if (option%nflowspec > 1) auxvar%xmol(2:option%nflowspec) = x(3:option%nflowspec+1)   
 
 !***************  Liquid phase properties **************************
   auxvar%avgmw = FMWH2O
@@ -788,11 +775,6 @@ subroutine THAuxVarDestroy(auxvar)
 
   type(TH_auxvar_type) :: auxvar
   
-  if (associated(auxvar%xmol)) deallocate(auxvar%xmol)
-  nullify(auxvar%xmol)
-  if (associated(auxvar%diff))deallocate(auxvar%diff)
-  nullify(auxvar%diff)
-
 end subroutine THAuxVarDestroy
 
 ! ************************************************************************** !

@@ -12,13 +12,13 @@ module Grid_module
 
   private
  
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
 
   type, public :: grid_type 
   
@@ -459,8 +459,8 @@ subroutine GridComputeVolumes(grid,volume,option)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   type(grid_type) :: grid
   type(option_type) :: option
@@ -496,8 +496,8 @@ subroutine GridComputeAreas(grid,area,option)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   type(grid_type) :: grid
   type(option_type) :: option
@@ -558,23 +558,30 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         call GridLocalizeRegionFromCoordinates(grid,region,option)
       case (DEFINED_BY_CELL_IDS)
         select case(grid%itype)
+!         case(STRUCTURED_GRID)
+!           The region is localized in InitCommonReadRegionFiles->
+!             HDF5ReadRegionFromFile->HDF5MapLocalToNaturalIndices      
           case(IMPLICIT_UNSTRUCTURED_GRID)
-            call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
+            if (region%hdf5_ugrid_kludge) then
+              call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
+            endif
           case(EXPLICIT_UNSTRUCTURED_GRID)
             call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
+!         case(STRUCTURED_GRID)
+!           The region is localized in 
         end select
       case (DEFINED_BY_CELL_AND_FACE_IDS)
         select case(grid%itype)
           case (STRUCTURED_GRID)
             ! Do nothing since the region was localized during the reading process
           case default
-            option%io_buffer = 'Extended GridLocalizeRegions() for region ' // &
-            'DEFINED_BY_CELL_AND_FACE_IDS'
+            option%io_buffer = 'GridLocalizeRegions() must tbe extended ' // &
+            'for unstructured region DEFINED_BY_CELL_AND_FACE_IDS'
             call printErrMsg(option)
         end select
       case (DEFINED_BY_VERTEX_IDS)
-        option%io_buffer = 'Extended GridLocalizeRegions() for region ' // &
-          'DEFINED_BY_VERTEX_IDS'
+        option%io_buffer = 'GridLocalizeRegions() must tbe extended ' // &
+          'for unstructured region DEFINED_BY_VERTEX_IDS'
         call printErrMsg(option)
       case (DEFINED_BY_SIDESET_UGRID)
         call UGridMapSideSet(grid%unstructured_grid, &
@@ -731,13 +738,13 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
 
   implicit none
   
-#include "finclude/petsclog.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscmat.h"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscmat.h"
 
   type(grid_type)                 :: grid
   type(region_type)               :: region
@@ -795,8 +802,8 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
       cell_id_max_local = max(cell_id_max_local, region%cell_ids(ii))
     enddo
 
-    call MPI_AllReduce(cell_id_max_local, cell_id_max_global, ONE_INTEGER_MPI, MPI_INTEGER, &
-                       MPI_MAX, option%mycomm,ierr)
+    call MPI_Allreduce(cell_id_max_local, cell_id_max_global, ONE_INTEGER_MPI, &
+                       MPI_INTEGER, MPI_MAX, option%mycomm,ierr)
     if (cell_id_max_global > grid%nmax) then
        option%io_buffer = 'The following region includes a cell-id that is greater than ' // &
             'number of control volumes present in the grid: ' // trim(region%name)
@@ -1023,8 +1030,8 @@ subroutine GridCopyIntegerArrayToVec(grid, array,vector,num_values)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   type(grid_type) :: grid
   PetscInt :: array(:)
@@ -1053,8 +1060,8 @@ subroutine GridCopyRealArrayToVec(grid,array,vector,num_values)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
     
   type(grid_type) :: grid
   PetscReal :: array(:)
@@ -1083,8 +1090,8 @@ subroutine GridCopyVecToIntegerArray(grid,array,vector,num_values)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   type(grid_type) :: grid
   PetscInt :: array(:)
@@ -1120,8 +1127,8 @@ subroutine GridCopyVecToRealArray(grid,array,vector,num_values)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
     
   type(grid_type) :: grid
   PetscReal :: array(:)

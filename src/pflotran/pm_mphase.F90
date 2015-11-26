@@ -9,13 +9,13 @@ module PM_Mphase_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_subsurface_type) :: pm_mphase_type
   contains
@@ -322,7 +322,7 @@ end subroutine PMMphaseJacobian
 
 ! ************************************************************************** !
 
-subroutine PMMphaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMMphaseCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -334,19 +334,19 @@ subroutine PMMphaseCheckUpdatePre(this,line_search,P,dP,changed,ierr)
   
   class(pm_mphase_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P
-  Vec :: dP
+  Vec :: X
+  Vec :: dX
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-  call MphaseCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+  call MphaseCheckUpdatePre(line_search,X,dX,changed,this%realization,ierr)
 
 end subroutine PMMphaseCheckUpdatePre
 
 ! ************************************************************************** !
 
-subroutine PMMphaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
-                                  P1_changed,ierr)
+subroutine PMMphaseCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
+                                   X1_changed,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -358,15 +358,15 @@ subroutine PMMphaseCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
   
   class(pm_mphase_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P0
-  Vec :: dP
-  Vec :: P1
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  Vec :: X0
+  Vec :: dX
+  Vec :: X1
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
   PetscErrorCode :: ierr
   
-  call MphaseCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-                               P1_changed,this%realization,ierr)
+  call MphaseCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
+                               X1_changed,this%realization,ierr)
 
 end subroutine PMMphaseCheckUpdatePost
 #endif

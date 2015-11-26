@@ -6,7 +6,7 @@ module Units_module
   
   private
   
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   public :: UnitsConvertToInternal, UnitsConvertToExternal
   
@@ -180,6 +180,19 @@ function UnitsConvert(unit,option)
     case('gpm') ! convert from gallons per minute to m^3/sec
                 !    l/gal     m^3/l   sec/min
       UnitsConvert = 3.785d0 * 1.d-3 / 60.d0
+    ! energy
+    case('J')   
+      UnitsConvert = 1.d-6
+    case('KJ')   
+      UnitsConvert = 1.d-3
+    case('MJ')   
+      UnitsConvert = 1.d0
+    case('W')   
+      UnitsConvert = 1.d-6
+    case('KW')   
+      UnitsConvert = 1.d-3
+    case('MW')   
+      UnitsConvert = 1.d0
     case default
        option%io_buffer = 'Unit "' // trim(unit) // '" not recognized.'
        call printErrMsg(option)

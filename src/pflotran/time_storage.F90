@@ -6,7 +6,7 @@ module Time_Storage_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   type, public :: time_storage_type
     PetscReal, pointer :: times(:)

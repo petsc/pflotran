@@ -10,9 +10,9 @@ module PMC_Third_Party_class
 
   private
 
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   type, public, extends(pmc_base_type) :: pmc_third_party_type
     class(realization_type), pointer :: realization
@@ -133,9 +133,9 @@ subroutine PMCThirdPartyGetAuxData(this)
 
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscviewer.h"
 
   class(pmc_third_party_type) :: this
 

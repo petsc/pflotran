@@ -14,15 +14,15 @@ module Richards_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petsclog.h"
 
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
@@ -40,8 +40,6 @@ module Richards_module
          RichardsUpdateSolution, &
          RichardsComputeMassBalance, &
          RichardsDestroy, &
-         RichardsCheckUpdatePre, &
-         RichardsCheckUpdatePost, &
          RichardsUpdateSurfacePress
 
 contains
@@ -206,219 +204,6 @@ subroutine RichardsSetupPatch(realization)
 
 
 end subroutine RichardsSetupPatch
-
-! ************************************************************************** !
-
-subroutine RichardsCheckUpdatePre(line_search,P,dP,changed,realization,ierr)
-  ! 
-  ! Checks update prior to update
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 02/13/12
-  ! 
-
-  use Realization_class
-  use Grid_module
-  use Field_module
-  use Option_module
-  use Characteristic_Curves_module
-  use Patch_module
- 
-  implicit none
-  
-  SNESLineSearch :: line_search
-  Vec :: P
-  Vec :: dP
-  ! ignore changed flag for now.
-  PetscBool :: changed
-  type(realization_type) :: realization
-  
-  PetscReal, pointer :: P_p(:)
-  PetscReal, pointer :: dP_p(:)
-  PetscReal, pointer :: r_p(:)
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(patch_type), pointer :: patch
-  type(field_type), pointer :: field
-  type(richards_auxvar_type), pointer :: rich_auxvars(:)
-  type(global_auxvar_type), pointer :: global_auxvars(:)  
-  PetscInt :: local_id, ghosted_id
-  PetscReal :: P_R, P0, P1, delP
-  PetscReal :: scale, sat, sat_pert, pert, pc_pert, press_pert, delP_pert
-  PetscErrorCode :: ierr
-  
-  grid => realization%patch%grid
-  option => realization%option
-  field => realization%field
-  rich_auxvars => realization%patch%aux%Richards%auxvars
-  global_auxvars => realization%patch%aux%Global%auxvars
-
-  if (dabs(option%saturation_change_limit) > 0.d0) then
-
-    changed = PETSC_TRUE
-    patch => realization%patch
-
-    call VecGetArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(P,P_p,ierr);CHKERRQ(ierr)
-
-    pert =dabs(option%saturation_change_limit)
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      sat = global_auxvars(ghosted_id)%sat(1)
-      sat_pert = sat - sign(1.d0,sat-0.5d0)*pert
-      call patch%characteristic_curves_array( &
-             patch%sat_func_id(ghosted_id))%ptr% &
-             saturation_function%CapillaryPressure(sat_pert,pc_pert,option)
-      press_pert = option%reference_pressure - pc_pert
-      P0 = P_p(local_id)
-      delP = dP_p(local_id)
-      delP_pert = dabs(P0 - press_pert)
-      if (delP_pert < dabs(delP)) then
-        write(option%io_buffer,'("dP_trunc:",1i7,2es15.7)') &
-          grid%nG2A(grid%nL2G(local_id)),delP_pert,dabs(delP)
-        call printMsgAnyRank(option)
-      endif
-      delP = sign(min(dabs(delP),delP_pert),delP)
-      dP_p(local_id) = delP
-    enddo
-    
-    call VecRestoreArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayF90(P,P_p,ierr);CHKERRQ(ierr)
-
-  endif
-
-  if (dabs(option%pressure_dampening_factor) > 0.d0) then
-    changed = PETSC_TRUE
-    ! P^p+1 = P^p - dP^p
-    P_R = option%reference_pressure
-    scale = option%pressure_dampening_factor
-
-    call VecGetArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(P,P_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-    do local_id = 1, grid%nlmax
-      delP = dP_p(local_id)
-      P0 = P_p(local_id)
-      P1 = P0 - delP
-      if (P0 < P_R .and. P1 > P_R) then
-        write(option%io_buffer,'("U -> S:",1i7,2f12.1)') &
-          grid%nG2A(grid%nL2G(local_id)),P0,P1 
-        call printMsgAnyRank(option)
-#if 0
-        ghosted_id = grid%nL2G(local_id)
-        call RichardsPrintAuxVars(rich_auxvars(ghosted_id), &
-                                  global_auxvars(ghosted_id),ghosted_id)
-        write(option%io_buffer,'("Residual:",es15.7)') r_p(local_id)
-        call printMsgAnyRank(option)
-#endif
-      else if (P1 < P_R .and. P0 > P_R) then
-        write(option%io_buffer,'("S -> U:",1i7,2f12.1)') &
-          grid%nG2A(grid%nL2G(local_id)),P0,P1
-        call printMsgAnyRank(option)
-#if 0
-        ghosted_id = grid%nL2G(local_id)
-        call RichardsPrintAuxVars(rich_auxvars(ghosted_id), &
-                                  global_auxvars(ghosted_id),ghosted_id)
-        write(option%io_buffer,'("Residual:",es15.7)') r_p(local_id)
-        call printMsgAnyRank(option)
-#endif
-      endif
-      ! transition from unsaturated to saturated
-      if (P0 < P_R .and. P1 > P_R) then
-        dP_p(local_id) = scale*delP
-      endif
-    enddo
-    call VecRestoreArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayF90(P,P_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-  endif
-
-end subroutine RichardsCheckUpdatePre
-
-! ************************************************************************** !
-
-subroutine RichardsCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-                                   P1_changed,realization,ierr)
-  ! 
-  ! Checks update after to update
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 02/13/12
-  ! 
-
-  use Realization_class
-  use Grid_module
-  use Field_module
-  use Option_module
- 
-  implicit none
-  
-  SNESLineSearch :: line_search
-  Vec :: P0
-  Vec :: dP
-  Vec :: P1
-  type(realization_type) :: realization
-  ! ignore changed flag for now.
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
-  
-  PetscReal, pointer :: P0_p(:)
-  PetscReal, pointer :: dP_p(:)
-  PetscReal, pointer :: r_p(:)
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(richards_auxvar_type), pointer :: rich_auxvars(:)
-  type(global_auxvar_type), pointer :: global_auxvars(:)  
-  class(material_auxvar_type), pointer :: material_auxvars(:)  
-  PetscInt :: local_id, ghosted_id
-  PetscInt :: istart
-  PetscReal :: Res(1)
-  PetscReal :: inf_norm, global_inf_norm
-  PetscErrorCode :: ierr
-  
-  grid => realization%patch%grid
-  option => realization%option
-  field => realization%field
-  rich_auxvars => realization%patch%aux%Richards%auxvars
-  global_auxvars => realization%patch%aux%Global%auxvars
-  material_auxvars => realization%patch%aux%Material%auxvars
-  
-  dP_changed = PETSC_FALSE
-  P1_changed = PETSC_FALSE
-  
-  option%converged = PETSC_FALSE
-  if (option%flow%check_post_convergence) then
-    call VecGetArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(P0,P0_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-    
-    inf_norm = 0.d0
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      istart = (local_id-1)*option%nflowdof + 1
-
-      if (realization%patch%imat(ghosted_id) <= 0) cycle
-    
-      call RichardsAccumulation(rich_auxvars(ghosted_id), &
-                                global_auxvars(ghosted_id), &
-                                material_auxvars(ghosted_id), &
-                                option,Res)
-      inf_norm = max(inf_norm,min(dabs(dP_p(local_id)/P0_p(local_id)), &
-                                  dabs(r_p(istart)/Res(1))))
-    enddo
-    call MPI_Allreduce(inf_norm,global_inf_norm,ONE_INTEGER_MPI, &
-                       MPI_DOUBLE_PRECISION, &
-                       MPI_MAX,option%mycomm,ierr)
-    option%converged = PETSC_TRUE
-    if (global_inf_norm > option%flow%inf_scaled_res_tol) &
-      option%converged = PETSC_FALSE
-    call VecRestoreArrayF90(dP,dP_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayF90(P0,P0_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-  endif
-  
-end subroutine RichardsCheckUpdatePost
 
 ! ************************************************************************** !
 
@@ -664,7 +449,7 @@ subroutine RichardsUpdatePermPatch(realization)
   call VecGetArrayF90(field%perm0_xx,perm0_xx_p,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%perm0_zz,perm0_zz_p,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%perm0_yy,perm0_yy_p,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
   
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -700,7 +485,7 @@ subroutine RichardsUpdatePermPatch(realization)
   call VecRestoreArrayF90(field%perm0_xx,perm0_xx_p,ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%perm0_zz,perm0_zz_p,ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%perm0_yy,perm0_yy_p,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
   call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                PERMEABILITY_X,ZERO_INTEGER)
@@ -803,7 +588,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   global_auxvars_ss => patch%aux%Global%auxvars_ss
   material_auxvars => patch%aux%Material%auxvars
     
-  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -876,7 +661,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
     source_sink => source_sink%next
   enddo
 
-  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayReadF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
   patch%aux%Richards%auxvars_up_to_date = PETSC_TRUE
 
@@ -1038,7 +823,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
     
-  call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
 
   call VecGetArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
 
@@ -1063,7 +848,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
                               option,accum_p(local_id:local_id))
   enddo
 
-  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
 
 
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
@@ -2816,10 +2601,10 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
   
   implicit none
   
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
 
   PetscBool :: compute_derivative
   Vec :: residual

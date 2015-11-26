@@ -10,7 +10,7 @@ module Option_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
 
   type, public :: option_type 
@@ -218,6 +218,8 @@ module Option_module
 
     ! when the scaling factor is too small, stop in reactive transport 
     PetscReal :: min_allowable_scale
+
+    PetscBool :: print_ekg
 
   end type option_type
   
@@ -573,6 +575,8 @@ subroutine OptionInitRealization(option)
   
   ! when the scaling factor is too small, stop in reactive transport 
   option%min_allowable_scale = 1.0d-10
+
+  option%print_ekg = PETSC_FALSE
   
 end subroutine OptionInitRealization
 
@@ -1149,7 +1153,7 @@ subroutine OptionBeginTiming(option)
   
   implicit none
   
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petsclog.h"
   
   type(option_type) :: option
   
@@ -1175,7 +1179,7 @@ subroutine OptionEndTiming(option)
   
   implicit none
   
-#include "finclude/petsclog.h"
+#include "petsc/finclude/petsclog.h"
   
   type(option_type) :: option
   

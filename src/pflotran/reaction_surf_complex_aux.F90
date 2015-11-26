@@ -8,7 +8,7 @@ module Reaction_Surface_Complexation_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
   PetscInt, parameter, public :: SRFCMPLX_RXN_NULL = 0
   PetscInt, parameter, public :: SRFCMPLX_RXN_EQUILIBRIUM = 1

@@ -6,10 +6,11 @@
 
 SIMULATION
   SIMULATION_TYPE SUBSURFACE
-    PROCESS_MODELS
-      SUBSURFACE_FLOW flow
-        MODE GENERAL
-        OPTIONS
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+      OPTIONS
+        ITOL_RELATIVE_UPDATE 1.d-30  ! Turn off ITOL_RELATIVE_UPDATE criteria
         ISOTHERMAL
         MAXIMUM_PRESSURE_CHANGE 5.0D5
         TOUGH2_ITOL_SCALED_RESIDUAL 1.d-4
@@ -49,7 +50,6 @@ NEWTON_SOLVER FLOW
   RTOL 1.d-30       ! Turn off RTOL criteria
   ATOL 1.d-30       ! Turn off ATOL criteria
   STOL 1.d-30       ! Turn off STOL criteria
-  ITOL_RELATIVE_UPDATE 1.d-30  ! Turn off ITOL_RELATIVE_UPDATE criteria
   MAXIT 20          ! Maximum newton iteration number
 /
 

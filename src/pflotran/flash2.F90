@@ -9,28 +9,28 @@ module Flash2_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
   
 !#include "include/petscf90.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
   ! Otherwise some very strange things will happen and PETSc will give no
   ! indication of what the problem is.
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscdm.h"
+#include "petsc/finclude/petscdm.h90"
 !#ifdef USE_PETSC216
-!#include "finclude/petscsles.h"
+!#include "petsc/finclude/petscsles.h"
 !#endif
-#include "finclude/petscsnes.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsysdef.h"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petsclog.h"
-#include "finclude/petscerror.h"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscsysdef.h"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petsclog.h"
+#include "petsc/finclude/petscerror.h"
 
 ! Cutoff parameters
   PetscReal, parameter :: formeps = 1.D-4
@@ -555,7 +555,7 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
   re=1
  
   if (re > 0) then
-    call VecGetArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
     call VecGetArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
 
     do n = 1,grid%nlmax
@@ -587,7 +587,7 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
      enddo
   
     !if (re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
-    call VecRestoreArrayF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%flow_yy, yy_p, ierr);CHKERRQ(ierr)
 
    endif
@@ -675,7 +675,7 @@ end subroutine Flash2UpdateReason
     option => realization%option
     field => realization%field
     
-    call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
     
     ipass=1
     do local_id = 1, grid%nlmax
@@ -704,7 +704,7 @@ end subroutine Flash2UpdateReason
       endif
     enddo
 
-    call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
     Flash2InitGuessCheckPatch = ipass
   end function Flash2InitGuessCheckPatch
 
@@ -1027,7 +1027,7 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
   auxvars => patch%aux%Flash2%auxvars
   material_auxvars => patch%aux%Material%auxvars
     
-  call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
 
@@ -1050,7 +1050,7 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
                               option,ZERO_INTEGER, accum_p(istart:iend)) 
   enddo
 
-  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr);CHKERRQ(ierr)
 

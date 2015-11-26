@@ -14,13 +14,13 @@ module PM_RT_class
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_base_type) :: pm_rt_type
     class(realization_type), pointer :: realization
@@ -612,61 +612,228 @@ end subroutine PMRTJacobian
 
 ! ************************************************************************** !
 
-subroutine PMRTCheckUpdatePre(this,line_search,P,dP,changed,ierr)
+subroutine PMRTCheckUpdatePre(this,line_search,X,dX,changed,ierr)
+  ! 
+  ! In the case of the log formulation, ensures that the update
+  ! vector does not exceed a prescribed tolerance
   ! 
   ! Author: Glenn Hammond
-  ! Date: 03/14/13
+  ! Date: 03/16/09
   ! 
 
-  use Reactive_Transport_module, only : RTCheckUpdatePre
+  use Realization_class
+  use Grid_module
+  use Option_module
+  use Reaction_Aux_module
 
   implicit none
   
   class(pm_rt_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P
-  Vec :: dP
+  Vec :: X
+  Vec :: dX
   PetscBool :: changed
   PetscErrorCode :: ierr
   
-#ifdef PM_RT_DEBUG  
-  call printMsg(this%option,'PMRT%CheckUpdatePre()')
-#endif
+  PetscReal, pointer :: C_p(:)
+  PetscReal, pointer :: dC_p(:)
+  type(grid_type), pointer :: grid
+  type(reaction_type), pointer :: reaction
+  PetscReal :: ratio, min_ratio
+  PetscReal, parameter :: min_allowable_scale = 1.d-10
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: i, n
   
-#ifndef SIMPLIFY 
-  call RTCheckUpdatePre(line_search,P,dP,changed,this%realization,ierr)
+  grid => this%realization%patch%grid
+  reaction => this%realization%reaction
+  
+  call VecGetArrayF90(dX,dC_p,ierr);CHKERRQ(ierr)
+
+  if (reaction%use_log_formulation) then
+    ! C and dC are actually lnC and dlnC
+    dC_p = dsign(1.d0,dC_p)*min(dabs(dC_p),reaction%max_dlnC)
+    ! at this point, it does not matter whether "changed" is set to true, 
+    ! since it is not checkied in PETSc.  Thus, I don't want to spend 
+    ! time checking for changes and performing an allreduce for log 
+    ! formulation.
+  else
+    call VecGetLocalSize(X,n,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(X,C_p,ierr);CHKERRQ(ierr)
+    
+    if (Initialized(reaction%truncated_concentration)) then
+      dC_p = min(dC_p,C_p-reaction%truncated_concentration)
+    else
+      ! C^p+1 = C^p - dC^p
+      ! if dC is positive and abs(dC) larger than C
+      ! we need to scale the update
+      
+      ! compute smallest ratio of C to dC
+#if 0
+      min_ratio = 1.d0/maxval(dC_p/C_p)
+#else
+      min_ratio = 1.d20 ! large number
+      do i = 1, n
+        if (C_p(i) <= dC_p(i)) then
+          ratio = abs(C_p(i)/dC_p(i))
+          if (ratio < min_ratio) min_ratio = ratio
+        endif
+      enddo
 #endif
+      ratio = min_ratio
+    
+      ! get global minimum
+      call MPI_Allreduce(ratio,min_ratio,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                         MPI_MIN,this%realization%option%mycomm,ierr)
+                       
+      ! scale if necessary
+      if (min_ratio < 1.d0) then
+        if (min_ratio < this%realization%option%min_allowable_scale) then
+          write(string,'(es9.3)') min_ratio
+          string = 'The update of primary species concentration is being ' // &
+            'scaled by a very small value (i.e. ' // &
+            trim(adjustl(string)) // &
+            ') to prevent negative concentrations.  This value is too ' // &
+            'small and will likely cause the solver to mistakenly ' // &
+            'converge based on the infinity norm of the update vector. ' // &
+            'In this case, it is recommended that you use the ' // &
+            'LOG_FORMULATION for chemistry or truncate concentrations ' // &
+            '(TRUNCATE_CONCENTRATION <float> in CHEMISTRY block). ' // &
+            'If that does not work, please send your input deck to ' // &
+            'pflotran-dev@googlegroups.com and ask for help.'
+          this%realization%option%io_buffer = string
+          call printErrMsg(this%realization%option)
+        endif
+        ! scale by 0.99 to make the update slightly smaller than the min_ratio
+        dC_p = dC_p*min_ratio*0.99d0
+        changed = PETSC_TRUE
+      endif
+    endif
+    call VecRestoreArrayReadF90(X,C_p,ierr);CHKERRQ(ierr)
+  endif
+
+  call VecRestoreArrayF90(dX,dC_p,ierr);CHKERRQ(ierr)
 
 end subroutine PMRTCheckUpdatePre
 
 ! ************************************************************************** !
 
-subroutine PMRTCheckUpdatePost(this,line_search,P0,dP,P1,dP_changed, &
-                                  P1_changed,ierr)
+subroutine PMRTCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
+                               X1_changed,ierr)
+  ! 
+  ! Checks convergence after to update
   ! 
   ! Author: Glenn Hammond
-  ! Date: 03/14/13
+  ! Date: 03/04/14
   ! 
-
-  use Reactive_Transport_module, only : RTCheckUpdatePost
+  use Realization_class
+  use Grid_module
+  use Field_module
+  use Patch_module
+  use Option_module
+  use Secondary_Continuum_module, only : SecondaryRTUpdateIterate
+  use Output_EKG_module
 
   implicit none
   
   class(pm_rt_type) :: this
   SNESLineSearch :: line_search
-  Vec :: P0
-  Vec :: dP
-  Vec :: P1
-  PetscBool :: dP_changed
-  PetscBool :: P1_changed
+  Vec :: X0
+  Vec :: dX
+  Vec :: X1
+  PetscBool :: dX_changed
+  PetscBool :: X1_changed
   PetscErrorCode :: ierr
   
-#ifdef PM_RT_DEBUG  
-  call printMsg(this%option,'PMRT%CheckUpdatePost()')
-#endif
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  PetscReal, pointer :: C0_p(:)
+  PetscReal, pointer :: dC_p(:)
+  PetscReal, pointer :: r_p(:)
+  PetscReal, pointer :: accum_p(:)  
+  PetscBool :: converged_due_to_rel_update
+  PetscBool :: converged_due_to_residual
+  PetscReal :: max_relative_change
+  PetscReal :: max_scaled_residual
+  PetscInt :: converged_flag
+  PetscInt :: temp_int
+  PetscReal :: max_relative_change_by_dof(this%option%ntrandof)
+  PetscReal :: global_max_rel_change_by_dof(this%option%ntrandof)
+  PetscMPIInt :: mpi_int
+  PetscInt :: local_id, offset, idof, index
+  PetscReal :: tempreal
   
-  call RTCheckUpdatePost(line_search,P0,dP,P1,dP_changed, &
-                         P1_changed,this%realization,ierr)
+  grid => this%realization%patch%grid
+  option => this%realization%option
+  field => this%realization%field
+  patch => this%realization%patch
+  
+  dX_changed = PETSC_FALSE
+  X1_changed = PETSC_FALSE
+  
+  converged_flag = 0
+  if (option%transport%check_post_convergence) then
+    converged_due_to_rel_update = PETSC_FALSE
+    converged_due_to_residual = PETSC_FALSE
+    call VecGetArrayReadF90(dX,dC_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(X0,C0_p,ierr);CHKERRQ(ierr)
+    max_relative_change = maxval(dabs(dC_p(:)/C0_p(:)))
+    call VecRestoreArrayReadF90(dX,dC_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(X0,C0_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%tran_r,r_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(field%tran_accum,accum_p,ierr);CHKERRQ(ierr)
+    max_scaled_residual = maxval(dabs(r_p(:)/accum_p(:)))
+    call VecRestoreArrayReadF90(field%tran_r,r_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(field%tran_accum,accum_p,ierr);CHKERRQ(ierr)
+    converged_due_to_rel_update = &
+      (option%transport%inf_rel_update_tol > 0.d0 .and. &
+       max_relative_change < option%transport%inf_rel_update_tol)
+    converged_due_to_residual = &
+      (option%transport%inf_scaled_res_tol  > 0.d0 .and. &
+       max_scaled_residual < option%transport%inf_scaled_res_tol)
+    if (converged_due_to_rel_update .or. converged_due_to_residual) then
+      converged_flag = 1
+    endif
+  endif
+  
+  ! get global minimum
+  call MPI_Allreduce(converged_flag,temp_int,ONE_INTEGER_MPI,MPI_INTEGER, &
+                     MPI_MIN,this%realization%option%mycomm,ierr)
+
+  option%converged = PETSC_FALSE
+  if (temp_int == 1) then
+    option%converged = PETSC_TRUE
+  endif
+  
+  if (option%use_mc) then  
+    call SecondaryRTUpdateIterate(line_search,X0,dX,X1,dX_changed, &
+                                  X1_changed,this%realization,ierr)
+  endif
+  
+  if (this%print_ekg) then
+    call VecGetArrayReadF90(dX,dC_p,ierr);CHKERRQ(ierr)
+    call VecGetArrayReadF90(X0,C0_p,ierr);CHKERRQ(ierr)
+    max_relative_change_by_dof = -1.d20
+    do local_id = 1, grid%nlmax
+      offset = (local_id-1)*option%ntrandof
+      do idof = 1, option%ntrandof
+        index = idof + offset
+        tempreal = dabs(dC_p(index)/C0_p(index))
+        max_relative_change_by_dof(idof) = &
+          max(max_relative_change_by_dof(idof),tempreal)
+      enddo
+    enddo
+    call VecRestoreArrayReadF90(dX,dC_p,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayReadF90(X0,C0_p,ierr);CHKERRQ(ierr)
+    mpi_int = option%ntrandof
+    call MPI_Allreduce(max_relative_change_by_dof,MPI_IN_PLACE,mpi_int, &
+                       MPI_DOUBLE_PRECISION,MPI_MAX,this%option%mycomm,ierr)
+    if (OptionPrintToFile(option)) then
+100 format("REACTIVE TRANSPORT  NEWTON_ITERATION ",30es16.8)
+      write(IUNIT_EKG,100) max_relative_change_by_dof(:)
+    endif    
+  endif
 
 end subroutine PMRTCheckUpdatePost
 
@@ -884,10 +1051,10 @@ subroutine PMRTCheckpointBinary(this,viewer)
   
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscbag.h"      
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscbag.h"      
 
   interface PetscBagGetData
 
@@ -896,7 +1063,7 @@ subroutine PMRTCheckpointBinary(this,viewer)
     subroutine PetscBagGetData(bag,header,ierr)
       import :: pm_rt_header_type
       implicit none
-#include "finclude/petscbag.h"      
+#include "petsc/finclude/petscbag.h"      
       PetscBag :: bag
       class(pm_rt_header_type), pointer :: header
       PetscErrorCode :: ierr
@@ -1023,10 +1190,10 @@ subroutine PMRTRestartBinary(this,viewer)
   
   implicit none
 
-#include "finclude/petscviewer.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscbag.h"      
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscbag.h"      
 
   interface PetscBagGetData
 
@@ -1035,7 +1202,7 @@ subroutine PMRTRestartBinary(this,viewer)
     subroutine PetscBagGetData(bag,header,ierr)
       import :: pm_rt_header_type
       implicit none
-#include "finclude/petscbag.h"      
+#include "petsc/finclude/petscbag.h"      
       PetscBag :: bag
       class(pm_rt_header_type), pointer :: header
       PetscErrorCode :: ierr
@@ -1185,8 +1352,8 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(pm_rt_type) :: this
 #if defined(SCORPIO_WRITE)
@@ -1373,8 +1540,8 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(pm_rt_type) :: this
 #if defined(SCORPIO_WRITE)

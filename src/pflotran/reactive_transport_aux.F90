@@ -10,7 +10,7 @@ module Reactive_Transport_Aux_module
   
   private 
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
  
   type, public :: reactive_transport_auxvar_type
     ! molality

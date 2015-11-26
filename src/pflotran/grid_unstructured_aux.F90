@@ -10,11 +10,11 @@ module Grid_Unstructured_Aux_module
 
   private 
   
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
 #if defined(SCORPIO)
   include "scorpiof.h"
 #endif
@@ -165,6 +165,7 @@ module Grid_Unstructured_Aux_module
             UGridDMCreateVector, &
             UGridDestroy, &
             UGridCreateUGDM, &
+            UGridCreateUGDMShell, &
             UGridDMDestroy, &
             UGridPartition, &
             UGridNaturalToPetsc, &
@@ -379,15 +380,15 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"  
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscdm.h"  
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscviewer.h"
   
   type(unstructured_grid_type) :: unstructured_grid
   type(ugdm_type), pointer :: ugdm
@@ -720,6 +721,64 @@ end subroutine UGridCreateUGDM
 
 ! ************************************************************************** !
 
+subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option)
+
+  ! 
+  ! Sets up PETSc DM Shell for unstructured grid
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 11/10/15
+  ! 
+
+  use Option_module
+  use Utility_module, only: reallocateIntArray
+  
+  implicit none
+
+#include "petsc/finclude/petscdm.h90"
+#include "petsc/finclude/petscdmda.h"
+
+  type(unstructured_grid_type) :: unstructured_grid
+  DM :: da
+  type(ugdm_type), pointer :: ugdm
+  PetscInt :: ndof
+  type(option_type) :: option
+
+  Vec :: global_vec, local_vec
+  !Mat :: jac
+  PetscErrorCode :: ierr
+
+  ! Create UGDM
+  call UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
+
+  ! Create the DMShell
+  call DMShellCreate(option%mycomm,da,ierr);CHKERRQ(ierr)
+
+  ! Set VecScatters
+  call DMShellSetGlobalToLocalVecScatter(da,ugdm%scatter_gtol,ierr);CHKERRQ(ierr)
+  call DMShellSetLocalToGlobalVecScatter(da,ugdm%scatter_ltog,ierr);CHKERRQ(ierr)
+  call DMShellSetLocalToLocalVecScatter(da,ugdm%scatter_ltol,ierr);CHKERRQ(ierr)
+
+  ! Create vectors
+  call UGridDMCreateVector(unstructured_grid,ugdm,global_vec,GLOBAL,option)
+  call UGridDMCreateVector(unstructured_grid,ugdm,local_vec,LOCAL,option)
+
+  ! Set vectors
+  call DMShellSetGlobalVector(da,global_vec,ierr);CHKERRQ(ierr)
+  call DMShellSetLocalVector(da,local_vec,ierr);CHKERRQ(ierr)
+
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(local_vec,ierr);CHKERRQ(ierr)
+
+  ! GB: Can mat_type passed as an argument to this subroutine?
+  !call UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,jac,option)
+  !call DMShellSetMatrix(J,ierr);CHKERRQ(ierr)
+  !call MatDestroy(J,ierr);CHKERRQ(ierr)
+
+end subroutine UGridCreateUGDMShell
+
+! ************************************************************************** !
+
 subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
   ! 
   ! Creates a Jacobian matrix based on the unstructured
@@ -932,11 +991,11 @@ subroutine UGridPartition(ugrid,option,Dual_mat,is_new, &
   
   implicit none
 
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscviewer.h"
   
   type(unstructured_grid_type) :: ugrid
   type(option_type) :: option
@@ -1011,9 +1070,9 @@ subroutine UGridCreateOldVec(ugrid,option,elements_old, &
 
   implicit none
 
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscviewer.h"
 
   type(unstructured_grid_type) :: ugrid
   type(option_type) :: option
@@ -1083,11 +1142,11 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
   
   implicit none
 
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscviewer.h"
 
   type(unstructured_grid_type) :: ugrid
   type(option_type) :: option

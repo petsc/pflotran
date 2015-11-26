@@ -7,6 +7,7 @@ SIMULATION
       MODE GENERAL
       OPTIONS
         #  WINDOW_EPSILON 1.d-4
+        ITOL_SCALED_RESIDUAL 1.d-5
         ISOTHERMAL
         TWO_PHASE_ENERGY_DOF TEMPERATURE
         ARITHMETIC_GAS_DIFFUSIVE_DENSITY
@@ -69,7 +70,6 @@ NEWTON_SOLVER FLOW
   RTOL 1.d-8
   STOL 1.d-30
   NO_INFINITY_NORM
-  ITOL_SCALED_RESIDUAL 1.d-5
   MAXIT 15
 /
 
@@ -518,7 +518,7 @@ FLOW_CONDITION well
   TYPE
     RATE mass_rate
   /
-  RATE 0.d0 1.d-5 0.d0
+  RATE 0.d0 1.d-5 0.d0 kg/s kg/s MW
 /
 
 #=========================== condition couplers ===============================

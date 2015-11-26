@@ -10,7 +10,7 @@ module Surface_Auxiliary_module
 
   private
 
-#include "finclude/petscsys.h"
+#include "petsc/finclude/petscsys.h"
 
   type, public :: surface_auxiliary_type
     type(surface_global_type), pointer :: SurfaceGlobal
