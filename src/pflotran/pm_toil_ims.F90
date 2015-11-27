@@ -764,6 +764,10 @@ subroutine PMTOilImsCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
                                   toil_ims_itol_scaled_res
     endif
 
+    ! global_inf_norm_rel_update alway >0 because dabs values 
+    ! when not inu, toil_ims_itol_rel_update < 0  because assigned uninitialized value (-999)
+    converged_rel_update = maxval(global_inf_norm_rel_update) < &
+                                  toil_ims_itol_rel_update  
 
    ! converged_rel_update = maxval(global_inf_norm_rel_update) < &
    !                        option%flow%inf_rel_update_tol

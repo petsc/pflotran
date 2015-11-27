@@ -432,20 +432,15 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
 
   ! IMS uses 1.d-8 for Press and 1.d-5 for Sat ad Temp
   ! MPHASE uses 1.d-8 for Press, Sat and Temp  
-  !PetscReal, parameter :: perturbation_tolerance = 1.d-5
+  ! GENERAL uses 1.d-8 for Press, Sat and Temp
   PetscReal, parameter :: perturbation_tolerance = 1.d-8
+  !PetscReal, parameter :: perturbation_tolerance = 1.d-5
 
   !PetscReal, parameter :: min_mole_fraction_pert = 1.d-12
+  ! From General (min perturb = 1.d-10)
   PetscReal, parameter :: min_perturbation = 1.d-10
+  !PetscReal, parameter :: min_perturbation = 1.d-8
   PetscInt :: idof
-
-!#ifdef DEBUG_GENERAL
-!  character(len=MAXWORDLENGTH) :: word
-!  type(global_auxvar_type) :: global_auxvar_debug
-!  type(general_auxvar_type) :: general_auxvar_debug
-!  call GlobalAuxVarInit(global_auxvar_debug,option)
-!  call GeneralAuxVarInit(general_auxvar_debug,option)
-!#endif
 
   x(TOIL_IMS_PRESSURE_DOF) = &
      toil_auxvar(ZERO_INTEGER)%pres(option%oil_phase)
