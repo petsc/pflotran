@@ -21,7 +21,7 @@ module TOilIms_module
 #include "petsc/finclude/petsclog.h"
 
 #define TOIL_CONVECTION
-!#define TOIL_CONDUCTION
+#define TOIL_CONDUCTION
 
 ! Cutoff parameters - no public
   PetscReal, parameter :: eps       = 1.d-8

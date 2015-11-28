@@ -439,7 +439,7 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
   !PetscReal, parameter :: min_mole_fraction_pert = 1.d-12
   ! From General (min perturb = 1.d-10)
   PetscReal, parameter :: min_perturbation = 1.d-10
-  !PetscReal, parameter :: min_perturbation = 1.d-8
+  !PetscReal, parameter :: min_perturbation = 1.d-7
   PetscInt :: idof
 
   x(TOIL_IMS_PRESSURE_DOF) = &
