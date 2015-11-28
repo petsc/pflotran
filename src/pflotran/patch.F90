@@ -1533,7 +1533,10 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
     ! at the moment hydrostatic pressure is valid only for regions
     ! fully saturated in water Sw=Sw_max, where Pw=Po (i.e. Pc=0)
     coupler%flow_aux_mapping(TOIL_IMS_OIL_SATURATION_INDEX) = 2
-    coupler%flow_aux_real_var(2,1:num_connections) = 0.d0 
+    !coupler%flow_aux_real_var(2,1:num_connections) = 0.d0 
+    !allow for exception when zero capillary pressure (pw=po)
+    coupler%flow_aux_real_var(2,1:num_connections) = & 
+      toil_ims%saturation%dataset%rarray(1)
     dof2 = PETSC_TRUE
     coupler%flow_bc_type(TOIL_IMS_OIL_EQUATION_INDEX) = DIRICHLET_BC  
     ! PO TODO: HydrostaticOilWaterUpdateCoupler (read OWC and OCW_pc first)   

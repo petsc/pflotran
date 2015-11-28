@@ -21,7 +21,7 @@ module TOilIms_module
 #include "petsc/finclude/petsclog.h"
 
 #define TOIL_CONVECTION
-#define TOIL_CONDUCTION
+!#define TOIL_CONDUCTION
 
 ! Cutoff parameters - no public
   PetscReal, parameter :: eps       = 1.d-8
@@ -1460,14 +1460,13 @@ subroutine TOilImsFlux(toil_auxvar_up,global_auxvar_up, &
     endif
 
     ! an alternative could be to avergae using oil_sat
-    density_kg_ave = 0.5d0* ( toil_auxvar_up%den_kg(iphase) + &
-                              toil_auxvar_dn%den_kg(iphase) )
+    !density_kg_ave = 0.5d0* ( toil_auxvar_up%den_kg(iphase) + &
+    !                          toil_auxvar_dn%den_kg(iphase) )
+    density_kg_ave = TOilImsAverageDensity(toil_auxvar_up%sat(iphase), &
+                     toil_auxvar_dn%sat(iphase), &
+                     toil_auxvar_up%den_kg(iphase), &
+                     toil_auxvar_dn%den_kg(iphase))
 
-    !density_kg_ave = GeneralAverageDensity(iphase, &
-    !                                       global_auxvar_up%istate, &
-    !                                       global_auxvar_dn%istate, &
-    !                                       gen_auxvar_up%den_kg, &
-    !                                       gen_auxvar_dn%den_kg)
     gravity_term = density_kg_ave * dist_gravity
     delta_pressure = toil_auxvar_up%pres(iphase) - &
                      toil_auxvar_dn%pres(iphase) + &
@@ -1496,15 +1495,14 @@ subroutine TOilImsFlux(toil_auxvar_up,global_auxvar_up, &
       v_darcy(iphase) = perm_ave_over_dist(iphase) * mobility * delta_pressure
 
       ! if comments below, use upwinding value
-      density_ave = 0.5d0*( toil_auxvar_up%den(iphase) + &
-                            toil_auxvar_dn%den(iphase))
-       
+      !density_ave = 0.5d0*( toil_auxvar_up%den(iphase) + &
+      !                      toil_auxvar_dn%den(iphase))
+
+      density_ave = TOilImsAverageDensity(toil_auxvar_up%sat(iphase), &
+                           toil_auxvar_dn%sat(iphase), &
+                           toil_auxvar_up%den(iphase), &
+                           toil_auxvar_dn%den(iphase))       
  
-      !density_ave = GeneralAverageDensity(iphase, &
-      !                                    global_auxvar_up%istate, &
-      !                                    global_auxvar_dn%istate, &
-      !                                    gen_auxvar_up%den, &
-      !                                    gen_auxvar_dn%den)
       ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
       q = v_darcy(iphase) * area  
       ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
@@ -1775,14 +1773,14 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
           !  boundary_pressure = gen_auxvar_up%pres(option%gas_phase)
           !endif
 
-          density_kg_ave = 0.5d0 * (toil_auxvar_up%den_kg(iphase) + &
-                                    toil_auxvar_dn%den_kg(iphase) )
+          !density_kg_ave = 0.5d0 * (toil_auxvar_up%den_kg(iphase) + &
+          !                          toil_auxvar_dn%den_kg(iphase) )
 
-          !density_kg_ave = GeneralAverageDensity(iphase, &
-          !                                       global_auxvar_up%istate, &
-          !                                       global_auxvar_dn%istate, &
-          !                                       gen_auxvar_up%den_kg, &
-          !                                       gen_auxvar_dn%den_kg)
+          density_kg_ave = TOilImsAverageDensity(toil_auxvar_up%sat(iphase), &
+                           toil_auxvar_dn%sat(iphase), &
+                           toil_auxvar_up%den_kg(iphase), &
+                           toil_auxvar_dn%den_kg(iphase))
+
           gravity_term = density_kg_ave * dist_gravity
           delta_pressure = boundary_pressure - &
                            toil_auxvar_dn%pres(iphase) + &
@@ -1820,14 +1818,12 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
             ! only need average density if velocity > 0.
 
             ! when this is commented - using upwinding value
-            density_ave = 0.5d0 * (toil_auxvar_up%den(iphase) + &
-                                   toil_auxvar_dn%den(iphase) )
-
-            !density_ave = GeneralAverageDensity(iphase, &
-            !                                    global_auxvar_up%istate, &
-            !                                    global_auxvar_dn%istate, &
-            !                                    gen_auxvar_up%den, &
-            !                                    gen_auxvar_dn%den)
+            !density_ave = 0.5d0 * (toil_auxvar_up%den(iphase) + &
+            !                       toil_auxvar_dn%den(iphase) )
+            density_ave = TOilImsAverageDensity(toil_auxvar_up%sat(iphase), &
+                           toil_auxvar_dn%sat(iphase), &
+                           toil_auxvar_up%den(iphase), &
+                           toil_auxvar_dn%den(iphase))
           endif
 !#ifndef BAD_MOVE1        
         endif ! sat > eps
@@ -3508,46 +3504,33 @@ end subroutine TOilImsDestroy
 !! ************************************************************************** !
 
 
-
 ! ************************************************************************** !
 
-! follwing function currently not used
-!function TOilImsAverageDensity(iphase,istate_up,istate_dn, &
-!                               density_up,density_dn)
-!  ! 
-!  ! Averages density, using opposite cell density if phase non-existent
-!  ! 
-!  ! Author: Glenn Hammond
-!  ! Date: 03/07/14
-!  ! 
-!
-!  implicit none
-!
-!  PetscInt :: iphase
-!  PetscInt :: istate_up, istate_dn
-!  PetscReal :: density_up(:), density_dn(:)
-!
-!  PetscReal :: GeneralAverageDensity
-!
-!  if (iphase == LIQUID_PHASE) then
-!    if (istate_up == GAS_STATE) then
-!      GeneralAverageDensity = density_dn(iphase)
-!    else if (istate_dn == GAS_STATE) then
-!      GeneralAverageDensity = density_up(iphase)
-!    else
-!      GeneralAverageDensity = 0.5d0*(density_up(iphase)+density_dn(iphase))
-!    endif
-!  else if (iphase == GAS_PHASE) then
-!    if (istate_up == LIQUID_STATE) then
-!      GeneralAverageDensity = density_dn(iphase)
-!    else if (istate_dn == LIQUID_STATE) then
-!      GeneralAverageDensity = density_up(iphase)
-!    else
-!      GeneralAverageDensity = 0.5d0*(density_up(iphase)+density_dn(iphase))
-!    endif
-!  endif
-!
-!end function TOilImsAverageDensity
+function TOilImsAverageDensity(sat_up,sat_dn,density_up,density_dn)
+  ! 
+  ! Averages density, using opposite cell density if phase non-existent
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 11/28/15
+  ! 
+
+  implicit none
+
+  PetscReal :: sat_up, sat_dn
+  PetscReal :: density_up, density_dn
+
+  PetscReal :: TOilImsAverageDensity
+
+  if (sat_up < eps ) then
+    TOilImsAverageDensity = density_dn
+  else if (sat_dn < eps ) then 
+    TOilImsAverageDensity = density_up
+  else ! in here we could use an armonic average, 
+       ! other idea sat weighted average but it needs truncation
+    TOilImsAverageDensity = 0.5d0*(density_up+density_dn)
+  end if
+
+end function TOilImsAverageDensity
 
 ! ************************************************************************** !
 
