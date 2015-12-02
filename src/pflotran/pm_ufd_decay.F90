@@ -16,17 +16,21 @@ module PM_UFD_Decay_class
   type, public, extends(pm_base_type) :: pm_ufd_decay_type
     class(realization_type), pointer :: realization
 !    character(len=MAXWORDLENGTH) :: species
-    PetscInt, pointer :: component(:)
-    PetscInt, pointer :: isotope(:,:)
-    PetscReal, pointer :: decay_rate(:,:)
-    PetscInt, pointer :: daughter(:,:,:)
-    PetscReal, pointer :: solubility(:)
-    PetscReal, pointer :: molar_volume(:)
+    PetscInt, pointer :: element(:)
+    PetscInt, pointer :: element_isotopes(:,:)
+    PetscInt, pointer :: isotope_to_primary_species(:)
+    PetscReal, pointer :: isotope_decay_rate(:)
+    PetscInt, pointer :: isotope_daughters(:,:)
+    PetscReal, pointer :: element_solubility(:)
+    PetscReal, pointer :: molar_volume(:) ! assume same for all isotopes of element
     PetscReal, pointer :: Kd(:)
     PetscReal, pointer :: mole_fraction(:,:,:)
     PetscReal, pointer :: mass0(:,:)
-    PetscInt :: num_components = 5
-    PetscInt :: max_num_isotopes = 3
+    PetscInt :: num_elements
+    PetscInt :: num_isotopes
+    PetscInt, pointer :: num_isotopes_per_element(:)
+    type(isotope_type), pointer :: isotope_list
+    type(element_type), pointer :: element_list
   contains
 !geh: commented out subroutines can only be called externally
     procedure, public :: Setup => PMUFDDecayInit
@@ -48,6 +52,29 @@ module PM_UFD_Decay_class
 !    procedure, public :: Restart => PMUFDDecayRestart  
     procedure, public :: Destroy => PMUFDDecayDestroy
   end type pm_ufd_decay_type
+  
+  type :: isotope_type
+    character(len=MAXWORDLENGTH) :: name
+    character(len=MAXWORDLENGTH) :: element
+    PetscInt :: iisotope
+    PetscInt :: ielement
+    PetscReal :: decay_rate
+    type(daughter_type), pointer :: daughter_list
+    type(isotope_type), pointer :: next
+  end type isotope_type
+  
+  type :: daughter_type
+    character(len=MAXWORDLENGTH) :: name
+    PetscReal :: stoichiometry
+    type(daughter_type), pointer :: next
+  end type
+  
+  type :: element_type
+    character(len=MAXWORDLENGTH) :: name
+    PetscInt :: ielement
+    PetscReal :: solubility
+    type(element_type), pointer :: next
+  end type
   
   public :: PMUFDDecayCreate, &
             PMUFDDecayInit !, &
@@ -76,9 +103,18 @@ function PMUFDDecayCreate()
   class(pm_ufd_decay_type), pointer :: PMUFDDecayCreate
   
   allocate(PMUFDDecayCreate)
-  nullify(PMUFDDecayCreate%realization)
-
   call PMBaseInit(PMUFDDecayCreate)
+
+  nullify(PMUFDDecayCreate%realization)
+  nullify(PMUFDDecayCreate%element)
+  nullify(PMUFDDecayCreate%element_isotopes)
+  nullify(PMUFDDecayCreate%isotope_to_primary_species)
+  nullify(PMUFDDecayCreate%isotope_decay_rate)
+  nullify(PMUFDDecayCreate%isotope_daughters)
+  nullify(PMUFDDecayCreate%element_solubility)
+  nullify(PMUFDDecayCreate%num_isotopes_per_element)
+  nullify(PMUFDDecayCreate%isotope_list)
+  nullify(PMUFDDecayCreate%element_list)
 
 end function PMUFDDecayCreate
 
@@ -104,12 +140,15 @@ subroutine PMUFDDecayRead(this,input)
   type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
+  type(isotope_type), pointer :: isotope, prev_isotope
+  type(daughter_type), pointer :: daughter, prev_daughter
+  type(element_type), pointer :: element, prev_element
 
   option => this%option
   
-  error_string = 'UFD Decay'
-  
   input%ierr = 0
+  nullify(prev_isotope)
+  nullify(prev_element)
   do
   
     call InputReadPflotranString(input,option)
@@ -121,12 +160,150 @@ subroutine PMUFDDecayRead(this,input)
     call StringToUpper(word)
     
     select case(trim(word))
+      case('ELEMENT')
+        error_string = 'UFD Decay, Element'
+        element => ElementCreate()
+        call InputReadWord(input,option,element%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'name',error_string)
+        do
+          call InputReadPflotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword',error_string)
+          call StringToUpper(word)
+          select case(trim(word))
+            case('SOLUBILITY')
+              call InputReadDouble(input,option,element%solubility)
+              call InputErrorMsg(input,option,'solubility',error_string)
+            case default
+              call InputKeywordUnrecognized(word,error_string,option)
+          end select
+        enddo
+        if (associated(prev_element)) then
+          prev_element%next => element
+        else
+          this%element_list => element
+        endif
+        prev_element => element
+        nullify(element)
+      case('ISOTOPE')
+        nullify(prev_daughter)
+        error_string = 'UFD Decay, Isotope'
+        isotope => IsotopeCreate()
+        call InputReadWord(input,option,isotope%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'name',error_string)
+        do
+          call InputReadPflotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword',error_string)
+          call StringToUpper(word)
+          select case(trim(word))
+            case('ELEMENT')
+              call InputReadWord(input,option,isotope%element,PETSC_TRUE)
+              call InputErrorMsg(input,option,'element name',error_string)
+            case('DECAY_RATE')
+              call InputReadDouble(input,option,isotope%decay_rate)
+              call InputErrorMsg(input,option,'decay rate',error_string)
+            case('DAUGHTER')
+              daughter = IsotopeDaughterCreate()
+              call InputReadWord(input,option,daughter%name,PETSC_TRUE)
+              call InputErrorMsg(input,option,'daughter name',error_string)
+              call InputReadDouble(input,option,daughter%stoichiometry)
+              call InputErrorMsg(input,option,'daughter stoichiometry', &
+                                 error_string)
+              if (associated(prev_daughter)) then
+                prev_daughter%next => daughter
+              else
+                isotope%daughter_list => daughter
+              endif
+              prev_daughter => daughter
+              nullify(daughter)
+            case default
+              call InputKeywordUnrecognized(word,error_string,option)
+          end select
+        enddo
+        if (associated(prev_isotope)) then
+          prev_isotope%next => isotope
+        else
+          this%isotope_list => isotope
+        endif
+        prev_isotope => isotope
+        nullify(isotope)
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
   enddo
   
 end subroutine PMUFDDecayRead
+
+
+! ************************************************************************** !
+
+function ElementCreate()
+  ! 
+  ! Creates isotope object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/20/15
+  ! 
+  implicit none
+
+  type(element_type), pointer :: ElementCreate
+  
+  allocate(ElementCreate)
+  ElementCreate%name = ''
+  ElementCreate%ielement = UNINITIALIZED_INTEGER
+  ElementCreate%solubility = UNINITIALIZED_DOUBLE
+  nullify(ElementCreate%next)
+  
+end function ElementCreate
+
+! ************************************************************************** !
+
+function IsotopeCreate()
+  ! 
+  ! Creates isotope object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/20/15
+  ! 
+  implicit none
+
+  type(isotope_type), pointer :: IsotopeCreate
+  
+  allocate(IsotopeCreate)
+  IsotopeCreate%name = ''
+  IsotopeCreate%element = ''
+  IsotopeCreate%iisotope = UNINITIALIZED_INTEGER
+  IsotopeCreate%ielement = UNINITIALIZED_INTEGER
+  IsotopeCreate%decay_rate = UNINITIALIZED_DOUBLE
+  nullify(IsotopeCreate%daughter_list)
+  nullify(IsotopeCreate%next)
+  
+end function IsotopeCreate
+
+! ************************************************************************** !
+
+function IsotopeDaughterCreate()
+  ! 
+  ! Creates daughter object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/20/15
+  ! 
+  implicit none
+
+  type(daughter_type), pointer :: IsotopeDaughterCreate
+  
+  allocate(IsotopeDaughterCreate)
+  IsotopeDaughterCreate%name = ''
+  IsotopeDaughterCreate%stoichiometry = UNINITIALIZED_DOUBLE
+  nullify(IsotopeDaughterCreate%next)
+
+end function IsotopeDaughterCreate
 
 ! ************************************************************************** !
 
@@ -137,45 +314,149 @@ subroutine PMUFDDecayInit(this)
   ! Author: Glenn Hammond
   ! Date: 06/24/15
 
-  use Grid_module
-  use Grid_Structured_module
-  use Grid_Unstructured_module
-  use Reaction_Aux_module
   use Option_module
+  use String_module
+  use Reaction_Aux_module
 
   implicit none
   
   class(pm_ufd_decay_type) :: this
   
-  type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
-  character(len=MAXWORDLENGTH) :: species_name
+  type(isotope_type), pointer :: isotope, isotope2
+  type(daughter_type), pointer :: daughter
+  type(element_type), pointer :: element
+  PetscInt, allocatable :: num_isotopes_per_element(:)
   
-  PetscInt, parameter :: max_daughters = 1
-  PetscInt, parameter :: max_num_isotopes = 1
+  PetscInt :: icount
+  PetscInt :: max_daughters_per_isotope
+  PetscBool :: found
   
-  grid => this%realization%patch%grid
   option => this%realization%option
   reaction => this%realization%reaction
 
-#if 0
-  this%num_components = 5
-  allocate(this%num_isotopes(this%num_components))
-  this%num_isotopes = 1
-  max_num_isotopes = maxval(this%num_isotopes)
-  allocate(this%isotope(max_num_isotopes,this%num_components))
-  this%isotopes(1,:) = [1, 2, 3, 4, 5]
-  allocate(this%decay_rate(max_num_isotopes,this%num_components))
-  this%decay_rate(1,:) = [1.29d-15, 5.08d-11, 1.03d-14, 1.38d-13, 2.78d-12]
-  allocate(this%daughters(0:max_daughter,this%max_num_isotopes))
-  this%daughter = 0
-  this%daughter(0,2:4) = 1
-  this%daughter(1,2) = 3
-  this%daughter(1,3) = 4
-  this%daughter(1,4) = 5
-  allocate(this%solubility(this%num_components))
-  this%solubility = 0.d0
+  ! sum the number of isotopes, elements, max number of isotopes per element
+  
+  element => this%element_list
+  icount = 0
+  do
+    if (.not.associated(element)) exit
+    icount = icount + 1
+    element%ielement = icount
+    element => element%next
+  enddo
+  this%num_elements = icount
+  allocate(num_isotopes_per_element(this%num_elements))
+  num_isotopes_per_element = 0
+  allocate(this%element_solubility(this%num_elements))
+  this%element_solubility = 0.d0  
+  element => this%element_list
+  do
+    if (.not.associated(element)) exit
+    this%element_solubility(element%ielement) = element%solubility
+    element => element%next
+  enddo  
+  
+  this%num_isotopes = 0
+  isotope => this%isotope_list
+  do
+    if (.not.associated(isotope)) exit
+    this%num_isotopes = this%num_isotopes + 1
+    isotope%iisotope = this%num_isotopes
+    found = PETSC_FALSE
+    element => this%element_list
+    do
+      if (.not.associated(element)) exit
+      if (StringCompare(isotope%element,element%name)) then
+        found = PETSC_TRUE
+        isotope%ielement = element%ielement
+        num_isotopes_per_element(element%ielement) = &
+          num_isotopes_per_element(element%ielement) + 1
+        exit
+      endif
+    enddo
+    if (.not.found) then
+      option%io_buffer = 'Element "' // trim(isotope%element) // &
+        '" of isotope "' // trim(isotope%name) // &
+        '" not found among list of element.'
+      call printErrMsg(option)
+    endif
+    daughter => isotope%daughter_list
+    icount = 0
+    do
+      if (.not.associated(daughter)) exit
+      icount = icount + 1
+      daughter => daughter%next
+    enddo
+    max_daughters_per_isotope = max(max_daughters_per_isotope,icount)
+    isotope => isotope%next
+  enddo
+  
+  allocate(this%isotope_to_primary_species(this%num_isotopes))
+  this%isotope_to_primary_species = UNINITIALIZED_INTEGER
+  allocate(this%element_isotopes(0:maxval(num_isotopes_per_element), &
+           this%num_elements))
+  this%element_isotopes = UNINITIALIZED_INTEGER
+  this%element_isotopes(0,:) = 0
+  allocate(this%isotope_decay_rate(this%num_isotopes))
+  this%isotope_decay_rate = UNINITIALIZED_DOUBLE
+  allocate(this%isotope_daughters(0:max_daughters_per_isotope,this%num_isotopes))
+  this%isotope_daughters = UNINITIALIZED_INTEGER
+  this%isotope_daughters(0,:) = 0
+  
+  isotope => this%isotope_list
+  do
+    if (.not.associated(isotope)) exit
+    found = PETSC_FALSE
+    this%isotope_to_primary_species(isotope%iisotope) = &
+      GetPrimarySpeciesIDFromName(isotope%name,reaction,option)
+    this%element_isotopes(0,isotope%ielement) = &
+      this%element_isotopes(0,isotope%ielement) + 1
+    this%element_isotopes(this%element_isotopes(0,isotope%ielement), &
+                          isotope%ielement) = isotope%iisotope
+    daughter => isotope%daughter_list
+    icount = 0
+    do
+      if (.not.associated(daughter)) exit
+      icount = icount + 1
+      isotope2 => this%isotope_list
+      found = PETSC_FALSE
+      do
+        if (.not.associated(isotope2)) exit
+        if (StringCompare(daughter%name,isotope%name)) then
+          found = PETSC_TRUE
+          this%isotope_daughters(icount,isotope%iisotope) = isotope2%iisotope
+          this%isotope_daughters(0,isotope%iisotope) = icount
+          exit
+        endif
+        isotope2 => isotope2%next
+      enddo
+      daughter => daughter%next
+    enddo
+    isotope => isotope%next
+  enddo  
+  
+#if 0  
+  this%num_elements = 3
+  max_num_isotopes_per_element = 3
+  this%num_isotopes = 6
+  this%isotope_to_primary_species = [1, 2, 3, 4, 5, 6]
+  this%element_isotopes = 0
+  this%element_isotopes(0:1,1) = [1,1]
+  this%element_isotopes(0:3,2) = [3,2,3,4]
+  this%element_isotopes(0:2,3) = [2,5,6]
+  this%isotope_decay_rate = 0.d0
+  this%isotope_decay_rate(:) = [1.29d-15, 5.08d-11, 1.03d-14, 1.38d-13, 2.78d-12,2.78d-13]
+  allocate(this%isotope_daughters(0:max_daughters,this%num_isotopes))
+  this%isotope_daughters = 0
+  this%isotope_daughters(:,:) = 0
+  this%isotope_daughters(0,1) = 1  ! 1 -> 3
+  this%isotope_daughters(1,1) = 3
+  this%isotope_daughters(0,3) = 1   ! 3 -> 5
+  this%isotope_daughters(1,3) = 5
+  allocate(this%element_solubility(this%num_elements))
+  this%element_solubility = 0.d0
 #endif
 
 end subroutine PMUFDDecayInit
@@ -292,20 +573,19 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: local_id
   PetscInt :: ghosted_id
-  PetscInt :: icomp, i, idaughter
-  PetscReal :: Aq0, Sorb0, Ppt0
-  PetscReal :: Aq1, Sorb1, Ppt1
-  PetscReal :: Mass_Aq0, Mass_Sorb0, Mass_Ppt0
-  PetscReal :: Mass_Aq1, Mass_Sorb1, Mass_Ppt1
-  PetscReal :: Aq_tot1
-  PetscReal :: Mass_tot0(this%num_components), Mass_tot1(this%num_components)
-  PetscReal :: Delta_Mass_tot(this%num_components)
+  PetscInt :: iele, i, ii, iiso, idaughter, ipri
+  PetscReal :: dt
+  PetscReal :: vol, por, sat, den_w_kg, vps
+  PetscReal :: conc_iso_aq0, conc_iso_sorb0, conc_iso_ppt0
+  PetscReal :: conc_ele_aq1, conc_ele_sorb1, conc_ele_ppt1
+  PetscReal :: mass_iso_aq0, mass_iso_sorb0, mass_iso_ppt0
+  PetscReal :: mass_ele_aq1, mass_ele_sorb1, mass_ele_ppt1, mass_cmp_tot1
+  PetscReal :: mass_iso_tot0
+  PetscReal :: mass_iso_tot1(this%num_isotopes), delta_mass_iso_tot(this%num_isotopes)
+  PetscReal :: mass_ele_tot1
+  PetscReal :: mol_fraction_iso(this%num_isotopes)
   PetscReal :: kd_kgw_m3b
-  PetscReal :: vol, den_w_kg, por, sat, vps, dt
-  PetscReal :: mol_fraction(this%max_num_isotopes)
-  PetscReal :: mass(this%max_num_isotopes,this%num_components,this%realization%patch%grid%nlmax)
-  PetscReal, pointer :: vec_loc_p(:)
-  
+
   ierr = 0
   
   option => this%realization%option
@@ -318,102 +598,6 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   
   dt = option%dt
 
-#if 0  
-  do i = 1, this%num_components
-    do j = 1, this%num_isotopes(i)
-      call VecGetArrayF90(field%work_loc, vec_loc_p, ierr);CHKERRQ(ierr)
-      vec_loc_p(:) = this%mol_fraction(j,i,:)
-      call VecRestoreArrayF90(field%work_loc, vec_loc_p, ierr);CHKERRQ(ierr)
-      call DiscretizationGlobalToLocal(discretization,field%work_loc, &
-                                       field%work_loc,ONEDOF)   
-      call VecGetArrayReadF90(field%work_loc, vec_loc_p, ierr);CHKERRQ(ierr)
-      this%mol_fraction(j,i,:) = vec_loc_p(:)
-      call VecRestoreArrayReadF90(field%work_loc, vec_loc_p, ierr);CHKERRQ(ierr)
-    enddo
-  enddo
-  
-  mass = 0.d0
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) cycle
-    vol = material_auxvars(ghosted_id)%volume
-    por = material_auxvars(ghosted_id)%porosity
-    sat = global_auxvars(ghosted_id)%sat(1)
-    vps = vol * por * sat ! m^3 water
-    do i = 1, this%num_components
-      icomp = this%component(i)
-      total = rt_auxvars(ghosted_id)%total(icomp,1)* &
-              vps*1.d3 ! mol/L * m^3 water * 1000 L /m^3 = mol
-      do j = 1, this%num_isotopes(i)
-        mass(j,i,local_id) = total*this%mole_fraction(j,i,ghosted_id)
-      enddo
-    enddo
-  enddo  
-  ! Interior Flux Terms -----------------------------------
-  connection_set_list => grid%internal_connection_set_list
-  cur_connection_set => connection_set_list%first
-  sum_connection = 0  
-  do 
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      ghosted_id_up = cur_connection_set%id_up(iconn)
-      ghosted_id_dn = cur_connection_set%id_dn(iconn)
-!      if (patch%imat(ghosted_id_up) <= 0 .or.  &
-!          patch%imat(ghosted_id_dn) <= 0) cycle
-      do i = 1, this%num_components
-        icomp = this%component(i)
-        flux = patch%internal_tran_fluxes(icomp,iconn) * dt
-        do j = 1, this%num_isotopes(i)
-          iiso = this%isotope(j,i)
-          if (flux > 0.d0) then
-            mass(j,i,ghosted_id_up) = mass(j,i,local_id_up) - flux*this%mol_fraction(j,i,ghosted_id_up)
-            mass(j,i,ghosted_id_dn) = mass(j,i,local_id_dn) + flux*this%mol_fraction(j,i,ghosted_id_up)
-          else
-            mass(j,i,ghosted_id_up) = mass(j,i,local_id_up) + flux*this%mol_fraction(j,i,ghosted_id_dn)
-            mass(j,i,ghosted_id_dn) = mass(j,i,local_id_dn) - flux*this%mol_fraction(j,i,ghosted_id_dn)
-          endif
-        enddo
-      enddo
-    enddo
-    cur_connection_set => cur_connection_set%next
-  enddo
-    
-! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_condition_list%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection_set
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-!      if (patch%imat(ghosted_id) <= 0) cycle
-      do i = 1, this%num_components
-        icomp = this%component(i)
-        flux = patch%boundary_tran_fluxes(icomp,iconn) * dt
-        do j = 1, this%num_isotopes(i)
-          iiso = this%isotope(j,i)
-          mass(j,i,ghosted_id) = mass(j,i,ghosted_id) + flux*this%mol_fraction(j,i,ghosted_id)
-        enddo
-      enddo
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    do i = 1, this%num_components
-      do j = 1, this%num_isotopes(i)
-        this%mol_fraction(j,i,ghosted_id) = mass0(i,ghosted_id)* &
-                                            this%mol_fraction(j,i,ghosted_id) / &
-                                            (mass(
-      enddo  
-    enddo
-  enddo
-  
-  
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
@@ -422,69 +606,75 @@ subroutine PMUFDDecaySolve(this,time,ierr)
     por = material_auxvars(ghosted_id)%porosity
     sat = global_auxvars(ghosted_id)%sat(1)
     vps = vol * por * sat ! m^3 water
-    do icomp = 1, this%num_components
-      do i = 1, this%num_isotopes(icomp)
-        iiso = this%isotope(i,icomp)
-        Aq0 = rt_auxvars(ghosted_id)%total(iiso,1) ! mol/L
-        Sorb0 = rt_auxvars(ghosted_id)%total_sorb_eq(iiso) ! mol/m^3 bulk
-        Ppt0 = rt_auxvars(ghosted_id)%mnrl_volfrac(iiso)
-        Mass_Aq0 = Aq0*vps*1.d3 ! mol/L * m^3 water * 1000 L /m^3 = mol
-        Mass_Sorb0 = Sorb0 * vol ! mol/m^3 bulk * m^3 bulk = mol
-        Mass_Ppt0 = Ppt0 * vol / &  ! m^3 mnrl/m^3 bulk * m^3 bulk / (m^3 mnrl/mol mnrl) = mol
-                    this%molar_volume(icomp)
-        Mass_tot0 = Mass_Aq0 + Mass_Sorb0 + Mass_Ppt0
-        Mass_tot1(iiso) = Mass_tot0 * exp(this%decay_rate(iiso)*dt)
-        Delta_Mass_tot(iiso) = Mass_tot1(iiso) - Mass_tot0
+    
+    ! sum up mass of each isotope across phases and decay
+    do iele = 1, this%num_elements
+      do i = 1, this%element_isotopes(0,iele)
+        iiso = this%element_isotopes(i,iele)
+        ipri = this%isotope_to_primary_species(iiso)
+        ! # indicated time level (0 = prev time level, 1 = new time level)        
+        conc_iso_aq0 = rt_auxvars(ghosted_id)%total(ipri,1) ! mol/L
+        conc_iso_sorb0 = rt_auxvars(ghosted_id)%total_sorb_eq(ipri) ! mol/m^3 bulk
+        conc_iso_ppt0 = rt_auxvars(ghosted_id)%mnrl_volfrac(iiso) ! m^3 mnrl/m^3 bulk
+        mass_iso_aq0 = conc_iso_aq0*vps*1.d3 ! mol/L * m^3 water * 1000 L /m^3 = mol
+        mass_iso_sorb0 = conc_iso_sorb0 * vol ! mol/m^3 bulk * m^3 bulk = mol
+        mass_iso_ppt0 = conc_iso_ppt0 * vol / &  ! m^3 mnrl/m^3 bulk * m^3 bulk / (m^3 mnrl/mol mnrl) = mol
+                        this%molar_volume(iele)
+        mass_iso_tot0 = mass_iso_aq0 + mass_iso_sorb0 + mass_iso_ppt0
+        ! should this be implicit in time?
+        mass_iso_tot1(iiso) = mass_iso_tot0 * exp(this%isotope_decay_rate(iiso)*dt)
+        delta_mass_iso_tot(iiso) = mass_iso_tot1(iiso) - mass_iso_tot0
       enddo
     enddo 
     
-    do icomp = 1, this%num_components
-      do i = 1, this%num_isotopes(icomp)
-        iiso = this%isotope(i,icomp)
-        do i = 1, this%daughter(0,iiso)
-          idaughter = this%daughter(i,iiso)
+    ! distribute decayed mass among daughter isotopes
+    do iele = 1, this%num_elements
+      do i = 1, this%element_isotopes(0,iele)
+        iiso = this%element_isotopes(i,iele)
+        do ii = 1, this%isotope_daughters(0,iiso)
+          idaughter = this%isotope_daughters(ii,iiso)
           ! Delta is always negative for parent, positive for child
-          Mass_tot1(idaughter) = Mass_tot1(idaughter) - Delta_Mass_tot(iiso)
+          mass_iso_tot1(idaughter) = mass_iso_tot1(idaughter) - delta_mass_iso_tot(iiso)
         enddo
       enddo
     enddo
     
-    do icomp = 1, this%num_components
+    do iele = 1, this%num_elements
       ! calculate mole fractions
-      Mass_total = 0.d0
-      mol_fraction = 0.d0
-      do i = 1, this%num_isotopes(icomp)
-        iiso = this%isotope(i,icomp)
-        Mass_total = Mass_total + Mass_tot1(iiso)
+      mass_ele_tot1 = 0.d0
+      mol_fraction_iso = 0.d0
+      do i = 1, this%element_isotopes(0,iele)
+        iiso = this%element_isotopes(i,iele)
+        mass_ele_tot1 = mass_ele_tot1 + mass_iso_tot1(iiso)
       enddo
-      do i = 1, this%num_isotopes(icomp)
-        mol_fraction(i) = Mass_tot1(iiso) / Mass_total
+      do i = 1, this%element_isotopes(0,iele)
+        iiso = this%element_isotopes(i,iele)
+        mol_fraction_iso(i) = mass_iso_tot1(iiso) / mass_ele_tot1
       enddo
       ! split mass between phases
-      kd_kgw_m3b = this%KD(icomp)
-      Aq_tot1 = Mass_total /  (1.d0+kd_kgw_m3b/(den_w_kg*por*sat)) / &
-              (vps*1.d3)
-      if (Aq_tot1 > this%solubility(icomp)) then
-        Aq1 = this%solubility(icomp)
-      else
-        Aq1 = Aq_tot1
+      kd_kgw_m3b = this%KD(iele)
+      conc_ele_aq1 = mass_ele_tot1 / (1.d0+kd_kgw_m3b/(den_w_kg*por*sat)) / &
+                         (vps*1.d3)
+      if (conc_ele_aq1 > this%element_solubility(iele)) then
+        conc_ele_aq1 = this%element_solubility(iele)
       endif
-      Sorb1 = Aq_tot1 / den_w_kg * 1.d3 * kd_kgw_m3b
-      Mass_Aq1 = Aq_tot1*vps*1.d3
-      Mass_Sorb1 = Sorb0 * vol
-      Mass_Ppt1 = max(Mass_total - Mass_Aq0 - Mass_Sorb0,0.d0)
-      Ppt1 = Mass_Ppt1 * this%molar_volume(icomp) / vol
+      ! assume identical sorption for all isotopes in element
+      conc_ele_sorb1 = conc_ele_aq1 / den_w_kg * 1.d3 * kd_kgw_m3b
+      mass_ele_aq1 = conc_ele_aq1*vps*1.d3
+      mass_ele_sorb1 = conc_ele_sorb1 * vol
+      mass_ele_ppt1 = max(mass_ele_tot1 - mass_ele_aq1 - mass_ele_sorb1,0.d0)
+      conc_ele_ppt1 = mass_ele_ppt1 * this%molar_volume(iele) / vol
       ! store mass in data structures
-      do i = 1, this%num_isotopes(icomp)
-        iiso = this%isotope(i,icomp)
-        rt_auxvars(ghosted_id)%total(iiso,1) = Aq1 * mole_fraction(i)
-        rt_auxvars(ghosted_id)%free_ion(iiso) = Aq1 / den_w_kg * 1.d3 * mole_fraction(i)
-        rt_auxvars(ghosted_id)%total_sorb_eq(iiso) = Sorb1 * mole_fraction(i)
-        rt_auxvars(ghosted_id)%mnrl_volfrac(iiso) = Ppt1 * mole_fraction(i)
+      do i = 1, this%element_isotopes(0,iele)
+        iiso = this%element_isotopes(i,iele)
+        ipri = this%isotope_to_primary_species(iiso)
+        rt_auxvars(ghosted_id)%total(ipri,1) = conc_ele_aq1 * mol_fraction_iso(i)
+        rt_auxvars(ghosted_id)%pri_molal(ipri) = conc_ele_aq1 / den_w_kg * 1.d3 * mol_fraction_iso(i)
+        rt_auxvars(ghosted_id)%total_sorb_eq(ipri) = conc_ele_sorb1 * mol_fraction_iso(i)
+        rt_auxvars(ghosted_id)%mnrl_volfrac(iiso) = conc_ele_ppt1 * mol_fraction_iso(i)
       enddo
     enddo      
   enddo
-#endif
   
 end subroutine PMUFDDecaySolve
 

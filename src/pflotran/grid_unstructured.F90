@@ -993,6 +993,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   
   ! Initialize data buffer
   allocate(int_buffer(length(1), length(2)))
+  int_buffer = UNINITIALIZED_INTEGER
   
   ! Create property list
   call h5pcreate_f(H5P_DATASET_XFER_F, prop_id, hdf5_err)
@@ -1087,6 +1088,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   
   ! Initialize data buffer
   allocate(double_buffer(length(1), length(2)))
+  double_buffer = UNINITIALIZED_DOUBLE
   
   ! Create property list
   call h5pcreate_f(H5P_DATASET_XFER_F, prop_id, hdf5_err)
@@ -1212,7 +1214,6 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
   unstructured_grid%num_vertices_local = dims(2)
   unstructured_grid%num_vertices_global= dataset_dims(2)
   allocate(unstructured_grid%vertices(unstructured_grid%num_vertices_local))
-
   ! fill the vertices data structure
   do ii = 1, unstructured_grid%num_vertices_local
     unstructured_grid%vertices(ii)%id = 0
@@ -2822,7 +2823,6 @@ subroutine UGridComputeQuality(unstructured_grid,option)
   PetscInt :: vertex_id
   type(point_type) :: vertex_8(8)
   PetscReal :: quality, mean_quality, max_quality, min_quality
-  PetscReal :: temp_real
   PetscErrorCode :: ierr
 
   mean_quality = 0.d0
@@ -2848,17 +2848,14 @@ subroutine UGridComputeQuality(unstructured_grid,option)
     mean_quality = mean_quality + quality
   enddo
 
-  temp_real = mean_quality
-  call MPI_Allreduce(temp_real,mean_quality,ONE_INTEGER_MPI, &
+  call MPI_Allreduce(mean_quality,MPI_IN_PLACE,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
   mean_quality = mean_quality / unstructured_grid%nmax
 
-  temp_real = max_quality
-  call MPI_Allreduce(temp_real,max_quality,ONE_INTEGER_MPI, &
+  call MPI_Allreduce(max_quality,MPI_IN_PLACE,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
 
-  temp_real = min_quality
-  call MPI_Allreduce(temp_real,min_quality,ONE_INTEGER_MPI, &
+  call MPI_Allreduce(min_quality,MPI_IN_PLACE,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
 
   if (OptionPrintToScreen(option)) then
