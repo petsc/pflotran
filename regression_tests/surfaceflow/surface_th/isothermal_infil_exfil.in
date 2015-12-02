@@ -14,6 +14,7 @@ SIMULATION
       /
     /
     SURFACE_SUBSURFACE flow
+      MODE TH
   /
 END
 
