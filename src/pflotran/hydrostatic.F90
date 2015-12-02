@@ -38,6 +38,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Dataset_Ascii_class
   
   use General_Aux_module
+  use TOilIms_Aux_module
   
   implicit none
 
@@ -130,6 +131,23 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       coupler%flow_aux_mapping(GENERAL_AIR_PRESSURE_INDEX) = 2
       coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = 3
       coupler%flow_aux_mapping(GENERAL_GAS_SATURATION_INDEX) = 3
+    case(TOIL_IMS_MODE)
+      temperature_at_datum = &
+        condition%toil_ims%temperature%dataset%rarray(1)
+      if (associated(condition%toil_ims%temperature%gradient)) then
+        temperature_gradient(1:3) = &
+          condition%toil_ims%temperature%gradient%rarray(1:3)
+      endif
+      datum(1:3) = condition%datum%rarray(1:3)
+      pressure_at_datum = &
+        condition%toil_ims%pressure%dataset%rarray(1)    
+      ! gradient is in m/m; needs conversion to Pa/m
+      if (associated(condition%toil_ims%pressure%gradient)) then
+        piezometric_head_gradient(1:3) = &
+          condition%toil_ims%pressure%gradient%rarray(1:3)
+      endif
+      coupler%flow_aux_mapping(TOIL_IMS_PRESSURE_INDEX) = 1
+      coupler%flow_aux_mapping(TOIL_IMS_TEMPERATURE_INDEX) = 3 
     case default
       ! for now, just set it; in future need to account for a different temperature datum
       if (associated(condition%temperature)) then
@@ -252,7 +270,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     do ipressure=idatum+1,num_pressures
       dist_z = dist_z + delta_z
       select case(option%iflowmode)
-        case(TH_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE, MIS_MODE)
+        case(TH_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,G_MODE, MIS_MODE, &
+             TOIL_IMS_MODE)
           temperature = temperature + temperature_gradient(Z_DIRECTION)*delta_z
       end select
       call EOSWaterDensityNaCl(temperature,pressure0,xm_nacl,rho_kg) 
@@ -282,7 +301,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     ! compute pressures below datum, if any
     pressure0 = pressure_array(idatum)
     select case(option%iflowmode)
-      case(TH_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,MIS_MODE,G_MODE)
+      case(TH_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE,MIS_MODE,G_MODE,TOIL_IMS_MODE)
         temperature = temperature_at_datum
     end select
     dist_z = 0.d0
@@ -290,7 +309,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     do ipressure=idatum-1,1,-1
       dist_z = dist_z + delta_z
       select case(option%iflowmode)
-        case(TH_MODE,MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE)
+        case(TH_MODE,MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE,G_MODE, &
+          TOIL_IMS_MODE)
           temperature = temperature - temperature_gradient(Z_DIRECTION)*delta_z
       end select
       call EOSWaterDensityNaCl(temperature,pressure0,xm_nacl,rho_kg) 
@@ -383,6 +403,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         coupler%flow_aux_real_var(1,iconn) = pressure
       case (MPH_MODE)
         coupler%flow_aux_real_var(1,iconn) = pressure
+      case(TOIL_IMS_MODE)
+        coupler%flow_aux_real_var(1,iconn) = pressure
       case default
         if (condition%pressure%itype == SEEPAGE_BC) then
           coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
@@ -441,6 +463,13 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
           coupler%flow_aux_real_var(2,iconn) = concentration_at_datum
           coupler%flow_aux_int_var(GENERAL_STATE_INDEX,iconn) = LIQUID_STATE
         endif
+      case(TOIL_IMS_MODE)
+        temperature = temperature_at_datum + &
+                    temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
+                    temperature_gradient(Y_DIRECTION)*dist_y + &
+                    temperature_gradient(Z_DIRECTION)*dist_z 
+        coupler%flow_aux_real_var(3,iconn) = &
+          temperature
       case default
         coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,iconn) = 1
     end select

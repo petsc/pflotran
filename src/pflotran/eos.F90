@@ -3,6 +3,7 @@ module EOS_module
   use PFLOTRAN_Constants_module
   use EOS_Water_module
   use EOS_Gas_module
+  use EOS_Oil_module 
   
   implicit none
 
@@ -23,6 +24,7 @@ subroutine EOSInit()
   
   call EOSWaterInit()
   call EOSGasInit()
+  call EOSOilInit()
   
 end subroutine EOSInit
 
@@ -305,6 +307,67 @@ subroutine EOSRead(input,option)
         endif
         call printErrMsg(option)
       endif
+    case('OIL')
+      do
+        call InputReadPflotranString(input,option)
+        if (InputCheckExit(input,option)) exit  
+        call InputReadWord(input,option,keyword,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword','EOS,OIL')
+        call StringToUpper(keyword)   
+        select case(trim(keyword))
+          case('DENSITY') 
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'DENSITY','EOS,OIL')
+            call StringToUpper(word)   
+            select case(trim(word))
+              case('CONSTANT')
+                call InputReadDouble(input,option,tempreal)
+                call InputErrorMsg(input,option,'VALUE', &
+                                   'EOS,OIL,DENSITY,CONSTANT')
+                call EOSOilSetDensityConstant(tempreal)
+              case default
+                call InputKeywordUnrecognized(word,'EOS,OIL,DENSITY',option)
+            end select
+          case('ENTHALPY') 
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'ENTHALPY','EOS,OIL')
+            call StringToUpper(word)   
+            select case(trim(word))
+              case('CONSTANT')
+                call InputReadDouble(input,option,tempreal)
+                call InputErrorMsg(input,option,'VALUE', &
+                                   'EOS,OIL,ENTHALPY,CONSTANT')
+                call EOSOilSetEnthalpyConstant(tempreal)
+              case('LINEAR_TEMP')
+                call InputReadDouble(input,option,tempreal)
+                call InputErrorMsg(input,option,'VALUE', &
+                                   'EOS,OIL,ENTHALPY,LINEAR_TEMP')
+                call EOSOilSetEnthalpyLinearTemp(tempreal) 
+              case default
+                call InputKeywordUnrecognized(word,'EOS,OIL,ENTHALPY',option)
+            end select
+          case('VISCOSITY') 
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'VISCOSITY','EOS,OIL')
+            call StringToUpper(word)   
+            select case(trim(word))
+              case('CONSTANT')
+                call InputReadDouble(input,option,tempreal)
+                call InputErrorMsg(input,option,'VALUE', &
+                                   'EOS,OIL,VISCOSITY,CONSTANT')
+                call EOSOilSetViscosityConstant(tempreal)
+              case default
+                call InputKeywordUnrecognized(word,'EOS,OIL,VISCOSITY',option)
+            end select
+          case('FORMULA_WEIGHT') 
+                call InputReadDouble(input,option,fmw_oil)
+                call InputErrorMsg(input,option,'VALUE', &
+                                   'EOS,OIL,FORMULA_WEIGHT')
+          case default
+            call InputKeywordUnrecognized(keyword,'EOS,OIL',option)
+        end select
+      enddo
+      ! need to add verifying function - follow EOSgas template 
     case default
       call InputKeywordUnrecognized(keyword,'EOS',option)
   end select
