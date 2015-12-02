@@ -309,7 +309,7 @@ end subroutine GeneralAuxSetEnergyDOF
 ! ************************************************************************** !
 
 subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
-                                characteristic_curves,ghosted_id,option)
+                                characteristic_curves,natural_id,option)
   ! 
   ! Computes auxiliary variables for each grid cell
   ! 
@@ -334,7 +334,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   type(general_auxvar_type) :: gen_auxvar
   type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
-  PetscInt :: ghosted_id
+  PetscInt :: natural_id
 
   PetscInt :: gid, lid, acid, wid, eid
   PetscReal :: cell_pressure, water_vapor_pressure
@@ -421,10 +421,10 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   if (option%iflag >= GENERAL_UPDATE_FOR_ACCUM) then
     if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
       write(*,'(a,i3,3es17.8,a3)') 'before: ', &
-        ghosted_id, x(1:3), trim(state_char)
+        natural_id, x(1:3), trim(state_char)
     else
 !      write(*,'(a,i3,3es17.8,a3)') 'before: ', &
-!        -1*ghosted_id, x(1:3), trim(state_char)
+!        -1*natural_id, x(1:3), trim(state_char)
     endif
   endif
 #endif
@@ -460,7 +460,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       if (gen_auxvar%pres(gid) <= 0.d0) then
         write(option%io_buffer,'(''Negative gas pressure at cell '', &
           & i5,'' in GeneralAuxVarCompute(LIQUID_STATE).  Attempting bailout.'')') &
-          ghosted_id
+          natural_id
 !        call printErrMsgByRank(option)
         call printMsgByRank(option)
         ! set vapor pressure to just under saturation pressure
@@ -707,12 +707,12 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 #if 0
   if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
     write(*,'(a,i3,2f13.4,es13.6,f13.4,a3)') 'i/l/g/x[a/l]/t: ', &
-      ghosted_id, gen_auxvar%pres(1:2), gen_auxvar%xmol(acid,lid), &
+      natural_id, gen_auxvar%pres(1:2), gen_auxvar%xmol(acid,lid), &
       gen_auxvar%temp, trim(state_char)
-    if (ghosted_id == 5) then
+    if (natural_id == 5) then
 #if 0
     write(*,'(a,i3,8f13.4,a3)') 'i/l/g/a/c/v/s/t: ', &
-      ghosted_id, gen_auxvar%pres(1:6), gen_auxvar%sat(1), gen_auxvar%temp, &
+      natural_id, gen_auxvar%pres(1:6), gen_auxvar%sat(1), gen_auxvar%temp, &
       trim(state_char)
 #endif
 #if 0
@@ -750,7 +750,7 @@ end subroutine GeneralAuxVarCompute
 
 subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                                     material_auxvar, &
-                                    characteristic_curves,ghosted_id, &
+                                    characteristic_curves,natural_id, &
                                     option)
   ! 
   ! GeneralUpdateState: Updates the state and swaps primary variables
@@ -769,7 +769,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   implicit none
 
   type(option_type) :: option
-  PetscInt :: ghosted_id
+  PetscInt :: natural_id
   class(characteristic_curves_type) :: characteristic_curves
   type(general_auxvar_type) :: gen_auxvar
   type(global_auxvar_type) :: global_auxvar
@@ -811,19 +811,19 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           gen_auxvar%pres(spid)*(1.d0-window_epsilon)) then
 !#ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
-        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,natural_id, &
                                  'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i5)') &
-            ghosted_id
+            natural_id
         else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
             '(''Liquid -> 2 Phase at Cell (due to perturbation) '',i5)') &
-            ghosted_id
+            natural_id
         else
           write(state_change_string,'(''Liquid -> 2 Phase at Boundary Face '', &
-                                    & i5)') ghosted_id
+                                    & i5)') natural_id
         endif
 !#endif      
         global_auxvar%istate = TWO_PHASE_STATE
@@ -843,7 +843,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) = &
             x(GENERAL_GAS_PRESSURE_DOF) - gen_auxvar%pres(spid)
           if (x(GENERAL_2PH_STATE_AIR_PRESSURE_DOF) <= 0.d0) then
-            write(string,*) ghosted_id
+            write(string,*) natural_id
             option%io_buffer = 'Negative air pressure during state change ' // &
               'at ' // trim(adjustl(string))
   !          call printErrMsg(option)
@@ -863,19 +863,19 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           gen_auxvar%pres(spid)*(1.d0+window_epsilon)) then
 !#ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
-        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,natural_id, &
                                  'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''Gas -> 2 Phase at Cell '',i5)') &
-            ghosted_id
+            natural_id
         else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
             '(''Gas -> 2 Phase at Cell (due to perturbation) '',i5)') &
-            ghosted_id
+            natural_id
         else
           write(state_change_string,'(''Gas -> 2 Phase at Boundary Face '', &
-                                    & i5)') ghosted_id
+                                    & i5)') natural_id
         endif
 !#endif      
         global_auxvar%istate = TWO_PHASE_STATE
@@ -896,19 +896,19 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
       if (gen_auxvar%sat(gid) < 0.d0) then
 !#ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
-        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,natural_id, &
                                  'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''2 Phase -> Liquid at Cell '',i5)') &
-            ghosted_id
+            natural_id
         else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
             '(''2 Phase -> Liquid at Cell (due to perturbation) '',i5)') &
-            ghosted_id        
+            natural_id        
         else
           write(state_change_string,'(''2 Phase -> Liquid at Boundary Face '', &
-                                    & i5)') ghosted_id
+                                    & i5)') natural_id
         endif
 !#endif      
         two_phase_epsilon = epsilon
@@ -921,7 +921,7 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           gen_auxvar%xmol(acid,lid) * (1.d0 - two_phase_epsilon) ! 4.94500E+01, 8800 NI, 10 cuts
 !          gen_auxvar%xmol(acid,lid) ! 4.95298E+01, 10355 NI, 6 cuts
         if (x(GENERAL_LIQUID_STATE_X_MOLE_DOF) <= 0.d0) then
-          write(string,*) ghosted_id
+          write(string,*) natural_id
           option%io_buffer = 'Negative air mole fraction during state change ' // &
             'at ' // trim(adjustl(string))
           call printMsgByRank(option)
@@ -939,19 +939,19 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
       else if (gen_auxvar%sat(gid) > 1.d0) then
 !#ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
-        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,natural_id, &
                                  'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''2 Phase -> Gas at Cell '',i5)') &
-            ghosted_id
+            natural_id
         else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
             '(''2 Phase -> Gas at Cell (due to perturbation) '',i5)') &
-            ghosted_id       
+            natural_id       
         else
           write(state_change_string,'(''2 Phase -> Gas at Boundary Face '', &
-                                    & i5)') ghosted_id
+                                    & i5)') natural_id
         endif
 !#endif      
         two_phase_epsilon = epsilon !
@@ -976,12 +976,12 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   
   if (flag) then
     call GeneralAuxVarCompute(x,gen_auxvar, global_auxvar,material_auxvar, &
-                              characteristic_curves,ghosted_id,option)
+                              characteristic_curves,natural_id,option)
 !#ifdef DEBUG_GENERAL
     state_change_string = 'State Transition: ' // trim(state_change_string)
-    call printMsg(option,state_change_string)
+    call printMsgByRank(option,state_change_string)
 #ifdef DEBUG_GENERAL_INFO
-    call GeneralPrintAuxVars(gen_auxvar,global_auxvar,ghosted_id, &
+    call GeneralPrintAuxVars(gen_auxvar,global_auxvar,natural_id, &
                              'After Update',option)
 #endif
 !#endif
@@ -993,7 +993,7 @@ end subroutine GeneralAuxVarUpdateState
 
 subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
                                 material_auxvar, &
-                                characteristic_curves,ghosted_id, &
+                                characteristic_curves,natural_id, &
                                 option)
   ! 
   ! Calculates auxiliary variables for perturbed system
@@ -1010,7 +1010,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
   implicit none
 
   type(option_type) :: option
-  PetscInt :: ghosted_id
+  PetscInt :: natural_id
   type(general_auxvar_type) :: gen_auxvar(0:)
   type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
@@ -1195,7 +1195,7 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
     x_pert_save = x_pert
     call GeneralAuxVarCompute(x_pert,gen_auxvar(idof),global_auxvar, &
                               material_auxvar, &
-                              characteristic_curves,ghosted_id,option)
+                              characteristic_curves,natural_id,option)
 #ifdef DEBUG_GENERAL
     call GlobalAuxVarCopy(global_auxvar,global_auxvar_debug,option)
     call GeneralAuxVarCopy(gen_auxvar(idof),general_auxvar_debug,option)
@@ -1203,12 +1203,12 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
                                   global_auxvar_debug, &
                                   material_auxvar, &
                                   characteristic_curves, &
-                                  ghosted_id,option)
+                                  natural_id,option)
     if (global_auxvar%istate /= global_auxvar_debug%istate) then
       write(option%io_buffer, &
             &'(''Change in state due to perturbation: '',i3,'' -> '',i3, &
             &'' at cell '',i3,'' for dof '',i3)') &
-        global_auxvar%istate, global_auxvar_debug%istate, ghosted_id, idof
+        global_auxvar%istate, global_auxvar_debug%istate, natural_id, idof
       call printMsg(option)
       write(option%io_buffer,'(''orig: '',6es17.8)') x(1:3)
       call printMsg(option)
@@ -1247,7 +1247,7 @@ end subroutine GeneralAuxVarPerturb
 
 ! ************************************************************************** !
 
-subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
+subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,natural_id, &
                                string,option)
   ! 
   ! Prints out the contents of an auxvar
@@ -1263,7 +1263,7 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
 
   type(general_auxvar_type) :: general_auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscInt :: ghosted_id
+  PetscInt :: natural_id
   character(len=*) :: string
   type(option_type) :: option
 
@@ -1283,7 +1283,7 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,ghosted_id, &
 
   print *, '--------------------------------------------------------'
   print *, trim(string)
-  print *, '             cell id: ', ghosted_id
+  print *, '             cell id: ', natural_id
   select case(global_auxvar%istate)
     case(LIQUID_STATE)
       print *, ' Thermodynamic state: Liquid phase'
@@ -1322,7 +1322,7 @@ end subroutine GeneralPrintAuxVars
 
 ! ************************************************************************** !
 
-subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
+subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,natural_id, &
                                 string,append,option)
   ! 
   ! Prints out the contents of an auxvar to a file
@@ -1338,7 +1338,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
 
   type(general_auxvar_type) :: general_auxvar
   type(global_auxvar_type) :: global_auxvar
-  PetscInt :: ghosted_id
+  PetscInt :: natural_id
   character(len=*) :: string
   PetscBool :: append
   type(option_type) :: option
@@ -1358,7 +1358,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
   wid = option%water_id
   eid = option%energy_id
   
-  write(string2,*) ghosted_id
+  write(string2,*) natural_id
   string2 = trim(adjustl(string)) // '_' // trim(adjustl(string2)) // '.txt'
   if (append) then
     open(unit=86,file=string2,position='append')
@@ -1368,7 +1368,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,ghosted_id, &
 
   write(86,*) '--------------------------------------------------------'
   write(86,*) trim(string)
-  write(86,*) '             cell id: ', ghosted_id
+  write(86,*) '             cell id: ', natural_id
   select case(global_auxvar%istate)
     case(LIQUID_STATE)
       write(86,*) ' Thermodynamic state: Liquid phase'

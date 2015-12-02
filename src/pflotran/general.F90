@@ -700,7 +700,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)  
   class(material_auxvar_type), pointer :: material_auxvars(:)
 
-  PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
+  PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn, natural_id
   PetscInt :: ghosted_start, ghosted_end
   PetscInt :: iphasebc, iphase
   PetscInt :: offset
@@ -744,13 +744,14 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
     ghosted_start = ghosted_end - option%nflowdof + 1
     ! GENERAL_UPDATE_FOR_ACCUM indicates call from non-perturbation
     option%iflag = GENERAL_UPDATE_FOR_ACCUM
+    natural_id = grid%nG2A(ghosted_id)
     call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        gen_auxvars(ZERO_INTEGER,ghosted_id), &
                        global_auxvars(ghosted_id), &
                        material_auxvars(ghosted_id), &
                        patch%characteristic_curves_array( &
                          patch%sat_func_id(ghosted_id))%ptr, &
-                       ghosted_id, &
+                       natural_id, &
                        option)
     if (update_state) then
       call GeneralAuxVarUpdateState(xx_loc_p(ghosted_start:ghosted_end), &
@@ -759,18 +760,18 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                                     material_auxvars(ghosted_id), &
                                     patch%characteristic_curves_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
-                                    ghosted_id, &  ! for debugging
+                                    natural_id, &  ! for debugging
                                     option)
     endif
 #ifdef DEBUG_AUXVARS
 !geh: for debugging
     call GeneralOutputAuxVars(gen_auxvars(0,ghosted_id), &
-                              global_auxvars(ghosted_id),ghosted_id,word, &
+                              global_auxvars(ghosted_id),natural_id,word, &
                               PETSC_TRUE,option)
 #endif
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
-    write(debug_unit,'(a,i5,i3,7es24.15)') 'auxvar:', ghosted_id, &
+    write(debug_unit,'(a,i5,i3,7es24.15)') 'auxvar:', natural_id, &
                         global_auxvars(ghosted_id)%istate, &
                         xx_loc_p(ghosted_start:ghosted_end)
   endif
@@ -786,6 +787,8 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
+      !geh: negate to indicate boundary connection, not actual cell
+      natural_id = -grid%nG2A(ghosted_id) 
       offset = (ghosted_id-1)*option%nflowdof
       if (patch%imat(ghosted_id) <= 0) cycle
 
@@ -906,7 +909,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                                 material_auxvars(ghosted_id), &
                                 patch%characteristic_curves_array( &
                                   patch%sat_func_id(ghosted_id))%ptr, &
-                                ghosted_id, &
+                                natural_id, &
                                 option)
       ! update state and update aux var; this could result in two update to 
       ! the aux var as update state updates if the state changes
@@ -915,10 +918,10 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
                                     material_auxvars(ghosted_id), &
                                     patch%characteristic_curves_array( &
                                       patch%sat_func_id(ghosted_id))%ptr, &
-                                    ghosted_id,option)
+                                    natural_id,option)
 #ifdef DEBUG_GENERAL_FILEOUTPUT
       if (debug_flag > 0) then
-        write(debug_unit,'(a,i5,i3,7es24.15)') 'bc_auxvar:', ghosted_id, &
+        write(debug_unit,'(a,i5,i3,7es24.15)') 'bc_auxvar:', natural_id, &
                            global_auxvars_bc(ghosted_id)%istate, &
                             xxbc(:)
       endif
@@ -964,7 +967,7 @@ subroutine GeneralUpdateFixedAccum(realization)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(material_parameter_type), pointer :: material_parameter
 
-  PetscInt :: ghosted_id, local_id, local_start, local_end
+  PetscInt :: ghosted_id, local_id, local_start, local_end, natural_id
   PetscInt :: imat
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
   PetscReal, pointer :: accum_p(:), accum_p2(:)
@@ -995,6 +998,7 @@ subroutine GeneralUpdateFixedAccum(realization)
     !geh - Ignore inactive cells with inactive materials
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
+    natural_id = grid%nG2A(ghosted_id)
     local_end = local_id*option%nflowdof
     local_start = local_end - option%nflowdof + 1
     ! GENERAL_UPDATE_FOR_FIXED_ACCUM indicates call from non-perturbation
@@ -1005,7 +1009,7 @@ subroutine GeneralUpdateFixedAccum(realization)
                               material_auxvars(ghosted_id), &
                               patch%characteristic_curves_array( &
                                 patch%sat_func_id(ghosted_id))%ptr, &
-                              ghosted_id, &
+                              natural_id, &
                               option)
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
                              material_auxvars(ghosted_id), &
@@ -2773,7 +2777,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   PetscInt :: icap_up,icap_dn
   PetscReal :: qsrc, scale
   PetscInt :: imat, imat_up, imat_dn
-  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id, ghosted_id, natural_id
   PetscInt :: irow
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
@@ -2846,12 +2850,13 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   ! Perturb aux vars
   do ghosted_id = 1, grid%ngmax  ! For each local node do...
     if (patch%imat(ghosted_id) <= 0) cycle
+    natural_id = grid%nG2A(ghosted_id)
     call GeneralAuxVarPerturb(gen_auxvars(:,ghosted_id), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
                               patch%characteristic_curves_array( &
                                 patch%sat_func_id(ghosted_id))%ptr, &
-                              ghosted_id,option)
+                              natural_id,option)
   enddo
   
 #ifdef DEBUG_GENERAL_LOCAL
