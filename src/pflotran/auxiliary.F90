@@ -9,6 +9,7 @@ module Auxiliary_module
   use Miscible_Aux_module
   use Flash2_Aux_module
   use General_Aux_module
+  use TOilIms_Aux_module
   use Material_Aux_class
   use Secondary_Continuum_Aux_module
   
@@ -30,6 +31,7 @@ module Auxiliary_module
     type(miscible_type), pointer :: Miscible
     type(flash2_type), pointer :: Flash2
     type(general_type), pointer :: General
+    type(toil_ims_type), pointer :: TOil_ims
     type(material_type), pointer :: Material
     type(sc_heat_type), pointer :: SC_heat
     type(sc_rt_type), pointer :: SC_RT
@@ -64,6 +66,7 @@ subroutine AuxInit(aux)
   nullify(aux%Flash2)
   nullify(aux%Miscible)
   nullify(aux%General)
+  nullify(aux%TOil_ims)
   nullify(aux%Material)
   nullify(aux%SC_heat)
   nullify(aux%SC_RT)
@@ -91,6 +94,7 @@ subroutine AuxDestroy(aux)
   call MphaseAuxDestroy(aux%Mphase)
   call MiscibleAuxDestroy(aux%Miscible)
   call GeneralAuxDestroy(aux%General)
+  call TOilImsAuxDestroy(aux%TOil_ims)
   call MaterialAuxDestroy(aux%Material)
   call SecondaryAuxHeatDestroy(aux%SC_heat)
   call SecondaryAuxRTDestroy(aux%SC_RT)
@@ -101,6 +105,7 @@ subroutine AuxDestroy(aux)
   nullify(aux%Immis)
   nullify(aux%Miscible)
   nullify(aux%General)
+  nullify(aux%TOil_ims)
   nullify(aux%Material)
   nullify(aux%SC_Heat)
   nullify(aux%SC_RT)

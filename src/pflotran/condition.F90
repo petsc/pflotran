@@ -44,6 +44,7 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: displacement_y
     type(flow_sub_condition_type), pointer :: displacement_z
     type(flow_general_condition_type), pointer :: general
+    type(flow_toil_ims_condition_type), pointer :: toil_ims  
     type(sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
     type(flow_condition_type), pointer :: next ! pointer to next condition_type for linked-lists
   end type flow_condition_type
@@ -60,6 +61,22 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: gas_flux
     type(flow_sub_condition_type), pointer :: energy_flux
   end type flow_general_condition_type
+
+  ! data structure for toil_ims
+  type, public :: flow_toil_ims_condition_type
+    !type(flow_sub_condition_type), pointer :: liquid_pressure
+    !type(flow_sub_condition_type), pointer :: oil_pressure
+    !type(flow_sub_condition_type), pointer :: oil_saturation
+    type(flow_sub_condition_type), pointer :: pressure
+    type(flow_sub_condition_type), pointer :: saturation
+    type(flow_sub_condition_type), pointer :: temperature
+    type(flow_sub_condition_type), pointer :: enthalpy
+    type(flow_sub_condition_type), pointer :: rate
+    !PO: to add well when adding well capabilities.
+    type(flow_sub_condition_type), pointer :: liquid_flux
+    type(flow_sub_condition_type), pointer :: oil_flux
+    type(flow_sub_condition_type), pointer :: energy_flux
+  end type flow_toil_ims_condition_type
     
   type, public :: flow_sub_condition_type
     PetscInt :: itype                  ! integer describing type of condition
@@ -109,7 +126,7 @@ module Condition_module
   end type tran_condition_list_type
   
   public :: FlowConditionCreate, FlowConditionDestroy, FlowConditionRead, &
-            FlowConditionGeneralRead, &
+            FlowConditionGeneralRead, FlowConditionTOilImsRead, &
             FlowConditionAddToList, FlowConditionInitList, &
             FlowConditionDestroyList, &
             FlowConditionGetPtrFromList, FlowConditionUpdate, &
@@ -161,6 +178,7 @@ function FlowConditionCreate(option)
   nullify(condition%displacement_z)
   nullify(condition%sub_condition_ptr)
   nullify(condition%general)
+  nullify(condition%toil_ims)
   nullify(condition%itype)
   nullify(condition%next)
   nullify(condition%datum)
@@ -242,6 +260,39 @@ function FlowGeneralConditionCreate(option)
   FlowGeneralConditionCreate => general_condition
 
 end function FlowGeneralConditionCreate
+
+! ************************************************************************** !
+
+function FlowTOilImsConditionCreate(option)
+  ! 
+  ! Creates a condition for toil_ims mode
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 09/9/2015
+  ! 
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(flow_toil_ims_condition_type), pointer :: FlowTOilImsConditionCreate
+  
+  type(flow_toil_ims_condition_type), pointer :: toil_ims_condition
+
+  allocate(toil_ims_condition)
+  nullify(toil_ims_condition%pressure)
+  nullify(toil_ims_condition%saturation)
+  nullify(toil_ims_condition%temperature)
+  nullify(toil_ims_condition%enthalpy)
+  nullify(toil_ims_condition%rate)
+  nullify(toil_ims_condition%liquid_flux)
+  nullify(toil_ims_condition%oil_flux)
+  nullify(toil_ims_condition%energy_flux)
+
+  FlowTOilImsConditionCreate => toil_ims_condition
+
+end function FlowTOilImsConditionCreate
 
 ! ************************************************************************** !
 
@@ -339,6 +390,98 @@ function FlowGeneralSubConditionPtr(sub_condition_name,general, &
   FlowGeneralSubConditionPtr => sub_condition_ptr
 
 end function FlowGeneralSubConditionPtr
+
+! ************************************************************************** !
+
+function FlowTOilImsSubConditionPtr(sub_condition_name,toil_ims, &
+                                    option)
+  ! 
+  ! Returns a pointer to a subcondition, creating
+  ! them if necessary for toil_ims flow mode
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 09/09/2015
+  ! 
+
+  use Option_module
+  use Input_Aux_module, only : InputKeywordUnrecognized
+
+  implicit none
+
+  character(len=MAXWORDLENGTH) :: sub_condition_name
+  type(flow_toil_ims_condition_type) :: toil_ims
+  type(option_type) :: option
+
+  type(flow_sub_condition_type), pointer :: FlowTOilImsSubConditionPtr
+  type(flow_sub_condition_type), pointer :: sub_condition_ptr
+
+  select case(sub_condition_name)
+    case('PRESSURE')
+      if (associated(toil_ims%pressure)) then
+        sub_condition_ptr => toil_ims%pressure
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        toil_ims%pressure => sub_condition_ptr
+      endif
+    case('LIQUID_SATURATION','OIL_SATURATION')
+      if (associated(toil_ims%saturation)) then
+        sub_condition_ptr => toil_ims%saturation
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        toil_ims%saturation => sub_condition_ptr
+      endif
+    case('TEMPERATURE')
+      if (associated(toil_ims%temperature)) then
+        sub_condition_ptr => toil_ims%temperature
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        toil_ims%temperature => sub_condition_ptr
+      endif
+    case('ENTHALPY')
+      if (associated(toil_ims%enthalpy)) then
+        sub_condition_ptr => toil_ims%enthalpy
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        toil_ims%enthalpy => sub_condition_ptr
+      endif
+    case('LIQUID_FLUX')
+      if (associated(toil_ims%liquid_flux)) then
+        sub_condition_ptr => toil_ims%liquid_flux
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        toil_ims%liquid_flux => sub_condition_ptr
+      endif
+    case('OIL_FLUX')
+      if (associated(toil_ims%oil_flux)) then
+        sub_condition_ptr => toil_ims%oil_flux
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        toil_ims%oil_flux => sub_condition_ptr
+      endif
+    case('ENERGY_FLUX')
+      if (associated(toil_ims%energy_flux)) then
+        sub_condition_ptr => toil_ims%energy_flux
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        toil_ims%energy_flux => sub_condition_ptr
+      endif
+    case('RATE')
+      if (associated(toil_ims%rate)) then
+        sub_condition_ptr => toil_ims%rate
+      else
+        ! energy rate is loaded in the third record
+        sub_condition_ptr => FlowSubConditionCreate(THREE_INTEGER)
+        toil_ims%rate => sub_condition_ptr
+      endif
+    ! to add well for multiple 
+    case default
+      call InputKeywordUnrecognized(sub_condition_name, &
+                                    'toil_ims condition,type',option)
+  end select
+
+  FlowTOilImsSubConditionPtr => sub_condition_ptr
+
+end function FlowTOilImsSubConditionPtr
 
 ! ************************************************************************** !
 
@@ -962,6 +1105,9 @@ subroutine FlowConditionRead(condition,input,option)
   select case(option%iflowmode)
     case(G_MODE)
       option%io_buffer = 'General mode not supported in original FlowConditionRead.'
+      call printMsg(option)
+    case(TOIL_IMS_MODE)
+      option%io_buffer = 'TOilIms mode not supported in original FlowConditionRead.'
       call printMsg(option)
     case(MPH_MODE,IMS_MODE,FLASH2_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)&
@@ -1681,6 +1827,450 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   call PetscLogEventEnd(logging%event_flow_condition_read,ierr);CHKERRQ(ierr)
 
 end subroutine FlowConditionGeneralRead
+
+! ************************************************************************** !
+
+subroutine FlowConditionTOilImsRead(condition,input,option)
+  ! 
+  ! Reads a condition from the input file for
+  ! toil_ims mode
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 9/9/2015
+  ! 
+
+  use Option_module
+  use Input_Aux_module
+  use String_module
+  use Logging_module
+  use Time_Storage_module
+  use Dataset_module
+  
+  use TOilIms_Aux_module
+  
+  implicit none
+  
+  type(flow_condition_type) :: condition
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  type(flow_toil_ims_condition_type), pointer :: toil_ims
+  type(flow_sub_condition_type), pointer :: sub_condition_ptr
+  PetscReal :: default_time
+  PetscInt :: default_iphase
+  class(dataset_base_type), pointer :: default_flow_dataset
+  class(dataset_base_type), pointer :: default_gradient
+  PetscInt :: idof, i
+  PetscBool :: default_is_cyclic
+  type(time_storage_type), pointer :: default_time_storage
+  class(dataset_ascii_type), pointer :: dataset_ascii  
+  PetscErrorCode :: ierr
+
+  call PetscLogEventBegin(logging%event_flow_condition_read, &
+                          ierr);CHKERRQ(ierr)
+
+
+  default_time = 0.d0
+  default_iphase = 0
+  
+  default_time_storage => TimeStorageCreate()
+  default_time_storage%is_cyclic = PETSC_FALSE
+  default_time_storage%time_interpolation_method = INTERPOLATION_STEP
+  
+  select case(option%iflowmode)
+    ! do we really need this select case??
+    case(TOIL_IMS_MODE)
+      toil_ims => FlowTOilImsConditionCreate(option)
+      condition%toil_ims => toil_ims
+  end select
+  
+  ! read the condition
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+    call InputReadStringErrorMsg(input,option,'CONDITION')
+          
+    if (InputCheckExit(input,option)) exit  
+
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','CONDITION')   
+      
+    select case(trim(word))
+    
+      case('CYCLIC')
+        ! by default, is_cyclic is set to PETSC_FALSE
+        default_time_storage%is_cyclic = PETSC_TRUE
+      case('SYNC_TIMESTEP_WITH_UPDATE')
+        condition%sync_time_with_update = PETSC_TRUE
+      case('INTERPOLATION')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'INTERPOLATION','CONDITION')   
+        call StringToLower(word)
+        select case(word)
+          case('step')
+            default_time_storage%time_interpolation_method = &
+              INTERPOLATION_STEP
+          case('linear') 
+            default_time_storage%time_interpolation_method = &
+              INTERPOLATION_LINEAR
+        end select
+      case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
+        do
+          call InputReadPflotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'CONDITION')
+          
+          if (InputCheckExit(input,option)) exit          
+          
+          if (InputError(input)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
+          call StringToUpper(word)
+          select case(option%iflowmode)
+            ! do we need this select case?
+            case(TOIL_IMS_MODE)
+              sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
+                                                              option)
+          end select
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'TYPE','CONDITION')   
+          call StringToLower(word)
+          sub_condition_ptr%ctype = word
+          select case(word)
+            case('dirichlet')
+              sub_condition_ptr%itype = DIRICHLET_BC
+            case('neumann')
+              sub_condition_ptr%itype = NEUMANN_BC
+            case('hydrostatic')
+              sub_condition_ptr%itype = HYDROSTATIC_BC
+            case('conductance')
+              sub_condition_ptr%itype = CONDUCTANCE_BC
+            case('seepage')
+              sub_condition_ptr%itype = SEEPAGE_BC
+            case('zero_gradient')
+              sub_condition_ptr%itype = ZERO_GRADIENT_BC
+            case('mass_rate')
+              sub_condition_ptr%itype = MASS_RATE_SS 
+            !case('mass_rate_enthalpy')
+            !  sub_condition_ptr%itype = MASS_RATE_ENTHALPY_SS
+            case('scaled_mass_rate')
+              sub_condition_ptr%itype = SCALED_MASS_RATE_SS
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                call StringToLower(word)
+                sub_condition_ptr%ctype = trim(sub_condition_ptr%ctype) // word
+                select case(word)
+                  case('neighbor_perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                  case('volume')
+                    sub_condition_ptr%isubtype = SCALE_BY_VOLUME
+                  case('perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_PERM
+                  case default
+                    string = 'flow condition "' // trim(condition%name) // &
+                      '" scaled_mass_rate type'
+                    call InputKeywordUnrecognized(word,string,option)
+                end select
+              else
+                option%io_buffer = 'Specify one of NEIGHBOR_PERM, ' // &
+                  'VOLUME, PERM subtypes in '// &
+                  'flow condition "' // trim(condition%name) // &
+                  '" scaled_mass_rate type'
+                call printErrMsg(option)
+              endif
+            case('volumetric_rate')
+              sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
+            case('scaled_volumetric_rate')
+              sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                call StringToLower(word)
+                sub_condition_ptr%ctype = trim(sub_condition_ptr%ctype) // word
+                select case(word)
+                  case('neighbor_perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
+                  case('volume')
+                    sub_condition_ptr%isubtype = SCALE_BY_VOLUME
+                  case('perm')
+                    sub_condition_ptr%isubtype = SCALE_BY_PERM
+                  case default
+                    string = 'flow condition "' // trim(condition%name) // &
+                      '" scaled_volumetric_rate type'
+                    call InputKeywordUnrecognized(word,string,option)
+                end select
+              else
+                option%io_buffer = 'Specify one of NEIGHBOR_PERM, ' // &
+                  'VOLUME, PERM subtypes in '// &
+                  'flow condition "' // trim(condition%name) // &
+                  '" scaled_volumetric_rate type'
+                call printErrMsg(option)
+              endif
+            case('heterogeneous_volumetric_rate')
+              sub_condition_ptr%itype = HET_VOL_RATE_SS
+            case('heterogeneous_mass_rate')
+              sub_condition_ptr%itype = HET_MASS_RATE_SS
+            case('heterogeneous_dirichlet')
+              sub_condition_ptr%itype = HET_DIRICHLET
+            case('heterogeneous_surface_seepage')
+              sub_condition_ptr%itype = HET_SURF_SEEPAGE_BC
+            case default
+              call InputKeywordUnrecognized(word,'flow condition,type',option)
+          end select
+        enddo
+      case('DATUM')
+        dataset_ascii => DatasetAsciiCreate()
+        call DatasetAsciiInit(dataset_ascii)
+        dataset_ascii%array_width = 3
+        dataset_ascii%data_type = DATASET_REAL
+        condition%datum => dataset_ascii
+        nullify(dataset_ascii)        
+        call ConditionReadValues(input,option,word, &
+                                     condition%datum,word)
+      case('GRADIENT')
+        do
+          call InputReadPflotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'CONDITION')
+          
+          if (InputCheckExit(input,option)) exit          
+          
+          if (InputError(input)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
+          call StringToUpper(word)
+          select case(option%iflowmode)
+            case(TOIL_IMS_MODE)
+              sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
+                                                              option)
+          end select
+          dataset_ascii => DatasetAsciiCreate()
+          call DatasetAsciiInit(dataset_ascii)
+          dataset_ascii%array_width = 3
+          dataset_ascii%data_type = DATASET_REAL
+          sub_condition_ptr%gradient => dataset_ascii
+          nullify(dataset_ascii)
+          call ConditionReadValues(input,option,word, &
+                                   sub_condition_ptr%gradient,word)
+          nullify(sub_condition_ptr)
+        enddo
+      case('CONDUCTANCE')
+        word = 'PRESSURE'
+        select case(option%iflowmode)
+          case(TOIL_IMS_MODE)
+            sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
+                                                            option)
+        end select
+        call InputReadDouble(input,option,sub_condition_ptr%aux_real(1))
+        call InputErrorMsg(input,option,'LIQUID_CONDUCTANCE','CONDITION')   
+      case('PRESSURE','LIQUID_SATURATION', &
+           'OIL_SATURATION','TEMPERATURE','RATE', &
+           'LIQUID_FLUX','OIL_FLUX','ENERGY_FLUX','ENTHALPY')
+        select case(option%iflowmode)
+          case(TOIL_IMS_MODE)
+            sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
+                                                            option)
+        end select
+        select case(trim(word))
+          case('RATE','ENERGY_FLUX')
+            input%force_units = PETSC_TRUE
+            input%err_buf = word
+        end select
+        call ConditionReadValues(input,option,word, &
+                                 sub_condition_ptr%dataset, &
+                                 sub_condition_ptr%units)
+        input%force_units = PETSC_FALSE
+        select case(word)
+          case('LIQUID_SATURATION') ! convert to oil saturation
+            if (associated(sub_condition_ptr%dataset%rbuffer)) then
+              sub_condition_ptr%dataset%rbuffer(:) = 1.d0 - &
+                sub_condition_ptr%dataset%rbuffer(:)
+            endif
+            sub_condition_ptr%dataset%rarray(:) = 1.d0 - &
+              sub_condition_ptr%dataset%rarray(:)
+        end select
+      case default
+        call InputKeywordUnrecognized(word,'flow condition',option)
+    end select 
+  
+  enddo  
+  
+  ! datum is not required
+  call DatasetVerify(condition%datum,default_time_storage,option)
+
+  ! phase condition should never be used in TOilIms
+  condition%iphase = ZERO_INTEGER
+
+  ! unless the coondtion is rate:
+  ! - pressure is required
+  ! - water or oil saturation is required
+  ! - temperature is required
+  if (.not.associated(toil_ims%rate)) then
+    ! this branch is executed for sub_conditions that are not a rate
+    ! some sort of dirichlet-based pressure, temperature, etc.
+    if (.not.associated(toil_ims%pressure)) then
+      option%io_buffer = 'TOilIms Phase non-rate condition must ' // &
+        'include a pressure'
+      call printErrMsg(option)
+    endif
+
+    if (.not.associated(toil_ims%saturation) ) then
+      option%io_buffer = 'TOilIms Phase non-rate condition must ' // &
+        'include liquid or oil saturation'
+      call printErrMsg(option)
+    endif
+    if (.not.associated(toil_ims%temperature)) then
+      option%io_buffer = 'TOilIms Phase non-rate condition must ' // &
+        'include temperature'
+      call printErrMsg(option)
+    endif
+  endif
+
+  ! control that enthalpy is used for src/sink only
+  if ( (.not.associated(toil_ims%rate)) .and. &
+        associated(toil_ims%enthalpy)  ) then
+      option%io_buffer = 'TOilIms Enthlapy condition is not' // &
+       'currently supported for boundary & initial conditions'
+      call printErrMsg(option)          
+  end if
+  ! within a src/sink either temp or enthalpy can be defined   
+  if (associated(toil_ims%rate)) then
+    if( associated(toil_ims%temperature).and. &
+        associated(toil_ims%enthalpy) &
+      ) then
+      option%io_buffer = 'TOilIms Rate condition can ' // &
+       'have either temp or enthalpy'
+      call printErrMsg(option)      
+    end if
+    ! only dirich condition supported for src/sink temp or enthalpy
+    if( ( associated(toil_ims%temperature).and. &
+          (toil_ims%temperature%itype /= DIRICHLET_BC) &
+        ) .or. &
+        ( associated(toil_ims%enthalpy).and. &
+          (toil_ims%enthalpy%itype /= DIRICHLET_BC ) &
+        ) &
+      ) then
+      option%io_buffer = 'TOilIms Src/Sink; only dirichlet type ' // &
+       'is supported for temperature and enthalpy conditions'
+      call printErrMsg(option)      
+    end if
+
+    ! in the casew below enthalpy or temperature overwrite energy rate
+    !if( ( associated(toil_ims%temperature).or. &
+    !      associated(toil_ims%enthalpy) &
+    !    ) .and. &
+    !    ( size(toil_ims%rate%dataset%rarray) == THREE_INTEGER ) &
+    !  ) then 
+    !  option%io_buffer = 'TOilIms Src/Sink error: ' // &
+    !   'either define enery rate or temperature/enthalpy value'
+    !  call printErrMsg(option)      
+    !end if
+  end if ! end if rate
+
+
+  ! verify the datasets
+  word = 'pressure'
+  call FlowSubConditionVerify(option,condition,word,toil_ims%pressure, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'oil saturation'
+  call FlowSubConditionVerify(option,condition,word,toil_ims%saturation, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'temperature'
+  call FlowSubConditionVerify(option,condition,word,toil_ims%temperature, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'enthalpy'
+  call FlowSubConditionVerify(option,condition,word,toil_ims%enthalpy, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'liquid flux'
+  call FlowSubConditionVerify(option,condition,word,toil_ims%liquid_flux, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'oil flux'
+  call FlowSubConditionVerify(option,condition,word,toil_ims%oil_flux, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'energy flux'
+  call FlowSubConditionVerify(option,condition,word,toil_ims%energy_flux, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'rate'
+  call FlowSubConditionVerify(option,condition,word,toil_ims%rate, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+
+  condition%num_sub_conditions = 0
+  i = 0
+  if (associated(toil_ims%pressure)) &
+    i = i + 1
+  if (associated(toil_ims%saturation)) &
+    i = i + 1
+  if (associated(toil_ims%temperature)) &
+    i = i + 1
+  if (associated(toil_ims%enthalpy)) &
+    i = i + 1
+  if (associated(toil_ims%liquid_flux)) &
+    i = i + 1
+  if (associated(toil_ims%oil_flux)) &
+    i = i + 1
+  if (associated(toil_ims%energy_flux)) &
+    i = i + 1
+  if (associated(toil_ims%rate)) &
+    i = i + 1
+  ! assing number of sub_condition
+  condition%num_sub_conditions = i
+  allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+  do idof = 1, condition%num_sub_conditions
+    nullify(condition%sub_condition_ptr(idof)%ptr)
+  enddo
+  i = 0
+  if (associated(toil_ims%pressure)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => toil_ims%pressure
+  endif
+  if (associated(toil_ims%saturation)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => toil_ims%saturation
+  endif  
+  if (associated(toil_ims%temperature)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => toil_ims%temperature
+  endif 
+  if (associated(toil_ims%enthalpy)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => toil_ims%enthalpy
+  endif  
+  if (associated(toil_ims%liquid_flux)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => toil_ims%liquid_flux
+  endif  
+  if (associated(toil_ims%oil_flux)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => toil_ims%oil_flux
+  endif  
+  if (associated(toil_ims%energy_flux)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => toil_ims%energy_flux
+  endif  
+  if (associated(toil_ims%rate)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => toil_ims%rate
+  endif
+
+  ! set condition types
+  allocate(condition%itype(condition%num_sub_conditions))
+  do idof = 1, condition%num_sub_conditions
+    condition%itype(idof) = condition%sub_condition_ptr(idof)%ptr%itype
+  enddo
+  
+  condition%default_time_storage => default_time_storage
+    
+  call PetscLogEventEnd(logging%event_flow_condition_read,ierr);CHKERRQ(ierr)
+
+end subroutine FlowConditionTOilImsRead
 
 ! ************************************************************************** !
 
@@ -2524,6 +3114,7 @@ function FlowConditionIsTransient(condition)
       FlowSubConditionIsTransient(condition%well) .or. &
       FlowSubConditionIsTransient(condition%enthalpy) .or. &
       FlowSubConditionIsTransient(condition%energy_rate) .or. &
+      FlowConditionTOilImsIsTransient(condition%toil_ims) .or. &
       FlowConditionGeneralIsTransient(condition%general)) then
     FlowConditionIsTransient = PETSC_TRUE
   endif
@@ -2565,6 +3156,40 @@ function FlowConditionGeneralIsTransient(condition)
   endif
   
 end function FlowConditionGeneralIsTransient
+
+! ************************************************************************** !
+
+function FlowConditionTOilImsIsTransient(condition)
+  ! 
+  ! Returns PETSC_TRUE
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/20/15
+  ! 
+
+  use Dataset_module
+
+  implicit none
+  
+  type(flow_toil_ims_condition_type), pointer :: condition
+  
+  PetscBool :: FlowConditionTOilImsIsTransient
+  
+  FlowConditionTOilImsIsTransient = PETSC_FALSE
+
+  if (.not.associated(condition)) return
+  
+  if (FlowSubConditionIsTransient(condition%pressure) .or. &
+      FlowSubConditionIsTransient(condition%saturation) .or. &
+      FlowSubConditionIsTransient(condition%temperature) .or. &
+      FlowSubConditionIsTransient(condition%rate) .or. &
+      FlowSubConditionIsTransient(condition%liquid_flux) .or. &
+      FlowSubConditionIsTransient(condition%oil_flux) .or. &
+      FlowSubConditionIsTransient(condition%energy_flux)) then
+    FlowConditionTOilImsIsTransient = PETSC_TRUE
+  endif
+  
+end function FlowConditionTOilImsIsTransient
 
 ! ************************************************************************** !
 
@@ -2685,6 +3310,7 @@ subroutine FlowConditionDestroy(condition)
 
   call TimeStorageDestroy(condition%default_time_storage)
   call FlowGeneralConditionDestroy(condition%general)
+  call FlowToilConditionDestroy(condition%toil_ims)
   
   nullify(condition%next)  
   
@@ -2725,6 +3351,38 @@ subroutine FlowGeneralConditionDestroy(general_condition)
   nullify(general_condition)
 
 end subroutine FlowGeneralConditionDestroy
+
+! ************************************************************************** !
+
+subroutine FlowToilConditionDestroy(toil_ims_condition)
+  ! 
+  ! Destroys a toil_ims mode condition
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/06/15
+  ! 
+
+  use Option_module
+  
+  implicit none
+  
+  type(flow_toil_ims_condition_type), pointer :: toil_ims_condition
+  
+  if (.not.associated(toil_ims_condition)) return!
+
+  call FlowSubConditionDestroy(toil_ims_condition%pressure)
+  call FlowSubConditionDestroy(toil_ims_condition%saturation)
+  call FlowSubConditionDestroy(toil_ims_condition%temperature)
+  call FlowSubConditionDestroy(toil_ims_condition%enthalpy)
+  call FlowSubConditionDestroy(toil_ims_condition%liquid_flux)
+  call FlowSubConditionDestroy(toil_ims_condition%oil_flux)
+  call FlowSubConditionDestroy(toil_ims_condition%energy_flux)
+  call FlowSubConditionDestroy(toil_ims_condition%rate)
+
+  deallocate(toil_ims_condition)
+  nullify(toil_ims_condition)
+
+end subroutine FlowToilConditionDestroy
 
 ! ************************************************************************** !
 

@@ -33,6 +33,7 @@ module PFLOTRAN_Constants_module
   PetscReal, parameter, public :: FMWCO2 = 44.0098d0
   PetscReal, parameter, public :: FMWAIR = 28.96d0
   PetscReal, parameter, public :: FMWGLYC = 76.09d0 ! propylene glycol (C3H8O2)
+  PetscReal, parameter, public :: FMWOIL = 142.D0 ! used as deafault value
 
   ! constants
   PetscReal, parameter, public :: H2O_CRITICAL_TEMPERATURE = 647.3d0  ! K
@@ -120,6 +121,7 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: G_MODE = 5
   PetscInt, parameter, public :: MIS_MODE = 6
   PetscInt, parameter, public :: TH_MODE = 7
+  PetscInt, parameter, public :: TOIL_IMS_MODE = 8
   
   ! transport modes
   PetscInt, parameter, public :: EXPLICIT_ADVECTION = 1

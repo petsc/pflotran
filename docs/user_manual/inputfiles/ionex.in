@@ -53,21 +53,21 @@ CO2(g)
 MINERALS
 Halite
 /
-#
+
 MINERAL_KINETICS
 Halite
 RATE_CONSTANT 1.e-30
 /
 /
 SORPTION
-ION_EXCHANGE_RXN
-MINERAL Halite
-CEC 71.004  ! mol/m^3
-CATIONS
-Na+   7.94328
-Ca++  1.
-Mg++  1.44544
-/
+  ION_EXCHANGE_RXN
+# MINERAL Halite
+  CEC 71.004  ! mol/m^3
+  CATIONS
+    Ca++   1.0 REFERENCE
+    Na+    0.125893
+    Mg++   0.691831
+  /
 /
 /
 DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
@@ -76,6 +76,8 @@ ACTIVITY_COEFFICIENTS ! NEWTON_ITERATION
 MOLAL
 OUTPUT
 All
+TOTAL
+FREE_ION
 /
 /
 

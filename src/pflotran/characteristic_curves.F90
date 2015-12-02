@@ -277,6 +277,14 @@ module Characteristic_Curves_module
   contains
     procedure, public :: RelativePermeability => RPF_BRAGFLO_KRP12_Gas_RelPerm
   end type rpf_BRAGFLO_KRP12_gas_type
+  ! Oil relative permeability functions
+  type, public, extends(rel_perm_func_base_type) :: rpf_TOUGH2_Linear_Oil_type
+    PetscReal :: Sro !
+  contains
+    procedure, public :: Init => RPF_TOUGH2_Linear_Oil_Init 
+    procedure, public :: Verify => RPF_TOUGH2_Linear_Oil_Verify
+    procedure, public :: RelativePermeability => RPF_TOUGH2_Linear_Oil_RelPerm
+  end type rpf_TOUGH2_Linear_Oil_type
   ! End Relative Permeability Functions
   
   type, public :: characteristic_curves_type
@@ -286,6 +294,7 @@ module Characteristic_Curves_module
     class(sat_func_base_type), pointer :: saturation_function
     class(rel_perm_func_base_type), pointer :: liq_rel_perm_function
     class(rel_perm_func_base_type), pointer :: gas_rel_perm_function
+    class(rel_perm_func_base_type), pointer :: oil_rel_perm_function
     class(characteristic_curves_type), pointer :: next
   end type characteristic_curves_type
   
@@ -359,6 +368,7 @@ function CharacteristicCurvesCreate()
   nullify(characteristic_curves%saturation_function)
   nullify(characteristic_curves%liq_rel_perm_function)
   nullify(characteristic_curves%gas_rel_perm_function)
+  nullify(characteristic_curves%oil_rel_perm_function)
   nullify(characteristic_curves%next)
 
   CharacteristicCurvesCreate => characteristic_curves
@@ -489,6 +499,9 @@ subroutine CharacteristicCurvesRead(this,input,option)
           case('BRAGFLO_KRP12_GAS')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP12_Gas_Create()
             phase_keyword = 'GAS'
+          case('TOUGH2_LINEAR_OIL')
+            rel_perm_function_ptr => RPF_TOUGH2_Linear_Oil_Create()
+            phase_keyword = 'OIL'
           case default
             call InputKeywordUnrecognized(word,'PERMEABILITY_FUNCTION',option)
         end select
@@ -500,6 +513,13 @@ subroutine CharacteristicCurvesRead(this,input,option)
             this%gas_rel_perm_function => rel_perm_function_ptr
           case('LIQUID')
             this%liq_rel_perm_function => rel_perm_function_ptr
+          case('OIL')
+            this%oil_rel_perm_function => rel_perm_function_ptr 
+            ! PO: gas_rel_perm_fucntion initiated oil_rel_perm_function
+            ! to pass the verification in CharacteristicCurvesVerify
+            ! in case gas_rel_perm_function is not defined in the input
+            ! We should change CharacteristicCurvesVerify instead
+            this%gas_rel_perm_function => rel_perm_function_ptr
           case('NONE')
             this%gas_rel_perm_function => rel_perm_function_ptr
             this%liq_rel_perm_function => rel_perm_function_ptr
@@ -760,6 +780,8 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
       error_string = trim(error_string) // 'BURDINE_BF_KRP12_LIQ'
     class is(rpf_BRAGFLO_KRP12_gas_type)
       error_string = trim(error_string) // 'BURDINE_BF_KRP12_GAS'
+    class is(rpf_TOUGH2_Linear_Oil_type)
+      error_string = trim(error_string) // 'TOUGH2_Linear_OIL'
   end select
 
   do
@@ -1026,6 +1048,16 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
               'BRAGFLO KRP4 gas relative permeability function', &
               option)
         end select
+      class is(rpf_TOUGH2_Linear_Oil_type)
+        select case(keyword)
+          case('OIL_RESIDUAL_SATURATION') 
+            call InputReadDouble(input,option,rpf%Sro)
+            call InputErrorMsg(input,option,'Sro',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+              'TOUGH2 LINEAR oil relative permeability function', &
+              option)
+        end select
       class default
         option%io_buffer = 'Read routine not implemented for relative ' // &
                            'permeability function class.'
@@ -1192,6 +1224,8 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
         CharCurvesGetGetResidualSats(2) = rpf%Sr
       class is(rpf_BRAGFLO_KRP11_gas_type)
         CharCurvesGetGetResidualSats(2) = rpf%Srg
+      class is(rpf_TOUGH2_Linear_Oil_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Sro
       class default
         option%io_buffer = 'Relative permeability class not supported in ' // &
           'CharCurvesGetGetResidualSats.'
@@ -1298,6 +1332,12 @@ subroutine CharacteristicCurvesVerify(characteristic_curves,option)
   call characteristic_curves%saturation_function%Verify(string,option)
   call characteristic_curves%liq_rel_perm_function%Verify(string,option)
   call characteristic_curves%gas_rel_perm_function%Verify(string,option)
+
+  ! PO We should verify only the rel_perm_functions that have been created
+  ! change the above accordingly, at least for gas, while liq is alway present. 
+  if(associated(characteristic_curves%oil_rel_perm_function) ) then  
+    call characteristic_curves%oil_rel_perm_function%Verify(string,option) 
+  end if
   
 end subroutine CharacteristicCurvesVerify
 ! End Characteristic Curves
@@ -4993,6 +5033,114 @@ end subroutine RPF_BRAGFLO_KRP12_Gas_RelPerm
   
 ! ************************************************************************** !
   
+! Begin RPF: TOUGH2, Linear (Oil) 
+function RPF_TOUGH2_Linear_Oil_Create()
+
+  ! Creates the TOUGH2 Linear oil relative permeability function object
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/19/2015
+
+  class(rpf_TOUGH2_Linear_Oil_type), pointer :: RPF_TOUGH2_Linear_Oil_Create
+
+  allocate(RPF_TOUGH2_Linear_Oil_Create)
+  call RPF_TOUGH2_Linear_Oil_Create%Init()
+
+end function RPF_TOUGH2_Linear_Oil_Create
+
+! ************************************************************************** !
+
+subroutine RPF_TOUGH2_Linear_Oil_Init(this)
+
+  ! Initializes the TOUGH2 Linear Oil relative permeability function 
+  ! object
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/19/2015
+
+  implicit none
+  
+  class(rpf_TOUGH2_Linear_Oil_type) :: this
+
+  call RPFBaseInit(this)
+  this%Sro = UNINITIALIZED_DOUBLE
+  
+end subroutine RPF_TOUGH2_Linear_Oil_Init
+
+! ************************************************************************** !
+
+subroutine RPF_TOUGH2_Linear_Oil_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(rpf_TOUGH2_Linear_Oil_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string 
+
+  if (index(name,'PERMEABILITY_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'PERMEABILITY_FUNCTION,TOUGH2_LINEAR_OIL'
+  endif    
+  call RPFBaseVerify(this,string,option)
+  if (Uninitialized(this%Sro)) then
+    option%io_buffer = UninitializedMessage('OIL_RESIDUAL_SATURATION',string)
+    call printErrMsg(option)
+  endif  
+  
+end subroutine RPF_TOUGH2_Linear_Oil_Verify
+
+! ************************************************************************** !
+
+subroutine RPF_TOUGH2_Linear_Oil_RelPerm(this,liquid_saturation, &
+                                     relative_permeability,dkr_Se,option)
+  ! 
+  ! Computes the relative permeability (and associated derivatives) as a 
+  ! function of saturation
+  !
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/19/2015
+
+
+  use Option_module
+  
+  implicit none
+
+  class(rpf_TOUGH2_Linear_Oil_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: relative_permeability
+  PetscReal, intent(out) :: dkr_Se
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: So
+  PetscReal :: Se
+  PetscReal :: Seo
+  PetscReal :: liquid_relative_permeability
+  PetscReal :: liquid_dkr_Se
+  
+  dkr_Se = UNINITIALIZED_DOUBLE
+
+  So = 1.d0 - liquid_saturation
+
+  Seo = (So - this%Sro) / (1.d0 - this%Sro)
+
+  if (Seo >= 1.d0) then
+    relative_permeability = 1.d0
+    return
+  else if (Seo <=  0.d0) then
+    relative_permeability = 0.d0
+    return
+  endif
+
+  relative_permeability = Seo
+
+end subroutine RPF_TOUGH2_Linear_Oil_RelPerm
+! End RPF: TOUGH2, Linear (Oil)
+
+! ************************************************************************** !
+
 subroutine PolynomialDestroy(poly)
   ! 
   ! Destroys a polynomial smoother
@@ -5080,6 +5228,11 @@ recursive subroutine CharacteristicCurvesDestroy(cc)
   ! same address. if so, destroy one and nullify the other.
   if (associated(cc%liq_rel_perm_function,cc%gas_rel_perm_function)) then
     call PermeabilityFunctionDestroy(cc%liq_rel_perm_function)
+    nullify(cc%gas_rel_perm_function)
+  !PO how about avoiding xxx_rel_perm_function => aaa_rel_perm_function? 
+  !   it should semplify code. It seems we do this only to pass verify 
+  else if(associated(cc%oil_rel_perm_function,cc%gas_rel_perm_function)) then 
+    call PermeabilityFunctionDestroy(cc%oil_rel_perm_function)
     nullify(cc%gas_rel_perm_function)
   else
     call PermeabilityFunctionDestroy(cc%liq_rel_perm_function)

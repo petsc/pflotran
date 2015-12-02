@@ -58,6 +58,7 @@ module Option_module
     PetscInt :: nphase
     PetscInt :: liquid_phase
     PetscInt :: gas_phase
+    PetscInt :: oil_phase
     PetscInt :: nflowdof
     PetscInt :: nflowspec
     PetscInt :: nmechdof
@@ -89,6 +90,7 @@ module Option_module
     PetscInt :: saturation_pressure_id 
     PetscInt :: water_id  ! index of water component dof
     PetscInt :: air_id  ! index of air component dof
+    PetscInt :: oil_id  ! index of oil component dof
     PetscInt :: energy_id  ! index of energy dof
 
     PetscInt :: ntrandof

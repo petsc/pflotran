@@ -1075,10 +1075,13 @@ with corresponding selectivity coefficient $k_j^\a$. The half-reaction selectivi
 \log K_{ij}^\a \eq z_j^{} \log k_i^\a - z_i^{} \log k_j^\a,
 \EN
 or
-\EQ
+\EQ\label{eqkij}
 K_{ij}^\a \eq \frac{(k_i^\a)^{z_j}}{(k_j^\a)^{z_i}}.
 \EN
-This relation is obtained by multiplying the half reaction for cation $\A_j$ by the valence $z_i$ and subtracting from the half reaction for $\A_i$ multiplied by $z_j$, resulting in cancelation of the empty site $X^\a$, to obtain the complete exchange reaction \ref{ex1}. It should be noted that the coefficients $k_l^\a$ are not unique since, although there are $N_c$ coefficients in number, only $N_c\!-\!1$ are independent and one may be chosen arbitrarily, usually taken as unity. 
+This relation is obtained by multiplying the half reaction for cation $\A_j$ by the valence $z_i$ and subtracting from the half reaction for $\A_i$ multiplied by $z_j$, resulting in cancelation of the empty site $X^\a$, to obtain the complete exchange reaction \ref{ex1}. It should be noted that the coefficients $k_l^\a$ are not unique since, although there are $N_c$ coefficients in number, only $N_c\!-\!1$ are independent and one may be chosen arbitrarily, usually taken as unity. Thus for $k_j^\a\!=\!1$, Eqn.\eqref{eqkij} yields
+\EQ
+k_i^\a \eq \big(K_{ij}^\a\big)^{1/z_j}.
+\EN
 
 An alternative form of reactions \ref{ex1} often found in the literature is
 \EQ\label{rxn2}
@@ -1501,13 +1504,13 @@ $C_d^{th}$ & electron donor threshold concentration\\
 
 \subsection{Tracer Mean Age}
 
-PFLOTRAN implements the Eulerian formulation of solute age for a nonreactive tracer following Goode (1996). PFLOTRAN solves the advection-diffusion/dispersion equation for the mean age given by
+PFLOTRAN implements the Eulerian formulation of solute age\index{age} for a nonreactive tracer following Goode (1996). PFLOTRAN solves the advection-diffusion/dispersion equation for the mean age given by
 \EQ
 \frac{\p}{\p t} \varphi s AC + \bnabla\cdot\Big(\bq AC - \varphi s D \bnabla (AC)\Big) \eq \varphi s C,
 \EN
 where $A$ denotes the mean age of the tracer with concentration $C$. Other quantities appearing in the age equation are identical to the tracer transport equation for a partially saturated porous medium with saturation state $s$. The age and tracer transport equations are solved simultaneously for the age-concentration $\alpha = A C$ and tracer concentration $C$. The age-concentration $\a$ satisfies the usual advection-diffusion-dispersion equation with a source term on the right-hand side.
 
-The mean tracer is calculated in PFLOTRAN by adding the species {\tt Tracer\_Age} together with {\tt Tracer} to the list of primary species
+The mean tracer age\index{mean tracer age} is calculated in PFLOTRAN by adding the species {\tt Tracer\_Age} together with {\tt Tracer} to the list of primary species
 %\newpage
 \footnotesize
 \begin{verbatim}
