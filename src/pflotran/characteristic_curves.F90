@@ -2551,6 +2551,12 @@ subroutine SF_BF_KRP4_CapillaryPressure(this,liquid_saturation, &
 
   Se = (liquid_saturation-this%Sr)/(1.d0-this%Sr-this%Srg)
   
+  if (Se > 1.d0) then
+     Se = 1.d0
+  else if (Se < 0.d0) then
+     Se = 0.d0
+  endif
+
   if (associated(this%sat_poly)) then
     if (Se > this%sat_poly%low) then
       call QuadraticPolynomialEvaluate(this%sat_poly%coefficients(1:3), &
@@ -4869,7 +4875,7 @@ subroutine RPF_BRAGFLO_KRP12_Liq_RelPerm(this,liquid_saturation, &
   ! Computes the relative permeability (and associated derivatives) as a 
   ! function of saturation
   ! 
-  ! Modified Brooks-Corey model KRP = 2 in BRAGFLO
+  ! Modified Brooks-Corey model KRP = 12 in BRAGFLO
   !   
   ! Author: Heeho Park
   ! Date: 11/13/15
@@ -4899,6 +4905,8 @@ subroutine RPF_BRAGFLO_KRP12_Liq_RelPerm(this,liquid_saturation, &
   else if (Se <= 0.d0) then
     relative_permeability = 0.d0
     return
+  else if (Se < this%Sr) then
+    Se = this%Sr
   endif
   
   ! reference #1
@@ -4934,7 +4942,7 @@ subroutine RPF_BRAGFLO_KRP12_Gas_RelPerm(this,liquid_saturation, &
   ! Computes the relative permeability (and associated derivatives) as a 
   ! function of saturation
   ! 
-  ! Modified Brooks-Corey model KRP = 2 in BRAGFLO
+  ! Modified Brooks-Corey model KRP = 12 in BRAGFLO
   !   
   ! Author:  Heeho Park
   ! Date: 11/13/15
@@ -4964,6 +4972,13 @@ subroutine RPF_BRAGFLO_KRP12_Gas_RelPerm(this,liquid_saturation, &
     Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
     Se = max(min(Se,1.0d0),0.0d0)
     Seg = 1.d0 - Se
+    if (Se < this%Sr) then
+       Se = this%Sr
+       Seg = 1.d0 - Se
+    else if (Seg < this%Srg) then
+       Seg = this%Srg
+       Se = 1.d0 - Seg
+    endif
         ! reference #1
     relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
     ! Mathematica Analytical solution (Heeho Park)
