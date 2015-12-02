@@ -107,6 +107,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   
   use Simulation_Base_class
   use PM_Base_class
+  use PM_Surface_Flow_class
   use PM_Surface_TH_class
   use PM_Geomechanics_Force_class
   use PMC_Base_class
@@ -115,6 +116,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   use Factory_Hydrogeophysics_module
   use Factory_Surf_Subsurf_module
   use Factory_Geomechanics_module
+  use Factory_Surf_Subsurf_module, only : SurfSubsurfaceReadFlowPM
   
   implicit none
   
@@ -182,8 +184,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
               call SubsurfaceReadUFDDecayPM(input, option,new_pm)
             case('HYDROGEOPHYSICS')
             case('SURFACE_SUBSURFACE')
-              option%surf_flow_on = PETSC_TRUE
-              new_pm => PMSurfaceTHCreate()
+              call SurfSubsurfaceReadFlowPM(input, option, new_pm)
             case('GEOMECHANICS_SUBSURFACE')
               option%geomech_on = PETSC_TRUE
               new_pm => PMGeomechForceCreate()

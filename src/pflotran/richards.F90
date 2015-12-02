@@ -2410,7 +2410,7 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
   call EOSWaterdensity(option%reference_temperature, &
                        option%reference_pressure,den,dum1,ierr)
 
-  call VecGetArrayF90(realization%field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayReadF90(realization%field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
 
   ! boundary conditions
   boundary_condition => patch%boundary_condition_list%first
@@ -2578,7 +2578,7 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
     boundary_condition => boundary_condition%next
 
   enddo
-  call VecRestoreArrayF90(realization%field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
+  call VecRestoreArrayReadF90(realization%field%flow_xx, xx_p, ierr);CHKERRQ(ierr)
 
 end subroutine RichardsComputeCoeffsForSurfFlux
 

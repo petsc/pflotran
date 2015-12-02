@@ -7,6 +7,7 @@ SIMULATION
       MODE RICHARDS
     /
     SURFACE_SUBSURFACE flow
+      MODE RICHARDS
   /
 END
 
