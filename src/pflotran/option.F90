@@ -724,7 +724,7 @@ subroutine printErrMsgByRank2(option,string)
   
   write(word,*) option%myrank
   print *
-  print *, 'ERROR(' // trim(adjustl(word)) // '): ' // trim(option%io_buffer)
+  print *, 'ERROR(' // trim(adjustl(word)) // '): ' // trim(string)
   print *
   print *, 'Stopping!'
   stop
@@ -877,7 +877,7 @@ subroutine printMsgByRank2(option,string)
   character(len=MAXWORDLENGTH) :: word
   
   write(word,*) option%myrank
-  print *, '(' // trim(adjustl(word)) // '): ' // trim(option%io_buffer)
+  print *, '(' // trim(adjustl(word)) // '): ' // trim(string)
   
 end subroutine printMsgByRank2
 
