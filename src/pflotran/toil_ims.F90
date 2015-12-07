@@ -787,7 +787,7 @@ subroutine TOilImsUpdateAuxVars(realization)
 
   class(material_auxvar_type), pointer :: material_auxvars(:)
 
-  PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
+  PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn, natural_id
   PetscInt :: ghosted_start, ghosted_end
   !PetscInt :: iphasebc, iphase
   PetscInt :: offset
@@ -824,14 +824,14 @@ subroutine TOilImsUpdateAuxVars(realization)
     ghosted_start = ghosted_end - option%nflowdof + 1
     ! TOIL_IMS_UPDATE_FOR_ACCUM indicates call from non-perturbation
     option%iflag = TOIL_IMS_UPDATE_FOR_ACCUM
-
+    natural_id = grid%nG2A(ghosted_id)
     call TOilImsAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        toil_auxvars(ZERO_INTEGER,ghosted_id), &
                        global_auxvars(ghosted_id), &
                        material_auxvars(ghosted_id), &
                        patch%characteristic_curves_array( &
                          patch%sat_func_id(ghosted_id))%ptr, &
-                       ghosted_id, &
+                       natural_id, &
                        option)
 
   enddo
@@ -846,6 +846,8 @@ subroutine TOilImsUpdateAuxVars(realization)
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
+      !negate to indicate boundary connection, not actual cell
+      natural_id = -grid%nG2A(ghosted_id) 
       offset = (ghosted_id-1)*option%nflowdof
       if (patch%imat(ghosted_id) <= 0) cycle
 
@@ -874,7 +876,7 @@ subroutine TOilImsUpdateAuxVars(realization)
                                 material_auxvars(ghosted_id), &
                                 patch%characteristic_curves_array( &
                                   patch%sat_func_id(ghosted_id))%ptr, &
-                                ghosted_id, &
+                                natural_id, &
                                 option)
     enddo
     boundary_condition => boundary_condition%next

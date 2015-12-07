@@ -235,7 +235,7 @@ end subroutine TOilImsAuxVarInit
 ! ************************************************************************** !
 
 subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
-                                characteristic_curves,ghosted_id,option)
+                                characteristic_curves,natural_id,option)
   ! 
   ! Computes auxiliary variables for each grid cell
   ! 
@@ -259,7 +259,7 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
   type(global_auxvar_type) :: global_auxvar ! passing this for salt conc.
                                             ! not currenty used  
   class(material_auxvar_type) :: material_auxvar
-  PetscInt :: ghosted_id !only for debugging - it for now
+  PetscInt :: natural_id !only for debugging/print out - currently not used 
 
   PetscInt :: lid, oid, cpid
   PetscReal :: cell_pressure, wat_sat_pres
@@ -401,7 +401,7 @@ end subroutine TOilImsAuxVarCompute
 
 subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
                                 material_auxvar, &
-                                characteristic_curves,ghosted_id, &
+                                characteristic_curves,natural_id, &
                                 option)
   ! 
   ! Calculates auxiliary variables for perturbed system
@@ -418,7 +418,7 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
   implicit none
 
   type(option_type) :: option
-  PetscInt :: ghosted_id
+  PetscInt :: natural_id !only for debugging/print out - currently not used 
   type(toil_ims_auxvar_type) :: toil_auxvar(0:)
   type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
@@ -489,7 +489,7 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
     x_pert_save = x_pert
     call TOilImsAuxVarCompute(x_pert,toil_auxvar(idof),global_auxvar, &
                               material_auxvar, &
-                              characteristic_curves,ghosted_id,option)
+                              characteristic_curves,natural_id,option)
 
 !#ifdef DEBUG_GENERAL
 !    call GlobalAuxVarCopy(global_auxvar,global_auxvar_debug,option)
@@ -498,12 +498,12 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
 !                                  global_auxvar_debug, &
 !                                  material_auxvar, &
 !                                  characteristic_curves, &
-!                                  ghosted_id,option)
+!                                  natural_id,option)
 !    if (global_auxvar%istate /= global_auxvar_debug%istate) then
 !      write(option%io_buffer, &
 !            &'(''Change in state due to perturbation: '',i3,'' -> '',i3, &
 !            &'' at cell '',i3,'' for dof '',i3)') &
-!        global_auxvar%istate, global_auxvar_debug%istate, ghosted_id, idof
+!        global_auxvar%istate, global_auxvar_debug%istate, natural_id, idof
 !      call printMsg(option)
 !      write(option%io_buffer,'(''orig: '',6es17.8)') x(1:3)
 !      call printMsg(option)
