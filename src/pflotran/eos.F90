@@ -41,7 +41,7 @@ subroutine EOSRead(input,option)
   type(input_type) :: input
   type(option_type) :: option
   
-  character(len=MAXWORDLENGTH) :: keyword, word
+  character(len=MAXWORDLENGTH) :: keyword, word, subkeyword
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal :: tempreal, tempreal2, tempreal3
   PetscReal :: rks_tc = UNINITIALIZED_DOUBLE
@@ -325,6 +325,46 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,OIL,DENSITY,CONSTANT')
                 call EOSOilSetDensityConstant(tempreal)
+
+              case('LINEAR')
+                call EOSOilSetDensityLinear()
+                do
+                  call InputReadPflotranString(input,option)
+                  if (InputCheckExit(input,option)) exit  
+                  call InputReadWord(input,option,subkeyword,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'subkeyword','EOS,OIL,VIS')
+                  call StringToUpper(subkeyword)   
+                  select case(subkeyword)
+                    case('REFERENCE_VALUE')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,DENSITY_LINEAR,REFERENCE_VALUE') 
+                      call EOSOilSetDenLinearRefDen(tempreal)
+                    case('PRES_REF_VAULE')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,DENSITY_LINEAR,PRES_REF_VAULE') 
+                      call EOSOilSetDenLinearRefPres(tempreal)
+                    case('TEMP_REF_VALUE')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,DENSITY_LINEAR,TEMP_REF_VAULE') 
+                      call EOSOilSetDenLinearRefTemp(tempreal)
+                    case('COMPRESS_COEFF')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,DENSITY_LINEAR,COMPRESS_COEFF') 
+                      call EOSOilSetDenLinearComprCoef(tempreal)
+                    case('THERMAL_EXPANSION_COEFF')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,DENSITY_LINEAR,THERMAL_EXPANSION_COEFF')
+                      call EOSOilSetDenLinearExpanCoef(tempreal)
+                    case default
+                      call InputKeywordUnrecognized(subkeyword, &
+                           'EOS,OIL,DENSITY_LINEAR',option)
+                  end select
+                end do
               case default
                 call InputKeywordUnrecognized(word,'EOS,OIL,DENSITY',option)
             end select
@@ -356,6 +396,57 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,OIL,VISCOSITY,CONSTANT')
                 call EOSOilSetViscosityConstant(tempreal)
+              case('QUADRATIC')
+                call EOSOilSetViscosityQuad()
+                do
+                  call InputReadPflotranString(input,option)
+                  if (InputCheckExit(input,option)) exit  
+                  call InputReadWord(input,option,subkeyword,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'subkeyword','EOS,OIL,VIS')
+                  call StringToUpper(subkeyword)   
+                  select case(subkeyword)
+                    case('REFERENCE_VALUE')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,VISCOSITY_QUAD,REFERENCE_VALUE') 
+                      call EOSOilSetVisQuadRefVis(tempreal)
+                    case('PRES_REF_VAULES')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,VISCOSITY_QUAD,PRES_REF_VAULES_1') 
+                      call InputReadDouble(input,option,tempreal2)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,VISCOSITY_QUAD,PRES_REF_VAULES_2') 
+                      call EOSOilSetVisQuadRefPres(tempreal,tempreal2)
+                    case('TEMP_REF_VALUES')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,VISCOSITY_QUAD,TEMP_REF_VAULES_1') 
+                      call InputReadDouble(input,option,tempreal2)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,VISCOSITY_QUAD,TEMP_REF_VAULES_2') 
+                      call EOSOilSetVisQuadRefTemp(tempreal,tempreal2)
+                    case('PRES_COEFFICIENTS')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,VISCOSITY_QUAD,PRES_COEFF_1') 
+                      call InputReadDouble(input,option,tempreal2)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,VISCOSITY_QUAD,PRES_COEFF_2') 
+                      call EOSOilSetVisQuadPresCoef(tempreal,tempreal2)
+                    case('TEMP_COEFFICIENTS')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,VISCOSITY_QUAD,TEMP_COEFF_1') 
+                      call InputReadDouble(input,option,tempreal2)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,VISCOSITY_QUAD,TEMP_COEFF_2') 
+                      call EOSOilSetVisQuadTempCoef(tempreal,tempreal2)
+                    case default
+                      call InputKeywordUnrecognized(subkeyword, &
+                           'EOS,OIL, VISCOSITY_QUAD',option)
+                  end select
+                end do
               case default
                 call InputKeywordUnrecognized(word,'EOS,OIL,VISCOSITY',option)
             end select
