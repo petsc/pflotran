@@ -3842,7 +3842,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
           case(OIL_MOBILITY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TOil_ims%auxvars(ZERO_INTEGER, &
-                  grid%nL2G(local_id))%mobility(option%gas_phase)
+                  grid%nL2G(local_id))%mobility(option%oil_phase)
             enddo
           case(EFFECTIVE_POROSITY)
             do local_id=1,grid%nlmax

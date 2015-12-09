@@ -731,6 +731,61 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      GAS_ENERGY,temp_int)
+      case ('OIL_PRESSURE')
+        name = 'Oil Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     OIL_PRESSURE)
+      case ('OIL_SATURATION')
+        name = 'Oil Saturation'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_SATURATION,units, &
+                                     OIL_SATURATION)
+      case ('OIL_DENSITY')
+        name = 'Oil Density'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          if (StringCompareIgnoreCase(word,'MOLAR')) then
+            units = 'kmol/m^3'
+            temp_int = OIL_DENSITY_MOL
+          else
+            call InputErrorMsg(input,option,'optional keyword', &
+                               'VARIABLES,OIL_DENSITY')
+          endif
+        else
+          units = 'kg/m^3'
+          temp_int = OIL_DENSITY
+        endif
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     temp_int)
+      case ('OIL_MOBILITY')
+        name = 'Oil Mobility'
+        units = '1/Pa-s'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     OIL_MOBILITY)
+      case ('OIL_ENERGY')
+        name = 'Oil Energy'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          if (StringCompareIgnoreCase(word,'PER_VOLUME')) then
+            units = 'MJ/m^3'
+            temp_int = ONE_INTEGER
+          else
+            input%ierr = 1
+            call InputErrorMsg(input,option,'optional keyword', &
+                               'VARIABLES,OIL_ENERGY')
+          endif
+        else
+          units = 'MJ/kmol'
+          temp_int = ZERO_INTEGER
+        endif
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     OIL_ENERGY,temp_int)
       case ('LIQUID_MOLE_FRACTIONS')
         name = 'X_g^l'
         units = ''
