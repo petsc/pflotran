@@ -158,7 +158,8 @@ function TOilImsAuxCreate(option)
         TOIL_IMS_TEMPERATURE_INDEX]
 
   toil_ims_fmw_comp(LIQUID_PHASE) = FMWH2O
-  toil_ims_fmw_comp(TOIL_IMS_OIL_PHASE) = fmw_oil ! this defines the dead oil
+  !toil_ims_fmw_comp(TOIL_IMS_OIL_PHASE) = fmw_oil ! this defines the dead oil
+  toil_ims_fmw_comp(TOIL_IMS_OIL_PHASE) = EOSOilGetFMW() !defines the dead oil
   
   allocate(aux) 
   aux%auxvars_up_to_date = PETSC_FALSE
@@ -368,7 +369,8 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
                            toil_auxvar%den(oid),toil_auxvar%H(oid), &
                            toil_auxvar%U(oid),ierr)
 
-  toil_auxvar%den_kg(oid) = toil_auxvar%den(oid) * fmw_oil 
+  !toil_auxvar%den_kg(oid) = toil_auxvar%den(oid) * fmw_oil 
+  toil_auxvar%den_kg(oid) = toil_auxvar%den(oid) * EOSOilGetFMW()
 
   toil_auxvar%H(oid) = toil_auxvar%H(oid) * 1.d-6 ! J/kmol -> MJ/kmol
   toil_auxvar%U(oid) = toil_auxvar%U(oid) * 1.d-6 ! J/kmol -> MJ/kmol

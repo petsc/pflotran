@@ -8,10 +8,8 @@ module EOS_Oil_module
   
 #include "petsc/finclude/petscsys.h"
 
-  ! public oil eos variables
-  PetscReal, public :: fmw_oil
-
   ! module variables
+  PetscReal :: fmw_oil  
   PetscReal :: constant_density  !kg/m3
   PetscReal :: constant_enthalpy
   PetscReal :: constant_viscosity
@@ -138,7 +136,9 @@ module EOS_Oil_module
             EOSOilSetDenLinearRefPres, & 
             EOSOilSetDenLinearRefTemp, &
             EOSOilSetEnthalpyConstant, &
-            EOSOilSetEnthalpyLinearTemp
+            EOSOilSetEnthalpyLinearTemp, &
+            EOSOilSetFMWConstant, &
+            EOSOilGetFMW
 
 contains
 
@@ -164,7 +164,7 @@ subroutine EOSOilInit()
   den_linear_ref_pres = UNINITIALIZED_DOUBLE
   den_linear_ref_temp = UNINITIALIZED_DOUBLE
 
-  fmw_oil = FMWOIL
+  fmw_oil = FMWOIL !default oil formula weight C10H22 (142 g/mol)
 
   EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms
 
@@ -176,6 +176,30 @@ subroutine EOSOilInit()
   EOSOilEnthalpyPtr => EOSOilEnthalpyConstant  
   
 end subroutine EOSOilInit
+
+! ************************************************************************** !
+
+subroutine EOSOilSetFMWConstant(fmw_input)
+
+  implicit none
+  
+  PetscReal :: fmw_input
+  
+  fmw_oil = fmw_input  
+  
+end subroutine EOSOilSetFMWConstant
+
+! ************************************************************************** !
+
+function EOSOilGetFMW()
+
+  implicit none
+  
+  PetscReal :: EOSOilGetFMW
+  
+  EOSOilGetFMW = fmw_oil
+  
+end function EOSOilGetFMW
 
 ! ************************************************************************** !
 

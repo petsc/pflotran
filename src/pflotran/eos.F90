@@ -451,9 +451,11 @@ subroutine EOSRead(input,option)
                 call InputKeywordUnrecognized(word,'EOS,OIL,VISCOSITY',option)
             end select
           case('FORMULA_WEIGHT') 
-                call InputReadDouble(input,option,fmw_oil)
-                call InputErrorMsg(input,option,'VALUE', &
+            call InputReadDouble(input,option,tempreal)
+            !call InputReadDouble(input,option,fmw_oil)
+            call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,OIL,FORMULA_WEIGHT')
+            call EOSOilSetFMWConstant(tempreal)
           case default
             call InputKeywordUnrecognized(keyword,'EOS,OIL',option)
         end select
