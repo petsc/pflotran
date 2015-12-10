@@ -23,7 +23,6 @@ subroutine PFLOTRANInitializePrePetsc(multisimulation,option)
 ! Author: Glenn Hammond
 ! Date: 06/07/13
 !
-! Jenn's test comment.
   use Option_module
   use Input_Aux_module
   use Multi_Simulation_module
