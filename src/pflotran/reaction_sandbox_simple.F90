@@ -139,8 +139,12 @@ subroutine SimpleReact(this,Residual,Jacobian,compute_derivative, &
   
   PetscReal :: Aaq, Baq, Caq, Daq, Eaq, Faq  ! mol/L
   PetscReal :: Xim, Yim  ! mol/m^3
+  PetscReal :: Rate
   PetscReal :: RateA, RateB, RateC, RateD, RateE, RateF, RateX, RateY  ! mol/sec
+  PetscReal :: stoichA, stoichB, stoichC, stoichD, stoichE, stoichF
+  PetscReal :: stoichX, stoichY
   PetscReal :: k, kr  ! units are problem specific
+  PetscReal :: K_Aaq, K_Baq ! [mol/L]
   
   porosity = material_auxvar%porosity
   liquid_saturation = global_auxvar%sat(iphase)
@@ -158,6 +162,8 @@ subroutine SimpleReact(this,Residual,Jacobian,compute_derivative, &
   Yim = rt_auxvar%immobile(this%species_Yim_id)
 
   ! initialize all rates to zero
+  Rate = 0.d0
+
   RateA = 0.d0
   RateB = 0.d0
   RateC = 0.d0
@@ -166,36 +172,84 @@ subroutine SimpleReact(this,Residual,Jacobian,compute_derivative, &
   RateF = 0.d0
   RateX = 0.d0
   RateY = 0.d0
+
+  ! stoichiometries
+  ! reactants have negative stoichiometry
+  ! products have positive stoichiometry
+  stoichA = 0.d0
+  stoichB = 0.d0
+  stoichC = 0.d0
+  stoichD = 0.d0
+  stoichE = 0.d0
+  stoichF = 0.d0
+  stoichX = 0.d0
+  stoichY = 0.d0
   
+  ! kinetic rate constants
   k = 0.d0
   kr = 0.d0
-  
-  ! zero-order (A -> C
-  !RateA = k * L_water
-  !RateC = -1.d0 * RateA
+
+  ! Monod half-saturation constants
+  K_Aaq = 0.d0
+  K_Baq = 0.d0
+
+  ! zero-order (A -> C)
+  !k = 0.d0 ! WARNING: Too high a rate can result in negative concentrations
+            !          which are non-physical and the code will not converge.
+  !stoichA = -1.d0
+  !stoichC = 1.d0
+  !Rate = k * L_water
+  !RateA = stoichA * Rate
+  !RateC = stoichC * Rate
   
   ! first-order (A -> C)
-  !RateA = k * Aaq * L_water
-  !RateC = -1.d0 * RateA
+  !k = 1.d-10
+  !stoichA = -1.d0
+  !stoichC = 1.d0
+  !Rate = k * Aaq * L_water
+  !RateA = stoichA * Rate
+  !RateC = stoichC * Rate
   
   ! second-order (A + B -> C)
-  !RateA = k * Aaq * Baq * L_water
-  !RateB = RateA
-  !RateC = -1.d0 * RateA
+  !k = 1.d-10
+  !stoichA = -1.d0
+  !stoichB = -1.d0
+  !stoichC = 1.d0
+  !Rate = k * Aaq * Baq * L_water
+  !RateA = stoichA * Rate
+  !RateB = stoichB * Rate
+  !RateC = stoichC * Rate
   
   ! Monod (A -> C)
-  !RateA = k * Aaq / (K_Aaq + Aaq) * L_water
-  !RateC = -1.d0 * RateA
+  !k = 1.d-12
+  !K_Aaq = 5.d-4
+  !stoichA = -1.d0
+  !stoichC = 1.d0
+  !Rate = k * Aaq / (K_Aaq + Aaq) * L_water
+  !RateA = stoichA * Rate
+  !RateC = stoichC * Rate
   
   ! multiplicative Monod w/biomass
   ! A + 2B -> C
-  !RateA = k * Xim * Aaq / (K_Aaq + Aaq) * Baq / (K_Baq + Baq) * volume
-  !RateB = 2.d0 * RateA
-  !RateC = -1.d0 * RateA
+  !k = 1.d-7
+  !K_Aaq = 5.d-4
+  !K_Baq = 5.d-4
+  !stoichA = -1.d0
+  !stoichB = -2.d0
+  !stoichC = 1.d0
+  !Rate = k * Xim * Aaq / (K_Aaq + Aaq) * Baq / (K_Baq + Baq) * L_water
+  !RateA = stoichA * Rate
+  !RateB = stoichB * Rate
+  !RateC = stoichC * Rate
   
   ! first-order forward - reverse (A <-> C)
-  !RateA = (k * Aaq - kr * Caq) * L_water
-  !RateC = -1.d0 * RateA
+  !k = 1.d-6
+  !kr = 1.d-7
+  !stoichA = -1.d0
+  !stoichC = 1.d0
+  !Rate = (k * Aaq - kr * Caq) * L_water
+  !RateA = stoichA * Rate
+  !RateC = stoichC * Rate
   
   ! NOTES
   ! 1. Always subtract contribution from residual
