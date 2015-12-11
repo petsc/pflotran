@@ -261,7 +261,7 @@ subroutine ExampleReact(this,Residual,Jacobian,compute_derivative, &
   ! 1.d3 converts m^3 water -> L water
   L_water = material_auxvar%porosity*global_auxvar%sat(iphase)* &
             material_auxvar%volume*1.d3
-  ! alway subtract contribution from residual
+  ! always subtract contribution from residual
   Residual(this%species_id) = Residual(this%species_id) - &
     this%rate_constant * &  ! 1/sec
     L_water * & ! L water
