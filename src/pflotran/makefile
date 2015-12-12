@@ -148,6 +148,7 @@ eos_obj = \
 	${common_src}co2_sw.o \
 	${common_src}co2_span_wagner_spline.o \
 	${common_src}eos.o \
+        ${common_src}eos_database.o \
 	${common_src}eos_gas.o \
 	${common_src}eos_oil.o \
 	${common_src}gas_eos_mod.o 
@@ -514,8 +515,10 @@ e4d_setup.o : e4d_mat_inv.o e4d_vars.o
 e4d_vars.o :
 eos.o : eos_gas.o eos_oil.o eos_water.o input_aux.o option.o \
         pflotran_constants.o string.o
+eos_database.o : input_aux.o lookup_table.o option.o pflotran_constants.o \
+                 string.o
 eos_gas.o : pflotran_constants.o
-eos_oil.o : pflotran_constants.o
+eos_oil.o : eos_database.o option.o pflotran_constants.o
 eos_water.o : pflotran_constants.o
 factory_geomechanics.o : condition_control.o convergence.o discretization.o \
                          factory_subsurface.o geomech_grid.o \

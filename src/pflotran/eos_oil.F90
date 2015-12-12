@@ -1,6 +1,7 @@
 module EOS_Oil_module
  
   use PFLOTRAN_Constants_module
+  use EOSDatabase_module
 
   implicit none
 
@@ -26,6 +27,9 @@ module EOS_Oil_module
   PetscReal :: den_linear_den0
   PetscReal :: den_linear_ref_pres
   PetscReal :: den_linear_ref_temp
+
+  ! EOS databases
+  class(eos_database_type), pointer :: eos_dbase
 
   ! In order to support generic EOS subroutines, we need the following:
   ! 1. An interface declaration that defines the argument list (best to have 
@@ -138,7 +142,8 @@ module EOS_Oil_module
             EOSOilSetEnthalpyConstant, &
             EOSOilSetEnthalpyLinearTemp, &
             EOSOilSetFMWConstant, &
-            EOSOilGetFMW
+            EOSOilGetFMW, &
+            EOSOilSetEOSDBase
 
 contains
 
@@ -314,6 +319,18 @@ subroutine EOSOilSetDensityLinear()
 end subroutine EOSOilSetDensityLinear
 
 ! ************************************************************************** !
+! 
+!subroutine EOSOilSetDensityDBase()
+!
+!  implicit none
+!  
+!  EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms
+!  EOSOilDensityPtr => EOSOilDensityDBase
+!  
+!end subroutine EOSOilSetDensityLinear
+
+
+! ************************************************************************** !
 
 subroutine EOSOilSetDenLinearRefDen(den0)
 
@@ -405,6 +422,26 @@ subroutine EOSOilSetEnthalpyLinearTemp(specific_heat)
 end subroutine EOSOilSetEnthalpyLinearTemp
 
 ! ************************************************************************** !
+subroutine EOSOilSetEOSDBase(filename,option)
+
+  use Option_module
+
+  implicit none
+
+  character(len=MAXWORDLENGTH) :: filename
+  type(option_type) :: option
+
+  eos_dbase => EOSDatabaseCreate(filename,'oil_database')
+  call eos_dbase%Read(option)
+
+  !set property function pointers
+  EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms 
+  EOSOilDensityPtr => EOSOilDensityEOSDBase
+  EOSOilEnthalpyPtr => EOSOilEnthalpyEOSDBase
+  EOSOilViscosityPtr => EOSOilViscosityEOSDBase
+
+end subroutine EOSOilSetEOSDBase
+! ************************************************************************** !
 
 subroutine EOSOilViscosityConstant(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
 
@@ -455,6 +492,36 @@ subroutine EOSOilQuadViscosity(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
   end if  
 
 end subroutine EOSOilQuadViscosity
+
+! ************************************************************************** !
+
+subroutine EOSOilViscosityEOSDBase(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
+
+  implicit none
+
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! oil pressure [Pa]
+  PetscReal, intent(in) :: Rho      ! oil density [kmol/m3]  
+  PetscBool, intent(in) :: deriv    ! indicate if derivatives are needed or not
+  PetscReal, intent(out) :: Vis     ! oil viscosity 
+  PetscReal, intent(out) :: dVis_dT ! derivative oil viscosity wrt temperature
+  PetscReal, intent(out) :: dVis_dP ! derivative oil viscosity wrt Pressure
+  PetscErrorCode, intent(out) :: ierr
+
+  !ierr initialised in EOSEOSProp 
+  call eos_dbase%EOSProp(T,P,EOS_VISCOSITY,Vis,ierr)
+
+  dVis_dT = 0.0d0
+  dVis_dP = 0.0d0
+
+  if(deriv) then
+    ! not yet implemented
+    ierr = 99 !error 99 points out that deriv are asked but not available yet. 
+    print*, "EOSOilDensityEOSDBase - Den derivatives not supported"
+    stop
+  end if
+  
+end subroutine EOSOilViscosityEOSDBase
 
 ! ************************************************************************** !
 
@@ -523,6 +590,37 @@ subroutine EOSOilDensityLinear(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
   end if
 
 end subroutine EOSOilDensityLinear
+
+! ************************************************************************** !
+
+subroutine EOSOilDensityEOSDBase(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
+
+  implicit none
+
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscBool, intent(in) :: deriv    ! indicate if derivatives are needed or not
+  PetscReal, intent(out) :: Rho     ! oil density [kmol/m^3]
+  PetscReal, intent(out) :: dRho_dT ! derivative oil density wrt temperature
+  PetscReal, intent(out) :: dRho_dP ! derivative oil density wrt pressure
+  PetscErrorCode, intent(out) :: ierr
+
+  !ierr initialised in EOSEOSProp 
+  call eos_dbase%EOSProp(T,P,EOS_DENSITY,Rho,ierr)
+
+  ! conversion to molar density
+        ! kg/m3 * kmol/kg  = kmol/m3
+  Rho = Rho / fmw_oil ! kmol/m^3
+
+  if(deriv) then
+    ! not yet implemented
+    ierr = 99 !error 99 points out that deriv are asked but not available yet. 
+    print*, "EOSOilDensityEOSDBase - Den derivatives not supported"
+    stop
+  end if
+
+end subroutine EOSOilDensityEOSDBase
+
 
 ! ************************************************************************** !
 
@@ -603,6 +701,40 @@ subroutine EOSOilEnthalpyLinearTemp(T,P,deriv,H,dH_dT,dH_dP,ierr)
 end subroutine EOSOilEnthalpyLinearTemp
 
 ! ************************************************************************** !
+
+subroutine EOSOilEnthalpyEOSDBase(T,P,deriv,H,dH_dT,dH_dP,ierr)
+  implicit none
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscBool, intent(in) :: deriv    ! indicate if derivatives are needed or not
+  PetscReal, intent(out) :: H       ! enthalpy [J/kmol]
+  PetscReal, intent(out) :: dH_dT   ! derivative enthalpy wrt temperature
+  PetscReal, intent(out) :: dH_dP   ! derivative enthalpy wrt pressure
+  PetscErrorCode, intent(out) :: ierr
+
+  !ierr initialised in EOSEOSProp 
+  call eos_dbase%EOSProp(T,P,EOS_ENTHALPY,H,ierr)
+
+
+  ! conversion to molar energy
+  ! J/kg * kg/Kmol = J/Kmol
+  H = H  * fmw_oil  
+
+  dH_dT = UNINITIALIZED_DOUBLE
+  dH_dP = UNINITIALIZED_DOUBLE
+
+  if(deriv) then
+    ! not yet implemented
+    ierr = 99 !error 99 points out that deriv are asked but not available yet. 
+    print*, "EOSOilEnthalpyEOSDBase - H derivatives not supported"
+    stop  
+  end if
+
+end subroutine EOSOilEnthalpyEOSDBase
+
+
+! ************************************************************************** !
+
 
 subroutine EOSOilEnthalpyNoDerive(T,P,H,ierr)
   implicit none

@@ -315,6 +315,10 @@ subroutine EOSRead(input,option)
         call InputErrorMsg(input,option,'keyword','EOS,OIL')
         call StringToUpper(keyword)   
         select case(trim(keyword))
+          case('DATABASE') 
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'EOS,OIL','DATABASE filename')
+            call EOSOilSetEOSDBase(word,option)  
           case('DENSITY') 
             call InputReadWord(input,option,word,PETSC_TRUE)
             call InputErrorMsg(input,option,'DENSITY','EOS,OIL')
@@ -365,6 +369,9 @@ subroutine EOSRead(input,option)
                            'EOS,OIL,DENSITY_LINEAR',option)
                   end select
                 end do
+              case('DATABASE')
+                ! read the file name
+                ! call EOSOilSetDenDBase(filename) ! note only den database is set
               case default
                 call InputKeywordUnrecognized(word,'EOS,OIL,DENSITY',option)
             end select
