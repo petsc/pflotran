@@ -30,6 +30,7 @@ module EOS_Oil_module
 
   ! EOS databases
   class(eos_database_type), pointer :: eos_dbase
+  ! when adding a new eos_database, remember to add it to EOSOilDBaseDestroy()
 
   ! In order to support generic EOS subroutines, we need the following:
   ! 1. An interface declaration that defines the argument list (best to have 
@@ -143,7 +144,8 @@ module EOS_Oil_module
             EOSOilSetEnthalpyLinearTemp, &
             EOSOilSetFMWConstant, &
             EOSOilGetFMW, &
-            EOSOilSetEOSDBase
+            EOSOilSetEOSDBase, &
+            EOSOilDBaseDestroy
 
 contains
 
@@ -788,6 +790,7 @@ end subroutine EOSOilDensityEnergyTOilIms
 ! ************************************************************************** !
 
 subroutine EOSOilDenEnergyNoDerive(T,P,Rho,H,U,ierr)
+
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -804,6 +807,15 @@ subroutine EOSOilDenEnergyNoDerive(T,P,Rho,H,U,ierr)
  
 
 end subroutine EOSOilDenEnergyNoDerive
+
+! ************************************************************************** !
+subroutine EOSOilDBaseDestroy()
+
+  implicit none
+  
+  call EOSDatabaseDestroy(eos_dbase)
+
+end subroutine EOSOilDBaseDestroy
 
 ! ************************************************************************** !
 

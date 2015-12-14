@@ -514,10 +514,10 @@ e4d_mat_inv.o :
 e4d_run.o : e4d_vars.o
 e4d_setup.o : e4d_mat_inv.o e4d_vars.o
 e4d_vars.o :
-eos.o : eos_gas.o eos_oil.o eos_water.o input_aux.o option.o \
+eos.o : eos_database.o eos_gas.o eos_oil.o eos_water.o input_aux.o option.o \
         pflotran_constants.o string.o
 eos_database.o : input_aux.o lookup_table.o option.o pflotran_constants.o \
-                 string.o
+                 string.o utility.o
 eos_gas.o : pflotran_constants.o
 eos_oil.o : eos_database.o option.o pflotran_constants.o
 eos_water.o : pflotran_constants.o
@@ -1090,9 +1090,11 @@ secondary_continuum_aux.o : option.o pflotran_constants.o \
                             reactive_transport_aux.o utility.o
 shape_function.o : gauss.o grid_unstructured_cell.o pflotran_constants.o
 simulation_aux.o : option.o pflotran_constants.o
-simulation_base.o : input_aux.o logging.o option.o output.o output_aux.o \
-                    pflotran_constants.o pm_base.o pmc_base.o simulation_aux.o \
-                    timestepper_base.o waypoint.o
+simulation_base.o : eos.o eos_database.o eos_gas.o eos_oil.o eos_water.o  \
+                    input_aux.o logging.o lookup_table.o option.o output.o \
+                    output_aux.o option.o pflotran_constants.o pm_base.o \
+                    pmc_base.o simulation_aux.o string.o timestepper_base.o \
+                    waypoint.o
 simulation_geomechanics.o : geomechanics_realization.o option.o output.o \
                             pflotran_constants.o pmc_base.o pmc_geomechanics.o \
                             pmc_subsurface.o realization.o regression.o \

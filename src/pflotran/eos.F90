@@ -12,7 +12,8 @@ module EOS_module
 #include "petsc/finclude/petscsys.h"
  
   public :: EOSInit, &
-            EOSRead
+            EOSRead, &
+            AllEOSDBaseDestroy
 
 contains
 
@@ -473,5 +474,21 @@ subroutine EOSRead(input,option)
   end select
   
 end subroutine EOSRead
+
+! ************************************************************************** !
+
+subroutine AllEOSDBaseDestroy()
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/14/15
+  ! 
+
+  implicit none
+
+  call EOSOilDBaseDestroy()
+
+end subroutine AllEOSDBaseDestroy
+
+! ************************************************************************** !
 
 end module EOS_module

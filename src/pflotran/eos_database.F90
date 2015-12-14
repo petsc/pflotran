@@ -33,7 +33,8 @@ module EOSDatabase_module
 
   end type
 
-  public :: EOSDatabaseCreate
+  public :: EOSDatabaseCreate, &
+            EOSDatabaseDestroy
 
 contains
 
@@ -317,11 +318,37 @@ subroutine EOSPropLinearInterp(this,T,P,prop_iname,prop_value,ierr)
   !this%lookup_table%Sample(lookup1,lookup2,lookup3) 
   prop_value = this%lookup_table%Sample(T,P) 
 
+  nullify(this%lookup_table%data)
+
 end subroutine EOSPropLinearInterp
 
 ! ************************************************************************** !
 
-! need to add EOSdestroy - will be called in SimulationBaseStrip by EOSDbaseDestroy
+subroutine EOSDatabaseDestroy(eos_database)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/14/15
+  ! 
+  ! destroys EOS database
+
+  use Utility_module
+
+  implicit none
+
+  class(eos_database_type), pointer :: eos_database
+
+  if (.not.associated(eos_database)) return
+
+  !deallocate(eos_database%data)
+  !nullify(eos_database%data) 
+  call DeallocateArray(eos_database%data)
+
+  call LookupTableDestroy(eos_database%lookup_table) 
+
+  deallocate(eos_database)
+  nullify(eos_database)
+
+end subroutine EOSDatabaseDestroy
 
 ! ************************************************************************** !
 
