@@ -514,6 +514,21 @@ subroutine PMTOilImsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 
   changed = PETSC_TRUE
 
+  ! truncation
+  ! Oil Saturation must be truncated.  we do not use scaling
+  ! here because of the very small values.  just truncation.
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    offset = (local_id-1)*option%nflowdof
+    saturation_index = offset + TOIL_IMS_SATURATION_DOF
+    if( (X_p(saturation_index) - dX_p(saturation_index)) < 0.d0 ) then
+      ! we use 1.d-6 since cancelation can occur with smaller values
+      ! this threshold is imposed in the initial condition
+      dX_p(saturation_index) = X_p(saturation_index)
+    end if
+  enddo
+
   scale = initial_scale
   if (toil_ims_max_it_before_damping > 0 .and. &
       newton_iteration > toil_ims_max_it_before_damping) then
