@@ -175,12 +175,15 @@ subroutine EOSOilInit()
 
   EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms
 
-  ! to be replaced with the tough model for which parameters 
-  ! are required, or another simple model
-  ! once decided the default model, add the routine that verify the input 
-  EOSOilViscosityPtr => EOSOilViscosityConstant
-  EOSOilDensityPtr => EOSOilDensityConstant
-  EOSOilEnthalpyPtr => EOSOilEnthalpyConstant  
+  nullify(EOSOilViscosityPtr)
+  nullify(EOSOilDensityPtr)
+  nullify(EOSOilEnthalpyPtr)
+
+  ! could decide for a default model, but it only if there is one that
+  ! does nto require input parameters
+  !EOSOilViscosityPtr => EOSOilViscosityConstant
+  !EOSOilDensityPtr => EOSOilDensityConstant
+  !EOSOilEnthalpyPtr => EOSOilEnthalpyConstant  
   
 end subroutine EOSOilInit
 
@@ -438,9 +441,12 @@ subroutine EOSOilSetEOSDBase(filename,option)
 
   !set property function pointers
   EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms 
-  EOSOilDensityPtr => EOSOilDensityEOSDBase
-  EOSOilEnthalpyPtr => EOSOilEnthalpyEOSDBase
-  EOSOilViscosityPtr => EOSOilViscosityEOSDBase
+  if(.not.associated(EOSOilDensityPtr))  &
+            EOSOilDensityPtr => EOSOilDensityEOSDBase
+  if(.not.associated(EOSOilEnthalpyPtr)) &
+    EOSOilEnthalpyPtr => EOSOilEnthalpyEOSDBase
+  if(.not.associated(EOSOilViscosityPtr)) &
+    EOSOilViscosityPtr => EOSOilViscosityEOSDBase
 
 end subroutine EOSOilSetEOSDBase
 ! ************************************************************************** !

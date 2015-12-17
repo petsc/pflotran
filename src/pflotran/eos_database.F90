@@ -126,6 +126,11 @@ subroutine EOSDatabaseRead(this,option)
   input_table => InputCreate(IUNIT_TEMP,this%file_name,option)
   input_table%ierr = 0
 
+  !if( option%myrank == 0 ) then
+    option%io_buffer = 'Reading database = ' // this%file_name
+    call printMsg(option) 
+  !end if
+
   !reading the database file header
   do
 
