@@ -371,8 +371,9 @@ subroutine EOSRead(input,option)
                   end select
                 end do
               case('DATABASE')
-                ! read the file name
-                ! call EOSOilSetDenDBase(filename) ! note only den database is set
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'EOS,OIL','DEN DBASE filename')
+                call EOSOilSetDenDBase(word,option)
               case default
                 call InputKeywordUnrecognized(word,'EOS,OIL,DENSITY',option)
             end select
@@ -391,6 +392,10 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,OIL,ENTHALPY,LINEAR_TEMP')
                 call EOSOilSetEnthalpyLinearTemp(tempreal) 
+              case('DATABASE')
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'EOS,OIL','ENT DBASE filename')
+                call EOSOilSetEntDBase(word,option)
               case default
                 call InputKeywordUnrecognized(word,'EOS,OIL,ENTHALPY',option)
             end select
@@ -455,6 +460,10 @@ subroutine EOSRead(input,option)
                            'EOS,OIL, VISCOSITY_QUAD',option)
                   end select
                 end do
+              case('DATABASE')
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'EOS,OIL','VIS DBASE filename')
+                call EOSOilSetVisDBase(word,option)
               case default
                 call InputKeywordUnrecognized(word,'EOS,OIL,VISCOSITY',option)
             end select

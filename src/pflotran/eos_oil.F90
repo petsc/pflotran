@@ -30,6 +30,9 @@ module EOS_Oil_module
 
   ! EOS databases
   class(eos_database_type), pointer :: eos_dbase
+  class(eos_database_type), pointer :: eos_den_dbase
+  class(eos_database_type), pointer :: eos_ent_dbase 
+  class(eos_database_type), pointer :: eos_vis_dbase
   ! when adding a new eos_database, remember to add it to EOSOilDBaseDestroy()
 
   ! In order to support generic EOS subroutines, we need the following:
@@ -126,13 +129,16 @@ module EOS_Oil_module
             EOSOilEnthalpy, & 
             EOSOilDensityEnergy
 
-  public :: EOSOilSetViscosityConstant, &
+  public :: EOSOilSetFMWConstant, &
+            EOSOilGetFMW, &
+            EOSOilSetViscosityConstant, &
             EOSOilSetViscosityQuad, &
             EOSOilSetVisQuadRefVis, &
             EOSOilSetVisQuadRefPres, &
             EOSOilSetVisQuadRefTemp, &
             EOSOilSetVisQuadPresCoef, &
             EOSOilSetVisQuadTempCoef, &  
+            EOSOilSetVisDBase, &
             EOSOilSetDensityConstant, &
             EOSOilSetDensityLinear, &
             EOSOilSetDenLinearRefDen, &
@@ -140,10 +146,10 @@ module EOS_Oil_module
             EOSOilSetDenLinearExpanCoef, &
             EOSOilSetDenLinearRefPres, & 
             EOSOilSetDenLinearRefTemp, &
+            EOSOilSetDenDBase, &
             EOSOilSetEnthalpyConstant, &
             EOSOilSetEnthalpyLinearTemp, &
-            EOSOilSetFMWConstant, &
-            EOSOilGetFMW, &
+            EOSOilSetEntDBase, &
             EOSOilSetEOSDBase, &
             EOSOilDBaseDestroy
 
@@ -300,6 +306,25 @@ end subroutine EOSOilSetVisQuadTempCoef
 
 ! ************************************************************************** !
 
+subroutine EOSOilSetVisDBase(filename,option)
+
+  use Option_module
+
+  implicit none
+
+  character(len=MAXWORDLENGTH) :: filename
+  type(option_type) :: option
+
+  eos_vis_dbase => EOSDatabaseCreate(filename,'oil_den_database')
+  call eos_vis_dbase%Read(option)
+
+  !set property function pointers
+  EOSOilViscosityPtr => EOSOilViscosityVisDBase
+
+end subroutine EOSOilSetVisDBase
+
+! ************************************************************************** !
+
 subroutine EOSOilSetDensityConstant(density)
 
   implicit none
@@ -322,18 +347,6 @@ subroutine EOSOilSetDensityLinear()
   EOSOilDensityPtr => EOSOilDensityLinear
   
 end subroutine EOSOilSetDensityLinear
-
-! ************************************************************************** !
-! 
-!subroutine EOSOilSetDensityDBase()
-!
-!  implicit none
-!  
-!  EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms
-!  EOSOilDensityPtr => EOSOilDensityDBase
-!  
-!end subroutine EOSOilSetDensityLinear
-
 
 ! ************************************************************************** !
 
@@ -395,6 +408,25 @@ subroutine EOSOilSetDenLinearExpanCoef(expansion_c)
    
 end subroutine EOSOilSetDenLinearExpanCoef
 
+! ************************************************************************** !
+
+subroutine EOSOilSetDenDBase(filename,option)
+
+  use Option_module
+
+  implicit none
+
+  character(len=MAXWORDLENGTH) :: filename
+  type(option_type) :: option
+
+  eos_den_dbase => EOSDatabaseCreate(filename,'oil_den_database')
+  call eos_den_dbase%Read(option)
+
+  !set property function pointers
+  EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms 
+  EOSOilDensityPtr => EOSOilDensityDenDBase
+
+end subroutine EOSOilSetDenDBase
 
 ! ************************************************************************** !
 
@@ -427,6 +459,28 @@ subroutine EOSOilSetEnthalpyLinearTemp(specific_heat)
 end subroutine EOSOilSetEnthalpyLinearTemp
 
 ! ************************************************************************** !
+
+subroutine EOSOilSetEntDBase(filename,option)
+
+  use Option_module
+
+  implicit none
+
+  character(len=MAXWORDLENGTH) :: filename
+  type(option_type) :: option
+
+  eos_ent_dbase => EOSDatabaseCreate(filename,'oil_ent_database')
+  call eos_ent_dbase%Read(option)
+
+  !set property function pointers
+  EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms 
+  EOSOilEnthalpyPtr => EOSOilEnthalpyEntDBase
+
+
+end subroutine EOSOilSetEntDBase
+
+! ************************************************************************** !
+
 subroutine EOSOilSetEOSDBase(filename,option)
 
   use Option_module
@@ -449,6 +503,7 @@ subroutine EOSOilSetEOSDBase(filename,option)
     EOSOilViscosityPtr => EOSOilViscosityEOSDBase
 
 end subroutine EOSOilSetEOSDBase
+
 ! ************************************************************************** !
 
 subroutine EOSOilViscosityConstant(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
@@ -525,11 +580,41 @@ subroutine EOSOilViscosityEOSDBase(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
   if(deriv) then
     ! not yet implemented
     ierr = 99 !error 99 points out that deriv are asked but not available yet. 
-    print*, "EOSOilDensityEOSDBase - Den derivatives not supported"
+    print*, "EOSOilViscosityEOSDBase - Viscosity derivatives not supported"
     stop
   end if
   
 end subroutine EOSOilViscosityEOSDBase
+
+! ************************************************************************** !
+
+subroutine EOSOilViscosityVisDBase(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
+
+  implicit none
+
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! oil pressure [Pa]
+  PetscReal, intent(in) :: Rho      ! oil density [kmol/m3]  
+  PetscBool, intent(in) :: deriv    ! indicate if derivatives are needed or not
+  PetscReal, intent(out) :: Vis     ! oil viscosity 
+  PetscReal, intent(out) :: dVis_dT ! derivative oil viscosity wrt temperature
+  PetscReal, intent(out) :: dVis_dP ! derivative oil viscosity wrt Pressure
+  PetscErrorCode, intent(out) :: ierr
+
+  !ierr initialised in EOSEOSProp 
+  call eos_vis_dbase%EOSProp(T,P,EOS_VISCOSITY,Vis,ierr)
+
+  dVis_dT = 0.0d0
+  dVis_dP = 0.0d0
+
+  if(deriv) then
+    ! not yet implemented
+    ierr = 99 !error 99 points out that deriv are asked but not available yet. 
+    print*, "EOSOilViscosityVisDBase - Viscosity derivatives not supported"
+    stop
+  end if
+  
+end subroutine EOSOilViscosityVisDBase
 
 ! ************************************************************************** !
 
@@ -629,6 +714,35 @@ subroutine EOSOilDensityEOSDBase(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
 
 end subroutine EOSOilDensityEOSDBase
 
+! ************************************************************************** !
+
+subroutine EOSOilDensityDenDBase(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
+
+  implicit none
+
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscBool, intent(in) :: deriv    ! indicate if derivatives are needed or not
+  PetscReal, intent(out) :: Rho     ! oil density [kmol/m^3]
+  PetscReal, intent(out) :: dRho_dT ! derivative oil density wrt temperature
+  PetscReal, intent(out) :: dRho_dP ! derivative oil density wrt pressure
+  PetscErrorCode, intent(out) :: ierr
+
+  !ierr initialised in EOSEOSProp 
+  call eos_den_dbase%EOSProp(T,P,EOS_DENSITY,Rho,ierr)
+
+  ! conversion to molar density
+        ! kg/m3 * kmol/kg  = kmol/m3
+  Rho = Rho / fmw_oil ! kmol/m^3
+
+  if(deriv) then
+    ! not yet implemented
+    ierr = 99 !error 99 points out that deriv are asked but not available yet. 
+    print*, "EOSOilDensityDenDBase - Den derivatives not supported"
+    stop
+  end if
+
+end subroutine EOSOilDensityDenDBase
 
 ! ************************************************************************** !
 
@@ -740,9 +854,39 @@ subroutine EOSOilEnthalpyEOSDBase(T,P,deriv,H,dH_dT,dH_dP,ierr)
 
 end subroutine EOSOilEnthalpyEOSDBase
 
-
 ! ************************************************************************** !
 
+subroutine EOSOilEnthalpyEntDBase(T,P,deriv,H,dH_dT,dH_dP,ierr)
+  implicit none
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscBool, intent(in) :: deriv    ! indicate if derivatives are needed or not
+  PetscReal, intent(out) :: H       ! enthalpy [J/kmol]
+  PetscReal, intent(out) :: dH_dT   ! derivative enthalpy wrt temperature
+  PetscReal, intent(out) :: dH_dP   ! derivative enthalpy wrt pressure
+  PetscErrorCode, intent(out) :: ierr
+
+  !ierr initialised in EOSEOSProp 
+  call eos_ent_dbase%EOSProp(T,P,EOS_ENTHALPY,H,ierr)
+
+
+  ! conversion to molar energy
+  ! J/kg * kg/Kmol = J/Kmol
+  H = H  * fmw_oil  
+
+  dH_dT = UNINITIALIZED_DOUBLE
+  dH_dP = UNINITIALIZED_DOUBLE
+
+  if(deriv) then
+    ! not yet implemented
+    ierr = 99 !error 99 points out that deriv are asked but not available yet. 
+    print*, "EOSOilEnthalpyEntDBase - H derivatives not supported"
+    stop  
+  end if
+
+end subroutine EOSOilEnthalpyEntDBase
+
+! ************************************************************************** !
 
 subroutine EOSOilEnthalpyNoDerive(T,P,H,ierr)
   implicit none
@@ -820,6 +964,9 @@ subroutine EOSOilDBaseDestroy()
   implicit none
   
   call EOSDatabaseDestroy(eos_dbase)
+  call EOSDatabaseDestroy(eos_den_dbase)
+  call EOSDatabaseDestroy(eos_ent_dbase)
+  call EOSDatabaseDestroy(eos_vis_dbase)
 
 end subroutine EOSOilDBaseDestroy
 
