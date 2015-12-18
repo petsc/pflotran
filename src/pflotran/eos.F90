@@ -478,6 +478,15 @@ subroutine EOSRead(input,option)
         end select
       enddo
       ! need to add verifying function - follow EOSgas template 
+      string = ''
+      call EOSOilVerify(ierr,string)
+      if (ierr /= 0) then
+        option%io_buffer = 'Error in Oil EOS'    
+        if (len_trim(string) > 1) then
+          option%io_buffer = trim(option%io_buffer) // ': ' // trim(string)
+        endif
+        call printErrMsg(option)
+      endif
     case default
       call InputKeywordUnrecognized(keyword,'EOS',option)
   end select

@@ -30,7 +30,7 @@ module EOSDatabase_module
   contains
     procedure, public :: Read => EOSDatabaseRead 
     procedure, public :: EOSProp => EOSPropLinearInterp
-
+    procedure, public :: EOSPropPresent
   end type
 
   public :: EOSDatabaseCreate, &
@@ -251,6 +251,24 @@ subroutine EOSDatabaseRead(this,option)
   call InputDestroy(input_table)
 
 end subroutine EOSDatabaseRead
+
+! ************************************************************************** !
+function EOSPropPresent(this,prop_iname)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/18/15
+  ! 
+  ! Checks if a property is defined in the database
+
+  implicit none
+
+  class(eos_database_type) :: this
+  PetscInt, intent(in)  :: prop_iname
+  PetscBool :: EOSPropPresent
+                                        
+  EOSPropPresent = Initialized(this%prop_to_data_map(prop_iname))
+
+end function EOSPropPresent
 
 ! ************************************************************************** !
 

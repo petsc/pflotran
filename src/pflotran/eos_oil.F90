@@ -124,6 +124,7 @@ module EOS_Oil_module
 
 
   public :: EOSOilInit, &
+            EOSOilVerify, &
             EOSOilViscosity, &
             EOSOilDensity, &
             EOSOilEnthalpy, & 
@@ -192,6 +193,129 @@ subroutine EOSOilInit()
   !EOSOilEnthalpyPtr => EOSOilEnthalpyConstant  
   
 end subroutine EOSOilInit
+
+! ************************************************************************** !
+
+subroutine EOSOilVerify(ierr,error_string)
+
+  implicit none
+  
+  PetscErrorCode, intent(out) :: ierr
+  character(len=MAXSTRINGLENGTH), intent(out) :: error_string
+  
+  ierr = 0
+
+  error_string = ''
+  if(.not.associated(EOSOilDensityPtr) ) then
+    error_string = trim(error_string) // ' Oil Density model not defined'
+    ierr = 1
+    return
+  end if
+  if(.not.associated(EOSOilEnthalpyPtr) ) then
+    error_string = trim(error_string) // ' Oil Enthalpy model not defined'
+    ierr = 1
+    return
+  end if
+  if(.not.associated(EOSOilViscosityPtr) ) then
+    error_string = trim(error_string) // ' Oil Viscosity model not defined'
+    ierr = 1
+    return
+  end if
+
+  if( associated(EOSOilDensityPtr,EOSOilDensityConstant).and. &
+      Uninitialized(constant_density) &
+    ) then
+    error_string = trim(error_string) // &
+    ' Oil Constant Density selcected without providing a value'
+    ierr = 1
+    return
+  end if
+
+  if( associated(EOSOilDensityPtr,EOSOilDensityEOSDBase).and. &
+      (.not.eos_dbase%EOSPropPresent(EOS_DENSITY)) &
+    ) then
+    error_string = trim(error_string) // &
+    ' Oil Density to be interpolated from database = ' // &
+    eos_dbase%file_name // &
+    ' which does not have data for density'   
+    ierr = 1
+    return
+  end if
+
+  if( associated(EOSOilDensityPtr,EOSOilDensityDenDBase).and. &
+      (.not.eos_den_dbase%EOSPropPresent(EOS_DENSITY)) &
+    ) then
+    error_string = trim(error_string) // &
+    ' Oil Density to be interpoalted from database = ' // &
+    eos_dbase%file_name // &
+    ' which does not have data for density'   
+    ierr = 1
+    return
+  end if
+
+  if( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyConstant).and. &
+      Uninitialized(constant_enthalpy) &
+    ) then
+    error_string = trim(error_string) // &
+    ' Oil Constant Enthalpy selcected without providing a value'
+    ierr = 1
+    return
+  end if
+
+  if( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyEOSDBase).and. &
+      (.not.eos_dbase%EOSPropPresent(EOS_ENTHALPY)) &
+    ) then
+    error_string = trim(error_string) // &
+    ' Oil Enthalpy to be interpolated from database = ' // &
+    eos_dbase%file_name // &
+    ' which does not have data for Enthalpy'   
+    ierr = 1
+    return 
+  end if
+
+  if( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyEntDBase).and. &
+      (.not.eos_ent_dbase%EOSPropPresent(EOS_ENTHALPY)) &
+    ) then
+    error_string = trim(error_string) // &
+    ' Oil Density to be interpolated from database = ' // &
+    eos_dbase%file_name // &
+    ' which does not have data for enthalpy'   
+    ierr = 1
+    return
+  end if
+
+  if( associated(EOSOilViscosityPtr,EOSOilViscosityConstant).and. &
+      Uninitialized(constant_viscosity) &
+    ) then
+    error_string = trim(error_string) // &
+    ' Oil Constant Viscosity selcected without providing a value'
+    ierr = 1
+    return
+  end if
+
+  if( associated(EOSOilViscosityPtr,EOSOilViscosityEOSDBase).and. &
+      (.not.eos_dbase%EOSPropPresent(EOS_VISCOSITY)) &
+    ) then
+    error_string = trim(error_string) // &
+    ' Oil Enthalpy to be interpolated from database = ' // &
+    eos_dbase%file_name // &
+    ' which does not have data for Viscosity'   
+    ierr = 1
+    return
+  end if
+
+  if( associated(EOSOilViscosityPtr,EOSOilViscosityVisDBase).and. &
+      (.not.eos_vis_dbase%EOSPropPresent(EOS_VISCOSITY)) &
+    ) then
+    error_string = trim(error_string) // &
+    ' Oil Density to be interpolated from database = ' // &
+    eos_dbase%file_name // &
+    ' which does not have data for visosity'   
+    ierr = 1
+    return
+  end if
+
+end subroutine EOSOilVerify
 
 ! ************************************************************************** !
 
