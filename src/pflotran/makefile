@@ -1009,9 +1009,10 @@ reaction_sandbox_example.o : global_aux.o input_aux.o material_aux.o option.o \
                              pflotran_constants.o reaction_aux.o \
                              reaction_sandbox_base.o reactive_transport_aux.o \
                              string.o units.o
-reaction_sandbox_simple.o : material_aux.o option.o pflotran_constants.o \
-                            reaction_aux.o reaction_immobile_aux.o \
-                            reaction_sandbox_base.o
+reaction_sandbox_simple.o : global_aux.o material_aux.o option.o \
+                            pflotran_constants.o reaction_aux.o \
+                            reaction_immobile_aux.o reaction_sandbox_base.o \
+                            reactive_transport_aux.o
 reaction_sandbox_ufd_wp.o : global_aux.o input_aux.o material_aux.o option.o \
                             pflotran_constants.o reaction_aux.o \
                             reaction_immobile_aux.o reaction_sandbox_base.o \
