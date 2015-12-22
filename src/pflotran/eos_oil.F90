@@ -206,34 +206,34 @@ subroutine EOSOilVerify(ierr,error_string)
   ierr = 0
 
   error_string = ''
-  if(.not.associated(EOSOilDensityPtr) ) then
+  if (.not.associated(EOSOilDensityPtr) ) then
     error_string = trim(error_string) // ' Oil Density model not defined'
     ierr = 1
     return
   end if
-  if(.not.associated(EOSOilEnthalpyPtr) ) then
+  if (.not.associated(EOSOilEnthalpyPtr) ) then
     error_string = trim(error_string) // ' Oil Enthalpy model not defined'
     ierr = 1
     return
   end if
-  if(.not.associated(EOSOilViscosityPtr) ) then
+  if (.not.associated(EOSOilViscosityPtr) ) then
     error_string = trim(error_string) // ' Oil Viscosity model not defined'
     ierr = 1
     return
   end if
 
-  if( associated(EOSOilDensityPtr,EOSOilDensityConstant).and. &
+  if ( associated(EOSOilDensityPtr,EOSOilDensityConstant).and. &
       Uninitialized(constant_density) &
-    ) then
+     ) then
     error_string = trim(error_string) // &
     ' Oil Constant Density selcected without providing a value'
     ierr = 1
     return
   end if
 
-  if( associated(EOSOilDensityPtr,EOSOilDensityEOSDBase).and. &
+  if ( associated(EOSOilDensityPtr,EOSOilDensityEOSDBase).and. &
       (.not.eos_dbase%EOSPropPresent(EOS_DENSITY)) &
-    ) then
+     ) then
     error_string = trim(error_string) // &
     ' Oil Density to be interpolated from database = ' // &
     eos_dbase%file_name // &
@@ -242,9 +242,9 @@ subroutine EOSOilVerify(ierr,error_string)
     return
   end if
 
-  if( associated(EOSOilDensityPtr,EOSOilDensityDenDBase).and. &
+  if ( associated(EOSOilDensityPtr,EOSOilDensityDenDBase).and. &
       (.not.eos_den_dbase%EOSPropPresent(EOS_DENSITY)) &
-    ) then
+     ) then
     error_string = trim(error_string) // &
     ' Oil Density to be interpoalted from database = ' // &
     eos_dbase%file_name // &
@@ -253,18 +253,18 @@ subroutine EOSOilVerify(ierr,error_string)
     return
   end if
 
-  if( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyConstant).and. &
+  if ( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyConstant).and. &
       Uninitialized(constant_enthalpy) &
-    ) then
+     ) then
     error_string = trim(error_string) // &
     ' Oil Constant Enthalpy selcected without providing a value'
     ierr = 1
     return
   end if
 
-  if( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyEOSDBase).and. &
+  if ( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyEOSDBase).and. &
       (.not.eos_dbase%EOSPropPresent(EOS_ENTHALPY)) &
-    ) then
+     ) then
     error_string = trim(error_string) // &
     ' Oil Enthalpy to be interpolated from database = ' // &
     eos_dbase%file_name // &
@@ -273,9 +273,9 @@ subroutine EOSOilVerify(ierr,error_string)
     return 
   end if
 
-  if( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyEntDBase).and. &
+  if ( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyEntDBase).and. &
       (.not.eos_ent_dbase%EOSPropPresent(EOS_ENTHALPY)) &
-    ) then
+     ) then
     error_string = trim(error_string) // &
     ' Oil Density to be interpolated from database = ' // &
     eos_dbase%file_name // &
@@ -284,18 +284,18 @@ subroutine EOSOilVerify(ierr,error_string)
     return
   end if
 
-  if( associated(EOSOilViscosityPtr,EOSOilViscosityConstant).and. &
+  if ( associated(EOSOilViscosityPtr,EOSOilViscosityConstant).and. &
       Uninitialized(constant_viscosity) &
-    ) then
+     ) then
     error_string = trim(error_string) // &
     ' Oil Constant Viscosity selcected without providing a value'
     ierr = 1
     return
   end if
 
-  if( associated(EOSOilViscosityPtr,EOSOilViscosityEOSDBase).and. &
+  if ( associated(EOSOilViscosityPtr,EOSOilViscosityEOSDBase).and. &
       (.not.eos_dbase%EOSPropPresent(EOS_VISCOSITY)) &
-    ) then
+     ) then
     error_string = trim(error_string) // &
     ' Oil Enthalpy to be interpolated from database = ' // &
     eos_dbase%file_name // &
@@ -304,9 +304,9 @@ subroutine EOSOilVerify(ierr,error_string)
     return
   end if
 
-  if( associated(EOSOilViscosityPtr,EOSOilViscosityVisDBase).and. &
+  if ( associated(EOSOilViscosityPtr,EOSOilViscosityVisDBase).and. &
       (.not.eos_vis_dbase%EOSPropPresent(EOS_VISCOSITY)) &
-    ) then
+     ) then
     error_string = trim(error_string) // &
     ' Oil Density to be interpolated from database = ' // &
     eos_dbase%file_name // &
@@ -619,11 +619,11 @@ subroutine EOSOilSetEOSDBase(filename,option)
 
   !set property function pointers
   EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms 
-  if(.not.associated(EOSOilDensityPtr))  &
+  if (.not.associated(EOSOilDensityPtr))  &
             EOSOilDensityPtr => EOSOilDensityEOSDBase
-  if(.not.associated(EOSOilEnthalpyPtr)) &
+  if (.not.associated(EOSOilEnthalpyPtr)) &
     EOSOilEnthalpyPtr => EOSOilEnthalpyEOSDBase
-  if(.not.associated(EOSOilViscosityPtr)) &
+  if (.not.associated(EOSOilViscosityPtr)) &
     EOSOilViscosityPtr => EOSOilViscosityEOSDBase
 
 end subroutine EOSOilSetEOSDBase
@@ -671,7 +671,7 @@ subroutine EOSOilQuadViscosity(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
         quad_vis_temp_coef(1) * ( T - quad_vis_ref_temp(1) ) + &
         quad_vis_temp_coef(2) * ( T - quad_vis_ref_temp(2) )**2.0d0 
 
-  if(deriv) then
+  if (deriv) then
     dVis_dP = quad_vis_pres_coef(1) + &
               2.0d0 * quad_vis_pres_coef(2) * ( P - quad_vis_ref_pres(2) )
     dVis_dT = quad_vis_temp_coef(1) + &
@@ -701,7 +701,7 @@ subroutine EOSOilViscosityEOSDBase(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
   dVis_dT = 0.0d0
   dVis_dP = 0.0d0
 
-  if(deriv) then
+  if (deriv) then
     ! not yet implemented
     ierr = 99 !error 99 points out that deriv are asked but not available yet. 
     print*, "EOSOilViscosityEOSDBase - Viscosity derivatives not supported"
@@ -731,7 +731,7 @@ subroutine EOSOilViscosityVisDBase(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
   dVis_dT = 0.0d0
   dVis_dP = 0.0d0
 
-  if(deriv) then
+  if (deriv) then
     ! not yet implemented
     ierr = 99 !error 99 points out that deriv are asked but not available yet. 
     print*, "EOSOilViscosityVisDBase - Viscosity derivatives not supported"
@@ -801,7 +801,7 @@ subroutine EOSOilDensityLinear(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
         ! kg/m3 * kmol/kg  = kmol/m3
   Rho = Rho / fmw_oil ! kmol/m^3
 
-  if(deriv) then
+  if (deriv) then
     dRho_dT = compress_coeff / fmw_oil
     dRho_dP = - th_expansion_coeff / fmw_oil
   end if
@@ -829,7 +829,7 @@ subroutine EOSOilDensityEOSDBase(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
         ! kg/m3 * kmol/kg  = kmol/m3
   Rho = Rho / fmw_oil ! kmol/m^3
 
-  if(deriv) then
+  if (deriv) then
     ! not yet implemented
     ierr = 99 !error 99 points out that deriv are asked but not available yet. 
     print*, "EOSOilDensityEOSDBase - Den derivatives not supported"
@@ -859,7 +859,7 @@ subroutine EOSOilDensityDenDBase(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
         ! kg/m3 * kmol/kg  = kmol/m3
   Rho = Rho / fmw_oil ! kmol/m^3
 
-  if(deriv) then
+  if (deriv) then
     ! not yet implemented
     ierr = 99 !error 99 points out that deriv are asked but not available yet. 
     print*, "EOSOilDensityDenDBase - Den derivatives not supported"
@@ -939,7 +939,7 @@ subroutine EOSOilEnthalpyLinearTemp(T,P,deriv,H,dH_dT,dH_dP,ierr)
   dH_dT = UNINITIALIZED_DOUBLE
   dH_dP = UNINITIALIZED_DOUBLE
 
-  if(deriv) then
+  if (deriv) then
     dH_dP = 0.d0
     dH_dT = constant_sp_heat * fmw_oil
   end if
@@ -969,7 +969,7 @@ subroutine EOSOilEnthalpyEOSDBase(T,P,deriv,H,dH_dT,dH_dP,ierr)
   dH_dT = UNINITIALIZED_DOUBLE
   dH_dP = UNINITIALIZED_DOUBLE
 
-  if(deriv) then
+  if (deriv) then
     ! not yet implemented
     ierr = 99 !error 99 points out that deriv are asked but not available yet. 
     print*, "EOSOilEnthalpyEOSDBase - H derivatives not supported"
@@ -1001,7 +1001,7 @@ subroutine EOSOilEnthalpyEntDBase(T,P,deriv,H,dH_dT,dH_dP,ierr)
   dH_dT = UNINITIALIZED_DOUBLE
   dH_dP = UNINITIALIZED_DOUBLE
 
-  if(deriv) then
+  if (deriv) then
     ! not yet implemented
     ierr = 99 !error 99 points out that deriv are asked but not available yet. 
     print*, "EOSOilEnthalpyEntDBase - H derivatives not supported"
@@ -1053,7 +1053,7 @@ subroutine EOSOilDensityEnergyTOilIms(T,P,deriv,Rho,dRho_dT,dRho_dP, &
   dU_dT = UNINITIALIZED_DOUBLE
   dU_dP = UNINITIALIZED_DOUBLE
 
-  if(deriv) then
+  if (deriv) then
     print*, "EOSOilDensityEnergyTOilIms - U derivatives not supported"
     stop  
   end if   

@@ -338,7 +338,7 @@ subroutine CondControlAssignFlowInitCond(realization)
               !cur_patch%aux%Global%auxvars(ghosted_id)%istate = &
               !  initial_condition%flow_condition%iphase
             enddo
-          else ! if initial condition values not defined in condition databases
+          else ! if initial condition values defined in flow_aux_real_var
             do iconn=1,initial_condition%connection_set%num_connections
               local_id = initial_condition%connection_set%id_dn(iconn)
               ghosted_id = grid%nL2G(local_id)

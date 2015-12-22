@@ -126,7 +126,7 @@ subroutine EOSDatabaseRead(this,option)
   input_table => InputCreate(IUNIT_TEMP,this%file_name,option)
   input_table%ierr = 0
 
-  !if( option%myrank == 0 ) then
+  !if ( option%myrank == 0 ) then
     option%io_buffer = 'Reading database = ' // this%file_name
     call printMsg(option) 
   !end if
@@ -179,11 +179,11 @@ subroutine EOSDatabaseRead(this,option)
           end select
         end do
         this%num_prop = prop_idx
-        if(.not.pres_present) then
+        if (.not.pres_present) then
           option%io_buffer = 'PRESSURE must be present in any EOS_DATABASE.'
           call printErrMsg(option)
         end if
-        if(.not.temp_present) then
+        if (.not.temp_present) then
           option%io_buffer = 'TEMPERATURE must be present in any EOS_DATABASE.'
           call printErrMsg(option)
         end if
@@ -310,25 +310,25 @@ subroutine EOSPropLinearInterp(this,T,P,prop_iname,prop_value,ierr)
   !       (ii) define a function that handles errors ids and print error message.
   !       (iii) can then remove the print statment below
   !       note: need to minimise the number if-checks for efficiency. 
-  if( T < this%lookup_table%axis1%values(1) ) then 
+  if ( T < this%lookup_table%axis1%values(1) ) then 
     ierr = 101
     print*, "EOSEOSProp - T smaller than min val in EOSdatabase"
     print*, "Temp val [°C] = ", T
     stop  
   end if 
-  if( T > this%lookup_table%axis1%values(this%num_dt) ) then
+  if ( T > this%lookup_table%axis1%values(this%num_dt) ) then
     ierr = 102
     print*, "EOSEOSProp - T larger than max val in EOSdatabase"
     print*, "Temp val [°C] = ", T
     stop  
   end if
-  if( P < this%lookup_table%axis2%values(1) ) then
+  if ( P < this%lookup_table%axis2%values(1) ) then
     ierr = 103
     print*, "EOSEOSProp - P smaller than min val in EOSdatabase"
     print*, "Press val [Mpa] = ", P*1.d-6
     stop  
   end if
-  if( P > this%lookup_table%axis2%values(this%num_dp) ) then
+  if ( P > this%lookup_table%axis2%values(this%num_dp) ) then
     ierr = 104
     print*, "EOSEOSProp - P larger than max val in EOSdatabase"
     print*, "Press val [Mpa] = ", P*1.d-6

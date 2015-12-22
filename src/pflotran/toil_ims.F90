@@ -2017,7 +2017,7 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
   PetscInt :: energy_var
 
   ! this can be removed when etxending to pressure condition
-  if(.not.associated(src_sink_condition%rate) ) then
+  if (.not.associated(src_sink_condition%rate) ) then
     option%io_buffer = 'TOilImsSrcSink fow condition rate not defined ' // &
     'rate is needed for a valid src/sink term'
     call printErrMsg(option)  
@@ -2027,9 +2027,9 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
   qsrc => src_sink_condition%rate%dataset%rarray
 
   energy_var = 0
-  if( associated(src_sink_condition%temperature) ) then
+  if ( associated(src_sink_condition%temperature) ) then
     energy_var = SRC_TEMPERATURE 
-  else if( associated(src_sink_condition%enthalpy) ) then
+  else if ( associated(src_sink_condition%enthalpy) ) then
     energy_var = SRC_ENTHALPY
   end if
 
@@ -2037,7 +2037,7 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
 
  ! checks that qsrc(liquid_phase) and qsrc(oil_phase) 
  ! do not have different signs
-  if( (qsrc(option%liquid_phase)>0.0d0 .and. qsrc(option%oil_phase)<0.d0).or.&
+  if ( (qsrc(option%liquid_phase)>0.0d0 .and. qsrc(option%oil_phase)<0.d0).or.&
       (qsrc(option%liquid_phase)<0.0d0 .and. qsrc(option%oil_phase)>0.d0)  & 
     ) then
     option%io_buffer = "TOilImsSrcSink error: " // &
@@ -2047,20 +2047,20 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
 
   ! approximates BHP with local pressure
   ! to compute BHP we need to solve an IPR equation
-  if( ( (flow_src_sink_type == VOLUMETRIC_RATE_SS) .or. &
-        ( associated(src_sink_condition%temperature) ) &
-      ) .and. &
-      ( (qsrc(option%liquid_phase) > 0.d0).or. &
-        (qsrc(option%oil_phase) > 0.d0) &
-      ) & 
-    ) then  
+  if ( ( (flow_src_sink_type == VOLUMETRIC_RATE_SS) .or. &
+         ( associated(src_sink_condition%temperature) ) &
+       ) .and. &
+       (  (qsrc(option%liquid_phase) > 0.d0).or. &
+         (qsrc(option%oil_phase) > 0.d0) &
+       ) & 
+     ) then  
     cell_pressure = &
         maxval(toil_auxvar%pres(option%liquid_phase:option%oil_phase))
   end if
 
   ! if enthalpy is used to define enthelpy or energy rate is used  
   ! approximate bottom hole temperature (BHT) with local temp
-  if( energy_var == SRC_TEMPERATURE) then
+  if ( energy_var == SRC_TEMPERATURE) then
     temperature = src_sink_condition%temperature%dataset%rarray(1)
   else   
     temperature = toil_auxvar%temp
@@ -2070,7 +2070,7 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
   Res = 0.d0
   do iphase = 1, option%nphase
     qsrc_mol = 0.d0
-    if( qsrc(iphase) > 0.d0) then 
+    if ( qsrc(iphase) > 0.d0) then 
       select case(iphase)
         case(LIQUID_PHASE)
           call EOSWaterDensity(temperature,cell_pressure,den_kg,den,ierr)
@@ -2104,24 +2104,24 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
 
   ! Res(option%energy_id), energy units: MJ/sec
 
-  if( associated(src_sink_condition%temperature) .or. &
+  if ( associated(src_sink_condition%temperature) .or. &
       associated(src_sink_condition%enthalpy) &
-    ) then
+     ) then
     ! if injection compute local pressure that will be used as BHP
     ! approximation used to overcome the solution of an IPR
-    !if( qsrc(option%liquid_phase)>0.d0 .or. 
+    !if ( qsrc(option%liquid_phase)>0.d0 .or. 
     !    qsrc(option%oil_phase)>0.d0 ) then
     !  cell_pressure = &
     !      maxval(toil_auxvar%pres(option%liquid_phase:option%oil_phase))
     !end if
     ! water injection 
-    if(qsrc(option%liquid_phase) > 0.d0) then !implies qsrc(option%oil_phase)>=0
-      if( energy_var == SRC_TEMPERATURE ) then
+    if (qsrc(option%liquid_phase) > 0.d0) then !implies qsrc(option%oil_phase)>=0
+      if ( energy_var == SRC_TEMPERATURE ) then
         call EOSWaterDensityEnthalpy(src_sink_condition%temperature% &
                                      dataset%rarray(1), cell_pressure, &
                                      den_kg,den,enthalpy,ierr)
         ! enthalpy = [J/kmol]
-      else if( energy_var == SRC_ENTHALPY ) then
+      else if ( energy_var == SRC_ENTHALPY ) then
         !input as J/kg
         enthalpy = src_sink_condition%enthalpy% &
                        dataset%rarray(option%liquid_phase)
@@ -2134,12 +2134,12 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
                               Res(option%liquid_phase) * enthalpy
     end if
     ! oil injection 
-    if(qsrc(option%oil_phase) > 0.d0) then !implies qsrc(option%liquid_phase)>=0
-      if( energy_var == SRC_TEMPERATURE ) then
+    if (qsrc(option%oil_phase) > 0.d0) then !implies qsrc(option%liquid_phase)>=0
+      if ( energy_var == SRC_TEMPERATURE ) then
         call EOSOilEnthalpy(src_sink_condition%temperature%dataset%rarray(1), &
                             cell_pressure, enthalpy, ierr)
         ! enthalpy = [J/kmol] 
-      else if( energy_var == SRC_ENTHALPY ) then
+      else if ( energy_var == SRC_ENTHALPY ) then
         enthalpy = src_sink_condition%enthalpy% &
                      dataset%rarray(option%oil_phase)
                       !J/kg * kg/kmol = J/kmol  
@@ -2151,14 +2151,14 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
                               Res(option%oil_phase) * enthalpy
     end if
     ! water energy extraction due to water production
-    if(qsrc(option%liquid_phase) < 0.d0) then !implies qsrc(option%oil_phase)<=0
+    if (qsrc(option%liquid_phase) < 0.d0) then !implies qsrc(option%oil_phase)<=0
       ! auxvar enthalpy units: MJ/kmol ! water component mass                     
       Res(option%energy_id) = Res(option%energy_id) + &
                               Res(option%liquid_phase) * &
                               toil_auxvar%H(option%liquid_phase)
     end if
     !oil energy extraction due to oil production 
-    if(qsrc(option%oil_phase) < 0.d0) then !implies qsrc(option%liquid_phase)<=0
+    if (qsrc(option%oil_phase) < 0.d0) then !implies qsrc(option%liquid_phase)<=0
       ! auxvar enthalpy units: MJ/kmol ! water component mass                     
       Res(option%energy_id) = Res(option%energy_id) + &
                               Res(option%oil_phase) * &

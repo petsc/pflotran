@@ -522,7 +522,7 @@ subroutine PMTOilImsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
     if (patch%imat(ghosted_id) <= 0) cycle
     offset = (local_id-1)*option%nflowdof
     saturation_index = offset + TOIL_IMS_SATURATION_DOF
-    if( (X_p(saturation_index) - dX_p(saturation_index)) < 0.d0 ) then
+    if ( (X_p(saturation_index) - dX_p(saturation_index)) < 0.d0 ) then
       ! we use 1.d-6 since cancelation can occur with smaller values
       ! this threshold is imposed in the initial condition
       dX_p(saturation_index) = X_p(saturation_index)
