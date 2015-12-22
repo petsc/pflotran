@@ -203,13 +203,10 @@ subroutine StrataRead(strata,input,option)
       case('MATERIAL')
         call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'material property name','STRATA')
-        if (StringCompareIgnoreCase(string,'realization_dependent')) then
-          strata%realization_dependent = PETSC_TRUE
-          call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
-          call InputErrorMsg(input,option,'material property name','STRATA')
-        endif
         strata%material_property_name = trim(string)
         strata%material_property_filename = string
+      case('REALIZATION_DEPENDENT')
+        strata%realization_dependent = PETSC_TRUE
       case('START_TIME')
         call InputReadDouble(input,option,strata%start_time)
         call InputErrorMsg(input,option,'start time','STRATA')
