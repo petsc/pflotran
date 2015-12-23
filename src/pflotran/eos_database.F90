@@ -50,7 +50,7 @@ function EOSDatabaseCreate(filename,dbase_name)
 
   class(eos_database_type), pointer :: EOSDatabaseCreate
   character(len=MAXWORDLENGTH) :: filename
-  character(len=MAXWORDLENGTH) :: dbase_name
+  character(len=*) :: dbase_name
 
   allocate(EOSDatabaseCreate)
   EOSDatabaseCreate%dbase_name = dbase_name 
