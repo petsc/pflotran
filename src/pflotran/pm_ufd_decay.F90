@@ -696,7 +696,7 @@ subroutine PMUFDDecaySolve(this,time,ierr)
 !                        this%molar_volume(iele)
         mass_iso_tot0 = mass_iso_aq0 + mass_iso_sorb0 + mass_iso_ppt0
         ! should this be implicit in time?
-        mass_iso_tot1(iiso) = mass_iso_tot0 * exp(this%isotope_decay_rate(iiso)*dt)
+        mass_iso_tot1(iiso) = mass_iso_tot0 * exp(-1.d0*this%isotope_decay_rate(iiso)*dt)
         delta_mass_iso_tot(iiso) = mass_iso_tot1(iiso) - mass_iso_tot0
       enddo
     enddo 
