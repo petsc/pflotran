@@ -1900,6 +1900,7 @@ subroutine InitSubsurfaceReadInput(simulation)
 
       case ('SATURATION_FUNCTION')
         if (option%iflowmode == RICHARDS_MODE .or. &
+            option%iflowmode == TOIL_IMS_MODE .or. &
             option%iflowmode == G_MODE) then
           option%io_buffer = &
             'Must compile with legacy_saturation_function=1 ' //&
@@ -1921,6 +1922,14 @@ subroutine InitSubsurfaceReadInput(simulation)
 
       case ('CHARACTERISTIC_CURVES')
       
+        if (.not.(option%iflowmode == RICHARDS_MODE .or. &
+                  option%iflowmode == TOIL_IMS_MODE .or. &
+                  option%iflowmode == G_MODE)) then
+          option%io_buffer = 'CHARACTERISTIC_CURVES not supported in flow ' // &
+            'modes other than RICHARDS, TOIL_IMS,  or GENERAL.  Use ' // &
+            'SATURATION_FUNCTION.'
+          call printErrMsg(option)
+        endif
         characteristic_curves => CharacteristicCurvesCreate()
         call InputReadWord(input,option,characteristic_curves%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','CHARACTERISTIC_CURVES')
