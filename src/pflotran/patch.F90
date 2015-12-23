@@ -2023,14 +2023,19 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   
   PetscInt :: idof, num_connections,sum_connection
   PetscInt :: iconn, local_id, ghosted_id
+  PetscInt :: iphase
   
   num_connections = coupler%connection_set%num_connections
 
   flow_condition => coupler%flow_condition
 
   if (associated(flow_condition%pressure)) then
-    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                flow_condition%iphase
+    !geh: this is a fix for an Intel compiler bug. Not sure why Intel cannot
+    !     access flow_condition%iphase directly....
+    iphase = flow_condition%iphase
+    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = iphase
+!    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+!                                                        flow_condition%iphase
     select case(flow_condition%pressure%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC,SPILLOVER_BC)
         select type(selector =>flow_condition%pressure%dataset)
