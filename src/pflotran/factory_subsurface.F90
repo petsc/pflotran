@@ -139,7 +139,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   if (associated(pm_flow)) then
     pmc_subsurface => PMCSubsurfaceCreate()
     pmc_subsurface%option => option
-    pmc_subsurface%pms => pm_flow
+    pmc_subsurface%pm_list => pm_flow
     pmc_subsurface%pm_ptr%ptr => pm_flow
     pmc_subsurface%realization => realization
     ! set up logging stage
@@ -156,7 +156,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     pmc_subsurface => PMCSubsurfaceCreate()
     pmc_subsurface%name = 'PMCSubsurfaceTransport'
     pmc_subsurface%option => option
-    pmc_subsurface%pms => pm_rt
+    pmc_subsurface%pm_list => pm_rt
     pmc_subsurface%pm_ptr%ptr => pm_rt
     pmc_subsurface%realization => realization
     ! set up logging stage
@@ -204,7 +204,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     endif
     pmc_third_party => PMCThirdPartyCreate()
     pmc_third_party%option => option
-    pmc_third_party%pms => pm_waste_form
+    pmc_third_party%pm_list => pm_waste_form
     pmc_third_party%pm_ptr%ptr => pm_waste_form
     pmc_third_party%realization => realization
     ! set up logging stage
@@ -227,7 +227,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     endif
     pmc_third_party => PMCThirdPartyCreate()
     pmc_third_party%option => option
-    pmc_third_party%pms => pm_ufd_decay
+    pmc_third_party%pm_list => pm_ufd_decay
     pmc_third_party%pm_ptr%ptr => pm_ufd_decay
     pmc_third_party%realization => realization
     ! set up logging stage
@@ -830,7 +830,7 @@ subroutine InitSubsurfaceSimulation(simulation)
     cur_process_model_coupler => cur_process_model_coupler_top
     do
       if (.not.associated(cur_process_model_coupler)) exit
-      cur_process_model => cur_process_model_coupler%pms
+      cur_process_model => cur_process_model_coupler%pm_list
       do
         if (.not.associated(cur_process_model)) exit
         ! set realization

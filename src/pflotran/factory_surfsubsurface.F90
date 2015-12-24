@@ -164,7 +164,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       pmc_surface%name = 'PMCSurface'
       simulation%surf_flow_process_model_coupler => pmc_surface
       pmc_surface%option => option
-      pmc_surface%pms => pm_surface_flow
+      pmc_surface%pm_list => pm_surface_flow
       pmc_surface%pm_ptr%ptr => pm_surface_flow
       pmc_surface%surf_realization => simulation%surf_realization
       pmc_surface%subsurf_realization => simulation%realization
@@ -181,7 +181,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       pmc_surface%name = 'PMCSurface'
       simulation%surf_flow_process_model_coupler => pmc_surface
       pmc_surface%option => option
-      pmc_surface%pms => pm_surface_th
+      pmc_surface%pm_list => pm_surface_th
       pmc_surface%pm_ptr%ptr => pm_surface_th
       pmc_surface%surf_realization => simulation%surf_realization
       pmc_surface%subsurf_realization => simulation%realization

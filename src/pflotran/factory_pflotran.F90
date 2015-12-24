@@ -325,7 +325,7 @@ recursive subroutine PFLOTRANLinkPMToPMC(input,option,pmc,pm)
   
   print *, pmc%name, pm%name
   if (StringCompareIgnoreCase(pmc%name,pm%name)) then
-    pmc%pms => pm
+    pmc%pm_list => pm
     return
   endif
   
