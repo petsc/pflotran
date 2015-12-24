@@ -514,7 +514,7 @@ e4d_mat_inv.o :
 e4d_run.o : e4d_vars.o
 e4d_setup.o : e4d_mat_inv.o e4d_vars.o
 e4d_vars.o :
-eos.o : eos_database.o eos_gas.o eos_oil.o eos_water.o input_aux.o option.o \
+eos.o : eos_gas.o eos_oil.o eos_water.o input_aux.o option.o \
         pflotran_constants.o string.o
 eos_database.o : input_aux.o lookup_table.o option.o pflotran_constants.o \
                  string.o utility.o
@@ -901,8 +901,8 @@ pm_toil_ims.o : checkpoint.o field.o global.o global_aux.o grid.o input_aux.o \
                 variables.o
 pm_ufd_decay.o : global.o global_aux.o grid.o input_aux.o material_aux.o \
                  option.o patch.o pflotran_constants.o pm_base.o \
-                 reaction_aux.o reactive_transport_aux.o realization.o \
-                 string.o utility.o
+                 reaction_aux.o reaction_mineral_aux.o \
+                 reactive_transport_aux.o realization.o string.o utility.o
 pm_waste_form.o : condition.o data_mediator_vec.o dataset.o dataset_ascii.o \
                   dataset_base.o geometry.o global_aux.o grid.o \
                   grid_structured.o grid_unstructured.o input_aux.o option.o \
@@ -1091,11 +1091,9 @@ secondary_continuum_aux.o : option.o pflotran_constants.o \
                             reactive_transport_aux.o utility.o
 shape_function.o : gauss.o grid_unstructured_cell.o pflotran_constants.o
 simulation_aux.o : option.o pflotran_constants.o
-simulation_base.o : eos.o eos_database.o eos_gas.o eos_oil.o eos_water.o  \
-                    input_aux.o logging.o lookup_table.o option.o output.o \
-                    output_aux.o option.o pflotran_constants.o pm_base.o \
-                    pmc_base.o simulation_aux.o string.o timestepper_base.o \
-                    waypoint.o
+simulation_base.o : eos.o input_aux.o logging.o option.o output.o output_aux.o \
+                    pflotran_constants.o pm_base.o pmc_base.o simulation_aux.o \
+                    timestepper_base.o waypoint.o
 simulation_geomechanics.o : geomechanics_realization.o option.o output.o \
                             pflotran_constants.o pmc_base.o pmc_geomechanics.o \
                             pmc_subsurface.o realization.o regression.o \
