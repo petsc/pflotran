@@ -22,7 +22,7 @@ module Simulation_Subsurface_class
     ! pointer to reactive transport process model coupler
     class(pmc_subsurface_type), pointer :: rt_process_model_coupler
     ! pointer to realization object shared by flow and reactive transport
-    class(realization_type), pointer :: realization 
+    class(realization_subsurface_type), pointer :: realization 
     ! regression object
     type(regression_type), pointer :: regression
   contains

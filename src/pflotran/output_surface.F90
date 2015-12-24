@@ -78,16 +78,16 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
   ! Date: 05/29/12
   ! 
 
-  use Surface_Realization_class, only : surface_realization_type
-  use Realization_class, only : realization_type
+  use Surface_Realization_class, only : realization_surface_type
+  use Realization_class, only : realization_subsurface_type
   use Option_module, only : OptionCheckTouch, option_type, &
                             printMsg, printErrMsg
   use PFLOTRAN_Constants_module
 
   implicit none
 
-  class(surface_realization_type) :: surf_realization
-  class(realization_type) :: realization
+  class(realization_surface_type) :: surf_realization
+  class(realization_subsurface_type) :: realization
   PetscBool                      :: plot_flag
   PetscBool                      :: transient_plot_flag
 
@@ -164,8 +164,8 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   ! Date: 05/29/12
   ! 
 
-  use Surface_Realization_class, only : surface_realization_type
-  use Realization_class, only : realization_type
+  use Surface_Realization_class, only : realization_surface_type
+  use Realization_class, only : realization_subsurface_type
   use Discretization_module
   use Grid_module
   use Grid_Unstructured_Aux_module
@@ -175,8 +175,8 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   
   implicit none
 
-  class(surface_realization_type) :: surf_realization
-  class(realization_type) :: realization
+  class(realization_surface_type) :: surf_realization
+  class(realization_subsurface_type) :: realization
   
   PetscInt :: i
   PetscInt, parameter :: icolumn = -1
@@ -277,7 +277,7 @@ subroutine OutputTecplotHeader(fid,surf_realization,icolumn)
   implicit none
 
   PetscInt :: fid
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -338,7 +338,7 @@ subroutine OutputWriteTecplotZoneHeader(fid,surf_realization,variable_count, &
   implicit none
 
   PetscInt :: fid
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   PetscInt :: variable_count
   PetscInt :: tecplot_format
   
@@ -420,7 +420,7 @@ subroutine WriteTecplotUGridElements(fid, &
   implicit none
 
   PetscInt :: fid
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -503,7 +503,7 @@ subroutine WriteTecplotUGridVertices(fid,surf_realization)
   implicit none
 
   PetscInt :: fid
-  class(surface_realization_type) :: surf_realization 
+  class(realization_surface_type) :: surf_realization 
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -561,7 +561,7 @@ subroutine OutputHydrograph(surf_realization)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(coupler_type), pointer :: boundary_condition
@@ -684,8 +684,8 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
 #if !defined(PETSC_HAVE_HDF5)
   implicit none
   
-  class(surface_realization_type) :: surf_realization
-  class(realization_type) :: realization
+  class(realization_surface_type) :: surf_realization
+  class(realization_subsurface_type) :: realization
   PetscInt :: var_list_type
 
   call printMsg(surf_realization%option,'')
@@ -709,8 +709,8 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
   
   implicit none
 
-  class(surface_realization_type) :: surf_realization
-  class(realization_type) :: realization
+  class(realization_surface_type) :: surf_realization
+  class(realization_subsurface_type) :: realization
   PetscInt :: var_list_type
 
 #if defined(SCORPIO_WRITE)
@@ -1017,8 +1017,8 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   
   implicit none
   
-  class(surface_realization_type) :: surf_realization
-  class(realization_type) :: realization
+  class(realization_surface_type) :: surf_realization
+  class(realization_subsurface_type) :: realization
   type(option_type), pointer :: option
 
 #if defined(SCORPIO_WRITE)
@@ -1528,7 +1528,7 @@ subroutine OutputSurfaceGetVarFromArray(surf_realization,vec,ivar,isubvar,isubva
   ! Date: 01/30/13
   ! 
 
-  use Surface_Realization_class, only : surface_realization_type, &
+  use Surface_Realization_class, only : realization_surface_type, &
                                         SurfRealizGetVariable
   use Grid_module
   use Option_module
@@ -1540,7 +1540,7 @@ subroutine OutputSurfaceGetVarFromArray(surf_realization,vec,ivar,isubvar,isubva
 #include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petsclog.h"
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
@@ -1568,8 +1568,8 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
   ! Date: 03/22/13
   ! 
 
-  use Surface_Realization_class, only : surface_realization_type
-  use Realization_class, only : realization_type
+  use Surface_Realization_class, only : realization_surface_type
+  use Realization_class, only : realization_subsurface_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg
   use Output_Aux_module
   use Output_Common_module, only : OutputGetVarFromArray  
@@ -1577,8 +1577,8 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
-  class(realization_type) :: realization
+  class(realization_surface_type) :: surf_realization
+  class(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
@@ -1809,7 +1809,7 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
 
   use hdf5
   use HDF5_module
-  use Surface_Realization_class, only : surface_realization_type
+  use Surface_Realization_class, only : realization_surface_type
   use Patch_module
   use Grid_module
   use Option_module
@@ -1829,7 +1829,7 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
 #include "petsc/finclude/petsclog.h"
 #include "petsc/finclude/petscsys.h"
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   type(option_type), pointer :: option
 
   type(patch_type), pointer :: patch
@@ -2021,7 +2021,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
 
   use hdf5
   use HDF5_module
-  use Surface_Realization_class, only : surface_realization_type
+  use Surface_Realization_class, only : realization_surface_type
   use Patch_module
   use Grid_module
   use Option_module
@@ -2041,7 +2041,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
 #include "petsc/finclude/petsclog.h"
 #include "petsc/finclude/petscsys.h"
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   type(option_type), pointer :: option
   PetscInt :: var_list_type  
 

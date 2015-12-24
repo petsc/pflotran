@@ -12,8 +12,8 @@ module PMC_Geomechanics_class
   private
 
   type, public, extends(pmc_base_type) :: pmc_geomechanics_type
-    class(realization_type), pointer :: subsurf_realization
-    class(geomech_realization_type), pointer :: geomech_realization
+    class(realization_subsurface_type), pointer :: subsurf_realization
+    class(realization_geomech_type), pointer :: geomech_realization
   contains
     procedure, public :: Init => PMCGeomechanicsInit
     procedure, public :: RunToTime => PMCGeomechanicsRunToTime

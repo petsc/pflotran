@@ -58,7 +58,7 @@ subroutine CondControlAssignFlowInitCond(realization)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   PetscInt :: icell, iconn, idof, iface
   PetscInt :: local_id, ghosted_id, iend, ibegin
@@ -524,7 +524,7 @@ subroutine CondControlAssignTranInitCond(realization)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   PetscInt :: icell, iconn, idof, isub_condition, temp_int, iimmobile
   PetscInt :: local_id, ghosted_id, iend, ibegin
@@ -967,7 +967,7 @@ subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"  
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   class(dataset_base_type), pointer :: dataset
   PetscInt :: idof
   Vec :: mdof_vec
@@ -1040,7 +1040,7 @@ subroutine CondControlScaleSourceSink(realization)
 #include "petsc/finclude/petscdmda.h"
 
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   PetscErrorCode :: ierr
   
@@ -1197,7 +1197,7 @@ subroutine CondControlReadTransportIC(realization,filename)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   PetscInt :: local_id, idx, offset, idof
@@ -1286,7 +1286,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   PetscInt :: icell, iconn, idof, iface
   PetscInt :: local_id, ghosted_id, iend, ibegin

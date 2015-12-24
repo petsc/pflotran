@@ -21,7 +21,7 @@ module Simulation_Geomechanics_class
   type, public, extends(subsurface_simulation_type) :: geomechanics_simulation_type
     ! pointer to geomechanics coupler
     class(pmc_geomechanics_type), pointer :: geomech_process_model_coupler
-    class(geomech_realization_type), pointer :: geomech_realization
+    class(realization_geomech_type), pointer :: geomech_realization
   contains
     procedure, public :: Init => GeomechanicsSimulationInit
     procedure, public :: InitializeRun => GeomechanicsSimulationInitializeRun

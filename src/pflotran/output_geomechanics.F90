@@ -68,7 +68,7 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
 
   implicit none
 
-  type(geomech_realization_type) :: geomech_realization
+  type(realization_geomech_type) :: geomech_realization
   PetscBool                       :: plot_flag
   PetscBool                       :: transient_plot_flag
 
@@ -140,7 +140,7 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
   
   implicit none
 
-  type(geomech_realization_type) :: geomech_realization
+  type(realization_geomech_type) :: geomech_realization
   
   PetscInt, parameter :: icolumn = -1
   character(len=MAXSTRINGLENGTH) :: filename, string, string2
@@ -243,7 +243,7 @@ subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
   implicit none
 
   PetscInt :: fid
-  type(geomech_realization_type) :: geomech_realization
+  type(realization_geomech_type) :: geomech_realization
 
   type(geomech_grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -406,7 +406,7 @@ subroutine OutputTecplotHeader(fid,geomech_realization,icolumn)
   implicit none
 
   PetscInt :: fid
-  type(geomech_realization_type) :: geomech_realization
+  type(realization_geomech_type) :: geomech_realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -468,7 +468,7 @@ subroutine OutputWriteTecplotZoneHeader(fid,geomech_realization, &
   implicit none
 
   PetscInt :: fid
-  type(geomech_realization_type) :: geomech_realization
+  type(realization_geomech_type) :: geomech_realization
   PetscInt :: variable_count
   PetscInt :: tecplot_format
   
@@ -528,7 +528,7 @@ subroutine WriteTecplotGeomechGridVertices(fid,geomech_realization)
   implicit none
 
   PetscInt :: fid
-  type(geomech_realization_type) :: geomech_realization 
+  type(realization_geomech_type) :: geomech_realization 
   
   type(geomech_grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -669,7 +669,7 @@ subroutine OutputGeomechGetVarFromArray(geomech_realization,vec,ivar,isubvar, &
 #include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petsclog.h"
 
-  class(geomech_realization_type) :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
@@ -703,7 +703,7 @@ subroutine WriteTecplotDataSetGeomechFromVec(fid,geomech_realization,vec,datatyp
   implicit none
 
   PetscInt :: fid
-  type(geomech_realization_type) :: geomech_realization
+  type(realization_geomech_type) :: geomech_realization
   Vec :: vec
   PetscInt :: datatype
   PetscErrorCode :: ierr  
@@ -737,7 +737,7 @@ subroutine WriteTecplotDataSetGeomech(fid,geomech_realization,array,datatype, &
   implicit none
 
   PetscInt :: fid
-  type(geomech_realization_type) :: geomech_realization
+  type(realization_geomech_type) :: geomech_realization
   PetscReal :: array(:)
   PetscInt :: datatype
   PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
@@ -772,7 +772,7 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
   implicit none
   
   PetscInt :: fid
-  type(geomech_realization_type) :: geomech_realization
+  type(realization_geomech_type) :: geomech_realization
   PetscReal :: array(:)
   PetscInt :: datatype
   PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
@@ -1200,7 +1200,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
 
   implicit none
   
-  type(geomech_realization_type) :: geomech_realization
+  type(realization_geomech_type) :: geomech_realization
   PetscInt :: var_list_type
 
   call printMsg(geomech_realization%option,'')
@@ -1229,7 +1229,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
 #include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petsclog.h"
 
-  type(geomech_realization_type) :: geomech_realization
+  type(realization_geomech_type) :: geomech_realization
   PetscInt :: var_list_type
 
 #if defined(SCORPIO_WRITE)
@@ -1519,7 +1519,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
 #include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petsclog.h"
 
-  type(geomech_realization_type) :: geomech_realization
+  type(realization_geomech_type) :: geomech_realization
   type(option_type), pointer :: option
 
 #if defined(SCORPIO_WRITE)

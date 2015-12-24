@@ -313,7 +313,7 @@ subroutine CheckpointFlowProcessModelBinary(viewer,realization)
 #include "petsc/finclude/petscvec.h90"
 
   PetscViewer :: viewer
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
 
   type(option_type), pointer :: option
@@ -408,7 +408,7 @@ subroutine RestartFlowProcessModelBinary(viewer,realization)
 #include "petsc/finclude/petscvec.h90"
 
   PetscViewer :: viewer
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
 
   type(option_type), pointer :: option
@@ -1247,7 +1247,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
   use Realization_class
   implicit none
   integer :: pm_grp_id
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
         'write HDF5 formatted checkpoint file. Darn.'
   stop
@@ -1273,7 +1273,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
 #else
   integer(HID_T) :: pm_grp_id
 #endif
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
 
   type(option_type), pointer :: option
@@ -1391,7 +1391,7 @@ subroutine RestartFlowProcessModelHDF5(pm_grp_id, realization)
   use Realization_class
   implicit none
   integer :: pm_grp_id
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
         'write HDF5 formatted checkpoint file. Darn.'
   stop
@@ -1418,7 +1418,7 @@ subroutine RestartFlowProcessModelHDF5(pm_grp_id, realization)
 #else
   integer(HID_T) :: pm_grp_id
 #endif
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
 
   type(option_type), pointer :: option

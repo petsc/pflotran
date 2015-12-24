@@ -22,7 +22,7 @@ module PM_Subsurface_class
 #include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_base_type) :: pm_subsurface_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
     class(communicator_type), pointer :: comm1
     PetscBool :: transient_permeability
     PetscBool :: store_porosity_for_ts_cut
@@ -164,7 +164,7 @@ subroutine PMSubsurfaceSetRealization(this,realization)
   implicit none
   
   class(pm_subsurface_type) :: this
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   
   this%realization => realization
   this%realization_base => realization

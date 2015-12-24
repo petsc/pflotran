@@ -37,7 +37,7 @@ subroutine GlobalSetup(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -135,7 +135,7 @@ subroutine GlobalSetAuxVarScalar(realization,value,ivar)
   
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscReal :: value
   PetscInt :: ivar
 
@@ -212,7 +212,7 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   Vec :: vec_loc
   PetscInt :: ivar
   PetscInt :: isubvar  
@@ -421,7 +421,7 @@ subroutine GlobalGetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   Vec :: vec_loc
   PetscInt :: ivar
   PetscInt :: isubvar  
@@ -472,7 +472,7 @@ subroutine GlobalWeightAuxVars(realization,weight)
   
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscReal :: weight
   
   type(option_type), pointer :: option
@@ -539,7 +539,7 @@ subroutine GlobalUpdateState(realization)
   use Communicator_Base_module
   use Variables_module, only : STATE
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   call RealizationGetVariable(realization,realization%field%work,STATE, &
                               ZERO_INTEGER)
@@ -572,7 +572,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                GAS_DENSITY, GAS_SATURATION, &
                                TEMPERATURE, SC_FUGA_COEFF, GAS_DENSITY_MOL
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscReal :: time
   PetscInt :: time_level
   

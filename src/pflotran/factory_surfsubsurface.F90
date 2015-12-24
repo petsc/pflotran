@@ -90,8 +90,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   class(surfsubsurface_simulation_type) :: simulation
   type(option_type), pointer :: option
   
-  class(realization_type), pointer :: subsurf_realization
-  class(surface_realization_type), pointer :: surf_realization
+  class(realization_subsurface_type), pointer :: subsurf_realization
+  class(realization_surface_type), pointer :: surf_realization
   class(pmc_base_type), pointer :: cur_process_model_coupler
   class(pm_surface_flow_type), pointer :: pm_surface_flow
   class(pm_surface_th_type), pointer :: pm_surface_th
@@ -401,8 +401,8 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  class(realization_type),pointer         :: realization
-  class(surface_realization_type),pointer :: surf_realization
+  class(realization_subsurface_type),pointer         :: realization
+  class(realization_surface_type),pointer :: surf_realization
   VecScatter                             :: surf_to_subsurf
   VecScatter                             :: subsurf_to_surf
 
@@ -719,8 +719,8 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  class(realization_type),pointer         :: realization
-  class(surface_realization_type),pointer :: surf_realization
+  class(realization_subsurface_type),pointer         :: realization
+  class(realization_surface_type),pointer :: surf_realization
   Mat :: prod_mat
   Vec :: source_petsc_ids
   VecScatter :: scatter
@@ -860,7 +860,7 @@ subroutine SurfSubsurfCreateSubsurfVecs(subsurf_realization, option, &
 
   implicit none
 
-  class(realization_type),pointer :: subsurf_realization
+  class(realization_subsurface_type),pointer :: subsurf_realization
   type(option_type),pointer :: option
   Vec :: subsurf_pres
   Vec :: subsurf_pres_top_bc
@@ -939,7 +939,7 @@ subroutine SurfSubsurfCreateSurfVecs(surf_realization,option,surf_head)
 
   implicit none
 
-  class(surface_realization_type),pointer :: surf_realization
+  class(realization_surface_type),pointer :: surf_realization
   type(option_type),pointer :: option
   Vec :: surf_head
 

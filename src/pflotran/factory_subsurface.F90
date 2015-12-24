@@ -99,7 +99,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   class(pm_waste_form_type), pointer :: pm_waste_form
   class(pm_ufd_decay_type), pointer :: pm_ufd_decay
   class(pm_base_type), pointer :: cur_pm, prev_pm
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   class(timestepper_BE_type), pointer :: timestepper
   character(len=MAXSTRINGLENGTH) :: string
   
@@ -743,7 +743,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   class(pmc_base_type), pointer :: cur_process_model_coupler_top
   class(pm_base_type), pointer :: cur_process_model
   
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string
   SNESLineSearch :: linesearch
@@ -966,7 +966,7 @@ subroutine SubsurfaceJumpStart(simulation)
 
   type(subsurface_simulation_type) :: simulation
   
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   class(timestepper_base_type), pointer :: master_timestepper
   class(timestepper_BE_type), pointer :: flow_timestepper
   class(timestepper_BE_type), pointer :: tran_timestepper

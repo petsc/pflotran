@@ -20,7 +20,7 @@ module PM_Geomechanics_Force_class
 #include "petsc/finclude/petscts.h"
 
   type, public, extends(pm_base_type) :: pm_geomech_force_type
-    class(geomech_realization_type), pointer :: geomech_realization
+    class(realization_geomech_type), pointer :: geomech_realization
     class(communicator_type), pointer :: comm1
   contains
     procedure, public :: Setup => PMGeomechForceSetup
@@ -158,7 +158,7 @@ subroutine PMGeomechForceSetRealization(this, geomech_realization)
   implicit none
 
   class(pm_geomech_force_type) :: this
-  class(geomech_realization_type), pointer :: geomech_realization
+  class(realization_geomech_type), pointer :: geomech_realization
 
   this%geomech_realization => geomech_realization
   this%realization_base => geomech_realization

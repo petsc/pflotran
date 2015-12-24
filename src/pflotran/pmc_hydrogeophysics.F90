@@ -15,7 +15,7 @@ module PMC_Hydrogeophysics_class
 #include "petsc/finclude/petscvec.h90"
   
   type, public, extends(pmc_base_type) :: pmc_hydrogeophysics_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
     Vec :: tracer_seq
     Vec :: saturation_seq
     ! a pointer to xxx_mpi in hydrogeophysics_simulation_type

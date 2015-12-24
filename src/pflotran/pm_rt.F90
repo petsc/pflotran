@@ -23,7 +23,7 @@ module PM_RT_class
 #include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_base_type) :: pm_rt_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
     class(communicator_type), pointer :: comm1
     class(communicator_type), pointer :: commN
     ! local variables
@@ -175,7 +175,7 @@ subroutine PMRTSetRealization(this,realization)
   implicit none
   
   class(pm_rt_type) :: this
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
 
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%SetRealization()')
@@ -1074,7 +1074,7 @@ subroutine PMRTCheckpointBinary(this,viewer)
   class(pm_rt_type) :: this
   PetscErrorCode :: ierr
 
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization
@@ -1213,7 +1213,7 @@ subroutine PMRTRestartBinary(this,viewer)
   class(pm_rt_type) :: this
   PetscErrorCode :: ierr
 
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization
@@ -1378,7 +1378,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscInt, pointer :: int_array(:)
 
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization
@@ -1566,7 +1566,7 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscInt, pointer :: int_array(:)
 
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization

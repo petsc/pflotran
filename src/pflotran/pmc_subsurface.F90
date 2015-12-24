@@ -12,7 +12,7 @@ module PMC_Subsurface_class
   private
 
   type, public, extends(pmc_base_type) :: pmc_subsurface_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
   contains
     procedure, public :: Init => PMCSubsurfaceInit
     procedure, public :: SetupSolvers => PMCSubsurfaceSetupSolvers
@@ -178,7 +178,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
 
   class(pmc_subsurface_type) :: this
   
-  class(realization_type), pointer     :: realization
+  class(realization_subsurface_type), pointer     :: realization
   type (patch_type),pointer            :: patch
   type (grid_type),pointer             :: grid
   type (coupler_list_type), pointer    :: coupler_list
@@ -436,7 +436,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 
   class(pmc_subsurface_type) :: this
   
-  class(realization_type), pointer     :: realization
+  class(realization_subsurface_type), pointer     :: realization
   type (patch_type),pointer            :: patch
   type (grid_type),pointer             :: grid
   type (coupler_list_type), pointer    :: coupler_list

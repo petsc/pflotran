@@ -15,7 +15,7 @@ module PMC_Third_Party_class
 #include "petsc/finclude/petscvec.h90"
   
   type, public, extends(pmc_base_type) :: pmc_third_party_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
   contains
     procedure, public :: Init => PMCThirdPartyInit
 !    procedure, public :: InitializeRun => PMCThirdPartyInitializeRun

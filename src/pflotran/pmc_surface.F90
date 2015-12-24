@@ -14,8 +14,8 @@ module PMC_Surface_class
   private
 
   type, public, extends(pmc_base_type) :: pmc_surface_type
-    class(realization_type), pointer :: subsurf_realization
-    class(surface_realization_type), pointer :: surf_realization
+    class(realization_subsurface_type), pointer :: subsurf_realization
+    class(realization_surface_type), pointer :: surf_realization
   contains
     procedure, public :: Init => PMCSurfaceInit
     procedure, public :: RunToTime => PMCSurfaceRunToTime
@@ -89,7 +89,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
 
   use Timestepper_Base_class
   use Output_module, only : Output
-  use Realization_class, only : realization_type
+  use Realization_class, only : realization_subsurface_type
   use PM_Base_class
   use PM_Surface_Flow_class
   use Option_module
@@ -361,7 +361,7 @@ subroutine PMCSurfaceSetAuxData(this)
   type(patch_type), pointer :: surf_patch
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  class(surface_realization_type), pointer :: surf_realization
+  class(realization_surface_type), pointer :: surf_realization
 
   PetscInt :: local_id
   PetscInt :: ghosted_id

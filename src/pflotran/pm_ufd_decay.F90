@@ -14,7 +14,7 @@ module PM_UFD_Decay_class
 
   
   type, public, extends(pm_base_type) :: pm_ufd_decay_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
 !    character(len=MAXWORDLENGTH) :: species
     PetscInt, pointer :: element(:)
     PetscInt, pointer :: element_isotopes(:,:)
@@ -514,7 +514,7 @@ subroutine PMUFDDecaySetRealization(this,realization)
   implicit none
   
   class(pm_ufd_decay_type) :: this
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   
   this%realization => realization
   this%realization_base => realization

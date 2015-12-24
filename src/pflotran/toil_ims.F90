@@ -63,7 +63,7 @@ subroutine TOilImsSetup(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -219,7 +219,7 @@ subroutine TOilImsInitializeTimestep(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   call TOilImsUpdateFixedAccum(realization)
   
@@ -328,7 +328,7 @@ end subroutine TOilImsCreateZeroArray
 !  Vec :: X
 !  Vec :: dX
 !  PetscBool :: changed
-!  type(realization_type) :: realization
+!  type(realization_subsurface_type) :: realization
 !  PetscReal, pointer :: X_p(:)
 !  PetscReal, pointer :: dX_p(:)
 !  PetscErrorCode :: ierr
@@ -470,7 +470,7 @@ end subroutine TOilImsCreateZeroArray
 !  Vec :: X0
 !  Vec :: dX
 !  Vec :: X1
-!  type(realization_type) :: realization
+!  type(realization_subsurface_type) :: realization
 !  ! ignore changed flag for now.
 !  PetscBool :: dX_changed
 !  PetscBool :: X1_changed
@@ -623,7 +623,7 @@ subroutine TOilImsSetPlotVariables(realization)
     
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
@@ -709,7 +709,7 @@ subroutine TOilImsTimeCut(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   !type(option_type), pointer :: option
   !type(patch_type), pointer :: patch
@@ -771,7 +771,7 @@ subroutine TOilImsUpdateAuxVars(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscBool :: update_state
   
   type(option_type), pointer :: option
@@ -908,7 +908,7 @@ subroutine TOilImsUpdateFixedAccum(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1008,7 +1008,7 @@ subroutine TOilImsUpdateSolution(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   !type(option_type), pointer :: option
   !type(patch_type), pointer :: patch
@@ -1053,7 +1053,7 @@ subroutine TOilImsComputeMassBalance(realization,mass_balance)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec, &
                             realization%option%nphase)
 
@@ -1122,7 +1122,7 @@ subroutine TOilImsUpdateMassBalance(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1182,7 +1182,7 @@ subroutine TOilImsZeroMassBalanceDelta(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1224,7 +1224,7 @@ subroutine TOilImsMapBCAuxVarsToGlobal(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -2505,7 +2505,7 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -2873,7 +2873,7 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
 
   Mat :: J
@@ -3246,7 +3246,7 @@ subroutine TOilImsDestroy(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   ! place anything that needs to be freed here.
   ! auxvars are deallocated in auxiliary.F90.
@@ -3280,7 +3280,7 @@ end subroutine TOilImsDestroy
 !  Vec :: X
 !  Vec :: dX
 !  PetscBool :: changed
-!  type(realization_type) :: realization
+!  type(realization_subsurface_type) :: realization
 !  
 !  PetscReal, pointer :: X_p(:)
 !  PetscReal, pointer :: dX_p(:)

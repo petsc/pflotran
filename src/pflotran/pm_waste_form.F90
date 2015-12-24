@@ -39,7 +39,7 @@ module PM_Waste_Form_class
   end type waste_form_glass_type
   
   type, public, extends(pm_base_type) :: pm_waste_form_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
     character(len=MAXWORDLENGTH) :: data_mediator_species
     class(data_mediator_vec_type), pointer :: data_mediator
     class(waste_form_base_type), pointer :: waste_form_list
@@ -181,7 +181,7 @@ subroutine PMWasteFormSetRealization(this,realization)
   implicit none
   
   class(pm_waste_form_type) :: this
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   
   this%realization => realization
   this%realization_base => realization

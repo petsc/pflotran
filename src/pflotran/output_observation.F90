@@ -1570,7 +1570,7 @@ subroutine OutputIntegralFlux(realization_base)
   ! Date: 10/21/14
   ! 
 
-  use Realization_class, only : realization_type
+  use Realization_class, only : realization_subsurface_type
   use Realization_Base_class, only : realization_base_type
   use Option_module
   use Grid_module
@@ -1841,7 +1841,7 @@ subroutine OutputMassBalance(realization_base)
   ! Date: 06/18/08
   ! 
 
-  use Realization_class, only : realization_type
+  use Realization_class, only : realization_subsurface_type
   use Realization_Base_class, only : realization_base_type
   use Patch_module
   use Grid_module
@@ -2192,7 +2192,7 @@ subroutine OutputMassBalance(realization_base)
     sum_kg = 0.d0
     sum_trapped = 0.d0
     select type(realization_base)
-      class is(realization_type)
+      class is(realization_subsurface_type)
         select case(option%iflowmode)
           case(RICHARDS_MODE)
             call RichardsComputeMassBalance(realization_base,sum_kg(1,:))
@@ -2256,7 +2256,7 @@ subroutine OutputMassBalance(realization_base)
   if (option%ntrandof > 0) then
     sum_mol = 0.d0
     select type(realization_base)
-      class is(realization_type)
+      class is(realization_subsurface_type)
         call RTComputeMassBalance(realization_base,sum_mol)
       class default
         option%io_buffer = 'Unrecognized realization class in MassBalance().'

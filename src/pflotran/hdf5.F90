@@ -2069,7 +2069,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  !class(realization_type)         :: realization
+  !class(realization_subsurface_type)         :: realization
   type(option_type), pointer :: option
   type(region_type)              :: region
   type(region_sideset_type),pointer:: sideset
@@ -2328,7 +2328,7 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  !class(realization_type)         :: realization
+  !class(realization_subsurface_type)         :: realization
   type(option_type), pointer :: option
   type(region_type)              :: region
   type(region_sideset_type),pointer:: sideset
@@ -2504,7 +2504,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   Vec :: global_vec
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name
@@ -2721,7 +2721,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   Vec :: global_vec
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name

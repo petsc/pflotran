@@ -27,7 +27,7 @@ private
 
   PetscReal, parameter :: eps       = 1.D-8
 
-  type, public, extends(realization_base_type) :: surface_realization_type
+  type, public, extends(realization_base_type) :: realization_surface_type
 
     type(waypoint_list_type), pointer  :: waypoint_list
     
@@ -50,7 +50,7 @@ private
     PetscInt :: iter_count
     PetscBool :: first_time
 
-  end type surface_realization_type
+  end type realization_surface_type
 
   !         123456789+123456789+123456789+1
   public :: SurfRealizCreate, &
@@ -99,8 +99,8 @@ function SurfRealizCreate(option)
   implicit none
 
   type(option_type), pointer             :: option
-  class(surface_realization_type),pointer :: SurfRealizCreate
-  class(surface_realization_type),pointer :: surf_realization
+  class(realization_surface_type),pointer :: SurfRealizCreate
+  class(realization_surface_type),pointer :: surf_realization
   
   allocate(surf_realization)
   call RealizationBaseInit(surf_realization,option)
@@ -152,7 +152,7 @@ subroutine SurfRealizAddCoupler(surf_realization,coupler)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   type(coupler_type), pointer    :: coupler
   
   type(patch_type), pointer      :: cur_patch
@@ -194,7 +194,7 @@ subroutine SurfRealizProcessCouplers(surf_realization)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   type(patch_type), pointer      :: cur_patch
   
   cur_patch => surf_realization%patch_list%first
@@ -222,7 +222,7 @@ subroutine SurfRealizProcessMatProp(surf_realization)
   
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   PetscBool :: found
   PetscInt :: i
@@ -275,7 +275,7 @@ subroutine SurfRealizLocalizeRegions(surf_realization)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   type(patch_type), pointer :: cur_patch
   type (region_type), pointer :: cur_region
@@ -309,7 +309,7 @@ subroutine SurfRealizAddStrata(surf_realization,strata)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   type(strata_type), pointer     :: strata
   
   type(patch_type), pointer      :: cur_patch
@@ -348,7 +348,7 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
   
   implicit none
 
-  class(surface_realization_type)      :: surf_realization
+  class(realization_surface_type)      :: surf_realization
   type(discretization_type), pointer  :: discretization
   type(grid_type), pointer            :: grid
   type(surface_field_type), pointer   :: surf_field
@@ -456,7 +456,7 @@ subroutine SurfRealizPassFieldPtrToPatches(surf_realization)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
 
   type(patch_type), pointer      :: cur_patch
 
@@ -481,7 +481,7 @@ subroutine SurfRealizProcessConditions(surf_realization)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   if (surf_realization%option%nflowdof > 0) then
     call SurfRealizProcessFlowConditions(surf_realization)
@@ -508,7 +508,7 @@ subroutine SurfRealizLocalToLocalWithArray(surf_realization,array_id)
 
   implicit none
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   PetscInt                       :: array_id
   
   type(patch_type), pointer         :: cur_patch
@@ -561,7 +561,7 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
 
   implicit none
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   type(flow_condition_type), pointer     :: cur_surf_flow_condition
   type(flow_sub_condition_type), pointer :: cur_surf_flow_sub_condition
@@ -620,7 +620,7 @@ subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   type(patch_type), pointer :: cur_patch
 
@@ -653,7 +653,7 @@ subroutine SurfRealizAllCouplerAuxVars(surf_realization,force_update_flag)
 
   implicit none
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   PetscBool :: force_update_flag
 
   call PatchUpdateAllCouplerAuxVars(surf_realization%patch,force_update_flag, &
@@ -693,8 +693,8 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  class(realization_type), pointer         :: realization
-  class(surface_realization_type), pointer :: surf_realization
+  class(realization_subsurface_type), pointer         :: realization
+  class(realization_surface_type), pointer :: surf_realization
 
   type(option_type), pointer           :: option
   type(unstructured_grid_type),pointer :: subsurf_grid
@@ -1022,8 +1022,8 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  class(realization_type), pointer         :: realization
-  class(surface_realization_type), pointer :: surf_realization
+  class(realization_subsurface_type), pointer         :: realization
+  class(realization_surface_type), pointer :: surf_realization
   Mat :: prod_mat
   PetscInt  :: source_grid_flag
   Vec :: source_petsc_ids
@@ -1229,7 +1229,7 @@ subroutine SurfRealizDestroy(surf_realization)
 
   implicit none
   
-  class(surface_realization_type), pointer :: surf_realization
+  class(realization_surface_type), pointer :: surf_realization
   
   if (.not.associated(surf_realization)) return
   
@@ -1276,7 +1276,7 @@ subroutine SurfRealizStrip(surf_realization)
 
   implicit none
   
-  class(surface_realization_type), pointer :: surf_realization
+  class(realization_surface_type), pointer :: surf_realization
   
   if (.not.associated(surf_realization)) return
   
@@ -1323,7 +1323,7 @@ subroutine SurfRealizUpdate(surf_realization)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
 
   PetscBool :: force_update_flag = PETSC_FALSE
 
@@ -1352,7 +1352,7 @@ subroutine SurfRealizGetVariable(surf_realization,vec,ivar,isubvar,isubvar1)
 
   implicit none
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
@@ -1384,7 +1384,7 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   type(waypoint_list_type), pointer :: waypoint_list
   type(flow_condition_type), pointer :: cur_flow_condition
