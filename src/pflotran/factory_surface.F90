@@ -93,7 +93,7 @@ subroutine SurfaceJumpStart(simulation)
 
   type(surface_simulation_type) :: simulation
   
-  class(surface_realization_type), pointer :: surf_realization
+  class(realization_surface_type), pointer :: surf_realization
   class(timestepper_surface_type), pointer :: master_timestepper
   class(timestepper_surface_type), pointer :: surf_flow_timestepper
   type(option_type), pointer :: option

@@ -24,7 +24,7 @@ module PMC_Base_class
     PetscBool :: is_master
     type(option_type), pointer :: option
     class(timestepper_base_type), pointer :: timestepper
-    class(pm_base_type), pointer :: pms
+    class(pm_base_type), pointer :: pm_list
     type(waypoint_list_type), pointer :: waypoint_list
     class(pmc_base_type), pointer :: child
     class(pmc_base_type), pointer :: peer
@@ -134,7 +134,7 @@ subroutine PMCBaseInit(this)
   this%is_master = PETSC_FALSE
   nullify(this%option)
   nullify(this%timestepper)
-  nullify(this%pms)
+  nullify(this%pm_list)
   nullify(this%waypoint_list)
   nullify(this%child)
   nullify(this%peer)
@@ -235,7 +235,7 @@ recursive subroutine InitializeRun(this)
   if (associated(this%timestepper)) then
     call this%timestepper%InitializeRun(this%option)
   endif
-  cur_pm => this%pms
+  cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
     call cur_pm%InitializeRun()
@@ -299,7 +299,7 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   if (this%stage /= 0) then
     call PetscLogStagePush(this%stage,ierr);CHKERRQ(ierr)
   endif
-  this%option%io_buffer = trim(this%name) // ':' // trim(this%pms%name)  
+  this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)  
   call printVerboseMsg(this%option)
   
   ! Get data of other process-model
@@ -318,13 +318,13 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
     call this%timestepper%SetTargetTime(sync_time,this%option, &
                                         local_stop_flag,plot_flag, &
                                         transient_plot_flag,checkpoint_flag)
-    call this%timestepper%StepDT(this%pms,local_stop_flag)
+    call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
     if (local_stop_flag == TS_STOP_FAILURE) exit ! failure
     ! Have to loop over all process models coupled in this object and update
     ! the time step size.  Still need code to force all process models to
     ! use the same time step size if tightly or iteratively coupled.
-    cur_pm => this%pms
+    cur_pm => this%pm_list
     do
       if (.not.associated(cur_pm)) exit
       ! have to update option%time for conditions
@@ -354,19 +354,19 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
       ! however, if we are using the modulus of the output_option%imod, we may
       ! still print
       if (mod(this%timestepper%steps, &
-              this%pms% &
+              this%pm_list% &
                 output_option%periodic_output_ts_imod) == 0) then
         plot_flag = PETSC_TRUE
       endif
       if (plot_flag .or. mod(this%timestepper%steps, &
-                             this%pms%output_option% &
+                             this%pm_list%output_option% &
                                periodic_tr_output_ts_imod) == 0) then
         transient_plot_flag = PETSC_TRUE
       endif
       
       if (this%option%steady_state) plot_flag = PETSC_TRUE
       
-      call this%Output(this%pms%realization_base,plot_flag, &
+      call this%Output(this%pm_list%realization_base,plot_flag, &
                        transient_plot_flag)
     endif
     
@@ -439,7 +439,7 @@ recursive subroutine PMCBaseUpdateSolution(this)
   call printMsg(this%option,'PMCBase%UpdateSolution()')
 #endif
   
-  cur_pm => this%pms
+  cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
     ! have to update option%time for conditions
@@ -504,7 +504,7 @@ subroutine SetOutputFlags(this)
   
   type(output_option_type), pointer :: output_option
   
-  output_option => this%pms%output_option
+  output_option => this%pm_list%output_option
 
   if (OptionPrintToScreen(this%option) .and. &
       mod(this%timestepper%steps,output_option%screen_imod) == 0) then
@@ -543,7 +543,7 @@ recursive subroutine OutputLocal(this)
   call printMsg(this%option,'PMC%Output()')
 #endif
   
-  cur_pm => this%pms
+  cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
 !    call Output(cur_pm%realization,plot_flag,transient_plot_flag)
@@ -610,7 +610,7 @@ recursive subroutine PMCBaseCheckpointBinary(this,viewer,id,id_stamp)
     call this%timestepper%CheckpointBinary(viewer,this%option)
   endif
   
-  cur_pm => this%pms
+  cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
     call cur_pm%CheckpointBinary(viewer)
@@ -694,10 +694,10 @@ subroutine PMCBaseSetHeader(this,bag,header)
   PetscErrorCode :: ierr
   
   header%plot_number = &
-    this%pms%realization_base%output_option%plot_number
+    this%pm_list%realization_base%output_option%plot_number
 
   header%times_per_h5_file = &
-    this%pms%realization_base%output_option%times_per_h5_file
+    this%pm_list%realization_base%output_option%times_per_h5_file
 
 end subroutine PMCBaseSetHeader
 
@@ -769,12 +769,12 @@ subroutine PMCBaseSetHeaderHDF5(this, chk_grp_id, option)
   stride(1) = ONE_INTEGER
 
   dataset_name = "Output_plot_number" // CHAR(0)
-  int_array(1) = this%pms%realization_base%output_option%plot_number
+  int_array(1) = this%pm_list%realization_base%output_option%plot_number
   call CheckPointWriteIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
                                      dims, start, length, stride, int_array, option)
 
   dataset_name = "Output_times_per_h5_file" // CHAR(0)
-  int_array(1) = this%pms%realization_base%output_option%times_per_h5_file
+  int_array(1) = this%pm_list%realization_base%output_option%times_per_h5_file
   call CheckPointWriteIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
                                      dims, start, length, stride, int_array, option)
 
@@ -857,12 +857,12 @@ subroutine PMCBaseGetHeaderHDF5(this, chk_grp_id, option)
   dataset_name = "Output_plot_number" // CHAR(0)
   call CheckPointReadIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
                                      dims, start, length, stride, int_array, option)
-  this%pms%realization_base%output_option%plot_number = int_array(1)
+  this%pm_list%realization_base%output_option%plot_number = int_array(1)
 
   dataset_name = "Output_times_per_h5_file" // CHAR(0)
   call CheckPointReadIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, &
                                      dims, start, length, stride, int_array, option)
-  this%pms%realization_base%output_option%times_per_h5_file = int_array(1)
+  this%pm_list%realization_base%output_option%times_per_h5_file = int_array(1)
 
   deallocate(start)
   deallocate(dims)
@@ -924,7 +924,7 @@ recursive subroutine PMCBaseRestartBinary(this,viewer)
     call PetscBagLoad(viewer,bag,ierr);CHKERRQ(ierr)
     call PMCBaseGetHeader(this,header)
     if (Initialized(this%option%restart_time)) then
-      this%pms%realization_base%output_option%plot_number = 0
+      this%pm_list%realization_base%output_option%plot_number = 0
     endif
     call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
   endif
@@ -950,7 +950,7 @@ recursive subroutine PMCBaseRestartBinary(this,viewer)
     this%option%time = this%timestepper%target_time
   endif
   
-  cur_pm => this%pms
+  cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
     call cur_pm%RestartBinary(viewer)
@@ -1061,7 +1061,7 @@ recursive subroutine PMCBaseCheckpointHDF5(this,chk_grp_id,id,id_stamp)
     call this%timestepper%CheckpointHDF5(pmc_grp_id, this%option)
   endif
 
-  cur_pm => this%pms
+  cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
 
@@ -1174,7 +1174,7 @@ recursive subroutine PMCBaseRestartHDF5(this, chk_grp_id)
     call PMCBaseGetHeaderHDF5(this, pmc_grp_id, this%option)
 
     if (Initialized(this%option%restart_time)) then
-      this%pms%realization_base%output_option%plot_number = 0
+      this%pm_list%realization_base%output_option%plot_number = 0
     endif
 
   else
@@ -1205,7 +1205,7 @@ recursive subroutine PMCBaseRestartHDF5(this, chk_grp_id)
     this%option%time = this%timestepper%target_time
   endif
 
-  cur_pm => this%pms
+  cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
     call h5gopen_f(pmc_grp_id, trim(cur_pm%name), pm_grp_id, &
@@ -1263,16 +1263,16 @@ subroutine PMCBaseGetHeader(this,header)
   
   character(len=MAXSTRINGLENGTH) :: string
 
-  this%pms%realization_base%output_option%plot_number = &
+  this%pm_list%realization_base%output_option%plot_number = &
     header%plot_number
 
   ! Check the value of 'times_per_h5_file'
   if (header%times_per_h5_file /= &
-      this%pms%realization_base%output_option%times_per_h5_file) then
+      this%pm_list%realization_base%output_option%times_per_h5_file) then
     write(string,*) header%times_per_h5_file
     this%option%io_buffer = 'From checkpoint file: times_per_h5_file ' // trim(string)
     call printMsg(this%option)
-    write(string,*) this%pms%realization_base%output_option%times_per_h5_file
+    write(string,*) this%pm_list%realization_base%output_option%times_per_h5_file
     this%option%io_buffer = 'From inputdeck      : times_per_h5_file ' // trim(string)
     call printMsg(this%option)
     this%option%io_buffer = 'times_per_h5_file specified in inputdeck does not ' // &
@@ -1280,7 +1280,7 @@ subroutine PMCBaseGetHeader(this,header)
     call printErrMsg(this%option)
   endif
 
-  this%pms%realization_base%output_option%times_per_h5_file = &
+  this%pm_list%realization_base%output_option%times_per_h5_file = &
     header%times_per_h5_file
 
 end subroutine PMCBaseGetHeader
@@ -1365,7 +1365,7 @@ recursive subroutine PMCBaseCheckNullPM(this,option)
   class(pmc_base_type) :: this
   type(option_type) :: option
   
-  if (.not.associated(this%pms)) then
+  if (.not.associated(this%pm_list)) then
     option%io_buffer = 'Null PM in PMC "' // trim(this%name) // '".'
     call printErrMsg(option)
   endif
@@ -1401,11 +1401,11 @@ subroutine PMCBaseStrip(this)
     deallocate(this%timestepper)
     nullify(this%timestepper)
   endif
-  if (associated(this%pms)) then
+  if (associated(this%pm_list)) then
     ! destroy does not currently destroy; it strips
-    call this%pms%Destroy()
-    deallocate(this%pms)
-    nullify(this%pms)
+    call this%pm_list%Destroy()
+    deallocate(this%pm_list)
+    nullify(this%pm_list)
   endif
   nullify(this%waypoint_list) ! deleted in realization
 !  call WaypointListDestroy(this%waypoint_list)

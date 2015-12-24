@@ -43,7 +43,7 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
 
   implicit none
 
-  class(surface_realization_type)     :: surf_realization
+  class(realization_surface_type)     :: surf_realization
   type(discretization_type), pointer :: discretization
 
   character(len=MAXSTRINGLENGTH) :: string
@@ -120,7 +120,7 @@ subroutine SurfaceInit(surf_realization,input,option)
 
   implicit none
 
-  class(surface_realization_type)               :: surf_realization
+  class(realization_surface_type)               :: surf_realization
   type(discretization_type),pointer            :: discretization
   type(grid_type), pointer                     :: grid
   type(input_type)                             :: input
@@ -225,7 +225,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 
   implicit none
 
-  class(surface_realization_type)               :: surf_realization
+  class(realization_surface_type)               :: surf_realization
   type(solver_type)                            :: surf_flow_solver
   type(input_type)                             :: input
   type(option_type)                            :: option

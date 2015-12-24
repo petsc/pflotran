@@ -12,7 +12,8 @@ module EOS_module
 #include "petsc/finclude/petscsys.h"
  
   public :: EOSInit, &
-            EOSRead
+            EOSRead, &
+            AllEOSDBaseDestroy
 
 contains
 
@@ -315,6 +316,10 @@ subroutine EOSRead(input,option)
         call InputErrorMsg(input,option,'keyword','EOS,OIL')
         call StringToUpper(keyword)   
         select case(trim(keyword))
+          case('DATABASE') 
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'EOS,OIL','DATABASE filename')
+            call EOSOilSetEOSDBase(word,option)  
           case('DENSITY') 
             call InputReadWord(input,option,word,PETSC_TRUE)
             call InputErrorMsg(input,option,'DENSITY','EOS,OIL')
@@ -365,6 +370,10 @@ subroutine EOSRead(input,option)
                            'EOS,OIL,DENSITY_LINEAR',option)
                   end select
                 end do
+              case('DATABASE')
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'EOS,OIL','DEN DBASE filename')
+                call EOSOilSetDenDBase(word,option)
               case default
                 call InputKeywordUnrecognized(word,'EOS,OIL,DENSITY',option)
             end select
@@ -383,6 +392,10 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,OIL,ENTHALPY,LINEAR_TEMP')
                 call EOSOilSetEnthalpyLinearTemp(tempreal) 
+              case('DATABASE')
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'EOS,OIL','ENT DBASE filename')
+                call EOSOilSetEntDBase(word,option)
               case default
                 call InputKeywordUnrecognized(word,'EOS,OIL,ENTHALPY',option)
             end select
@@ -447,6 +460,10 @@ subroutine EOSRead(input,option)
                            'EOS,OIL, VISCOSITY_QUAD',option)
                   end select
                 end do
+              case('DATABASE')
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'EOS,OIL','VIS DBASE filename')
+                call EOSOilSetVisDBase(word,option)
               case default
                 call InputKeywordUnrecognized(word,'EOS,OIL,VISCOSITY',option)
             end select
@@ -461,10 +478,35 @@ subroutine EOSRead(input,option)
         end select
       enddo
       ! need to add verifying function - follow EOSgas template 
+      string = ''
+      call EOSOilVerify(ierr,string)
+      if (ierr /= 0) then
+        option%io_buffer = 'Error in Oil EOS'    
+        if (len_trim(string) > 1) then
+          option%io_buffer = trim(option%io_buffer) // ': ' // trim(string)
+        endif
+        call printErrMsg(option)
+      endif
     case default
       call InputKeywordUnrecognized(keyword,'EOS',option)
   end select
   
 end subroutine EOSRead
+
+! ************************************************************************** !
+
+subroutine AllEOSDBaseDestroy()
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/14/15
+  ! 
+
+  implicit none
+
+  call EOSOilDBaseDestroy()
+
+end subroutine AllEOSDBaseDestroy
+
+! ************************************************************************** !
 
 end module EOS_module

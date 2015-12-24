@@ -76,6 +76,8 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: liquid_flux
     type(flow_sub_condition_type), pointer :: oil_flux
     type(flow_sub_condition_type), pointer :: energy_flux
+    class(dataset_base_type), pointer :: owc   ! oil water contact 
+    class(dataset_base_type), pointer :: liq_press_grad ! water piezometric head gradient
   end type flow_toil_ims_condition_type
     
   type, public :: flow_sub_condition_type
@@ -289,6 +291,8 @@ function FlowTOilImsConditionCreate(option)
   nullify(toil_ims_condition%liquid_flux)
   nullify(toil_ims_condition%oil_flux)
   nullify(toil_ims_condition%energy_flux)
+  nullify(toil_ims_condition%owc)
+  nullify(toil_ims_condition%liq_press_grad) 
 
   FlowTOilImsConditionCreate => toil_ims_condition
 
@@ -416,7 +420,7 @@ function FlowTOilImsSubConditionPtr(sub_condition_name,toil_ims, &
   type(flow_sub_condition_type), pointer :: sub_condition_ptr
 
   select case(sub_condition_name)
-    case('PRESSURE')
+    case('PRESSURE','OIL_PRESSURE','WATER_PRESSURE')
       if (associated(toil_ims%pressure)) then
         sub_condition_ptr => toil_ims%pressure
       else
@@ -2028,6 +2032,15 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         nullify(dataset_ascii)        
         call ConditionReadValues(input,option,word, &
                                      condition%datum,word)
+      case('OWC')
+        dataset_ascii => DatasetAsciiCreate()
+        call DatasetAsciiInit(dataset_ascii)
+        dataset_ascii%array_width = 3
+        dataset_ascii%data_type = DATASET_REAL
+        toil_ims%owc => dataset_ascii
+        nullify(dataset_ascii)        
+        call ConditionReadValues(input,option,word, &
+                                     toil_ims%owc,word)
       case('GRADIENT')
         do
           call InputReadPflotranString(input,option)
@@ -2039,20 +2052,34 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
           call StringToUpper(word)
-          select case(option%iflowmode)
-            case(TOIL_IMS_MODE)
-              sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
-                                                              option)
+          select case(word)
+            case('PRESSURE','OIL_PRESSURE','TEMPERATURE')
+              select case(option%iflowmode)
+                case(TOIL_IMS_MODE)
+                  sub_condition_ptr => &
+                     FlowTOilImsSubConditionPtr(word,toil_ims,option)
+              end select
+              dataset_ascii => DatasetAsciiCreate()
+              call DatasetAsciiInit(dataset_ascii)
+              dataset_ascii%array_width = 3
+              dataset_ascii%data_type = DATASET_REAL
+              sub_condition_ptr%gradient => dataset_ascii
+              nullify(dataset_ascii)
+              call ConditionReadValues(input,option,word, &
+                                     sub_condition_ptr%gradient,word)
+              nullify(sub_condition_ptr)
+            case('WATER_PRESSURE')
+              dataset_ascii => DatasetAsciiCreate()
+              call DatasetAsciiInit(dataset_ascii)
+              dataset_ascii%array_width = 3
+              dataset_ascii%data_type = DATASET_REAL
+              toil_ims%liq_press_grad => dataset_ascii
+              nullify(dataset_ascii)        
+              call ConditionReadValues(input,option,word, &
+                                          toil_ims%liq_press_grad,word)
+            case default
+              call InputKeywordUnrecognized(word,'flow grad condition',option)
           end select
-          dataset_ascii => DatasetAsciiCreate()
-          call DatasetAsciiInit(dataset_ascii)
-          dataset_ascii%array_width = 3
-          dataset_ascii%data_type = DATASET_REAL
-          sub_condition_ptr%gradient => dataset_ascii
-          nullify(dataset_ascii)
-          call ConditionReadValues(input,option,word, &
-                                   sub_condition_ptr%gradient,word)
-          nullify(sub_condition_ptr)
         enddo
       case('CONDUCTANCE')
         word = 'PRESSURE'
@@ -2063,7 +2090,7 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         end select
         call InputReadDouble(input,option,sub_condition_ptr%aux_real(1))
         call InputErrorMsg(input,option,'LIQUID_CONDUCTANCE','CONDITION')   
-      case('PRESSURE','LIQUID_SATURATION', &
+      case('PRESSURE','OIL_PRESSURE','WATER_PRESSURE','LIQUID_SATURATION', &
            'OIL_SATURATION','TEMPERATURE','RATE', &
            'LIQUID_FLUX','OIL_FLUX','ENERGY_FLUX','ENTHALPY')
         select case(option%iflowmode)
@@ -2095,8 +2122,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   
   enddo  
   
-  ! datum is not required
+  ! datum, owc, and liq_press_grad are not required
   call DatasetVerify(condition%datum,default_time_storage,option)
+  call DatasetVerify(toil_ims%owc,default_time_storage,option)
+  call DatasetVerify(toil_ims%liq_press_grad,default_time_storage,option)
 
   ! phase condition should never be used in TOilIms
   condition%iphase = ZERO_INTEGER
@@ -2135,32 +2164,32 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   end if
   ! within a src/sink either temp or enthalpy can be defined   
   if (associated(toil_ims%rate)) then
-    if( associated(toil_ims%temperature).and. &
+    if ( associated(toil_ims%temperature).and. &
         associated(toil_ims%enthalpy) &
-      ) then
+       ) then
       option%io_buffer = 'TOilIms Rate condition can ' // &
        'have either temp or enthalpy'
       call printErrMsg(option)      
     end if
     ! only dirich condition supported for src/sink temp or enthalpy
-    if( ( associated(toil_ims%temperature).and. &
+    if ( ( associated(toil_ims%temperature).and. &
           (toil_ims%temperature%itype /= DIRICHLET_BC) &
-        ) .or. &
-        ( associated(toil_ims%enthalpy).and. &
+         ) .or. &
+         ( associated(toil_ims%enthalpy).and. &
           (toil_ims%enthalpy%itype /= DIRICHLET_BC ) &
-        ) &
-      ) then
+         ) &
+       ) then
       option%io_buffer = 'TOilIms Src/Sink; only dirichlet type ' // &
        'is supported for temperature and enthalpy conditions'
       call printErrMsg(option)      
     end if
 
     ! in the casew below enthalpy or temperature overwrite energy rate
-    !if( ( associated(toil_ims%temperature).or. &
-    !      associated(toil_ims%enthalpy) &
-    !    ) .and. &
-    !    ( size(toil_ims%rate%dataset%rarray) == THREE_INTEGER ) &
-    !  ) then 
+    !if (  ( associated(toil_ims%temperature).or. &
+    !       associated(toil_ims%enthalpy) &
+    !     ) .and. &
+    !     ( size(toil_ims%rate%dataset%rarray) == THREE_INTEGER ) &
+    !   ) then 
     !  option%io_buffer = 'TOilIms Src/Sink error: ' // &
     !   'either define enery rate or temperature/enthalpy value'
     !  call printErrMsg(option)      
@@ -3179,7 +3208,9 @@ function FlowConditionTOilImsIsTransient(condition)
 
   if (.not.associated(condition)) return
   
-  if (FlowSubConditionIsTransient(condition%pressure) .or. &
+  if (DatasetIsTransient(condition%owc) .or. &
+      DatasetIsTransient(condition%liq_press_grad) .or. & 
+      FlowSubConditionIsTransient(condition%pressure) .or. &
       FlowSubConditionIsTransient(condition%saturation) .or. &
       FlowSubConditionIsTransient(condition%temperature) .or. &
       FlowSubConditionIsTransient(condition%rate) .or. &
@@ -3367,8 +3398,20 @@ subroutine FlowToilConditionDestroy(toil_ims_condition)
   implicit none
   
   type(flow_toil_ims_condition_type), pointer :: toil_ims_condition
+
+  class(dataset_ascii_type), pointer :: dataset_ascii
   
-  if (.not.associated(toil_ims_condition)) return!
+  if (.not.associated(toil_ims_condition)) return
+
+  ! if dataset_ascii_type, destroy.  Otherwise, they are in another list
+  dataset_ascii => DatasetAsciiCast(toil_ims_condition%owc)
+  ! dataset_ascii will be NULL if not dataset_ascii_type
+  call DatasetAsciiDestroy(dataset_ascii)
+
+  ! if dataset_ascii_type, destroy.  Otherwise, they are in another list
+  dataset_ascii => DatasetAsciiCast(toil_ims_condition%liq_press_grad)
+  ! dataset_ascii will be NULL if not dataset_ascii_type
+  call DatasetAsciiDestroy(dataset_ascii)
 
   call FlowSubConditionDestroy(toil_ims_condition%pressure)
   call FlowSubConditionDestroy(toil_ims_condition%saturation)

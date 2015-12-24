@@ -58,7 +58,7 @@ subroutine SurfaceTHSetup(surf_realization)
  
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -142,7 +142,7 @@ subroutine SurfaceTHSetPlotVariables(surf_realization)
     
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
@@ -197,7 +197,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   PetscReal                      :: t
   Vec                            :: xx
   Vec                            :: ff
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   PetscErrorCode                 :: ierr
 
   type(grid_type), pointer                  :: grid
@@ -483,7 +483,7 @@ subroutine SurfaceTHIFunction(ts,t,xx,xxdot,ff,surf_realization,ierr)
   PetscReal                      :: t
   Vec                            :: xx,xxdot
   Vec                            :: ff
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   PetscErrorCode                 :: ierr
 
   ! Our equations are in the form: 
@@ -522,7 +522,7 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   PetscErrorCode                 :: ierr
 
   type(grid_type), pointer                  :: grid
@@ -1018,7 +1018,7 @@ subroutine SurfaceTHUpdateAuxVars(surf_realization)
 
   implicit none
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1259,7 +1259,7 @@ subroutine SurfaceTHUpdateTemperature(surf_realization)
 
   implicit none
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
@@ -1366,7 +1366,7 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
 
   type(coupler_list_type), pointer    :: coupler_list
   type(coupler_type), pointer         :: coupler
@@ -1540,7 +1540,7 @@ subroutine SurfaceTHImplicitAtmForcing(surf_realization)
   use PFLOTRAN_Constants_module, only : MIN_SURFACE_WATER_HEIGHT
   implicit none
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
@@ -1666,7 +1666,7 @@ subroutine SurfaceTHUpdateSolution(surf_realization)
 
   implicit none
 
-  class(surface_realization_type)   :: surf_realization
+  class(realization_surface_type)   :: surf_realization
 
   type(surface_field_type),pointer :: surf_field
   PetscErrorCode                   :: ierr
@@ -1691,7 +1691,7 @@ subroutine SurfaceTHDestroy(surf_realization)
 
   implicit none
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   ! aux vars should be destroyed when surf_realization is destroyed.
   

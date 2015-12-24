@@ -31,7 +31,7 @@ subroutine GeomechGlobalSetup(geomech_realization)
   
   implicit none
 
-  class(geomech_realization_type)           :: geomech_realization
+  class(realization_geomech_type)           :: geomech_realization
   
   ! There is only one patch in each realization
   call GeomechGlobalSetupPatch(geomech_realization)
@@ -57,7 +57,7 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
  
   implicit none
   
-  class(geomech_realization_type)            :: geomech_realization
+  class(realization_geomech_type)            :: geomech_realization
 
   type(option_type), pointer                :: option
   type(geomech_patch_type),pointer          :: patch
@@ -99,7 +99,7 @@ subroutine GeomechGlobalSetAuxVarScalar(geomech_realization,value,ivar)
 
   implicit none
 
-  class(geomech_realization_type) :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   PetscReal :: value
   PetscInt :: ivar
   
@@ -129,7 +129,7 @@ subroutine GeomechGlobalSetAuxVarScalarPatch(geomech_realization,value,ivar)
   
   implicit none
 
-  class(geomech_realization_type) :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   PetscReal :: value
   PetscInt :: ivar
 
@@ -176,7 +176,7 @@ subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar,isubvar
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"  
 
-  class(geomech_realization_type) :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   Vec :: vec_loc
   PetscInt :: ivar
   PetscInt :: isubvar
@@ -212,7 +212,7 @@ subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,is
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(geomech_realization_type) :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   Vec :: vec_loc
   PetscInt :: ivar
   PetscInt :: isubvar  
@@ -280,7 +280,7 @@ subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
                                GEOMECH_DISP_Y, &
                                GEOMECH_DISP_Z
   
-  class(geomech_realization_type) :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   PetscInt :: time_level
   
   type(geomech_field_type), pointer :: geomech_field

@@ -20,7 +20,7 @@ module PM_Surface_class
 #include "petsc/finclude/petscts.h"
 
   type, public, extends(pm_base_type) :: pm_surface_type
-    class(surface_realization_type), pointer :: surf_realization
+    class(realization_surface_type), pointer :: surf_realization
     class(communicator_type), pointer :: comm1
   contains
     procedure, public :: Setup => PMSurfaceSetup
@@ -108,7 +108,7 @@ subroutine PMSurfaceSetRealization(this, surf_realization)
   implicit none
 
   class(pm_surface_type) :: this
-  class(surface_realization_type), pointer :: surf_realization
+  class(realization_surface_type), pointer :: surf_realization
 
   this%surf_realization => surf_realization
   this%realization_base => surf_realization

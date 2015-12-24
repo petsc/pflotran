@@ -174,6 +174,12 @@ function DatabaseRxnCreateFromRxnString(reaction_string, &
         if (.not.StringStartsWithAlpha(string2)) then
           ! negate if a product
           call InputReadDouble(string2,option,value,ierr)
+          if (ierr /= 0) then
+            option%io_buffer = 'Keyword "' // trim(word) // &
+               '" not recognized in reaction string "' // &
+               trim(reaction_string) // '".'
+            call printErrMsg(option)
+          endif
           ! negate if negative stoichiometry
           if (negative_flag) value = -1.0*value
           dbaserxn%stoich(icount) = value

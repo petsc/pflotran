@@ -36,7 +36,7 @@ subroutine InitSubsurfSetupRealization(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   PetscReal :: dum1
@@ -140,7 +140,7 @@ subroutine SubsurfInitMaterialProperties(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   call SubsurfAllocMatPropDataStructs(realization)
   call InitSubsurfAssignMatIDsToRegns(realization)
@@ -167,7 +167,7 @@ subroutine SubsurfAllocMatPropDataStructs(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   PetscInt :: ghosted_id
   PetscInt :: istart, iend
@@ -241,7 +241,7 @@ subroutine InitSubsurfAssignMatIDsToRegns(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   PetscInt :: icell, local_id, ghosted_id
   PetscInt :: istart, iend
@@ -359,7 +359,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   PetscReal, pointer :: icap_loc_p(:)
   PetscReal, pointer :: ithrm_loc_p(:)
@@ -642,7 +642,7 @@ subroutine SubsurfReadMaterialIDsFromFile(realization,realization_dependent, &
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscBool :: realization_dependent
   character(len=MAXSTRINGLENGTH) :: filename
   
@@ -739,7 +739,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   type(material_property_type) :: material_property
 
   type(field_type), pointer :: field
@@ -919,7 +919,7 @@ subroutine SubsurfReadCompressFromFile(realization,material_property)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   type(material_property_type) :: material_property
 
   type(field_type), pointer :: field
@@ -1021,7 +1021,7 @@ subroutine SubsurfAssignVolsToMatAuxVars(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -1048,7 +1048,7 @@ subroutine SubsurfSandboxesSetup(realization)
   use Realization_class
   use SrcSink_Sandbox_module
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
    call SSSandboxSetup(realization%patch%region_list,realization%option)
   
@@ -1088,7 +1088,7 @@ subroutine InitSubsurfaceReadRequiredCards(simulation)
   character(len=MAXWORDLENGTH) :: card
   type(patch_type), pointer :: patch, patch2 
   type(grid_type), pointer :: grid
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(discretization_type), pointer :: discretization
   type(option_type), pointer :: option
   type(input_type), pointer :: input
@@ -1320,7 +1320,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   type(saturation_function_type), pointer :: saturation_function
   class(characteristic_curves_type), pointer :: characteristic_curves
 
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -1900,6 +1900,7 @@ subroutine InitSubsurfaceReadInput(simulation)
 
       case ('SATURATION_FUNCTION')
         if (option%iflowmode == RICHARDS_MODE .or. &
+            option%iflowmode == TOIL_IMS_MODE .or. &
             option%iflowmode == G_MODE) then
           option%io_buffer = &
             'Must compile with legacy_saturation_function=1 ' //&
@@ -1921,6 +1922,15 @@ subroutine InitSubsurfaceReadInput(simulation)
 
       case ('CHARACTERISTIC_CURVES')
       
+        if (.not.(option%iflowmode == NULL_MODE .or. &
+                  option%iflowmode == RICHARDS_MODE .or. &
+                  option%iflowmode == TOIL_IMS_MODE .or. &
+                  option%iflowmode == G_MODE)) then
+          option%io_buffer = 'CHARACTERISTIC_CURVES not supported in flow ' // &
+            'modes other than RICHARDS, TOIL_IMS,  or GENERAL.  Use ' // &
+            'SATURATION_FUNCTION.'
+          call printErrMsg(option)
+        endif
         characteristic_curves => CharacteristicCurvesCreate()
         call InputReadWord(input,option,characteristic_curves%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','CHARACTERISTIC_CURVES')

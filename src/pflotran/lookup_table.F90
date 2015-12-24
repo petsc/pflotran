@@ -84,8 +84,7 @@ subroutine LookupTableBaseInit(lookup_table)
   lookup_table%dim = 0
   lookup_table%dims = 0
   nullify(lookup_table%data)
-  allocate(lookup_table%axis1)
-  call LookupTableAxisInit(lookup_table%axis1)
+  nullify(lookup_table%axis1)
 
 end subroutine LookupTableBaseInit
 

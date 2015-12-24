@@ -102,7 +102,7 @@ subroutine SurfaceCheckpointBinary(surf_realization, &
 
   implicit none
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   PetscReal :: surf_flow_prev_dt
   PetscInt, intent(in) :: id ! id should not be altered within this subroutine
 
@@ -226,7 +226,7 @@ subroutine SurfaceRestartBinary(surf_realization, surf_flow_prev_dt, surf_flow_r
 
   implicit none
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   PetscReal :: surf_flow_prev_dt
   PetscBool :: surf_flow_read
   
@@ -445,7 +445,7 @@ subroutine SurfaceCheckpointProcessModelBinary(viewer, surf_realization)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   PetscViewer :: viewer
 
   type(surface_field_type), pointer :: surf_field
@@ -504,7 +504,7 @@ subroutine SurfaceRestartProcessModelBinary(viewer,surf_realization)
 
   implicit none
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   PetscViewer :: viewer
 
   type(surface_field_type), pointer :: surf_field

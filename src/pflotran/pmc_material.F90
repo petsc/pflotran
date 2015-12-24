@@ -12,7 +12,7 @@ module PMC_Material_class
   private
 
   type, public, extends(pmc_base_type) :: pmc_material_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
   contains
     procedure, public :: Init => PMCMaterialInit
     procedure, public :: RunToTime => PMCMaterialRunToTime

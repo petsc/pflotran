@@ -14,8 +14,8 @@ module PMC_Surface_class
   private
 
   type, public, extends(pmc_base_type) :: pmc_surface_type
-    class(realization_type), pointer :: subsurf_realization
-    class(surface_realization_type), pointer :: surf_realization
+    class(realization_subsurface_type), pointer :: subsurf_realization
+    class(realization_surface_type), pointer :: surf_realization
   contains
     procedure, public :: Init => PMCSurfaceInit
     procedure, public :: RunToTime => PMCSurfaceRunToTime
@@ -89,7 +89,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
 
   use Timestepper_Base_class
   use Output_module, only : Output
-  use Realization_class, only : realization_type
+  use Realization_class, only : realization_subsurface_type
   use PM_Base_class
   use PM_Surface_Flow_class
   use Option_module
@@ -116,7 +116,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
-  this%option%io_buffer = trim(this%name) // ':' // trim(this%pms%name)
+  this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)
   call printVerboseMsg(this%option)
   
   ! Get data of other process-model
@@ -136,7 +136,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     transient_plot_flag = PETSC_FALSE
     checkpoint_flag = PETSC_FALSE
     
-    cur_pm => this%pms
+    cur_pm => this%pm_list
 
     select case(this%option%iflowmode)
       case (RICHARDS_MODE)
@@ -164,13 +164,13 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     ! Accumulate data needed by process-model
     call this%AccumulateAuxData()
 
-    call this%timestepper%StepDT(this%pms,local_stop_flag)
+    call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
     if (local_stop_flag  == TS_STOP_FAILURE) exit ! failure
     ! Have to loop over all process models coupled in this object and update
     ! the time step size.  Still need code to force all process models to
     ! use the same time step size if tightly or iteratively coupled.
-    cur_pm => this%pms
+    cur_pm => this%pm_list
     do
       if (.not.associated(cur_pm)) exit
       ! have to update option%time for conditions
@@ -197,16 +197,16 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
       ! however, if we are using the modulus of the output_option%imod, we may
       ! still print
       if (mod(this%timestepper%steps, &
-              this%pms% &
+              this%pm_list% &
                 output_option%periodic_output_ts_imod) == 0) then
         plot_flag = PETSC_TRUE
       endif
       if (plot_flag .or. mod(this%timestepper%steps, &
-                             this%pms%output_option% &
+                             this%pm_list%output_option% &
                                periodic_tr_output_ts_imod) == 0) then
         transient_plot_flag = PETSC_TRUE
       endif
-      !call this%Output(this%pms%realization_base,plot_flag, &
+      !call this%Output(this%pm_list%realization_base,plot_flag, &
       !                 transient_plot_flag)
       call OutputSurface(this%surf_realization, this%subsurf_realization, &
                          plot_flag, transient_plot_flag)
@@ -361,7 +361,7 @@ subroutine PMCSurfaceSetAuxData(this)
   type(patch_type), pointer :: surf_patch
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  class(surface_realization_type), pointer :: surf_realization
+  class(realization_surface_type), pointer :: surf_realization
 
   PetscInt :: local_id
   PetscInt :: ghosted_id

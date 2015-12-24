@@ -366,6 +366,7 @@ subroutine SimulationBaseStrip(this)
   ! 
   use Input_Aux_module
   use Waypoint_module
+  use EOS_module
   
   implicit none
   
@@ -383,6 +384,8 @@ subroutine SimulationBaseStrip(this)
     nullify(this%process_model_coupler_list)
   endif
   call InputDbaseDestroy()
+
+  call AllEOSDBaseDestroy()
   
 end subroutine SimulationBaseStrip
 

@@ -33,7 +33,7 @@ private
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
-  type, public, extends(realization_base_type) :: realization_type
+  type, public, extends(realization_base_type) :: realization_subsurface_type
 
     type(region_list_type), pointer :: region_list
     type(condition_list_type), pointer :: flow_conditions
@@ -53,7 +53,7 @@ private
     
     type(waypoint_list_type), pointer :: waypoint_list
     
-  end type realization_type
+  end type realization_subsurface_type
 
   interface RealizationCreate
     module procedure RealizationCreate1
@@ -110,9 +110,9 @@ function RealizationCreate1()
 
   implicit none
   
-  class(realization_type), pointer :: RealizationCreate1
+  class(realization_subsurface_type), pointer :: RealizationCreate1
   
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   
   nullify(option)
@@ -134,9 +134,9 @@ function RealizationCreate2(option)
   
   type(option_type), pointer :: option
   
-  class(realization_type), pointer :: RealizationCreate2
+  class(realization_subsurface_type), pointer :: RealizationCreate2
   
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   
   allocate(realization)
   call RealizationBaseInit(realization,option)
@@ -194,7 +194,7 @@ subroutine RealizationCreateDiscretization(realization)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
@@ -456,7 +456,7 @@ subroutine RealizationLocalizeRegions(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type (region_type), pointer :: cur_region, cur_region2
   type(option_type), pointer :: option
@@ -498,7 +498,7 @@ subroutine RealizationPassPtrsToPatches(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   realization%patch%field => realization%field
   realization%patch%datasets => realization%datasets
@@ -520,7 +520,7 @@ subroutine RealizationAddCoupler(realization,coupler)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   type(coupler_type), pointer :: coupler
   
   type(patch_type), pointer :: patch
@@ -559,7 +559,7 @@ subroutine RealizationAddStrata(realization,strata)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   type(strata_type), pointer :: strata
   
   type(strata_type), pointer :: new_strata
@@ -587,7 +587,7 @@ subroutine RealizationProcessCouplers(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   call PatchProcessCouplers( realization%patch,realization%flow_conditions, &
                              realization%transport_conditions, &
@@ -611,7 +611,7 @@ subroutine RealizationProcessConditions(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   class(data_mediator_base_type), pointer :: cur_data_mediator
 
   call DatasetScreenForNonCellIndexed(realization%datasets,realization%option)
@@ -677,7 +677,7 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   PetscBool :: found
   PetscInt :: i
@@ -804,7 +804,7 @@ subroutine RealProcessFluidProperties(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   PetscBool :: found
   type(option_type), pointer :: option
@@ -850,7 +850,7 @@ subroutine RealProcessFlowConditions(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(flow_condition_type), pointer :: cur_flow_condition
   type(flow_sub_condition_type), pointer :: cur_flow_sub_condition
@@ -906,7 +906,7 @@ subroutine RealProcessTranConditions(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   
   PetscBool :: found
@@ -1040,7 +1040,7 @@ subroutine RealizationInitConstraints(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -1068,7 +1068,7 @@ subroutine RealizationPrintCouplers(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   type(coupler_type), pointer :: cur_coupler
@@ -1201,7 +1201,7 @@ subroutine RealizationInitAllCouplerAuxVars(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   !geh: Must update conditions prior to initializing the aux vars.  
   !     Otherwise, datasets will not have been read for routines such as
@@ -1230,7 +1230,7 @@ subroutine RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscBool :: force_update_flag
 
   !TODO(geh): separate flow from transport in these calls
@@ -1257,7 +1257,7 @@ subroutine RealizationRevertFlowParameters(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(field_type), pointer :: field
   type(option_type), pointer :: option
@@ -1303,7 +1303,7 @@ subroutine RealizUpdateUniformVelocity(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   call UniformVelocityDatasetUpdate(realization%option, &
                                     realization%option%time, &
@@ -1334,7 +1334,7 @@ subroutine RealizationAddWaypointsToList(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(waypoint_list_type), pointer :: waypoint_list
   type(flow_condition_type), pointer :: cur_flow_condition
@@ -1567,7 +1567,7 @@ function RealizCreateSyncWaypointList(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(waypoint_list_type), pointer :: RealizCreateSyncWaypointList
 
@@ -1609,7 +1609,7 @@ subroutine RealizationUpdatePropertiesTS(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1881,7 +1881,7 @@ subroutine RealizationUpdatePropertiesNI(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
 
 #if 0
   type(option_type), pointer :: option
@@ -1938,7 +1938,7 @@ subroutine RealizationCalcMineralPorosity(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -2006,7 +2006,7 @@ subroutine RealLocalToLocalWithArray(realization,array_id)
 
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscInt :: array_id
   
   type(patch_type), pointer :: patch
@@ -2055,7 +2055,7 @@ subroutine RealizationCountCells(realization,global_total_count, &
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscInt :: global_total_count
   PetscInt :: global_active_count
   PetscInt :: total_count
@@ -2100,7 +2100,7 @@ subroutine RealizationPrintGridStatistics(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -2296,7 +2296,7 @@ subroutine RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
 
   implicit none
 
-  class(realization_type) realization
+  class(realization_subsurface_type) realization
   PetscReal :: max_dt_cfl_1
   
   type(patch_type), pointer :: patch
@@ -2336,7 +2336,7 @@ subroutine RealizationNonInitializedData(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
@@ -2410,7 +2410,7 @@ subroutine RealizationDestroyLegacy(realization)
 
   implicit none
   
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   
   if (.not.associated(realization)) return
     
@@ -2472,7 +2472,7 @@ subroutine RealizationStrip(this)
 
   implicit none
   
-  class(realization_type) :: this
+  class(realization_subsurface_type) :: this
   
   call RealizationBaseStrip(this)
   call RegionDestroyList(this%region_list)

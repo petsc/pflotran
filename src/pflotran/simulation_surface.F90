@@ -17,7 +17,7 @@ module Simulation_Surface_class
 
   type, public, extends(simulation_base_type) :: surface_simulation_type
     class(pmc_surface_type), pointer :: surf_flow_process_model_coupler
-    class(surface_realization_type), pointer :: surf_realization
+    class(realization_surface_type), pointer :: surf_realization
     type(regression_type), pointer :: regression
   contains
     procedure, public :: Init => SurfaceSimulationInit

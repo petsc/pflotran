@@ -1301,7 +1301,7 @@ subroutine PMGeneralMaxChange(this)
   
   class(pm_general_type) :: this
   
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid

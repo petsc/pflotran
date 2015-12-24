@@ -148,6 +148,7 @@ eos_obj = \
 	${common_src}co2_sw.o \
 	${common_src}co2_span_wagner_spline.o \
 	${common_src}eos.o \
+        ${common_src}eos_database.o \
 	${common_src}eos_gas.o \
 	${common_src}eos_oil.o \
 	${common_src}gas_eos_mod.o 
@@ -220,6 +221,7 @@ chem_obj = \
 	${common_src}reaction_sandbox_base.o \
 	${common_src}reaction_sandbox_clm_cn.o \
 	${common_src}reaction_sandbox_example.o \
+	${common_src}reaction_sandbox_simple.o \
 	${common_src}reaction_sandbox_ufd_wp.o \
 	${common_src}reaction_solid_solution.o \
 	${common_src}reaction_solid_solution_aux.o \
@@ -514,8 +516,10 @@ e4d_setup.o : e4d_mat_inv.o e4d_vars.o
 e4d_vars.o :
 eos.o : eos_gas.o eos_oil.o eos_water.o input_aux.o option.o \
         pflotran_constants.o string.o
+eos_database.o : input_aux.o lookup_table.o option.o pflotran_constants.o \
+                 string.o utility.o
 eos_gas.o : pflotran_constants.o
-eos_oil.o : pflotran_constants.o
+eos_oil.o : eos_database.o option.o pflotran_constants.o
 eos_water.o : pflotran_constants.o
 factory_geomechanics.o : condition_control.o convergence.o discretization.o \
                          factory_subsurface.o geomech_grid.o \
@@ -544,7 +548,8 @@ factory_pflotran.o : eos.o factory_geomechanics.o factory_hydrogeophysics.o \
                      factory_subsurface.o factory_surfsubsurface.o input_aux.o \
                      logging.o multisimulation.o option.o output_ekg.o \
                      pflotran_constants.o pm_base.o pm_geomechanics_force.o \
-                     pm_surface_th.o pmc_base.o simulation_base.o string.o
+                     pm_surface_flow.o pm_surface_th.o pmc_base.o \
+                     simulation_base.o string.o
 factory_subsurface.o : condition_control.o discretization.o general.o global.o \
                        init_common.o init_subsurface.o init_subsurface_flow.o \
                        init_subsurface_transport.o input_aux.o logging.o \
@@ -569,13 +574,13 @@ factory_surfsubsurface.o : coupler.o discretization.o dm_kludge.o \
                            grid_unstructured_cell.o init_common.o \
                            init_surface.o input_aux.o logging.o option.o \
                            patch.o pflotran_constants.o pm_base.o \
-                           pm_base_pointer.o pm_surface.o pm_surface_th.o \
-                           pmc_base.o pmc_surface.o realization.o region.o \
-                           simulation_aux.o simulation_base.o \
-                           simulation_subsurface.o simulation_surface.o \
-                           simulation_surfsubsurface.o string.o \
-                           surface_field.o surface_flow.o surface_init.o \
-                           surface_realization.o surface_th.o \
+                           pm_base_pointer.o pm_surface.o pm_surface_flow.o \
+                           pm_surface_th.o pmc_base.o pmc_surface.o \
+                           realization.o region.o simulation_aux.o \
+                           simulation_base.o simulation_subsurface.o \
+                           simulation_surface.o simulation_surfsubsurface.o \
+                           string.o surface_field.o surface_flow.o \
+                           surface_init.o surface_realization.o surface_th.o \
                            timestepper_surface.o waypoint.o
 field.o : pflotran_constants.o
 flash2.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
@@ -896,8 +901,8 @@ pm_toil_ims.o : checkpoint.o field.o global.o global_aux.o grid.o input_aux.o \
                 variables.o
 pm_ufd_decay.o : global.o global_aux.o grid.o input_aux.o material_aux.o \
                  option.o patch.o pflotran_constants.o pm_base.o \
-                 reaction_aux.o reactive_transport_aux.o realization.o \
-                 string.o utility.o
+                 reaction_aux.o reaction_mineral_aux.o \
+                 reactive_transport_aux.o realization.o string.o utility.o
 pm_waste_form.o : condition.o data_mediator_vec.o dataset.o dataset_ascii.o \
                   dataset_base.o geometry.o global_aux.o grid.o \
                   grid_structured.o grid_unstructured.o input_aux.o option.o \
@@ -992,8 +997,9 @@ reaction_mineral_aux.o : option.o pflotran_constants.o reaction_database_aux.o \
 reaction_sandbox.o : global_aux.o input_aux.o material_aux.o option.o \
                      pflotran_constants.o reaction_aux.o \
                      reaction_sandbox_base.o reaction_sandbox_clm_cn.o \
-                     reaction_sandbox_example.o reaction_sandbox_ufd_wp.o \
-                     reactive_transport_aux.o string.o utility.o
+                     reaction_sandbox_example.o reaction_sandbox_simple.o \
+                     reaction_sandbox_ufd_wp.o reactive_transport_aux.o \
+                     string.o utility.o
 reaction_sandbox_base.o : global_aux.o input_aux.o material_aux.o option.o \
                           pflotran_constants.o reaction_aux.o \
                           reactive_transport_aux.o
@@ -1006,6 +1012,10 @@ reaction_sandbox_example.o : global_aux.o input_aux.o material_aux.o option.o \
                              pflotran_constants.o reaction_aux.o \
                              reaction_sandbox_base.o reactive_transport_aux.o \
                              string.o units.o
+reaction_sandbox_simple.o : global_aux.o material_aux.o option.o \
+                            pflotran_constants.o reaction_aux.o \
+                            reaction_immobile_aux.o reaction_sandbox_base.o \
+                            reactive_transport_aux.o
 reaction_sandbox_ufd_wp.o : global_aux.o input_aux.o material_aux.o option.o \
                             pflotran_constants.o reaction_aux.o \
                             reaction_immobile_aux.o reaction_sandbox_base.o \
@@ -1081,7 +1091,7 @@ secondary_continuum_aux.o : option.o pflotran_constants.o \
                             reactive_transport_aux.o utility.o
 shape_function.o : gauss.o grid_unstructured_cell.o pflotran_constants.o
 simulation_aux.o : option.o pflotran_constants.o
-simulation_base.o : input_aux.o logging.o option.o output.o output_aux.o \
+simulation_base.o : eos.o input_aux.o logging.o option.o output.o output_aux.o \
                     pflotran_constants.o pm_base.o pmc_base.o simulation_aux.o \
                     timestepper_base.o waypoint.o
 simulation_geomechanics.o : geomechanics_realization.o option.o output.o \

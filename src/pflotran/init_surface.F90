@@ -33,8 +33,8 @@ subroutine InitSurfaceSetupRealization(surf_realization,subsurf_realization)
   
   implicit none
   
-  class(surface_realization_type), pointer :: surf_realization
-  class(realization_type), pointer :: subsurf_realization
+  class(realization_surface_type), pointer :: surf_realization
+  class(realization_subsurface_type), pointer :: subsurf_realization
   type(option_type), pointer :: option
   PetscReal :: dum1
   PetscErrorCode :: ierr
@@ -137,7 +137,7 @@ subroutine InitSurfaceSetupSolvers(surf_realization,solver)
 #include "petsc/finclude/petscpc.h"
 #include "petsc/finclude/petscts.h"
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   type(solver_type), pointer :: solver
   
   type(option_type), pointer :: option
@@ -192,7 +192,7 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   PetscReal, pointer :: man0_p(:)
   PetscReal, pointer :: vec_p(:)
@@ -360,7 +360,7 @@ subroutine SurfaceInitReadRegionFiles(surf_realization)
 
   implicit none
 
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   type(option_type), pointer :: option
   type(region_type), pointer :: surf_region

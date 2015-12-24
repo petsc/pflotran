@@ -20,7 +20,7 @@ module Simulation_Surf_Subsurf_class
 
   type, public, extends(subsurface_simulation_type) :: surfsubsurface_simulation_type
     class(pmc_surface_type), pointer    :: surf_flow_process_model_coupler
-    class(surface_realization_type), pointer :: surf_realization
+    class(realization_surface_type), pointer :: surf_realization
   contains
     procedure, public :: Init => SurfSubsurfaceSimulationInit
     procedure, public :: InitializeRun => SurfSubsurfaceInitializeRun

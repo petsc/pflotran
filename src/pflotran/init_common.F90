@@ -124,7 +124,7 @@ subroutine InitSubsurfaceReadRequiredCards(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
 
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -299,7 +299,7 @@ subroutine InitCommonVerifyAllCouplers(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
 
@@ -341,7 +341,7 @@ subroutine InitCommonVerifyCoupler(realization,patch,coupler_list)
 
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   type(coupler_list_type), pointer :: coupler_list
 
   type(option_type), pointer :: option
@@ -426,7 +426,7 @@ subroutine InitCommonReadRegionFiles(realization)
 
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(region_type), pointer :: region
@@ -511,7 +511,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   Vec :: vector
   character(len=MAXWORDLENGTH) :: filename
   PetscInt :: vector_type
@@ -733,7 +733,7 @@ subroutine InitCommonReadVelocityField(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   type(field_type), pointer :: field

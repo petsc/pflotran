@@ -466,7 +466,7 @@ subroutine SecondaryRTTimeCut(realization)
   use Reaction_Aux_module
   
   implicit none
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   type(reaction_type), pointer :: reaction
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   type(grid_type), pointer :: grid
@@ -1407,7 +1407,7 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dX_changed, &
   Vec :: P0
   Vec :: dP
   Vec :: P1
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   ! ignore changed flag for now.
   PetscBool :: dX_changed
   PetscBool :: X1_changed
