@@ -142,7 +142,7 @@ subroutine PMCBaseInit(this)
   this%Output => Null()
   
   allocate(this%pm_ptr)
-  nullify(this%pm_ptr%ptr)
+  nullify(this%pm_ptr%pm)
   
 end subroutine PMCBaseInit
 
@@ -1410,7 +1410,7 @@ subroutine PMCBaseStrip(this)
   nullify(this%waypoint_list) ! deleted in realization
 !  call WaypointListDestroy(this%waypoint_list)
   if (associated(this%pm_ptr)) then
-    nullify(this%pm_ptr%ptr) ! solely a pointer
+    nullify(this%pm_ptr%pm) ! solely a pointer
     deallocate(this%pm_ptr)
     nullify(this%pm_ptr)
   endif

@@ -22,7 +22,7 @@ module PM_Base_Pointer_module
   ! pm_ptr%this%Residual
   !  
   type, public :: pm_base_pointer_type
-    class(pm_base_type), pointer :: ptr
+    class(pm_base_type), pointer :: pm
   end type pm_base_pointer_type
 
   public :: PMResidual, &
@@ -96,7 +96,7 @@ subroutine PMResidualPtr(snes,xx,r,this,ierr)
   print *, 'PMResidual()'
 #endif
 
-  call this%ptr%Residual(snes,xx,r,ierr)
+  call this%pm%Residual(snes,xx,r,ierr)
 
 end subroutine PMResidualPtr
 
@@ -158,7 +158,7 @@ subroutine PMJacobianPtr(snes,xx,A,B,this,ierr)
   print *, 'PMJacobian()'
 #endif
 
-  call this%ptr%Jacobian(snes,xx,A,B,ierr)
+  call this%pm%Jacobian(snes,xx,A,B,ierr)
     
 end subroutine PMJacobianPtr
 
@@ -216,7 +216,7 @@ subroutine PMRHSFunctionPtr(ts,time,xx,ff,this,ierr)
   print *, 'PMRHSFunction()'
 #endif
 
-  call this%ptr%RHSFunction(ts,time,xx,ff,ierr)
+  call this%pm%RHSFunction(ts,time,xx,ff,ierr)
 
 end subroutine PMRHSFunctionPtr
 
@@ -278,7 +278,7 @@ subroutine PMCheckUpdatePrePtr(line_search,X,dX,changed,this,ierr)
   print *, 'PMCheckUpdatePre()'
 #endif
 
-  call this%ptr%CheckUpdatePre(line_search,X,dX,changed,ierr)
+  call this%pm%CheckUpdatePre(line_search,X,dX,changed,ierr)
     
 end subroutine PMCheckUpdatePrePtr
 
@@ -346,7 +346,7 @@ subroutine PMCheckUpdatePostPtr(line_search,X0,dX,X1,dX_changed,X1_changed, &
   print *, 'PMCheckUpdatePost()'
 #endif
 
-  call this%ptr%CheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,ierr)
+  call this%pm%CheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,ierr)
     
 end subroutine PMCheckUpdatePostPtr
 

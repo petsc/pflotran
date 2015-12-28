@@ -165,7 +165,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       simulation%surf_flow_process_model_coupler => pmc_surface
       pmc_surface%option => option
       pmc_surface%pm_list => pm_surface_flow
-      pmc_surface%pm_ptr%ptr => pm_surface_flow
+      pmc_surface%pm_ptr%pm => pm_surface_flow
       pmc_surface%surf_realization => simulation%surf_realization
       pmc_surface%subsurf_realization => simulation%realization
       timestepper => TimestepperSurfaceCreate()
@@ -182,7 +182,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       simulation%surf_flow_process_model_coupler => pmc_surface
       pmc_surface%option => option
       pmc_surface%pm_list => pm_surface_th
-      pmc_surface%pm_ptr%ptr => pm_surface_th
+      pmc_surface%pm_ptr%pm => pm_surface_th
       pmc_surface%surf_realization => simulation%surf_realization
       pmc_surface%subsurf_realization => simulation%realization
       timestepper => TimestepperSurfaceCreate()

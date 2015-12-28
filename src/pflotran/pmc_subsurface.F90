@@ -102,7 +102,7 @@ subroutine PMCSubsurfaceSetupSolvers(this)
   select type(ts => this%timestepper)
     class is(timestepper_BE_type)
       call SNESSetFunction(ts%solver%snes, &
-                           this%pm_ptr%ptr%residual_vec, &
+                           this%pm_ptr%pm%residual_vec, &
                            PMResidual, &
                            this%pm_ptr, &
                            ierr);CHKERRQ(ierr)

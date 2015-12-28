@@ -140,7 +140,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     pmc_subsurface => PMCSubsurfaceCreate()
     pmc_subsurface%option => option
     pmc_subsurface%pm_list => pm_flow
-    pmc_subsurface%pm_ptr%ptr => pm_flow
+    pmc_subsurface%pm_ptr%pm => pm_flow
     pmc_subsurface%realization => realization
     ! set up logging stage
     string = trim(pm_flow%name) // 'Flow'
@@ -157,7 +157,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     pmc_subsurface%name = 'PMCSubsurfaceTransport'
     pmc_subsurface%option => option
     pmc_subsurface%pm_list => pm_rt
-    pmc_subsurface%pm_ptr%ptr => pm_rt
+    pmc_subsurface%pm_ptr%pm => pm_rt
     pmc_subsurface%realization => realization
     ! set up logging stage
     string = 'Reactive Transport'
@@ -205,7 +205,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     pmc_third_party => PMCThirdPartyCreate()
     pmc_third_party%option => option
     pmc_third_party%pm_list => pm_waste_form
-    pmc_third_party%pm_ptr%ptr => pm_waste_form
+    pmc_third_party%pm_ptr%pm => pm_waste_form
     pmc_third_party%realization => realization
     ! set up logging stage
     select type(pm_waste_form)
@@ -228,7 +228,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     pmc_third_party => PMCThirdPartyCreate()
     pmc_third_party%option => option
     pmc_third_party%pm_list => pm_ufd_decay
-    pmc_third_party%pm_ptr%ptr => pm_ufd_decay
+    pmc_third_party%pm_ptr%pm => pm_ufd_decay
     pmc_third_party%realization => realization
     ! set up logging stage
     string = 'UFD Decay'
