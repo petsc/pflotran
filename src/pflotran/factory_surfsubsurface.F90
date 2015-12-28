@@ -79,7 +79,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   use Realization_class
   use String_module
   use Waypoint_module
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Timestepper_Surface_class
   use Logging_module
   
@@ -147,7 +147,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   simulation%process_model_coupler_list%is_master = PETSC_FALSE
 
   if (associated(pm_surface_flow) .or. associated(pm_surface_th)) then
-    simulation%surf_realization => SurfRealizCreate(option)
+    simulation%surf_realization => RealizSurfCreate(option)
     surf_realization => simulation%surf_realization
     subsurf_realization => simulation%realization
     surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
@@ -392,7 +392,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   use Option_module
   use Patch_module
   use Region_module
-  use Surface_Realization_class
+  use Realization_Surface_class
 
   implicit none
 
@@ -710,7 +710,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
   use Discretization_module
   use Grid_Unstructured_Aux_module
   use DM_Kludge_module
-  use Surface_Realization_class
+  use Realization_Surface_class
 
   implicit none
 
@@ -934,7 +934,7 @@ subroutine SurfSubsurfCreateSurfVecs(surf_realization,option,surf_head)
   ! Date: 08/20/13
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Option_module
 
   implicit none

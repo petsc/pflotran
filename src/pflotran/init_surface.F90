@@ -20,7 +20,7 @@ subroutine InitSurfaceSetupRealization(surf_realization,subsurf_realization)
   ! Date: 12/04/14
   ! 
   use Surface_Flow_module
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Surface_TH_module
   use Surface_Global_module
   use Timestepper_Base_class
@@ -49,7 +49,7 @@ subroutine InitSurfaceSetupRealization(surf_realization,subsurf_realization)
                          dum1,ierr)    
   endif  
   
-  call SurfRealizCreateDiscretization(surf_realization)
+  call RealizSurfCreateDiscretization(surf_realization)
 
   ! Check if surface-flow is compatible with the given flowmode
   select case(option%iflowmode)
@@ -60,19 +60,19 @@ subroutine InitSurfaceSetupRealization(surf_realization,subsurf_realization)
   end select
 
   call SurfaceInitReadRegionFiles(surf_realization)
-  call SurfRealizMapSurfSubsurfGrids(subsurf_realization,surf_realization)
-  call SurfRealizLocalizeRegions(surf_realization)
-  call SurfRealizPassFieldPtrToPatches(surf_realization)
-  call SurfRealizProcessMatProp(surf_realization)
-  call SurfRealizProcessCouplers(surf_realization)
-  call SurfRealizProcessConditions(surf_realization)
+  call RealizSurfMapSurfSubsurfGrids(subsurf_realization,surf_realization)
+  call RealizSurfLocalizeRegions(surf_realization)
+  call RealizSurfPassFieldPtrToPatches(surf_realization)
+  call RealizSurfProcessMatProp(surf_realization)
+  call RealizSurfProcessCouplers(surf_realization)
+  call RealizSurfProcessConditions(surf_realization)
   !call RealProcessFluidProperties(surf_realization)
   call SurfaceInitMatPropToRegions(surf_realization)
-  call SurfRealizInitAllCouplerAuxVars(surf_realization)
+  call RealizSurfInitAllCouplerAuxVars(surf_realization)
   !call SurfaceRealizationPrintCouplers(surf_realization)
 
   ! add waypoints associated with boundary conditions, source/sinks etc. to list
-  call SurfRealizAddWaypointsToList(surf_realization)
+  call RealizSurfAddWaypointsToList(surf_realization)
   call WaypointListFillIn(option,surf_realization%waypoint_list)
   call WaypointListRemoveExtraWaypnts(option,surf_realization%waypoint_list)
 
@@ -118,7 +118,7 @@ subroutine InitSurfaceSetupSolvers(surf_realization,solver)
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Option_module
   
   use Solver_module
@@ -173,7 +173,7 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
   ! Date: 02/13/12
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Discretization_module
   use Strata_module
   use Region_module
@@ -281,7 +281,7 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
 
   if (update_ghosted_material_ids) then
     ! update ghosted material ids
-    call SurfRealizLocalToLocalWithArray(surf_realization,MATERIAL_ID_ARRAY)
+    call RealizSurfLocalToLocalWithArray(surf_realization,MATERIAL_ID_ARRAY)
   endif
 
   ! set cell by cell material properties
@@ -352,7 +352,7 @@ subroutine SurfaceInitReadRegionFiles(surf_realization)
   ! Date: 02/20/12
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Region_module
   use HDF5_module
   use Grid_module

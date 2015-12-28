@@ -2,7 +2,7 @@ module PM_Surface_TH_class
 
   use PM_Base_class
   use PM_Surface_class
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Realization_class
   use Communicator_Base_module
   use Option_module

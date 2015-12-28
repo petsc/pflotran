@@ -44,7 +44,7 @@ subroutine SurfaceFlowSetup(surf_realization)
   ! Date: 05/21/12
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   
   class(realization_surface_type) :: surf_realization
 
@@ -62,7 +62,7 @@ subroutine SurfaceFlowSetPlotVariables(surf_realization)
   ! Date: 10/30/12
   ! 
   
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Output_Aux_module
   use Variables_module
     
@@ -228,7 +228,7 @@ subroutine SurfaceFlowUpdateSolution(surf_realization)
   ! Date: 05/22/12
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Surface_Field_module
 
   implicit none
@@ -253,7 +253,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   ! Date: 03/07/13
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Surface_Field_module
   use Patch_module
   use Discretization_module
@@ -513,7 +513,7 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
 
   
   use Connection_module
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -790,7 +790,7 @@ subroutine SurfaceFlowUpdateAuxVars(surf_realization)
   ! Date: 03/07/13
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Patch_module
   use Option_module
   use Surface_Field_module
@@ -905,7 +905,7 @@ function SurfaceFlowGetTecplotHeader(surf_realization,icolumn)
   ! Date: 05/29/12
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Option_module
 
   implicit none
@@ -956,7 +956,7 @@ subroutine SurfaceFlowUpdateSurfState(surf_realization)
   use Realization_Base_class
   use String_module
   use Surface_Field_module
-  use Surface_Realization_class
+  use Realization_Surface_class
   use EOS_Water_module
 
   implicit none
