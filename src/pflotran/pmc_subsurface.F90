@@ -88,6 +88,7 @@ subroutine PMCSubsurfaceSetupSolvers(this)
   use Timestepper_Base_class
   use Timestepper_BE_class
   use PM_Base_Pointer_module
+  use Option_module
 
   implicit none
 
@@ -782,6 +783,8 @@ recursive subroutine PMCSubsurfaceDestroy(this)
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
+
+  use Option_module
 
   implicit none
   

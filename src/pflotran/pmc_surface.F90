@@ -680,6 +680,7 @@ recursive subroutine PMCSurfaceDestroy(this)
   ! Author: Glenn Hammond
   ! Date: 12/02/14
   ! 
+  use Option_module
 
   implicit none
   

@@ -198,6 +198,8 @@ recursive subroutine PMCMaterialDestroy(this)
   ! Date: 03/14/13
   ! 
 
+  use Option_module
+
   implicit none
   
   class(pmc_material_type) :: this

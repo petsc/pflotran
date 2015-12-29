@@ -97,6 +97,10 @@ ifdef th_bc_hack
   MYFLAGS += ${FC_DEFINE_FLAG}THDIRICHLET_TEMP_BC_HACK
 endif
 
+ifdef debug
+  MYFLAGS += ${FC_DEFINE_FLAG}DEBUG
+endif
+
 UPDATE_PROVENANCE=0
 ifdef provenance
   UPDATE_PROVENANCE=1
