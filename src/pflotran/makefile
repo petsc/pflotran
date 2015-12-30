@@ -306,6 +306,7 @@ misc_obj = \
 	${common_src}field.o \
 	${common_src}geometry.o \
 	${common_src}hydrostatic.o \
+	${common_src}hydrostatic_multi_phase.o \
 	${common_src}init_common.o \
 	${common_src}init_subsurface.o \
 	${common_src}init_subsurface_flow.o \
@@ -514,7 +515,7 @@ e4d_mat_inv.o :
 e4d_run.o : e4d_vars.o
 e4d_setup.o : e4d_mat_inv.o e4d_vars.o
 e4d_vars.o :
-eos.o : eos_database.o eos_gas.o eos_oil.o eos_water.o input_aux.o option.o \
+eos.o : eos_gas.o eos_oil.o eos_water.o input_aux.o option.o \
         pflotran_constants.o string.o
 eos_database.o : input_aux.o lookup_table.o option.o pflotran_constants.o \
                  string.o utility.o
@@ -694,6 +695,10 @@ hydrostatic.o : condition.o connection.o coupler.o dataset_ascii.o \
                 dataset_gridded_hdf5.o eos_water.o general_aux.o grid.o \
                 grid_structured.o option.o pflotran_constants.o region.o \
                 toil_ims_aux.o utility.o
+hydrostatic_multi_phase.o : condition.o connection.o coupler.o dataset_ascii.o \
+                            dataset_gridded_hdf5.o eos_gas.o eos_oil.o \
+                            eos_water.o grid.o option.o pflotran_constants.o \
+                            region.o toil_ims_aux.o utility.o
 immis.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
           connection.o coupler.o debug.o discretization.o eos_water.o field.o \
           global_aux.o grid.o immis_aux.o material.o material_aux.o option.o \
@@ -827,14 +832,14 @@ patch.o : auxiliary.o characteristic_curves.o condition.o connection.o \
           coupler.o dataset.o dataset_ascii.o dataset_base.o \
           dataset_common_hdf5.o dataset_gridded_hdf5.o dataset_map_hdf5.o \
           eos_water.o field.o general_aux.o geometry.o global_aux.o grid.o \
-          hydrostatic.o immis_aux.o integral_flux.o material.o material_aux.o \
-          miscible_aux.o mphase_aux.o observation.o option.o output_aux.o \
-          pflotran_constants.o reaction.o reaction_aux.o reaction_mineral.o \
-          reaction_mineral_aux.o reaction_surf_complex_aux.o \
-          reactive_transport_aux.o region.o richards_aux.o saturation.o \
-          saturation_function.o strata.o surface_auxiliary.o surface_field.o \
-          surface_material.o th_aux.o toil_ims_aux.o transport_constraint.o \
-          utility.o variables.o
+          hydrostatic.o hydrostatic_multi_phase.o immis_aux.o integral_flux.o \
+          material.o material_aux.o miscible_aux.o mphase_aux.o observation.o \
+          option.o output_aux.o pflotran_constants.o reaction.o reaction_aux.o \
+          reaction_mineral.o reaction_mineral_aux.o \
+          reaction_surf_complex_aux.o reactive_transport_aux.o region.o \
+          richards_aux.o saturation.o saturation_function.o strata.o \
+          surface_auxiliary.o surface_field.o surface_material.o th_aux.o \
+          toil_ims_aux.o transport_constraint.o utility.o variables.o
 pflotran.o : factory_geomechanics.o factory_hydrogeophysics.o \
              factory_pflotran.o factory_subsurface.o factory_surface.o \
              factory_surfsubsurface.o multisimulation.o option.o output_aux.o \
@@ -1091,11 +1096,9 @@ secondary_continuum_aux.o : option.o pflotran_constants.o \
                             reactive_transport_aux.o utility.o
 shape_function.o : gauss.o grid_unstructured_cell.o pflotran_constants.o
 simulation_aux.o : option.o pflotran_constants.o
-simulation_base.o : eos.o eos_database.o eos_gas.o eos_oil.o eos_water.o  \
-                    input_aux.o logging.o lookup_table.o option.o output.o \
-                    output_aux.o option.o pflotran_constants.o pm_base.o \
-                    pmc_base.o simulation_aux.o string.o timestepper_base.o \
-                    waypoint.o
+simulation_base.o : eos.o input_aux.o logging.o option.o output.o output_aux.o \
+                    pflotran_constants.o pm_base.o pmc_base.o simulation_aux.o \
+                    timestepper_base.o waypoint.o
 simulation_geomechanics.o : geomechanics_realization.o option.o output.o \
                             pflotran_constants.o pmc_base.o pmc_geomechanics.o \
                             pmc_subsurface.o realization.o regression.o \

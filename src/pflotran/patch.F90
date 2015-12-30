@@ -1473,8 +1473,8 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
   use Option_module
   use Condition_module
   use Hydrostatic_module
+  use HydrostaticMultiPhase_module  
   use Saturation_module
-  !use EOS_Water_module
   
   use TOilIms_Aux_module
   use Grid_module
@@ -1532,15 +1532,15 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
     endif
     ! at the moment hydrostatic pressure is valid only for regions
     ! fully saturated in water Sw=Sw_max, where Pw=Po (i.e. Pc=0)
-    coupler%flow_aux_mapping(TOIL_IMS_OIL_SATURATION_INDEX) = 2
+    !coupler%flow_aux_mapping(TOIL_IMS_OIL_SATURATION_INDEX) = 2
     !coupler%flow_aux_real_var(2,1:num_connections) = 0.d0 
     !allow for exception when zero capillary pressure (pw=po)
-    coupler%flow_aux_real_var(2,1:num_connections) = & 
-      toil_ims%saturation%dataset%rarray(1)
+    !coupler%flow_aux_real_var(2,1:num_connections) = & 
+    !  toil_ims%saturation%dataset%rarray(1)
     dof2 = PETSC_TRUE
-    coupler%flow_bc_type(TOIL_IMS_OIL_EQUATION_INDEX) = DIRICHLET_BC  
-    ! PO TODO: HydrostaticOilWaterUpdateCoupler (read OWC and OCW_pc first)   
-    call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+    call TOIHydrostaticUpdateCoupler(coupler,option,patch%grid)    
+    !call HydrostaticUpdateCoupler(coupler,option,patch%grid)
+    coupler%flow_bc_type(TOIL_IMS_OIL_EQUATION_INDEX) = HYDROSTATIC_BC 
     coupler%flow_bc_type(TOIL_IMS_LIQUID_EQUATION_INDEX) = HYDROSTATIC_BC
     coupler%flow_bc_type(TOIL_IMS_ENERGY_EQUATION_INDEX) = DIRICHLET_BC
     dof1 = PETSC_TRUE

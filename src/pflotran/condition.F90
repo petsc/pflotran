@@ -76,8 +76,8 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: liquid_flux
     type(flow_sub_condition_type), pointer :: oil_flux
     type(flow_sub_condition_type), pointer :: energy_flux
-    class(dataset_base_type), pointer :: owc   ! oil water contact 
-    class(dataset_base_type), pointer :: liq_press_grad ! water piezometric head gradient
+    type(flow_sub_condition_type), pointer :: owc   ! oil water contact 
+    type(flow_sub_condition_type), pointer :: liq_press_grad ! water piezometric head gradient
   end type flow_toil_ims_condition_type
     
   type, public :: flow_sub_condition_type
@@ -468,6 +468,22 @@ function FlowTOilImsSubConditionPtr(sub_condition_name,toil_ims, &
       else
         sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
         toil_ims%energy_flux => sub_condition_ptr
+      endif
+    case('OWC')
+      if (associated(toil_ims%owc)) then
+        sub_condition_ptr => toil_ims%owc
+      else
+        ! energy rate is loaded in the third record
+        sub_condition_ptr => FlowSubConditionCreate(THREE_INTEGER)
+        toil_ims%owc => sub_condition_ptr
+      endif
+    case('WATER_PRESSURE_GRAD')
+      if (associated(toil_ims%liq_press_grad)) then
+        sub_condition_ptr => toil_ims%liq_press_grad
+      else
+        ! energy rate is loaded in the third record
+        sub_condition_ptr => FlowSubConditionCreate(THREE_INTEGER)
+        toil_ims%liq_press_grad => sub_condition_ptr
       endif
     case('RATE')
       if (associated(toil_ims%rate)) then
@@ -2032,15 +2048,6 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         nullify(dataset_ascii)        
         call ConditionReadValues(input,option,word, &
                                      condition%datum,word)
-      case('OWC')
-        dataset_ascii => DatasetAsciiCreate()
-        call DatasetAsciiInit(dataset_ascii)
-        dataset_ascii%array_width = 3
-        dataset_ascii%data_type = DATASET_REAL
-        toil_ims%owc => dataset_ascii
-        nullify(dataset_ascii)        
-        call ConditionReadValues(input,option,word, &
-                                     toil_ims%owc,word)
       case('GRADIENT')
         do
           call InputReadPflotranString(input,option)
@@ -2052,34 +2059,20 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
           call StringToUpper(word)
-          select case(word)
-            case('PRESSURE','OIL_PRESSURE','TEMPERATURE')
-              select case(option%iflowmode)
-                case(TOIL_IMS_MODE)
-                  sub_condition_ptr => &
-                     FlowTOilImsSubConditionPtr(word,toil_ims,option)
-              end select
-              dataset_ascii => DatasetAsciiCreate()
-              call DatasetAsciiInit(dataset_ascii)
-              dataset_ascii%array_width = 3
-              dataset_ascii%data_type = DATASET_REAL
-              sub_condition_ptr%gradient => dataset_ascii
-              nullify(dataset_ascii)
-              call ConditionReadValues(input,option,word, &
-                                     sub_condition_ptr%gradient,word)
-              nullify(sub_condition_ptr)
-            case('WATER_PRESSURE')
-              dataset_ascii => DatasetAsciiCreate()
-              call DatasetAsciiInit(dataset_ascii)
-              dataset_ascii%array_width = 3
-              dataset_ascii%data_type = DATASET_REAL
-              toil_ims%liq_press_grad => dataset_ascii
-              nullify(dataset_ascii)        
-              call ConditionReadValues(input,option,word, &
-                                          toil_ims%liq_press_grad,word)
-            case default
-              call InputKeywordUnrecognized(word,'flow grad condition',option)
+          select case(option%iflowmode)
+            case(TOIL_IMS_MODE)
+              sub_condition_ptr => &
+                 FlowTOilImsSubConditionPtr(word,toil_ims,option)
           end select
+          dataset_ascii => DatasetAsciiCreate()
+          call DatasetAsciiInit(dataset_ascii)
+          dataset_ascii%array_width = 3
+          dataset_ascii%data_type = DATASET_REAL
+          sub_condition_ptr%gradient => dataset_ascii
+          nullify(dataset_ascii)
+          call ConditionReadValues(input,option,word, &
+                                   sub_condition_ptr%gradient,word)
+          nullify(sub_condition_ptr)
         enddo
       case('CONDUCTANCE')
         word = 'PRESSURE'
@@ -2091,12 +2084,18 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         call InputReadDouble(input,option,sub_condition_ptr%aux_real(1))
         call InputErrorMsg(input,option,'LIQUID_CONDUCTANCE','CONDITION')   
       case('PRESSURE','OIL_PRESSURE','WATER_PRESSURE','LIQUID_SATURATION', &
-           'OIL_SATURATION','TEMPERATURE','RATE', &
-           'LIQUID_FLUX','OIL_FLUX','ENERGY_FLUX','ENTHALPY')
+           'OIL_SATURATION','TEMPERATURE','RATE', 'LIQUID_FLUX','OIL_FLUX', &
+           'ENERGY_FLUX','ENTHALPY','OWC','WATER_PRESSURE_GRAD')
         select case(option%iflowmode)
           case(TOIL_IMS_MODE)
             sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
                                                             option)
+        end select
+        select case(trim(word))
+        !give a type to pass FlowSubConditionVerify.
+          case('OWC','WATER_PRESSURE_GRAD')
+            sub_condition_ptr%itype = DIRICHLET_BC 
+            sub_condition_ptr%ctype = 'dirichlet'
         end select
         select case(trim(word))
           case('RATE','ENERGY_FLUX')
@@ -2124,8 +2123,6 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   
   ! datum, owc, and liq_press_grad are not required
   call DatasetVerify(condition%datum,default_time_storage,option)
-  call DatasetVerify(toil_ims%owc,default_time_storage,option)
-  call DatasetVerify(toil_ims%liq_press_grad,default_time_storage,option)
 
   ! phase condition should never be used in TOilIms
   condition%iphase = ZERO_INTEGER
@@ -2226,6 +2223,14 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   call FlowSubConditionVerify(option,condition,word,toil_ims%energy_flux, &
                               default_time_storage, &
                               PETSC_TRUE)
+  word = 'oil water contact'
+  call FlowSubConditionVerify(option,condition,word,toil_ims%owc, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'water pressure gradient'
+  call FlowSubConditionVerify(option,condition,word,toil_ims%liq_press_grad, &
+                              default_time_storage, &
+                              PETSC_TRUE)
   word = 'rate'
   call FlowSubConditionVerify(option,condition,word,toil_ims%rate, &
                               default_time_storage, &
@@ -2246,6 +2251,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   if (associated(toil_ims%oil_flux)) &
     i = i + 1
   if (associated(toil_ims%energy_flux)) &
+    i = i + 1
+  if (associated(toil_ims%owc)) &
+    i = i + 1
+  if (associated(toil_ims%liq_press_grad)) &
     i = i + 1
   if (associated(toil_ims%rate)) &
     i = i + 1
@@ -2283,6 +2292,14 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   if (associated(toil_ims%energy_flux)) then
     i = i + 1
     condition%sub_condition_ptr(i)%ptr => toil_ims%energy_flux
+  endif
+  if (associated(toil_ims%owc)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => toil_ims%owc
+  endif
+  if (associated(toil_ims%liq_press_grad)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => toil_ims%liq_press_grad
   endif  
   if (associated(toil_ims%rate)) then
     i = i + 1
@@ -3208,15 +3225,15 @@ function FlowConditionTOilImsIsTransient(condition)
 
   if (.not.associated(condition)) return
   
-  if (DatasetIsTransient(condition%owc) .or. &
-      DatasetIsTransient(condition%liq_press_grad) .or. & 
-      FlowSubConditionIsTransient(condition%pressure) .or. &
+  if (FlowSubConditionIsTransient(condition%pressure) .or. &
       FlowSubConditionIsTransient(condition%saturation) .or. &
       FlowSubConditionIsTransient(condition%temperature) .or. &
       FlowSubConditionIsTransient(condition%rate) .or. &
       FlowSubConditionIsTransient(condition%liquid_flux) .or. &
       FlowSubConditionIsTransient(condition%oil_flux) .or. &
-      FlowSubConditionIsTransient(condition%energy_flux)) then
+      FlowSubConditionIsTransient(condition%energy_flux) .or. & 
+      FlowSubConditionIsTransient(condition%owc) .or. &
+      FlowSubConditionIsTransient(condition%liq_press_grad)) then
     FlowConditionTOilImsIsTransient = PETSC_TRUE
   endif
   
@@ -3399,19 +3416,7 @@ subroutine FlowToilConditionDestroy(toil_ims_condition)
   
   type(flow_toil_ims_condition_type), pointer :: toil_ims_condition
 
-  class(dataset_ascii_type), pointer :: dataset_ascii
-  
   if (.not.associated(toil_ims_condition)) return
-
-  ! if dataset_ascii_type, destroy.  Otherwise, they are in another list
-  dataset_ascii => DatasetAsciiCast(toil_ims_condition%owc)
-  ! dataset_ascii will be NULL if not dataset_ascii_type
-  call DatasetAsciiDestroy(dataset_ascii)
-
-  ! if dataset_ascii_type, destroy.  Otherwise, they are in another list
-  dataset_ascii => DatasetAsciiCast(toil_ims_condition%liq_press_grad)
-  ! dataset_ascii will be NULL if not dataset_ascii_type
-  call DatasetAsciiDestroy(dataset_ascii)
 
   call FlowSubConditionDestroy(toil_ims_condition%pressure)
   call FlowSubConditionDestroy(toil_ims_condition%saturation)
@@ -3421,6 +3426,8 @@ subroutine FlowToilConditionDestroy(toil_ims_condition)
   call FlowSubConditionDestroy(toil_ims_condition%oil_flux)
   call FlowSubConditionDestroy(toil_ims_condition%energy_flux)
   call FlowSubConditionDestroy(toil_ims_condition%rate)
+  call FlowSubConditionDestroy(toil_ims_condition%owc)
+  call FlowSubConditionDestroy(toil_ims_condition%liq_press_grad)
 
   deallocate(toil_ims_condition)
   nullify(toil_ims_condition)
