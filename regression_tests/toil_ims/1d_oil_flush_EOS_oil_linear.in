@@ -124,7 +124,7 @@ CHARACTERISTIC_CURVES ch1
     M 0.44380d0
     ALPHA 5.792e-05
     LIQUID_RESIDUAL_SATURATION 0.1d0
-    MAX_CAPILLARY_PRESSURE 5.d6
+    MAX_CAPILLARY_PRESSURE 0.d0
     !SMOOTH !when using smoothing option
   /
   PERMEABILITY_FUNCTION MUALEM_VG_LIQ  ! checks it calls RPF_Mualem_VG_Liq_RelPerm and for Oil?

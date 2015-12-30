@@ -306,7 +306,7 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
                                option)                             
 
   ! Testing zero capillary pressure
-  toil_auxvar%pres(cpid) = 0.d0
+  !toil_auxvar%pres(cpid) = 0.d0
 
   toil_auxvar%pres(lid) = toil_auxvar%pres(oid) - &
                           toil_auxvar%pres(cpid)
