@@ -31,7 +31,8 @@ module HydrostaticMultiPhase_module
 contains
 
 ! ************************************************************************** !
-subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid)
+subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
+              characteristic_curves_array,sat_func_id)
   ! 
   ! Computes the hydrostatic initial/boundary condition for oil/water systems
   ! given the oil water contact (owc) elevation
@@ -78,6 +79,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid)
   use Coupler_module
   use Condition_module
   use Connection_module
+  use Characteristic_Curves_module
   use Region_module
   !use Grid_Structured_module
   !use Utility_module, only : DotProduct
@@ -92,15 +94,17 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid)
   type(coupler_type) :: coupler
   type(option_type) :: option
   type(grid_type) :: grid
+  type(characteristic_curves_ptr_type) :: characteristic_curves_array(:)
+  PetscInt, pointer, intent(in) :: sat_func_id(:)
 
   PetscReal :: xm_nacl
-  PetscInt :: local_id, ghosted_id, iconn
+  PetscInt :: local_id, ghosted_id, iconn, ghosted_id_min_dist
   PetscReal :: oil_press_grad(3), wat_press_grad(3), temperature_grad(3)  
   PetscReal :: datum(3), owc(3)
   PetscReal :: pressure_at_datum, temperature_at_datum, press_start
   PetscReal :: max_z, min_z
   PetscReal :: gravity_magnitude
-  PetscReal :: pw_owc, po_owc, pw_cell, po_cell, temperature, temp_owc
+  PetscReal :: pw_owc, po_owc, pc_owc, pw_cell, po_cell, temperature, temp_owc
   PetscInt  :: i_owc, ipressure, ipress_start ! id_loc_owc 
   PetscReal, pointer :: wat_pressure_array(:), wat_density_array(:)
   PetscReal, pointer :: oil_pressure_array(:), oil_density_array(:)  
@@ -109,9 +113,13 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: dist_owc_start
   PetscReal :: dist_z_owc, dx_conn, dy_conn, dz_conn
   PetscBool :: datum_in_water, pw_hydrostatic, po_hydrostatic
+  PetscReal :: sat_liq_owc, pc_comp, sat_liq_comp, dsat_dpres
+  PetscReal :: sat_ir(2)
 
   class(one_dim_grid_type), pointer :: one_d_grid
   type(flow_condition_type), pointer :: condition
+  class(characteristic_curves_type), pointer :: characteristic_curves
+  !class(characteristic_curves_type) :: characteristic_curves
 
   pw_hydrostatic = PETSC_TRUE
   po_hydrostatic = PETSC_TRUE  
@@ -234,32 +242,37 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid)
                dist_z_for_pressure * temperature_grad(Z_DIRECTION)
   end if
 
+  ghosted_id_min_dist = &
+      GetCouplerCellOnPhaseConact(coupler,grid,owc(Z_DIRECTION)) 
+
+  characteristic_curves => &
+      characteristic_curves_array(sat_func_id(ghosted_id_min_dist))%ptr
+  !characteristic_curves = characteristic_curves_array(func_id)%ptr
+  ! the OWC is assumed to be located where So = So_ir 
+  sat_ir(:) = CharCurvesGetGetResidualSats(characteristic_curves,option) 
+  sat_liq_owc = 1.0 - sat_ir(2)
+      
+  call characteristic_curves%saturation_function% &
+              CapillaryPressure(sat_liq_owc,pc_owc,option)
+
   ! compute pressure and density profiles for phases where hydrostatic pressure
   ! is imposed. And pressure (water or oil) at owc elevation
   if (datum_in_water) then 
-    !dist_x = 0.d0
-    !dist_x = 0.d0
-    !dist_z = owc(Z_DIRECTION) - datum(Z_DIRECTION)
-    !if (pw_hydrostatic .or. po_hydrostatic) then 
-    !  ipressure = one_d_grid%idatum+int(dist_z/one_d_grid%delta_z)
-    !  dist_z_for_pressure = owc(Z_DIRECTION) - one_d_grid%z(ipressure)
-    !end if
     if (pw_hydrostatic) then
       call PhaseHydrostaticPressure(one_d_grid,option%gravity, &
                 HYDRO_LIQ_PHASE,pressure_at_datum, &
                 one_d_grid%idatum,xm_nacl,temperature_array, &
                 wat_pressure_array,wat_density_array)   
-      !ipressure = one_d_grid%idatum+int(dist_z/one_d_grid%delta_z)
-      !dist_z_for_pressure = owc(Z_DIRECTION) - one_d_grid%z(ipressure)
       pw_owc = PressInterp(i_owc,dist_x,dist_y,dist_z_for_pressure, &
                            option%gravity,wat_pressure_array, &
                            wat_density_array,wat_press_grad)
     else
       pw_owc = PressGrad(dist_x,dist_y,dist_z,pressure_at_datum,wat_press_grad) 
     end if
-    !po_owc = pw_owc + pc ! use characteistic curve to compute pc wth Sw = 1 - Soir
-    ! for now pc = 0
-    po_owc = pw_owc
+    ! test pc=0
+    !po_owc = pw_owc
+    po_owc = pw_owc + pc_owc
+
     if (po_hydrostatic) then
       ! compute oil press and denisty profiles
       !id_loc_owc = one_d_grid%ElevationIdLoc(owc(Z_DIRECTION))
@@ -267,8 +280,6 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid)
       !if ( ipress_start > size(one_d_grid%z(:)) ) & !need to avoid this computation if owc > z_max
       !  ipress_start = size(one_d_grid%z(:))
       dist_owc_start = one_d_grid%z(ipress_start) - owc(Z_DIRECTION)
-      !temp_owc = temperature_array(i_owc) + &
-      !           dist_z_for_pressure * temperature_grad(Z_DIRECTION)
       press_start = po_owc + dist_owc_start * &
                     PhaseDensity(HYDRO_OIL_PHASE,po_owc,temp_owc,xm_nacl) * &
                     option%gravity(Z_DIRECTION)
@@ -283,24 +294,21 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid)
                 HYDRO_OIL_PHASE,pressure_at_datum, &
                 one_d_grid%idatum,xm_nacl,temperature_array, &
                 oil_pressure_array,oil_density_array)   
-      !ipressure = one_d_grid%idatum+int(dist_z/one_d_grid%delta_z)
-      !dist_z_for_pressure = owc(Z_DIRECTION) - one_d_grid%z(ipressure)
       po_owc = PressInterp(i_owc,dist_x,dist_y,dist_z_for_pressure, &
                            option%gravity,oil_pressure_array, &
                            oil_density_array,oil_press_grad)
     else
       po_owc = PressGrad(dist_x,dist_y,dist_z,pressure_at_datum,oil_press_grad) 
     end if
-    !pw_owc = po_owc - pc ! use characteistic curve to compute pc wth Sw = 1 - Soir
-    ! for now pc = 0
-    pw_owc = po_owc
+    ! testing pc = 0 
+    !pw_owc = po_owc
+    pw_owc = po_owc - pc_owc
+
     if (pw_hydrostatic) then
       ! conmpute water press and denisty profiles
       !id_loc_owc = one_d_grid%ElevationIdLoc(owc(Z_DIRECTION))
       ipress_start = i_owc + 1
       dist_owc_start = one_d_grid%z(ipress_start) - owc(Z_DIRECTION)
-      !temp_owc = temperature_array(i_owc) + &
-      !           dist_z_for_pressure * temperature_grad(Z_DIRECTION)
       press_start = pw_owc + dist_owc_start * &
                     PhaseDensity(HYDRO_LIQ_PHASE,pw_owc,temp_owc,xm_nacl) * &
                     option%gravity(Z_DIRECTION)
@@ -377,14 +385,34 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid)
       !OIL SATURATION
       coupler%flow_aux_real_var(2,iconn) = 1.0d0
     else
-      if ( grid%z(ghosted_id) > owc(Z_DIRECTION) ) then
-        !OIL PRESSURE
-        coupler%flow_aux_real_var(1,iconn) = po_cell 
-        !OIL SATURATION
-        coupler%flow_aux_real_var(2,iconn) = 1.0d0
-      else 
+      !use instgructions below when imposing pc=0 capillary pressure 
+      !if ( grid%z(ghosted_id) > owc(Z_DIRECTION) ) then
+      !  !OIL PRESSURE
+      !  coupler%flow_aux_real_var(1,iconn) = po_cell 
+      !  !OIL SATURATION
+      !  coupler%flow_aux_real_var(2,iconn) = 1.0d0
+      !else 
+      !  coupler%flow_aux_real_var(1,iconn) = pw_cell
+      !  coupler%flow_aux_real_var(2,iconn) = 1.0d-6 !to avoid truncation erros
+      !end if
+      !use insytruction below for pc /= 0 
+      pc_comp = po_cell - pw_cell
+      if ( pc_comp <= 0.d0 ) then ! water-only region 
         coupler%flow_aux_real_var(1,iconn) = pw_cell
         coupler%flow_aux_real_var(2,iconn) = 1.0d-6 !to avoid truncation erros
+      else if ( pc_comp >= characteristic_curves%saturation_function%pcmax ) &
+        then
+        ! oil region: can consider here connate water if required, or Sw_ir
+        coupler%flow_aux_real_var(1,iconn) = po_cell
+        coupler%flow_aux_real_var(2,iconn) = 1.0d0 !to avoid truncation erros
+      else
+        ! water/oil transition zone
+        coupler%flow_aux_real_var(1,iconn) = po_cell      
+        call characteristic_curves%saturation_function%Saturation(pc_comp, &
+                sat_liq_comp,dsat_dpres,option) 
+        coupler%flow_aux_real_var(2,iconn) = 1.0d0 - sat_liq_comp
+        if (coupler%flow_aux_real_var(2,iconn) < 1.0d-6 ) &
+           coupler%flow_aux_real_var(2,iconn) = 1.0d-6 
       end if
     end if
 
@@ -408,6 +436,49 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid)
 
 end subroutine TOIHydrostaticUpdateCoupler
 
+! ************************************************************************** !
+
+function GetCouplerCellOnPhaseConact(coupler,grid,z_phase_contact)
+
+  ! Returns the ghosted_id of the closest cell to phase contact  
+  ! Where more cells have the same minimum distance from z_phase_contact,
+  ! the first cell in the list will be selected as for the minloc function 
+  !
+  ! Author: Paolo Orsini
+  ! Date: 12/31/15
+  ! 
+
+  use Grid_module
+  use Coupler_module
+  use Utility_module
+
+  implicit none
+
+  type(coupler_type), intent(in) :: coupler
+  type(grid_type), intent(in) :: grid
+  PetscReal, intent(in) :: z_phase_contact
+
+  PetscInt :: GetCouplerCellOnPhaseConact
+
+  PetscInt :: iconn, local_id, ghosted_id
+  PetscInt :: iconn_min(1)
+  PetscReal, pointer :: phase_contact_dist(:) 
+
+  allocate(phase_contact_dist(coupler%connection_set%num_connections))
+  
+  do iconn=1,coupler%connection_set%num_connections
+    local_id = coupler%connection_set%id_dn(iconn)
+    ghosted_id = grid%nL2G(local_id)
+    phase_contact_dist(iconn) = dabs(grid%z(ghosted_id) - z_phase_contact)
+  end do
+
+  iconn_min = minloc(phase_contact_dist(:))
+
+  call DeallocateArray(phase_contact_dist)
+
+  GetCouplerCellOnPhaseConact = grid%nL2G(iconn_min(1))
+
+end function GetCouplerCellOnPhaseConact
 
 ! ************************************************************************** !
 

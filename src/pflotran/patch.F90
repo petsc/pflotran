@@ -1538,7 +1538,8 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
     !coupler%flow_aux_real_var(2,1:num_connections) = & 
     !  toil_ims%saturation%dataset%rarray(1)
     dof2 = PETSC_TRUE
-    call TOIHydrostaticUpdateCoupler(coupler,option,patch%grid)    
+    call TOIHydrostaticUpdateCoupler(coupler,option,patch%grid, &
+                  patch%characteristic_curves_array,patch%sat_func_id)    
     !call HydrostaticUpdateCoupler(coupler,option,patch%grid)
     coupler%flow_bc_type(TOIL_IMS_OIL_EQUATION_INDEX) = HYDROSTATIC_BC 
     coupler%flow_bc_type(TOIL_IMS_LIQUID_EQUATION_INDEX) = HYDROSTATIC_BC

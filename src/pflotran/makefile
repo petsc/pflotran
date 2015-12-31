@@ -695,10 +695,11 @@ hydrostatic.o : condition.o connection.o coupler.o dataset_ascii.o \
                 dataset_gridded_hdf5.o eos_water.o general_aux.o grid.o \
                 grid_structured.o option.o pflotran_constants.o region.o \
                 toil_ims_aux.o utility.o
-hydrostatic_multi_phase.o : condition.o connection.o coupler.o dataset_ascii.o \
-                            dataset_gridded_hdf5.o eos_gas.o eos_oil.o \
-                            eos_water.o grid.o option.o pflotran_constants.o \
-                            region.o toil_ims_aux.o utility.o
+hydrostatic_multi_phase.o : characteristic_curves.o condition.o connection.o \
+                            coupler.o dataset_ascii.o dataset_gridded_hdf5.o \
+                            eos_gas.o eos_oil.o eos_water.o grid.o option.o \
+                            pflotran_constants.o region.o toil_ims_aux.o \
+                            utility.o
 immis.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
           connection.o coupler.o debug.o discretization.o eos_water.o field.o \
           global_aux.o grid.o immis_aux.o material.o material_aux.o option.o \
