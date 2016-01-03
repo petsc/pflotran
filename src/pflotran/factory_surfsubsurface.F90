@@ -757,9 +757,10 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
   PetscInt                        :: nrow,rstart,rend,icol(1)
   PetscInt                        :: index
   PetscInt                        :: vertex_id
-  PetscOffset                     :: iia,jja,aaa,iicol
+  PetscOffset                     :: iia,jja,iicol
   PetscBool                       :: done
-  PetscScalar                     :: aa(1)
+  PetscScalar, pointer            :: aa_v(:,:)
+  PetscInt                        :: row, col
 
   PetscErrorCode :: ierr
   PetscBool :: found
@@ -777,23 +778,30 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
     call MatGetRowIJF90(prod_loc_mat,ONE_INTEGER,PETSC_FALSE,PETSC_FALSE, &
                         nrow,ia_p,ja_p,done,ierr);CHKERRQ(ierr)
     ! Get values stored in the local-matrix
-    call MatSeqAIJGetArray(prod_loc_mat,aa,aaa,ierr);CHKERRQ(ierr)
+    call MatSeqAIJGetArrayF90(prod_loc_mat,aa_v,ierr);CHKERRQ(ierr)
   else
     ! Get i and j indices of the local-matrix
     call MatGetRowIJF90(prod_mat,ONE_INTEGER,PETSC_FALSE,PETSC_FALSE, &
                         nrow,ia_p,ja_p,done,ierr);CHKERRQ(ierr)
     ! Get values stored in the local-matrix
-    call MatSeqAIJGetArray(prod_mat,aa,aaa,ierr);CHKERRQ(ierr)
+    call MatSeqAIJGetArrayF90(prod_mat,aa_v,ierr);CHKERRQ(ierr)
   endif
 
   ! For each row of the local-matrix,find the column with the largest value
   allocate(corr_v2_ids(nrow))
+  row = 1
+  col = 0
   do ii = 1,nrow
     max_value = 0.d0
     do jj = ia_p(ii),ia_p(ii + 1) - 1
-      if (aa(aaa+ jj) > max_value) then
+      col = col + 1
+      if (col > nrow) then
+        row = row + 1
+        col = 1
+      endif
+      if (aa_v(col,row) > max_value) then
         corr_v2_ids(ii) = ja_p(jj)
-        max_value = aa(aaa+ jj)
+        max_value = aa_v(col,row)
       endif
     enddo
     if (max_value<3) then
@@ -837,7 +845,10 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
 
   call VecDestroy(corr_dest_ids_vec,ierr);CHKERRQ(ierr)
   if (option%mycommsize>1) then
+    call MatSeqAIJRestoreArrayF90(prod_loc_mat,aa_v,ierr);CHKERRQ(ierr)
     call MatDestroy(prod_loc_mat,ierr);CHKERRQ(ierr)
+  else
+    call MatSeqAIJRestoreArrayF90(prod_mat,aa_v,ierr);CHKERRQ(ierr)
   endif
 
 end subroutine SurfSubsurfCreateSurfSubSurfVScat
