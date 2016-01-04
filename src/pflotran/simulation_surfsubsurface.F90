@@ -8,7 +8,7 @@ module Simulation_Surf_Subsurf_class
   use PMC_Subsurface_class
   use PMC_Surface_class
   use Realization_class
-  use Surface_Realization_class
+  use Realization_Surface_class
 
   use PFLOTRAN_Constants_module
 
@@ -244,7 +244,7 @@ subroutine SurfSubsurfaceSimulationStrip(this)
   call printMsg(this%option,'SurfSubsurfaceSimulationStrip()')
   
   call SubsurfaceSimulationStrip(this)
-  call SurfRealizStrip(this%surf_realization)
+  call RealizSurfStrip(this%surf_realization)
   deallocate(this%surf_realization)
   nullify(this%surf_realization)
  

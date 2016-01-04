@@ -79,7 +79,7 @@ subroutine SurfaceJumpStart(simulation)
   ! Date: 06/28/13
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Option_module
   use Timestepper_Surface_class
   use Output_Aux_module

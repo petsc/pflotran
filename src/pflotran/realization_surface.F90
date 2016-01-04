@@ -1,4 +1,4 @@
-module Surface_Realization_class
+module Realization_Surface_class
 
   use Realization_Base_class
   
@@ -53,29 +53,29 @@ private
   end type realization_surface_type
 
   !         123456789+123456789+123456789+1
-  public :: SurfRealizCreate, &
-            SurfRealizDestroy, &
-            SurfRealizStrip, &
-            SurfRealizAddWaypointsToList, &
-            SurfRealizCreateDiscretization, &
-            SurfRealizAddCoupler, &
-            SurfRealizAddStrata, &
-            SurfRealizLocalizeRegions, &
-            SurfRealizPassFieldPtrToPatches, &
-            SurfRealizProcessCouplers, &
-            SurfRealizLocalToLocalWithArray, &
-            SurfRealizProcessConditions, &
-            SurfRealizProcessFlowConditions, &
-            SurfRealizMapSurfSubsurfGrids, &
-            SurfRealizInitAllCouplerAuxVars, &
-            SurfRealizAllCouplerAuxVars, &
-            SurfRealizProcessMatProp, &
-            SurfRealizUpdate, &
-!            SurfRealizCreateSurfSubsurfVec, &
-!            SurfRealizUpdateSubsurfBC, &
-!            SurfRealizUpdateSurfBC, &
-!            SurfRealizSurf2SubsurfFlux, &
-            SurfRealizGetVariable
+  public :: RealizSurfCreate, &
+            RealizSurfDestroy, &
+            RealizSurfStrip, &
+            RealizSurfAddWaypointsToList, &
+            RealizSurfCreateDiscretization, &
+            RealizSurfAddCoupler, &
+            RealizSurfAddStrata, &
+            RealizSurfLocalizeRegions, &
+            RealizSurfPassFieldPtrToPatches, &
+            RealizSurfProcessCouplers, &
+            RealizSurfLocalToLocalWithArray, &
+            RealizSurfProcessConditions, &
+            RealizSurfProcessFlowConditions, &
+            RealizSurfMapSurfSubsurfGrids, &
+            RealizSurfInitAllCouplerAuxVars, &
+            RealizSurfAllCouplerAuxVars, &
+            RealizSurfProcessMatProp, &
+            RealizSurfUpdate, &
+!            RealizSurfCreateSurfSubsurfVec, &
+!            RealizSurfUpdateSubsurfBC, &
+!            RealizSurfUpdateSurfBC, &
+!            RealizSurfSurf2SubsurfFlux, &
+            RealizSurfGetVariable
 
   !TODO(intel)
 !  public :: SurfaceRealizationGetVariable     
@@ -88,7 +88,7 @@ contains
 
 ! ************************************************************************** !
 
-function SurfRealizCreate(option)
+function RealizSurfCreate(option)
   ! 
   ! This routine allocates and initializes a new SurfaceRealization object
   ! 
@@ -99,7 +99,7 @@ function SurfRealizCreate(option)
   implicit none
 
   type(option_type), pointer             :: option
-  class(realization_surface_type),pointer :: SurfRealizCreate
+  class(realization_surface_type),pointer :: RealizSurfCreate
   class(realization_surface_type),pointer :: surf_realization
   
   allocate(surf_realization)
@@ -134,13 +134,13 @@ function SurfRealizCreate(option)
   surf_realization%dt_coupling = 0.d0
   
   surf_realization%first_time = PETSC_TRUE
-  SurfRealizCreate => surf_realization
+  RealizSurfCreate => surf_realization
 
-end function SurfRealizCreate
+end function RealizSurfCreate
 
 ! ************************************************************************** !
 
-subroutine SurfRealizAddCoupler(surf_realization,coupler)
+subroutine RealizSurfAddCoupler(surf_realization,coupler)
   ! 
   ! This routine adds a copy of a coupler to a list
   ! 
@@ -177,11 +177,11 @@ subroutine SurfRealizAddCoupler(surf_realization,coupler)
 
   call CouplerDestroy(coupler)
  
-end subroutine SurfRealizAddCoupler
+end subroutine RealizSurfAddCoupler
 
 ! ************************************************************************** !
 
-subroutine SurfRealizProcessCouplers(surf_realization)
+subroutine RealizSurfProcessCouplers(surf_realization)
   ! 
   ! This routine sets connectivity and pointers for couplers related to
   ! surface flow.
@@ -206,11 +206,11 @@ subroutine SurfRealizProcessCouplers(surf_realization)
     cur_patch => cur_patch%next
   enddo
 
-end subroutine SurfRealizProcessCouplers
+end subroutine RealizSurfProcessCouplers
 
 ! ************************************************************************** !
 
-subroutine SurfRealizProcessMatProp(surf_realization)
+subroutine RealizSurfProcessMatProp(surf_realization)
   ! 
   ! This routine sets up linkeage between surface material properties
   ! 
@@ -256,11 +256,11 @@ subroutine SurfRealizProcessMatProp(surf_realization)
     cur_patch => cur_patch%next
   enddo
   
-end subroutine SurfRealizProcessMatProp
+end subroutine RealizSurfProcessMatProp
 
 ! ************************************************************************** !
 
-subroutine SurfRealizLocalizeRegions(surf_realization)
+subroutine RealizSurfLocalizeRegions(surf_realization)
   ! 
   ! This routine localizes surface regions within each patch
   ! (similar to RealizationLocalizeRegions)
@@ -293,11 +293,11 @@ subroutine SurfRealizLocalizeRegions(surf_realization)
     cur_patch => cur_patch%next
   enddo
  
-end subroutine SurfRealizLocalizeRegions
+end subroutine RealizSurfLocalizeRegions
 
 ! ************************************************************************** !
 
-subroutine SurfRealizAddStrata(surf_realization,strata)
+subroutine RealizSurfAddStrata(surf_realization,strata)
   ! 
   ! This routine adds a copy of a strata to a list
   ! 
@@ -326,11 +326,11 @@ subroutine SurfRealizAddStrata(surf_realization,strata)
   
   call StrataDestroy(strata)
  
-end subroutine SurfRealizAddStrata
+end subroutine RealizSurfAddStrata
 
 ! ************************************************************************** !
 
-subroutine SurfRealizCreateDiscretization(surf_realization)
+subroutine RealizSurfCreateDiscretization(surf_realization)
   ! 
   ! This routine creates grid
   ! 
@@ -440,11 +440,11 @@ subroutine SurfRealizCreateDiscretization(surf_realization)
     endif
   endif
 
-end subroutine SurfRealizCreateDiscretization
+end subroutine RealizSurfCreateDiscretization
 
 ! ************************************************************************** !
 
-subroutine SurfRealizPassFieldPtrToPatches(surf_realization)
+subroutine RealizSurfPassFieldPtrToPatches(surf_realization)
   ! 
   ! This routine
   ! 
@@ -467,11 +467,11 @@ subroutine SurfRealizPassFieldPtrToPatches(surf_realization)
     cur_patch => cur_patch%next
   enddo
   
-end subroutine SurfRealizPassFieldPtrToPatches
+end subroutine RealizSurfPassFieldPtrToPatches
 
 ! ************************************************************************** !
 
-subroutine SurfRealizProcessConditions(surf_realization)
+subroutine RealizSurfProcessConditions(surf_realization)
   ! 
   ! This routine
   ! 
@@ -484,17 +484,17 @@ subroutine SurfRealizProcessConditions(surf_realization)
   class(realization_surface_type) :: surf_realization
   
   if (surf_realization%option%nflowdof > 0) then
-    call SurfRealizProcessFlowConditions(surf_realization)
+    call RealizSurfProcessFlowConditions(surf_realization)
   endif
   if (surf_realization%option%ntrandof > 0) then
     !call SurfaceRealProcessTranConditions(surf_realization)
   endif
  
-end subroutine SurfRealizProcessConditions
+end subroutine RealizSurfProcessConditions
 
 ! ************************************************************************** !
 
-subroutine SurfRealizLocalToLocalWithArray(surf_realization,array_id)
+subroutine RealizSurfLocalToLocalWithArray(surf_realization,array_id)
   ! 
   ! This routine takes an F90 array that is ghosted and updates the ghosted
   ! values (similar to RealLocalToLocalWithArray)
@@ -544,11 +544,11 @@ subroutine SurfRealizLocalToLocalWithArray(surf_realization,array_id)
     cur_patch => cur_patch%next
   enddo
 
-end subroutine SurfRealizLocalToLocalWithArray
+end subroutine RealizSurfLocalToLocalWithArray
 
 ! ************************************************************************** !
 
-subroutine SurfRealizProcessFlowConditions(surf_realization)
+subroutine RealizSurfProcessFlowConditions(surf_realization)
   ! 
   ! This routine sets linkage of flow conditions to dataset
   ! 
@@ -598,17 +598,17 @@ subroutine SurfRealizProcessFlowConditions(surf_realization)
                  string,option)
         enddo
       case default
-        option%io_buffer='SurfRealizProcessFlowConditions not implemented in this mode'
+        option%io_buffer='RealizSurfProcessFlowConditions not implemented in this mode'
         call printErrMsg(option)
     end select
     cur_surf_flow_condition => cur_surf_flow_condition%next
   enddo
 
-end subroutine SurfRealizProcessFlowConditions
+end subroutine RealizSurfProcessFlowConditions
 
 ! ************************************************************************** !
 
-subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
+subroutine RealizSurfInitAllCouplerAuxVars(surf_realization)
   ! 
   ! This routine initializez coupler auxillary variables within list
   ! 
@@ -636,11 +636,11 @@ subroutine SurfRealizInitAllCouplerAuxVars(surf_realization)
     cur_patch => cur_patch%next
   enddo
 
-end subroutine SurfRealizInitAllCouplerAuxVars
+end subroutine RealizSurfInitAllCouplerAuxVars
 
 ! ************************************************************************** !
 
-subroutine SurfRealizAllCouplerAuxVars(surf_realization,force_update_flag)
+subroutine RealizSurfAllCouplerAuxVars(surf_realization,force_update_flag)
   ! 
   ! This routine updates auxiliary variables associated with couplers in the
   ! list.
@@ -659,11 +659,11 @@ subroutine SurfRealizAllCouplerAuxVars(surf_realization,force_update_flag)
   call PatchUpdateAllCouplerAuxVars(surf_realization%patch,force_update_flag, &
                                     surf_realization%option)
 
-end subroutine SurfRealizAllCouplerAuxVars
+end subroutine RealizSurfAllCouplerAuxVars
 
 ! ************************************************************************** !
 
-subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
+subroutine RealizSurfMapSurfSubsurfGrids(realization,surf_realization)
   ! 
   ! This routine creates vector scatter contexts between surface and subsurface
   ! grids.
@@ -956,7 +956,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
 
-  call SurfRealizMapSurfSubsurfGrid(realization, surf_realization, prod, TWO_DIM_GRID, &
+  call RealizSurfMapSurfSubsurfGrid(realization, surf_realization, prod, TWO_DIM_GRID, &
                                      surf_petsc_ids)
   call MatDestroy(prod,ierr);CHKERRQ(ierr)
 
@@ -970,7 +970,7 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   call MatView(prod,viewer,ierr);CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
-  call SurfRealizMapSurfSubsurfGrid(realization, surf_realization, prod, THREE_DIM_GRID, &
+  call RealizSurfMapSurfSubsurfGrid(realization, surf_realization, prod, THREE_DIM_GRID, &
                                         subsurf_petsc_ids)
 
   call MatDestroy(prod,ierr);CHKERRQ(ierr)
@@ -983,11 +983,11 @@ subroutine SurfRealizMapSurfSubsurfGrids(realization,surf_realization)
   call VecDestroy(subsurf_petsc_ids,ierr);CHKERRQ(ierr)
   call VecDestroy(surf_petsc_ids,ierr);CHKERRQ(ierr)
   
-end subroutine SurfRealizMapSurfSubsurfGrids
+end subroutine RealizSurfMapSurfSubsurfGrids
 
 ! ************************************************************************** !
 
-subroutine SurfRealizMapSurfSubsurfGrid( &
+subroutine RealizSurfMapSurfSubsurfGrid( &
               realization, &       !<
               surf_realization, &  !<
               prod_mat, &          !< Mat-Mat-Mult matrix
@@ -1061,9 +1061,10 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
   PetscInt                        :: nrow,rstart,rend,icol(1)
   PetscInt                        :: index
   PetscInt                        :: vertex_id
-  PetscOffset                     :: iia,jja,aaa,iicol
+  PetscOffset                     :: iia,jja,iicol
   PetscBool                       :: done
-  PetscScalar                     :: aa(1)
+  PetscScalar, pointer            :: aa_v(:,:)
+  PetscInt                        :: row, col
 
   PetscErrorCode :: ierr
   PetscBool :: found
@@ -1081,23 +1082,30 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
     call MatGetRowIJF90(prod_loc_mat, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
                         nrow, ia_p, ja_p, done, ierr);CHKERRQ(ierr)
     ! Get values stored in the local-matrix
-    call MatSeqAIJGetArray(prod_loc_mat, aa, aaa, ierr);CHKERRQ(ierr)
+    call MatSeqAIJGetArrayF90(prod_loc_mat,aa_v,ierr);CHKERRQ(ierr)
   else
     ! Get i and j indices of the local-matrix
     call MatGetRowIJF90(prod_mat, ONE_INTEGER, PETSC_FALSE, PETSC_FALSE, &
                         nrow, ia_p, ja_p, done, ierr);CHKERRQ(ierr)
     ! Get values stored in the local-matrix
-    call MatSeqAIJGetArray(prod_mat, aa, aaa, ierr);CHKERRQ(ierr)
+    call MatSeqAIJGetArrayF90(prod_mat,aa_v,ierr);CHKERRQ(ierr)
   endif
 
   ! For each row of the local-matrix, find the column with the largest value
   allocate(corr_v2_ids(nrow))
+  row = 1
+  col = 0
   do ii = 1, nrow
     max_value = 0.d0
     do jj = ia_p(ii), ia_p(ii + 1) - 1
-      if (aa(aaa+ jj) > max_value) then
+      col = col + 1
+      if (col > nrow) then
+        row = row + 1
+        col = 1
+      endif
+      if (aa_v(col,row) > max_value) then
         corr_v2_ids(ii) = ja_p(jj)
-        max_value = aa(aaa+ jj)
+        max_value = aa_v(col,row)
       endif
     enddo
     if (max_value<3) then
@@ -1166,7 +1174,10 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
 
   call VecDestroy(corr_dest_ids_vec,ierr);CHKERRQ(ierr)
   if (option%mycommsize>1) then
+    call MatSeqAIJRestoreArrayF90(prod_loc_mat,aa_v,ierr);CHKERRQ(ierr)
     call MatDestroy(prod_loc_mat,ierr);CHKERRQ(ierr)
+  else
+    call MatSeqAIJRestoreArrayF90(prod_mat,aa_v,ierr);CHKERRQ(ierr)
   endif
 
 #if UGRID_DEBUG
@@ -1215,13 +1226,13 @@ subroutine SurfRealizMapSurfSubsurfGrid( &
   call VecDestroy(source_petsc_ids_ndof,ierr);CHKERRQ(ierr)
   call VecDestroy(corr_dest_ids_vec_ndof,ierr);CHKERRQ(ierr)
 
-end subroutine SurfRealizMapSurfSubsurfGrid
+end subroutine RealizSurfMapSurfSubsurfGrid
 
 ! ************************************************************************** !
 
-subroutine SurfRealizDestroy(surf_realization)
+subroutine RealizSurfDestroy(surf_realization)
   ! 
-  ! This routine destroys SurfRealiz object
+  ! This routine destroys RealizSurf object
   ! 
   ! Author: Gautam Bisht, ORNL
   ! Date: 02/16/12
@@ -1261,14 +1272,14 @@ subroutine SurfRealizDestroy(surf_realization)
   if (associated(surf_realization)) deallocate(surf_realization)
   nullify(surf_realization)
 
-end subroutine SurfRealizDestroy
+end subroutine RealizSurfDestroy
 
 
 ! ************************************************************************** !
 
-subroutine SurfRealizStrip(surf_realization)
+subroutine RealizSurfStrip(surf_realization)
   ! 
-  ! This routine destroys SurfRealiz object
+  ! This routine destroys RealizSurf object
   ! 
   ! Author: Gautam Bisht, ORNL
   ! Date: 02/16/12
@@ -1309,11 +1320,11 @@ subroutine SurfRealizStrip(surf_realization)
 
   call ReactionDestroy(surf_realization%reaction,surf_realization%option)
 
-end subroutine SurfRealizStrip
+end subroutine RealizSurfStrip
 
 ! ************************************************************************** !
 
-subroutine SurfRealizUpdate(surf_realization)
+subroutine RealizSurfUpdate(surf_realization)
   ! 
   ! This routine updates parameters in realization (eg. conditions, bcs, srcs)
   ! 
@@ -1332,13 +1343,13 @@ subroutine SurfRealizUpdate(surf_realization)
                            surf_realization%option, &
                            surf_realization%option%time)
 
-  call SurfRealizAllCouplerAuxVars(surf_realization,force_update_flag)
+  call RealizSurfAllCouplerAuxVars(surf_realization,force_update_flag)
 
-end subroutine SurfRealizUpdate
+end subroutine RealizSurfUpdate
 
 ! ************************************************************************** !
 
-subroutine SurfRealizGetVariable(surf_realization,vec,ivar,isubvar,isubvar1)
+subroutine RealizSurfGetVariable(surf_realization,vec,ivar,isubvar,isubvar1)
   ! 
   ! This routine extracts variables indexed by ivar and isubvar from surface
   ! realization.
@@ -1365,11 +1376,11 @@ subroutine SurfRealizGetVariable(surf_realization,vec,ivar,isubvar,isubvar1)
                        surf_realization%output_option, &
                        vec,ivar,isubvar,isubvar1)
 
-end subroutine SurfRealizGetVariable
+end subroutine RealizSurfGetVariable
 
 ! ************************************************************************** !
 
-subroutine SurfRealizAddWaypointsToList(surf_realization)
+subroutine RealizSurfAddWaypointsToList(surf_realization)
   ! 
   ! This routine creates waypoints assocated with source/sink, boundary
   ! condition, etc. and adds to a list
@@ -1413,7 +1424,7 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
   if (associated(cur_waypoint)) then
     final_time = cur_waypoint%time
   else
-    option%io_buffer = 'Final time not found in SurfRealizAddWaypointsToList'
+    option%io_buffer = 'Final time not found in RealizSurfAddWaypointsToList'
     call printErrMsg(option)
   endif
 
@@ -1498,6 +1509,6 @@ subroutine SurfRealizAddWaypointsToList(surf_realization)
     enddo
   endif
 
-end subroutine SurfRealizAddWaypointsToList
+end subroutine RealizSurfAddWaypointsToList
 
-end module Surface_Realization_class
+end module Realization_Surface_class

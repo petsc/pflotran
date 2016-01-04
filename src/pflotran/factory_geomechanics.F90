@@ -129,7 +129,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
     simulation%geomech_process_model_coupler => pmc_geomech
     pmc_geomech%option => option
     pmc_geomech%pm_list => pm_geomech
-    pmc_geomech%pm_ptr%ptr => pm_geomech
+    pmc_geomech%pm_ptr%pm => pm_geomech
     pmc_geomech%geomech_realization => simulation%geomech_realization
     pmc_geomech%subsurf_realization => simulation%realization
     timestepper => TimestepperSteadyCreate()

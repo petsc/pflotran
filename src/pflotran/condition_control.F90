@@ -1268,7 +1268,7 @@ end subroutine CondControlReadTransportIC
 
 subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Discretization_module
   use Region_module
   use Option_module

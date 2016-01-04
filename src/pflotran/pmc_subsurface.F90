@@ -88,6 +88,7 @@ subroutine PMCSubsurfaceSetupSolvers(this)
   use Timestepper_Base_class
   use Timestepper_BE_class
   use PM_Base_Pointer_module
+  use Option_module
 
   implicit none
 
@@ -102,7 +103,7 @@ subroutine PMCSubsurfaceSetupSolvers(this)
   select type(ts => this%timestepper)
     class is(timestepper_BE_type)
       call SNESSetFunction(ts%solver%snes, &
-                           this%pm_ptr%ptr%residual_vec, &
+                           this%pm_ptr%pm%residual_vec, &
                            PMResidual, &
                            this%pm_ptr, &
                            ierr);CHKERRQ(ierr)
@@ -782,6 +783,8 @@ recursive subroutine PMCSubsurfaceDestroy(this)
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
+
+  use Option_module
 
   implicit none
   

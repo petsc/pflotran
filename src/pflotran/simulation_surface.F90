@@ -5,7 +5,7 @@ module Simulation_Surface_class
   use Option_module
   use PMC_Surface_class
   use PMC_Base_class
-  use Surface_Realization_class
+  use Realization_Surface_class
 
   use PFLOTRAN_Constants_module
 
@@ -176,7 +176,7 @@ subroutine SurfaceSimulationStrip(this)
   call printMsg(this%option,'SurfaceSimulationStrip()')
   
   call SimulationBaseStrip(this)
-  call SurfRealizStrip(this%surf_realization)
+  call RealizSurfStrip(this%surf_realization)
   deallocate(this%surf_realization)
   nullify(this%surf_realization)
   call RegressionDestroy(this%regression)

@@ -27,7 +27,7 @@ subroutine SurfaceGlobalSetup(surf_realization)
   ! Date: 03/07/13
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Patch_module
   
   implicit none
@@ -56,7 +56,7 @@ subroutine SurfaceGlobalSetupPatch(surf_realization)
   ! Date: 03/07/13
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -153,7 +153,7 @@ subroutine SurfaceGlobalSetAuxVarScalar(surf_realization,value,ivar)
   ! Date: 03/07/13
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Patch_module
 
   implicit none
@@ -178,7 +178,7 @@ end subroutine SurfaceGlobalSetAuxVarScalar
 
 subroutine SurfaceGlobalSetAuxVarScalarPatch(surf_realization,value,ivar)
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Option_module
   use Patch_module
   use Variables_module, only : SURFACE_LIQUID_HEAD, &
@@ -235,7 +235,7 @@ subroutine SurfaceGlobalSetAuxVarVecLoc(surf_realization,vec_loc,ivar,isubvar)
   ! Date: 03/07/13
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Patch_module
 
   implicit none
@@ -270,7 +270,7 @@ subroutine SurfaceGlobalSetAuxVarVecLocPatch(surf_realization,vec_loc,ivar,isubv
   ! Date: 03/07/13
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -342,7 +342,7 @@ subroutine SurfaceGlobalUpdateAuxVars(surf_realization,time_level)
   ! Date: 03/07/13
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Surface_Field_module
   use Option_module
   use Discretization_module
@@ -360,7 +360,7 @@ subroutine SurfaceGlobalUpdateAuxVars(surf_realization,time_level)
   surf_field => surf_realization%surf_field
   
   ! liquid density
-  call SurfRealizGetVariable(surf_realization,surf_field%work,LIQUID_DENSITY, &
+  call RealizSurfGetVariable(surf_realization,surf_field%work,LIQUID_DENSITY, &
                              ZERO_INTEGER)
   call DiscretizationGlobalToLocal(surf_realization%discretization, &
                                    surf_field%work,surf_field%work_loc,ONEDOF)
@@ -370,7 +370,7 @@ subroutine SurfaceGlobalUpdateAuxVars(surf_realization,time_level)
   select case(option%iflowmode)
     case(TH_MODE)
       ! head
-      call SurfRealizGetVariable(surf_realization,surf_field%work, &
+      call RealizSurfGetVariable(surf_realization,surf_field%work, &
               SURFACE_LIQUID_HEAD,ZERO_INTEGER)
       call DiscretizationGlobalToLocal(surf_realization%discretization, &
                                   surf_field%work,surf_field%work_loc,ONEDOF)
@@ -378,7 +378,7 @@ subroutine SurfaceGlobalUpdateAuxVars(surf_realization,time_level)
               SURFACE_LIQUID_HEAD,time_level)
  
       ! temperature
-      call SurfRealizGetVariable(surf_realization,surf_field%work, &
+      call RealizSurfGetVariable(surf_realization,surf_field%work, &
               SURFACE_LIQUID_TEMPERATURE, ZERO_INTEGER)
       call DiscretizationGlobalToLocal(surf_realization%discretization, &
                                    surf_field%work,surf_field%work_loc,ONEDOF)

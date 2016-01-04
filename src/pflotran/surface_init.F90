@@ -38,7 +38,7 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
   use String_module
   use Patch_module
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Surface_Auxiliary_module
 
   implicit none
@@ -108,7 +108,7 @@ subroutine SurfaceInit(surf_realization,input,option)
   use Input_Aux_module
   use String_module
   use Surface_Material_module
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Grid_module
   use Grid_Structured_module
   use Grid_Unstructured_module
@@ -201,7 +201,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   use Input_Aux_module
   use String_module
   use Surface_Material_module
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Grid_module
   use Grid_Structured_module
   use Grid_Unstructured_module
@@ -351,14 +351,14 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
         call InputReadWord(input,option,coupler%name,PETSC_TRUE)
         call InputDefaultMsg(input,option,'Boundary Condition name')
         call CouplerRead(coupler,input,option)
-        call SurfRealizAddCoupler(surf_realization,coupler)
+        call RealizSurfAddCoupler(surf_realization,coupler)
         nullify(coupler)
 
       !.........................................................................
       case ('STRATIGRAPHY','STRATA')
         strata => StrataCreate()
         call StrataRead(strata,input,option)
-        call SurfRealizAddStrata(surf_realization,strata)
+        call RealizSurfAddStrata(surf_realization,strata)
         nullify(strata)
         
       !.........................................................................
@@ -367,7 +367,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
         call InputReadWord(input,option,coupler%name,PETSC_TRUE)
         call InputDefaultMsg(input,option,'Initial Condition name') 
         call CouplerRead(coupler,input,option)
-        call SurfRealizAddCoupler(surf_realization,coupler)
+        call RealizSurfAddCoupler(surf_realization,coupler)
         nullify(coupler)        
 
       !.........................................................................
@@ -376,7 +376,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
         call InputReadWord(input,option,coupler%name,PETSC_TRUE)
         call InputDefaultMsg(input,option,'Source Sink name') 
         call CouplerRead(coupler,input,option)
-        call SurfRealizAddCoupler(surf_realization,coupler)
+        call RealizSurfAddCoupler(surf_realization,coupler)
         nullify(coupler)        
 
       !.........................................................................

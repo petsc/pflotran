@@ -1,7 +1,7 @@
 module PM_Surface_class
 
   use PM_Base_class
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Communicator_Base_module
   use Option_module
   use PFLOTRAN_Constants_module
@@ -102,7 +102,7 @@ subroutine PMSurfaceSetRealization(this, surf_realization)
   ! Date: 04/22/14
   ! 
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Grid_module
 
   implicit none
@@ -195,7 +195,7 @@ subroutine PMSurfaceUpdateSolution(this)
                            this%surf_realization%option, &
                            this%surf_realization%option%time)
 
-  call SurfRealizAllCouplerAuxVars(this%surf_realization,force_update_flag)
+  call RealizSurfAllCouplerAuxVars(this%surf_realization,force_update_flag)
 
 end subroutine PMSurfaceUpdateSolution
 

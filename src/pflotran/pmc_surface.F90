@@ -2,7 +2,7 @@ module PMC_Surface_class
 
   use PMC_Base_class
   use Realization_class
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Timestepper_Surface_class
 
   use PFLOTRAN_Constants_module
@@ -345,7 +345,7 @@ subroutine PMCSurfaceSetAuxData(this)
   use Surface_Flow_module
   use Surface_TH_module
   use Surface_TH_Aux_module
-  use Surface_Realization_class
+  use Realization_Surface_class
   use String_module
 
   implicit none
@@ -680,6 +680,7 @@ recursive subroutine PMCSurfaceDestroy(this)
   ! Author: Glenn Hammond
   ! Date: 12/02/14
   ! 
+  use Option_module
 
   implicit none
   
