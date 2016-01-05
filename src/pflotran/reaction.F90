@@ -5401,6 +5401,7 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
   PetscInt :: imnrl, iaqspec, ncomp, icomp
   PetscInt :: k, irate, irxn, icplx, ncplx, ikinrxn
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
+  PetscReal :: delta_volfrac
   PetscReal :: res(reaction%ncomp)
   PetscReal :: jac(reaction%ncomp,reaction%ncomp)
     
@@ -5415,11 +5416,11 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
       ! rate = mol/m^3/sec
       ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
       !                                mol_vol (m^3 mnrl/mol mnrl)
-      rt_auxvar%mnrl_volfrac(imnrl) = &
-        rt_auxvar%mnrl_volfrac(imnrl) + &
-        rt_auxvar%mnrl_rate(imnrl)* &
-        reaction%mineral%kinmnrl_molar_vol(imnrl)* &
-        option%tran_dt
+      delta_volfrac = rt_auxvar%mnrl_rate(imnrl)* &
+                      reaction%mineral%kinmnrl_molar_vol(imnrl)* &
+                      option%tran_dt
+      rt_auxvar%mnrl_volfrac(imnrl) = rt_auxvar%mnrl_volfrac(imnrl) + &
+                                      delta_volfrac
       if (rt_auxvar%mnrl_volfrac(imnrl) < 0.d0) &
         rt_auxvar%mnrl_volfrac(imnrl) = 0.d0
 
