@@ -121,6 +121,8 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   class(characteristic_curves_type), pointer :: characteristic_curves
   !class(characteristic_curves_type) :: characteristic_curves
 
+  if (coupler%connection_set%num_connections == 0 ) return
+
   pw_hydrostatic = PETSC_TRUE
   po_hydrostatic = PETSC_TRUE  
 
@@ -243,7 +245,10 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   end if
 
   ghosted_id_min_dist = &
-      GetCouplerCellOnPhaseConact(coupler,grid,owc(Z_DIRECTION)) 
+      GetCouplerCellOnPhaseConact(coupler,grid,owc(Z_DIRECTION),option) 
+
+  !write(*,*) "my_rank", option%myrank, "min_ghost", ghosted_id_min_dist, &
+  !           "sat_fun_id", sat_func_id(ghosted_id_min_dist)
 
   characteristic_curves => &
       characteristic_curves_array(sat_func_id(ghosted_id_min_dist))%ptr
@@ -383,7 +388,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
       !OIL PRESSURE
       coupler%flow_aux_real_var(1,iconn) = po_cell 
       !OIL SATURATION
-      coupler%flow_aux_real_var(2,iconn) = 1.0d0
+      coupler%flow_aux_real_var(2,iconn) = 1.0d0 - sat_ir(1)
     else
       !use instgructions below when imposing pc=0 capillary pressure 
       !if ( grid%z(ghosted_id) > owc(Z_DIRECTION) ) then
@@ -403,8 +408,10 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
       else if ( pc_comp >= characteristic_curves%saturation_function%pcmax ) &
         then
         ! oil region: can consider here connate water if required, or Sw_ir
+        ! sat_ir(1) currenlty used, this Sw_ir taken from owc characteristic curve
+        ! should consider input from deck
         coupler%flow_aux_real_var(1,iconn) = po_cell
-        coupler%flow_aux_real_var(2,iconn) = 1.0d0 !to avoid truncation erros
+        coupler%flow_aux_real_var(2,iconn) = 1.0d0 - sat_ir(1)
       else
         ! water/oil transition zone
         coupler%flow_aux_real_var(1,iconn) = po_cell      
@@ -438,7 +445,7 @@ end subroutine TOIHydrostaticUpdateCoupler
 
 ! ************************************************************************** !
 
-function GetCouplerCellOnPhaseConact(coupler,grid,z_phase_contact)
+function GetCouplerCellOnPhaseConact(coupler,grid,z_phase_contact,option)
 
   ! Returns the ghosted_id of the closest cell to phase contact  
   ! Where more cells have the same minimum distance from z_phase_contact,
@@ -451,12 +458,14 @@ function GetCouplerCellOnPhaseConact(coupler,grid,z_phase_contact)
   use Grid_module
   use Coupler_module
   use Utility_module
+  use Option_module
 
   implicit none
 
   type(coupler_type), intent(in) :: coupler
   type(grid_type), intent(in) :: grid
   PetscReal, intent(in) :: z_phase_contact
+  type(option_type) :: option
 
   PetscInt :: GetCouplerCellOnPhaseConact
 
@@ -474,9 +483,15 @@ function GetCouplerCellOnPhaseConact(coupler,grid,z_phase_contact)
 
   iconn_min = minloc(phase_contact_dist(:))
 
-  call DeallocateArray(phase_contact_dist)
+  local_id = coupler%connection_set%id_dn(iconn_min(1))
 
-  GetCouplerCellOnPhaseConact = grid%nL2G(iconn_min(1))
+  !write(*,*) "in get ghost -rank=", option%myrank, "icon_min=", iconn_min(1), &
+  !           " ghost =", grid%nL2G(local_id), "size dist = ", size(phase_contact_dist(:))
+
+  GetCouplerCellOnPhaseConact = grid%nL2G(local_id) 
+
+  call DeallocateArray(phase_contact_dist)
+ 
 
 end function GetCouplerCellOnPhaseConact
 
@@ -825,6 +840,8 @@ subroutine DestroyOneDimGrid(one_d_grid)
   implicit none
 
   class(one_dim_grid_type), pointer :: one_d_grid
+
+  if (.not.associated(one_d_grid) ) return
 
   call DeallocateArray(one_d_grid%z)
 
