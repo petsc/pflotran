@@ -404,7 +404,7 @@ subroutine CouplerComputeConnections(grid,option,coupler)
                                           region%cell_ids, &
                                      region%explicit_faceset%face_centroids, &
                                      region%explicit_faceset%face_areas, &
-                                     option)
+                                     region%name,option)
       else
         connection_set => &
           UGridExplicitSetConnections(grid%unstructured_grid% &

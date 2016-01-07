@@ -1264,11 +1264,12 @@ function UGridExplicitSetInternConnect(explicit_grid,option)
   PetscReal :: v(3), v_up(3), v_dn(3)
   PetscReal :: distance
   character(len=MAXSTRINGLENGTH) :: string
-  
+  PetscBool :: error 
   
   num_connections = size(explicit_grid%connections,2)
   connections => ConnectionCreate(num_connections,INTERNAL_CONNECTION_TYPE)
   
+  error = PETSC_FALSE
   do iconn = 1, num_connections
     id_up = explicit_grid%connections(1,iconn)
     id_dn = explicit_grid%connections(2,iconn)
@@ -1296,15 +1297,21 @@ function UGridExplicitSetInternConnect(explicit_grid,option)
         explicit_grid%face_centroids(iconn)%x, &
         explicit_grid%face_centroids(iconn)%y, &
         explicit_grid%face_centroids(iconn)%z
-      option%io_buffer = 'Coincident cell centroids found at (' // &
-        trim(adjustl(string)) // ') in UGridExplicitSetInternConnect().'
-      call printErrMsgByRank(option)
+      error = PETSC_TRUE
+      option%io_buffer = 'Coincident cell and face centroids found at (' // &
+        trim(adjustl(string)) // ') '
+      call printMsgByRank(option)
     endif
     connections%dist(-1,iconn) = sqrt(DotProduct(v_up,v_up))/distance
     connections%dist(0,iconn) = distance
     connections%dist(1:3,iconn) = v/distance
     connections%area(iconn) = explicit_grid%face_areas(iconn)
   enddo
+  if (error) then
+    option%io_buffer = 'Coincident cell and face centroids found in ' // &
+      'UGridExplicitSetInternConnect().  See details above.'
+    call printErrMsgByRank(option)
+  endif
   
   UGridExplicitSetInternConnect => connections
 
@@ -1347,7 +1354,8 @@ end subroutine UGridExplicitComputeVolumes
 ! ************************************************************************** !
 
 function UGridExplicitSetBoundaryConnect(explicit_grid,cell_ids, &
-                                         face_centroids,face_areas,option)
+                                         face_centroids,face_areas, &
+                                         region_name,option)
   ! 
   ! Sets up the boundary connectivity within
   ! the connectivity object
@@ -1368,6 +1376,7 @@ function UGridExplicitSetBoundaryConnect(explicit_grid,cell_ids, &
   PetscInt :: cell_ids(:)
   type(point3d_type) :: face_centroids(:)
   PetscReal :: face_areas(:)
+  character(len=MAXWORDLENGTH) :: region_name
   type(option_type) :: option
   
   type(connection_set_type), pointer :: connections
@@ -1377,10 +1386,12 @@ function UGridExplicitSetBoundaryConnect(explicit_grid,cell_ids, &
   PetscReal :: v(3)
   PetscReal :: distance
   character(len=MAXSTRINGLENGTH) :: string 
-  
+  PetscBool :: error
+ 
   num_connections = size(cell_ids)
   connections => ConnectionCreate(num_connections,BOUNDARY_CONNECTION_TYPE)
   
+  error = PETSC_FALSE
   do iconn = 1, num_connections
     id = cell_ids(iconn)
     connections%id_dn(iconn) = id
@@ -1397,15 +1408,22 @@ function UGridExplicitSetBoundaryConnect(explicit_grid,cell_ids, &
       write(string,'(2(es16.9,","),es16.9)') &
         face_centroids(iconn)%x, face_centroids(iconn)%y, &
         face_centroids(iconn)%z
+      error = PETSC_TRUE
       option%io_buffer = 'Coincident cell and face centroids found at (' // &
-        trim(adjustl(string)) // ') in UGridExplicitSetBoundaryConnect().'
-      call printErrMsgByRank(option)
+        trim(adjustl(string)) // ') '
+      call printMsgByRank(option)
     endif
     connections%dist(-1,iconn) = 0.d0
     connections%dist(0,iconn) = distance
     connections%dist(1:3,iconn) = v/distance
     connections%area(iconn) = face_areas(iconn)
   enddo
+  if (error) then
+    option%io_buffer = 'Coincident cell and face centroids found in ' // &
+      'UGridExplicitSetBoundaryConnect() for region "' // trim(region_name) // &
+      '".  See details above.'
+    call printErrMsgByRank(option)
+  endif
   
   UGridExplicitSetBoundaryConnect => connections
 
