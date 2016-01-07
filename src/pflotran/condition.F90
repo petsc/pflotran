@@ -2582,7 +2582,7 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units)
       endif
 
       if (index(filename,'.h5') > 0) then
-        write(option%io_buffer,'("Reading of ASCII datasets for flow ", &
+        write(option%io_buffer,'("Reading of HDF5 datasets for flow ", &
                                  &"conditions not currently supported.")')
         call printErrMsg(option)
 #if 0      
