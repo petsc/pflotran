@@ -1263,6 +1263,7 @@ function UGridExplicitSetInternConnect(explicit_grid,option)
   PetscInt :: id_up, id_dn
   PetscReal :: v(3), v_up(3), v_dn(3)
   PetscReal :: distance
+  character(len=MAXSTRINGLENGTH) :: string
   
   
   num_connections = size(explicit_grid%connections,2)
@@ -1290,6 +1291,15 @@ function UGridExplicitSetInternConnect(explicit_grid,option)
 
     v = v_up + v_dn
     distance = sqrt(DotProduct(v,v))
+    if (dabs(distance) < 1.d-40) then
+      write(string,'(2(es16.9,","),es16.9)') &
+        explicit_grid%face_centroids(iconn)%x, &
+        explicit_grid%face_centroids(iconn)%y, &
+        explicit_grid%face_centroids(iconn)%z
+      option%io_buffer = 'Coincident cell centroids found at (' // &
+        trim(adjustl(string)) // ') in UGridExplicitSetInternConnect().'
+      call printErrMsgByRank(option)
+    endif
     connections%dist(-1,iconn) = sqrt(DotProduct(v_up,v_up))/distance
     connections%dist(0,iconn) = distance
     connections%dist(1:3,iconn) = v/distance
@@ -1366,7 +1376,7 @@ function UGridExplicitSetBoundaryConnect(explicit_grid,cell_ids, &
   PetscInt :: id
   PetscReal :: v(3)
   PetscReal :: distance
-  
+  character(len=MAXSTRINGLENGTH) :: string 
   
   num_connections = size(cell_ids)
   connections => ConnectionCreate(num_connections,BOUNDARY_CONNECTION_TYPE)
@@ -1383,6 +1393,14 @@ function UGridExplicitSetBoundaryConnect(explicit_grid,cell_ids, &
            face_centroids(iconn)%z
 
     distance = sqrt(DotProduct(v,v))
+    if (dabs(distance) < 1.d-40) then
+      write(string,'(2(es16.9,","),es16.9)') &
+        face_centroids(iconn)%x, face_centroids(iconn)%y, &
+        face_centroids(iconn)%z
+      option%io_buffer = 'Coincident cell and face centroids found at (' // &
+        trim(adjustl(string)) // ') in UGridExplicitSetBoundaryConnect().'
+      call printErrMsgByRank(option)
+    endif
     connections%dist(-1,iconn) = 0.d0
     connections%dist(0,iconn) = distance
     connections%dist(1:3,iconn) = v/distance
