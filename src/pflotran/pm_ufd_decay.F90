@@ -627,6 +627,9 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   
   implicit none
 
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+
   class(pm_ufd_decay_type) :: this
   
   PetscReal :: time
