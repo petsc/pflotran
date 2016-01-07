@@ -158,7 +158,7 @@ recursive subroutine PMCThirdPartyFinalizeRun(this)
   
   class(pmc_third_party_type) :: this
   
-  call printMsg(this%option,'PMCThirdParty%FinalizeRun()')
+!  call printMsg(this%option,'PMCThirdParty%FinalizeRun()')
   
 end subroutine PMCThirdPartyFinalizeRun
 
@@ -200,7 +200,7 @@ recursive subroutine PMCThirdPartyDestroy(this)
 
   PetscErrorCode :: ierr
   
-  call printMsg(this%option,'PMCThirdParty%Destroy()')
+!  call printMsg(this%option,'PMCThirdParty%Destroy()')
   
   call PMCThirdPartyStrip(this)
   
