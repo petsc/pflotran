@@ -15,7 +15,6 @@ module PM_UFD_Decay_class
   
   type, public, extends(pm_base_type) :: pm_ufd_decay_type
     class(realization_subsurface_type), pointer :: realization
-!    character(len=MAXWORDLENGTH) :: species
     PetscInt, pointer :: element(:)
     PetscInt, pointer :: element_isotopes(:,:)
     PetscInt, pointer :: isotope_to_primary_species(:)
@@ -23,10 +22,7 @@ module PM_UFD_Decay_class
     PetscReal, pointer :: isotope_decay_rate(:)
     PetscInt, pointer :: isotope_daughters(:,:)
     PetscReal, pointer :: element_solubility(:)
-    PetscReal, pointer :: molar_volume(:) ! assume same for all isotopes of element
     PetscReal, pointer :: element_Kd(:)
-    PetscReal, pointer :: mole_fraction(:,:,:)
-    PetscReal, pointer :: mass0(:,:)
     PetscInt :: num_elements
     PetscInt :: num_isotopes
     PetscInt, pointer :: num_isotopes_per_element(:)
@@ -624,11 +620,15 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   use Reaction_Aux_module
   use Patch_module
   use Grid_module
+  use Field_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use Material_Aux_class
   
   implicit none
+
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
 
   class(pm_ufd_decay_type) :: this
   
@@ -639,6 +639,7 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   type(reaction_type), pointer :: reaction
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
@@ -657,18 +658,21 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   PetscReal :: mol_fraction_iso(this%num_isotopes)
   PetscReal :: kd_kgw_m3b
   PetscBool :: above_solubility
+  PetscReal, pointer :: xx_p(:)
 
   ierr = 0
   
   option => this%realization%option
   reaction => this%realization%reaction
   patch => this%realization%patch
+  field => this%realization%field
   grid => patch%grid
   rt_auxvars => patch%aux%RT%auxvars
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
   
   dt = option%dt
+  call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -693,7 +697,6 @@ subroutine PMUFDDecaySolve(this,time,ierr)
         mass_iso_sorb0 = conc_iso_sorb0 * vol ! mol/m^3 bulk * m^3 bulk = mol
         mass_iso_ppt0 = conc_iso_ppt0 * vol / &  ! m^3 mnrl/m^3 bulk * m^3 bulk / (m^3 mnrl/mol mnrl) = mol
                         reaction%mineral%kinmnrl_molar_vol(imnrl)
-!                        this%molar_volume(iele)
         mass_iso_tot0 = mass_iso_aq0 + mass_iso_sorb0 + mass_iso_ppt0
         ! should this be implicit in time?
         mass_iso_tot1(iiso) = mass_iso_tot0 * exp(-1.d0*this%isotope_decay_rate(iiso)*dt)
@@ -746,7 +749,6 @@ subroutine PMUFDDecaySolve(this,time,ierr)
       endif
       conc_ele_ppt1 = mass_ele_ppt1 * &
                       reaction%mineral%kinmnrl_molar_vol(imnrl) / vol
-!                      this%molar_volume(iele) / vol
       ! store mass in data structures
       do i = 1, this%element_isotopes(0,iele)
         iiso = this%element_isotopes(i,iele)
@@ -756,9 +758,19 @@ subroutine PMUFDDecaySolve(this,time,ierr)
         rt_auxvars(ghosted_id)%pri_molal(ipri) = conc_ele_aq1 / den_w_kg * 1.d3 * mol_fraction_iso(i)
         rt_auxvars(ghosted_id)%total_sorb_eq(ipri) = conc_ele_sorb1 * mol_fraction_iso(i)
         rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) = conc_ele_ppt1 * mol_fraction_iso(i)
+        ! need to copy primary molalities back into transport solution Vec
+        xx_p((local_id-1)*reaction%ncomp+ipri) = rt_auxvars(ghosted_id)%pri_molal(ipri)
       enddo
     enddo      
   enddo
+
+  call VecRestoreArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+  if (reaction%use_log_formulation) then
+    call VecCopy(field%tran_xx,field%tran_log_xx,ierr);CHKERRQ(ierr)
+    call VecLog(field%tran_log_xx,ierr);CHKERRQ(ierr)
+  endif  
+!  call DiscretizationGlobalToLocal(this%realization%discretization, &
+!                                   field%tran_xx,field%tran_xx_loc,NTRANDOF)
   
 end subroutine PMUFDDecaySolve
 
@@ -939,7 +951,48 @@ subroutine PMUFDDecayDestroy(this)
   
   class(pm_ufd_decay_type) :: this
   
-  call printErrMsg(this%realization%option,'Need to destroy PMUFDDecay object')
+  type(element_type), pointer :: cur_element, prev_element
+  type(isotope_type), pointer :: cur_isotope, prev_isotope
+  type(daughter_type), pointer :: cur_daughter, prev_daughter
+    
+  call DeallocateArray(this%element)
+  call DeallocateArray(this%element_isotopes)
+  call DeallocateArray(this%isotope_to_primary_species)
+  call DeallocateArray(this%isotope_to_mineral)
+  call DeallocateArray(this%isotope_decay_rate)
+  call DeallocateArray(this%isotope_daughters)
+  call DeallocateArray(this%element_solubility)
+  call DeallocateArray(this%element_Kd)
+  call DeallocateArray(this%num_isotopes_per_element)
+  
+  cur_isotope => this%isotope_list
+  do
+    if (.not.associated(cur_isotope)) exit
+    cur_daughter => cur_isotope%daughter_list
+    do
+      if (.not.associated(cur_daughter)) exit
+      prev_daughter => cur_daughter
+      cur_daughter => cur_daughter%next
+      nullify(prev_daughter%next)
+      deallocate(prev_daughter)
+      nullify(prev_daughter)
+    enddo
+    prev_isotope => cur_isotope
+    cur_isotope => cur_isotope%next
+    nullify(prev_isotope%next)
+    deallocate(prev_isotope)
+    nullify(prev_isotope)
+  enddo
+  
+  cur_element => this%element_list
+  do
+    if (.not.associated(cur_element)) exit
+    prev_element => cur_element
+    cur_element => cur_element%next
+    nullify(prev_element%next)
+    deallocate(prev_element)
+    nullify(prev_element)
+  enddo
   
 end subroutine PMUFDDecayDestroy
   
