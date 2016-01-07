@@ -870,7 +870,7 @@ subroutine InitSubsurfaceSimulation(simulation)
                   if (ts%solver%check_post_convergence .or. &
                       cur_process_model%check_post_convergence) then
                     call SNESLineSearchSetPostCheck(linesearch, &
-                                                    PMCheckUpdatePostPtr, &
+                                                    PMCheckUpdatePost, &
                                              cur_process_model_coupler%pm_ptr, &
                                                     ierr);CHKERRQ(ierr)
                     !geh: it is possible that the other side has not been set
@@ -882,7 +882,7 @@ subroutine InitSubsurfaceSimulation(simulation)
                       cur_process_model%print_EKG .or. &
                       option%use_mc) then
                     call SNESLineSearchSetPostCheck(linesearch, &
-                                                    PMCheckUpdatePostPtr, &
+                                                    PMCheckUpdatePost, &
                                              cur_process_model_coupler%pm_ptr, &
                                                     ierr);CHKERRQ(ierr)
                     if (cur_process_model%print_EKG) then
@@ -897,18 +897,18 @@ subroutine InitSubsurfaceSimulation(simulation)
                   if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
                       dabs(option%saturation_change_limit) > 0.d0) then
                     call SNESLineSearchSetPreCheck(linesearch, &
-                                                   PMCheckUpdatePrePtr, &
+                                                   PMCheckUpdatePre, &
                                              cur_process_model_coupler%pm_ptr, &
                                                    ierr);CHKERRQ(ierr)
                   endif              
                 class is(pm_general_type)
                   call SNESLineSearchSetPreCheck(linesearch, &
-                                                 PMCheckUpdatePrePtr, &
+                                                 PMCheckUpdatePre, &
                                              cur_process_model_coupler%pm_ptr, &
                                                  ierr);CHKERRQ(ierr)
                 class is(pm_toil_ims_type)
                   call SNESLineSearchSetPreCheck(linesearch, &
-                                                 PMCheckUpdatePrePtr, &
+                                                 PMCheckUpdatePre, &
                                              cur_process_model_coupler%pm_ptr, &
                                                  ierr);CHKERRQ(ierr)
                 class is(pm_th_type)
@@ -916,14 +916,14 @@ subroutine InitSubsurfaceSimulation(simulation)
                       dabs(option%pressure_change_limit) > 0.d0 .or. &
                       dabs(option%temperature_change_limit) > 0.d0) then
                     call SNESLineSearchSetPreCheck(linesearch, &
-                                                   PMCheckUpdatePrePtr, &
+                                                   PMCheckUpdatePre, &
                                              cur_process_model_coupler%pm_ptr, &
                                                    ierr);CHKERRQ(ierr)
                   endif 
                 class is(pm_rt_type)
                   if (realization%reaction%check_update) then
                     call SNESLineSearchSetPreCheck(linesearch, &
-                                                   PMCheckUpdatePrePtr, &
+                                                   PMCheckUpdatePre, &
                                              cur_process_model_coupler%pm_ptr, &
                                                    ierr);CHKERRQ(ierr)
                   endif
