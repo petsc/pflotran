@@ -542,7 +542,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
   PetscReal, parameter :: pert = 1.d-8, tol = 1.d-20
   PetscReal :: x_shift, y_shift, z_shift
   PetscReal :: del_x, del_y, del_z
-  PetscInt :: iflag
+  PetscInt :: iflag, global_cell_count
   PetscBool :: same_point
   PetscErrorCode :: ierr
   
@@ -618,6 +618,16 @@ subroutine GridLocalizeRegions(grid,region_list,option)
       deallocate(region%faces)
       nullify(region%faces)
     endif
+
+    ! check to ensure that there is at least one grid cell in each region
+    call MPI_Allreduce(region%num_cells,global_cell_count,ONE_INTEGER_MPI, &
+                       MPI_INTEGER, MPI_SUM, option%mycomm,ierr)
+    if (global_cell_count == 0) then
+      option%io_buffer = 'No cells assigned to REGION "' // &
+        trim(region%name) // '".'
+      call printErrMsg(option)
+    endif
+
     region => region%next
 
   enddo
