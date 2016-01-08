@@ -1331,7 +1331,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   class(dataset_base_type), pointer :: dataset
   class(data_mediator_dataset_type), pointer :: flow_data_mediator
   class(data_mediator_dataset_type), pointer :: rt_data_mediator
-  type(input_type), pointer :: input
+  type(input_type), pointer :: input, input_parent
   
   PetscReal :: dt_init
   PetscReal :: dt_min
@@ -1365,7 +1365,7 @@ subroutine InitSubsurfaceReadInput(simulation)
       
   do
     call InputReadPflotranString(input,option)
-    if (InputError(input)) exit
+    if (InputError(input) exit
 
     call InputReadWord(input,option,word,PETSC_FALSE)
     call StringToUpper(word)
@@ -2520,6 +2520,10 @@ subroutine InitSubsurfaceReadInput(simulation)
           
 !....................
       case ('DBASE_FILENAME')
+
+!....................
+      case ('EXTERNAL_FILE')
+        call InputOpenExternalFile(input,option)
 
 !....................
       case ('END_SUBSURFACE')
