@@ -75,7 +75,7 @@ subroutine SSSandboxBaseRead(this,input,option,keyword,found)
   implicit none
   
   class(srcsink_sandbox_base_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: keyword
   PetscBool :: found
@@ -101,7 +101,7 @@ subroutine Base_Read(this,input,option)
   implicit none
   
   class(srcsink_sandbox_base_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
 end subroutine Base_Read   

@@ -35,7 +35,7 @@ subroutine ImmobileRead(immobile,input,option)
   implicit none
   
   type(immobile_type) :: immobile
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   type(immobile_species_type), pointer :: new_immobile_species, &
@@ -85,7 +85,7 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
   implicit none
   
   type(immobile_type) :: immobile
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: word

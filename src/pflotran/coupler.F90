@@ -231,7 +231,7 @@ subroutine CouplerRead(coupler,input,option)
   
   type(option_type) :: option
   type(coupler_type) :: coupler
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   character(len=MAXWORDLENGTH) :: word
 

@@ -585,7 +585,7 @@ subroutine InputReadPflotranString(input, option)
 
   implicit none
 
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   PetscErrorCode :: ierr
@@ -657,7 +657,11 @@ subroutine InputReadPflotranStringSlave(input, option)
     tempstring = input%buf
     call InputReadWord(tempstring,word,PETSC_TRUE,input%ierr)
     call StringToUpper(word)
-    if (word(1:4) == 'SKIP') then
+    
+    if (word(1:13) == 'EXTERNAL_FILE') then
+      call InputPushExternalFile(input,option)
+      cycle
+    else if (word(1:4) == 'SKIP') then
       skip_count = 1
       do 
         read(input%fid,'(a512)',iostat=input%ierr) tempstring
@@ -1062,7 +1066,7 @@ subroutine InputFindStringInFile1(input, option, string)
 
   implicit none
 
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
   
@@ -1086,7 +1090,7 @@ subroutine InputFindStringInFile2(input, option, string, print_warning)
 
   implicit none
 
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
   PetscBool :: print_warning
@@ -1150,7 +1154,7 @@ subroutine InputSkipToEND(input,option,string)
 
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=*) :: string
 

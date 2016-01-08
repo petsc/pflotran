@@ -412,7 +412,7 @@ subroutine RegionRead(region,input,option)
   
   type(option_type) :: option
   type(region_type) :: region
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   character(len=MAXWORDLENGTH) :: keyword, word
 
@@ -605,7 +605,7 @@ subroutine RegionReadFromFileId(region,input,option)
   
   type(region_type) :: region
   type(option_type) :: option
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   PetscBool :: continuation_flag
   character(len=MAXWORDLENGTH) :: word

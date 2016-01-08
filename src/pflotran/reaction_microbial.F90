@@ -33,7 +33,7 @@ subroutine MicrobialRead(microbial,input,option)
   implicit none
   
   type(microbial_type) :: microbial
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: word

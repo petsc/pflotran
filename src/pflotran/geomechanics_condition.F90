@@ -227,7 +227,7 @@ subroutine GeomechConditionRead(condition,input,option)
   implicit none
   
   type(geomech_condition_type)                     :: condition
-  type(input_type)                                 :: input
+  type(input_type), pointer                        :: input
   type(option_type)                                :: option
   
   character(len=MAXSTRINGLENGTH)                   :: string

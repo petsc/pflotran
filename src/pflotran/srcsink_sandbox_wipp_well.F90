@@ -75,7 +75,7 @@ subroutine WIPPWellRead(this,input,option)
   implicit none
   
   class(srcsink_sandbox_wipp_well_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   PetscInt :: i

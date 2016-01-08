@@ -392,7 +392,7 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   class(realization_geomech_type)             :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_patch_type), pointer          :: patch
-  type(input_type)                           :: input
+  type(input_type), pointer                  :: input
   type(option_type), pointer                 :: option
   character(len=MAXWORDLENGTH)               :: word
   type(unstructured_grid_type), pointer      :: ugrid
@@ -496,7 +496,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   
   class(realization_geomech_type)              :: geomech_realization
   type(solver_type)                            :: geomech_solver
-  type(input_type)                             :: input
+  type(input_type), pointer                    :: input
   type(option_type)                            :: option
   
   type(geomech_discretization_type), pointer   :: geomech_discretization

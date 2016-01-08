@@ -392,7 +392,7 @@ subroutine CharacteristicCurvesRead(this,input,option)
   implicit none
   
   class(characteristic_curves_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   PetscInt :: iphase
   
@@ -555,7 +555,7 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   implicit none
   
   class(sat_func_base_type) :: saturation_function
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword
@@ -725,7 +725,7 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
   
   class(rel_perm_func_base_type) :: permeability_function
   character(len=MAXWORDLENGTH) :: phase_keyword
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword, new_phase_keyword

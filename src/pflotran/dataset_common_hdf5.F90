@@ -145,7 +145,7 @@ subroutine DatasetCommonHDF5Read(this,input,option)
   implicit none
   
   class(dataset_common_hdf5_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword

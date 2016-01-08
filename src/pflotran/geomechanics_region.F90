@@ -211,7 +211,7 @@ subroutine GeomechRegionRead(region,input,option)
   
   type(option_type)             :: option
   type(gm_region_type)          :: region
-  type(input_type)              :: input
+  type(input_type), pointer              :: input
   
   character(len=MAXWORDLENGTH)  :: keyword, word
  
@@ -306,7 +306,7 @@ subroutine GeomechRegionReadFromFileId(region,input,option)
   
   type(gm_region_type)              :: region
   type(option_type)                 :: option
-  type(input_type)                  :: input
+  type(input_type), pointer         :: input
   
   PetscBool                         :: continuation_flag
   character(len=MAXWORDLENGTH)      :: word

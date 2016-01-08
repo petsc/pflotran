@@ -80,7 +80,7 @@ subroutine DebugRead(debug,input,option)
   implicit none
     
   type(debug_type) :: debug
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword

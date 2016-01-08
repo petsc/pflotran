@@ -1703,7 +1703,7 @@ subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
   implicit none
 
   type(option_type) :: option
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(output_variable_list_type), pointer :: output_variable_list
   
   character(len=MAXWORDLENGTH) :: word

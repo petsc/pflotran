@@ -123,7 +123,7 @@ subroutine SurfaceInit(surf_realization,input,option)
   class(realization_surface_type)               :: surf_realization
   type(discretization_type),pointer            :: discretization
   type(grid_type), pointer                     :: grid
-  type(input_type)                             :: input
+  type(input_type), pointer                    :: input
   type(option_type)                            :: option
   type(unstructured_grid_type), pointer        :: un_str_sfgrid
   character(len=MAXWORDLENGTH)                 :: word
@@ -225,9 +225,9 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 
   implicit none
 
-  class(realization_surface_type)               :: surf_realization
+  class(realization_surface_type)              :: surf_realization
   type(solver_type)                            :: surf_flow_solver
-  type(input_type)                             :: input
+  type(input_type), pointer                    :: input
   type(option_type)                            :: option
   
   type(discretization_type),pointer            :: discretization

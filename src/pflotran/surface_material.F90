@@ -80,7 +80,7 @@ subroutine SurfaceMaterialPropertyRead(surf_material_property,input,option)
   implicit none
   
   type(surface_material_property_type) :: surf_material_property
-  type(input_type)                     :: input
+  type(input_type), pointer            :: input
   type(option_type)                    :: option
   
   character(len=MAXWORDLENGTH) :: keyword, word

@@ -343,7 +343,7 @@ subroutine StructGridReadDXYZ(structured_grid,input,option)
   implicit none
   
   type(structured_grid_type) :: structured_grid
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: word
   
@@ -395,7 +395,7 @@ subroutine StructGridReadArray(a,n,input,option)
   implicit none
   
   type(option_type) :: option
-  type(input_type) :: input
+  type(input_type), pointer :: input
   PetscInt :: fid
   PetscInt :: n
   PetscInt :: i, i1, i2, m
@@ -460,7 +460,7 @@ subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
   implicit none
   
   type(option_type) :: option
-  type(input_type) :: input
+  type(input_type), pointer :: input
   character(len=MAXWORDLENGTH) :: axis
   PetscInt :: array_size
   PetscReal :: array(array_size)

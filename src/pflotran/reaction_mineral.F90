@@ -43,7 +43,7 @@ subroutine MineralRead(mineral,input,option)
   implicit none
   
   type(mineral_type) :: mineral
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   type(mineral_rxn_type), pointer :: cur_mineral, prev_mineral
@@ -91,7 +91,7 @@ subroutine MineralReadKinetics(mineral,input,option)
   implicit none
   
   type(mineral_type) :: mineral
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -411,7 +411,7 @@ subroutine MineralReadFromDatabase(mineral,num_dbase_temperatures,input, &
   
   type(mineral_rxn_type) :: mineral
   PetscInt :: num_dbase_temperatures
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   PetscInt :: ispec

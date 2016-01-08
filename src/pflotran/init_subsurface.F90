@@ -1365,7 +1365,7 @@ subroutine InitSubsurfaceReadInput(simulation)
       
   do
     call InputReadPflotranString(input,option)
-    if (InputError(input) exit
+    if (InputError(input)) exit
 
     call InputReadWord(input,option,word,PETSC_FALSE)
     call StringToUpper(word)
@@ -2520,10 +2520,6 @@ subroutine InitSubsurfaceReadInput(simulation)
           
 !....................
       case ('DBASE_FILENAME')
-
-!....................
-      case ('EXTERNAL_FILE')
-        call InputOpenExternalFile(input,option)
 
 !....................
       case ('END_SUBSURFACE')
