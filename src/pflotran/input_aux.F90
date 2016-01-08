@@ -643,8 +643,8 @@ subroutine InputReadPflotranStringSlave(input, option)
     read(input%fid,'(a512)',iostat=input%ierr) input%buf
     call StringAdjustl(input%buf)
 
-    ! check to see if another file is on the stack
     if (InputError(input)) then
+      ! check to see if another file is on the stack
       if (InputPopExternalFile(input)) then
         cycle
       else
@@ -659,6 +659,9 @@ subroutine InputReadPflotranStringSlave(input, option)
     call StringToUpper(word)
     
     if (word(1:13) == 'EXTERNAL_FILE') then
+      ! have to stip the card 'EXTERNAL_FILE' from the buffer
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      ! push a new input file to stack
       call InputPushExternalFile(input,option)
       cycle
     else if (word(1:4) == 'SKIP') then
