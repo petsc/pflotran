@@ -116,7 +116,6 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   use Factory_Hydrogeophysics_module
   use Factory_Surf_Subsurf_module
   use Factory_Geomechanics_module
-  use Factory_Surf_Subsurf_module, only : SurfSubsurfaceReadFlowPM
   
   implicit none
   
