@@ -1,0 +1,16 @@
+# testing the nesting of files.
+
+# placing some spaces in here for kicks
+
+EXTERNAL_FILE flow_conditions.txt
+
+
+
+EXTERNAL_FILE transport_conditions_and_constraints.txt
+
+
+
+
+EXTERNAL_FILE condition_couplers.txt
+
+##
