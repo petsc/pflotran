@@ -22,8 +22,8 @@ END
 #=========================== flow mode ========================================
 
 #=========================== chemistry ========================================
-#EXTERNAL_FILE chemistry.txt
-#skip
+EXTERNAL_FILE chemistry.txt
+skip
 CHEMISTRY
   PRIMARY_SPECIES
     H+
@@ -54,7 +54,7 @@ CHEMISTRY
 #  OPERATOR_SPLITTING
   ACTIVITY_COEFFICIENTS TIMESTEP
 #geh: yes, I mean to place the no skip right here.
-#noskip
+noskip
   OUTPUT
     PH
     TOTAL
