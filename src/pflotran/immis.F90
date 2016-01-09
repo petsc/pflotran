@@ -479,16 +479,21 @@ subroutine ImmisUpdateReasonPatch(reason,realization)
         n0=(n-1)* option%nflowdof
   
 ! ******** Too huge change in pressure ****************     
-        if (dabs(xx_p(n0 + 1)- yy_p(n0 + 1))> (10.0D0 * option%dpmxe))then
+!geh: I don't believe that this code is being used.  Therefore, I will add an
+!     error message and let someone sort the use of option%dpmxe later
+        option%io_buffer = 'option%dpmxe and option%dtmpmxe needs to be ' // &
+          'refactored in ImmisUpdateReasonPatch'
+        call printErrMsg(option)
+!geh        if (dabs(xx_p(n0 + 1)- yy_p(n0 + 1))> (10.0D0 * option%dpmxe))then
            re=0; print *,'huge change in p', xx_p(n0 + 1), yy_p(n0 + 1)
            exit
-        endif
+!geh        endif
 
 ! ******** Too huge change in temperature ****************
-        if (dabs(xx_p(n0 + 2)- yy_p(n0 + 2))> (10.0D0 * option%dtmpmxe))then
+!geh        if (dabs(xx_p(n0 + 2)- yy_p(n0 + 2))> (10.0D0 * option%dtmpmxe))then
            re=0; print *,'huge change in T', xx_p(n0 + 2), yy_p(n0 + 2)
            exit
-        endif
+!geh        endif
  
 ! ******* Check 0<=sat/con<=1 **************************
            if (xx_p(n0 + 3) > 1.D0)then
@@ -2912,7 +2917,7 @@ end subroutine ImmisCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine ImmisMaxChange(realization)
+subroutine ImmisMaxChange(realization,dpmax,dtmpmax,dsmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -2921,7 +2926,6 @@ subroutine ImmisMaxChange(realization)
   ! 
 
   use Realization_class
-  use Patch_module
   use Field_module
   use Option_module
   use Field_module
@@ -2932,26 +2936,23 @@ subroutine ImmisMaxChange(realization)
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(patch_type), pointer :: cur_patch
-  PetscReal :: dsmax, max_S  
+  PetscReal :: dpmax, dtmpmax, dsmax
   PetscErrorCode :: ierr 
 
   option => realization%option
   field => realization%field
 
-  option%dpmax=0.D0
-  option%dtmpmax=0.D0 
-  option%dcmax=0.D0
-  option%dsmax=0.D0
+  dpmax=0.D0
+  dtmpmax=0.D0 
   dsmax=0.D0
 
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
                 ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
+  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,dpmax, &
                      ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax, &
+  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,dtmpmax, &
                      ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dsmax, &
+  call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,dsmax, &
                      ierr);CHKERRQ(ierr)
 
   !print *, 'Max changes=', option%dpmax,option%dtmpmax, option%dcmax,option%dsmax

@@ -1,4 +1,4 @@
-module PM_Subsurface_class
+module PM_Subsurface_Flow_class
 
   use PM_Base_class
 !geh: using Init_Subsurface_module here fails with gfortran (internal compiler error)
@@ -21,55 +21,66 @@ module PM_Subsurface_class
 #include "petsc/finclude/petscmat.h90"
 #include "petsc/finclude/petscsnes.h"
 
-  type, public, extends(pm_base_type) :: pm_subsurface_type
+  type, public, extends(pm_base_type) :: pm_subsurface_flow_type
     class(realization_subsurface_type), pointer :: realization
     class(communicator_type), pointer :: comm1
     PetscBool :: transient_permeability
     PetscBool :: store_porosity_for_ts_cut
     PetscBool :: store_porosity_for_transport
     PetscBool :: check_post_convergence
+    ! these govern the size of subsequent time steps
+    PetscReal :: max_allowed_pressure_change
+    PetscReal :: max_allowed_temperature_change
+    PetscReal :: max_allowed_saturation_change
+    PetscReal :: max_allowed_xmol_change
+    ! these limit (truncate) the maximum change in a Newton iteration
+    ! truncation occurs within PMXXXCheckUpdatePre
+    PetscReal :: pressure_dampening_factor
+    PetscReal :: saturation_change_limit
+    PetscReal :: pressure_change_limit
+    PetscReal :: temperature_change_limit
   contains
 !geh: commented out subroutines can only be called externally
-    procedure, public :: Setup => PMSubsurfaceSetup
-    procedure, public :: SetupSolvers => PMSubsurfaceSetupSolvers
-    procedure, public :: PMSubsurfaceSetRealization
-    procedure, public :: InitializeRun => PMSubsurfaceInitializeRun
-!    procedure, public :: FinalizeRun => PMSubsurfaceFinalizeRun
-!    procedure, public :: InitializeTimestep => PMSubsurfaceInitializeTimestep
-    procedure, public :: FinalizeTimestep => PMSubsurfaceFinalizeTimestep
-    procedure, public :: PreSolve => PMSubsurfacePreSolve
-    procedure, public :: PostSolve => PMSubsurfacePostSolve
-    procedure, public :: AcceptSolution => PMSubsurfaceAcceptSolution
-!    procedure, public :: TimeCut => PMSubsurfaceTimeCut
-!    procedure, public :: UpdateSolution => PMSubsurfaceUpdateSolution
-    procedure, public :: UpdateAuxvars => PMSubsurfaceUpdateAuxvars
-    procedure, public :: CheckpointBinary => PMSubsurfaceCheckpointBinary
-    procedure, public :: CheckpointHDF5 => PMSubsurfaceCheckpointHDF5
-    procedure, public :: RestartBinary => PMSubsurfaceRestartBinary
-    procedure, public :: RestartHDF5 => PMSubsurfaceRestartHDF5
-!    procedure, public :: Destroy => PMSubsurfaceDestroy
-  end type pm_subsurface_type
+    procedure, public :: Setup => PMSubsurfaceFlowSetup
+    procedure, public :: SetupSolvers => PMSubsurfaceFlowSetupSolvers
+    procedure, public :: PMSubsurfaceFlowSetRealization
+    procedure, public :: InitializeRun => PMSubsurfaceFlowInitializeRun
+!    procedure, public :: FinalizeRun => PMSubsurfaceFlowFinalizeRun
+!    procedure, public :: InitializeTimestep => PMSubsurfaceFlowInitializeTimestep
+    procedure, public :: FinalizeTimestep => PMSubsurfaceFlowFinalizeTimestep
+    procedure, public :: PreSolve => PMSubsurfaceFlowPreSolve
+    procedure, public :: PostSolve => PMSubsurfaceFlowPostSolve
+    procedure, public :: AcceptSolution => PMSubsurfaceFlowAcceptSolution
+!    procedure, public :: TimeCut => PMSubsurfaceFlowTimeCut
+!    procedure, public :: UpdateSolution => PMSubsurfaceFlowUpdateSolution
+    procedure, public :: UpdateAuxvars => PMSubsurfaceFlowUpdateAuxvars
+    procedure, public :: CheckpointBinary => PMSubsurfaceFlowCheckpointBinary
+    procedure, public :: CheckpointHDF5 => PMSubsurfaceFlowCheckpointHDF5
+    procedure, public :: RestartBinary => PMSubsurfaceFlowRestartBinary
+    procedure, public :: RestartHDF5 => PMSubsurfaceFlowRestartHDF5
+!    procedure, public :: Destroy => PMSubsurfaceFlowDestroy
+  end type pm_subsurface_flow_type
   
-  public :: PMSubsurfaceCreate, &
-            PMSubsurfaceSetup, &
-            PMSubsurfaceSetupSolvers, &
-            PMSubsurfaceInitializeTimestepA, &
-            PMSubsurfaceInitializeTimestepB, &
-            PMSubsurfaceInitializeRun, &
-            PMSubsurfaceUpdateSolution, &
-            PMSubsurfaceUpdatePropertiesNI, &
-            PMSubsurfaceTimeCut, &
-            PMSubsurfaceCheckpointBinary, &
-            PMSubsurfaceCheckpointHDF5, &
-            PMSubsurfaceRestartBinary, &
-            PMSubsurfaceRestartHDF5, &
-            PMSubsurfaceDestroy
+  public :: PMSubsurfaceFlowCreate, &
+            PMSubsurfaceFlowSetup, &
+            PMSubsurfaceFlowSetupSolvers, &
+            PMSubsurfaceFlowInitializeTimestepA, &
+            PMSubsurfaceFlowInitializeTimestepB, &
+            PMSubsurfaceFlowInitializeRun, &
+            PMSubsurfaceFlowUpdateSolution, &
+            PMSubsurfaceFlowUpdatePropertiesNI, &
+            PMSubsurfaceFlowTimeCut, &
+            PMSubsurfaceFlowCheckpointBinary, &
+            PMSubsurfaceFlowCheckpointHDF5, &
+            PMSubsurfaceFlowRestartBinary, &
+            PMSubsurfaceFlowRestartHDF5, &
+            PMSubsurfaceFlowDestroy
   
 contains
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceCreate(this)
+subroutine PMSubsurfaceFlowCreate(this)
   ! 
   ! Intializes shared members of subsurface process models
   ! 
@@ -78,7 +89,7 @@ subroutine PMSubsurfaceCreate(this)
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   
   nullify(this%realization)
   nullify(this%comm1)
@@ -87,13 +98,90 @@ subroutine PMSubsurfaceCreate(this)
   this%store_porosity_for_transport = PETSC_FALSE
   this%check_post_convergence = PETSC_FALSE
   
+  ! defaults
+  this%max_allowed_pressure_change = 5.d5
+  this%max_allowed_temperature_change = 5.d0
+  this%max_allowed_saturation_change = 0.5d0
+  this%max_allowed_xmol_change = 1.d0
+  this%pressure_dampening_factor = UNINITIALIZED_DOUBLE
+  this%saturation_change_limit = UNINITIALIZED_DOUBLE
+  this%pressure_change_limit = UNINITIALIZED_DOUBLE
+  this%temperature_change_limit = UNINITIALIZED_DOUBLE
+  
   call PMBaseInit(this)
 
-end subroutine PMSubsurfaceCreate
+end subroutine PMSubsurfaceFlowCreate
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceSetup(this)
+subroutine PMSubsurfaceFlowReadSelectCase(this,input,keyword,found,option)
+  ! 
+  ! Reads input file parameters associated with the subsurface flow process 
+  !       model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/05/16
+
+  use Input_Aux_module
+  use String_module
+  use Option_module
+ 
+  implicit none
+  
+  class(pm_subsurface_flow_type) :: this
+  type(input_type) :: input
+  
+  character(len=MAXWORDLENGTH) :: keyword
+  PetscBool :: found
+  type(option_type) :: option
+
+  found = PETSC_TRUE
+  select case(trim(keyword))
+  
+    case('MAX_PRESSURE_CHANGE')
+      call InputReadDouble(input,option,this%max_allowed_pressure_change)
+      call InputDefaultMsg(input,option,'dpmxe')
+
+    case('MAX_TEMPERATURE_CHANGE')
+      call InputReadDouble(input,option,this%max_allowed_temperature_change)
+      call InputDefaultMsg(input,option,'dtmpmxe')
+  
+    case('MAX_CONCENTRATION_CHANGE')
+      call InputReadDouble(input,option,this%max_allowed_xmol_change)
+      call InputDefaultMsg(input,option,'dcmxe')
+
+    case('MAX_SATURATION_CHANGE')
+      call InputReadDouble(input,option,this%max_allowed_saturation_change)
+      call InputDefaultMsg(input,option,'dsmxe')
+
+    case('PRESSURE_DAMPENING_FACTOR')
+      call InputReadDouble(input,option,this%pressure_dampening_factor)
+      call InputErrorMsg(input,option,'PRESSURE_DAMPENING_FACTOR', &
+                          'TIMESTEPPER')
+
+    case('SATURATION_CHANGE_LIMIT')
+      call InputReadDouble(input,option,this%saturation_change_limit)
+      call InputErrorMsg(input,option,'SATURATION_CHANGE_LIMIT', &
+                          'TIMESTEPPER')
+                           
+    case('PRESSURE_CHANGE_LIMIT')
+      call InputReadDouble(input,option,this%pressure_change_limit)
+      call InputErrorMsg(input,option,'PRESSURE_CHANGE_LIMIT', &
+                          'TIMESTEPPER')
+                           
+    case('TEMPERATURE_CHANGE_LIMIT')
+      call InputReadDouble(input,option,this%temperature_change_limit)
+      call InputErrorMsg(input,option,'TEMPERATURE_CHANGE_LIMIT', &
+                          'TIMESTEPPER')
+    case default
+      found = PETSC_FALSE
+  end select  
+  
+end subroutine PMSubsurfaceFlowReadSelectCase
+
+! ************************************************************************** !! ************************************************************************** !
+
+subroutine PMSubsurfaceFlowSetup(this)
   ! 
   ! Initializes variables associated with subsurface process models
   ! 
@@ -107,7 +195,7 @@ subroutine PMSubsurfaceSetup(this)
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   
   PetscErrorCode :: ierr
 
@@ -129,11 +217,11 @@ subroutine PMSubsurfaceSetup(this)
     endif
   endif
   
-end subroutine PMSubsurfaceSetup
+end subroutine PMSubsurfaceFlowSetup
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceSetupSolvers(this,solver)
+subroutine PMSubsurfaceFlowSetupSolvers(this,solver)
   ! 
   ! Sets up SNES solvers.
   ! 
@@ -144,16 +232,16 @@ subroutine PMSubsurfaceSetupSolvers(this,solver)
   
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   type(solver_type) :: solver
   
   PetscErrorCode :: ierr
   
-end subroutine PMSubsurfaceSetupSolvers
+end subroutine PMSubsurfaceFlowSetupSolvers
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceSetRealization(this,realization)
+subroutine PMSubsurfaceFlowSetRealization(this,realization)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -163,7 +251,7 @@ subroutine PMSubsurfaceSetRealization(this,realization)
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   class(realization_subsurface_type), pointer :: realization
   
   this%realization => realization
@@ -172,11 +260,11 @@ subroutine PMSubsurfaceSetRealization(this,realization)
   this%solution_vec = realization%field%flow_xx
   this%residual_vec = realization%field%flow_r
   
-end subroutine PMSubsurfaceSetRealization
+end subroutine PMSubsurfaceFlowSetRealization
 
 ! ************************************************************************** !
 
-recursive subroutine PMSubsurfaceInitializeRun(this)
+recursive subroutine PMSubsurfaceFlowInitializeRun(this)
   ! 
   ! Initializes the time stepping
   ! 
@@ -189,7 +277,7 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   PetscBool :: update_initial_porosity
 
   ! overridden in pm_general only
@@ -238,11 +326,11 @@ recursive subroutine PMSubsurfaceInitializeRun(this)
   call this%UpdateAuxVars()
   call this%UpdateSolution() 
     
-end subroutine PMSubsurfaceInitializeRun
+end subroutine PMSubsurfaceFlowInitializeRun
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceInitializeTimestepA(this)
+subroutine PMSubsurfaceFlowInitializeTimestepA(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -255,7 +343,7 @@ subroutine PMSubsurfaceInitializeTimestepA(this)
   
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
 
   this%option%flow_dt = this%option%dt
 
@@ -284,11 +372,11 @@ subroutine PMSubsurfaceInitializeTimestepA(this)
                                   this%realization%field%porosity_base_store)
   endif
 
-end subroutine PMSubsurfaceInitializeTimestepA
+end subroutine PMSubsurfaceFlowInitializeTimestepA
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceInitializeTimestepB(this)
+subroutine PMSubsurfaceFlowInitializeTimestepB(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -301,7 +389,7 @@ subroutine PMSubsurfaceInitializeTimestepB(this)
   
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
 
   if (this%option%ntrandof > 0) then ! store initial saturations for transport
     call GlobalUpdateAuxVars(this%realization,TIME_T,this%option%time)
@@ -325,11 +413,11 @@ subroutine PMSubsurfaceInitializeTimestepB(this)
     endif
   endif
   
-end subroutine PMSubsurfaceInitializeTimestepB
+end subroutine PMSubsurfaceFlowInitializeTimestepB
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfacePreSolve(this)
+subroutine PMSubsurfaceFlowPreSolve(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -338,18 +426,18 @@ subroutine PMSubsurfacePreSolve(this)
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   
-  this%option%io_buffer = 'PMSubsurfacePreSolve() must be extended.'
+  this%option%io_buffer = 'PMSubsurfaceFlowPreSolve() must be extended.'
   call printErrMsg(this%option)  
 
-end subroutine PMSubsurfacePreSolve
+end subroutine PMSubsurfaceFlowPreSolve
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfacePostSolve(this)
+subroutine PMSubsurfaceFlowPostSolve(this)
   ! 
-  ! PMSubsurfaceUpdatePostSolve:
+  ! PMSubsurfaceFlowUpdatePostSolve:
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/14/13
@@ -359,34 +447,34 @@ subroutine PMSubsurfacePostSolve(this)
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   
-  this%option%io_buffer = 'PMSubsurfacePostSolve() must be extended.'
+  this%option%io_buffer = 'PMSubsurfaceFlowPostSolve() must be extended.'
   call printErrMsg(this%option)  
   
-end subroutine PMSubsurfacePostSolve
+end subroutine PMSubsurfaceFlowPostSolve
 
 ! ************************************************************************** !
 
-function PMSubsurfaceAcceptSolution(this)
+function PMSubsurfaceFlowAcceptSolution(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   
-  PetscBool :: PMSubsurfaceAcceptSolution
+  PetscBool :: PMSubsurfaceFlowAcceptSolution
   
   ! do nothing
-  PMSubsurfaceAcceptSolution = PETSC_TRUE
+  PMSubsurfaceFlowAcceptSolution = PETSC_TRUE
   
-end function PMSubsurfaceAcceptSolution
+end function PMSubsurfaceFlowAcceptSolution
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceUpdatePropertiesNI(this)
+subroutine PMSubsurfaceFlowUpdatePropertiesNI(this)
   ! 
   ! Updates parameters/properties at each Newton iteration
   !
@@ -395,15 +483,15 @@ subroutine PMSubsurfaceUpdatePropertiesNI(this)
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   
   call RealizationUpdatePropertiesNI(this%realization)
 
-end subroutine PMSubsurfaceUpdatePropertiesNI
+end subroutine PMSubsurfaceFlowUpdatePropertiesNI
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceTimeCut(this)
+subroutine PMSubsurfaceFlowTimeCut(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14 
@@ -413,7 +501,7 @@ subroutine PMSubsurfaceTimeCut(this)
   
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   
   PetscErrorCode :: ierr
   
@@ -429,11 +517,11 @@ subroutine PMSubsurfaceTimeCut(this)
                                  POROSITY_MINERAL)
   endif             
 
-end subroutine PMSubsurfaceTimeCut
+end subroutine PMSubsurfaceFlowTimeCut
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceFinalizeTimestep(this)
+subroutine PMSubsurfaceFlowFinalizeTimestep(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -444,7 +532,7 @@ subroutine PMSubsurfaceFinalizeTimestep(this)
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
 
   if (this%option%ntrandof > 0) then 
     ! store final saturations, etc. for transport
@@ -461,11 +549,11 @@ subroutine PMSubsurfaceFinalizeTimestep(this)
   
   call this%MaxChange()
   
-end subroutine PMSubsurfaceFinalizeTimestep
+end subroutine PMSubsurfaceFlowFinalizeTimestep
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceUpdateSolution(this)
+subroutine PMSubsurfaceFlowUpdateSolution(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
@@ -476,7 +564,7 @@ subroutine PMSubsurfaceUpdateSolution(this)
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   
   PetscBool :: force_update_flag = PETSC_FALSE
   PetscErrorCode :: ierr
@@ -501,27 +589,27 @@ subroutine PMSubsurfaceUpdateSolution(this)
                           INTEGRATE_FLOW,this%option)
   ! end from RealizationUpdate()
 
-end subroutine PMSubsurfaceUpdateSolution  
+end subroutine PMSubsurfaceFlowUpdateSolution  
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceUpdateAuxVars(this)
+subroutine PMSubsurfaceFlowUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
 
-  this%option%io_buffer = 'PMSubsurfaceUpdateAuxVars() must be extended.'
+  this%option%io_buffer = 'PMSubsurfaceFlowUpdateAuxVars() must be extended.'
   call printErrMsg(this%option)
 
-end subroutine PMSubsurfaceUpdateAuxVars   
+end subroutine PMSubsurfaceFlowUpdateAuxVars   
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceCheckpointBinary(this,viewer)
+subroutine PMSubsurfaceFlowCheckpointBinary(this,viewer)
   ! 
   ! Checkpoints data associated with Subsurface PM
   ! 
@@ -533,16 +621,16 @@ subroutine PMSubsurfaceCheckpointBinary(this,viewer)
   implicit none
 #include "petsc/finclude/petscviewer.h"      
 
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   PetscViewer :: viewer
   
   call CheckpointFlowProcessModelBinary(viewer,this%realization) 
   
-end subroutine PMSubsurfaceCheckpointBinary
+end subroutine PMSubsurfaceFlowCheckpointBinary
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceRestartBinary(this,viewer)
+subroutine PMSubsurfaceFlowRestartBinary(this,viewer)
   ! 
   ! Restarts data associated with Subsurface PM
   ! 
@@ -554,18 +642,18 @@ subroutine PMSubsurfaceRestartBinary(this,viewer)
   implicit none
 #include "petsc/finclude/petscviewer.h"      
 
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   PetscViewer :: viewer
   
   call RestartFlowProcessModelBinary(viewer,this%realization)
   call this%UpdateAuxVars()
   call this%UpdateSolution()
   
-end subroutine PMSubsurfaceRestartBinary
+end subroutine PMSubsurfaceFlowRestartBinary
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceCheckpointHDF5(this, pm_grp_id)
+subroutine PMSubsurfaceFlowCheckpointHDF5(this, pm_grp_id)
   !
   ! Checkpoints data associated with Subsurface PM
   !
@@ -574,7 +662,7 @@ subroutine PMSubsurfaceCheckpointHDF5(this, pm_grp_id)
 
 #if  !defined(PETSC_HAVE_HDF5)
   implicit none
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   integer :: pm_grp_id
   print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
         'write HDF5 formatted checkpoint file. Darn.'
@@ -586,7 +674,7 @@ subroutine PMSubsurfaceCheckpointHDF5(this, pm_grp_id)
 
   implicit none
 
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
 #if defined(SCORPIO_WRITE)
   integer :: pm_grp_id
 #else
@@ -597,11 +685,11 @@ subroutine PMSubsurfaceCheckpointHDF5(this, pm_grp_id)
 
 #endif
 
-end subroutine PMSubsurfaceCheckpointHDF5
+end subroutine PMSubsurfaceFlowCheckpointHDF5
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceRestartHDF5(this, pm_grp_id)
+subroutine PMSubsurfaceFlowRestartHDF5(this, pm_grp_id)
   !
   ! Checkpoints data associated with Subsurface PM
   !
@@ -610,7 +698,7 @@ subroutine PMSubsurfaceRestartHDF5(this, pm_grp_id)
 
 #if  !defined(PETSC_HAVE_HDF5)
   implicit none
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   integer :: pm_grp_id
   print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
         'write HDF5 formatted checkpoint file. Darn.'
@@ -622,7 +710,7 @@ subroutine PMSubsurfaceRestartHDF5(this, pm_grp_id)
 
   implicit none
 
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
 #if defined(SCORPIO_WRITE)
   integer :: pm_grp_id
 #else
@@ -635,11 +723,11 @@ subroutine PMSubsurfaceRestartHDF5(this, pm_grp_id)
 
 #endif
 
-end subroutine PMSubsurfaceRestartHDF5
+end subroutine PMSubsurfaceFlowRestartHDF5
 
 ! ************************************************************************** !
 
-recursive subroutine PMSubsurfaceFinalizeRun(this)
+recursive subroutine PMSubsurfaceFlowFinalizeRun(this)
   ! 
   ! Finalizes the time stepping
   ! 
@@ -648,7 +736,7 @@ recursive subroutine PMSubsurfaceFinalizeRun(this)
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   
   ! do something here
   
@@ -656,11 +744,11 @@ recursive subroutine PMSubsurfaceFinalizeRun(this)
     call this%next%FinalizeRun()
   endif  
   
-end subroutine PMSubsurfaceFinalizeRun
+end subroutine PMSubsurfaceFlowFinalizeRun
 
 ! ************************************************************************** !
 
-subroutine PMSubsurfaceDestroy(this)
+subroutine PMSubsurfaceFlowDestroy(this)
   ! 
   ! Destroys Subsurface process model
   ! 
@@ -669,11 +757,11 @@ subroutine PMSubsurfaceDestroy(this)
 
   implicit none
   
-  class(pm_subsurface_type) :: this
+  class(pm_subsurface_flow_type) :: this
   
   ! destroyed in realization
   nullify(this%comm1)
   
-end subroutine PMSubsurfaceDestroy
+end subroutine PMSubsurfaceFlowDestroy
   
-end module PM_Subsurface_class
+end module PM_Subsurface_Flow_class

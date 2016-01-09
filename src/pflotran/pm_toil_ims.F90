@@ -1,7 +1,7 @@
 module PM_TOilIms_class
 
   use PM_Base_class
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
   
   use PFLOTRAN_Constants_module
 
@@ -17,7 +17,7 @@ module PM_TOilIms_class
 #include "petsc/finclude/petscmat.h90"
 #include "petsc/finclude/petscsnes.h"
 
-  type, public, extends(pm_subsurface_type) :: pm_toil_ims_type
+  type, public, extends(pm_subsurface_flow_type) :: pm_toil_ims_type
     PetscReal :: dPmax
     PetscReal :: dTmax
     PetscReal :: dSmax

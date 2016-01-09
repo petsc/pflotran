@@ -4593,7 +4593,7 @@ end subroutine THCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine THMaxChange(realization)
+subroutine THMaxChange(realization,dpmax,dtmpmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -4612,23 +4612,21 @@ subroutine THMaxChange(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
   
+  PetscReal :: dpmax, dtmpmax
   PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field
 
-  option%dcmax=0.D0
+  dpmax = 0.d0
+  dtmpmax = 0.d0
   
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
                 ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
+  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,dpmax, &
                      ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax, &
+  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,dtmpmax, &
                      ierr);CHKERRQ(ierr)
-  if (option%nflowdof > 2) then
-    call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dcmax, &
-                       ierr);CHKERRQ(ierr)
-  endif
     
 end subroutine THMaxChange
 

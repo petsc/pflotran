@@ -437,6 +437,7 @@ subroutine PMRTFinalizeTimestep(this)
   
   class(pm_rt_type) :: this
   PetscReal :: time  
+  PetscReal :: dcmax
   PetscErrorCode :: ierr
 
   if (this%transient_porosity) then
@@ -450,16 +451,16 @@ subroutine PMRTFinalizeTimestep(this)
                                   this%realization%field%porosity_tpdt)
   endif
   
-  call RTMaxChange(this%realization)
+  call RTMaxChange(this%realization,dcmax)
   if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4, &
             &" [mol/s]")') &
-      this%option%dcmax,this%option%dcmax/this%option%tran_dt
+      dcmax,dcmax/this%option%tran_dt
   endif
   if (this%option%print_file_flag) then  
     write(this%option%fid_out,'("  --> max chng: dcmx= ",1pe12.4, &
                               &" dc/dt= ",1pe12.4," [mol/s]")') &
-      this%option%dcmax,this%option%dcmax/this%option%tran_dt
+      dcmax,dcmax/this%option%tran_dt
   endif
   
 end subroutine PMRTFinalizeTimestep
@@ -966,8 +967,10 @@ subroutine PMRTMaxChange(this)
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%MaxChange()')
 #endif
-  
-  call RTMaxChange(this%realization)
+
+  print *, 'PMRTMaxChange not implemented'
+  stop
+!  call RTMaxChange(this%realization)
 
 end subroutine PMRTMaxChange
 

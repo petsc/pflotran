@@ -1,7 +1,7 @@
 module PM_Richards_class
 
   use PM_Base_class
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
   
   use PFLOTRAN_Constants_module
 
@@ -17,7 +17,7 @@ module PM_Richards_class
 #include "petsc/finclude/petscmat.h90"
 #include "petsc/finclude/petscsnes.h"
 
-  type, public, extends(pm_subsurface_type) :: pm_richards_type
+  type, public, extends(pm_subsurface_flow_type) :: pm_richards_type
   contains
     procedure, public :: Read => PMRichardsRead
     procedure, public :: InitializeTimestep => PMRichardsInitializeTimestep
@@ -290,7 +290,7 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   use Richards_Aux_module
   use Global_Aux_module
   use Patch_module
-
+  
   implicit none
   
   class(pm_richards_type) :: this
@@ -320,14 +320,14 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   rich_auxvars => patch%aux%Richards%auxvars
   global_auxvars => patch%aux%Global%auxvars
 
-  if (dabs(option%saturation_change_limit) > 0.d0) then
+  if (Initialized(this%saturation_change_limit)) then
 
     changed = PETSC_TRUE
 
     call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(X,X_p,ierr);CHKERRQ(ierr)
 
-    pert =dabs(option%saturation_change_limit)
+    pert = dabs(this%saturation_change_limit)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       sat = global_auxvars(ghosted_id)%sat(1)
@@ -353,7 +353,7 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 
   endif
 
-  if (dabs(option%pressure_dampening_factor) > 0.d0) then
+  if (Initialized(option%pressure_dampening_factor)) then
     changed = PETSC_TRUE
     ! P^p+1 = P^p - dP^p
     P_R = option%reference_pressure
@@ -563,13 +563,14 @@ subroutine PMRichardsMaxChange(this)
   
   class(pm_richards_type) :: this
   
-  call RichardsMaxChange(this%realization)
+  PetscReal :: dpmax
+  
+  call RichardsMaxChange(this%realization,dpmax)
   if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%option%dpmax
+    write(*,'("  --> max chng: dpmx= ",1pe12.4)') dpmax
   endif
   if (this%option%print_file_flag) then
-    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') &
-      this%option%dpmax
+    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') dpmax
   endif    
 
 end subroutine PMRichardsMaxChange

@@ -1,7 +1,7 @@
 module PM_TH_class
 
   use PM_Base_class
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
 !geh: using TH_module here fails with gfortran (internal compiler error)
 !  use TH_module
   use Realization_class
@@ -22,7 +22,7 @@ module PM_TH_class
 #include "petsc/finclude/petscmat.h90"
 #include "petsc/finclude/petscsnes.h"
 
-  type, public, extends(pm_subsurface_type) :: pm_th_type
+  type, public, extends(pm_subsurface_flow_type) :: pm_th_type
     class(communicator_type), pointer :: commN
   contains
     procedure, public :: Setup => PMTHSetup
@@ -411,7 +411,7 @@ subroutine PMTHCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   TH_auxvars => patch%aux%TH%auxvars
   global_auxvars => patch%aux%Global%auxvars
 
-  if (dabs(option%pressure_change_limit) > 0.d0) then
+  if (Initialized(option%pressure_change_limit)) then
 
     call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(X,X_p,ierr);CHKERRQ(ierr)
@@ -465,7 +465,7 @@ subroutine PMTHCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   endif
 
 
-  if (dabs(option%pressure_dampening_factor) > 0.d0) then
+  if (Initialized(option%pressure_dampening_factor)) then
     ! P^p+1 = P^p - dP^p
     P_R = option%reference_pressure
     scale = option%pressure_dampening_factor
@@ -701,15 +701,15 @@ subroutine PMTHMaxChange(this)
   
   class(pm_th_type) :: this
   
-  call THMaxChange(this%realization)
+  call THMaxChange(this%realization,dpmax,dtmpmax)
     if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dpmx= ",1pe12.4," dtmpmx= ",1pe12.4)') &
-      this%option%dpmax,this%option%dtmpmax
+      dpmax,dtmpmax
   endif
   if (this%option%print_file_flag) then
     write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
       & " dtmpmx= ",1pe12.4)') &
-      this%option%dpmax,this%option%dtmpmax
+      dpmax,dtmpmax
   endif 
 
 end subroutine PMTHMaxChange

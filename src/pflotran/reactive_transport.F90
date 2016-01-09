@@ -4056,7 +4056,7 @@ end subroutine RTCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine RTMaxChange(realization)
+subroutine RTMaxChange(realization,dcmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -4073,23 +4073,70 @@ subroutine RTMaxChange(realization)
   implicit none
   
   type(realization_subsurface_type) :: realization
+  PetscReal :: dcmax
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field 
   PetscReal, pointer :: dxx_ptr(:), xx_ptr(:), yy_ptr(:)
-  
   PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field
 
-  option%dcmax=0.D0
+  dcmax = 0.d0
   
   call VecWAXPY(field%tran_dxx,-1.d0,field%tran_xx,field%tran_yy, &
                 ierr);CHKERRQ(ierr)
   
-  call VecStrideNorm(field%tran_dxx,ZERO_INTEGER,NORM_INFINITY,option%dcmax, &
+  call VecStrideNorm(field%tran_dxx,ZERO_INTEGER,NORM_INFINITY,dcmax, &
                      ierr);CHKERRQ(ierr)
+                     
+#if 0
+  ! update mineral volume fractions
+  if (reaction%mineral%nkinmnrl > 0) then
+  
+    ! Updates the mineral rates, res is not needed
+    call RKineticMineral(res,jac,PETSC_FALSE,rt_auxvar,global_auxvar, &
+                         material_auxvar,reaction,option)  
+                    
+    do imnrl = 1, reaction%mineral%nkinmnrl
+      ! rate = mol/m^3/sec
+      ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
+      !                                mol_vol (m^3 mnrl/mol mnrl)
+      delta_volfrac = rt_auxvar%mnrl_rate(imnrl)* &
+                      reaction%mineral%kinmnrl_molar_vol(imnrl)* &
+                      option%tran_dt
+      rt_auxvar%mnrl_volfrac(imnrl) = rt_auxvar%mnrl_volfrac(imnrl) + &
+                                      delta_volfrac
+      if (rt_auxvar%mnrl_volfrac(imnrl) < 0.d0) &
+        rt_auxvar%mnrl_volfrac(imnrl) = 0.d0
+
+      ! CO2-specific
+      if (option%iflowmode == MPH_MODE .or. &
+          option%iflowmode == FLASH2_MODE) then
+        ncomp = reaction%mineral%kinmnrlspecid(0,imnrl)
+        do iaqspec = 1, ncomp  
+          icomp = reaction%mineral%kinmnrlspecid(iaqspec,imnrl)
+          if (icomp == reaction%species_idx%co2_aq_id) then
+            global_auxvar%reaction_rate(2) &
+              = global_auxvar%reaction_rate(2) & 
+              + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
+              * reaction%mineral%kinmnrlstoich(iaqspec,imnrl) /option%flow_dt
+            cycle
+          endif
+        enddo
+
+!       water rate
+        if (reaction%mineral%kinmnrlh2ostoich(imnrl) /= 0) then
+          global_auxvar%reaction_rate(1) &
+            = global_auxvar%reaction_rate(1) &
+            + rt_auxvar%mnrl_rate(imnrl)*option%tran_dt &
+            * reaction%mineral%kinmnrlh2ostoich(imnrl) /option%flow_dt
+        endif
+      endif
+    enddo
+  endif 
+#endif
       
 end subroutine RTMaxChange
 

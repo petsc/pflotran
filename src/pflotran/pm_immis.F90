@@ -1,7 +1,7 @@
 module PM_Immis_class
 
   use PM_Base_class
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
   
   use PFLOTRAN_Constants_module
 
@@ -17,7 +17,7 @@ module PM_Immis_class
 #include "petsc/finclude/petscmat.h90"
 #include "petsc/finclude/petscsnes.h"
 
-  type, public, extends(pm_subsurface_type) :: pm_immis_type
+  type, public, extends(pm_subsurface_flow_type) :: pm_immis_type
   contains
     procedure, public :: InitializeTimestep => PMImmisInitializeTimestep
     procedure, public :: Residual => PMImmisResidual
@@ -353,18 +353,18 @@ subroutine PMImmisMaxChange(this)
   
   class(pm_immis_type) :: this
   
-  call ImmisMaxChange(this%realization)
+  PetscReal :: dpmax, dtmpmax, dsmax
+  
+  call ImmisMaxChange(this%realization,dpmax,dtmpmax,dsmax)
   if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-      & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
-          this%option%dsmax
+      & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+          dpmax,dtmpmax,dsmax
   endif
   if (this%option%print_file_flag) then
     write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
-      & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-      this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
-      this%option%dsmax
+      & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+          dpmax,dtmpmax,dsmax
   endif  
 
 end subroutine PMImmisMaxChange
