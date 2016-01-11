@@ -190,7 +190,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
     ! write out coordinates in x, y, and z directions
     string = "X [m]"
     allocate(array(grid%structured_grid%nx+1))
-    array(1) = grid%structured_grid%origin(X_DIRECTION)
+    array(1) = discretization%origin_global(X_DIRECTION)
     do i=2,grid%structured_grid%nx+1
       array(i) = array(i-1) + grid%structured_grid%dx_global(i-1)
     enddo
@@ -199,7 +199,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
 
     string = "Y [m]"
     allocate(array(grid%structured_grid%ny+1))
-    array(1) = grid%structured_grid%origin(Y_DIRECTION)
+    array(1) = discretization%origin_global(Y_DIRECTION)
     do i=2,grid%structured_grid%ny+1
       array(i) = array(i-1) + grid%structured_grid%dy_global(i-1)
     enddo
@@ -208,7 +208,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
 
     string = "Z [m]"
     allocate(array(grid%structured_grid%nz+1))
-    array(1) = grid%structured_grid%origin(Z_DIRECTION)
+    array(1) = discretization%origin_global(Z_DIRECTION)
     do i=2,grid%structured_grid%nz+1
       array(i) = array(i-1) + grid%structured_grid%dz_global(i-1)
     enddo

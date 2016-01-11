@@ -1343,7 +1343,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization_base)
     count = 0
     do k=1,nz+1
       do j=1,ny+1
-        temp_real = realization_base%discretization%origin(X_DIRECTION)
+        temp_real = realization_base%discretization%origin_global(X_DIRECTION)
         write(fid,1000,advance='no') temp_real
         count = count + 1
         if (mod(count,10) == 0) then
@@ -1365,7 +1365,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization_base)
     ! y-dir
     count = 0
     do k=1,nz+1
-      temp_real = realization_base%discretization%origin(Y_DIRECTION)
+      temp_real = realization_base%discretization%origin_global(Y_DIRECTION)
       do i=1,nx+1
         write(fid,1000,advance='no') temp_real
         count = count + 1
@@ -1389,7 +1389,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization_base)
     if (count /= 0) write(fid,'(a)') ""
     ! z-dir
     count = 0
-    temp_real = realization_base%discretization%origin(Z_DIRECTION)
+    temp_real = realization_base%discretization%origin_global(Z_DIRECTION)
     do i=1,(nx+1)*(ny+1)
       write(fid,1000,advance='no') temp_real
       count = count + 1

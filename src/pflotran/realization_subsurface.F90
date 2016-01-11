@@ -345,8 +345,8 @@ subroutine RealizationCreateDiscretization(realization)
                                        discretization%tvd_ghost_scatter, &
                                        option)
       endif
-      call GridComputeSpacing(grid,option)
-      call GridComputeCoordinates(grid,discretization%origin,option)
+      call GridComputeSpacing(grid,discretization%origin_global,option)
+      call GridComputeCoordinates(grid,discretization%origin_global,option)
       call GridComputeVolumes(grid,field%volume0,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
@@ -357,7 +357,7 @@ subroutine RealizationCreateDiscretization(realization)
                           discretization%dm_1dof, &
                           discretization%stencil_type,&
                           option)
-      call GridComputeCoordinates(grid,discretization%origin,option, & 
+      call GridComputeCoordinates(grid,discretization%origin_global,option, & 
                                     discretization%dm_1dof%ugdm) 
       if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
         call UGridEnsureRightHandRule(grid%unstructured_grid,grid%x, &

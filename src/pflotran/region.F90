@@ -22,6 +22,7 @@ module Region_module
   PetscInt, parameter, public :: DEFINED_BY_FACE_UGRID_EXP = 7
   PetscInt, parameter, public :: DEFINED_BY_POLY_BOUNDARY_FACE = 8
   PetscInt, parameter, public :: DEFINED_BY_POLY_CELL_CENTER = 9
+  PetscInt, parameter, public :: DEFINED_BY_CARTESIAN_BOUNDARY = 10
 
   type, public :: block_type        
     PetscInt :: i1,i2,j1,j2,k1,k2    
@@ -449,6 +450,29 @@ subroutine RegionRead(region,input,option)
         call InputErrorMsg(input,option,'k1','REGION')
         call InputReadInt(input,option,region%k2)
         call InputErrorMsg(input,option,'k2','REGION')
+      case('CARTESIAN_BOUNDARY')
+        region%def_type = DEFINED_BY_CARTESIAN_BOUNDARY
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'cartesian boundary face','REGION')
+        call StringToUpper(word)
+        select case(word)
+          case('WEST')
+            region%iface = WEST_FACE
+          case('EAST')
+            region%iface = EAST_FACE
+          case('NORTH')
+            region%iface = NORTH_FACE
+          case('SOUTH')
+            region%iface = SOUTH_FACE
+          case('BOTTOM')
+            region%iface = BOTTOM_FACE
+          case('TOP')
+            region%iface = TOP_FACE
+          case default
+            option%io_buffer = 'Cartesian boundary face "' // trim(word) // &
+              '" not recognized.'
+            call printErrMsg(option)
+        end select
       case('COORDINATE')
         region%def_type = DEFINED_BY_COORD
         allocate(region%coordinates(1))
@@ -537,6 +561,10 @@ subroutine RegionRead(region,input,option)
             region%iface = BOTTOM_FACE
           case('TOP')
             region%iface = TOP_FACE
+          case default
+            option%io_buffer = 'FACE "' // trim(word) // &
+              '" not recognized.'
+            call printErrMsg(option)
         end select
       case('GRID','SURF_GRID')
         call InputReadWord(input,option,word,PETSC_TRUE)
