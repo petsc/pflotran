@@ -736,7 +736,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   word = 'genaux' // trim(adjustl(word))
 #endif
   do ghosted_id = 1, grid%ngmax
-     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
      
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
@@ -745,6 +745,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
     ! GENERAL_UPDATE_FOR_ACCUM indicates call from non-perturbation
     option%iflag = GENERAL_UPDATE_FOR_ACCUM
     natural_id = grid%nG2A(ghosted_id)
+    if (grid%nG2L(ghosted_id) == 0) natural_id = -natural_id
     call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        gen_auxvars(ZERO_INTEGER,ghosted_id), &
                        global_auxvars(ghosted_id), &
