@@ -158,7 +158,7 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   implicit none
   
   type(saturation_function_type) :: saturation_function
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   PetscInt :: iphase
   

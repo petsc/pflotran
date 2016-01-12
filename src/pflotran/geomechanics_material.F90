@@ -84,7 +84,7 @@ subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
   implicit none
   
   type(geomech_material_property_type) :: geomech_material_property
-  type(input_type)                     :: input
+  type(input_type), pointer            :: input
   type(option_type)                    :: option
   
   character(len=MAXWORDLENGTH) :: keyword, word

@@ -116,7 +116,6 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   use Factory_Hydrogeophysics_module
   use Factory_Surf_Subsurf_module
   use Factory_Geomechanics_module
-  use Factory_Surf_Subsurf_module, only : SurfSubsurfaceReadFlowPM
   
   implicit none
   
@@ -270,7 +269,7 @@ recursive subroutine PFLOTRANSetupPMCHierarchy(input,option,pmc)
   
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   class(pmc_base_type), pointer :: pmc
   
@@ -316,7 +315,7 @@ recursive subroutine PFLOTRANLinkPMToPMC(input,option,pmc,pm)
   
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   class(pmc_base_type), pointer :: pmc
   class(pm_base_type), pointer :: pm

@@ -82,7 +82,7 @@ subroutine PMRichardsRead(this,input)
   implicit none
   
   class(pm_richards_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string

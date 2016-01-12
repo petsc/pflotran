@@ -96,7 +96,7 @@ subroutine PMTHRead(this,input)
   implicit none
   
   class(pm_th_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string

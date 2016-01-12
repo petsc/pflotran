@@ -38,6 +38,7 @@ endif
 STANDARD_CFG = \
 	ascem/batch/batch.cfg \
 	ascem/1d/1d-calcite/1d-calcite.cfg \
+	default/input_format/input_format.cfg \
 	default/543/543.cfg \
 	default/anisothermal/anisothermal.cfg \
 	default/column/column.cfg \

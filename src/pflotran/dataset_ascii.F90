@@ -148,7 +148,7 @@ subroutine DatasetAsciiLoad(this,input,option)
   implicit none
   
   class(dataset_ascii_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: time_units
@@ -190,19 +190,19 @@ subroutine DatasetAsciiLoad(this,input,option)
                              'CONDITION (LIST or FILE)')
           cycle
         case('INTERPOLATION')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'INTERPOLATION','CONDITION')   
-        call StringToUpper(word)
-        select case(word)
-          case('STEP')
-            default_interpolation_method = INTERPOLATION_STEP
-          case('LINEAR') 
-            default_interpolation_method = INTERPOLATION_LINEAR
-          case default
-            call InputKeywordUnrecognized(word,'CONDITION,INTERPOLATION', &
-                                          option)
-        end select
-
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'INTERPOLATION','CONDITION')   
+          call StringToUpper(word)
+          select case(word)
+            case('STEP')
+              default_interpolation_method = INTERPOLATION_STEP
+            case('LINEAR') 
+              default_interpolation_method = INTERPOLATION_LINEAR
+            case default
+              call InputKeywordUnrecognized(word,'CONDITION,INTERPOLATION', &
+                                            option)
+          end select
+          cycle
         case('DATA_UNITS')
           ! it is possible to have more than one data unit. therefore, read the
           ! entire string

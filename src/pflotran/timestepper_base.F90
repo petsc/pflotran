@@ -218,7 +218,7 @@ subroutine TimestepperBaseRead(this,input,option)
   implicit none
 
   class(timestepper_base_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   option%io_buffer = 'TimestepperBaseRead not supported.  Requires extension.'

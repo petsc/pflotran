@@ -1,0 +1,233 @@
+#Description: 1D Calcite dissolution problem
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 5
+END
+
+#=========================== flow mode ========================================
+
+#=========================== chemistry ========================================
+EXTERNAL_FILE chemistry.txt
+skip
+CHEMISTRY
+  PRIMARY_SPECIES
+    H+
+    HCO3-
+    Ca++
+  /
+  SECONDARY_SPECIES
+    OH-
+    CO3--
+    CO2(aq)
+    CaCO3(aq)
+    CaHCO3+
+    CaOH+
+  /
+  GAS_SPECIES
+    CO2(g)
+  /
+  MINERALS
+    Calcite
+  /
+  MINERAL_KINETICS
+    Calcite
+      RATE_CONSTANT 1.d-6
+    /
+  /
+  DATABASE ../../../database/hanford.dat
+  LOG_FORMULATION
+#  OPERATOR_SPLITTING
+  ACTIVITY_COEFFICIENTS TIMESTEP
+#geh: yes, I mean to place the no skip right here.
+noskip
+  OUTPUT
+    PH
+    TOTAL
+    FREE_ION
+    all
+  /
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  MAX_STEPS 5
+END
+
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+END
+
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE STRUCTURED
+  NXYZ 100 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+  CHARACTERISTIC_CURVES default
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  DEFAULT
+END
+
+#=========================== output options ===================================
+EXTERNAL_FILE output.txt
+skip
+OUTPUT
+  TIMES y 5. 10. 15. 20.
+#  FORMAT TECPLOT POINT
+  VELOCITY_AT_CENTER
+END
+noskip
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 25.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
+END
+
+#=========================== regions ==========================================
+EXTERNAL_FILE regions.txt
+skip
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    100.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+noskip
+
+#=========================== flow conditions ==================================
+EXTERNAL_FILE conditions.txt
+skip
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE DIRICHLET
+  /
+  PRESSURE 201325.d0
+END
+
+FLOW_CONDITION inlet
+  TYPE
+    FLUX NEUMANN
+  /
+  FLUX 1.d0 m/y
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE ZERO_GRADIENT
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+TRANSPORT_CONDITION inlet
+  TYPE DIRICHLET_ZERO_GRADIENT
+  CONSTRAINT_LIST
+    0.d0 inlet
+  /
+END
+
+#=========================== constraints ======================================
+CONSTRAINT initial
+  CONCENTRATIONS
+    H+     1.d-8      F
+    HCO3-  1.d-3      G  CO2(g)
+    Ca++   5.d-4      M  Calcite
+  /
+  MINERALS
+    Calcite 1.d-5 1.d0
+  /
+END
+
+CONSTRAINT inlet
+  CONCENTRATIONS
+    H+     5.         P
+    HCO3-  1.d-3      T
+    Ca++   1.d-6      Z
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION outlet
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION east
+END
+
+BOUNDARY_CONDITION inlet
+  FLOW_CONDITION inlet
+  TRANSPORT_CONDITION inlet
+  REGION west
+END
+noskip
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+END_SUBSURFACE

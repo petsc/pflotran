@@ -57,7 +57,7 @@ module CLM_Rxn_Base_class
       implicit none
   
       class(clm_rxn_base_type) :: this
-      type(input_type) :: input
+      type(input_type), pointer :: input
       type(option_type) :: option
   
     end subroutine Base_Read 
@@ -72,7 +72,7 @@ module CLM_Rxn_Base_class
       implicit none
   
       class(clm_rxn_base_type) :: this
-      type(input_type) :: input
+      type(input_type), pointer :: input
       type(option_type) :: option
   
     end subroutine Base_SkipBlock 
@@ -158,7 +158,7 @@ contains
     implicit none
   
     class(clm_rxn_base_type) :: this
-    type(input_type) :: input
+    type(input_type), pointer :: input
     type(option_type) :: option
   
   end subroutine Base_Read
@@ -173,7 +173,7 @@ contains
     implicit none
   
     class(clm_rxn_base_type) :: this
-    type(input_type) :: input
+    type(input_type), pointer :: input
     type(option_type) :: option
   
   end subroutine Base_SkipBlock   
@@ -524,7 +524,7 @@ subroutine CLMDec_Read(this,input,option)
   implicit none
   
   class(clm_rxn_clmdec_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: word
@@ -3225,7 +3225,7 @@ subroutine PlantNRead(this,input,option)
   implicit none
   
   class(clm_rxn_plantn_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   PetscInt :: i
@@ -3820,7 +3820,7 @@ subroutine NitrRead(this,input,option)
   implicit none
   
   class(clm_rxn_nitr_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   PetscInt :: i
@@ -4519,7 +4519,7 @@ subroutine DeniRead(this,input,option)
   implicit none
   
   class(clm_rxn_deni_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   PetscInt :: i
@@ -4963,7 +4963,7 @@ subroutine RCLMRxnRead1(input,option)
   
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   call RCLMRxnRead(clmrxn_list,input,option)
@@ -4985,7 +4985,7 @@ subroutine RCLMRxnRead2(local_clmrxn_list,input,option)
   implicit none
   
   class(clm_rxn_base_type), pointer :: local_clmrxn_list  
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   character(len=MAXSTRINGLENGTH) :: string
@@ -5083,7 +5083,7 @@ subroutine RCLMRxnSkipInput(input,option)
   
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   class(clm_rxn_base_type), pointer :: dummy_list

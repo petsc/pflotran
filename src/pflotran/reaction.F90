@@ -86,7 +86,7 @@ subroutine ReactionInit(reaction,input,option)
   implicit none
   
   type(reaction_type), pointer :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   reaction => ReactionCreate()
@@ -128,7 +128,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   implicit none
   
   type(reaction_type) :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -972,7 +972,7 @@ subroutine ReactionReadPass2(reaction,input,option)
   implicit none
 
   type(reaction_type) :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -1095,7 +1095,7 @@ subroutine ReactionReadRedoxSpecies(reaction,input,option)
   implicit none
   
   type(reaction_type) :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: name
@@ -3009,7 +3009,7 @@ subroutine ReactionReadOutput(reaction,input,option)
   implicit none
   
   type(reaction_type) :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string

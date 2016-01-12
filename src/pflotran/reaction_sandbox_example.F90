@@ -81,7 +81,7 @@ subroutine ExampleRead(this,input,option)
   implicit none
   
   class(reaction_sandbox_example_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   PetscInt :: i

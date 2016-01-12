@@ -113,7 +113,7 @@ subroutine PMTOilImsRead(this,input)
   implicit none
 
   class(pm_toil_ims_type) :: this  
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   character(len=MAXWORDLENGTH) :: keyword, word
   

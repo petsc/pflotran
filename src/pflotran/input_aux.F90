@@ -19,6 +19,7 @@ module Input_Aux_module
     character(len=MAXSTRINGLENGTH) :: err_buf2
     PetscBool :: broadcast_read
     PetscBool :: force_units ! force user to declare units on datasets
+    type(input_type), pointer :: parent
   end type input_type
 
   type :: input_dbase_type
@@ -110,7 +111,8 @@ module Input_Aux_module
             InputReadASCIIDbase, &
             InputKeywordUnrecognized, &
             InputCheckMandatoryUnits, &
-            InputDbaseDestroy
+            InputDbaseDestroy, &
+            InputPushExternalFile
 
 contains
 
@@ -146,6 +148,7 @@ function InputCreate(fid,filename,option)
   input%err_buf2 = ''
   input%broadcast_read = PETSC_FALSE
   input%force_units = PETSC_FALSE
+  nullify(input%parent)
   
   if (fid == MAX_IN_UNIT) then
     option%io_buffer = 'MAX_IN_UNIT in pflotran_constants.h must be increased to' // &
@@ -582,7 +585,7 @@ subroutine InputReadPflotranString(input, option)
 
   implicit none
 
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   PetscErrorCode :: ierr
@@ -621,7 +624,7 @@ subroutine InputReadPflotranStringSlave(input, option)
   
   implicit none
 
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) ::  tempstring
   character(len=MAXWORDLENGTH) :: word
@@ -640,14 +643,28 @@ subroutine InputReadPflotranStringSlave(input, option)
     read(input%fid,'(a512)',iostat=input%ierr) input%buf
     call StringAdjustl(input%buf)
 
-    if (InputError(input)) exit
+    if (InputError(input)) then
+      ! check to see if another file is on the stack
+      if (InputPopExternalFile(input)) then
+        cycle
+      else
+        exit
+      endif
+    endif
 
     if (input%buf(1:1) == '#' .or. input%buf(1:1) == '!') cycle
 
     tempstring = input%buf
     call InputReadWord(tempstring,word,PETSC_TRUE,input%ierr)
     call StringToUpper(word)
-    if (word(1:4) == 'SKIP') then
+    
+    if (word(1:13) == 'EXTERNAL_FILE') then
+      ! have to stip the card 'EXTERNAL_FILE' from the buffer
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      ! push a new input file to stack
+      call InputPushExternalFile(input,option)
+      cycle
+    else if (word(1:4) == 'SKIP') then
       skip_count = 1
       do 
         read(input%fid,'(a512)',iostat=input%ierr) tempstring
@@ -1052,7 +1069,7 @@ subroutine InputFindStringInFile1(input, option, string)
 
   implicit none
 
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
   
@@ -1076,7 +1093,7 @@ subroutine InputFindStringInFile2(input, option, string, print_warning)
 
   implicit none
 
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
   PetscBool :: print_warning
@@ -1140,7 +1157,7 @@ subroutine InputSkipToEND(input,option,string)
 
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=*) :: string
 
@@ -1924,6 +1941,61 @@ subroutine InputCheckMandatoryUnits(input,option)
   endif
   
 end subroutine InputCheckMandatoryUnits
+
+! ************************************************************************** !
+
+subroutine InputPushExternalFile(input,option)
+  ! 
+  ! Looks up double precision value in database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  type(input_type), pointer :: input
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+  type(input_type), pointer :: input_child
+  
+  call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
+  call InputErrorMsg(input,option,'filename','EXTERNAL_FILE')
+  input_child => InputCreate(input%fid+1,string,option) 
+  input_child%parent => input
+  input => input_child
+
+end subroutine InputPushExternalFile
+
+! ************************************************************************** !
+
+function InputPopExternalFile(input)
+  ! 
+  ! Looks up double precision value in database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  
+  implicit none
+  
+  type(input_type), pointer :: input
+
+  PetscBool :: InputPopExternalFile
+  type(input_type), pointer :: input_parent
+  
+  InputPopExternalFile = PETSC_FALSE
+  if (associated(input%parent)) then
+    input_parent => input%parent
+    call InputDestroy(input)
+    input => input_parent
+    nullify(input_parent)
+    InputPopExternalFile = PETSC_TRUE
+  endif
+
+end function InputPopExternalFile
 
 ! ************************************************************************** !
 

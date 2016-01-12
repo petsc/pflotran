@@ -1,0 +1,29 @@
+CHEMISTRY
+  PRIMARY_SPECIES
+    H+
+    HCO3-
+    Ca++
+  /
+  SECONDARY_SPECIES
+    OH-
+    CO3--
+    CO2(aq)
+    CaCO3(aq)
+    CaHCO3+
+    CaOH+
+  /
+  GAS_SPECIES
+    CO2(g)
+  /
+  MINERALS
+    Calcite
+  /
+  MINERAL_KINETICS
+    Calcite
+      RATE_CONSTANT 1.d-6
+    /
+  /
+  DATABASE ../../../database/hanford.dat
+  LOG_FORMULATION
+#  OPERATOR_SPLITTING
+  ACTIVITY_COEFFICIENTS TIMESTEP

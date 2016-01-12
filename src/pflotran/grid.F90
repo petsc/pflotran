@@ -218,8 +218,8 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
         UGridPolyhedraComputeInternConnect(grid%unstructured_grid, &
                                            grid%x, grid%y, grid%z, &
                                            option)
-      call UGridPolyhedraComputeOutputInfo(grid%unstructured_grid, grid%nL2G, grid%nG2L, &
-                                            grid%nG2A, option)
+      call UGridPolyhedraComputeOutputInfo(grid%unstructured_grid, grid%nL2G, &
+                                           grid%nG2L, grid%nG2A, option)
   end select
   
   allocate(grid%internal_connection_set_list)
@@ -324,7 +324,7 @@ end subroutine GridMapIndices
 
 ! ************************************************************************** !
 
-subroutine GridComputeSpacing(grid,option)
+subroutine GridComputeSpacing(grid,origin_global,option)
   ! 
   ! Computes grid spacing (only for structured grid
   ! 
@@ -337,11 +337,12 @@ subroutine GridComputeSpacing(grid,option)
   implicit none
   
   type(grid_type) :: grid
+  PetscReal :: origin_global(3)
   type(option_type) :: option
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
-      call StructGridComputeSpacing(grid%structured_grid,option)
+      call StructGridComputeSpacing(grid%structured_grid,origin_global,option)
     case(IMPLICIT_UNSTRUCTURED_GRID)
   end select
   
@@ -542,7 +543,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
   PetscReal, parameter :: pert = 1.d-8, tol = 1.d-20
   PetscReal :: x_shift, y_shift, z_shift
   PetscReal :: del_x, del_y, del_z
-  PetscInt :: iflag
+  PetscInt :: iflag, global_cell_count
   PetscBool :: same_point
   PetscErrorCode :: ierr
   
@@ -554,6 +555,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
     select case(region%def_type)
       case (DEFINED_BY_BLOCK)
         call GridLocalizeRegionFromBlock(grid,region,option)
+      case (DEFINED_BY_CARTESIAN_BOUNDARY)
+        call GridLocalizeRegionFromCartBound(grid,region,option)
       case (DEFINED_BY_COORD)
         call GridLocalizeRegionFromCoordinates(grid,region,option)
       case (DEFINED_BY_CELL_IDS)
@@ -618,6 +621,16 @@ subroutine GridLocalizeRegions(grid,region_list,option)
       deallocate(region%faces)
       nullify(region%faces)
     endif
+
+    ! check to ensure that there is at least one grid cell in each region
+    call MPI_Allreduce(region%num_cells,global_cell_count,ONE_INTEGER_MPI, &
+                       MPI_INTEGER, MPI_SUM, option%mycomm,ierr)
+    if (global_cell_count == 0) then
+      option%io_buffer = 'No cells assigned to REGION "' // &
+        trim(region%name) // '".'
+      call printErrMsg(option)
+    endif
+
     region => region%next
 
   enddo
@@ -1628,6 +1641,70 @@ subroutine GridLocalizeRegionFromBlock(grid,region,option)
   endif
 
 end subroutine GridLocalizeRegionFromBlock
+
+! ************************************************************************** !
+
+subroutine GridLocalizeRegionFromCartBound(grid,region,option)
+  ! 
+  ! This routine resticts regions to cells local to processor when the region
+  ! was defined using a BLOCK from inputfile.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/04/12
+  ! 
+
+  use Option_module
+  use Region_module
+
+  implicit none
+  
+  type(region_type), pointer :: region
+  type(grid_type), pointer   :: grid
+  type(option_type)          :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt, allocatable :: temp_int_array(:)
+  PetscInt :: i, j, k, count, local_count, ghosted_id, local_id
+  PetscInt :: i_min, i_max, j_min, j_max, k_min, k_max
+  PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
+  PetscReal, parameter :: pert = 1.d-8, tol = 1.d-20
+  PetscReal :: x_shift, y_shift, z_shift
+  PetscReal :: del_x, del_y, del_z
+  PetscInt :: iflag
+  PetscBool :: same_point
+  PetscErrorCode :: ierr
+
+  if (grid%itype /= STRUCTURED_GRID) then
+    option%io_buffer='Region definition using CARTESIAN_BOUNDARY is ' // &
+      'only supported for structured grids.'
+    call printErrMsg(option)
+  endif
+
+  region%i1 = 1
+  region%i2 = grid%structured_grid%nx
+  region%j1 = 1
+  region%j2 = grid%structured_grid%ny
+  region%k1 = 1
+  region%k2 = grid%structured_grid%nz
+  
+  select case(region%iface)
+    case(WEST_FACE)
+      region%i2 = region%i1
+    case(EAST_FACE)
+      region%i1 = region%i2
+    case(SOUTH_FACE)
+      region%j2 = region%j1
+    case(NORTH_FACE)
+      region%j1 = region%j2
+    case(BOTTOM_FACE)
+      region%k2 = region%k1
+    case(TOP_FACE)
+      region%k1 = region%k2
+  end select
+
+  call GridLocalizeRegionFromBlock(grid,region,option)
+
+end subroutine GridLocalizeRegionFromCartBound
 
 ! ************************************************************************** !
 

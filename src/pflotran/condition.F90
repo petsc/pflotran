@@ -636,7 +636,7 @@ subroutine FlowConditionRead(condition,input,option)
   implicit none
   
   type(flow_condition_type) :: condition
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -1408,7 +1408,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   implicit none
   
   type(flow_condition_type) :: condition
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -1855,7 +1855,7 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   implicit none
   
   type(flow_condition_type) :: condition
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -2323,7 +2323,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   type(tran_condition_type) :: condition
   type(tran_constraint_list_type) :: constraint_list
   type(reaction_type) :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   type(tran_constraint_type), pointer :: constraint
@@ -2512,7 +2512,7 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units)
 
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: keyword
   class(dataset_base_type), pointer :: dataset_base
@@ -2582,7 +2582,7 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units)
       endif
 
       if (index(filename,'.h5') > 0) then
-        write(option%io_buffer,'("Reading of ASCII datasets for flow ", &
+        write(option%io_buffer,'("Reading of HDF5 datasets for flow ", &
                                  &"conditions not currently supported.")')
         call printErrMsg(option)
 #if 0      
