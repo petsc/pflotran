@@ -148,7 +148,7 @@ subroutine DatasetAsciiLoad(this,input,option)
   implicit none
   
   class(dataset_ascii_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: time_units

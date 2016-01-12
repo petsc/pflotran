@@ -320,7 +320,7 @@ subroutine SurfSubsurfaceReadFlowPM(input, option, pm)
 
   implicit none
 
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type), pointer :: option
   class(pm_base_type), pointer :: pm
 

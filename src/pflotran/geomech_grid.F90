@@ -1084,7 +1084,7 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
   
   type(geomech_grid_type)           :: grid
   type(option_type)                 :: option
-  type(input_type)                  :: input
+  type(input_type), pointer         :: input
   
   PetscBool                         :: continuation_flag
   character(len=MAXWORDLENGTH)      :: word

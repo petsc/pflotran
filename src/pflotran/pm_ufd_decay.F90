@@ -135,7 +135,7 @@ subroutine PMUFDDecayRead(this,input)
   implicit none
   
   class(pm_ufd_decay_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word

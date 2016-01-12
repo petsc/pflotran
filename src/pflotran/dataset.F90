@@ -44,7 +44,7 @@ subroutine DatasetRead(input,dataset,option)
   
   implicit none
 
-  type(input_type) :: input
+  type(input_type), pointer :: input
   class(dataset_base_type), pointer :: dataset
   class(dataset_map_hdf5_type), pointer :: dataset_map_hdf5
   class(dataset_global_hdf5_type), pointer :: dataset_global_hdf5

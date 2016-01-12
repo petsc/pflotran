@@ -459,7 +459,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       ! two phase or everything blows up:
       if (gen_auxvar%pres(gid) <= 0.d0) then
         write(option%io_buffer,'(''Negative gas pressure at cell '', &
-          & i5,'' in GeneralAuxVarCompute(LIQUID_STATE).  Attempting bailout.'')') &
+          & i8,'' in GeneralAuxVarCompute(LIQUID_STATE).  Attempting bailout.'')') &
           natural_id
 !        call printErrMsgByRank(option)
         call printMsgByRank(option)
@@ -815,15 +815,15 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                                  'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
-          write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i5)') &
+          write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i8)') &
             natural_id
         else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
-            '(''Liquid -> 2 Phase at Cell (due to perturbation) '',i5)') &
+            '(''Liquid -> 2 Phase at Cell (due to perturbation) '',i8)') &
             natural_id
         else
           write(state_change_string,'(''Liquid -> 2 Phase at Boundary Face '', &
-                                    & i5)') natural_id
+                                    & i8)') natural_id
         endif
 !#endif      
         global_auxvar%istate = TWO_PHASE_STATE
@@ -867,15 +867,15 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                                  'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
-          write(state_change_string,'(''Gas -> 2 Phase at Cell '',i5)') &
+          write(state_change_string,'(''Gas -> 2 Phase at Cell '',i8)') &
             natural_id
         else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
-            '(''Gas -> 2 Phase at Cell (due to perturbation) '',i5)') &
+            '(''Gas -> 2 Phase at Cell (due to perturbation) '',i8)') &
             natural_id
         else
           write(state_change_string,'(''Gas -> 2 Phase at Boundary Face '', &
-                                    & i5)') natural_id
+                                    & i8)') natural_id
         endif
 !#endif      
         global_auxvar%istate = TWO_PHASE_STATE
@@ -900,15 +900,15 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                                  'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
-          write(state_change_string,'(''2 Phase -> Liquid at Cell '',i5)') &
+          write(state_change_string,'(''2 Phase -> Liquid at Cell '',i8)') &
             natural_id
         else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
-            '(''2 Phase -> Liquid at Cell (due to perturbation) '',i5)') &
+            '(''2 Phase -> Liquid at Cell (due to perturbation) '',i8)') &
             natural_id        
         else
           write(state_change_string,'(''2 Phase -> Liquid at Boundary Face '', &
-                                    & i5)') natural_id
+                                    & i8)') natural_id
         endif
 !#endif      
         two_phase_epsilon = epsilon
@@ -943,15 +943,15 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
                                  'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
-          write(state_change_string,'(''2 Phase -> Gas at Cell '',i5)') &
+          write(state_change_string,'(''2 Phase -> Gas at Cell '',i8)') &
             natural_id
         else if (option%iflag == GENERAL_UPDATE_FOR_DERIVATIVE) then
           write(state_change_string, &
-            '(''2 Phase -> Gas at Cell (due to perturbation) '',i5)') &
+            '(''2 Phase -> Gas at Cell (due to perturbation) '',i8)') &
             natural_id       
         else
           write(state_change_string,'(''2 Phase -> Gas at Boundary Face '', &
-                                    & i5)') natural_id
+                                    & i8)') natural_id
         endif
 !#endif      
         two_phase_epsilon = epsilon !

@@ -54,7 +54,7 @@ module Reaction_Sandbox_Base_class
       implicit none
   
       class(reaction_sandbox_base_type) :: this
-      type(input_type) :: input
+      type(input_type), pointer :: input
       type(option_type) :: option
   
     end subroutine Base_Read 
@@ -69,7 +69,7 @@ module Reaction_Sandbox_Base_class
       implicit none
   
       class(reaction_sandbox_base_type) :: this
-      type(input_type) :: input
+      type(input_type), pointer :: input
       type(option_type) :: option
   
     end subroutine Base_SkipBlock 
@@ -141,7 +141,7 @@ contains
     implicit none
   
     class(reaction_sandbox_base_type) :: this
-    type(input_type) :: input
+    type(input_type), pointer :: input
     type(option_type) :: option
   
   end subroutine Base_Read
@@ -156,7 +156,7 @@ contains
     implicit none
   
     class(reaction_sandbox_base_type) :: this
-    type(input_type) :: input
+    type(input_type), pointer :: input
     type(option_type) :: option
   
   end subroutine Base_SkipBlock   

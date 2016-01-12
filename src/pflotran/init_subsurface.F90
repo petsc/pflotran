@@ -1331,7 +1331,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   class(dataset_base_type), pointer :: dataset
   class(data_mediator_dataset_type), pointer :: flow_data_mediator
   class(data_mediator_dataset_type), pointer :: rt_data_mediator
-  type(input_type), pointer :: input
+  type(input_type), pointer :: input, input_parent
   
   PetscReal :: dt_init
   PetscReal :: dt_min

@@ -1,0 +1,308 @@
+#Description: 3D test problem for testing chemical reactions
+#             based on chemistry from Hammond and Lichtner, WRR, 2010
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 4
+END
+
+#=========================== flow mode ========================================
+#=========================== solver options ===================================
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 9 9 9
+  BOUNDS
+    0.d0 0.d0 0.d0
+    5.d0 5.d0 5.d0
+  /
+END
+
+#=========================== fluid properties =================================
+#=========================== datasets =========================================
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.20d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-13
+  /
+END
+
+MATERIAL_PROPERTY soil2
+  ID 2
+  POROSITY 0.21d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-11
+    PERM_Y 1.d-11
+    PERM_Z 1.d-12
+  /
+END
+
+MATERIAL_PROPERTY soil3
+  ID 3
+  POROSITY 0.22d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-10
+    PERM_Y 1.d-10
+    PERM_Z 1.d-11
+  /
+END
+
+MATERIAL_PROPERTY soil4
+  ID 4
+  POROSITY 0.23d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-9
+    PERM_Y 1.d-9
+    PERM_Z 1.d-10
+  /
+END
+
+MATERIAL_PROPERTY soil5
+  ID 5
+  POROSITY 0.24d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-13
+  /
+END
+
+MATERIAL_PROPERTY soil6
+  ID 6
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-11
+    PERM_Y 1.d-11
+    PERM_Z 1.d-12
+  /
+END
+
+MATERIAL_PROPERTY soil7
+  ID 7
+  POROSITY 0.26d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-9
+    PERM_Y 1.d-9
+    PERM_Z 1.d-10
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES sf1
+  DEFAULT
+END
+
+#=========================== output options ===================================
+OUTPUT
+#  TIMES d 0.001 0.01 0.1 1. 10.
+#  PERIODIC TIME 1 d
+  TIME_UNITS y
+  VARIABLES
+    POROSITY
+    PERMEABILITY
+    LIQUID_PRESSURE
+    MATERIAL_ID
+  /
+#  FORMAT TECPLOT BLOCK
+  VELOCITY_AT_CENTER
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 1.d0 d
+  INITIAL_TIMESTEP_SIZE 1.d-6 d
+  MAXIMUM_TIMESTEP_SIZE 10.d0 d
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    -1.d20 -1.d20 -1.d20
+    1.d20 1.d20 1.d20
+  /
+END
+
+REGION west
+  CARTESIAN_BOUNDARY WEST
+END
+
+REGION east
+  CARTESIAN_BOUNDARY EAST
+END
+
+REGION south
+  CARTESIAN_BOUNDARY SOUTH
+END
+
+REGION north
+  CARTESIAN_BOUNDARY NORTH
+END
+
+REGION bottom
+  CARTESIAN_BOUNDARY BOTTOM
+END
+
+REGION top
+  CARTESIAN_BOUNDARY TOP
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 6.d0
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION west
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 6.1d0
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION east
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 6.2d0
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION south
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 6.3d0
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION north
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 6.4d0
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION bottom
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 6.5d0
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION top
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 6.6d0
+  PRESSURE 101325 ! Pa
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION west
+  FLOW_CONDITION west
+  REGION west
+END
+
+BOUNDARY_CONDITION east
+  FLOW_CONDITION east
+  REGION east
+END
+
+BOUNDARY_CONDITION south
+  FLOW_CONDITION south
+  REGION south
+END
+
+BOUNDARY_CONDITION north
+  FLOW_CONDITION north
+  REGION north
+END
+
+BOUNDARY_CONDITION bottom
+  FLOW_CONDITION bottom
+  REGION bottom
+END
+
+BOUNDARY_CONDITION top
+  FLOW_CONDITION top
+  REGION top
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil1
+  REGION all
+END
+
+STRATA
+  MATERIAL soil2
+  REGION west
+END
+
+STRATA
+  MATERIAL soil3
+  REGION east
+END
+
+STRATA
+  MATERIAL soil4
+  REGION south
+END
+
+STRATA
+  MATERIAL soil5
+  REGION north
+END
+
+STRATA
+  MATERIAL soil6
+  REGION bottom
+END
+
+STRATA
+  MATERIAL soil7
+  REGION top
+END
+
+END_SUBSURFACE

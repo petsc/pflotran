@@ -90,7 +90,7 @@ subroutine DownregRead(this,input,option)
   implicit none
   
   class(srcsink_sandbox_downreg_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   class(dataset_ascii_type), pointer :: dataset_ascii
 

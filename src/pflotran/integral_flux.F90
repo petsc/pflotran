@@ -90,7 +90,7 @@ subroutine IntegralFluxRead(integral_flux,input,option)
   implicit none
   
   type(integral_flux_type) :: integral_flux
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword

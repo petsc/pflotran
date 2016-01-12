@@ -119,7 +119,7 @@ subroutine PMGeneralRead(this,input)
 
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   character(len=MAXWORDLENGTH) :: keyword, word
   class(pm_general_type) :: this

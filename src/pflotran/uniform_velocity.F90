@@ -85,7 +85,7 @@ subroutine UniformVelocityDatasetRead(dataset,input,option)
   implicit none
   
   type(uniform_velocity_dataset_type) :: dataset
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string

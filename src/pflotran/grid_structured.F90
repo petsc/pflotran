@@ -52,7 +52,7 @@ module Grid_Structured_module
     PetscInt :: nlmax_faces  ! Total number of non-ghosted faces in local domain.
     PetscInt :: ngmax_faces  ! Number of ghosted & non-ghosted faces in local domain.
 
-    PetscReal :: origin(3) ! local origin of non-ghosted grid
+    PetscReal :: local_origin(3) ! local origin of non-ghosted grid
     PetscReal :: bounds(3,2)
 
     ! grid spacing for each direction for global domain
@@ -181,7 +181,7 @@ function StructGridCreate()
   
   nullify(structured_grid%cell_neighbors)
  
-  structured_grid%origin = -1.d20
+  structured_grid%local_origin = -1.d20
   structured_grid%bounds = -1.d20
   
   structured_grid%invert_z_axis = PETSC_FALSE
@@ -343,7 +343,7 @@ subroutine StructGridReadDXYZ(structured_grid,input,option)
   implicit none
   
   type(structured_grid_type) :: structured_grid
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: word
   
@@ -395,7 +395,7 @@ subroutine StructGridReadArray(a,n,input,option)
   implicit none
   
   type(option_type) :: option
-  type(input_type) :: input
+  type(input_type), pointer :: input
   PetscInt :: fid
   PetscInt :: n
   PetscInt :: i, i1, i2, m
@@ -460,7 +460,7 @@ subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
   implicit none
   
   type(option_type) :: option
-  type(input_type) :: input
+  type(input_type), pointer :: input
   character(len=MAXWORDLENGTH) :: axis
   PetscInt :: array_size
   PetscReal :: array(array_size)
@@ -543,7 +543,7 @@ end subroutine StructGridReadArrayNew
 
 ! ************************************************************************** !
 
-subroutine StructGridComputeSpacing(structured_grid,option)
+subroutine StructGridComputeSpacing(structured_grid,origin_global,option)
   ! 
   ! Computes structured grid spacing
   ! 
@@ -556,9 +556,11 @@ subroutine StructGridComputeSpacing(structured_grid,option)
   implicit none
   
   type(structured_grid_type) :: structured_grid
+  PetscReal :: origin_global(3)
   type(option_type) :: option
   
   PetscInt :: i, j, k, ghosted_id
+  PetscReal :: tempreal
   PetscErrorCode :: ierr
 
   allocate(structured_grid%dxg_local(structured_grid%ngx))
@@ -570,8 +572,10 @@ subroutine StructGridComputeSpacing(structured_grid,option)
   
   if (.not.associated(structured_grid%dx_global)) then
     ! indicates that the grid spacings still need to be computed
-    if (structured_grid%bounds(1,1) < -1.d19) then ! bounds have not been initialized
-      call printErrMsg(option,'Bounds have not been set for grid and DXYZ does not exist')
+    if (structured_grid%bounds(1,1) < -1.d19) then 
+      option%io_buffer = 'Bounds have not been set for grid and DXYZ ' // & 
+        'does not exist'
+      call printErrMsg(option)
     endif
     allocate(structured_grid%dx_global(structured_grid%nx))
     allocate(structured_grid%dy_global(structured_grid%ny))
@@ -579,32 +583,82 @@ subroutine StructGridComputeSpacing(structured_grid,option)
       
     select case(structured_grid%itype)
       case(CARTESIAN_GRID)
-        structured_grid%dx_global = (structured_grid%bounds(X_DIRECTION,UPPER)- &
-                                      structured_grid%bounds(X_DIRECTION,LOWER)) / &
-                                      dble(structured_grid%nx)
-        structured_grid%dy_global = (structured_grid%bounds(Y_DIRECTION,UPPER)- &
-                                      structured_grid%bounds(Y_DIRECTION,LOWER)) / &
-                                      dble(structured_grid%ny)
-        structured_grid%dz_global = (structured_grid%bounds(Z_DIRECTION,UPPER)- &
-                                      structured_grid%bounds(Z_DIRECTION,LOWER)) / &
-                                      dble(structured_grid%nz)
+        structured_grid%dx_global = &
+          (structured_grid%bounds(X_DIRECTION,UPPER)- &
+           structured_grid%bounds(X_DIRECTION,LOWER)) / &
+          dble(structured_grid%nx)
+        structured_grid%dy_global = &
+          (structured_grid%bounds(Y_DIRECTION,UPPER)- &
+           structured_grid%bounds(Y_DIRECTION,LOWER)) / &
+          dble(structured_grid%ny)
+        structured_grid%dz_global = &
+          (structured_grid%bounds(Z_DIRECTION,UPPER)- &
+           structured_grid%bounds(Z_DIRECTION,LOWER)) / &
+          dble(structured_grid%nz)
       case(CYLINDRICAL_GRID)
-        structured_grid%dx_global = (structured_grid%bounds(X_DIRECTION,UPPER)- &
-                                      structured_grid%bounds(X_DIRECTION,LOWER)) / &
-                                      dble(structured_grid%nx)
+        structured_grid%dx_global = &
+          (structured_grid%bounds(X_DIRECTION,UPPER)- &
+           structured_grid%bounds(X_DIRECTION,LOWER)) / &
+          dble(structured_grid%nx)
         structured_grid%dy_global = 1.d0
-        structured_grid%dz_global = (structured_grid%bounds(Z_DIRECTION,UPPER)- &
-                                      structured_grid%bounds(Z_DIRECTION,LOWER)) / &
-                                      dble(structured_grid%nz)
+        structured_grid%dz_global = &
+          (structured_grid%bounds(Z_DIRECTION,UPPER)- &
+           structured_grid%bounds(Z_DIRECTION,LOWER)) / &
+          dble(structured_grid%nz)
       case(SPHERICAL_GRID)
-        structured_grid%dx_global = (structured_grid%bounds(X_DIRECTION,UPPER)- &
-                                      structured_grid%bounds(X_DIRECTION,LOWER)) / &
-                                      dble(structured_grid%nx)
+        structured_grid%dx_global = &
+          (structured_grid%bounds(X_DIRECTION,UPPER)- &
+           structured_grid%bounds(X_DIRECTION,LOWER)) / &
+          dble(structured_grid%nx)
         structured_grid%dy_global = 1.d0
         structured_grid%dz_global = 1.d0
     end select
-      
+  else
+    ! x-direction
+    if (structured_grid%itype == CARTESIAN_GRID .or. &
+        structured_grid%itype == CYLINDRICAL_GRID .or. &
+        structured_grid%itype == SPHERICAL_GRID) then
+      tempreal = origin_global(X_DIRECTION)
+      structured_grid%bounds(X_DIRECTION,LOWER) = tempreal
+      do i = 1, structured_grid%nx
+        tempreal = tempreal + structured_grid%dx_global(i)
+      enddo
+      structured_grid%bounds(X_DIRECTION,UPPER) = tempreal
+    endif
+    ! y-direction
+    if (structured_grid%itype == CARTESIAN_GRID) then
+      tempreal = origin_global(Y_DIRECTION)
+      structured_grid%bounds(Y_DIRECTION,LOWER) = tempreal
+      do j = 1, structured_grid%ny
+        tempreal = tempreal + structured_grid%dy_global(j)
+      enddo
+      structured_grid%bounds(Y_DIRECTION,UPPER) = tempreal
+    else
+      structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+      structured_grid%bounds(Y_DIRECTION,UPPER) = 1.d0
+    endif
+    ! z-direction    
+    if (structured_grid%itype == CARTESIAN_GRID .or. &
+        structured_grid%itype == CYLINDRICAL_GRID) then
+      tempreal = origin_global(Z_DIRECTION)
+      structured_grid%bounds(Z_DIRECTION,LOWER) = tempreal
+      do k = 1, structured_grid%nz
+        tempreal = tempreal + structured_grid%dz_global(k)
+      enddo
+      structured_grid%bounds(Z_DIRECTION,UPPER) = tempreal
+    else
+      structured_grid%bounds(Y_DIRECTION,LOWER) = 0.d0
+      structured_grid%bounds(Z_DIRECTION,UPPER) = 1.d0
+    endif
   endif
+
+  option%io_buffer = 'Domain Bounds (x y z):'
+  call printMsg(option)
+  write(option%io_buffer,'(2x,3es18.10)') structured_grid%bounds(:,LOWER)
+  call printMsg(option)
+  write(option%io_buffer,'(2x,3es18.10)') structured_grid%bounds(:,UPPER)
+  call printMsg(option)
+
   structured_grid%dxg_local(1:structured_grid%ngx) = &
     structured_grid%dx_global(structured_grid%gxs+1:structured_grid%gxe)
   structured_grid%dyg_local(1:structured_grid%ngy) = &
@@ -674,9 +728,9 @@ implicit none
   enddo
    
   ! set min and max bounds of domain in coordinate directions
-  structured_grid%origin(X_DIRECTION) = x_min
-  structured_grid%origin(Y_DIRECTION) = y_min
-  structured_grid%origin(Z_DIRECTION) = z_min
+  structured_grid%local_origin(X_DIRECTION) = x_min
+  structured_grid%local_origin(Y_DIRECTION) = y_min
+  structured_grid%local_origin(Z_DIRECTION) = z_min
   x_max = x_min
   y_max = y_min
   z_max = z_min
@@ -694,21 +748,27 @@ implicit none
 ! fill in grid cell coordinates
   ghosted_id = 0
   if (structured_grid%kstart > 0) then
-    z = -0.5d0*structured_grid%dzg_local(1)+structured_grid%origin(Z_DIRECTION)
+    z = structured_grid%local_origin(Z_DIRECTION) - &
+        0.5d0*structured_grid%dzg_local(1)
   else
-    z = 0.5d0*structured_grid%dzg_local(1)+structured_grid%origin(Z_DIRECTION)
+    z = structured_grid%local_origin(Z_DIRECTION) + &
+        0.5d0*structured_grid%dzg_local(1)
   endif
   do k=1, structured_grid%ngz
     if (structured_grid%jstart > 0) then
-      y = -0.5d0*structured_grid%dyg_local(1)+structured_grid%origin(Y_DIRECTION)
+      y = structured_grid%local_origin(Y_DIRECTION) - &
+          0.5d0*structured_grid%dyg_local(1)
     else
-      y = 0.5d0*structured_grid%dyg_local(1)+structured_grid%origin(Y_DIRECTION)
+      y = structured_grid%local_origin(Y_DIRECTION) + &
+          0.5d0*structured_grid%dyg_local(1)
     endif
     do j=1, structured_grid%ngy
       if (structured_grid%istart > 0) then
-        x = -0.5d0*structured_grid%dxg_local(1)+structured_grid%origin(X_DIRECTION)
+        x = structured_grid%local_origin(X_DIRECTION) - &
+            0.5d0*structured_grid%dxg_local(1)
       else
-        x = 0.5d0*structured_grid%dxg_local(1)+structured_grid%origin(X_DIRECTION)
+        x = structured_grid%local_origin(X_DIRECTION) + &
+            0.5d0*structured_grid%dxg_local(1)
       endif
       do i=1, structured_grid%ngx
         ghosted_id = ghosted_id + 1
@@ -716,13 +776,16 @@ implicit none
         grid_y(ghosted_id) = y
         grid_z(ghosted_id) = z
         if (i < structured_grid%ngx) &
-          x = x + 0.5d0*(structured_grid%dxg_local(i)+structured_grid%dxg_local(i+1))
+          x = x + &
+             0.5d0*(structured_grid%dxg_local(i)+structured_grid%dxg_local(i+1))
       enddo
       if (j < structured_grid%ngy) &
-        y = y + 0.5d0*(structured_grid%dyg_local(j)+structured_grid%dyg_local(j+1))
+        y = y + &
+            0.5d0*(structured_grid%dyg_local(j)+structured_grid%dyg_local(j+1))
     enddo
     if (k < structured_grid%ngz) &
-      z = z + 0.5d0*(structured_grid%dzg_local(k)+structured_grid%dzg_local(k+1))
+      z = z + &
+          0.5d0*(structured_grid%dzg_local(k)+structured_grid%dzg_local(k+1))
   enddo
     
 end subroutine StructGridComputeCoord
@@ -755,7 +818,7 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
   j = -1
   k = -1
 
-  x_upper_face = structured_grid%origin(X_DIRECTION)
+  x_upper_face = structured_grid%local_origin(X_DIRECTION)
   i_local = 1
   do i_ghosted=structured_grid%istart,structured_grid%iend
     if (x >= x_upper_face .and. &                   ! since i_ghosted is zero-based
@@ -774,7 +837,7 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
     i_local = i_local + 1
     x_upper_face = x_upper_face + structured_grid%dxg_local(i_ghosted+1)
   enddo
-  y_upper_face = structured_grid%origin(Y_DIRECTION)
+  y_upper_face = structured_grid%local_origin(Y_DIRECTION)
   j_local = 1
   do j_ghosted=structured_grid%jstart,structured_grid%jend
     if (y >= y_upper_face .and. &
@@ -793,7 +856,7 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
     j_local = j_local + 1
     y_upper_face = y_upper_face + structured_grid%dyg_local(j_ghosted+1)
   enddo
-  z_upper_face = structured_grid%origin(Z_DIRECTION)
+  z_upper_face = structured_grid%local_origin(Z_DIRECTION)
   k_local = 1
   do k_ghosted=structured_grid%kstart,structured_grid%kend
     if (z >= z_upper_face .and. &

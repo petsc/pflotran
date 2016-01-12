@@ -96,7 +96,7 @@ subroutine PMBaseRead(this,input)
   use Input_Aux_module
   implicit none
   class(pm_base_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   print *, 'Must extend PMBaseRead.'
   stop
 end subroutine PMBaseRead

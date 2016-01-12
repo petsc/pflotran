@@ -130,6 +130,7 @@ REGION south_boundary
   /
 /
 
+skip
 REGION top_boundary
   FACE TOP
   COORDINATES
@@ -137,6 +138,7 @@ REGION top_boundary
     50.0000 1.0000 30.0000
   /
 /
+noskip
 
 REGION bottom_boundary
   FACE BOTTOM

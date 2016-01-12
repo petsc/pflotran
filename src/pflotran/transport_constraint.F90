@@ -178,7 +178,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   
   type(tran_constraint_type) :: constraint
   type(reaction_type) :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string

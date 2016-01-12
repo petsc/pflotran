@@ -702,7 +702,7 @@ subroutine PMGlassRead(this,input)
   implicit none
   
   class(pm_waste_form_glass_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word, units
@@ -1276,7 +1276,7 @@ subroutine PMFMDMRead(this,input)
   implicit none
   
   class(pm_waste_form_fmdm_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word

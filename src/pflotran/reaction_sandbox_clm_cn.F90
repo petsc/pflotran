@@ -111,7 +111,7 @@ subroutine CLM_CN_Read(this,input,option)
   implicit none
   
   class(reaction_sandbox_clm_cn_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: word
