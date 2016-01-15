@@ -14,7 +14,7 @@ contains
 
 ! ************************************************************************** !
 
-function UnitsConvertToInternal(units,option)
+function UnitsConvertToInternal(units,unit_category,option)
   ! 
   ! UnitsConvert: Converts units to pflotran internal units
   ! 
@@ -26,7 +26,7 @@ function UnitsConvertToInternal(units,option)
 
   implicit none
   
-  character(len=MAXWORDLENGTH) :: units
+  character(len=MAXWORDLENGTH) :: units, unit_category
   type(option_type) :: option
   
   PetscReal :: UnitsConvertToInternal
@@ -58,9 +58,9 @@ function UnitsConvertToInternal(units,option)
         endif
         word = adjustl(word)
         if (set_numerator) then
-          numerator = numerator * UnitsConvert(word,option)
+          numerator = numerator * UnitsConvert(word,unit_category,option)
         else
-          denominator = denominator * UnitsConvert(word,option)
+          denominator = denominator * UnitsConvert(word,unit_category,option)
         endif
         if (char == '/') then
           set_numerator = PETSC_FALSE
