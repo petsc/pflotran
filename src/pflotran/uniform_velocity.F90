@@ -90,6 +90,7 @@ subroutine UniformVelocityDatasetRead(dataset,input,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word, units
+  character(len=MAXWORDLENGTH), dimension(2) :: unit_category
   PetscReal :: units_conversion
 
   PetscErrorCode :: ierr
@@ -101,6 +102,8 @@ subroutine UniformVelocityDatasetRead(dataset,input,option)
   dataset%is_cyclic = PETSC_FALSE
   
   units = ''
+  unit_category(1) = 'not_assigned' ! numerator 
+  unit_category(2) = 'not_assigned' ! denominator
   
   ! read the velocity data set
   input%ierr = 0
@@ -141,10 +144,14 @@ subroutine UniformVelocityDatasetRead(dataset,input,option)
   enddo
 
   if (len_trim(units) > 1) then
-    units_conversion = UnitsConvertToInternal(units,option)
+    unit_category(1) = 'length'
+    unit_category(2) = 'time'
+    units_conversion = UnitsConvertToInternal(units,unit_category,option)
     dataset%values = dataset%values * units_conversion
-    word = units(index(units,'/')+1:)
-    units_conversion = UnitsConvertToInternal(word,option)
+    word = units(index(units,'/')+1:) ! pulling out denominator units (time)
+    unit_category(1) = 'time' 
+    unit_category(2) = 'not_assigned'
+    units_conversion = UnitsConvertToInternal(word,unit_category,option)
     dataset%times = dataset%times * units_conversion
   endif
   

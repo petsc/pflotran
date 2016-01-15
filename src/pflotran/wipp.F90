@@ -479,7 +479,7 @@ subroutine CreepClosureRead(this,input,option)
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: keyword, word
-  character(len=MAXWORDLENGTH) :: unit_category
+  character(len=MAXWORDLENGTH), dimension(2) :: unit_category
   character(len=MAXSTRINGLENGTH) :: error_string = 'CREEP_CLOSURE'
   type(input_type), pointer :: input2
   PetscInt :: temp_int
@@ -488,6 +488,10 @@ subroutine CreepClosureRead(this,input,option)
   time_units_conversion = 1.d0
   filename = ''
   input%ierr = 0
+  
+  unit_category(1) = 'not_assigned' ! numerator 
+  unit_category(2) = 'not_assigned' ! denominator
+
   do
   
     call InputReadPflotranString(input,option)
@@ -541,7 +545,7 @@ subroutine CreepClosureRead(this,input,option)
         call InputReadWord(input2,option,word,PETSC_TRUE) 
         call InputErrorMsg(input2,option,'UNITS','CONDITION')   
         call StringToLower(word)
-        unit_category = 'time'
+        unit_category(1) = 'time'
         time_units_conversion = UnitsConvertToInternal(word,unit_category,option)
       case('TIME')
         if (Uninitialized(this%num_times) .or. &

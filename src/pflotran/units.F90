@@ -26,7 +26,8 @@ function UnitsConvertToInternal(units,unit_category,option)
 
   implicit none
   
-  character(len=MAXWORDLENGTH) :: units, unit_category
+  character(len=MAXWORDLENGTH) :: units
+  character(len=MAXWORDLENGTH), dimension(2) :: unit_category
   type(option_type) :: option
   
   PetscReal :: UnitsConvertToInternal
@@ -58,9 +59,9 @@ function UnitsConvertToInternal(units,unit_category,option)
         endif
         word = adjustl(word)
         if (set_numerator) then
-          numerator = numerator * UnitsConvert(word,unit_category,option)
+          numerator = numerator * UnitsConvert(word,unit_category(1),option)
         else
-          denominator = denominator * UnitsConvert(word,unit_category,option)
+          denominator = denominator * UnitsConvert(word,unit_category(2),option)
         endif
         if (char == '/') then
           set_numerator = PETSC_FALSE
@@ -79,7 +80,8 @@ end function UnitsConvertToInternal
 
 ! ************************************************************************** !
 
-function UnitsConvertToExternal(units,option)
+! jmf: Must do a search on this to correctly assign unit_category pass
+function UnitsConvertToExternal(units,unit_category,option)
   ! 
   ! UnitsConvert: Converts units to pflotran internal units
   ! 
@@ -92,11 +94,12 @@ function UnitsConvertToExternal(units,option)
   implicit none
   
   character(len=MAXWORDLENGTH) :: units
+  character(len=MAXWORDLENGTH), dimension(2) :: unit_category
   type(option_type) :: option
   
   PetscReal :: UnitsConvertToExternal
   
-  UnitsConvertToExternal = 1.d0/UnitsConvertToInternal(units,option)
+  UnitsConvertToExternal = 1.d0/UnitsConvertToInternal(units,unit_category,option)
 
 end function UnitsConvertToExternal
 
@@ -114,7 +117,8 @@ function UnitsConvert(unit,unit_category,option)
   
   implicit none
   
-  character(len=MAXWORDLENGTH) :: unit, unit_category
+  character(len=MAXWORDLENGTH) :: unit
+  character(len=MAXWORDLENGTH) :: unit_category
   type(option_type) :: option
   
   PetscReal :: UnitsConvert
@@ -261,6 +265,10 @@ function UnitsConvert(unit,unit_category,option)
                               Recognized units include: ? only.'
           call printErrMsg(option)
       end select
+    ! no unit category has been assigned during pass
+    case('not_assigned')
+    ! jmf: not sure what to do here yet!
+    !
     ! cannot convert user-supplied units:
     case default
       option%io_buffer = 'Unit "' // trim(unit) // '" is not a recognized&
