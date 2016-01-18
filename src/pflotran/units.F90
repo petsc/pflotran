@@ -125,7 +125,7 @@ function UnitsConvert(unit,unit_category,option)
     
   select case(trim(unit_category))
     ! convert volumes to cubic meters (m^3)
-    case('volume')
+    case('volume','unknown')
       select case(trim(unit))
         case('cm^3')
           UnitsConvert = 1.d-6
@@ -140,7 +140,7 @@ function UnitsConvert(unit,unit_category,option)
           call printErrMsg(option)
       end select
     ! convert areas to square meters (m^2)
-    case('area') 
+    case('area','unknown') 
       select case(trim(unit))
         case('cm^2')
           UnitsConvert = 1.d-4
@@ -155,7 +155,7 @@ function UnitsConvert(unit,unit_category,option)
           call printErrMsg(option)
       end select
     ! convert lengths to meters (m)
-    case('length')
+    case('length','unknown')
       select case(trim(unit))
         case('km')
           UnitsConvert = 1000.d0
@@ -174,7 +174,7 @@ function UnitsConvert(unit,unit_category,option)
           call printErrMsg(option)
       end select
     ! convert times to seconds (s)
-    case('time')
+    case('time','unknown')
       select case(trim(unit))
         case('s','sec','second')
           UnitsConvert = 1.d0
@@ -199,7 +199,7 @@ function UnitsConvert(unit,unit_category,option)
           call printErrMsg(option)
       end select
     ! convert energy
-    case('energy')
+    case('energy','unknown')
       select case(time(unit))
         case('J')   
           UnitsConvert = 1.d-6
@@ -220,7 +220,7 @@ function UnitsConvert(unit,unit_category,option)
           call printErrMsg(option)
       end select
     ! convert mass to kilogram (kg)
-    case('mass')
+    case('mass','unknown')
       select case(trim(unit))
         case('mol','mole','moles')
           UnitsConvert = 1.d0
@@ -246,7 +246,7 @@ function UnitsConvert(unit,unit_category,option)
           call printErrMsg(option)
       end select
     ! convert volumetric flow rate to cubic meters per second (m^3/s)
-    case('flow_rate_volumetric')
+    case('flow_rate_volumetric','unknown')
       select case(trim(unit))
         case('gpm') !    l/gal     m^3/l   sec/min
           UnitsConvert = 3.785d0 * 1.d-3 / 60.d0
@@ -257,7 +257,7 @@ function UnitsConvert(unit,unit_category,option)
           call printErrMsg(option)
       end select
     ! convert mass flow rate to kilograms per second (kg/s)
-    case('flow_rate_mass')
+    case('flow_rate_mass','unknown')
       select case(trim(unit))
         case default
           option%io_buffer = 'Unit "' // trim(unit) // '" is not a&
@@ -267,7 +267,11 @@ function UnitsConvert(unit,unit_category,option)
       end select
     ! no unit category has been assigned during pass
     case('not_assigned')
-      ! jmf: not sure what to do here yet!
+      ! jmf: Not sure what to do here yet! It may be possible that 
+      !      'not_assigned' means units='1' (e.g. no units, unitless)
+      !      or the user forgot to assign units and it really should
+      !      have some kind of unit (in which case this error might be
+      !      caught with the 'unknown' category somehow???
       !
     ! cannot convert user-supplied units:
     case default
