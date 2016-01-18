@@ -267,8 +267,8 @@ function UnitsConvert(unit,unit_category,option)
       end select
     ! no unit category has been assigned during pass
     case('not_assigned')
-    ! jmf: not sure what to do here yet!
-    !
+      ! jmf: not sure what to do here yet!
+      !
     ! cannot convert user-supplied units:
     case default
       option%io_buffer = 'Unit "' // trim(unit) // '" is not a recognized&

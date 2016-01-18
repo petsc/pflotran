@@ -153,6 +153,7 @@ subroutine DatasetAsciiLoad(this,input,option)
 
   character(len=MAXWORDLENGTH) :: time_units
   character(len=MAXSTRINGLENGTH) :: string, data_units
+  character(len=MAXWORDLENGTH), dimension(2) :: unit_category
   character(len=MAXWORDLENGTH) :: word
   PetscReal, pointer :: temp_array(:,:)
   PetscReal :: temp_time
@@ -165,6 +166,8 @@ subroutine DatasetAsciiLoad(this,input,option)
   
   time_units = ''
   data_units = ''
+  unit_category(1) = 'not_assigned' ! numerator 
+  unit_category(2) = 'not_assigned' ! denominator
   max_size = 1000
 
   row_count = 0
@@ -264,7 +267,8 @@ subroutine DatasetAsciiLoad(this,input,option)
   
   ! time units conversion
   if (len_trim(time_units) > 0) then
-    conversion = UnitsConvertToInternal(time_units,option)
+    unit_category(1) = 'time'
+    conversion = UnitsConvertToInternal(time_units,unit_category,option)
     this%time_storage%times(:) = conversion * &
                                  this%time_storage%times(:)
   endif
@@ -285,7 +289,12 @@ subroutine DatasetAsciiLoad(this,input,option)
         call InputReadWord(data_units,word,PETSC_TRUE,ierr)
         input%ierr = ierr
         call InputErrorMsg(input,option,'DATA_UNITS','CONDITION FILE')
-        conversion = UnitsConvertToInternal(word,option)
+        ! jmf: The units here can be anything, so how do we specify a
+        !      unit category? For now, I will call it 'unknown' and have
+        !      it search the entire catalog in units.F90
+        unit_category(1) = 'unknown'
+        unit_category(2) = 'unknown'
+        conversion = UnitsConvertToInternal(word,unit_category,option)
       endif
       temp_array(i+1,:) = conversion * temp_array(i+1,:)
     enddo

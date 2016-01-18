@@ -228,7 +228,7 @@ subroutine StrataRead(strata,input,option)
         ! read units, if present
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
-          unit_category = 'time'
+          unit_category(1) = 'time'
           strata%final_time = strata%final_time * &
                               UnitsConvertToInternal(word,unit_category,option)
         endif
