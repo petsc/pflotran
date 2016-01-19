@@ -218,7 +218,7 @@ subroutine PMBaseThisTimeError(this,time,ierr)
   implicit none
   class(pm_base_type) :: this
   PetscReal :: time
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   print *, 'Must extend PMBaseThisTimeError.'
   stop
 end subroutine PMBaseThisTimeError

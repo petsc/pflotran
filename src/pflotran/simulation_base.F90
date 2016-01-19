@@ -238,9 +238,11 @@ subroutine ExecuteRun(this)
     cur_waypoint => cur_waypoint%next
   enddo
   if (this%option%checkpoint_flag) then
-    call this%process_model_coupler_list%CheckpointBinary(viewer,-1)
+    call this%process_model_coupler_list%CheckpointBinary(viewer, &
+                                                          NEG_ONE_INTEGER)
     if (this%option%checkpoint_format_hdf5) then
-      call this%process_model_coupler_list%CheckpointHDF5(chk_grp_id,-1)
+      call this%process_model_coupler_list%CheckpointHDF5(chk_grp_id, &
+                                                          NEG_ONE_INTEGER)
     endif
   endif
 

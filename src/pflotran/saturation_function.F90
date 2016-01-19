@@ -2650,7 +2650,7 @@ subroutine SaturationFunctionVerify(saturation_function,option)
     x(i) = sat
     y(i) = pc
     call SatFuncGetLiqRelPermFromSat(sat,krl(i),dummy_real, &
-                                     saturation_function,1, &
+                                     saturation_function,ONE_INTEGER, &
                                      PETSC_FALSE,option)
     call SatFuncGetGasRelPermFromSat(sat,krg(i),saturation_function,option)
   enddo  

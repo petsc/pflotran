@@ -4091,6 +4091,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
 
   type(sec_heat_type), pointer :: sec_heat_vars(:)
   character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: ithrm
 
   PetscViewer :: viewer
   Vec :: debug_vec
@@ -4140,11 +4141,11 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
       vol_frac_prim = sec_heat_vars(local_id)%epsilon
     endif
 
+    ithrm = int(ithrm_loc_p(ghosted_id))
     call THAccumDerivative(auxvars(ghosted_id),global_auxvars(ghosted_id), &
                             material_auxvars(ghosted_id), &
-                            TH_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                            TH_parameter, int(ithrm_loc_p(ghosted_id)), &
-                            option, &
+                            TH_parameter%dencpr(ithrm), &
+                            TH_parameter, ithrm, option, &
                             patch%saturation_function_array(icap)%ptr, &
                             vol_frac_prim,Jup) 
 
