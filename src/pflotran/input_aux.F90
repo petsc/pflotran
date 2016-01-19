@@ -1675,7 +1675,7 @@ subroutine InputReadASCIIDbase(filename,option)
   PetscReal :: tempreal
   PetscReal, allocatable :: values(:)
   
-  input => InputCreate(86,filename,option)
+  input => InputCreate(IUNIT_TEMP,filename,option)
   
   icount = 0
   num_reals_in_dataset = 0
@@ -1768,7 +1768,7 @@ subroutine InputParseDbaseForInt(buffer,value,found,ierr)
   character(len=MAXSTRINGLENGTH) :: buffer
   PetscInt :: value
   PetscBool :: found
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
   character(len=MAXSTRINGLENGTH) :: buffer_save
   character(len=MAXWORDLENGTH) :: word
@@ -1804,7 +1804,7 @@ subroutine InputParseDbaseForDouble(buffer,value,found,ierr)
   character(len=MAXSTRINGLENGTH) :: buffer
   PetscReal :: value
   PetscBool :: found
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
   character(len=MAXSTRINGLENGTH) :: buffer_save
   character(len=MAXWORDLENGTH) :: word
@@ -1839,7 +1839,7 @@ subroutine DbaseLookupInt(keyword,value,ierr)
   
   character(len=MAXWORDLENGTH) :: keyword
   PetscInt :: value
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
   ierr = 0
   
@@ -1867,7 +1867,7 @@ subroutine DbaseLookupDouble(keyword,value,ierr)
   
   character(len=MAXWORDLENGTH) :: keyword
   PetscReal :: value
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   
   PetscInt :: i
   PetscBool :: found

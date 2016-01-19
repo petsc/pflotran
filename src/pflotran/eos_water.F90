@@ -2070,7 +2070,7 @@ subroutine EOSWaterDensityIcePainter(T, P, den_ice, calculate_derivatives, &
   PetscReal, intent(out) :: den_ice
   PetscReal, intent(out) :: dden_ice_dT
   PetscReal, intent(out) :: dden_ice_dP
-  PetscInt, intent(out) :: ierr
+  PetscErrorCode, intent(out) :: ierr
 
   PetscReal, parameter :: P_ref = 1.d5
   PetscReal, parameter :: alpha = 3.3d-10
