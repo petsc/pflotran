@@ -632,7 +632,7 @@ end function DatasetGriddedHDF5GetNDimensions
 
 ! ************************************************************************** !
 
-subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,time,real_value,option)
+subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
   ! 
   ! Interpolates data from the dataset
   ! 
@@ -647,7 +647,6 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,time,real_value,optio
   
   class(dataset_gridded_hdf5_type) :: this
   PetscReal, intent(in) :: xx, yy, zz
-  PetscReal :: time
   PetscReal :: real_value
   type(option_type) :: option
   
@@ -670,6 +669,9 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,time,real_value,optio
   ! are transfored to the dimensions of the dataset
   select case(spatial_interpolation_method)
     case(INTERPOLATION_STEP)
+      option%io_buffer = 'STEP interpolation not yet supported in ' // &
+        'DatasetGriddedHDF5InterpolateReal()'
+      call printErrMsg(option)
     case(INTERPOLATION_LINEAR)
       select case(this%data_dim)
         case(DIM_X,DIM_Y,DIM_Z)

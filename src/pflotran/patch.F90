@@ -2447,8 +2447,7 @@ subroutine PatchUpdateCouplerFromDataset(coupler,option,grid,dataset,dof)
       y = y-dist(0)*dist(2)
       z = z-dist(0)*dist(3)
     endif
-    call DatasetGriddedHDF5InterpolateReal(dataset,x,y,z, &
-                                           0.d0,temp_real,option)
+    call DatasetGriddedHDF5InterpolateReal(dataset,x,y,z,temp_real,option)
     coupler%flow_aux_real_var(dof,iconn) = temp_real
   enddo
   
