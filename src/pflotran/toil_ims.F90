@@ -2013,8 +2013,9 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
   PetscReal :: qsrc_mol
   PetscReal :: den, den_kg, enthalpy, internal_energy, temperature
   PetscReal :: cell_pressure, dummy_pressure
-  PetscInt :: iphase, ierr
+  PetscInt :: iphase
   PetscInt :: energy_var
+  PetscErrorCode :: ierr
 
   ! this can be removed when etxending to pressure condition
   if (.not.associated(src_sink_condition%rate) ) then

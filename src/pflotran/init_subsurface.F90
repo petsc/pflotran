@@ -542,15 +542,15 @@ subroutine InitSubsurfAssignMatProperties(realization)
     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                                      field%work_loc,ONEDOF)
     call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 PERMEABILITY_X,0)
+                                 PERMEABILITY_X,ZERO_INTEGER)
     call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
                                      field%work_loc,ONEDOF)  
     call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 PERMEABILITY_Y,0)
+                                 PERMEABILITY_Y,ZERO_INTEGER)
     call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
                                      field%work_loc,ONEDOF)   
     call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                 PERMEABILITY_Z,0)
+                                 PERMEABILITY_Z,ZERO_INTEGER)
     call DiscretizationLocalToLocal(discretization,field%icap_loc, &
                                     field%icap_loc,ONEDOF)   
     call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
@@ -561,7 +561,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
       call DiscretizationGlobalToLocal(discretization,field%compressibility0, &
                                        field%work_loc,ONEDOF)
       call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                                   SOIL_COMPRESSIBILITY,0)
+                                   SOIL_COMPRESSIBILITY,ZERO_INTEGER)
     endif
   endif
   
@@ -574,7 +574,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
   call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
                                     field%work_loc,ONEDOF)
   call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
-                               TORTUOSITY,0)
+                               TORTUOSITY,ZERO_INTEGER)
   ! rock properties
   do i = 1, max_material_index
     call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)

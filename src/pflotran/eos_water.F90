@@ -2098,7 +2098,7 @@ subroutine EOSWaterInternalEnergyIce(T, u_ice, du_ice_dT)
   PetscReal :: T
   PetscReal :: u_ice
   PetscReal :: du_ice_dT
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscReal, parameter :: a = -10.6644d0
   PetscReal, parameter :: b = 0.1698d0
   PetscReal, parameter :: c = 198148.d0

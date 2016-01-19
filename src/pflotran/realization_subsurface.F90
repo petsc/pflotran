@@ -1272,20 +1272,25 @@ subroutine RealizationRevertFlowParameters(realization)
   if (option%nflowdof > 0) then
     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                                      field%work_loc,ONEDOF)  
-    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_X,0)
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_X, &
+                                 ZERO_INTEGER)
     call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
                                      field%work_loc,ONEDOF)  
-    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Y,0)
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Y, &
+                                 ZERO_INTEGER)
     call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
                                      field%work_loc,ONEDOF)  
-    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Z,0)
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Z, &
+                                 ZERO_INTEGER)
   endif   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-                                    field%work_loc,ONEDOF)  
-  call MaterialSetAuxVarVecLoc(Material,field%work_loc,POROSITY,0)
+                                   field%work_loc,ONEDOF)  
+  call MaterialSetAuxVarVecLoc(Material,field%work_loc,POROSITY, &
+                               ZERO_INTEGER)
   call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
-                                    field%work_loc,ONEDOF)  
-  call MaterialSetAuxVarVecLoc(Material,field%work_loc,TORTUOSITY,0)
+                                   field%work_loc,ONEDOF)  
+  call MaterialSetAuxVarVecLoc(Material,field%work_loc,TORTUOSITY, &
+                               ZERO_INTEGER)
 
 end subroutine RealizationRevertFlowParameters
 

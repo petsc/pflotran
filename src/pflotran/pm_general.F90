@@ -299,7 +299,8 @@ subroutine PMGeneralInitializeTimestep(this)
 !geh:remove   everywhere                                
   call MaterialAuxVarCommunicate(this%comm1, &
                                  this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc,TORTUOSITY,0)
+                                 this%realization%field%work_loc,TORTUOSITY, &
+                                 ZERO_INTEGER)
                                  
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," GENERAL FLOW ",64("="))')

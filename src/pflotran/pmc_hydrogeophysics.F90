@@ -197,7 +197,7 @@ subroutine PMCHydrogeophysicsSynchronize(this)
 #if 1
   ! tracer
   call RealizationGetVariable(this%realization,this%realization%field%work, &
-                              PRIMARY_MOLALITY,ONE_INTEGER,0)
+                              PRIMARY_MOLALITY,ONE_INTEGER,ZERO_INTEGER)
 #else
   call DiscretizationCreateVector(this%realization%discretization,ONEDOF, &
                                   natural_vec,NATURAL,this%option)

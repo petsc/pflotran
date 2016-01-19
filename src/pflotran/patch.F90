@@ -2534,6 +2534,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,iscale_type,option)
       do iconn = 1, cur_connection_set%num_connections
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
+        !geh: kludge for 64-bit integers.
         call GridGetGhostedNeighbors(grid,ghosted_id,DMDA_STENCIL_STAR, &
                                     x_width,y_width,z_width, &
                                     x_count,y_count,z_count, &
