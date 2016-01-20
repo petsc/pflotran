@@ -121,7 +121,7 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
                         'CHEMISTRY,IMMOBILE_DECAY_REACTION RATE_CONSTANT UNITS')
         else
           immobile_decay_rxn%rate_constant = &
-            UnitsConvertToInternal(word,option) * &
+            UnitsConvertToInternal(word,'unknown/time',option) * &
             immobile_decay_rxn%rate_constant
         endif
       case('HALF_LIFE')
@@ -135,7 +135,7 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
                             'CHEMISTRY,IMMOBILE_DECAY_REACTION HALF_LIFE UNITS')
         else
           immobile_decay_rxn%rate_constant = &
-            UnitsConvertToInternal(word,option) * &
+            UnitsConvertToInternal(word,'unknown/time',option) * &
             immobile_decay_rxn%rate_constant
         endif
         ! convert half life to rate constant

@@ -641,6 +641,7 @@ subroutine FlowConditionRead(condition,input,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: units_category
   type(flow_sub_condition_type), pointer :: pressure, flux, temperature, &
                                        concentration, enthalpy, rate, well,&
                                        sub_condition_ptr, saturation, &
@@ -910,7 +911,7 @@ subroutine FlowConditionRead(condition,input,option)
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
         call ConditionReadValues(input,option,word, &
-                                     condition%datum,word)
+                                 condition%datum,word,'unknown')
       case('GRADIENT','GRAD')
         do
           call InputReadPflotranString(input,option)
@@ -924,22 +925,34 @@ subroutine FlowConditionRead(condition,input,option)
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
               sub_condition_ptr => pressure
+              units_category = 'pressure/length'
             case('RATE')
+            ! jmf: check this
               sub_condition_ptr => rate
+              units_category = 'unknown/time-length'
             case('ENERGY_RATE')
+            ! jmf: check this
               sub_condition_ptr => energy_rate
+              units_category = 'unknown/time-length'
             case('WELL')
               sub_condition_ptr => well
+              units_category = 'pressure/length'
             case('FLUX')
               sub_condition_ptr => flux
+              units_category = 'unknown/length'
             case('SATURATION')
               sub_condition_ptr => saturation
+              units_category = 'unknown/length'
             case('TEMP','TEMPERATURE')
               sub_condition_ptr => temperature
+              units_category = 'temperature/length'
             case('CONC','CONCENTRATION')
               sub_condition_ptr => concentration
+              units_category = 'unknown/length'
             case('H','ENTHALPY')
+            ! jmf: check this
               sub_condition_ptr => enthalpy
+              units_category = 'energy/mass-length'
             case default
               call InputKeywordUnrecognized(word, &
                      'FLOW CONDITION,GRADIENT,TYPE',option)
@@ -951,66 +964,70 @@ subroutine FlowConditionRead(condition,input,option)
           sub_condition_ptr%gradient => dataset_ascii
           nullify(dataset_ascii)
           call ConditionReadValues(input,option,word, &
-                                       sub_condition_ptr%gradient,word)
+                                   sub_condition_ptr%gradient, &
+                                   word,units_category)
           nullify(sub_condition_ptr)
         enddo
       case('TEMPERATURE','TEMP')
         call ConditionReadValues(input,option,word, &
-                                     temperature%dataset, &
-                                     temperature%units)
+                                 temperature%dataset, &
+                                 temperature%units,'temperature')
       case('ENTHALPY','H')
         call ConditionReadValues(input,option,word, &
-                                     enthalpy%dataset, &
-                                     enthalpy%units)
+                                 enthalpy%dataset, &
+                                 enthalpy%units,'energy/mass')
       case('PRESSURE','PRES','PRESS')
         call ConditionReadValues(input,option,word, &
                                      pressure%dataset, &
-                                     pressure%units)
+                                     pressure%units,'pressure')
       case('RATE')
         call ConditionReadValues(input,option,word, &
-                                     rate%dataset, &
-                                     rate%units)
+                                 rate%dataset, &
+                                 rate%units,'unknown/time')
       case('ENERGY_FLUX')
         input%force_units = PETSC_TRUE
+        ! jmf: check this
         call ConditionReadValues(input,option,word, &
-                                     energy_flux%dataset, &
-                                     energy_flux%units)
+                                 energy_flux%dataset, &
+                                 energy_flux%units,'energy/time')
         input%force_units = PETSC_FALSE
       case('ENERGY_RATE')
         input%force_units = PETSC_TRUE
         input%err_buf = word
+        ! jmf: check this
         call ConditionReadValues(input,option,word, &
-                                     energy_rate%dataset, &
-                                     energy_rate%units)
+                                 energy_rate%dataset, &
+                                 energy_rate%units,'energy/time')
         input%force_units = PETSC_FALSE
       case('WELL')
         call ConditionReadValues(input,option,word, &
-                                     well%dataset, &
-                                     well%units)
+                                 well%dataset, &
+                                 well%units,'pressure')
       case('FLUX','VELOCITY','VEL')
         call ConditionReadValues(input,option,word, &
-                                     pressure%dataset, &
-                                     pressure%units)
+                                 pressure%dataset, &
+                                 pressure%units,'length/time')
       case('CONC','CONCENTRATION')
         call ConditionReadValues(input,option,word, &
-                                     concentration%dataset, &
-                                     concentration%units)
+                                 concentration%dataset, &
+                                 concentration%units,'concentration')
       case('SAT','SATURATION')
+        ! jmf: check this!
         call ConditionReadValues(input,option,word, &
-                                     saturation%dataset, &
-                                     saturation%units)
+                                 saturation%dataset, &
+                                 saturation%units,'saturation')
       case('DISPLACEMENT_X')
         call ConditionReadValues(input,option,word, &
-                                     displacement_x%dataset, &
-                                     displacement_x%units)
+                                 displacement_x%dataset, &
+                                 displacement_x%units,'length')
       case('DISPLACEMENT_Y')
         call ConditionReadValues(input,option,word, &
-                                     displacement_y%dataset, &
-                                     displacement_y%units) 
+                                 displacement_y%dataset, &
+                                 displacement_y%units,'length') 
       case('DISPLACEMENT_Z')
         call ConditionReadValues(input,option,word, &
-                                     displacement_z%dataset, &
-                                     displacement_z%units)
+                                 displacement_z%dataset, &
+                                 displacement_z%units,'length')
       case('CONDUCTANCE')
         call InputReadDouble(input,option,pressure%aux_real(1))
         call InputErrorMsg(input,option,'CONDUCTANCE','CONDITION')   
@@ -1577,8 +1594,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
-        call ConditionReadValues(input,option,word, &
-                                     condition%datum,word)
+        call ConditionReadValues(input,option,word,condition%datum, &
+                                 word,'unknown')
       case('GRADIENT')
         do
           call InputReadPflotranString(input,option)
@@ -1602,7 +1619,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
           sub_condition_ptr%gradient => dataset_ascii
           nullify(dataset_ascii)
           call ConditionReadValues(input,option,word, &
-                                   sub_condition_ptr%gradient,word)
+                                   sub_condition_ptr%gradient, &
+                                   word,'unknown')
           nullify(sub_condition_ptr)
         enddo
       case('CONDUCTANCE')
@@ -1629,7 +1647,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         end select
         call ConditionReadValues(input,option,word, &
                                  sub_condition_ptr%dataset, &
-                                 sub_condition_ptr%units)
+                                 sub_condition_ptr%units,'unknown')
         input%force_units = PETSC_FALSE
         select case(word)
           case('LIQUID_SATURATION') ! convert to gas saturation
@@ -2030,8 +2048,8 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
-        call ConditionReadValues(input,option,word, &
-                                     condition%datum,word)
+        call ConditionReadValues(input,option,word, condition%datum, &
+                                 word,'unknown')
       case('OWC')
         dataset_ascii => DatasetAsciiCreate()
         call DatasetAsciiInit(dataset_ascii)
@@ -2040,7 +2058,7 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         toil_ims%owc => dataset_ascii
         nullify(dataset_ascii)        
         call ConditionReadValues(input,option,word, &
-                                     toil_ims%owc,word)
+                                 toil_ims%owc,word,'unknown')
       case('GRADIENT')
         do
           call InputReadPflotranString(input,option)
@@ -2065,8 +2083,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               dataset_ascii%data_type = DATASET_REAL
               sub_condition_ptr%gradient => dataset_ascii
               nullify(dataset_ascii)
+              ! jmf: check this! can have 2 possible types, how to split it up right?
               call ConditionReadValues(input,option,word, &
-                                     sub_condition_ptr%gradient,word)
+                                       sub_condition_ptr%gradient, &
+                                       word,'unknown/length')
               nullify(sub_condition_ptr)
             case('WATER_PRESSURE')
               dataset_ascii => DatasetAsciiCreate()
@@ -2076,7 +2096,8 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               toil_ims%liq_press_grad => dataset_ascii
               nullify(dataset_ascii)        
               call ConditionReadValues(input,option,word, &
-                                          toil_ims%liq_press_grad,word)
+                                       toil_ims%liq_press_grad, &
+                                       word,'pressure/length')
             case default
               call InputKeywordUnrecognized(word,'flow grad condition',option)
           end select
@@ -2105,7 +2126,7 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         end select
         call ConditionReadValues(input,option,word, &
                                  sub_condition_ptr%dataset, &
-                                 sub_condition_ptr%units)
+                                 sub_condition_ptr%units,'unknown')
         input%force_units = PETSC_FALSE
         select case(word)
           case('LIQUID_SATURATION') ! convert to oil saturation
@@ -2419,7 +2440,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
           ! convert time units
           if (len_trim(constraint_coupler%time_units) > 0) then
             constraint_coupler%time = constraint_coupler%time* &
-              UnitsConvertToInternal(constraint_coupler%time_units,option)
+              UnitsConvertToInternal(constraint_coupler%time_units,'time',option)
           endif
           ! add to end of list
           if (.not.associated(condition%constraint_coupler_list)) then
@@ -2472,7 +2493,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   endif
 
   if (len_trim(default_time_units) > 0) then
-    conversion = UnitsConvertToInternal(default_time_units,option)
+    conversion = UnitsConvertToInternal(default_time_units,'time',option)
     cur_coupler => condition%constraint_coupler_list
     do
       if (.not.associated(cur_coupler)) exit
@@ -2489,7 +2510,8 @@ end subroutine TranConditionRead
 
 ! ************************************************************************** !
 
-subroutine ConditionReadValues(input,option,keyword,dataset_base,units)
+subroutine ConditionReadValues(input,option,keyword,dataset_base,units, &
+                               data_units_category)
   ! 
   ! Read the value(s) of a condition variable
   ! 
@@ -2517,6 +2539,7 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units)
   character(len=MAXWORDLENGTH) :: keyword
   class(dataset_base_type), pointer :: dataset_base
   character(len=MAXWORDLENGTH) :: units
+  character(len=*) :: data_units_category
   
   class(dataset_ascii_type), pointer :: dataset_ascii
   character(len=MAXSTRINGLENGTH) :: string2, filename, hdf5_path
@@ -2653,7 +2676,7 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units)
         endif
         input2 => InputCreate(IUNIT_TEMP,filename,option)
         input2%force_units = input%force_units
-        call DatasetAsciiRead(dataset_ascii,input2,option)
+        call DatasetAsciiRead(dataset_ascii,input2,data_units_category,option)
         dataset_ascii%filename = filename
         call InputDestroy(input2)
       endif
@@ -2666,7 +2689,7 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units)
       dataset_base => DatasetBaseCreate()
       dataset_base%name = word
     else if (length==FOUR_INTEGER .and. StringCompare(word,'list',length)) then 
-      call DatasetAsciiRead(dataset_ascii,input,option)
+      call DatasetAsciiRead(dataset_ascii,input,data_units_category,option)
     else
       option%io_buffer = 'Keyword "' // trim(word) // &
         '" not recognized in when reading condition values for "' // &
@@ -2694,7 +2717,7 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units)
       do icol=1,dataset_ascii%array_width
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,keyword,'CONDITION')   
-        dataset_ascii%rarray(icol) = UnitsConvertToInternal(word,option) * &
+        dataset_ascii%rarray(icol) = UnitsConvertToInternal(word,data_units_category,option) * &                     
                                      dataset_ascii%rarray(icol)
         units = trim(units) // ' ' // trim(word)
       enddo

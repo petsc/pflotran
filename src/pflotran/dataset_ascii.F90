@@ -103,7 +103,7 @@ end subroutine DatasetAsciiInit
 
 ! ************************************************************************** !
 
-subroutine DatasetAsciiOpenandLoad(this,filename,option)
+subroutine DatasetAsciiOpenandLoad(this,filename,data_units_category,option)
   ! 
   ! Opens a file and calls the load routine.
   ! 
@@ -118,19 +118,20 @@ subroutine DatasetAsciiOpenandLoad(this,filename,option)
   
   class(dataset_ascii_type) :: this
   character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: data_units_category
   type(option_type) :: option
   
   type(input_type), pointer :: input
   
   input => InputCreate(IUNIT_TEMP,filename,option)
-  call DatasetAsciiLoad(this,input,option)
+  call DatasetAsciiLoad(this,input,data_units_category,option)
   call InputDestroy(input)
 
 end subroutine DatasetAsciiOpenandLoad
 
 ! ************************************************************************** !
 
-subroutine DatasetAsciiLoad(this,input,option)
+subroutine DatasetAsciiLoad(this,input,data_units_category,option)
   ! 
   ! Reads a text-based dataset from an ASCII file.
   ! 
@@ -153,7 +154,7 @@ subroutine DatasetAsciiLoad(this,input,option)
 
   character(len=MAXWORDLENGTH) :: time_units
   character(len=MAXSTRINGLENGTH) :: string, data_units
-  character(len=MAXWORDLENGTH), dimension(2) :: unit_category
+  character(len=MAXSTRINGLENGTH) :: data_units_category
   character(len=MAXWORDLENGTH) :: word
   PetscReal, pointer :: temp_array(:,:)
   PetscReal :: temp_time
@@ -166,8 +167,7 @@ subroutine DatasetAsciiLoad(this,input,option)
   
   time_units = ''
   data_units = ''
-  unit_category(1) = 'not_assigned' ! numerator 
-  unit_category(2) = 'not_assigned' ! denominator
+  data_units_category = 'not_assigned'
   max_size = 1000
 
   row_count = 0
@@ -267,8 +267,7 @@ subroutine DatasetAsciiLoad(this,input,option)
   
   ! time units conversion
   if (len_trim(time_units) > 0) then
-    unit_category(1) = 'time'
-    conversion = UnitsConvertToInternal(time_units,unit_category,option)
+    conversion = UnitsConvertToInternal(time_units,'time',option)
     this%time_storage%times(:) = conversion * &
                                  this%time_storage%times(:)
   endif
@@ -289,12 +288,7 @@ subroutine DatasetAsciiLoad(this,input,option)
         call InputReadWord(data_units,word,PETSC_TRUE,ierr)
         input%ierr = ierr
         call InputErrorMsg(input,option,'DATA_UNITS','CONDITION FILE')
-        ! jmf: The units here can be anything, so how do we specify a
-        !      unit category? For now, I will call it 'unknown' and have
-        !      it search the entire catalog in units.F90
-        unit_category(1) = 'unknown'
-        unit_category(2) = 'unknown'
-        conversion = UnitsConvertToInternal(word,unit_category,option)
+        conversion = UnitsConvertToInternal(word,data_units_category,option)
       endif
       temp_array(i+1,:) = conversion * temp_array(i+1,:)
     enddo

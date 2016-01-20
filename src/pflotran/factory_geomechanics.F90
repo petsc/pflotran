@@ -630,10 +630,13 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
           select case(trim(word))
             case('COUPLING_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
-              call InputErrorMsg(input,option,'Coupling Timestep Size','GEOMECHANICS_TIME') 
+              call InputErrorMsg(input,option, &
+                                 'Coupling Timestep Size','GEOMECHANICS_TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'Coupling Timestep Size Time Units','GEOMECHANICS_TIME')
-              geomech_realization%dt_coupling = temp_real*UnitsConvertToInternal(word,option)
+              call InputErrorMsg(input,option, &
+                        'Coupling Timestep Size Time Units','GEOMECHANICS_TIME')
+              geomech_realization%dt_coupling = &
+                            temp_real*UnitsConvertToInternal(word,'time',option)
             case default
               call InputKeywordUnrecognized(word,'GEOMECHANICS_TIME',option)
             end select
@@ -686,11 +689,13 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
             case('NO_INITIAL','NO_PRINT_INITIAL')
               output_option%print_initial = PETSC_FALSE
             case('PERMEABILITY')
-              option%io_buffer = 'PERMEABILITY output must now be entered under OUTPUT/VARIABLES card.'
+              option%io_buffer = 'PERMEABILITY output must now be entered &
+                                  under OUTPUT/VARIABLES card.'
               call printErrMsg(option)
 !              output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
-              option%io_buffer = 'POROSITY output must now be entered under OUTPUT/VARIABLES card.'
+              option%io_buffer = 'POROSITY output must now be entered under &
+                                  OUTPUT/VARIABLES card.'
               call printErrMsg(option)            
 !              output_option%print_porosity = PETSC_TRUE
             case('PRINT_COLUMN_IDS')
@@ -698,7 +703,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
             case('TIMES')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'units','GEOMECHANICS_OUTPUT')
-              units_conversion = UnitsConvertToInternal(word,option)
+              units_conversion = UnitsConvertToInternal(word,'time',option)
               continuation_flag = PETSC_TRUE
               do
                 continuation_flag = PETSC_FALSE
@@ -764,7 +769,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
                                      'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
-                  units_conversion = UnitsConvertToInternal(word,option)
+                  units_conversion = UnitsConvertToInternal(word,'time',option)
                   output_option%periodic_output_time_incr = temp_real* &
                                                             units_conversion
                   call InputReadWord(input,option,word,PETSC_TRUE)
@@ -777,7 +782,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       call InputErrorMsg(input,option,'start time units', &
                                          'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
-                      units_conversion = UnitsConvertToInternal(word,option)
+                      units_conversion = UnitsConvertToInternal(word,'time',option)
                       temp_real = temp_real * units_conversion
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       if (.not.StringCompareIgnoreCase(word,'and')) then
@@ -831,7 +836,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
                                      'GEOMECHANICS_OUTPUT,PERIODIC_OBSERVATION,TIME')
-                  units_conversion = UnitsConvertToInternal(word,option) 
+                  units_conversion = UnitsConvertToInternal(word,'time',option) 
                   output_option%periodic_tr_output_time_incr = temp_real* &
                                                                units_conversion
                 case('TIMESTEP')

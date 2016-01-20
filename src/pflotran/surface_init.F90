@@ -434,7 +434,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
             case('TIMES')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'units','SURF_OUTPUT')
-              units_conversion = UnitsConvertToInternal(word,option)
+              units_conversion = UnitsConvertToInternal(word,'time',option)
               continuation_flag = PETSC_TRUE
               do
                 continuation_flag = PETSC_FALSE
@@ -499,7 +499,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
                                      'SURF_OUTPUT,PERIODIC,TIME')
-                  units_conversion = UnitsConvertToInternal(word,option)
+                  units_conversion = UnitsConvertToInternal(word,'time',option)
                   output_option%periodic_output_time_incr = temp_real* &
                                                             units_conversion
                   call InputReadWord(input,option,word,PETSC_TRUE)
@@ -512,7 +512,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       call InputErrorMsg(input,option,'start time units', &
                                          'SURF_OUTPUT,PERIODIC,TIME')
-                      units_conversion = UnitsConvertToInternal(word,option)
+                      units_conversion = UnitsConvertToInternal(word,'time',option)
                       temp_real = temp_real * units_conversion
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       if (.not.StringCompareIgnoreCase(word,'and')) then
@@ -565,7 +565,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
                                      'SURF_OUTPUT,PERIODIC_OBSERVATION,TIME')
-                  units_conversion = UnitsConvertToInternal(word,option) 
+                  units_conversion = UnitsConvertToInternal(word,'time',option) 
                   output_option%periodic_tr_output_time_incr = temp_real* &
                                                                units_conversion
                 case('TIMESTEP')
@@ -732,20 +732,26 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Initial Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'Initial Timestep Size Time Units','TIME')
-              surf_realization%dt_init = temp_real*UnitsConvertToInternal(word,option)
+              call InputErrorMsg(input,option, &
+                                 'Initial Timestep Size Time Units','TIME')
+              surf_realization%dt_init = &
+                           temp_real*UnitsConvertToInternal(word,'time',option)
             case('MAXIMUM_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Maximum Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'Maximum Timestep Size Time Units','TIME')
-              surf_realization%dt_max = temp_real*UnitsConvertToInternal(word,option)
+              call InputErrorMsg(input,option, &
+                                 'Maximum Timestep Size Time Units','TIME')
+              surf_realization%dt_max = & 
+                           temp_real*UnitsConvertToInternal(word,'time',option)
             case('COUPLING_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Coupling Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'Coupling Timestep Size Time Units','TIME')
-              surf_realization%dt_coupling = temp_real*UnitsConvertToInternal(word,option)
+              call InputErrorMsg(input,option, &
+                                 'Coupling Timestep Size Time Units','TIME')
+              surf_realization%dt_coupling = &
+                           temp_real*UnitsConvertToInternal(word,'time',option)
             case default
               call InputKeywordUnrecognized(word,'TIME',option)
             end select
@@ -801,7 +807,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                     call InputReadWord(input,option,word,PETSC_TRUE)
                     call InputErrorMsg(input,option,'time increment units', &
                                        'CHECKPOINT,PERIODIC,TIME')
-                    units_conversion = UnitsConvertToInternal(word,option)
+                    units_conversion = UnitsConvertToInternal(word,'time',option)
                     output_option%periodic_checkpoint_time_incr = temp_real* &
                                                               units_conversion
                   case('TIMESTEP')

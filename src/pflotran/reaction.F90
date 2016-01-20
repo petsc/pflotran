@@ -323,7 +323,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                                   'RADIOACTIVE_DECAY_RXN RATE_CONSTANT UNITS')
               else
                 radioactive_decay_rxn%rate_constant = &
-                  UnitsConvertToInternal(word,option) * &
+                  UnitsConvertToInternal(word,'unknown/time',option) * &
                   radioactive_decay_rxn%rate_constant
               endif
             case('HALF_LIFE')
@@ -337,7 +337,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                                      'RADIOACTIVE_DECAY_RXN HALF_LIFE UNITS')
               else
                 radioactive_decay_rxn%rate_constant = &
-                  UnitsConvertToInternal(word,option) * &
+                  UnitsConvertToInternal(word,'unknown/time',option) * &
                   radioactive_decay_rxn%rate_constant
               endif
               ! convert half life to rate constant
