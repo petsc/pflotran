@@ -653,11 +653,14 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
   PetscInt :: spatial_interpolation_method
   PetscInt :: i, j, k
   PetscReal :: x, y, z
-  PetscReal :: x1, x2, y1, y2
+  PetscReal :: x1, x2, y1, y2, z1
   PetscReal :: v1, v2, v3, v4
   PetscInt :: index
-  PetscReal :: dx, dy
-  PetscInt :: nx
+  PetscInt :: ii, jj, kk
+  PetscInt :: i_upper, j_upper, k_upper
+  PetscReal :: dx, dy, dz
+  PetscInt :: nx, ny
+  PetscBool :: lerr
   character(len=MAXWORDLENGTH) :: word
   
   call DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
@@ -667,11 +670,153 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
   ! in the below, i,j,k,xx,yy,zz to not reflect the 
   ! coordinates of the problem domain in 3D.  They
   ! are transfored to the dimensions of the dataset
+  lerr = PETSC_FALSE
   select case(spatial_interpolation_method)
     case(INTERPOLATION_STEP)
-      option%io_buffer = 'STEP interpolation not yet supported in ' // &
-        'DatasetGriddedHDF5InterpolateReal()'
-      call printErrMsg(option)
+      select case(this%data_dim)
+        case(DIM_X,DIM_Y,DIM_Z)
+          if (this%is_cell_centered) then
+            i_upper = i
+          else
+            i_upper = i+1
+          endif
+          if (i < 1 .or. i_upper > this%dims(1)) then 
+            write(word,*) i
+            word = adjustl(word)
+            select case(this%data_dim)
+              case(DIM_X)
+                option%io_buffer = 'Out of x bounds, i = ' // trim(word)
+              case(DIM_Y)
+                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+              case(DIM_Z)
+                option%io_buffer = 'Out of z bounds, k = ' // trim(word)
+            end select
+            call printErrMsgByRank(option)
+          endif
+          index = i
+          if (.not.this%is_cell_centered) then
+            dx = this%discretization(1)
+            x1 = this%origin(1) + (i-1)*dx
+            if ((x-x1) / dx > 0.5) then
+              index = i+1
+            endif
+          endif
+        case(DIM_XY,DIM_XZ,DIM_YZ)
+          if (this%is_cell_centered) then
+            i_upper = i
+            j_upper = j
+          else
+            i_upper = i+1
+            j_upper = j+1
+          endif
+          if (i < 1 .or. i_upper > this%dims(1)) then
+            lerr = PETSC_TRUE
+            write(word,*) i
+            word = adjustl(word)
+            select case(this%data_dim)
+              case(DIM_XY,DIM_XZ)
+                option%io_buffer = 'Out of x bounds, i = ' // trim(word)
+              case(DIM_YZ)
+                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+            end select
+            call printMsgByRank(option)
+          endif
+          if (j < 1 .or. j_upper > this%dims(2)) then
+            lerr = PETSC_TRUE
+            write(word,*) j
+            word = adjustl(word)
+            select case(this%data_dim)
+              case(DIM_XY)
+                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+              case(DIM_YZ,DIM_XZ)
+                option%io_buffer = 'Out of z bounds, k = ' // trim(word)
+            end select
+            call printMsgByRank(option)
+          endif
+          if (lerr) then
+            word = this%name
+            option%io_buffer = 'Gridded dataset "' // trim(word) // &
+                               '" out of bounds.'
+            call printErrMsgByRank(option)
+          endif
+          ii = i
+          jj = j
+          nx = this%dims(1)
+          if (.not.this%is_cell_centered) then
+            dx = this%discretization(1)
+            dy = this%discretization(2)
+            x1 = this%origin(1) + (i-1)*dx
+            y1 = this%origin(2) + (j-1)*dy
+            if ((x-x1) / dx > 0.5d0) then
+              ii = i+1
+            endif
+            if ((y-y1) / dy > 0.5d0) then
+              jj = j+1
+            endif
+          endif
+          index = ii + (jj-1)*nx
+        case(DIM_XYZ)
+          if (this%is_cell_centered) then
+            i_upper = i
+            j_upper = j
+            k_upper = k
+          else
+            i_upper = i+1
+            j_upper = j+1
+            k_upper = k+1
+          endif          
+          if (i < 1 .or. i_upper > this%dims(1)) then
+            lerr = PETSC_TRUE
+            write(word,*) i
+            word = adjustl(word)
+            option%io_buffer = 'Out of x bounds, i = ' // trim(word)
+            call printMsgByRank(option)
+          endif
+          if (j < 1 .or. j_upper > this%dims(2)) then
+            lerr = PETSC_TRUE
+            write(word,*) j
+            word = adjustl(word)
+            option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+            call printMsgByRank(option)
+          endif
+          if (k < 1 .or. k_upper > this%dims(3)) then
+            lerr = PETSC_TRUE
+            write(word,*) k
+            word = adjustl(word)
+            option%io_buffer = 'Out of z bounds, k = ' // trim(word)
+            call printMsgByRank(option)
+          endif
+          if (lerr) then
+            word = this%name
+            option%io_buffer = 'Gridded dataset "' // trim(word) // &
+                               '" out of bounds.'
+            call printErrMsgByRank(option)
+          endif
+          ii = i
+          jj = j
+          kk = k
+          nx = this%dims(1)
+          ny = this%dims(2)
+          if (.not.this%is_cell_centered) then
+            dx = this%discretization(1)
+            dy = this%discretization(2)
+            dz = this%discretization(3)
+            x1 = this%origin(1) + (i-1)*dx
+            y1 = this%origin(2) + (j-1)*dy
+            z1 = this%origin(3) + (k-1)*dz
+            if ((x-x1) / dx > 0.5d0) then
+              ii = i+1
+            endif
+            if ((y-y1) / dy > 0.5d0) then
+              jj = j+1
+            endif
+            if ((z-z1) / dz > 0.5d0) then
+              kk = k+1
+            endif
+          endif
+          index = ii + (jj-1)*nx + (kk-1)*nx*ny
+      end select
+      real_value = this%rarray(index)
     case(INTERPOLATION_LINEAR)
       select case(this%data_dim)
         case(DIM_X,DIM_Y,DIM_Z)
