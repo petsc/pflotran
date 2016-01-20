@@ -797,7 +797,7 @@ subroutine PMGlassRead(this,input)
         dataset_ascii%data_type = DATASET_REAL
         call ConditionReadValues(input,option,word, &
                                  this%mass_fraction_dataset, &
-                                 units,'unknown')
+                                 units,'unitless')
         if (associated(dataset_ascii%time_storage)) then
           ! default time interpolation is linear
           if (dataset_ascii%time_storage%time_interpolation_method == &

@@ -321,7 +321,7 @@ function UnitsConvert(unit,units_category,option)
           call UnitsError(unit,units_category,units_string,option)
       end select
     ! convert concentrations to (?)
-    ! jmf: check this! (two defaults possible)
+    ! jmf: check this! (two defaults possible, but they will always be consistent within the input file)
     case('concentration')
       select case(trim(unit))
         case('M') 
@@ -344,17 +344,15 @@ function UnitsConvert(unit,units_category,option)
           units_string = 'N (Newton)'
           call UnitsError(unit,units_category,units_string,option)
       end select
+    ! the parameter is unitless (1)
+    case('unitless')
+      UnitsConvert = 1.d0
     ! no unit category has been assigned during pass
     case('not_assigned')
-      ! jmf: Not sure what to do here yet! It may be possible that 
-      !      'not_assigned' means units='1' (e.g. no units, unitless)
-      !      or the user forgot to assign units and it really should
-      !      have some kind of unit (in which case this error might be
-      !      caught with the 'unknown' category somehow???
-      !
-      UnitsConvert = 1.d0
+      option%io_buffer = 'Unit category has not been assigned.'
+      call printErrMsg(option)
     case('unknown')
-      option%io_buffer = 'Unit category set to unknown. Go and fix this Jenn!'
+      option%io_buffer = 'Unit category set to unknown.'
       call printErrMsg(option)
     ! cannot convert user-supplied units:
     case default

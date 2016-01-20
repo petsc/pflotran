@@ -327,6 +327,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                   radioactive_decay_rxn%rate_constant
               endif
             case('HALF_LIFE')
+              ! jmf: this should be a half life, not rate constant, rewrite
               call InputReadDouble(input,option, &
                                    radioactive_decay_rxn%rate_constant)
               call InputErrorMsg(input,option,'half life', &
@@ -337,7 +338,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                                      'RADIOACTIVE_DECAY_RXN HALF_LIFE UNITS')
               else
                 radioactive_decay_rxn%rate_constant = &
-                  UnitsConvertToInternal(word,'unknown/time',option) * &
+                  UnitsConvertToInternal(word,'time',option) * &
                   radioactive_decay_rxn%rate_constant
               endif
               ! convert half life to rate constant
