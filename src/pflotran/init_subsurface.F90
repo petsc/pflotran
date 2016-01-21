@@ -883,6 +883,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: filename
   PetscInt :: local_id, ghosted_id, natural_id
   PetscReal :: tempreal
   PetscErrorCode :: ierr
@@ -912,6 +913,12 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
                    vec_p(local_id),option)
           endif
         enddo
+        ! now we strip the dataset to save storage, saving only the name
+        ! and filename
+        filename = dataset%filename
+        dataset_name = dataset%name
+        call DatasetGriddedHDF5Strip(dataset)
+        call DatasetGriddedHDF5Init(dataset)
       class is(dataset_common_hdf5_type)
         call HDF5ReadCellIndexedRealArray(realization,field%work, &
                                           dataset%filename, &
