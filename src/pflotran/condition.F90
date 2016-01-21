@@ -641,7 +641,7 @@ subroutine FlowConditionRead(condition,input,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXSTRINGLENGTH) :: units_category
+  character(len=MAXSTRINGLENGTH) :: rate_string, units_category
   type(flow_sub_condition_type), pointer :: pressure, flux, temperature, &
                                        concentration, enthalpy, rate, well,&
                                        sub_condition_ptr, saturation, &
