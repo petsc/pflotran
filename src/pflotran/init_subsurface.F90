@@ -86,6 +86,7 @@ subroutine InitSubsurfSetupRealization(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
   call RealizationPassPtrsToPatches(realization)
+  call RealizationProcessDatasets(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
   ! must process conditions before couplers in order to determine dataset types
@@ -901,6 +902,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
     dataset_name = dataset%name
     select type(dataset)
       class is(dataset_gridded_hdf5_type)
+        call DatasetGriddedHDF5Load(dataset,option)
         do local_id = 1, grid%nlmax
           ghosted_id = grid%nL2G(local_id)
           if (material_id < 0 .or. &

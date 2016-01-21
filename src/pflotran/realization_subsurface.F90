@@ -65,6 +65,7 @@ private
             RealizationDestroyLegacy, &
             RealizationProcessCouplers, &
             RealizationInitAllCouplerAuxVars, &
+            RealizationProcessDatasets, &
             RealizationProcessConditions, &
             RealizationAddWaypointsToList, &
             RealizationCreateDiscretization, &
@@ -597,6 +598,25 @@ end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
 
+subroutine RealizationProcessDatasets(realization)
+  ! 
+  ! Processes datasets before they are linked to anything else
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/20/16
+  ! 
+  use Dataset_module
+  
+  implicit none
+  
+  class(realization_subsurface_type) :: realization
+
+  call DatasetScreenForNonCellIndexed(realization%datasets,realization%option)
+  
+end subroutine RealizationProcessDatasets
+
+! ************************************************************************** !
+
 subroutine RealizationProcessConditions(realization)
   ! 
   ! Sets up auxiliary data associated with
@@ -607,15 +627,12 @@ subroutine RealizationProcessConditions(realization)
   ! 
   use Data_Mediator_Base_class
   use Data_Mediator_Dataset_class
-  use Dataset_module
   
   implicit none
   
   class(realization_subsurface_type) :: realization
   class(data_mediator_base_type), pointer :: cur_data_mediator
 
-  call DatasetScreenForNonCellIndexed(realization%datasets,realization%option)
-  
   if (realization%option%nflowdof > 0) then
     call RealProcessFlowConditions(realization)
   endif

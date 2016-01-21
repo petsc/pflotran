@@ -13,6 +13,7 @@ module Dataset_Gridded_HDF5_class
   type, public, extends(dataset_common_hdf5_type) :: dataset_gridded_hdf5_type
     PetscBool :: is_cell_centered
     PetscInt :: data_dim
+    PetscInt :: interpolation_method
     PetscReal, pointer :: origin(:)
     PetscReal, pointer :: extent(:)
     PetscReal, pointer :: discretization(:)
@@ -81,6 +82,7 @@ subroutine DatasetGriddedHDF5Init(this)
   
   call DatasetCommonHDF5Init(this)
   this%is_cell_centered = PETSC_FALSE
+  this%interpolation_method = INTERPOLATION_LINEAR
   this%data_dim = DIM_NULL
   nullify(this%origin)
   nullify(this%extent)
@@ -163,6 +165,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   use Units_module
   use Logging_module
   use HDF5_Aux_module
+  use String_module
   
   implicit none
   
@@ -286,6 +289,27 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
     if (attribute_exists) then
       this%is_cell_centered = PETSC_TRUE
+    endif
+    attribute_name = "Interpolation Method"
+    call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
+    if (attribute_exists) then
+      call h5tcopy_f(H5T_NATIVE_CHARACTER,atype_id,hdf5_err)
+      size_t_int = MAXWORDLENGTH
+      call h5tset_size_f(atype_id,size_t_int,hdf5_err)
+      call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
+      call h5aread_f(attribute_id,atype_id,word,attribute_dim,hdf5_err)
+      call h5aclose_f(attribute_id,hdf5_err)
+      call StringToUpper(word)
+      select case(trim(word))
+        case('STEP')
+          this%interpolation_method = INTERPOLATION_STEP
+        case('LINEAR')
+          this%interpolation_method = INTERPOLATION_LINEAR
+        case default
+          option%io_buffer = '"Interpolation Method" not recognized in ' // &
+            'Gridded HDF5 Dataset "' // trim(this%name) // '".'
+          call printErrMsg(option)
+      end select
     endif
     ! this%max_buffer_size is initially set to UNINITIALIZED_INTEGER to force initializaion
     ! either here, or in the reading of the dataset block.
@@ -662,12 +686,10 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
   
   call DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
   
-  spatial_interpolation_method = INTERPOLATION_LINEAR
-  
   ! in the below, i,j,k,xx,yy,zz to not reflect the 
   ! coordinates of the problem domain in 3D.  They
   ! are transfored to the dimensions of the dataset
-  select case(spatial_interpolation_method)
+  select case(this%interpolation_method)
     case(INTERPOLATION_STEP)
       option%io_buffer = 'STEP interpolation not yet supported in ' // &
         'DatasetGriddedHDF5InterpolateReal()'
