@@ -940,7 +940,7 @@ subroutine FlowConditionRead(condition,input,option)
               units_category = 'unknown/length'
             case('SATURATION')
               sub_condition_ptr => saturation
-              units_category = '1/length'
+              units_category = 'unitless/length'
             case('TEMP','TEMPERATURE')
               sub_condition_ptr => temperature
               units_category = 'temperature/length'
@@ -2082,7 +2082,7 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         toil_ims%owc => dataset_ascii
         nullify(dataset_ascii)        
         call ConditionReadValues(input,option,word, &
-                                 toil_ims%owc,word,'unknown')
+                                 toil_ims%owc,word,'unitless')
       case('GRADIENT')
         do
           call InputReadPflotranString(input,option)

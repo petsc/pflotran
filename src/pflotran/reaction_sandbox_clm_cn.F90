@@ -213,7 +213,7 @@ subroutine CLM_CN_Read(this,input,option)
                 call InputDefaultMsg(input,option)
               else              
                 rate_constant = rate_constant * &
-                  UnitsConvertToInternal(word,'unknown',option)
+                  UnitsConvertToInternal(word,'concentration/time',option)
               endif
             case('TURNOVER_TIME')
               call InputReadDouble(input,option,turnover_time)
@@ -225,7 +225,7 @@ subroutine CLM_CN_Read(this,input,option)
                 call InputDefaultMsg(input,option)
               else              
                 turnover_time = turnover_time * &
-                  UnitsConvertToInternal(word,'unknown',option)
+                  UnitsConvertToInternal(word,'time',option)
               endif
             case('RESPIRATION_FRACTION')
               call InputReadDouble(input,option,new_reaction%respiration_fraction)

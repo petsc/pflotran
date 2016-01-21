@@ -128,7 +128,7 @@ subroutine DownregRead(this,input,option)
 
       case('RATE')
         call ConditionReadValues(input,option,word,this%dataset, &
-                                 units,'unknown/time')
+                                 units,'concentration/time')
       case('POSITIVE_REG_PRESSURE')
         call InputReadDouble(input,option,this%pressure_max)
         call InputErrorMsg(input,option,'maximum pressure (Pa)', &
