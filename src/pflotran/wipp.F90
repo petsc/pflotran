@@ -516,7 +516,7 @@ subroutine CreepClosureRead(this,input,option)
     call printErrMsg(option)
   endif
   
-  this%lookup_table => LookupTableCreateGeneral(2)
+  this%lookup_table => LookupTableCreateGeneral(TWO_INTEGER)
   error_string = 'CREEP_CLOSURE file'
   input2 => InputCreate(IUNIT_TEMP,filename,option)
   input2%ierr = 0
@@ -557,19 +557,19 @@ subroutine CreepClosureRead(this,input,option)
         allocate(this%lookup_table%data(temp_int))
         string = 'TIME in CREEP_CLOSURE'
         call UtilityReadRealArray(this%lookup_table%axis1%values, &
-                                  -1,string, &
+                                  NEG_ONE_INTEGER,string, &
                                   input2,option)
         this%lookup_table%axis1%values = this%lookup_table%axis1%values * &
           time_units_conversion
       case('PRESSURE') 
         string = 'PRESSURE in CREEP_CLOSURE'
         call UtilityReadRealArray(this%lookup_table%axis2%values, &
-                                  -1, &
+                                  NEG_ONE_INTEGER, &
                                   string,input2,option)
       case('POROSITY') 
         string = 'POROSITY in CREEP_CLOSURE'
         call UtilityReadRealArray(this%lookup_table%data, &
-                                  -1, &
+                                  NEG_ONE_INTEGER, &
                                   string,input2,option)
      case default
         error_string = trim(error_string) // ': ' // filename

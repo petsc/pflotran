@@ -264,15 +264,15 @@ subroutine PMSubsurfaceInitializeTimestepA(this)
     call MaterialAuxVarCommunicate(this%comm1, &
                                    this%realization%patch%aux%Material, &
                                    this%realization%field%work_loc, &
-                                   PERMEABILITY_X,0)
+                                   PERMEABILITY_X,ZERO_INTEGER)
     call MaterialAuxVarCommunicate(this%comm1, &
                                    this%realization%patch%aux%Material, &
                                    this%realization%field%work_loc, &
-                                   PERMEABILITY_Y,0)
+                                   PERMEABILITY_Y,ZERO_INTEGER)
     call MaterialAuxVarCommunicate(this%comm1, &
                                    this%realization%patch%aux%Material, &
                                    this%realization%field%work_loc, &
-                                   PERMEABILITY_Z,0)
+                                   PERMEABILITY_Z,ZERO_INTEGER)
   endif
 
   if (this%store_porosity_for_ts_cut) then

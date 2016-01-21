@@ -65,6 +65,7 @@ private
             RealizationDestroyLegacy, &
             RealizationProcessCouplers, &
             RealizationInitAllCouplerAuxVars, &
+            RealizationProcessDatasets, &
             RealizationProcessConditions, &
             RealizationAddWaypointsToList, &
             RealizationCreateDiscretization, &
@@ -597,6 +598,25 @@ end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
 
+subroutine RealizationProcessDatasets(realization)
+  ! 
+  ! Processes datasets before they are linked to anything else
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/20/16
+  ! 
+  use Dataset_module
+  
+  implicit none
+  
+  class(realization_subsurface_type) :: realization
+
+  call DatasetScreenForNonCellIndexed(realization%datasets,realization%option)
+  
+end subroutine RealizationProcessDatasets
+
+! ************************************************************************** !
+
 subroutine RealizationProcessConditions(realization)
   ! 
   ! Sets up auxiliary data associated with
@@ -607,15 +627,12 @@ subroutine RealizationProcessConditions(realization)
   ! 
   use Data_Mediator_Base_class
   use Data_Mediator_Dataset_class
-  use Dataset_module
   
   implicit none
   
   class(realization_subsurface_type) :: realization
   class(data_mediator_base_type), pointer :: cur_data_mediator
 
-  call DatasetScreenForNonCellIndexed(realization%datasets,realization%option)
-  
   if (realization%option%nflowdof > 0) then
     call RealProcessFlowConditions(realization)
   endif
@@ -1272,20 +1289,25 @@ subroutine RealizationRevertFlowParameters(realization)
   if (option%nflowdof > 0) then
     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                                      field%work_loc,ONEDOF)  
-    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_X,0)
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_X, &
+                                 ZERO_INTEGER)
     call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
                                      field%work_loc,ONEDOF)  
-    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Y,0)
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Y, &
+                                 ZERO_INTEGER)
     call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
                                      field%work_loc,ONEDOF)  
-    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Z,0)
+    call MaterialSetAuxVarVecLoc(Material,field%work_loc,PERMEABILITY_Z, &
+                                 ZERO_INTEGER)
   endif   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-                                    field%work_loc,ONEDOF)  
-  call MaterialSetAuxVarVecLoc(Material,field%work_loc,POROSITY,0)
+                                   field%work_loc,ONEDOF)  
+  call MaterialSetAuxVarVecLoc(Material,field%work_loc,POROSITY, &
+                               ZERO_INTEGER)
   call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
-                                    field%work_loc,ONEDOF)  
-  call MaterialSetAuxVarVecLoc(Material,field%work_loc,TORTUOSITY,0)
+                                   field%work_loc,ONEDOF)  
+  call MaterialSetAuxVarVecLoc(Material,field%work_loc,TORTUOSITY, &
+                               ZERO_INTEGER)
 
 end subroutine RealizationRevertFlowParameters
 

@@ -16,7 +16,6 @@ nt = 50
 h5grp.attrs['Dimension'] = numpy.string_('XY')
 h5grp.attrs['Discretization'] = [2.5,2.5]
 h5grp.attrs['Origin'] = [0.,0.]
-h5grp.attrs['Transient'] = [True]
 h5grp.attrs['Max Buffer Size'] = [4]
 
 rarray = numpy.zeros((nt),'=f8')

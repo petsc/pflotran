@@ -541,11 +541,14 @@ subroutine HDF5ReadDbase(filename,option)
   
   PetscInt :: icount
   PetscReal, allocatable :: buffer(:)
-  PetscInt :: num_objects, i_object, object_type, dummy_int
+  PetscInt :: dummy_int
   PetscInt :: value_index
   character(len=MAXWORDLENGTH) :: object_name, word
 #if defined(PETSC_HAVE_HDF5)  
   integer(HID_T) :: file_id
+  integer(HID_T) :: num_objects
+  integer(HID_T) :: i_object
+  integer(HID_T) :: object_type
   integer(HID_T) :: prop_id
   integer(HID_T) :: dataset_id
   integer(HID_T) :: file_space_id

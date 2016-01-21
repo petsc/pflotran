@@ -2447,8 +2447,7 @@ subroutine PatchUpdateCouplerFromDataset(coupler,option,grid,dataset,dof)
       y = y-dist(0)*dist(2)
       z = z-dist(0)*dist(3)
     endif
-    call DatasetGriddedHDF5InterpolateReal(dataset,x,y,z, &
-                                           0.d0,temp_real,option)
+    call DatasetGriddedHDF5InterpolateReal(dataset,x,y,z,temp_real,option)
     coupler%flow_aux_real_var(dof,iconn) = temp_real
   enddo
   
@@ -2534,6 +2533,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,iscale_type,option)
       do iconn = 1, cur_connection_set%num_connections
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
+        !geh: kludge for 64-bit integers.
         call GridGetGhostedNeighbors(grid,ghosted_id,DMDA_STENCIL_STAR, &
                                     x_width,y_width,z_width, &
                                     x_count,y_count,z_count, &

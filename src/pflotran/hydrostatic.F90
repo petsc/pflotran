@@ -364,7 +364,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       call DatasetGriddedHDF5InterpolateReal(datum_dataset, &
                                           grid%x(ghosted_id)-dx_conn, &
                                           grid%y(ghosted_id)-dy_conn, &
-                                          0.d0, &
                                           0.d0,temp_real,option)
       ! temp_real is now the real datum
       dist_z = grid%z(ghosted_id)-dz_conn-temp_real

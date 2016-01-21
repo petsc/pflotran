@@ -215,7 +215,8 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
   type(structured_grid_type) :: structured_grid
   DM :: da
   PetscInt :: ndof
-  PetscInt :: stencil_width,stencil_type
+  PetscInt :: stencil_width
+  PetscEnum :: stencil_type
 
   PetscErrorCode :: ierr
 
@@ -1548,7 +1549,7 @@ subroutine StructGridMapIndices(structured_grid,stencil_type, &
 #include "petsc/finclude/petscdmda.h"  
 
   type(structured_grid_type) :: structured_grid
-  PetscInt :: stencil_type
+  PetscEnum :: stencil_type
   PetscInt, pointer :: nG2L(:), nL2G(:), nG2A(:)
   type(option_type) :: option
 
@@ -1671,7 +1672,7 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: ghosted_id
-  PetscInt :: stencil_type
+  PetscEnum :: stencil_type
   PetscInt :: stencil_width_i
   PetscInt :: stencil_width_j
   PetscInt :: stencil_width_k
@@ -1749,7 +1750,7 @@ subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: ghosted_id
-  PetscInt :: stencil_type
+  PetscEnum :: stencil_type
   PetscInt :: stencil_width_i
   PetscInt :: stencil_width_j
   PetscInt :: stencil_width_k

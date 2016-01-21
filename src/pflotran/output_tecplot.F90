@@ -2712,31 +2712,31 @@ subroutine WriteTecplotPolyUGridElements(fid,realization_base)
 
   write(fid,'(a)') '# number of vertices/nodes per face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
-                        grid%unstructured_grid%polyhedra_grid%uface_nverts*1.d0, &
-                        TECPLOT_INTEGER, &
-                        grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
-                        10)
+                      grid%unstructured_grid%polyhedra_grid%uface_nverts*1.d0, &
+                      TECPLOT_INTEGER, &
+                      grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
+                      TEN_INTEGER)
 
   write(fid,'(a)') '# id of vertices/nodes forming a face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
-                        grid%unstructured_grid%polyhedra_grid%uface_natvertids*1.d0, &
-                        TECPLOT_INTEGER, &
-                        grid%unstructured_grid%polyhedra_grid%num_verts_of_ufaces_local, &
-                        4)
+                  grid%unstructured_grid%polyhedra_grid%uface_natvertids*1.d0, &
+                  TECPLOT_INTEGER, &
+                  grid%unstructured_grid%polyhedra_grid%num_verts_of_ufaces_local, &
+                  FOUR_INTEGER)
 
   write(fid,'(a)') '# id of control-volume/element left of a face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
-                        grid%unstructured_grid%polyhedra_grid%uface_left_natcellids*1.d0, &
-                        TECPLOT_INTEGER, &
-                        grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
-                        10)
+             grid%unstructured_grid%polyhedra_grid%uface_left_natcellids*1.d0, &
+             TECPLOT_INTEGER, &
+             grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
+             TEN_INTEGER)
 
   write(fid,'(a)') '# id of control-volume/element right of a face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
-                        grid%unstructured_grid%polyhedra_grid%uface_right_natcellids*1.d0, &
-                        TECPLOT_INTEGER, &
-                        grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
-                        10)
+            grid%unstructured_grid%polyhedra_grid%uface_right_natcellids*1.d0, &
+            TECPLOT_INTEGER, &
+            grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
+            TEN_INTEGER)
 
 end subroutine WriteTecplotPolyUGridElements
 
