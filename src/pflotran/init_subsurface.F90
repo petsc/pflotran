@@ -770,7 +770,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
     !geh: Pass in -1 so that entire dataset is read. The mask is applied below.
     call SubsurfReadDatasetToVecWithMask(realization, &
                                     material_property%permeability_dataset, &
-                                    -1,global_vec)
+                                    NEG_ONE_INTEGER,global_vec)
     call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
     ratio = 1.d0
     scale = 1.d0
@@ -806,7 +806,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
       !     below.
       call SubsurfReadDatasetToVecWithMask(realization, &
                                       material_property%permeability_dataset, &
-                                      -1,global_vec)
+                                      NEG_ONE_INTEGER,global_vec)
       call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
       select case(idirection)
         case(X_DIRECTION)
