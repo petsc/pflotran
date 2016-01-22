@@ -33,6 +33,7 @@ subroutine InitSubsurfSetupRealization(realization)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Reaction_Database_module
   use EOS_Water_module
+  use Dataset_module
   
   implicit none
   
@@ -86,6 +87,7 @@ subroutine InitSubsurfSetupRealization(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
   call RealizationPassPtrsToPatches(realization)
+  call RealizationProcessDatasets(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
   ! must process conditions before couplers in order to determine dataset types
@@ -722,6 +724,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   use Input_Aux_module
   use Material_module
   use HDF5_module
+  use Dataset_Common_HDF5_class
   
   implicit none
   
@@ -800,8 +803,11 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
         case(Z_DIRECTION)
           word = 'Z'
       end select
-      material_property%permeability_dataset%name = &
-        trim(material_property%permeability_dataset%name) // trim(word)
+      select type(dataset => material_property%permeability_dataset)
+        class is(dataset_common_hdf5_type)
+          dataset%hdf5_dataset_name = trim(dataset%hdf5_dataset_name) // &
+                                      trim(word)
+      end select
       !geh: Pass in -1 so that entire dataset is read. The mask is applied 
       !     below.
       call SubsurfReadDatasetToVecWithMask(realization, &
@@ -883,6 +889,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: filename
   PetscInt :: local_id, ghosted_id, natural_id
   PetscReal :: tempreal
   PetscErrorCode :: ierr
@@ -902,6 +909,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
     dataset_name = dataset%name
     select type(dataset)
       class is(dataset_gridded_hdf5_type)
+        call DatasetGriddedHDF5Load(dataset,option)
         do local_id = 1, grid%nlmax
           ghosted_id = grid%nL2G(local_id)
           if (material_id < 0 .or. &
@@ -911,7 +919,14 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
                    vec_p(local_id),option)
           endif
         enddo
+        ! now we strip the dataset to save storage, saving only the name
+        ! and filename
+        filename = dataset%filename
+        dataset_name = dataset%name
+        call DatasetGriddedHDF5Strip(dataset)
+        call DatasetGriddedHDF5Init(dataset)
       class is(dataset_common_hdf5_type)
+        dataset_name = dataset%hdf5_dataset_name
         call HDF5ReadCellIndexedRealArray(realization,field%work, &
                                           dataset%filename, &
                                           group_name,dataset_name, &

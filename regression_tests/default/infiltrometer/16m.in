@@ -88,6 +88,7 @@ END
 DATASET permeability
 #changeme - change filename to ("parameters-%d.h5", NXYZ)
   FILENAME ./parameters-16.h5
+  HDF5_DATASET_NAME Permeability
 END
 
 #=========================== material properties ==============================
