@@ -86,7 +86,6 @@ subroutine InitSubsurfSetupRealization(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
   call RealizationPassPtrsToPatches(realization)
-  call RealizationProcessDatasets(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
   ! must process conditions before couplers in order to determine dataset types
@@ -738,8 +737,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   type(option_type), pointer :: option
   type(input_type), pointer :: input
   type(discretization_type), pointer :: discretization
-  character(len=MAXSTRINGLENGTH) :: group_name
-  character(len=MAXSTRINGLENGTH) :: dataset_name
+  character(len=MAXWORDLENGTH) :: word
   PetscInt :: local_id
   PetscInt :: idirection, temp_int
   PetscReal :: ratio, scale
@@ -766,11 +764,11 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   if (material_property%isotropic_permeability .or. &
       (.not.material_property%isotropic_permeability .and. &
         material_property%vertical_anisotropy_ratio > 0.d0)) then
-    material_property%permeability_dataset%name = 'Permeability'
+!    material_property%permeability_dataset%name = 'Permeability'
     !geh: Pass in -1 so that entire dataset is read. The mask is applied below.
     call SubsurfReadDatasetToVecWithMask(realization, &
                                     material_property%permeability_dataset, &
-                                    NEG_ONE_INTEGER,global_vec)
+                                    -1,global_vec)
     call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
     ratio = 1.d0
     scale = 1.d0
@@ -796,17 +794,19 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
     do idirection = X_DIRECTION,temp_int
       select case(idirection)
         case(X_DIRECTION)
-          material_property%permeability_dataset%name = 'PermeabilityX'
+          word = 'X'
         case(Y_DIRECTION)
-          material_property%permeability_dataset%name = 'PermeabilityY'
+          word = 'Y'
         case(Z_DIRECTION)
-          material_property%permeability_dataset%name = 'PermeabilityZ'
-      end select    
+          word = 'Z'
+      end select
+      material_property%permeability_dataset%name = &
+        trim(material_property%permeability_dataset%name) // trim(word)
       !geh: Pass in -1 so that entire dataset is read. The mask is applied 
       !     below.
       call SubsurfReadDatasetToVecWithMask(realization, &
                                       material_property%permeability_dataset, &
-                                      NEG_ONE_INTEGER,global_vec)
+                                      -1,global_vec)
       call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
       select case(idirection)
         case(X_DIRECTION)
@@ -883,7 +883,6 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  character(len=MAXSTRINGLENGTH) :: filename
   PetscInt :: local_id, ghosted_id, natural_id
   PetscReal :: tempreal
   PetscErrorCode :: ierr
@@ -903,7 +902,6 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
     dataset_name = dataset%name
     select type(dataset)
       class is(dataset_gridded_hdf5_type)
-        call DatasetGriddedHDF5Load(dataset,option)
         do local_id = 1, grid%nlmax
           ghosted_id = grid%nL2G(local_id)
           if (material_id < 0 .or. &
@@ -913,12 +911,6 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
                    vec_p(local_id),option)
           endif
         enddo
-        ! now we strip the dataset to save storage, saving only the name
-        ! and filename
-        filename = dataset%filename
-        dataset_name = dataset%name
-        call DatasetGriddedHDF5Strip(dataset)
-        call DatasetGriddedHDF5Init(dataset)
       class is(dataset_common_hdf5_type)
         call HDF5ReadCellIndexedRealArray(realization,field%work, &
                                           dataset%filename, &
