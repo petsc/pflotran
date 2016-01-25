@@ -576,17 +576,7 @@ subroutine SubsurfaceReadRTPM(input, option, pm)
   pm => PMRTCreate()
   pm%option => option
   
-  word = ''
-  do   
-    call InputReadPflotranString(input,option)
-    if (InputCheckExit(input,option)) exit
-    call InputReadWord(input,option,word,PETSC_FALSE)
-    call StringToUpper(word)
-    select case(word)
-      case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
-      case default ! includes 'GLOBAL_IMPLICIT'
-    end select
-  enddo
+  call pm%Read(input)
   
 end subroutine SubsurfaceReadRTPM
 
@@ -836,7 +826,7 @@ subroutine InitSubsurfaceSimulation(simulation)
         ! set realization
         select type(cur_process_model)
           class is (pm_subsurface_flow_type)
-            call cur_process_model%PMSubsurfaceSetRealization(realization)
+            call cur_process_model%PMSubsurfaceFlowSetRealization(realization)
           class is (pm_rt_type)
             if (.not.associated(realization%reaction)) then
               option%io_buffer = 'SUBSURFACE_TRANSPORT specified as a ' // &

@@ -71,7 +71,7 @@ function PMTHCreate()
 
   nullify(th_pm%commN)
 
-  call PMSubsurfaceCreate(th_pm)
+  call PMSubsurfaceFlowCreate(th_pm)
   th_pm%name = 'PMTH'
 
   PMTHCreate => th_pm
@@ -180,7 +180,7 @@ subroutine PMTHSetup(this)
   
   class(pm_th_type) :: this
 
-  call PMSubsurfaceSetup(this)
+  call PMSubsurfaceFlowSetup(this)
   
   ! set up communicator
   select case(this%realization%discretization%itype)
@@ -209,7 +209,7 @@ subroutine PMTHInitializeTimestep(this)
   
   class(pm_th_type) :: this
 
-  call PMSubsurfaceInitializeTimestepA(this)
+  call PMSubsurfaceFlowInitializeTimestepA(this)
 
   ! update porosity
   call this%comm1%LocalToLocal(this%realization%field%icap_loc, &
@@ -224,7 +224,7 @@ subroutine PMTHInitializeTimestep(this)
   endif
   
   call THInitializeTimestep(this%realization)
-  call PMSubsurfaceInitializeTimestepB(this)
+  call PMSubsurfaceFlowInitializeTimestepB(this)
   
 end subroutine PMTHInitializeTimestep
 
@@ -299,8 +299,8 @@ subroutine PMTHUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     fac = 0.33d0
     ut = 0.d0
   else
-    up = this%option%dpmxe/(this%option%dpmax+0.1)
-    utmp = this%option%dtmpmxe/(this%option%dtmpmax+1.d-5)
+    up = this%max_pressure_change/(this%pressure_change_governor+0.1)
+    utmp = this%max_temperature_change/(this%temperature_change_governor+1.d-5)
     ut = min(up,utmp)
   endif
   dtt = fac * dt * (1.d0 + ut)
@@ -411,12 +411,12 @@ subroutine PMTHCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   TH_auxvars => patch%aux%TH%auxvars
   global_auxvars => patch%aux%Global%auxvars
 
-  if (Initialized(option%pressure_change_limit)) then
+  if (Initialized(this%pressure_change_limit)) then
 
     call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(X,X_p,ierr);CHKERRQ(ierr)
 
-    press_limit = dabs(option%pressure_change_limit)
+    press_limit = dabs(this%pressure_change_limit)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
@@ -438,12 +438,12 @@ subroutine PMTHCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 
   endif
   
-  if (dabs(option%temperature_change_limit) > 0.d0) then
+  if (dabs(this%temperature_change_limit) > 0.d0) then
       
     call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(X,X_p,ierr);CHKERRQ(ierr)
 
-    temp_limit = dabs(option%temperature_change_limit)
+    temp_limit = dabs(this%temperature_change_limit)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       iend = local_id*option%nflowdof
@@ -465,10 +465,10 @@ subroutine PMTHCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   endif
 
 
-  if (Initialized(option%pressure_dampening_factor)) then
+  if (Initialized(this%pressure_dampening_factor)) then
     ! P^p+1 = P^p - dP^p
     P_R = option%reference_pressure
-    scale = option%pressure_dampening_factor
+    scale = this%pressure_dampening_factor
 
     call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(X,X_p,ierr);CHKERRQ(ierr)
@@ -640,7 +640,7 @@ subroutine PMTHTimeCut(this)
   
   class(pm_th_type) :: this
   
-  call PMSubsurfaceTimeCut(this)
+  call PMSubsurfaceFlowTimeCut(this)
   call THTimeCut(this%realization)
 
 end subroutine PMTHTimeCut
@@ -661,7 +661,7 @@ subroutine PMTHUpdateSolution(this)
   
   class(pm_th_type) :: this
   
-  call PMSubsurfaceUpdateSolution(this)
+  call PMSubsurfaceFlowUpdateSolution(this)
   call THUpdateSolution(this%realization)
   if (this%option%surf_flow_on) &
     call THUpdateSurfaceBC(this%realization)
@@ -701,15 +701,16 @@ subroutine PMTHMaxChange(this)
   
   class(pm_th_type) :: this
   
-  call THMaxChange(this%realization,dpmax,dtmpmax)
+  call THMaxChange(this%realization,this%max_pressure_change, &
+                   this%max_temperature_change)
     if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dpmx= ",1pe12.4," dtmpmx= ",1pe12.4)') &
-      dpmax,dtmpmax
+      this%max_pressure_change,this%max_temperature_change
   endif
   if (this%option%print_file_flag) then
     write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
       & " dtmpmx= ",1pe12.4)') &
-      dpmax,dtmpmax
+      this%max_pressure_change,this%max_temperature_change
   endif 
 
 end subroutine PMTHMaxChange
@@ -759,7 +760,7 @@ subroutine PMTHDestroy(this)
 
   ! preserve this ordering
   call THDestroy(this%realization%patch)
-  call PMSubsurfaceDestroy(this)
+  call PMSubsurfaceFlowDestroy(this)
 
 end subroutine PMTHDestroy
 

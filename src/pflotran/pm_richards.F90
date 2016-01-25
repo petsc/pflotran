@@ -57,7 +57,7 @@ function PMRichardsCreate()
   class(pm_richards_type), pointer :: richards_pm
   
   allocate(richards_pm)
-  call PMSubsurfaceCreate(richards_pm)
+  call PMSubsurfaceFlowCreate(richards_pm)
   richards_pm%name = 'PMRichards'
 
   PMRichardsCreate => richards_pm
@@ -135,14 +135,14 @@ subroutine PMRichardsInitializeTimestep(this)
   
   class(pm_richards_type) :: this
 
-  call PMSubsurfaceInitializeTimestepA(this)
+  call PMSubsurfaceFlowInitializeTimestepA(this)
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," RICHARDS FLOW ",63("="))')
   endif
   
   call RichardsInitializeTimestep(this%realization)
-  call PMSubsurfaceInitializeTimestepB(this)
+  call PMSubsurfaceFlowInitializeTimestepB(this)
   
 end subroutine PMRichardsInitializeTimestep
 
@@ -204,7 +204,7 @@ subroutine PMRichardsUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
       fac = 0.33d0
       ut = 0.d0
     else
-      up = this%option%dpmxe/(this%option%dpmax+0.1)
+      up = this%max_pressure_change/(this%pressure_change_governor+0.1)
       ut = up
     endif
     dtt = fac * dt * (1.d0 + ut)
@@ -213,7 +213,7 @@ subroutine PMRichardsUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     dt_tfac = tfac(ifac) * dt
 
     fac = 0.5d0
-    up = this%option%dpmxe/(this%option%dpmax+0.1)
+    up = this%max_pressure_change/(this%pressure_change_governor+0.1)
     dt_p = fac * dt * (1.d0 + up)
 
     dtt = min(dt_tfac,dt_p)
@@ -246,7 +246,7 @@ subroutine PMRichardsResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
-  call PMSubsurfaceUpdatePropertiesNI(this)
+  call PMSubsurfaceFlowUpdatePropertiesNI(this)
   call RichardsResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMRichardsResidual
@@ -353,11 +353,11 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 
   endif
 
-  if (Initialized(option%pressure_dampening_factor)) then
+  if (Initialized(this%pressure_dampening_factor)) then
     changed = PETSC_TRUE
     ! P^p+1 = P^p - dP^p
     P_R = option%reference_pressure
-    scale = option%pressure_dampening_factor
+    scale = this%pressure_dampening_factor
 
     call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(X,X_p,ierr);CHKERRQ(ierr)
@@ -503,7 +503,7 @@ subroutine PMRichardsTimeCut(this)
   
   class(pm_richards_type) :: this
   
-  call PMSubsurfaceTimeCut(this)
+  call PMSubsurfaceFlowTimeCut(this)
   call RichardsTimeCut(this%realization)
 
 end subroutine PMRichardsTimeCut
@@ -523,7 +523,7 @@ subroutine PMRichardsUpdateSolution(this)
   
   class(pm_richards_type) :: this
   
-  call PMSubsurfaceUpdateSolution(this)
+  call PMSubsurfaceFlowUpdateSolution(this)
   call RichardsUpdateSolution(this%realization)
   if (this%option%surf_flow_on) &
     call RichardsUpdateSurfacePress(this%realization)
@@ -616,7 +616,7 @@ subroutine PMRichardsDestroy(this)
 
   ! preserve this ordering
   call RichardsDestroy(this%realization)
-  call PMSubsurfaceDestroy(this)
+  call PMSubsurfaceFlowDestroy(this)
   
 end subroutine PMRichardsDestroy
   

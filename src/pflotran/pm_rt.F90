@@ -30,10 +30,15 @@ module PM_RT_class
     PetscBool :: steady_flow
     PetscReal :: tran_weight_t0
     PetscReal :: tran_weight_t1
+    ! these govern the size of subsequent time steps
+    PetscReal :: max_concentration_change
+    PetscReal :: max_volfrac_change
+    PetscReal :: volfrac_change_governor
     ! for transport only
     PetscBool :: transient_porosity
   contains
     procedure, public :: Setup => PMRTSetup
+    procedure, public :: Read => PMRTRead
     procedure, public :: PMRTSetRealization
     procedure, public :: InitializeRun => PMRTInitializeRun
     procedure, public :: FinalizeRun => PMRTFinalizeRun
@@ -99,6 +104,9 @@ function PMRTCreate()
   rt_pm%steady_flow = PETSC_FALSE
   rt_pm%tran_weight_t0 = 0.d0
   rt_pm%tran_weight_t1 = 0.d0
+  rt_pm%max_concentration_change = 0.d0
+  rt_pm%max_volfrac_change = 0.d0
+  rt_pm%volfrac_change_governor = 1.d0
   ! these flags can only be true for transport only
   rt_pm%transient_porosity = PETSC_FALSE
 
@@ -108,6 +116,56 @@ function PMRTCreate()
   PMRTCreate => rt_pm
   
 end function PMRTCreate
+
+! ************************************************************************** !
+
+subroutine PMRTRead(this,input)
+  ! 
+  ! Reads input file parameters associated with the reactive transport 
+  ! process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/25/16
+  !
+  use Input_Aux_module
+  use String_module
+  use Option_module
+ 
+  implicit none
+  
+  class(pm_rt_type) :: this
+  type(input_type), pointer :: input
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  type(option_type), pointer :: option
+
+  option => this%option
+  
+  error_string = 'Reactive Transport Options'
+  
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+    
+    select case(trim(word))
+      case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
+      case('MAX_VOLUME_FRACTION_CHANGE')
+        call InputReadDouble(input,option,this%volfrac_change_governor)
+        call InputDefaultMsg(input,option,'maximum volume fraction change')
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    end select
+  enddo
+  
+end subroutine PMRTRead
 
 ! ************************************************************************** !
 
@@ -451,7 +509,8 @@ subroutine PMRTFinalizeTimestep(this)
                                   this%realization%field%porosity_tpdt)
   endif
   
-  call RTMaxChange(this%realization,dcmax)
+  call RTMaxChange(this%realization,this%max_concentration_change, &
+                   this%max_volfrac_change)
   if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4, &
             &" [mol/s]")') &
@@ -507,12 +566,14 @@ subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)
   
-  PetscReal :: dtt
+  PetscReal :: dtt, uvf, dt_vf, dt_tfac, fac
+  PetscInt :: ifac
   
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%UpdateTimestep()')  
 #endif
   
+#if 0
   dtt = dt
   if (num_newton_iterations <= iacceleration) then
     if (num_newton_iterations <= size(tfac)) then
@@ -530,6 +591,37 @@ subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   ! geh: see comment above under flow stepper
   dtt = max(dtt,dt_min)
   dt = dtt
+  
+#else
+
+  if (iacceleration > 0) then
+    fac = 0.5d0
+    if (num_newton_iterations >= iacceleration) then
+      fac = 0.33d0
+      uvf = 0.d0
+    else
+      uvf = this%max_volfrac_change/(this%volfrac_change_governor+1.d-6)
+    endif
+    dtt = fac * dt * (1.d0 + uvf)
+  else
+    ifac = max(min(num_newton_iterations,size(tfac)),1)
+    dt_tfac = tfac(ifac) * dt
+
+    fac = 0.5d0
+    uvf= this%max_volfrac_change/(this%volfrac_change_governor+1.d-6)
+    dt_vf = fac * dt * (1.d0 + uvf)
+
+    dtt = min(dt_tfac,dt_vf)
+  endif
+  
+  if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
+  if (dtt > dt_max) dtt = dt_max
+  ! geh: There used to be code here that cut the time step if it is too
+  !      large relative to the simulation time.  This has been removed.
+  dtt = max(dtt,dt_min)
+  dt = dtt
+  
+#endif  
 
 end subroutine PMRTUpdateTimestep
 

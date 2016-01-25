@@ -59,7 +59,7 @@ function PMMphaseCreate()
 
   allocate(mphase_pm)
 
-  call PMSubsurfaceCreate(mphase_pm)
+  call PMSubsurfaceFlowCreate(mphase_pm)
   mphase_pm%name = 'PMMphase'
 
   PMMphaseCreate => mphase_pm
@@ -82,14 +82,14 @@ subroutine PMMphaseInitializeTimestep(this)
   
   class(pm_mphase_type) :: this
 
-  call PMSubsurfaceInitializeTimestepA(this)         
+  call PMSubsurfaceFlowInitializeTimestepA(this)         
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," MPHASE FLOW ",65("="))')
   endif
   
   call MphaseInitializeTimestep(this%realization)
-  call PMSubsurfaceInitializeTimestepB(this)         
+  call PMSubsurfaceFlowInitializeTimestepB(this)         
   
 end subroutine PMMphaseInitializeTimestep
 
@@ -247,10 +247,10 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
       fac = 0.33d0
       ut = 0.d0
     else
-      up = this%option%dpmxe/(this%option%dpmax+0.1)
-      utmp = this%option%dtmpmxe/(this%option%dtmpmax+1.d-5)
-      uc = this%option%dcmxe/(this%option%dcmax+1.d-6)
-      uus= this%option%dsmxe/(this%option%dsmax+1.d-6)
+      up = this%max_pressure_change/(this%pressure_change_governor+0.1)
+      utmp = this%max_temperature_change/(this%temperature_change_governor+1.d-5)
+      uc = this%max_xmol_change/(this%xmol_change_governor+1.d-6)
+      uus= this%max_saturation_change/(this%saturation_change_governor+1.d-6)
       ut = min(up,utmp,uc,uus)
     endif
     dtt = fac * dt * (1.d0 + ut)
@@ -259,7 +259,7 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     dt_tfac = tfac(ifac) * dt
 
     fac = 0.5d0
-    up = this%option%dpmxe/(this%option%dpmax+0.1)
+    up = this%max_pressure_change/(this%pressure_change_governor+0.1)
     dt_p = fac * dt * (1.d0 + up)
 
     dtt = min(dt_tfac,dt_p)
@@ -385,7 +385,7 @@ subroutine PMMphaseTimeCut(this)
   
   class(pm_mphase_type) :: this
   
-  call PMSubsurfaceTimeCut(this)
+  call PMSubsurfaceFlowTimeCut(this)
   call MphaseTimeCut(this%realization)
 
 end subroutine PMMphaseTimeCut
@@ -404,7 +404,7 @@ subroutine PMMphaseUpdateSolution(this)
   
   class(pm_mphase_type) :: this
   
-  call PMSubsurfaceUpdateSolution(this)
+  call PMSubsurfaceFlowUpdateSolution(this)
   call MphaseUpdateSolution(this%realization)
 
 end subroutine PMMphaseUpdateSolution     
@@ -444,16 +444,21 @@ subroutine PMMphaseMaxChange(this)
   
   PetscReal :: dpmax, dtmpmax, dsmax, dcmax
   
-  call MphaseMaxChange(this%realization,dpmax,dtmpmax,dsmax,dcmax)
+  call MphaseMaxChange(this%realization,this%max_pressure_change, &
+                       this%max_temperature_change, &
+                       this%max_saturation_change, &
+                       this%max_xmol_change)
   if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dpmx= ",1pe12.4, &
       & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          dpmax,dtmpmax,dcmax,dsmax
+          this%max_pressure_change,this%max_temperature_change, &
+          this%max_xmol_change,this%max_saturation_change
   endif
   if (this%option%print_file_flag) then
     write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
       & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          dpmax,dtmpmax,dcmax,dsmax
+          this%max_pressure_change,this%max_temperature_change, &
+          this%max_xmol_change,this%max_saturation_change
   endif   
 
 end subroutine PMMphaseMaxChange
@@ -500,7 +505,7 @@ subroutine PMMphaseDestroy(this)
 
   ! preserve this ordering
   call MphaseDestroy(this%realization)
-  call PMSubsurfaceDestroy(this)
+  call PMSubsurfaceFlowDestroy(this)
   
 end subroutine PMMphaseDestroy
   

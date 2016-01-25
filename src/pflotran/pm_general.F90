@@ -18,14 +18,6 @@ module PM_General_class
 #include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_subsurface_flow_type) :: pm_general_type
-    PetscReal :: dPmax
-    PetscReal :: dTmax
-    PetscReal :: dXmax
-    PetscReal :: dSmax
-    PetscReal :: dPmax_allowable
-    PetscReal :: dTmax_allowable
-    PetscReal :: dXmax_allowable
-    PetscReal :: dSmax_allowable
     PetscInt, pointer :: max_change_ivar(:)
     PetscInt, pointer :: max_change_isubvar(:)
   contains
@@ -76,15 +68,6 @@ function PMGeneralCreate()
 #endif  
 
   allocate(general_pm)
-
-  general_pm%dPmax = 0.d0
-  general_pm%dTmax = 0.d0
-  general_pm%dXmax = 0.d0
-  general_pm%dSmax = 0.d0
-  general_pm%dPmax_allowable = 5.d5
-  general_pm%dTmax_allowable = 5.d0
-  general_pm%dXmax_allowable = 0.5d0
-  general_pm%dSmax_allowable = 1.d0
   allocate(general_pm%max_change_ivar(6))
   general_pm%max_change_ivar = [LIQUID_PRESSURE, GAS_PRESSURE, AIR_PRESSURE, &
                                 LIQUID_MOLE_FRACTION, TEMPERATURE, &
@@ -95,7 +78,7 @@ function PMGeneralCreate()
                                        ! 2 = air in xmol(air,liquid)
   general_pm%max_change_isubvar = [0,0,0,2,0,0]
   
-  call PMSubsurfaceCreate(general_pm)
+  call PMSubsurfaceFlowCreate(general_pm)
   general_pm%name = 'PMGeneral'
 
   PMGeneralCreate => general_pm
@@ -126,6 +109,7 @@ subroutine PMGeneralRead(this,input)
   type(option_type), pointer :: option
   PetscReal :: tempreal
   character(len=MAXSTRINGLENGTH) :: error_string
+  PetscBool :: found
 
   option => this%option
 
@@ -140,8 +124,12 @@ subroutine PMGeneralRead(this,input)
 
     call InputReadWord(input,option,keyword,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword',error_string)
-    call StringToUpper(keyword)   
-      
+    call StringToUpper(keyword)
+    
+    found = PETSC_FALSE
+    call PMSubsurfaceFlowReadSelectCase(this,input,keyword,found,option)    
+    if (found) cycle
+    
     select case(trim(keyword))
       case('ITOL_SCALED_RESIDUAL')
         call InputReadDouble(input,option,general_itol_scaled_res)
@@ -192,6 +180,7 @@ subroutine PMGeneralRead(this,input)
       case('DAMPING_FACTOR')
         call InputReadDouble(input,option,general_damping_factor)
         call InputErrorMsg(input,option,'damping factor',error_string)
+#if 0        
       case('GOVERN_MAXIMUM_PRESSURE_CHANGE')
         call InputReadDouble(input,option,this%dPmax_allowable)
         call InputErrorMsg(input,option,'maximum allowable pressure change', &
@@ -210,6 +199,7 @@ subroutine PMGeneralRead(this,input)
         call InputErrorMsg(input,option, &
                            'maximum allowable mole fraction change', &
                            error_string)
+#endif
       case('DEBUG_CELL')
         call InputReadInt(input,option,general_debug_cell_id)
         call InputErrorMsg(input,option,'debug cell id',error_string)
@@ -267,12 +257,12 @@ recursive subroutine PMGeneralInitializeRun(this)
                                 this%max_change_isubvar(i))
   enddo
 
-  ! this call must come before PMSubsurfaceInitializeRun() so that auxvars
+  ! this call must come before PMSubsurfaceFlowInitializeRun() so that auxvars
   ! are updated at beginning of run and prior to initial output.
   call GeneralSetReferencePressures(this%realization)
 
   ! call parent implementation
-  call PMSubsurfaceInitializeRun(this)
+  call PMSubsurfaceFlowInitializeRun(this)
 
 end subroutine PMGeneralInitializeRun
 
@@ -295,7 +285,7 @@ subroutine PMGeneralInitializeTimestep(this)
   
   class(pm_general_type) :: this
 
-  call PMSubsurfaceInitializeTimestepA(this)                                 
+  call PMSubsurfaceFlowInitializeTimestepA(this)                                 
 !geh:remove   everywhere                                
   call MaterialAuxVarCommunicate(this%comm1, &
                                  this%realization%patch%aux%Material, &
@@ -307,7 +297,7 @@ subroutine PMGeneralInitializeTimestep(this)
   endif
   
   call GeneralInitializeTimestep(this%realization)
-  call PMSubsurfaceInitializeTimestepB(this)                                 
+  call PMSubsurfaceFlowInitializeTimestepB(this)                                 
   
 end subroutine PMGeneralInitializeTimestep
 
@@ -369,10 +359,10 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     fac = 0.33d0
     umin = 0.d0
   else
-    up = this%dPmax_allowable/(this%dPmax+0.1)
-    ut = this%dTmax_allowable/(this%dTmax+1.d-5)
-    ux = this%dXmax_allowable/(this%dXmax+1.d-5)
-    us = this%dSmax_allowable/(this%dSmax+1.d-5)
+    up = this%max_pressure_change/(this%pressure_change_governor+0.1)
+    ut = this%max_temperature_change/(this%temperature_change_governor+1.d-5)
+    ux = this%max_xmol_change/(this%xmol_change_governor+1.d-5)
+    us = this%max_saturation_change/(this%saturation_change_governor+1.d-5)
     umin = min(up,ut,ux,us)
   endif
   ifac = max(min(num_newton_iterations,size(tfac)),1)
@@ -400,7 +390,7 @@ subroutine PMGeneralResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
-  call PMSubsurfaceUpdatePropertiesNI(this)
+  call PMSubsurfaceFlowUpdatePropertiesNI(this)
   call GeneralResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMGeneralResidual
@@ -1236,7 +1226,7 @@ subroutine PMGeneralTimeCut(this)
   
   class(pm_general_type) :: this
   
-  call PMSubsurfaceTimeCut(this)
+  call PMSubsurfaceFlowTimeCut(this)
   call GeneralTimeCut(this%realization)
 
 end subroutine PMGeneralTimeCut
@@ -1256,7 +1246,7 @@ subroutine PMGeneralUpdateSolution(this)
   
   class(pm_general_type) :: this
   
-  call PMSubsurfaceUpdateSolution(this)
+  call PMSubsurfaceFlowUpdateSolution(this)
   call GeneralUpdateSolution(this%realization)
   call GeneralMapBCAuxVarsToGlobal(this%realization)
 
@@ -1323,6 +1313,9 @@ subroutine PMGeneralMaxChange(this)
 
   max_change_global = 0.d0
   max_change_local = 0.d0
+  
+  ! max change variables: [LIQUID_PRESSURE, GAS_PRESSURE, AIR_PRESSURE, &
+  !                        LIQUID_MOLE_FRACTION, TEMPERATURE, GAS_SATURATION]
   do i = 1, 6
     call RealizationGetVariable(realization,field%work, &
                                 this%max_change_ivar(i), &
@@ -1359,11 +1352,14 @@ subroutine PMGeneralMaxChange(this)
       & " dsg= ",1pe12.4)') &
       max_change_global(1:6)
   endif
+
+  ! max change variables: [LIQUID_PRESSURE, GAS_PRESSURE, AIR_PRESSURE, &
+  !                        LIQUID_MOLE_FRACTION, TEMPERATURE, GAS_SATURATION]
   ! ignore air pressure as it jumps during phase change
-  this%dPmax = maxval(max_change_global(1:2))
-  this%dXmax = max_change_global(4)
-  this%dTmax = max_change_global(5)
-  this%dSmax = max_change_global(6)
+  this%max_pressure_change = maxval(max_change_global(1:2))
+  this%max_xmol_change = max_change_global(4)
+  this%max_temperature_change = max_change_global(5)
+  this%max_saturation_change = max_change_global(6)
   
 end subroutine PMGeneralMaxChange
 
@@ -1408,7 +1404,7 @@ subroutine PMGeneralCheckpointBinary(this,viewer)
   call GlobalGetAuxVarVecLoc(this%realization, &
                              this%realization%field%iphas_loc, &
                              STATE,ZERO_INTEGER)
-  call PMSubsurfaceCheckpointBinary(this,viewer)
+  call PMSubsurfaceFlowCheckpointBinary(this,viewer)
   
 end subroutine PMGeneralCheckpointBinary
 
@@ -1431,7 +1427,7 @@ subroutine PMGeneralRestartBinary(this,viewer)
   class(pm_general_type) :: this
   PetscViewer :: viewer
   
-  call PMSubsurfaceRestartBinary(this,viewer)
+  call PMSubsurfaceFlowRestartBinary(this,viewer)
   call GlobalSetAuxVarVecLoc(this%realization, &
                              this%realization%field%iphas_loc, &
                              STATE,ZERO_INTEGER)
@@ -1464,7 +1460,7 @@ subroutine PMGeneralDestroy(this)
 
   ! preserve this ordering
   call GeneralDestroy(this%realization)
-  call PMSubsurfaceDestroy(this)
+  call PMSubsurfaceFlowDestroy(this)
   
 end subroutine PMGeneralDestroy
   

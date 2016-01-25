@@ -59,7 +59,7 @@ function PMImmisCreate()
   
   allocate(immis_pm)
 
-  call PMSubsurfaceCreate(immis_pm)
+  call PMSubsurfaceFlowCreate(immis_pm)
   immis_pm%name = 'PMImmis'
 
   PMImmisCreate => immis_pm
@@ -82,14 +82,14 @@ subroutine PMImmisInitializeTimestep(this)
   
   class(pm_immis_type) :: this
 
-  call PMSubsurfaceInitializeTimestepA(this)         
+  call PMSubsurfaceFlowInitializeTimestepA(this)         
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," IMMISCIBLE FLOW ",61("="))')
   endif
   
   call ImmisInitializeTimestep(this%realization)
-  call PMSubsurfaceInitializeTimestepB(this)         
+  call PMSubsurfaceFlowInitializeTimestepB(this)         
   
 end subroutine PMImmisInitializeTimestep
 
@@ -145,7 +145,6 @@ subroutine PMImmisUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   PetscReal :: ut
   PetscReal :: up
   PetscReal :: utmp
-  PetscReal :: uc
   PetscReal :: uus
   PetscReal :: dtt
   PetscReal :: dt_p
@@ -158,11 +157,10 @@ subroutine PMImmisUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
       fac = 0.33d0
       ut = 0.d0
     else
-      up = this%option%dpmxe/(this%option%dpmax+0.1)
-      utmp = this%option%dtmpmxe/(this%option%dtmpmax+1.d-5)
-      uc = this%option%dcmxe/(this%option%dcmax+1.d-6)
-      uus= this%option%dsmxe/(this%option%dsmax+1.d-6)
-      ut = min(up,utmp,uc,uus)
+      up = this%max_pressure_change/(this%pressure_change_governor+0.1)
+      utmp = this%max_temperature_change/(this%temperature_change_governor+1.d-5)
+      uus= this%max_saturation_change/(this%saturation_change_governor+1.d-6)  
+      ut = min(up,utmp,uus)
     endif
     dtt = fac * dt * (1.d0 + ut)
   else
@@ -170,7 +168,7 @@ subroutine PMImmisUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     dt_tfac = tfac(ifac) * dt
 
     fac = 0.5d0
-    up = this%option%dpmxe/(this%option%dpmax+0.1)
+    up = this%max_pressure_change/(this%pressure_change_governor+0.1)
     dt_p = fac * dt * (1.d0 + up)
 
     dtt = min(dt_tfac,dt_p)
@@ -296,7 +294,7 @@ subroutine PMImmisTimeCut(this)
   
   class(pm_immis_type) :: this
   
-  call PMSubsurfaceTimeCut(this)
+  call PMSubsurfaceFlowTimeCut(this)
   call ImmisTimeCut(this%realization)
 
 end subroutine PMImmisTimeCut
@@ -315,7 +313,7 @@ subroutine PMImmisUpdateSolution(this)
   
   class(pm_immis_type) :: this
   
-  call PMSubsurfaceUpdateSolution(this)
+  call PMSubsurfaceFlowUpdateSolution(this)
   call ImmisUpdateSolution(this%realization)
 
 end subroutine PMImmisUpdateSolution     
@@ -355,16 +353,19 @@ subroutine PMImmisMaxChange(this)
   
   PetscReal :: dpmax, dtmpmax, dsmax
   
-  call ImmisMaxChange(this%realization,dpmax,dtmpmax,dsmax)
+  call ImmisMaxChange(this%realization,this%max_pressure_change, &
+                      this%max_temperature_change,this%max_saturation_change)
   if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dpmx= ",1pe12.4, &
       & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          dpmax,dtmpmax,dsmax
+          this%max_pressure_change,this%max_temperature_change, &
+          this%max_saturation_change
   endif
   if (this%option%print_file_flag) then
     write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
       & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          dpmax,dtmpmax,dsmax
+          this%max_pressure_change,this%max_temperature_change, &
+          this%max_saturation_change
   endif  
 
 end subroutine PMImmisMaxChange
@@ -433,7 +434,7 @@ subroutine PMImmisDestroy(this)
 
   ! preserve this ordering
   call ImmisDestroy(this%realization)
-  call PMSubsurfaceDestroy(this)
+  call PMSubsurfaceFlowDestroy(this)
   
 end subroutine PMImmisDestroy
   

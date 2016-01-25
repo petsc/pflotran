@@ -29,10 +29,14 @@ module PM_Subsurface_Flow_class
     PetscBool :: store_porosity_for_transport
     PetscBool :: check_post_convergence
     ! these govern the size of subsequent time steps
-    PetscReal :: max_allowed_pressure_change
-    PetscReal :: max_allowed_temperature_change
-    PetscReal :: max_allowed_saturation_change
-    PetscReal :: max_allowed_xmol_change
+    PetscReal :: max_pressure_change
+    PetscReal :: max_temperature_change
+    PetscReal :: max_saturation_change
+    PetscReal :: max_xmol_change
+    PetscReal :: pressure_change_governor
+    PetscReal :: temperature_change_governor
+    PetscReal :: saturation_change_governor
+    PetscReal :: xmol_change_governor
     ! these limit (truncate) the maximum change in a Newton iteration
     ! truncation occurs within PMXXXCheckUpdatePre
     PetscReal :: pressure_dampening_factor
@@ -74,6 +78,7 @@ module PM_Subsurface_Flow_class
             PMSubsurfaceFlowCheckpointHDF5, &
             PMSubsurfaceFlowRestartBinary, &
             PMSubsurfaceFlowRestartHDF5, &
+            PMSubsurfaceFlowReadSelectCase, &
             PMSubsurfaceFlowDestroy
   
 contains
@@ -99,10 +104,14 @@ subroutine PMSubsurfaceFlowCreate(this)
   this%check_post_convergence = PETSC_FALSE
   
   ! defaults
-  this%max_allowed_pressure_change = 5.d5
-  this%max_allowed_temperature_change = 5.d0
-  this%max_allowed_saturation_change = 0.5d0
-  this%max_allowed_xmol_change = 1.d0
+  this%max_pressure_change = 0.d0
+  this%max_temperature_change = 0.d0
+  this%max_saturation_change = 0.d0
+  this%max_xmol_change = 0.d0
+  this%pressure_change_governor = 5.d5
+  this%temperature_change_governor = 5.d0
+  this%saturation_change_governor = 0.5d0
+  this%xmol_change_governor = 1.d0
   this%pressure_dampening_factor = UNINITIALIZED_DOUBLE
   this%saturation_change_limit = UNINITIALIZED_DOUBLE
   this%pressure_change_limit = UNINITIALIZED_DOUBLE
@@ -139,19 +148,19 @@ subroutine PMSubsurfaceFlowReadSelectCase(this,input,keyword,found,option)
   select case(trim(keyword))
   
     case('MAX_PRESSURE_CHANGE')
-      call InputReadDouble(input,option,this%max_allowed_pressure_change)
+      call InputReadDouble(input,option,this%pressure_change_governor)
       call InputDefaultMsg(input,option,'dpmxe')
 
     case('MAX_TEMPERATURE_CHANGE')
-      call InputReadDouble(input,option,this%max_allowed_temperature_change)
+      call InputReadDouble(input,option,this%temperature_change_governor)
       call InputDefaultMsg(input,option,'dtmpmxe')
   
     case('MAX_CONCENTRATION_CHANGE')
-      call InputReadDouble(input,option,this%max_allowed_xmol_change)
+      call InputReadDouble(input,option,this%xmol_change_governor)
       call InputDefaultMsg(input,option,'dcmxe')
 
     case('MAX_SATURATION_CHANGE')
-      call InputReadDouble(input,option,this%max_allowed_saturation_change)
+      call InputReadDouble(input,option,this%saturation_change_governor)
       call InputDefaultMsg(input,option,'dsmxe')
 
     case('PRESSURE_DAMPENING_FACTOR')
@@ -179,7 +188,7 @@ subroutine PMSubsurfaceFlowReadSelectCase(this,input,keyword,found,option)
   
 end subroutine PMSubsurfaceFlowReadSelectCase
 
-! ************************************************************************** !! ************************************************************************** !
+! ************************************************************************** !
 
 subroutine PMSubsurfaceFlowSetup(this)
   ! 

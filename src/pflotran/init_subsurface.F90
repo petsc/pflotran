@@ -1412,6 +1412,8 @@ subroutine InitSubsurfaceReadInput(simulation)
       case ('PRINT_DUAL_GRID')
         option%print_explicit_dual_grid = PETSC_TRUE
 
+!geh: remove after 2/25/2016
+#if 0        
 !....................
       case ('MAX_CHANGE')
         call InputReadDouble(input,option,option%dpmxe)
@@ -1422,7 +1424,8 @@ subroutine InitSubsurfaceReadInput(simulation)
         call InputErrorMsg(input,option,'dsmxe','MAX_CHANGE')
         call InputReadDouble(input,option,option%dcmxe)
         call InputErrorMsg(input,option,'dcmxe','MAX_CHANGE')
-        
+#endif
+
 !....................
       case ('PROC')
       
