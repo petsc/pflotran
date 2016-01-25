@@ -156,7 +156,7 @@ subroutine PMRTRead(this,input)
     call StringToUpper(word)
     
     select case(trim(word))
-      case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
+      case('GLOBAL_IMPLICIT','OPERATOR_SPLIT','OPERATOR_SPLITTING')
       case('MAX_VOLUME_FRACTION_CHANGE')
         call InputReadDouble(input,option,this%volfrac_change_governor)
         call InputDefaultMsg(input,option,'maximum volume fraction change')
@@ -573,7 +573,7 @@ subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   call printMsg(this%option,'PMRT%UpdateTimestep()')  
 #endif
   
-#if 0
+#if 1
   dtt = dt
   if (num_newton_iterations <= iacceleration) then
     if (num_newton_iterations <= size(tfac)) then

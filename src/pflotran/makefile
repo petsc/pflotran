@@ -179,7 +179,7 @@ mode_aux_obj = \
 	${common_src}pm_miscible.o \
 	${common_src}pm_richards.o \
 	${common_src}pm_rt.o \
-	${common_src}pm_subsurface.o \
+	${common_src}pm_subsurface_flow.o \
 	${common_src}pm_surface_flow.o \
 	${common_src}pm_surface_th.o \
 	${common_src}pm_surface.o \
@@ -564,7 +564,7 @@ factory_subsurface.o : condition_control.o discretization.o general.o global.o \
                        option.o output.o output_aux.o pflotran_constants.o \
                        pm_base.o pm_base_pointer.o pm_flash2.o pm_general.o \
                        pm_immis.o pm_miscible.o pm_mphase.o pm_richards.o \
-                       pm_rt.o pm_subsurface.o pm_th.o pm_toil_ims.o \
+                       pm_rt.o pm_subsurface_flow.o pm_th.o pm_toil_ims.o \
                        pm_ufd_decay.o pm_waste_form.o pmc_base.o \
                        pmc_material.o pmc_subsurface.o pmc_third_party.o \
                        reactive_transport.o realization_subsurface.o \
@@ -858,41 +858,44 @@ pm_base.o : input_aux.o option.o output_aux.o pflotran_constants.o \
             realization_base.o solver.o
 pm_base_pointer.o : option.o pflotran_constants.o pm_base.o \
                     realization_subsurface.o
-pm_flash2.o : flash2.o pflotran_constants.o pm_base.o pm_subsurface.o
+pm_flash2.o : flash2.o pflotran_constants.o pm_base.o pm_subsurface_flow.o
 pm_general.o : checkpoint.o field.o general.o general_aux.o global.o \
                global_aux.o grid.o input_aux.o material.o material_aux.o \
                option.o output_ekg.o patch.o pflotran_constants.o pm_base.o \
-               pm_subsurface.o realization_base.o realization_subsurface.o \
-               saturation_function.o string.o variables.o
+               pm_subsurface_flow.o realization_base.o \
+               realization_subsurface.o saturation_function.o string.o \
+               variables.o
 pm_geomechanics_force.o : checkpoint.o communicator_base.o \
                           communicator_structured.o \
                           communicator_unstructured.o condition.o \
                           geomechanics_discretization.o geomechanics_force.o \
                           geomechanics_realization.o global.o grid.o option.o \
                           pflotran_constants.o pm_base.o
-pm_immis.o : immis.o pflotran_constants.o pm_base.o pm_subsurface.o
-pm_miscible.o : miscible.o pflotran_constants.o pm_base.o pm_subsurface.o
+pm_immis.o : immis.o pflotran_constants.o pm_base.o pm_subsurface_flow.o
+pm_miscible.o : miscible.o mphase.o pflotran_constants.o pm_base.o \
+                pm_subsurface_flow.o
 pm_mphase.o : connection.o coupler.o global_aux.o grid.o mphase.o option.o \
-              patch.o pflotran_constants.o pm_base.o pm_subsurface.o \
+              patch.o pflotran_constants.o pm_base.o pm_subsurface_flow.o \
               reaction_aux.o reactive_transport_aux.o
 pm_richards.o : characteristic_curves.o eos_water.o field.o global_aux.o \
                 grid.o input_aux.o material_aux.o option.o patch.o \
-                pflotran_constants.o pm_base.o pm_subsurface.o \
+                pflotran_constants.o pm_base.o pm_subsurface_flow.o \
                 realization_subsurface.o richards.o richards_aux.o \
                 richards_common.o string.o utility.o
 pm_rt.o : checkpoint.o communicator_base.o communicator_structured.o \
           communicator_unstructured.o condition.o condition_control.o \
           data_mediator.o discretization.o field.o global.o grid.o hdf5.o \
-          integral_flux.o material.o material_aux.o option.o output_ekg.o \
-          patch.o pflotran_constants.o pm_base.o reaction_aux.o \
+          input_aux.o integral_flux.o material.o material_aux.o option.o \
+          output_ekg.o patch.o pflotran_constants.o pm_base.o reaction_aux.o \
           reactive_transport.o realization_base.o realization_subsurface.o \
-          secondary_continuum.o variables.o
-pm_subsurface.o : checkpoint.o communicator_base.o communicator_structured.o \
-                  communicator_unstructured.o condition.o condition_control.o \
-                  discretization.o global.o grid.o integral_flux.o material.o \
-                  material_aux.o option.o pflotran_constants.o pm_base.o \
-                  realization_subsurface.o solver.o srcsink_sandbox.o \
-                  variables.o
+          secondary_continuum.o string.o variables.o
+pm_subsurface_flow.o : checkpoint.o communicator_base.o \
+                       communicator_structured.o communicator_unstructured.o \
+                       condition.o condition_control.o discretization.o \
+                       global.o grid.o input_aux.o integral_flux.o material.o \
+                       material_aux.o option.o pflotran_constants.o pm_base.o \
+                       realization_subsurface.o solver.o srcsink_sandbox.o \
+                       string.o variables.o
 pm_surface.o : checkpoint_surface.o communicator_base.o \
                communicator_unstructured.o condition.o discretization.o \
                global.o grid.o option.o pflotran_constants.o pm_base.o \
@@ -906,12 +909,12 @@ pm_surface_th.o : communicator_base.o condition.o discretization.o grid.o \
 pm_th.o : communicator_base.o communicator_structured.o \
           communicator_unstructured.o discretization.o eos_water.o field.o \
           global.o global_aux.o grid.o input_aux.o material_aux.o option.o \
-          patch.o pflotran_constants.o pm_base.o pm_subsurface.o \
+          patch.o pflotran_constants.o pm_base.o pm_subsurface_flow.o \
           realization_subsurface.o saturation_function.o \
           secondary_continuum_aux.o string.o th.o th_aux.o utility.o
 pm_toil_ims.o : checkpoint.o field.o global.o global_aux.o grid.o input_aux.o \
                 material.o material_aux.o option.o patch.o \
-                pflotran_constants.o pm_base.o pm_subsurface.o \
+                pflotran_constants.o pm_base.o pm_subsurface_flow.o \
                 realization_base.o realization_subsurface.o string.o \
                 toil_ims.o toil_ims_aux.o variables.o
 pm_ufd_decay.o : field.o global.o global_aux.o grid.o input_aux.o \
