@@ -359,10 +359,10 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     fac = 0.33d0
     umin = 0.d0
   else
-    up = this%max_pressure_change/(this%pressure_change_governor+0.1)
-    ut = this%max_temperature_change/(this%temperature_change_governor+1.d-5)
-    ux = this%max_xmol_change/(this%xmol_change_governor+1.d-5)
-    us = this%max_saturation_change/(this%saturation_change_governor+1.d-5)
+    up = this%pressure_change_governor/(this%max_pressure_change+0.1)
+    ut = this%temperature_change_governor/(this%max_temperature_change+1.d-5)
+    ux = this%xmol_change_governor/(this%max_xmol_change+1.d-5)
+    us = this%saturation_change_governor/(this%max_saturation_change+1.d-5)
     umin = min(up,ut,ux,us)
   endif
   ifac = max(min(num_newton_iterations,size(tfac)),1)

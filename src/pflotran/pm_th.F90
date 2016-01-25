@@ -299,8 +299,8 @@ subroutine PMTHUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     fac = 0.33d0
     ut = 0.d0
   else
-    up = this%max_pressure_change/(this%pressure_change_governor+0.1)
-    utmp = this%max_temperature_change/(this%temperature_change_governor+1.d-5)
+    up = this%pressure_change_governor/(this%max_pressure_change+0.1)
+    utmp = this%temperature_change_governor/(this%max_temperature_change+1.d-5)
     ut = min(up,utmp)
   endif
   dtt = fac * dt * (1.d0 + ut)

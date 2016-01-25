@@ -600,7 +600,7 @@ subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
       fac = 0.33d0
       uvf = 0.d0
     else
-      uvf = this%max_volfrac_change/(this%volfrac_change_governor+1.d-6)
+      uvf = this%volfrac_change_governor/(this%max_volfrac_change+1.d-6)
     endif
     dtt = fac * dt * (1.d0 + uvf)
   else
@@ -608,7 +608,7 @@ subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     dt_tfac = tfac(ifac) * dt
 
     fac = 0.5d0
-    uvf= this%max_volfrac_change/(this%volfrac_change_governor+1.d-6)
+    uvf= this%volfrac_change_governor/(this%max_volfrac_change+1.d-6)
     dt_vf = fac * dt * (1.d0 + uvf)
 
     dtt = min(dt_tfac,dt_vf)

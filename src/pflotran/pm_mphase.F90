@@ -247,10 +247,10 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
       fac = 0.33d0
       ut = 0.d0
     else
-      up = this%max_pressure_change/(this%pressure_change_governor+0.1)
-      utmp = this%max_temperature_change/(this%temperature_change_governor+1.d-5)
-      uc = this%max_xmol_change/(this%xmol_change_governor+1.d-6)
-      uus= this%max_saturation_change/(this%saturation_change_governor+1.d-6)
+      up = this%pressure_change_governor/(this%max_pressure_change+0.1)
+      utmp = this%temperature_change_governor/(this%max_temperature_change+1.d-5)
+      uc = this%xmol_change_governor/(this%max_xmol_change+1.d-6)
+      uus= this%saturation_change_governor/(this%max_saturation_change+1.d-6)
       ut = min(up,utmp,uc,uus)
     endif
     dtt = fac * dt * (1.d0 + ut)
@@ -259,7 +259,7 @@ subroutine PMMphaseUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     dt_tfac = tfac(ifac) * dt
 
     fac = 0.5d0
-    up = this%max_pressure_change/(this%pressure_change_governor+0.1)
+    up = this%pressure_change_governor/(this%max_pressure_change+0.1)
     dt_p = fac * dt * (1.d0 + up)
 
     dtt = min(dt_tfac,dt_p)
