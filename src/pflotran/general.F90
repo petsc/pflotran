@@ -1933,7 +1933,8 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   PetscReal :: qsrc_mol
   PetscReal :: den, den_kg, enthalpy, internal_energy
   PetscReal :: cell_pressure, dummy_pressure
-  PetscInt :: icomp, ierr
+  PetscInt :: icomp
+  PetscErrorCode :: ierr
 
   Res = 0.d0
   do icomp = 1, option%nflowspec

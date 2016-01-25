@@ -298,10 +298,9 @@ subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type,option)
   
   type(grid_type) :: grid
   type(dm_ptr_type) :: dm_ptr
-  PetscInt :: sgrid_stencil_type
+  PetscEnum :: sgrid_stencil_type
   type(option_type) :: option
 
-  PetscInt :: ierr, icount
   PetscInt, allocatable :: int_tmp(:)
 ! PetscInt, pointer :: int_tmp(:)
   PetscInt :: n
@@ -1397,7 +1396,7 @@ subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
   type(grid_type) :: grid
   type(option_type) :: option
   PetscInt :: ghosted_id
-  PetscInt :: stencil_type
+  PetscEnum :: stencil_type
   PetscInt :: stencil_width_i
   PetscInt :: stencil_width_j
   PetscInt :: stencil_width_k
@@ -1443,7 +1442,7 @@ subroutine GridGetGhostedNeighborsWithCorners(grid,ghosted_id,stencil_type, &
   type(grid_type) :: grid
   type(option_type) :: option
   PetscInt :: ghosted_id
-  PetscInt :: stencil_type
+  PetscEnum :: stencil_type
   PetscInt :: stencil_width_i
   PetscInt :: stencil_width_j
   PetscInt :: stencil_width_k

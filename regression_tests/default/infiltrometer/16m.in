@@ -80,7 +80,7 @@ FLUID_PROPERTY
 END
 
 #=========================== datasets =========================================
-DATASET porosity
+DATASET Porosity
 #changeme - change filename to ("parameters-%d.h5", NXYZ)
   FILENAME ./parameters-16.h5
 END
@@ -88,12 +88,13 @@ END
 DATASET permeability
 #changeme - change filename to ("parameters-%d.h5", NXYZ)
   FILENAME ./parameters-16.h5
+  HDF5_DATASET_NAME Permeability
 END
 
 #=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
-  POROSITY DATASET porosity
+  POROSITY DATASET Porosity
   TORTUOSITY 1.d0
   CHARACTERISTIC_CURVES default
   PERMEABILITY

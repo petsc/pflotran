@@ -202,7 +202,7 @@ subroutine EOSDatabaseRead(this,option)
   allocate(this%data(prop_idx,data_size))
 
   !create lookup table  
-  this%lookup_table => LookupTableCreateUniform(2)
+  this%lookup_table => LookupTableCreateUniform(TWO_INTEGER)
   this%lookup_table%dims(1) = this%num_dt
   this%lookup_table%dims(2) = this%num_dp
   allocate(this%lookup_table%axis1%values(this%num_dt))

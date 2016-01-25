@@ -3358,35 +3358,49 @@ subroutine OutputHDF5Provenance_PFLOTRAN(option, provenance_id, string_type)
 
   ! Create the pflotran group under provenance
   name = "PFLOTRAN"
-  call h5gcreate_f(provenance_id, name, pflotran_id, hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
+  call h5gcreate_f(provenance_id, name, pflotran_id, hdf5_err, &
+                   OBJECT_NAMELEN_DEFAULT_F)
 
-  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "pflotran_compile_date_time", &
-       1, pflotran_compile_date_time)
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, &
+                                    "pflotran_compile_date_time", &
+                                    ONE_INTEGER, pflotran_compile_date_time)
 
-  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "pflotran_compile_user", &
-       1, pflotran_compile_user)
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, &
+                                    "pflotran_compile_user", &
+                                    ONE_INTEGER, pflotran_compile_user)
 
-  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "pflotran_compile_hostname", &
-       1, pflotran_compile_hostname)
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, &
+                                    "pflotran_compile_hostname", &
+                                    ONE_INTEGER, pflotran_compile_hostname)
 
-  call OutputHDF5AttributeStringArray(pflotran_id, string_type, "pflotran_status", &
-       1, pflotran_status)
+  call OutputHDF5AttributeStringArray(pflotran_id, string_type, &
+                                      "pflotran_status", &
+                                      ONE_INTEGER, pflotran_status)
 
-  call OutputHDF5AttributeStringArray(pflotran_id, string_type, "pflotran_changeset", &
-       1, pflotran_changeset)
+  call OutputHDF5AttributeStringArray(pflotran_id, string_type, &
+                                      "pflotran_changeset", &
+                                      ONE_INTEGER, pflotran_changeset)
 
-  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "detail_pflotran_fflags", &
-       detail_pflotran_fflags_len, detail_pflotran_fflags)
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, &
+                                    "detail_pflotran_fflags", &
+                                    detail_pflotran_fflags_len, &
+                                    detail_pflotran_fflags)
 
-  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "detail_pflotran_status", &
-       detail_pflotran_status_len, detail_pflotran_status)
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, &
+                                    "detail_pflotran_status", &
+                                    detail_pflotran_status_len, &
+                                    detail_pflotran_status)
 
-  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "detail_pflotran_parent", &
-       detail_pflotran_parent_len, detail_pflotran_parent)
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, &
+                                    "detail_pflotran_parent", &
+                                    detail_pflotran_parent_len, &
+                                    detail_pflotran_parent)
 
   ! FIXME(bja, 2013-11-25): break gcc when diffs are present  
-  call OutputHDF5DatasetStringArray(pflotran_id, string_type, "detail_pflotran_diff", &
-       detail_pflotran_diff_len, detail_pflotran_diff)
+  call OutputHDF5DatasetStringArray(pflotran_id, string_type, &
+                                    "detail_pflotran_diff", &
+                                    detail_pflotran_diff_len, &
+                                    detail_pflotran_diff)
 
   call OutputHDF5Provenance_input(option, pflotran_id)
 
@@ -3428,8 +3442,9 @@ subroutine OutputHDF5Provenance_input(option, pflotran_id)
   call h5tcopy_f(H5T_FORTRAN_S1, input_string_type, hdf5_err)
   size_t_int = MAXWORDLENGTH
   call h5tset_size_f(input_string_type, size_t_int, hdf5_err)
-  call OutputHDF5DatasetStringArray(pflotran_id, input_string_type, "pflotran_input_file", &
-       input_line_count, input_buffer)
+  call OutputHDF5DatasetStringArray(pflotran_id, input_string_type, &
+                                    "pflotran_input_file", &
+                                    input_line_count, input_buffer)
   call h5tclose_f(input_string_type, hdf5_err)
   deallocate(input_buffer)
   call InputDestroy(input)
@@ -3458,22 +3473,30 @@ subroutine OutputHDF5Provenance_PETSc(provenance_id, string_type)
 
   ! create the petsc group under provenance
   name = "PETSc"
-  call h5gcreate_f(provenance_id, name, petsc_id, hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
+  call h5gcreate_f(provenance_id, name, petsc_id, hdf5_err, &
+                   OBJECT_NAMELEN_DEFAULT_F)
 
   call OutputHDF5AttributeStringArray(petsc_id, string_type, "petsc_status", &
-       1, petsc_status)
+                                      ONE_INTEGER, petsc_status)
 
-  call OutputHDF5AttributeStringArray(petsc_id, string_type, "petsc_changeset", &
-       1, petsc_changeset)
+  call OutputHDF5AttributeStringArray(petsc_id, string_type, &
+                                      "petsc_changeset", &
+                                      ONE_INTEGER, petsc_changeset)
 
-  call OutputHDF5DatasetStringArray(petsc_id, string_type, "detail_petsc_status", &
-       detail_petsc_status_len, detail_petsc_status)
+  call OutputHDF5DatasetStringArray(petsc_id, string_type, &
+                                    "detail_petsc_status", &
+                                    detail_petsc_status_len, &
+                                    detail_petsc_status)
 
-  call OutputHDF5DatasetStringArray(petsc_id, string_type, "detail_petsc_parent", &
-       detail_petsc_parent_len, detail_petsc_parent)
+  call OutputHDF5DatasetStringArray(petsc_id, string_type, &
+                                    "detail_petsc_parent", &
+                                    detail_petsc_parent_len, &
+                                    detail_petsc_parent)
 
-  call OutputHDF5DatasetStringArray(petsc_id, string_type, "detail_petsc_config", &
-       detail_petsc_config_len, detail_petsc_config)
+  call OutputHDF5DatasetStringArray(petsc_id, string_type, &
+                                    "detail_petsc_config", &
+                                    detail_petsc_config_len, &
+                                    detail_petsc_config)
 
   ! close the petsc group
   call h5gclose_f(petsc_id, hdf5_err)

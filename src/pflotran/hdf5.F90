@@ -2079,7 +2079,6 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   !type(option_type), pointer :: option
   PetscMPIInt       :: hdf5_err
   PetscMPIInt       :: rank_mpi
-  PetscInt          :: ndims
   PetscInt          :: remainder
   PetscInt          :: istart, iend, ii, jj
   PetscInt, pointer :: int_buffer_1d(:)
@@ -2087,6 +2086,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   character(len=MAXSTRINGLENGTH) :: string
 
 #if defined(PETSC_HAVE_HDF5)
+  integer(HID_T) :: ndims
   integer(HID_T) :: file_id
   integer(HID_T) :: prop_id
   integer(HID_T) :: data_set_id
@@ -2338,7 +2338,6 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
   !type(option_type), pointer :: option
   PetscMPIInt       :: hdf5_err
   PetscMPIInt       :: rank_mpi
-  PetscInt          :: ndims
   PetscInt          :: remainder
   PetscInt          :: istart, iend, ii, jj
   PetscInt, pointer :: int_buffer_1d(:)
@@ -2346,6 +2345,7 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
   character(len=MAXSTRINGLENGTH) :: string
 
 #if defined(PETSC_HAVE_HDF5)
+  integer(HID_T) :: ndims
   integer(HID_T) :: file_id
   integer(HID_T) :: prop_id
   integer(HID_T) :: data_set_id
