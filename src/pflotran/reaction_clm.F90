@@ -735,7 +735,8 @@ subroutine CLMDec_Read(this,input,option)
                 call InputDefaultMsg(input,option)
               else              
                 rate_constant = rate_constant * &
-                  UnitsConvertToInternal(word,'concentration/time',option)
+                  UnitsConvertToInternal(word, &
+                  'mass/volume-time|unitless/time|volume/mass-time',option)
               endif
             case('TURNOVER_TIME')
               call InputReadDouble(input,option,turnover_time)

@@ -96,7 +96,7 @@ subroutine DownregRead(this,input,option)
 
   PetscInt :: i
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string, units_category
   character(len=MAXWORDLENGTH) :: units
   type(time_storage_type), pointer :: null_time_storage
   PetscBool :: found
@@ -127,8 +127,9 @@ subroutine DownregRead(this,input,option)
     select case(trim(word))
 
       case('RATE')
+        units_category = 'concentration/time'
         call ConditionReadValues(input,option,word,this%dataset, &
-                                 units,'concentration/time')
+                                 units,units_category)
       case('POSITIVE_REG_PRESSURE')
         call InputReadDouble(input,option,this%pressure_max)
         call InputErrorMsg(input,option,'maximum pressure (Pa)', &

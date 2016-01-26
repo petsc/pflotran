@@ -230,7 +230,7 @@ subroutine GeomechConditionRead(condition,input,option)
   type(input_type), pointer                        :: input
   type(option_type)                                :: option
   
-  character(len=MAXSTRINGLENGTH)                   :: string
+  character(len=MAXSTRINGLENGTH)                   :: string, units_category
   character(len=MAXWORDLENGTH)                     :: word
   type(geomech_sub_condition_type), pointer :: sub_condition_ptr,  &
                                        displacement_x, displacement_y, &
@@ -389,36 +389,41 @@ subroutine GeomechConditionRead(condition,input,option)
         call InputReadDouble(input,option,default_time)
         call InputErrorMsg(input,option,'TIME','CONDITION')   
       case('DISPLACEMENT_X')
+        units_category = 'length'
         call ConditionReadValues(input,option,word, &
                                  displacement_x%dataset, &
                                  displacement_x%units, &
-                                 'length')
+                                 units_category)
       case('DISPLACEMENT_Y')
+        units_category = 'length'
         call ConditionReadValues(input,option,word, &
                                  displacement_y%dataset, &
                                  displacement_y%units, &
-                                 'length') 
+                                 units_category) 
       case('DISPLACEMENT_Z')
+        units_category = 'length'
         call ConditionReadValues(input,option,word, &
                                  displacement_z%dataset, &
                                  displacement_z%units, &
-                                 'length')
+                                 units_category)
       case('FORCE_X')
-        ! jmf: check if force is a good unit category
+      units_category = 'force'
         call ConditionReadValues(input,option,word, &
                                  force_x%dataset, &
                                  force_x%units, &
-                                 'force')
+                                 units_category)
       case('FORCE_Y')
+        units_category = 'force'
         call ConditionReadValues(input,option,word, &
                                  force_y%dataset, &
                                  force_y%units, &
-                                 'force')
+                                 units_category)
       case('FORCE_Z')
+        units_category = 'force'
         call ConditionReadValues(input,option,word, &
                                  force_z%dataset, &
                                  force_z%units, &
-                                 'force')
+                                 units_category)
       case default
         call InputKeywordUnrecognized(word, &
                      'geomechanics condition',option)

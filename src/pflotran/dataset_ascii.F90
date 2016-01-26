@@ -154,7 +154,7 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
 
   character(len=MAXWORDLENGTH) :: time_units
   character(len=MAXSTRINGLENGTH) :: string, data_units
-  character(len=MAXSTRINGLENGTH) :: data_units_category
+  character(len=*) :: data_units_category
   character(len=MAXWORDLENGTH) :: word
   PetscReal, pointer :: temp_array(:,:)
   PetscReal :: temp_time
@@ -167,7 +167,6 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
   
   time_units = ''
   data_units = ''
-  data_units_category = 'not_assigned'
   max_size = 1000
 
   row_count = 0

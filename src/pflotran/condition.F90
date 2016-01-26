@@ -665,6 +665,9 @@ subroutine FlowConditionRead(condition,input,option)
   default_time_storage => TimeStorageCreate()
   default_time_storage%is_cyclic = PETSC_FALSE
   default_time_storage%time_interpolation_method = INTERPOLATION_STEP
+
+  rate_string = 'not_assigned'
+  units_category = 'not_assigned'
   
   pressure => FlowSubConditionCreate(option%nphase)
   pressure%name = 'pressure'
@@ -785,30 +788,43 @@ subroutine FlowConditionRead(condition,input,option)
           select case(trim(word))
             case('PRESSURE')
               sub_condition_ptr => pressure
+              units_category = 'pressure'
             case('RATE')
               sub_condition_ptr => rate
+              units_category = 'unknown/time'
             case('ENERGY_RATE')
               sub_condition_ptr => energy_rate
+              units_category = 'power|energy/time'
             case('WELL')
               sub_condition_ptr => well
+              units_category = 'pressure'
             case('FLUX')
               sub_condition_ptr => flux
+              units_category = 'length/time'
             case('ENERGY_FLUX')
               sub_condition_ptr => energy_flux
+              units_category = 'power/area|energy/time-area'
             case('SATURATION')
               sub_condition_ptr => saturation
+              units_category = 'saturation'
             case('TEMPERATURE')
               sub_condition_ptr => temperature
+              units_category = 'temperature'
             case('CONCENTRATION')
               sub_condition_ptr => concentration
+              units_category = 'concentration|mass/volume'
             case('ENTHALPY')
               sub_condition_ptr => enthalpy
+              units_category = 'energy/mass'
             case('DISPLACEMENT_X')
               sub_condition_ptr => displacement_x
+              units_category = 'length'
             case('DISPLACEMENT_Y')
               sub_condition_ptr => displacement_y
+              units_category = 'length'
             case('DISPLACEMENT_Z')
               sub_condition_ptr => displacement_z
+              units_category = 'length'
             case default
               call InputKeywordUnrecognized(word,'condition,type',option)
           end select
@@ -823,19 +839,25 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = NEUMANN_BC
             case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS
+              rate_string = 'mass/time'
             case('energy_rate')
               sub_condition_ptr%itype = ENERGY_RATE_SS
+              rate_string = 'power|energy/time'
             case('heterogeneous_energy_rate')
               sub_condition_ptr%itype = HET_ENERGY_RATE_SS
+              rate_string = 'power|energy/time'
             case('scaled_mass_rate','scaled_volumetric_rate', &
                  'scaled_energy_rate')
               select case(word)
                 case('scaled_mass_rate')
                   sub_condition_ptr%itype = SCALED_MASS_RATE_SS
+                  rate_string = 'mass/time'
                 case('scaled_volumetric_rate')
                   sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
+                  rate_string = 'volume/time'
                 case('scaled_energy_rate')
                   sub_condition_ptr%itype = SCALED_ENERGY_RATE_SS
+                  rate_string = 'power|energy/time'
               end select
               ! store name of type for error messaging below.
               string = word
@@ -874,6 +896,7 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = SEEPAGE_BC
             case('volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
+              rate_string = 'volume/time'
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
             case('unit_gradient')
@@ -882,11 +905,13 @@ subroutine FlowConditionRead(condition,input,option)
                   'only be associated with a PRESSURE flow condition.'
                 call printErrMsg(option)
               endif
-              sub_condition_ptr%itype = UNIT_GRADIENT_BC
+              sub_condition_ptr%itype = UNIT_GRADIENT_BC 
             case('heterogeneous_volumetric_rate')
               sub_condition_ptr%itype = HET_VOL_RATE_SS
+              rate_string = 'volume/time'
             case('heterogeneous_mass_rate')
               sub_condition_ptr%itype = HET_MASS_RATE_SS
+              rate_string = 'mass/time'
             case('heterogeneous_dirichlet')
               sub_condition_ptr%itype = HET_DIRICHLET
             case('heterogeneous_surface_seepage')
@@ -909,9 +934,10 @@ subroutine FlowConditionRead(condition,input,option)
         dataset_ascii%array_width = 3
         dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
-        nullify(dataset_ascii)        
+        nullify(dataset_ascii) 
+        units_category = 'length'
         call ConditionReadValues(input,option,word, &
-                                 condition%datum,word,'length')
+                                 condition%datum,word,units_category)
       case('GRADIENT','GRAD')
         do
           call InputReadPflotranString(input,option)
@@ -928,16 +954,16 @@ subroutine FlowConditionRead(condition,input,option)
               units_category = 'pressure/length'
             case('RATE')
               sub_condition_ptr => rate
-              units_category = 'unknown/time-length'
+              units_category = 'mass/time-length'
             case('ENERGY_RATE')
               sub_condition_ptr => energy_rate
-              units_category = 'unknown/time-length'
+              units_category = 'power/length|energy/time-length'
             case('WELL')
               sub_condition_ptr => well
               units_category = 'pressure/length'
             case('FLUX')
               sub_condition_ptr => flux
-              units_category = 'unknown/length'
+              units_category = 'length/time-length|unitless/time'
             case('SATURATION')
               sub_condition_ptr => saturation
               units_category = 'unitless/length'
@@ -946,7 +972,7 @@ subroutine FlowConditionRead(condition,input,option)
               units_category = 'temperature/length'
             case('CONC','CONCENTRATION')
               sub_condition_ptr => concentration
-              units_category = 'concentration/length'
+              units_category = 'concentration/length|mass/volume-length'
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
               units_category = 'energy/mass-length'
@@ -966,65 +992,75 @@ subroutine FlowConditionRead(condition,input,option)
           nullify(sub_condition_ptr)
         enddo
       case('TEMPERATURE','TEMP')
+        units_category = 'temperature'
         call ConditionReadValues(input,option,word, &
                                  temperature%dataset, &
-                                 temperature%units,'temperature')
+                                 temperature%units,units_category)
       case('ENTHALPY','H')
+        units_category = 'energy/mass'
         call ConditionReadValues(input,option,word, &
                                  enthalpy%dataset, &
-                                 enthalpy%units,'energy/mass')
+                                 enthalpy%units,units_category)
       case('PRESSURE','PRES','PRESS')
+        units_category = 'pressure'
         call ConditionReadValues(input,option,word, &
-                                     pressure%dataset, &
-                                     pressure%units,'pressure')
+                                 pressure%dataset, &
+                                 pressure%units,units_category)
       case('RATE')
+        units_category = rate_string
         call ConditionReadValues(input,option,word, &
                                  rate%dataset, &
-                                 rate%units,rate_string)
+                                 rate%units,units_category)
       case('ENERGY_FLUX')
         input%force_units = PETSC_TRUE
-        ! jmf: check this
+        units_category = 'power/area|energy/area-time'
         call ConditionReadValues(input,option,word, &
                                  energy_flux%dataset, &
-                                 energy_flux%units,'energy/time')
+                                 energy_flux%units,units_category)
         input%force_units = PETSC_FALSE
       case('ENERGY_RATE')
         input%force_units = PETSC_TRUE
+        units_category = 'power|energy/time'
         input%err_buf = word
-        ! jmf: check this
         call ConditionReadValues(input,option,word, &
                                  energy_rate%dataset, &
-                                 energy_rate%units,'energy/time')
+                                 energy_rate%units,units_category)
         input%force_units = PETSC_FALSE
       case('WELL')
+        units_category = 'pressure'
         call ConditionReadValues(input,option,word, &
                                  well%dataset, &
-                                 well%units,'pressure')
+                                 well%units,units_category)
       case('FLUX','VELOCITY','VEL')
+        units_category = 'length/time'
         call ConditionReadValues(input,option,word, &
                                  pressure%dataset, &
-                                 pressure%units,'length/time')
+                                 pressure%units,units_category)
       case('CONC','CONCENTRATION')
+        units_category = 'concentration|mass/volume'
         call ConditionReadValues(input,option,word, &
                                  concentration%dataset, &
-                                 concentration%units,'concentration')
+                                 concentration%units,units_category)
       case('SAT','SATURATION')
-        ! jmf: check this!
+        units_category = 'saturation'
         call ConditionReadValues(input,option,word, &
                                  saturation%dataset, &
-                                 saturation%units,'saturation')
+                                 saturation%units,units_category)
       case('DISPLACEMENT_X')
+        units_category = 'length'
         call ConditionReadValues(input,option,word, &
                                  displacement_x%dataset, &
-                                 displacement_x%units,'length')
+                                 displacement_x%units,units_category)
       case('DISPLACEMENT_Y')
+        units_category = 'length'
         call ConditionReadValues(input,option,word, &
                                  displacement_y%dataset, &
-                                 displacement_y%units,'length') 
+                                 displacement_y%units,units_category) 
       case('DISPLACEMENT_Z')
+        units_category = 'length'
         call ConditionReadValues(input,option,word, &
                                  displacement_z%dataset, &
-                                 displacement_z%units,'length')
+                                 displacement_z%units,units_category)
       case('CONDUCTANCE')
         call InputReadDouble(input,option,pressure%aux_real(1))
         call InputErrorMsg(input,option,'CONDUCTANCE','CONDITION')   
@@ -1443,6 +1479,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   call PetscLogEventBegin(logging%event_flow_condition_read, &
                           ierr);CHKERRQ(ierr)
 
+  rate_string = 'not_assigned'
+  units_category = 'not_assigned'
 
   default_time = 0.d0
   default_iphase = 0
@@ -1521,10 +1559,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               sub_condition_ptr%itype = SEEPAGE_BC
             case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS
-              rate_string = 'mass/time'
+              rate_string = 'mass/time|power|energy/time'
             case('scaled_mass_rate')
               sub_condition_ptr%itype = SCALED_MASS_RATE_SS
-              rate_string = 'mass/time'
+              rate_string = 'mass/time|power|energy/time'
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -1550,10 +1588,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               endif
             case('volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
-              rate_string = 'volume/time'
+              rate_string = 'volume/time|power|energy/time'
             case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
-              rate_string = 'volume/time'
+              rate_string = 'volume/time|power|energy/time'
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -1579,10 +1617,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               endif
             case('heterogeneous_volumetric_rate')
               sub_condition_ptr%itype = HET_VOL_RATE_SS
-              rate_string = 'volume/time'
+              rate_string = 'volume/time|power|energy/time'
             case('heterogeneous_mass_rate')
               sub_condition_ptr%itype = HET_MASS_RATE_SS
-              rate_string = 'mass/time'
+              rate_string = 'mass/time|power|energy/time'
             case('heterogeneous_dirichlet')
               sub_condition_ptr%itype = HET_DIRICHLET
             case('heterogeneous_surface_seepage')
@@ -1598,8 +1636,9 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
+        units_category = 'length'
         call ConditionReadValues(input,option,word,condition%datum, &
-                                 word,'length')
+                                 word,units_category)
       case('GRADIENT')
         do
           call InputReadPflotranString(input,option)
@@ -1622,9 +1661,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
           dataset_ascii%data_type = DATASET_REAL
           sub_condition_ptr%gradient => dataset_ascii
           nullify(dataset_ascii)
+          units_category = 'unknown/length'
           call ConditionReadValues(input,option,word, &
                                    sub_condition_ptr%gradient, &
-                                   word,'unknown/length')
+                                   word,units_category)
           nullify(sub_condition_ptr)
         enddo
       case('CONDUCTANCE')
@@ -1660,7 +1700,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
           case('ENERGY_FLUX')
             input%force_units = PETSC_TRUE
             input%err_buf = word
-            units_category = 'energy/time'
+            units_category = 'power/area|energy/area-time'
         end select
         call ConditionReadValues(input,option,word, &
                                  sub_condition_ptr%dataset, &
@@ -1911,6 +1951,8 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   call PetscLogEventBegin(logging%event_flow_condition_read, &
                           ierr);CHKERRQ(ierr)
 
+  rate_string = 'not_assigned'
+  units_category = 'not_assigned'
 
   default_time = 0.d0
   default_iphase = 0
@@ -1993,12 +2035,12 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               sub_condition_ptr%itype = ZERO_GRADIENT_BC
             case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS 
-              units_category = 'mass/time'
+              rate_string = 'mass/time|power|energy/time'
             !case('mass_rate_enthalpy')
             !  sub_condition_ptr%itype = MASS_RATE_ENTHALPY_SS
             case('scaled_mass_rate')
               sub_condition_ptr%itype = SCALED_MASS_RATE_SS
-              units_category = 'mass/time'
+              rate_string = 'mass/time|power|energy/time'
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -2024,10 +2066,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               endif
             case('volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
-              units_category = 'volume/time'
+              rate_string = 'volume/time|power|energy/time'
             case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
-              units_category = 'volume/time'
+              rate_string = 'volume/time|power|energy/time'
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -2053,10 +2095,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               endif
             case('heterogeneous_volumetric_rate')
               sub_condition_ptr%itype = HET_VOL_RATE_SS
-              units_category = 'volume/time'
+              rate_string = 'volume/time|power|energy/time'
             case('heterogeneous_mass_rate')
               sub_condition_ptr%itype = HET_MASS_RATE_SS
-              units_category = 'mass/time'
+              rate_string = 'mass/time|power|energy/time'
             case('heterogeneous_dirichlet')
               sub_condition_ptr%itype = HET_DIRICHLET
             case('heterogeneous_surface_seepage')
@@ -2072,17 +2114,19 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         dataset_ascii%data_type = DATASET_REAL
         condition%datum => dataset_ascii
         nullify(dataset_ascii)        
-        call ConditionReadValues(input,option,word, condition%datum, &
-                                 word,'length')
+        units_category = 'length'
+        call ConditionReadValues(input,option,word,condition%datum, &
+                                 word,units_category)
       case('OWC')
         dataset_ascii => DatasetAsciiCreate()
         call DatasetAsciiInit(dataset_ascii)
         dataset_ascii%array_width = 3
         dataset_ascii%data_type = DATASET_REAL
         toil_ims%owc => dataset_ascii
-        nullify(dataset_ascii)        
+        nullify(dataset_ascii)   
+        units_category = 'unitless'
         call ConditionReadValues(input,option,word, &
-                                 toil_ims%owc,word,'unitless')
+                                 toil_ims%owc,word,units_category)
       case('GRADIENT')
         do
           call InputReadPflotranString(input,option)
@@ -2124,9 +2168,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               dataset_ascii%data_type = DATASET_REAL
               toil_ims%liq_press_grad => dataset_ascii
               nullify(dataset_ascii)        
+              units_category = 'pressure/length'
               call ConditionReadValues(input,option,word, &
                                        toil_ims%liq_press_grad, &
-                                       word,'pressure/length')
+                                       word,units_category)
             case default
               call InputKeywordUnrecognized(word,'flow grad condition',option)
           end select
@@ -2164,7 +2209,7 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
           case('ENERGY_FLUX')
             input%force_units = PETSC_TRUE
             input%err_buf = word
-            units_category = 'energy/time'
+            units_category = 'power/area|energy/time-area'
           case('ENTHALPY')
             units_category = 'energy/mass'
         end select
@@ -2761,7 +2806,8 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units, &
       do icol=1,dataset_ascii%array_width
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,keyword,'CONDITION')   
-        dataset_ascii%rarray(icol) = UnitsConvertToInternal(word,data_units_category,option) * &                     
+        dataset_ascii%rarray(icol) = UnitsConvertToInternal(word, &
+                                     data_units_category,option) * &                     
                                      dataset_ascii%rarray(icol)
         units = trim(units) // ' ' // trim(word)
       enddo

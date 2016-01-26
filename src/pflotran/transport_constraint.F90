@@ -450,7 +450,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
             call InputReadWord(input,option,word,PETSC_TRUE)
             if (.not.InputError(input)) then
               ! convert just to ensure that the units were properly set
-              tempreal = UnitsConvertToInternal(word,'area/volume',option)
+              tempreal = UnitsConvertToInternal(word, &
+                         'area/volume|unitless/length',option)
               option%io_buffer = 'If mineral specific surface areas are ' // &
                 'defined through a DATASET, their units must be SI ' // &
                 '[m^2/m^3].  Unit conversion cannot be performed as ' // &
@@ -472,7 +473,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
               mineral_constraint%constraint_area(imnrl) = &
                 mineral_constraint%constraint_area(imnrl) * &
                 ! jmf: check this!
-                UnitsConvertToInternal(word,'area',option)
+                UnitsConvertToInternal(word,'area/volume|unitless/length',option)
             endif
           endif
         enddo  
