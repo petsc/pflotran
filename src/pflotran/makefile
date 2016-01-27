@@ -712,20 +712,19 @@ immis_aux.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
               eos_water.o fluid.o gas_eos_mod.o mphase_pckr_mod.o option.o \
               pflotran_constants.o saturation_function.o
 init_common.o : condition.o connection.o coupler.o discretization.o field.o \
-                general.o grid.o hdf5.o hdf5_aux.o input_aux.o logging.o \
-                option.o output.o output_tecplot.o patch.o \
-                pflotran_constants.o reaction.o reaction_aux.o \
+                grid.o hdf5.o hdf5_aux.o input_aux.o logging.o option.o \
+                output.o output_tecplot.o patch.o pflotran_constants.o \
                 realization_subsurface.o region.o string.o
 init_subsurface.o : characteristic_curves.o condition.o coupler.o \
                     data_mediator_dataset.o dataset.o dataset_base.o \
-                    dataset_common_hdf5.o debug.o discretization.o eos.o \
-                    eos_water.o field.o fluid.o general.o grid.o \
-                    grid_structured.o grid_unstructured_aux.o hdf5.o \
-                    hdf5_aux.o init_common.o input_aux.o integral_flux.o \
-                    logging.o material.o material_aux.o observation.o option.o \
-                    output_aux.o output_tecplot.o patch.o pflotran_constants.o \
-                    pmc_subsurface.o reaction.o reaction_aux.o \
-                    reaction_database.o reaction_mineral.o \
+                    dataset_common_hdf5.o dataset_gridded_hdf5.o debug.o \
+                    discretization.o eos.o eos_water.o field.o fluid.o \
+                    general.o grid.o grid_structured.o grid_unstructured_aux.o \
+                    hdf5.o hdf5_aux.o init_common.o input_aux.o \
+                    integral_flux.o logging.o material.o material_aux.o \
+                    observation.o option.o output_aux.o output_tecplot.o \
+                    patch.o pflotran_constants.o pmc_subsurface.o reaction.o \
+                    reaction_aux.o reaction_database.o reaction_mineral.o \
                     reaction_solid_solution.o realization_base.o \
                     realization_subsurface.o region.o regression.o \
                     saturation_function.o simulation_subsurface.o solver.o \
@@ -754,9 +753,9 @@ integral_flux.o : geometry.o input_aux.o option.o pflotran_constants.o \
                   string.o utility.o
 logging.o : pflotran_constants.o
 lookup_table.o : pflotran_constants.o utility.o
-material.o : characteristic_curves.o communicator_base.o dataset_common_hdf5.o \
-             field.o global_aux.o input_aux.o material_aux.o option.o \
-             pflotran_constants.o string.o variables.o wipp.o
+material.o : characteristic_curves.o communicator_base.o dataset.o \
+             dataset_base.o field.o global_aux.o input_aux.o material_aux.o \
+             option.o pflotran_constants.o string.o variables.o wipp.o
 material_aux.o : option.o pflotran_constants.o utility.o variables.o
 matrix_block_aux.o : option.o pflotran_constants.o utility.o
 matrix_buffer.o : grid.o grid_structured.o pflotran_constants.o
@@ -915,9 +914,9 @@ pm_toil_ims.o : checkpoint.o field.o global.o global_aux.o grid.o input_aux.o \
                 pflotran_constants.o pm_base.o pm_subsurface.o \
                 realization_base.o realization_subsurface.o string.o \
                 toil_ims.o toil_ims_aux.o variables.o
-pm_ufd_decay.o : global.o global_aux.o grid.o input_aux.o material_aux.o \
-                 option.o patch.o pflotran_constants.o pm_base.o \
-                 reaction_aux.o reaction_mineral_aux.o \
+pm_ufd_decay.o : field.o global.o global_aux.o grid.o input_aux.o \
+                 material_aux.o option.o patch.o pflotran_constants.o \
+                 pm_base.o reaction_aux.o reaction_mineral_aux.o \
                  reactive_transport_aux.o realization_subsurface.o string.o \
                  utility.o
 pm_waste_form.o : condition.o data_mediator_vec.o dataset.o dataset_ascii.o \

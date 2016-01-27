@@ -33,6 +33,7 @@ subroutine InitSubsurfSetupRealization(realization)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Reaction_Database_module
   use EOS_Water_module
+  use Dataset_module
   
   implicit none
   
@@ -723,6 +724,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   use Input_Aux_module
   use Material_module
   use HDF5_module
+  use Dataset_Common_HDF5_class
   
   implicit none
   
@@ -738,8 +740,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   type(option_type), pointer :: option
   type(input_type), pointer :: input
   type(discretization_type), pointer :: discretization
-  character(len=MAXSTRINGLENGTH) :: group_name
-  character(len=MAXSTRINGLENGTH) :: dataset_name
+  character(len=MAXWORDLENGTH) :: word
   PetscInt :: local_id
   PetscInt :: idirection, temp_int
   PetscReal :: ratio, scale
@@ -766,7 +767,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   if (material_property%isotropic_permeability .or. &
       (.not.material_property%isotropic_permeability .and. &
         material_property%vertical_anisotropy_ratio > 0.d0)) then
-    material_property%permeability_dataset%name = 'Permeability'
+!    material_property%permeability_dataset%name = 'Permeability'
     !geh: Pass in -1 so that entire dataset is read. The mask is applied below.
     call SubsurfReadDatasetToVecWithMask(realization, &
                                     material_property%permeability_dataset, &
@@ -796,12 +797,17 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
     do idirection = X_DIRECTION,temp_int
       select case(idirection)
         case(X_DIRECTION)
-          material_property%permeability_dataset%name = 'PermeabilityX'
+          word = 'X'
         case(Y_DIRECTION)
-          material_property%permeability_dataset%name = 'PermeabilityY'
+          word = 'Y'
         case(Z_DIRECTION)
-          material_property%permeability_dataset%name = 'PermeabilityZ'
-      end select    
+          word = 'Z'
+      end select
+      select type(dataset => material_property%permeability_dataset)
+        class is(dataset_common_hdf5_type)
+          dataset%hdf5_dataset_name = trim(dataset%hdf5_dataset_name) // &
+                                      trim(word)
+      end select
       !geh: Pass in -1 so that entire dataset is read. The mask is applied 
       !     below.
       call SubsurfReadDatasetToVecWithMask(realization, &
@@ -920,6 +926,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
         call DatasetGriddedHDF5Strip(dataset)
         call DatasetGriddedHDF5Init(dataset)
       class is(dataset_common_hdf5_type)
+        dataset_name = dataset%hdf5_dataset_name
         call HDF5ReadCellIndexedRealArray(realization,field%work, &
                                           dataset%filename, &
                                           group_name,dataset_name, &

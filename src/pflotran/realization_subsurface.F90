@@ -65,8 +65,8 @@ private
             RealizationDestroyLegacy, &
             RealizationProcessCouplers, &
             RealizationInitAllCouplerAuxVars, &
-            RealizationProcessDatasets, &
             RealizationProcessConditions, &
+            RealizationProcessDatasets, &
             RealizationAddWaypointsToList, &
             RealizationCreateDiscretization, &
             RealizationLocalizeRegions, &
@@ -691,6 +691,7 @@ subroutine RealProcessMatPropAndSatFunc(realization)
 
   use String_module
   use Dataset_Common_HDF5_class
+  use Dataset_module
   
   implicit none
   
@@ -757,13 +758,15 @@ subroutine RealProcessMatPropAndSatFunc(realization)
     endif
     
     ! if named, link dataset to property
-    if (.not.StringNull(cur_material_property%porosity_dataset_name)) then
+    if (associated(cur_material_property%porosity_dataset)) then
+!    if (.not.StringNull(cur_material_property%porosity_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),POROSITY'
       dataset => &
         DatasetBaseGetPointer(realization%datasets, &
-                              cur_material_property%porosity_dataset_name, &
+                              cur_material_property%porosity_dataset%name, &
                               string,option)
+      call DatasetDestroy(cur_material_property%porosity_dataset)
       select type(dataset)
         class is (dataset_common_hdf5_type)
           cur_material_property%porosity_dataset => dataset
@@ -772,13 +775,15 @@ subroutine RealProcessMatPropAndSatFunc(realization)
           call printErrMsg(option)
       end select
     endif
-    if (.not.StringNull(cur_material_property%permeability_dataset_name)) then
+    if (associated(cur_material_property%permeability_dataset)) then
+!    if (.not.StringNull(cur_material_property%permeability_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),PERMEABILITY'
       dataset => &
         DatasetBaseGetPointer(realization%datasets, &
-                              cur_material_property%permeability_dataset_name, &
-                              string,option)
+                            cur_material_property%permeability_dataset%name, &
+                            string,option)
+      call DatasetDestroy(cur_material_property%permeability_dataset)
       select type(dataset)
         class is (dataset_common_hdf5_type)
           cur_material_property%permeability_dataset => dataset
@@ -787,13 +792,15 @@ subroutine RealProcessMatPropAndSatFunc(realization)
           call printErrMsg(option)
       end select      
     endif
-    if (.not.StringNull(cur_material_property%compressibility_dataset_name)) then
+    if (associated(cur_material_property%compressibility_dataset)) then
+!    if (.not.StringNull(cur_material_property%compressibility_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),SOIL_COMPRESSIBILITY'
       dataset => &
         DatasetBaseGetPointer(realization%datasets, &
-                              cur_material_property%compressibility_dataset_name, &
-                              string,option)
+                         cur_material_property%compressibility_dataset%name, &
+                         string,option)
+      call DatasetDestroy(cur_material_property%compressibility_dataset)
       select type(dataset)
         class is (dataset_common_hdf5_type)
           cur_material_property%compressibility_dataset => dataset

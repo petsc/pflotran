@@ -1,6 +1,6 @@
 module Material_module
  
-  use Dataset_Common_HDF5_class
+  use Dataset_Base_class
 
   use PFLOTRAN_Constants_module
   use Material_Aux_class
@@ -20,11 +20,11 @@ module Material_module
     PetscBool :: isotropic_permeability
     PetscReal :: vertical_anisotropy_ratio ! (vertical / horizontal)
     PetscReal :: permeability_scaling_factor
-    character(len=MAXWORDLENGTH) :: permeability_dataset_name
-    class(dataset_common_hdf5_type), pointer :: permeability_dataset
+!    character(len=MAXWORDLENGTH) :: permeability_dataset_name
+    class(dataset_base_type), pointer :: permeability_dataset
     PetscReal :: porosity
-    character(len=MAXWORDLENGTH) :: porosity_dataset_name
-    class(dataset_common_hdf5_type), pointer :: porosity_dataset
+!    character(len=MAXWORDLENGTH) :: porosity_dataset_name
+    class(dataset_base_type), pointer :: porosity_dataset
     PetscReal :: tortuosity
     PetscInt :: saturation_function_id
     character(len=MAXWORDLENGTH) :: saturation_function_name
@@ -39,8 +39,8 @@ module Material_module
     character(len=MAXWORDLENGTH) :: soil_compressibility_function
     PetscReal :: soil_compressibility
     PetscReal :: soil_reference_pressure
-    character(len=MAXWORDLENGTH) :: compressibility_dataset_name
-    class(dataset_common_hdf5_type), pointer :: compressibility_dataset
+!    character(len=MAXWORDLENGTH) :: compressibility_dataset_name
+    class(dataset_base_type), pointer :: compressibility_dataset
 
     ! ice properties
     PetscReal :: thermal_conductivity_frozen
@@ -138,11 +138,11 @@ function MaterialPropertyCreate()
   material_property%permeability_pwr = 1.d0
   material_property%permeability_crit_por = 0.d0
   material_property%permeability_min_scale_fac = 1.d0
-  material_property%permeability_dataset_name = ''
+!  material_property%permeability_dataset_name = ''
   nullify(material_property%permeability_dataset)
   ! initialize to UNINITIALIZED_DOUBLE to catch bugs
   material_property%porosity = UNINITIALIZED_DOUBLE
-  material_property%porosity_dataset_name = ''
+!  material_property%porosity_dataset_name = ''
   nullify(material_property%porosity_dataset)
   material_property%tortuosity = 1.d0
   material_property%tortuosity_pwr = 0.d0
@@ -159,7 +159,7 @@ function MaterialPropertyCreate()
   material_property%soil_compressibility_function = ''
   material_property%soil_compressibility = UNINITIALIZED_DOUBLE
   material_property%soil_reference_pressure = UNINITIALIZED_DOUBLE
-  material_property%compressibility_dataset_name = ''
+!  material_property%compressibility_dataset_name = ''
   nullify(material_property%compressibility_dataset)
 
   material_property%thermal_conductivity_frozen = 0.d0
@@ -208,6 +208,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   use Input_Aux_module
   use String_module
   use Fracture_module
+  use Dataset_module
   
   implicit none
   
@@ -306,27 +307,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputErrorMsg(input,option,'soil compressibility function', &
                            'MATERIAL_PROPERTY')
       case('SOIL_COMPRESSIBILITY') 
- !       call InputReadDouble(input,option, &
- !                            material_property%soil_compressibility)
- !       call InputErrorMsg(input,option,'soil compressibility', &
- !                          'MATERIAL_PROPERTY')
-        buffer_save = input%buf
-        call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
-        call InputErrorMsg(input,option,'soil compressibility','MATERIAL_PROPERTY')
-        call StringToUpper(string)
-        if (StringCompare(string,'DATASET',SEVEN_INTEGER)) then
-          call InputReadNChars(input,option, &
-                               material_property%compressibility_dataset_name,&
-                               MAXWORDLENGTH,PETSC_TRUE)
-          call InputErrorMsg(input,option,'DATASET,NAME', &
-                             'MATERIAL_PROPERTY,SOIL_COMPRESSIBILITY')   
-        else
-          input%buf = buffer_save
-          call InputReadDouble(input,option, &
-                               material_property%soil_compressibility)
-          call InputErrorMsg(input,option,'soil compressibility', &
-                             'MATERIAL_PROPERTY')
-        endif
+        call DatasetReadDoubleOrDataset(input,material_property% &
+                                          soil_compressibility, &
+                                        material_property%porosity_dataset, &
+                                        'soil compressibility', &
+                                        'MATERIAL_PROPERTY',option)
       case('SOIL_REFERENCE_PRESSURE') 
         call InputReadDouble(input,option, &
                              material_property%soil_reference_pressure)
@@ -338,21 +323,9 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputErrorMsg(input,option,'thermal expansitivity', &
                            'MATERIAL_PROPERTY')
       case('POROSITY')
-        buffer_save = input%buf
-        call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
-        call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
-        call StringToUpper(string)
-        if (StringCompare(string,'DATASET',SEVEN_INTEGER)) then
-          call InputReadNChars(input,option, &
-                               material_property%porosity_dataset_name,&
-                               MAXWORDLENGTH,PETSC_TRUE)
-          call InputErrorMsg(input,option,'DATASET,NAME', &
-                             'MATERIAL_PROPERTY,POROSITY')   
-        else
-          input%buf = buffer_save
-          call InputReadDouble(input,option,material_property%porosity)
-          call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
-        endif
+        call DatasetReadDoubleOrDataset(input,material_property%porosity, &
+                                        material_property%porosity_dataset, &
+                                        'porosity','MATERIAL_PROPERTY',option)
       case('TORTUOSITY')
         call InputReadDouble(input,option,material_property%tortuosity)
         call InputErrorMsg(input,option,'tortuosity','MATERIAL_PROPERTY')
@@ -475,8 +448,10 @@ subroutine MaterialPropertyRead(material_property,input,option)
                 'the PERMEABILITY card.'
               call printErrMsg(option)
             case('DATASET')
+              material_property%permeability_dataset => DatasetBaseCreate()
               call InputReadNChars(input,option, &
-                                   material_property%permeability_dataset_name,&
+                                   material_property% &
+                                     permeability_dataset%name, &
                                    MAXWORDLENGTH,PETSC_TRUE)
               call InputErrorMsg(input,option,'DATASET,NAME', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')   
@@ -678,7 +653,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   if (len(trim(material_property%soil_compressibility_function)) > 0) then
     option%flow%transient_porosity = PETSC_TRUE
     if (Uninitialized(material_property%soil_compressibility) .and. &
-         (material_property%compressibility_dataset_name == '')) then
+        .not.associated(material_property%compressibility_dataset)) then
       option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in ' // &
         'inputdeck for MATERIAL_PROPERTY card, but SOIL_COMPRESSIBILITY ' // &
         'is not defined.'
