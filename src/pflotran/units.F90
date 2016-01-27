@@ -144,16 +144,15 @@ subroutine UnitsConvertParse(units,units_category,conversion_factor,ierr, &
 
   ! check if provided units structure matches units category structure
   if (set_units_denom .neqv. set_cats_denom) then
+    ierr = PETSC_TRUE
     if ((set_cats_denom .eqv. PETSC_TRUE) .and. &
         (set_units_denom .eqv. PETSC_FALSE)) then
-      ierr = PETSC_TRUE
       ierr_msg = 'Units provided do not match the expected &
                  &unit category structure (numerator/denominator). &
                  &A unit denominator was expected, but was not given.'
     endif
     if ((set_cats_denom .eqv. PETSC_FALSE) .and. &
         (set_units_denom .eqv. PETSC_TRUE)) then
-      ierr = PETSC_TRUE
       ierr_msg = 'Units provided do not match the expected &
                  &unit category structure (numerator/denominator). &
                  &A unit denominator was not expected, but was given.'
