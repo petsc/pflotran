@@ -1559,10 +1559,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               sub_condition_ptr%itype = SEEPAGE_BC
             case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS
-              rate_string = 'mass/time'                                 !!!!!!!!!!!!!!!!!!!!
+              rate_string = 'mass/time'                                
             case('scaled_mass_rate')
               sub_condition_ptr%itype = SCALED_MASS_RATE_SS
-              rate_string = 'mass/time'                                 !!!!!!!!!!!!!!!!!!!!!
+              rate_string = 'mass/time'                                
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -1588,10 +1588,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               endif
             case('volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
-              rate_string = 'volume/time'                                  !!!!!!!!!!!!!!!
+              rate_string = 'volume/time'                                  
             case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
-              rate_string = 'volume/time'                                    !!!!!!!!!!!!!!!!
+              rate_string = 'volume/time'                                   
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -1617,10 +1617,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               endif
             case('heterogeneous_volumetric_rate')
               sub_condition_ptr%itype = HET_VOL_RATE_SS
-              rate_string = 'volume/time'                                 !!!!!!!!!!!!!!!!!
+              rate_string = 'volume/time'                                 
             case('heterogeneous_mass_rate')
               sub_condition_ptr%itype = HET_MASS_RATE_SS
-              rate_string = 'mass/time'                                  !!!!!!!!!!!!!!!!!!!
+              rate_string = 'mass/time'                                 
             case('heterogeneous_dirichlet')
               sub_condition_ptr%itype = HET_DIRICHLET
             case('heterogeneous_surface_seepage')
@@ -2036,12 +2036,12 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               sub_condition_ptr%itype = ZERO_GRADIENT_BC
             case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS 
-              rate_string = 'mass/time'                                  !!!!!!!!!!!!!!!!!
+              rate_string = 'mass/time'                               
             !case('mass_rate_enthalpy')
             !  sub_condition_ptr%itype = MASS_RATE_ENTHALPY_SS
             case('scaled_mass_rate')
               sub_condition_ptr%itype = SCALED_MASS_RATE_SS
-              rate_string = 'mass/time'                                  !!!!!!!!!!!!!!!!!!!
+              rate_string = 'mass/time'                                  
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -2067,10 +2067,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               endif
             case('volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
-              rate_string = 'volume/time'                                     !!!!!!!!!!!!!!!
+              rate_string = 'volume/time'                                
             case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
-              rate_string = 'volume/time'                                     !!!!!!!!!!!!!!!!
+              rate_string = 'volume/time'                                    
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -2096,10 +2096,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               endif
             case('heterogeneous_volumetric_rate')
               sub_condition_ptr%itype = HET_VOL_RATE_SS
-              rate_string = 'volume/time'                                      !!!!!!!!!!!!!!!!
+              rate_string = 'volume/time'                                      
             case('heterogeneous_mass_rate')
               sub_condition_ptr%itype = HET_MASS_RATE_SS
-              rate_string = 'mass/time'                                         !!!!!!!!!!!!!!!!!
+              rate_string = 'mass/time'                                         
             case('heterogeneous_dirichlet')
               sub_condition_ptr%itype = HET_DIRICHLET
             case('heterogeneous_surface_seepage')
