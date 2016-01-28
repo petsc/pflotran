@@ -160,7 +160,9 @@ subroutine MineralReadKinetics(mineral,input,option)
                 input%err_buf = trim(cur_mineral%name) // ' RATE UNITS'
                 call InputDefaultMsg(input,option)
               else
-                tstrxn%rate = tstrxn%rate * UnitsConvertToInternal(word,option)
+                tstrxn%rate = tstrxn%rate * &
+                              UnitsConvertToInternal(word, &
+                              'mass/area-time',option)
               endif
             case('ACTIVATION_ENERGY')
 !             read activation energy for Arrhenius law
@@ -241,7 +243,8 @@ subroutine MineralReadKinetics(mineral,input,option)
                       call InputDefaultMsg(input,option)
                     else
                       prefactor%rate = prefactor%rate * &
-                                       UnitsConvertToInternal(word,option)
+                                       UnitsConvertToInternal(word, &
+                                       'mass/area-time',option)
                     endif
                   case('ACTIVATION_ENERGY')
                     ! read activation energy for Arrhenius law

@@ -186,6 +186,7 @@ subroutine StrataRead(strata,input,option)
   character(len=MAXWORDLENGTH) :: word
 
   input%ierr = 0
+
   do
   
     call InputReadPflotranString(input,option)
@@ -214,7 +215,7 @@ subroutine StrataRead(strata,input,option)
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
           strata%start_time = strata%start_time * &
-                              UnitsConvertToInternal(word,option)
+                              UnitsConvertToInternal(word,'time',option)
         endif
       case('FINAL_TIME')
         call InputReadDouble(input,option,strata%final_time)
@@ -223,7 +224,7 @@ subroutine StrataRead(strata,input,option)
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
           strata%final_time = strata%final_time * &
-                              UnitsConvertToInternal(word,option)
+                              UnitsConvertToInternal(word,'time',option)
         endif
       case('INACTIVE')
         strata%active = PETSC_FALSE

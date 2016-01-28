@@ -323,12 +323,12 @@ subroutine ReactionReadPass1(reaction,input,option)
                                   'RADIOACTIVE_DECAY_RXN RATE_CONSTANT UNITS')
               else
                 radioactive_decay_rxn%rate_constant = &
-                  UnitsConvertToInternal(word,option) * &
+                  UnitsConvertToInternal(word,'unknown/time',option) * &
                   radioactive_decay_rxn%rate_constant
               endif
             case('HALF_LIFE')
               call InputReadDouble(input,option, &
-                                   radioactive_decay_rxn%rate_constant)
+                                   radioactive_decay_rxn%half_life)
               call InputErrorMsg(input,option,'half life', &
                                'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
               call InputReadWord(input,option,word,PETSC_TRUE)
@@ -336,13 +336,13 @@ subroutine ReactionReadPass1(reaction,input,option)
                 call InputDefaultMsg(input,option, &
                                      'RADIOACTIVE_DECAY_RXN HALF_LIFE UNITS')
               else
-                radioactive_decay_rxn%rate_constant = &
-                  UnitsConvertToInternal(word,option) * &
-                  radioactive_decay_rxn%rate_constant
+                radioactive_decay_rxn%half_life = &
+                  UnitsConvertToInternal(word,'time',option) * &
+                  radioactive_decay_rxn%half_life
               endif
               ! convert half life to rate constant
               radioactive_decay_rxn%rate_constant = &
-                -1.d0*log(0.5d0)/radioactive_decay_rxn%rate_constant
+                -1.d0*log(0.5d0)/radioactive_decay_rxn%half_life
             case default
               call InputKeywordUnrecognized(word, &
                                           'CHEMISTRY,IMMOBILE_DECAY_REACTION', &

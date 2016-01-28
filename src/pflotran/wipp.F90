@@ -487,6 +487,7 @@ subroutine CreepClosureRead(this,input,option)
   time_units_conversion = 1.d0
   filename = ''
   input%ierr = 0
+
   do
   
     call InputReadPflotranString(input,option)
@@ -540,7 +541,7 @@ subroutine CreepClosureRead(this,input,option)
         call InputReadWord(input2,option,word,PETSC_TRUE) 
         call InputErrorMsg(input2,option,'UNITS','CONDITION')   
         call StringToLower(word)
-        time_units_conversion = UnitsConvertToInternal(word,option)
+        time_units_conversion = UnitsConvertToInternal(word,'time',option)
       case('TIME')
         if (Uninitialized(this%num_times) .or. &
             Uninitialized(this%num_values_per_time)) then
