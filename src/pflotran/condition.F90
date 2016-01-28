@@ -1559,10 +1559,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               sub_condition_ptr%itype = SEEPAGE_BC
             case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS
-              rate_string = 'mass/time|power|energy/time'
+              rate_string = 'mass/time'                                 !!!!!!!!!!!!!!!!!!!!
             case('scaled_mass_rate')
               sub_condition_ptr%itype = SCALED_MASS_RATE_SS
-              rate_string = 'mass/time|power|energy/time'
+              rate_string = 'mass/time'                                 !!!!!!!!!!!!!!!!!!!!!
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -1588,10 +1588,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               endif
             case('volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
-              rate_string = 'volume/time|power|energy/time'
+              rate_string = 'volume/time'                                  !!!!!!!!!!!!!!!
             case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
-              rate_string = 'volume/time|power|energy/time'
+              rate_string = 'volume/time'                                    !!!!!!!!!!!!!!!!
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -1617,10 +1617,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
               endif
             case('heterogeneous_volumetric_rate')
               sub_condition_ptr%itype = HET_VOL_RATE_SS
-              rate_string = 'volume/time|power|energy/time'
+              rate_string = 'volume/time'                                 !!!!!!!!!!!!!!!!!
             case('heterogeneous_mass_rate')
               sub_condition_ptr%itype = HET_MASS_RATE_SS
-              rate_string = 'mass/time|power|energy/time'
+              rate_string = 'mass/time'                                  !!!!!!!!!!!!!!!!!!!
             case('heterogeneous_dirichlet')
               sub_condition_ptr%itype = HET_DIRICHLET
             case('heterogeneous_surface_seepage')
@@ -1694,7 +1694,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
           case('RATE')
             input%force_units = PETSC_TRUE
             input%err_buf = word
-            units_category = rate_string
+            units_category = trim(rate_string) // ',' // trim(rate_string) //&
+                             ',power|energy/time'
           case('LIQUID_FLUX','GAS_FLUX')
             units_category = 'length/time'
           case('ENERGY_FLUX')
@@ -2035,12 +2036,12 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               sub_condition_ptr%itype = ZERO_GRADIENT_BC
             case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS 
-              rate_string = 'mass/time|power|energy/time'
+              rate_string = 'mass/time'                                  !!!!!!!!!!!!!!!!!
             !case('mass_rate_enthalpy')
             !  sub_condition_ptr%itype = MASS_RATE_ENTHALPY_SS
             case('scaled_mass_rate')
               sub_condition_ptr%itype = SCALED_MASS_RATE_SS
-              rate_string = 'mass/time|power|energy/time'
+              rate_string = 'mass/time'                                  !!!!!!!!!!!!!!!!!!!
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -2066,10 +2067,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               endif
             case('volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
-              rate_string = 'volume/time|power|energy/time'
+              rate_string = 'volume/time'                                     !!!!!!!!!!!!!!!
             case('scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
-              rate_string = 'volume/time|power|energy/time'
+              rate_string = 'volume/time'                                     !!!!!!!!!!!!!!!!
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
@@ -2095,10 +2096,10 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               endif
             case('heterogeneous_volumetric_rate')
               sub_condition_ptr%itype = HET_VOL_RATE_SS
-              rate_string = 'volume/time|power|energy/time'
+              rate_string = 'volume/time'                                      !!!!!!!!!!!!!!!!
             case('heterogeneous_mass_rate')
               sub_condition_ptr%itype = HET_MASS_RATE_SS
-              rate_string = 'mass/time|power|energy/time'
+              rate_string = 'mass/time'                                         !!!!!!!!!!!!!!!!!
             case('heterogeneous_dirichlet')
               sub_condition_ptr%itype = HET_DIRICHLET
             case('heterogeneous_surface_seepage')
@@ -2203,7 +2204,8 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
           case('RATE')
             input%force_units = PETSC_TRUE
             input%err_buf = word
-            units_category = rate_string
+            units_category = trim(rate_string) // ',' // trim(rate_string) //&
+                             ',power|energy/time'
           case('LIQUID_FLUX','GAS_FLUX')
             units_category = 'length/time'
           case('ENERGY_FLUX')
@@ -2628,7 +2630,8 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units, &
   character(len=MAXWORDLENGTH) :: keyword
   class(dataset_base_type), pointer :: dataset_base
   character(len=MAXWORDLENGTH) :: units
-  character(len=*) :: data_units_category
+  character(len=MAXSTRINGLENGTH), pointer :: unit_cat_strings(:)
+  character(len=MAXSTRINGLENGTH) :: data_units_category
   
   class(dataset_ascii_type), pointer :: dataset_ascii
   character(len=MAXSTRINGLENGTH) :: string2, filename, hdf5_path
@@ -2667,6 +2670,8 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units, &
   filename = ''
   realization_word = ''
   hdf5_path = ''
+
+  unit_cat_strings => StringSplit(data_units_category,',')
   
   input%ierr = 0
   string2 = trim(input%buf)
@@ -2807,12 +2812,16 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units, &
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,keyword,'CONDITION')   
         dataset_ascii%rarray(icol) = UnitsConvertToInternal(word, &
-                                     data_units_category,option) * &                     
+                                     unit_cat_strings(icol),option) * &                     
                                      dataset_ascii%rarray(icol)
         units = trim(units) // ' ' // trim(word)
       enddo
     endif
   endif
+  
+  deallocate(unit_cat_strings)
+  nullify(unit_cat_strings)  
+
   call PetscLogEventEnd(logging%event_flow_condition_read_values, &
                         ierr);CHKERRQ(ierr)
 

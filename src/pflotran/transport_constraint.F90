@@ -472,7 +472,6 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
             else
               mineral_constraint%constraint_area(imnrl) = &
                 mineral_constraint%constraint_area(imnrl) * &
-                ! jmf: check this!
                 UnitsConvertToInternal(word,'area/volume|unitless/length',option)
             endif
           endif

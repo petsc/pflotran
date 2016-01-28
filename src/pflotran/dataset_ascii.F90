@@ -155,6 +155,7 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
   character(len=MAXWORDLENGTH) :: time_units
   character(len=MAXSTRINGLENGTH) :: string, data_units
   character(len=*) :: data_units_category
+  character(len=MAXSTRINGLENGTH), pointer :: unit_cat_strings(:) 
   character(len=MAXWORDLENGTH) :: word
   PetscReal, pointer :: temp_array(:,:)
   PetscReal :: temp_time
@@ -168,6 +169,8 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
   time_units = ''
   data_units = ''
   max_size = 1000
+  
+  unit_cat_strings => StringSplit(data_units_category,',')
 
   row_count = 0
   ierr = 0
@@ -287,10 +290,12 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
         call InputReadWord(data_units,word,PETSC_TRUE,ierr)
         input%ierr = ierr
         call InputErrorMsg(input,option,'DATA_UNITS','CONDITION FILE')
-        conversion = UnitsConvertToInternal(word,data_units_category,option)
+        conversion = UnitsConvertToInternal(word,unit_cat_strings(i),option)
       endif
       temp_array(i+1,:) = conversion * temp_array(i+1,:)
     enddo
+    deallocate(unit_cat_strings)
+    nullify(unit_cat_strings)
   else
     call InputCheckMandatoryUnits(input,option)
   endif

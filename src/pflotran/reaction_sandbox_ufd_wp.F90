@@ -134,8 +134,7 @@ subroutine WastePackageRead(this,input,option)
         else              
           ! If units exist, convert to internal units of 1/s
           this%rate_constant = this%rate_constant * &
-          ! jmf: check this!
-            UnitsConvertToInternal(word,'not_assigned/time',option)
+            UnitsConvertToInternal(word,'unitless/time',option)
         endif
       case default
         call InputKeywordUnrecognized(word, &

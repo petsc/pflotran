@@ -80,7 +80,7 @@ end function UnitsConvertToInternal
 
 ! ************************************************************************** !
 
-subroutine UnitsConvertParse(units,units_category,conversion_factor,ierr, &
+subroutine UnitsConvertParse(units,units_category,units_conversion,ierr, &
                              ierr_msg)
   ! 
   ! Parses unit and unit category numerators from denominators (if they exist)
@@ -102,11 +102,11 @@ subroutine UnitsConvertParse(units,units_category,conversion_factor,ierr, &
   character(len=MAXSTRINGLENGTH) :: denominator_unit_cats
   character(len=MAXSTRINGLENGTH) :: ierr_msg
   PetscReal :: numerator_conv_factor, denominator_conv_factor
-  PetscReal :: conversion_factor
+  PetscReal :: units_conversion
   PetscBool :: set_units_denom, set_cats_denom, ierr
   PetscInt :: length, ind
   
-  conversion_factor = 1.d0
+  units_conversion = 1.d0
   ierr = PETSC_FALSE
   set_units_denom = PETSC_FALSE
   set_cats_denom = PETSC_FALSE
@@ -172,7 +172,7 @@ subroutine UnitsConvertParse(units,units_category,conversion_factor,ierr, &
   endif
 
   if (.not. ierr) then
-    conversion_factor = numerator_conv_factor/denominator_conv_factor
+    units_conversion = numerator_conv_factor/denominator_conv_factor
   endif
 
 end subroutine UnitsConvertParse
@@ -204,7 +204,7 @@ end function UnitsConvertToExternal
 
 ! ************************************************************************** !
 
-subroutine UnitsConvert(units,units_category,conversion_factor,ierr,ierr_msg)
+subroutine UnitsConvert(units,units_category,units_conversion,ierr,ierr_msg)
   ! 
   ! Converts units to pflotran internal units
   ! 
@@ -231,9 +231,10 @@ subroutine UnitsConvert(units,units_category,conversion_factor,ierr,ierr_msg)
   PetscInt :: k, j
   PetscInt :: num_units, num_unit_cats
   PetscBool :: category_assigned(3), successful, ierr
-  PetscReal :: conversion_factor
+  PetscReal :: conversion_factor, units_conversion
 
   conversion_factor = 1d0
+  units_conversion = 1d0
   ierr_msg = ''
   ierr = PETSC_FALSE
   unit_category_string = ''
@@ -258,7 +259,7 @@ subroutine UnitsConvert(units,units_category,conversion_factor,ierr,ierr_msg)
       units_category_buff = units_category_buff((ind_dash+1):length)
     endif
     k = k + 1
-    if (k .gt. 3) then
+    if (k > 3) then
       ierr_msg = 'Maximum number of unit categories exceeded.&
                  & Reduce to no more than 3 units.' 
       ierr = PETSC_TRUE
@@ -288,7 +289,7 @@ subroutine UnitsConvert(units,units_category,conversion_factor,ierr,ierr_msg)
       units_buff = units_buff((ind+1):length)
     endif
     k = k + 1
-    if (k .gt. 3) then
+    if (k > 3) then
       ierr_msg = 'Maximum number of units exceeded.&
                  & Reduce to no more than 3 units.' 
       ierr = PETSC_TRUE
@@ -438,16 +439,18 @@ subroutine UnitsConvert(units,units_category,conversion_factor,ierr,ierr_msg)
           call UnitsError(unit(k),unit_category_string,units_string,ierr,ierr_msg)
         end select
       ! ---> PRESSURE ---> (Pa)
-      case('Pa','KPa','MPa')
+      case('Pa','KPa','MPa','Bar')
         unit_category_string = 'pressure'
-        units_string = 'Pa, KPa, MPa'
+        units_string = 'Pa, KPa, MPa, Bar'
         select case(trim(unit(k)))
         case('Pa') 
           conversion_factor = 1.d0
         case('KPa')
           conversion_factor = 1.d3
         case('MPa')
-          conversion_factor = 1.d6  
+          conversion_factor = 1.d6
+        case('Bar')
+          conversion_factor = 1.d5
         case default
           call UnitsError(unit(k),unit_category_string,units_string,ierr,ierr_msg)
         end select
@@ -516,6 +519,8 @@ subroutine UnitsConvert(units,units_category,conversion_factor,ierr,ierr_msg)
         endif
         k = k + 1
       endif ! (.not. ierr)
+      
+    units_conversion = units_conversion * conversion_factor
 
     enddo ! while (k < (num_units + 1))
 
