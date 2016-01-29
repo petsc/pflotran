@@ -1928,7 +1928,8 @@ subroutine InitSubsurfaceReadInput(simulation)
         units_conversion = UnitsConvertToInternal(word,units_category,option) 
         ! convert from hrs to seconds and add to start_time
         option%wallclock_stop_time = option%start_time + &
-                                     option%wallclock_stop_time*units_conversion
+                                     option%wallclock_stop_time* &
+                                     units_conversion
       
 !....................
       case ('OUTPUT')
@@ -1997,24 +1998,30 @@ subroutine InitSubsurfaceReadInput(simulation)
               output_option%print_column_ids = PETSC_TRUE
             case('TIMES')
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'units','OUTPUT')
+              call InputErrorMsg(input,option,'units','OUTPUT,TIMES')
               units_category = 'time'
-              units_conversion = UnitsConvertToInternal(word,units_category,option) 
-              continuation_flag = PETSC_TRUE
+              units_conversion = &
+                UnitsConvertToInternal(word,units_category,option) 
               do
                 continuation_flag = PETSC_FALSE
-                if (index(input%buf,backslash) > 0) &
-                  continuation_flag = PETSC_TRUE
                 input%ierr = 0
                 do
-                  if (InputError(input)) exit
-                  call InputReadDouble(input,option,temp_real)
-                  if (.not.InputError(input)) then
-                    waypoint => WaypointCreate()
-                    waypoint%time = temp_real*units_conversion
-                    waypoint%print_output = PETSC_TRUE    
-                    call WaypointInsertInList(waypoint,realization%waypoint_list)
+                  if (len_trim(input%buf) == 0) exit
+                  ! check for the '\' continuation flag
+                  string = input%buf
+                  call InputReadWord(string,word,PETSC_TRUE,input%ierr)
+                  call InputErrorMsg(input,option,'times','OUTPUT,TIMES')
+                  if (StringCompare(word,'\')) then
+                    continuation_flag = PETSC_TRUE
+                    exit
                   endif
+                  call InputReadDouble(input,option,temp_real)
+                  call InputErrorMsg(input,option,'times','OUTPUT,TIMES')
+                  waypoint => WaypointCreate()
+                  waypoint%time = temp_real*units_conversion
+                  waypoint%print_output = PETSC_TRUE    
+                  call WaypointInsertInList(waypoint, &
+                                            realization%waypoint_list)
                 enddo
                 if (.not.continuation_flag) exit
                 call InputReadPflotranString(input,option)
