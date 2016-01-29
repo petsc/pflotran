@@ -4,6 +4,8 @@ module Utility_module
 
   implicit none
 
+  private
+
 #include "petsc/finclude/petscsys.h"
 
   interface DotProduct
@@ -46,6 +48,32 @@ module Utility_module
     module procedure InterfaceApproxWithoutDeriv
   end interface
 
+  public :: DotProduct, &
+            CrossProduct, &
+            reallocateRealArray, &
+            reallocateIntArray, &
+            UtilityReadArray, &
+            DeallocateArray, &
+            InterfaceApprox, &
+            Interpolate, &
+            InterpolateBilinear, &
+            SearchOrderedArray, &
+            ludcmp, &
+            lubksb, &
+            FileExists, &
+            Equal, &
+            BestFloat, &
+            QuadraticPolynomialSetup, &
+            QuadraticPolynomialEvaluate, &
+            CubicPolynomialSetup, &
+            CubicPolynomialEvaluate, &
+            ConvertMatrixToVector, &
+            Kron, &
+            Transposer, &
+            Determinant, &
+            InterfaceApproxWithDeriv, &
+            InterfaceApproxWithoutDeriv
+            
 contains
 
 ! ************************************************************************** !
@@ -885,12 +913,14 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word, word2, word3
   character(len=1) :: backslash
+  character(len=MAXSTRINGLENGTH) :: err_string
   PetscBool :: continuation_flag
   PetscInt :: value
   PetscInt, pointer :: temp_array(:)
   PetscInt :: max_size
   PetscErrorCode :: ierr
 
+  err_string = trim(comment) // ',UtilityReadIntArray'
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
   
@@ -960,7 +990,8 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
 
     do 
       call InputReadWord(input2,option,word,PETSC_TRUE)
-      if (InputError(input2) .or. StringCompare(word,backslash,ONE_INTEGER)) exit
+      if (InputError(input2) .or. &
+          StringCompare(word,backslash,ONE_INTEGER)) exit
       i = index(word,'*')
       if (i == 0) i = index(word,'@')
       if (i /= 0) then
@@ -968,10 +999,10 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
         word3 = word(i+1:len_trim(word))
         string2 = word2
         call InputReadInt(string2,option,num_values,input2%ierr)
-        call InputErrorMsg(input2,option,'# values','UtilityReadIntArray')
+        call InputErrorMsg(input2,option,'# values',err_string)
         string2 = word3
         call InputReadInt(string2,option,value,input2%ierr)
-        call InputErrorMsg(input2,option,'value','UtilityReadIntArray')
+        call InputErrorMsg(input2,option,'value',err_string)
         do while (count+num_values > max_size)
           ! careful.  reallocateRealArray double max_size every time.
           call reallocateIntArray(temp_array,max_size) 
@@ -983,7 +1014,7 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
       else
         string2 = word
         call InputReadInt(string2,option,value,input2%ierr)
-        call InputErrorMsg(input2,option,'value','UtilityReadIntArray')
+        call InputErrorMsg(input2,option,'value',err_string)
         count = count + 1
         if (count > max_size) then
           ! careful.  reallocateRealArray double max_size every time.
@@ -1037,12 +1068,14 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word, word2, word3
   character(len=1) :: backslash
+  character(len=MAXSTRINGLENGTH) :: err_string
   PetscBool :: continuation_flag
   PetscReal :: value
   PetscReal, pointer :: temp_array(:)
   PetscInt :: max_size
   PetscErrorCode :: ierr
 
+  err_string = trim(comment) // ',UtilityReadRealArray'
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
   
@@ -1112,7 +1145,8 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
 
     do 
       call InputReadWord(input2,option,word,PETSC_TRUE)
-      if (InputError(input2) .or. StringCompare(word,backslash,ONE_INTEGER)) exit
+      if (InputError(input2) .or. &
+          StringCompare(word,backslash,ONE_INTEGER)) exit
       i = index(word,'*')
       if (i == 0) i = index(word,'@')
       if (i /= 0) then
@@ -1120,10 +1154,10 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
         word3 = word(i+1:len_trim(word))
         string2 = word2
         call InputReadInt(string2,option,num_values,input2%ierr)
-        call InputErrorMsg(input2,option,'# values','UtilityReadRealArray')
+        call InputErrorMsg(input2,option,'# values',err_string)
         string2 = word3
         call InputReadDouble(string2,option,value,input2%ierr)
-        call InputErrorMsg(input2,option,'value','UtilityReadRealArray')
+        call InputErrorMsg(input2,option,'value',err_string)
         do while (count+num_values > max_size)
           ! careful.  reallocateRealArray double max_size every time.
           call reallocateRealArray(temp_array,max_size) 
@@ -1135,7 +1169,7 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
       else
         string2 = word
         call InputReadDouble(string2,option,value,input2%ierr)
-        call InputErrorMsg(input2,option,'value','UtilityReadArray')
+        call InputErrorMsg(input2,option,'value',err_string)
         count = count + 1
         if (count > max_size) then
           ! careful.  reallocateRealArray double max_size every time.
