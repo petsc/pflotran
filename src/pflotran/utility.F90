@@ -932,25 +932,28 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
   temp_array = 0
   
   input%ierr = 0
-  string2 = trim(input%buf)
-  call InputReadWord(input,option,word,PETSC_TRUE)
-  call InputErrorMsg(input,option,'file or value','UtilityReadIntArray')
-  call StringToLower(word)
-  if (StringCompare(word,'file',FOUR_INTEGER)) then
-    call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
-    input%err_buf = 'filename'
-    input%err_buf2 = comment
-    call InputErrorMsg(input,option)
-    input2 => InputCreate(input%fid + 1,string2,option)
+  if (len_trim(input%buf) > 0) then
+    string2 = trim(input%buf)
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'file or value','UtilityReadIntArray')
+    call StringToLower(word)
+    if (StringCompare(word,'file',FOUR_INTEGER)) then
+      call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
+      input%err_buf = 'filename'
+      input%err_buf2 = comment
+      call InputErrorMsg(input,option)
+      input2 => InputCreate(input%fid + 1,string2,option)
+    else
+      input2 => input
+      input%buf = string2
+    endif
   else
     input2 => input
-    input%buf = string2
   endif
   
-  if (len_trim(input2%buf) > 1) then
-    continuation_flag = PETSC_FALSE
-  else
-    continuation_flag = PETSC_TRUE
+  if (.not. len_trim(input2%buf) > 1) then
+    call InputReadPflotranString(input2,option)
+    call InputReadStringErrorMsg(input2,option,comment)
   endif
   
   icount = 0
@@ -1093,25 +1096,28 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
   temp_array = 0.d0
   
   input%ierr = 0
-  string2 = trim(input%buf)
-  call InputReadWord(input,option,word,PETSC_TRUE)
-  call InputErrorMsg(input,option,'file or value','UtilityReadIntArray')
-  call StringToLower(word)
-  if (StringCompare(word,'file',FOUR_INTEGER)) then
-    call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
-    input%err_buf = 'filename'
-    input%err_buf2 = comment
-    call InputErrorMsg(input,option)
-    input2 => InputCreate(input%fid + 1,string2,option)
+  if (len_trim(input%buf) > 0) then
+    string2 = trim(input%buf)
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'file or value','UtilityReadRealArray')
+    call StringToLower(word)
+    if (StringCompare(word,'file',FOUR_INTEGER)) then
+      call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
+      input%err_buf = 'filename'
+      input%err_buf2 = comment
+      call InputErrorMsg(input,option)
+      input2 => InputCreate(input%fid + 1,string2,option)
+    else
+      input2 => input
+      input%buf = string2
+    endif
   else
     input2 => input
-    input%buf = string2
   endif
   
-  if (len_trim(input2%buf) > 1) then
-    continuation_flag = PETSC_FALSE
-  else
-    continuation_flag = PETSC_TRUE
+  if (.not. len_trim(input2%buf) > 1) then
+    call InputReadPflotranString(input2,option)
+    call InputReadStringErrorMsg(input2,option,comment)
   endif
 
   icount = 0
