@@ -556,21 +556,21 @@ subroutine CreepClosureRead(this,input,option)
         allocate(this%lookup_table%axis2%values(temp_int))
         allocate(this%lookup_table%data(temp_int))
         string = 'TIME in CREEP_CLOSURE'
-        call UtilityReadRealArray(this%lookup_table%axis1%values, &
-                                  NEG_ONE_INTEGER,string, &
-                                  input2,option)
+        call UtilityReadArray(this%lookup_table%axis1%values, &
+                              NEG_ONE_INTEGER,string, &
+                              input2,option)
         this%lookup_table%axis1%values = this%lookup_table%axis1%values * &
           time_units_conversion
       case('PRESSURE') 
         string = 'PRESSURE in CREEP_CLOSURE'
-        call UtilityReadRealArray(this%lookup_table%axis2%values, &
-                                  NEG_ONE_INTEGER, &
-                                  string,input2,option)
+        call UtilityReadArray(this%lookup_table%axis2%values, &
+                              NEG_ONE_INTEGER, &
+                              string,input2,option)
       case('POROSITY') 
         string = 'POROSITY in CREEP_CLOSURE'
-        call UtilityReadRealArray(this%lookup_table%data, &
-                                  NEG_ONE_INTEGER, &
-                                  string,input2,option)
+        call UtilityReadArray(this%lookup_table%data, &
+                              NEG_ONE_INTEGER, &
+                              string,input2,option)
      case default
         error_string = trim(error_string) // ': ' // filename
         call InputKeywordUnrecognized(keyword,error_string,option)

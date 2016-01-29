@@ -1247,6 +1247,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   use SrcSink_Sandbox_module
   use Klinkenberg_module
   use WIPP_module
+  use Utility_module
   
   use Simulation_Subsurface_class
   use PMC_Subsurface_class
@@ -1271,9 +1272,10 @@ subroutine InitSubsurfaceReadInput(simulation)
   
   character(len=1) :: backslash
   PetscReal :: temp_real, temp_real2
+  PetscReal, pointer :: temp_real_array(:)
   PetscReal :: units_conversion
   PetscInt :: temp_int
-  PetscInt :: count, id
+  PetscInt :: id
   
   PetscBool :: vel_cent
   PetscBool :: vel_face
@@ -1736,7 +1738,8 @@ subroutine InitSubsurfaceReadInput(simulation)
                     call InputErrorMsg(input,option,'time increment units', &
                                        'CHECKPOINT,PERIODIC,TIME')
                     units_category = 'time'
-                    units_conversion = UnitsConvertToInternal(word,units_category,option)
+                    units_conversion = &
+                      UnitsConvertToInternal(word,units_category,option)
                     output_option%periodic_checkpoint_time_incr = temp_real* &
                                                               units_conversion
                   case('TIMESTEP')
@@ -2073,6 +2076,18 @@ subroutine InitSubsurfaceReadInput(simulation)
               units_category = 'time'
               units_conversion = &
                 UnitsConvertToInternal(word,units_category,option) 
+              string = 'OUTPUT,TIMES'
+              call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
+                                    string,input,option)
+              do temp_int = 1, size(temp_real_array)
+                waypoint => WaypointCreate()
+                waypoint%time = temp_real_array(temp_int)*units_conversion
+                waypoint%print_output = PETSC_TRUE    
+                call WaypointInsertInList(waypoint, &
+                                          realization%waypoint_list)
+              enddo
+              call DeallocateArray(temp_real_array)
+#if 0
               do
                 continuation_flag = PETSC_FALSE
                 input%ierr = 0
@@ -2098,6 +2113,7 @@ subroutine InitSubsurfaceReadInput(simulation)
                 call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
               enddo
+#endif
             case('OUTPUT_FILE')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'time increment', &
