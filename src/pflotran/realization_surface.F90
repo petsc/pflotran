@@ -11,7 +11,6 @@ module Realization_Surface_class
   use Region_module
   use Surface_Field_module
   use Surface_Material_module
-  use Waypoint_module
   use Dataset_Base_class
   use Reaction_Aux_module
   use Output_Aux_module
@@ -29,8 +28,6 @@ private
 
   type, public, extends(realization_base_type) :: realization_surface_type
 
-    type(waypoint_list_type), pointer  :: waypoint_list
-    
     type(surface_field_type), pointer                 :: surf_field
     type(region_list_type), pointer                   :: surf_regions
     type(condition_list_type),pointer                 :: surf_flow_conditions
@@ -1304,8 +1301,6 @@ subroutine RealizSurfStrip(surf_realization)
   
   !geh: deallocate everything in base
   call RealizationBaseStrip(surf_realization)
-  
-  call WaypointListDestroy(surf_realization%waypoint_list)
   
   call SurfaceFieldDestroy(surf_realization%surf_field)
 

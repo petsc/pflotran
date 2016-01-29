@@ -11,7 +11,6 @@ module Geomechanics_Realization_class
   use Input_Aux_module
   use Option_module
   use Output_Aux_module
-  use Waypoint_module
   use Dataset_Base_class
   use PFLOTRAN_Constants_module
 
@@ -31,7 +30,6 @@ private
     type(geomech_material_property_ptr_type), &
                            pointer       :: geomech_material_property_array(:)
 
-    type(waypoint_list_type), pointer :: waypoint_list
     type(geomech_field_type), pointer :: geomech_field
     type(geomech_debug_type), pointer :: geomech_debug
     type(gm_region_list_type), pointer :: geomech_region_list
