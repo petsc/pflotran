@@ -1543,7 +1543,7 @@ subroutine RealizationAddWaypointsToList(realization)
 
   endif
 
-  ! add waypoints for periodic checkpoint
+  ! add waypoints for periodic checkpoint                                                    
   if (realization%output_option%periodic_checkpoint_time_incr > 0.d0) then
 
     ! standard output

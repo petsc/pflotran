@@ -1247,6 +1247,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   use SrcSink_Sandbox_module
   use Klinkenberg_module
   use WIPP_module
+  use Checkpoint_module
   
   use Simulation_Subsurface_class
   use PMC_Subsurface_class
@@ -1264,7 +1265,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   PetscErrorCode :: ierr
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: card
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string, temp_string
   character(len=MAXSTRINGLENGTH) :: units_category
     
   PetscBool :: continuation_flag
@@ -1707,80 +1708,8 @@ subroutine InitSubsurfaceReadInput(simulation)
 
       case ('CHECKPOINT')
         option%checkpoint_flag = PETSC_TRUE
-        call InputReadInt(input,option,option%checkpoint_frequency)
-
-        if (input%ierr == 1) then
-          option%checkpoint_frequency = 0
-          do
-            call InputReadPflotranString(input,option)
-            call InputReadStringErrorMsg(input,option,card)
-            if (InputCheckExit(input,option)) exit
-
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            call InputErrorMsg(input,option,'keyword','CHECKPOINT')
-            call StringToUpper(word)
-
-            select case(trim(word))
-              case ('PERIODIC')
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'time increment', &
-                                   'OUTPUT,PERIODIC')
-                call StringToUpper(word)
-
-                select case(trim(word))
-                  case('TIME')
-                    call InputReadDouble(input,option,temp_real)
-                    call InputErrorMsg(input,option,'time increment', &
-                                       'CHECKPOINT,PERIODIC,TIME')
-                    call InputReadWord(input,option,word,PETSC_TRUE)
-                    call InputErrorMsg(input,option,'time increment units', &
-                                       'CHECKPOINT,PERIODIC,TIME')
-                    units_category = 'time'
-                    units_conversion = UnitsConvertToInternal(word,units_category,option)
-                    output_option%periodic_checkpoint_time_incr = temp_real* &
-                                                              units_conversion
-                  case('TIMESTEP')
-                    call InputReadInt(input,option,option%checkpoint_frequency)
-                    call InputErrorMsg(input,option,'timestep increment', &
-                                       'CHECKPOINT,PERIODIC,TIMESTEP')
-                  case default
-                    call InputKeywordUnrecognized(word,'CHECKPOINT,PERIODIC', &
-                                                  option)
-                end select
-
-              case ('FORMAT')
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'format type', &
-                                   'CHECKPOINT,FORMAT')
-                call StringToUpper(word)
-                select case(trim(word))
-                  case('BINARY')
-                    option%checkpoint_format_binary = PETSC_TRUE
-                  case('HDF5')
-                    option%checkpoint_format_hdf5 = PETSC_TRUE
-                  case default
-                    call InputKeywordUnrecognized(word,'CHECKPOINT,FORMAT', &
-                                                  option)
-                end select
-
-              case default
-                call InputKeywordUnrecognized(word,'CHECKPOINT',option)
-            end select
-          enddo
-          if (output_option%periodic_checkpoint_time_incr /= 0.d0 .and. &
-              option%checkpoint_frequency /= 0) then
-            option%io_buffer = 'Both TIME and TIMESTEP cannot be specified ' // &
-              'for CHECKPOINT,PERIODIC.'
-            call printErrMsg(option)
-          endif
-          if (output_option%periodic_checkpoint_time_incr == 0.d0 .and. &
-              option%checkpoint_frequency == 0) then
-            option%io_buffer = 'Either, TIME and TIMESTEP need to be specified ' // &
-              'for CHECKPOINT,PERIODIC.'
-            call printErrMsg(option)
-          endif
-        endif
-
+        call CheckpointRead(input,option,realization%waypoint_list)
+        
 !......................
 
       case ('NUMERICAL_JACOBIAN_FLOW')

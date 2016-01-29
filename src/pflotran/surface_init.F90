@@ -213,6 +213,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   use Region_module
   use Condition_module
   use Coupler_module
+  use Checkpoint_module
   use Strata_module
   use Debug_module
   use Units_module
@@ -245,6 +246,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   PetscReal :: units_conversion
 
   character(len=MAXWORDLENGTH)                 :: word
+  character(len=MAXSTRINGLENGTH)               :: temp_string
   character(len=MAXWORDLENGTH)                 :: card
   character(len=1) :: backslash
 
@@ -766,12 +768,14 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
       !.........................................................................
       case ('SURF_RESTART')
         option%surf_restart_flag = PETSC_TRUE
-        call InputReadNChars(input,option,option%surf_restart_filename,MAXSTRINGLENGTH, &
-                             PETSC_TRUE)
-        call InputErrorMsg(input,option,'SURF_RESTART','Surfae restart file name') 
+        call InputReadNChars(input,option,option%surf_restart_filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
+        call InputErrorMsg(input,option,'SURF_RESTART','Surface restart &
+                                                       &file name') 
         call InputReadDouble(input,option,option%restart_time)
         if (input%ierr == 0) then
-          call printErrMsg(option,'Setting time to value not supported in surface-flow')
+          call printErrMsg(option,'Setting time to value not supported in &
+                                  &surface-flow')
         endif
         option%first_step_after_restart = PETSC_TRUE
 
@@ -779,62 +783,9 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 
       case ('SURF_CHECKPOINT')
         option%checkpoint_flag = PETSC_TRUE
-        call InputReadInt(input,option,option%checkpoint_frequency)
-
-        if (input%ierr == 1) then
-          option%checkpoint_frequency = 0
-          do
-            call InputReadPflotranString(input,option)
-            call InputReadStringErrorMsg(input,option,card)
-            if (InputCheckExit(input,option)) exit
-
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            call InputErrorMsg(input,option,'keyword','CHECKPOINT')
-            call StringToUpper(word)
-
-            select case(trim(word))
-              case ('PERIODIC')
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'time increment', &
-                                   'OUTPUT,PERIODIC')
-                call StringToUpper(word)
-
-                select case(trim(word))
-                  case('TIME')
-                    call InputReadDouble(input,option,temp_real)
-                    call InputErrorMsg(input,option,'time increment', &
-                                       'CHECKPOINT,PERIODIC,TIME')
-                    call InputReadWord(input,option,word,PETSC_TRUE)
-                    call InputErrorMsg(input,option,'time increment units', &
-                                       'CHECKPOINT,PERIODIC,TIME')
-                    units_conversion = UnitsConvertToInternal(word,'time',option)
-                    output_option%periodic_checkpoint_time_incr = temp_real* &
-                                                              units_conversion
-                  case('TIMESTEP')
-                    call InputReadInt(input,option,option%checkpoint_frequency)
-                    call InputErrorMsg(input,option,'timestep increment', &
-                                       'CHECKPOINT,PERIODIC,TIMESTEP')
-                  case default
-                    call InputKeywordUnrecognized(word, &
-                           'CHECKPOINT,PERIODIC',option)
-                end select
-              case default
-                call InputKeywordUnrecognized(word,'CHECKPOINT',option)
-            end select
-          enddo
-          if (output_option%periodic_checkpoint_time_incr /= 0.d0 .and. &
-              option%checkpoint_frequency /= 0) then
-            option%io_buffer = 'Both TIME and TIMESTEP cannot be specified ' // &
-              'for CHECKPOINT,PERIODIC.'
-            call printErrMsg(option)
-          endif
-          if (output_option%periodic_checkpoint_time_incr == 0.d0 .and. &
-              option%checkpoint_frequency == 0) then
-            option%io_buffer = 'Either, TIME and TIMESTEP need to be specified ' // &
-              'for CHECKPOINT,PERIODIC.'
-            call printErrMsg(option)
-          endif
-        endif
+        call CheckpointRead(input,option,surf_realization%waypoint_list)
+        
+!......................
 
       case('END_SURFACE_FLOW')
         exit
