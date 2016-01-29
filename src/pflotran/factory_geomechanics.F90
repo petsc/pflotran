@@ -690,20 +690,12 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
               output_option%print_initial = PETSC_FALSE
             case('PERMEABILITY')
               option%io_buffer = 'PERMEABILITY output must now be entered &
-<<<<<<< local
-                                  &under OUTPUT/VARIABLES card.'
-=======
                                  &under OUTPUT/VARIABLES card.'
->>>>>>> other
               call printErrMsg(option)
 !              output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
               option%io_buffer = 'POROSITY output must now be entered under &
-<<<<<<< local
-                                  &OUTPUT/VARIABLES card.'
-=======
                                  &OUTPUT/VARIABLES card.'
->>>>>>> other
               call printErrMsg(option)            
 !              output_option%print_porosity = PETSC_TRUE
             case('PRINT_COLUMN_IDS')
