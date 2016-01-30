@@ -17,7 +17,6 @@ module Realization_class
   use Field_module
   use Debug_module
   use Uniform_Velocity_module
-  use Waypoint_module
   use Output_Aux_module
   
   use Reaction_Aux_module
@@ -50,8 +49,6 @@ private
     
     type(uniform_velocity_dataset_type), pointer :: uniform_velocity_dataset
     character(len=MAXSTRINGLENGTH) :: nonuniform_velocity_filename
-    
-    type(waypoint_list_type), pointer :: waypoint_list
     
   end type realization_subsurface_type
 
@@ -90,8 +87,7 @@ private
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep, &
             RealizationNonInitializedData, &
-            RealizUpdateAllCouplerAuxVars, &
-            RealizCreateSyncWaypointList
+            RealizUpdateAllCouplerAuxVars
 
   !TODO(intel)
   ! public from Realization_Base_class
@@ -161,8 +157,6 @@ function RealizationCreate2(option)
   nullify(realization%uniform_velocity_dataset)
   nullify(realization%sec_transport_constraint)
   realization%nonuniform_velocity_filename = ''
-
-  nullify(realization%waypoint_list)
 
   RealizationCreate2 => realization
   
@@ -1543,7 +1537,7 @@ subroutine RealizationAddWaypointsToList(realization)
 
   endif
 
-  ! add waypoints for periodic checkpoint
+  ! add waypoints for periodic checkpoint                                                    
   if (realization%output_option%periodic_checkpoint_time_incr > 0.d0) then
 
     ! standard output
@@ -1578,47 +1572,6 @@ subroutine RealizationAddWaypointsToList(realization)
   enddo
 
 end subroutine RealizationAddWaypointsToList
-
-! ************************************************************************** !
-
-function RealizCreateSyncWaypointList(realization)
-  ! 
-  ! Creates a list of waypoints for outer synchronization of simulation process
-  ! model couplers
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 10/08/14
-  ! 
-
-  use Option_module
-  use Waypoint_module
-  use Time_Storage_module
-
-  implicit none
-  
-  class(realization_subsurface_type) :: realization
-  
-  type(waypoint_list_type), pointer :: RealizCreateSyncWaypointList
-
-  type(waypoint_list_type), pointer :: new_waypoint_list
-  type(waypoint_type), pointer :: cur_waypoint
-  type(waypoint_type), pointer :: new_waypoint
-
-  new_waypoint_list => WaypointListCreate()
-  
-  cur_waypoint => realization%waypoint_list%first
-  do
-    if (.not.associated(cur_waypoint)) exit
-    if (cur_waypoint%sync .or. cur_waypoint%final) then
-      new_waypoint => WaypointCreate(cur_waypoint)
-      call WaypointInsertInList(new_waypoint,new_waypoint_list)
-      if (cur_waypoint%final) exit
-    endif
-    cur_waypoint => cur_waypoint%next
-  enddo
-  RealizCreateSyncWaypointList => new_waypoint_list
-
-end function RealizCreateSyncWaypointList
 
 ! ************************************************************************** !
 
@@ -2480,8 +2433,6 @@ subroutine RealizationDestroyLegacy(realization)
   
   call TranConstraintDestroy(realization%sec_transport_constraint)
   
-  call WaypointListDestroy(realization%waypoint_list)
-  
   deallocate(realization)
   nullify(realization)
   
@@ -2527,8 +2478,6 @@ subroutine RealizationStrip(this)
   call ReactionDestroy(this%reaction,this%option)
   
   call TranConstraintDestroy(this%sec_transport_constraint)
-  
-  call WaypointListDestroy(this%waypoint_list)
   
 end subroutine RealizationStrip
 

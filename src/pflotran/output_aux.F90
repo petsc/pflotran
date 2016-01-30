@@ -14,7 +14,9 @@ module Output_Aux_module
   type, public :: output_option_type
 
     character(len=MAXWORDLENGTH) :: tunit
+    character(len=MAXWORDLENGTH) :: chkpt_tunit
     PetscReal :: tconv
+    PetscReal :: chkpt_tconv
 
     PetscBool :: print_initial
     PetscBool :: print_final
