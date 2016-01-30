@@ -1578,6 +1578,8 @@ subroutine CheckpointRead(input,option,waypoint_list)
   type(output_option_type) :: output_option
   PetscReal :: units_conversion
   PetscReal :: temp_real
+  PetscReal, pointer :: temp_real_array(:)
+  PetscInt :: i
   
   output_option%periodic_checkpoint_time_incr = 0
   option%checkpoint_frequency = 0
@@ -1634,6 +1636,19 @@ subroutine CheckpointRead(input,option,waypoint_list)
           units_category = 'time'
           units_conversion = UnitsConvertToInternal(word,units_category, &
                                                     option)
+!geh: this needs to be tested.
+#if 0
+          temp_string = 'CHECKPOINT,TIMES'
+          call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
+                                temp_string,input,option)
+          do i = 1, size(temp_real_array)
+            waypoint => WaypointCreate()
+            waypoint%time = temp_real_array(i)*units_conversion
+            waypoint%print_output = PETSC_TRUE
+            call WaypointInsertInList(waypoint,waypoint_list)
+          enddo
+          call DeallocateArray(temp_real_array)
+#else
           do
             call InputReadDouble(input,option,temp_real)
             if (input%ierr /= 0) exit
@@ -1644,6 +1659,7 @@ subroutine CheckpointRead(input,option,waypoint_list)
             waypoint%print_checkpoint = PETSC_TRUE
             call WaypointInsertInList(waypoint,waypoint_list)     
           enddo
+#endif
         case ('FORMAT')
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'format type', &

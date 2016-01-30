@@ -489,6 +489,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   use Solver_module
   use Units_module
   use Waypoint_module
+  use Utility_module, only : DeallocateArray, UtilityReadArray
 
   ! Still need to add other geomech modules for output, etc once created
   
@@ -513,10 +514,12 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
 
   character(len=MAXWORDLENGTH)                 :: word
   character(len=MAXWORDLENGTH)                 :: card
+  character(len=MAXSTRINGLENGTH)               :: string
   character(len=1)                             :: backslash
   
-  PetscBool                                    :: continuation_flag
   PetscReal                                    :: temp_real, temp_real2
+  PetscReal, pointer                           :: temp_real_array(:)
+  PetscInt                                     :: i
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
   input%ierr = 0
@@ -704,27 +707,17 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'units','GEOMECHANICS_OUTPUT')
               units_conversion = UnitsConvertToInternal(word,'time',option)
-              continuation_flag = PETSC_TRUE
-              do
-                continuation_flag = PETSC_FALSE
-                if (index(input%buf,backslash) > 0) &
-                  continuation_flag = PETSC_TRUE
-                input%ierr = 0
-                do
-                  if (InputError(input)) exit
-                  call InputReadDouble(input,option,temp_real)
-                  if (.not.InputError(input)) then
-                    waypoint => WaypointCreate()
-                    waypoint%time = temp_real*units_conversion
-                    waypoint%print_output = PETSC_TRUE
-                    write(*,*) 'Inserting waypoint in geomech_realization: ',waypoint%time
-                    call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)
-                  endif
-                enddo
-                if (.not.continuation_flag) exit
-                call InputReadPflotranString(input,option)
-                if (InputError(input)) exit
+              string = 'GEOMECHANICS_OUTPUT,TIMES'
+              call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
+                                    string,input,option)
+              do i = 1, size(temp_real_array)
+                waypoint => WaypointCreate()
+                waypoint%time = temp_real_array(i)*units_conversion
+                waypoint%print_output = PETSC_TRUE
+                call WaypointInsertInList(waypoint, &
+                                          geomech_realization%waypoint_list)
               enddo
+              call DeallocateArray(temp_real_array)
             case('OUTPUT_FILE')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'time increment', &

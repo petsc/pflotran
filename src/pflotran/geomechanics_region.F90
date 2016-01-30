@@ -308,7 +308,6 @@ subroutine GeomechRegionReadFromFileId(region,input,option)
   type(option_type)                 :: option
   type(input_type), pointer         :: input
   
-  PetscBool                         :: continuation_flag
   character(len=MAXWORDLENGTH)      :: word
   character(len=1)                  :: backslash
   character(len=MAXSTRINGLENGTH)    :: string, string1

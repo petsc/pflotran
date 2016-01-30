@@ -223,6 +223,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   use Output_Aux_module
   use Output_Tecplot_module
   use Output_Surface_module
+  use Utility_module, only : DeallocateArray, UtilityReadArray
 
   implicit none
 
@@ -244,6 +245,8 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   type(patch_type), pointer                    :: patch
   type(output_option_type), pointer            :: output_option
   PetscReal :: units_conversion
+  PetscReal, pointer :: temp_real_array(:)
+  PetscInt :: i
 
   character(len=MAXWORDLENGTH)                 :: word
   character(len=MAXSTRINGLENGTH)               :: temp_string
@@ -251,7 +254,6 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   character(len=1) :: backslash
 
   PetscBool :: velocities
-  PetscBool :: continuation_flag
   PetscBool :: mass_flowrate
   PetscBool :: energy_flowrate
   PetscBool :: aveg_mass_flowrate
@@ -437,26 +439,17 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'units','SURF_OUTPUT')
               units_conversion = UnitsConvertToInternal(word,'time',option)
-              continuation_flag = PETSC_TRUE
-              do
-                continuation_flag = PETSC_FALSE
-                if (index(input%buf,backslash) > 0) &
-                  continuation_flag = PETSC_TRUE
-                input%ierr = 0
-                do
-                  if (InputError(input)) exit
-                  call InputReadDouble(input,option,temp_real)
-                  if (.not.InputError(input)) then
-                    waypoint => WaypointCreate()
-                    waypoint%time = temp_real*units_conversion
-                    waypoint%print_output = PETSC_TRUE
-                    call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
-                  endif
-                enddo
-                if (.not.continuation_flag) exit
-                call InputReadPflotranString(input,option)
-                if (InputError(input)) exit
+              temp_string = 'SURF_OUTPUT,TIMES'
+              call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
+                                    temp_string,input,option)
+              do i = 1, size(temp_real_array)
+                waypoint => WaypointCreate()
+                waypoint%time = temp_real_array(i)*units_conversion
+                waypoint%print_output = PETSC_TRUE
+                call WaypointInsertInList(waypoint, &
+                                          surf_realization%waypoint_list)
               enddo
+              call DeallocateArray(temp_real_array)
             case('OUTPUT_FILE')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'time increment', &

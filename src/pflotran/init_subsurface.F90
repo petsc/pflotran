@@ -1269,8 +1269,6 @@ subroutine InitSubsurfaceReadInput(simulation)
   character(len=MAXSTRINGLENGTH) :: string, temp_string
   character(len=MAXSTRINGLENGTH) :: units_category
     
-  PetscBool :: continuation_flag
-  
   character(len=1) :: backslash
   PetscReal :: temp_real, temp_real2
   PetscReal, pointer :: temp_real_array(:)
@@ -2015,33 +2013,6 @@ subroutine InitSubsurfaceReadInput(simulation)
                                           realization%waypoint_list)
               enddo
               call DeallocateArray(temp_real_array)
-#if 0
-              do
-                continuation_flag = PETSC_FALSE
-                input%ierr = 0
-                do
-                  if (len_trim(input%buf) == 0) exit
-                  ! check for the '\' continuation flag
-                  string = input%buf
-                  call InputReadWord(string,word,PETSC_TRUE,input%ierr)
-                  call InputErrorMsg(input,option,'times','OUTPUT,TIMES')
-                  if (StringCompare(word,'\')) then
-                    continuation_flag = PETSC_TRUE
-                    exit
-                  endif
-                  call InputReadDouble(input,option,temp_real)
-                  call InputErrorMsg(input,option,'times','OUTPUT,TIMES')
-                  waypoint => WaypointCreate()
-                  waypoint%time = temp_real*units_conversion
-                  waypoint%print_output = PETSC_TRUE    
-                  call WaypointInsertInList(waypoint, &
-                                            realization%waypoint_list)
-                enddo
-                if (.not.continuation_flag) exit
-                call InputReadPflotranString(input,option)
-                if (InputError(input)) exit
-              enddo
-#endif
             case('OUTPUT_FILE')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'time increment', &
