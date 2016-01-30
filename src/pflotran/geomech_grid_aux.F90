@@ -45,7 +45,7 @@ module Geomechanics_Grid_Aux_module
     PetscInt, pointer :: ghosted_node_ids_natural(:) ! Natural ids of the ghost nodes only
     PetscInt, pointer :: ghosted_node_ids_petsc(:)   ! Petsc ids of the ghost nodes only
     PetscInt, pointer :: nL2G(:),nG2L(:),nG2A(:)
-    type(gauss_type), pointer  :: gauss_node(:)
+    type(gauss_type), pointer :: gauss_node(:)
     character(len=MAXSTRINGLENGTH) :: mapping_filename ! mapping between subsurf and geomech meshes
     PetscInt :: mapping_num_cells
     PetscInt, pointer :: mapping_cell_ids_flow(:)
@@ -223,20 +223,20 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscviewer.h"
 
-  type(geomech_grid_type)             :: geomech_grid
-  type(option_type)                   :: option
-  type(gmdm_type), pointer            :: gmdm
-  PetscInt                            :: ndof
-  PetscInt, pointer                   :: int_ptr(:)
-  PetscInt                            :: local_id, ghosted_id
-  PetscInt                            :: idof
-  IS                                  :: is_tmp, is_tmp_petsc, is_tmp_natural
-  Vec                                 :: vec_tmp
-  PetscErrorCode                      :: ierr
-  character(len=MAXWORDLENGTH)        :: ndof_word
-  character(len=MAXSTRINGLENGTH)      :: string
-  PetscViewer                         :: viewer
-  PetscInt, allocatable               :: int_array(:), int_array2(:)
+  type(geomech_grid_type) :: geomech_grid
+  type(option_type) :: option
+  type(gmdm_type), pointer :: gmdm
+  PetscInt :: ndof
+  PetscInt, pointer :: int_ptr(:)
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: idof
+  IS :: is_tmp, is_tmp_petsc, is_tmp_natural
+  Vec :: vec_tmp
+  PetscErrorCode :: ierr
+  character(len=MAXWORDLENGTH) :: ndof_word
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscViewer :: viewer
+  PetscInt, allocatable :: int_array(:), int_array2(:)
   
   gmdm => GMDMCreate()
   gmdm%ndof = ndof
@@ -613,21 +613,21 @@ subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
   
   implicit none
   
-  type(geomech_grid_type)              :: geomech_grid
-  type(gmdm_type)                      :: gmdm
-  type(option_type)                    :: option 
-  MatType                              :: mat_type
-  Mat                                  :: J
-  IS                                   :: is_tmp
+  type(geomech_grid_type) :: geomech_grid
+  type(gmdm_type) :: gmdm
+  type(option_type) :: option 
+  MatType :: mat_type
+  Mat :: J
+  IS :: is_tmp
 
-  PetscInt, allocatable                :: d_nnz(:), o_nnz(:)
-  PetscInt                             :: local_id, ineighbor, neighbor_id
-  PetscInt                             :: ndof_local
-  PetscInt                             :: ielem, node_count
-  PetscInt                             :: ivertex1, ivertex2
-  PetscInt                             :: local_id1, local_id2
-  PetscErrorCode                       :: ierr
-  character(len=MAXSTRINGLENGTH)       :: string
+  PetscInt, allocatable :: d_nnz(:), o_nnz(:)
+  PetscInt :: local_id, ineighbor, neighbor_id
+  PetscInt :: ndof_local
+  PetscInt :: ielem, node_count
+  PetscInt :: ivertex1, ivertex2
+  PetscInt :: local_id1, local_id2
+  PetscErrorCode :: ierr
+  character(len=MAXSTRINGLENGTH) :: string
   
   allocate(d_nnz(geomech_grid%nlmax_node))
   allocate(o_nnz(geomech_grid%nlmax_node))
@@ -697,12 +697,12 @@ subroutine GMGridDMCreateVector(geomech_grid,gmdm,vec,vec_type,option)
 
   implicit none
   
-  type(geomech_grid_type)              :: geomech_grid
-  type(gmdm_type)                      :: gmdm
-  type(option_type)                    :: option 
-  Vec                                  :: vec
-  PetscInt                             :: vec_type
-  PetscErrorCode                       :: ierr
+  type(geomech_grid_type) :: geomech_grid
+  type(gmdm_type) :: gmdm
+  type(option_type) :: option 
+  Vec :: vec
+  PetscInt :: vec_type
+  PetscErrorCode :: ierr
   
   select case(vec_type)
     case(GLOBAL)
@@ -743,12 +743,12 @@ subroutine GMGridDMCreateVectorElem(geomech_grid,gmdm,vec,vec_type,option)
 
   implicit none
   
-  type(geomech_grid_type)              :: geomech_grid
-  type(gmdm_type)                      :: gmdm
-  type(option_type)                    :: option 
-  Vec                                  :: vec
-  PetscInt                             :: vec_type
-  PetscErrorCode                       :: ierr
+  type(geomech_grid_type) :: geomech_grid
+  type(gmdm_type) :: gmdm
+  type(option_type) :: option 
+  Vec :: vec
+  PetscInt :: vec_type
+  PetscErrorCode :: ierr
   
   select case(vec_type)
     case(GLOBAL)
@@ -789,16 +789,16 @@ subroutine GMGridMapIndices(geomech_grid,gmdm,nG2L,nL2G,nG2A,option)
 
   implicit none
   
-  type(geomech_grid_type)               :: geomech_grid
-  type(gmdm_type)                       :: gmdm
-  type(option_type)                     :: option
-  PetscInt, pointer                     :: nG2L(:)
-  PetscInt, pointer                     :: nL2G(:)
-  PetscInt, pointer                     :: nG2A(:)
-  PetscInt, pointer                     :: int_ptr(:)
-  PetscErrorCode                        :: ierr
-  PetscInt                              :: local_id
-  PetscInt                              :: ghosted_id
+  type(geomech_grid_type) :: geomech_grid
+  type(gmdm_type) :: gmdm
+  type(option_type) :: option
+  PetscInt, pointer :: nG2L(:)
+  PetscInt, pointer :: nL2G(:)
+  PetscInt, pointer :: nG2A(:)
+  PetscInt, pointer :: int_ptr(:)
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
 
   ! The index mapping arrays are the following:
   ! nL2G :  not collective, local processor: local  =>  ghosted local  

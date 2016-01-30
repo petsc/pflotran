@@ -23,12 +23,12 @@ private
   type, public, extends(realization_base_type) :: realization_geomech_type
 
     type(geomech_discretization_type), pointer :: geomech_discretization
-    type(geomech_patch_type), pointer          :: geomech_patch
+    type(geomech_patch_type), pointer :: geomech_patch
 
     type(geomech_material_property_type), &
-                           pointer       :: geomech_material_properties
+                           pointer :: geomech_material_properties
     type(geomech_material_property_ptr_type), &
-                           pointer       :: geomech_material_property_array(:)
+                           pointer :: geomech_material_property_array(:)
 
     type(geomech_field_type), pointer :: geomech_field
     type(geomech_debug_type), pointer :: geomech_debug
@@ -70,9 +70,9 @@ function GeomechRealizCreate(option)
 
   implicit none
 
-  class(realization_geomech_type), pointer    :: GeomechRealizCreate
-  class(realization_geomech_type), pointer    :: geomech_realization
-  type(option_type), pointer                 :: option
+  class(realization_geomech_type), pointer :: GeomechRealizCreate
+  class(realization_geomech_type), pointer :: geomech_realization
+  type(option_type), pointer :: option
   
   allocate(geomech_realization)
   geomech_realization%id = 0
@@ -119,11 +119,11 @@ subroutine GeomechRealizAddStrata(geomech_realization,strata)
 
   implicit none
   
-  class(realization_geomech_type)          :: geomech_realization
-  type(geomech_strata_type), pointer      :: strata
+  class(realization_geomech_type) :: geomech_realization
+  type(geomech_strata_type), pointer :: strata
   
-  type(geomech_patch_type), pointer       :: geomech_patch
-  type(geomech_strata_type), pointer      :: new_strata
+  type(geomech_patch_type), pointer :: geomech_patch
+  type(geomech_strata_type), pointer :: new_strata
   
   geomech_patch => geomech_realization%geomech_patch
 
@@ -153,9 +153,9 @@ subroutine GeomechRealizLocalizeRegions(geomech_realization)
 
   implicit none
   
-  class(realization_geomech_type)               :: geomech_realization
-  type(geomech_patch_type), pointer            :: patch
-  type(option_type), pointer                   :: option
+  class(realization_geomech_type) :: geomech_realization
+  type(geomech_patch_type), pointer :: patch
+  type(option_type), pointer :: option
 
   option => geomech_realization%option
 
@@ -181,9 +181,9 @@ subroutine GeomechRealizProcessMatProp(geomech_realization)
   
   implicit none
   
-  class(realization_geomech_type)               :: geomech_realization
-  type(geomech_patch_type), pointer            :: patch  
-  type(option_type), pointer                   :: option
+  class(realization_geomech_type) :: geomech_realization
+  type(geomech_patch_type), pointer :: patch  
+  type(option_type), pointer :: option
 
   
   option => geomech_realization%option
@@ -222,13 +222,13 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_geomech_type)                 :: geomech_realization
-  type(geomech_discretization_type), pointer     :: geomech_discretization
-  type(geomech_grid_type), pointer               :: grid
-  type(option_type), pointer                     :: option
-  type(geomech_field_type), pointer              :: geomech_field
-  type(gmdm_ptr_type), pointer                   :: dm_ptr
-  PetscErrorCode                                 :: ierr
+  class(realization_geomech_type) :: geomech_realization
+  type(geomech_discretization_type), pointer :: geomech_discretization
+  type(geomech_grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(geomech_field_type), pointer :: geomech_field
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  PetscErrorCode :: ierr
 
   geomech_discretization => geomech_realization%geomech_discretization
   grid => geomech_discretization%grid
@@ -340,26 +340,26 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscviewer.h"
 
-  class(realization_subsurface_type), pointer              :: realization
-  class(realization_geomech_type), pointer      :: geomech_realization
-  type(geomech_grid_type), pointer             :: geomech_grid
-  type(option_type)                            :: option
-  type(grid_type), pointer                     :: grid
-  type(gmdm_type), pointer                     :: gmdm
-  type(gmdm_ptr_type), pointer                 :: dm_ptr
-  IS                                           :: is_geomech, is_subsurf
-  IS                                           :: is_subsurf_natural
-  IS                                           :: is_subsurf_petsc
-  PetscViewer                                  :: viewer
-  PetscErrorCode                               :: ierr
-  AO                                           :: ao_geomech_to_subsurf_natural
-  PetscInt, allocatable                        :: int_array(:)
-  PetscInt                                     :: local_id
-  VecScatter                                   :: scatter
-  IS                                           :: is_geomech_petsc
-  PetscInt, pointer                            :: int_ptr(:)
-  IS                                           :: is_geomech_petsc_block
-  IS                                           :: is_subsurf_petsc_block
+  class(realization_subsurface_type), pointer :: realization
+  class(realization_geomech_type), pointer :: geomech_realization
+  type(geomech_grid_type), pointer :: geomech_grid
+  type(option_type) :: option
+  type(grid_type), pointer :: grid
+  type(gmdm_type), pointer :: gmdm
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  IS :: is_geomech, is_subsurf
+  IS :: is_subsurf_natural
+  IS :: is_subsurf_petsc
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+  AO :: ao_geomech_to_subsurf_natural
+  PetscInt, allocatable :: int_array(:)
+  PetscInt :: local_id
+  VecScatter :: scatter
+  IS :: is_geomech_petsc
+  PetscInt, pointer :: int_ptr(:)
+  IS :: is_geomech_petsc_block
+  IS :: is_subsurf_petsc_block
 
   geomech_grid => geomech_realization%geomech_discretization%grid
   grid => realization%discretization%grid
@@ -660,12 +660,12 @@ subroutine GeomechRealizLocalToLocalWithArray(geomech_realization,array_id)
 
   implicit none
 
-  class(realization_geomech_type)            :: geomech_realization
-  PetscInt                                  :: array_id
+  class(realization_geomech_type) :: geomech_realization
+  PetscInt :: array_id
   
-  type(geomech_patch_type), pointer         :: patch
-  type(geomech_grid_type), pointer          :: grid
-  type(geomech_field_type), pointer         :: geomech_field
+  type(geomech_patch_type), pointer :: patch
+  type(geomech_grid_type), pointer :: grid
+  type(geomech_field_type), pointer :: geomech_field
 
   geomech_field => geomech_realization%geomech_field
   patch => geomech_realization%geomech_patch
@@ -802,9 +802,9 @@ subroutine GeomechRealizPassFieldPtrToPatch(geomech_realization)
 
   implicit none
   
-  class(realization_geomech_type)           :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
 
-  type(geomech_patch_type), pointer        :: patch
+  type(geomech_patch_type), pointer :: patch
 
   patch => geomech_realization%geomech_patch
    
@@ -825,9 +825,9 @@ subroutine GeomechRealizProcessGeomechCouplers(geomech_realization)
 
   implicit none
   
-  class(realization_geomech_type)           :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
 
-  type(geomech_patch_type), pointer        :: patch
+  type(geomech_patch_type), pointer :: patch
   
   patch => geomech_realization%geomech_patch
   
@@ -853,15 +853,15 @@ subroutine GeomechRealizProcessGeomechConditions(geomech_realization)
 
   implicit none
 
-  class(realization_geomech_type), pointer   :: geomech_realization
+  class(realization_geomech_type), pointer :: geomech_realization
   
-  type(geomech_condition_type), pointer     :: cur_geomech_condition
+  type(geomech_condition_type), pointer :: cur_geomech_condition
   type(geomech_sub_condition_type), pointer :: cur_geomech_sub_condition
-  type(option_type), pointer                :: option
-  character(len=MAXSTRINGLENGTH)            :: string
-  character(len=MAXWORDLENGTH)              :: dataset_name
-  class(dataset_base_type), pointer         :: dataset
-  PetscInt                                  :: i
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: dataset_name
+  class(dataset_base_type), pointer :: dataset
+  PetscInt :: i
   
   option => geomech_realization%option
   
@@ -923,11 +923,11 @@ subroutine GeomechRealizAddGeomechCoupler(geomech_realization,coupler)
 
   implicit none
   
-  class(realization_geomech_type)                   :: geomech_realization
-  type(geomech_coupler_type), pointer              :: coupler
+  class(realization_geomech_type) :: geomech_realization
+  type(geomech_coupler_type), pointer :: coupler
   
-  type(geomech_patch_type), pointer                :: patch
-  type(geomech_coupler_type), pointer              :: new_coupler
+  type(geomech_patch_type), pointer :: patch
+  type(geomech_coupler_type), pointer :: new_coupler
   
   patch => geomech_realization%geomech_patch
   

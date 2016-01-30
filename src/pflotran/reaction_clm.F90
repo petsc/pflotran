@@ -337,11 +337,11 @@ module CLM_Rxn_Decomp_class
   type, public, &
     extends(clm_rxn_base_type) :: clm_rxn_clmdec_type
 
-    PetscInt  :: temperature_response_function
+    PetscInt :: temperature_response_function
     PetscReal :: Q10
-    PetscInt  :: moisture_response_function
+    PetscInt :: moisture_response_function
 
-    PetscInt  :: litter_decomp_type          ! CLM-CN or CLM-Microbe
+    PetscInt :: litter_decomp_type          ! CLM-CN or CLM-Microbe
 
     PetscReal :: half_saturation_nh4
     PetscReal :: half_saturation_no3

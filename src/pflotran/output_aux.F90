@@ -25,7 +25,7 @@ module Output_Aux_module
     PetscBool :: print_hdf5_vel_cent
     PetscBool :: print_hdf5_vel_face
     PetscBool :: print_single_h5_file
-    PetscInt  :: times_per_h5_file
+    PetscInt :: times_per_h5_file
     PetscBool :: print_hdf5_mass_flowrate
     PetscBool :: print_hdf5_energy_flowrate
     PetscBool :: print_hdf5_aveg_mass_flowrate
@@ -70,7 +70,7 @@ module Output_Aux_module
     character(len=MAXWORDLENGTH) :: plot_name
 
     PetscBool :: print_hydrograph
-    PetscInt  :: surf_xmf_vert_len
+    PetscInt :: surf_xmf_vert_len
 
   end type output_option_type
   

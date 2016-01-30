@@ -14,11 +14,11 @@ module Dataset_Map_HDF5_class
     character(len=MAXSTRINGLENGTH) :: h5_dataset_map_name
     character(len=MAXSTRINGLENGTH) :: map_filename
     PetscInt, pointer :: mapping(:,:)
-    PetscInt          :: map_dims_global(2)
-    PetscInt          :: map_dims_local(2)
+    PetscInt :: map_dims_global(2)
+    PetscInt :: map_dims_local(2)
     PetscInt, pointer :: datatocell_ids(:)
     PetscInt, pointer :: cell_ids_local(:)
-    PetscBool         :: first_time
+    PetscBool :: first_time
   end type dataset_map_hdf5_type
   
   PetscInt, parameter :: MAX_NSLICE = 100
@@ -605,7 +605,7 @@ subroutine DatasetMapHDF5Strip(this)
 
   implicit none
   
-  class(dataset_map_hdf5_type)  :: this
+  class(dataset_map_hdf5_type) :: this
   
   call DatasetCommonHDF5Strip(this)
   

@@ -357,13 +357,13 @@ subroutine GeomechForceUpdateAuxVars(geomech_realization)
 
   implicit none
 
-  class(realization_geomech_type)            :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   
-  type(option_type), pointer                :: option
-  type(geomech_patch_type), pointer         :: patch
-  type(geomech_grid_type), pointer          :: grid
-  type(geomech_field_type), pointer         :: geomech_field
-  type(gm_region_type), pointer             :: region
+  type(option_type), pointer :: option
+  type(geomech_patch_type), pointer :: patch
+  type(geomech_grid_type), pointer :: grid
+  type(geomech_field_type), pointer :: geomech_field
+  type(gm_region_type), pointer :: region
   type(geomech_global_auxvar_type), pointer :: geomech_global_aux_vars(:)
 
   PetscInt :: ghosted_id, local_id
@@ -1566,14 +1566,14 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   
   implicit none
   
-  class(realization_subsurface_type)                       :: realization
-  class(realization_geomech_type)               :: geomech_realization
-  type(grid_type), pointer                     :: grid
-  type(geomech_grid_type), pointer             :: geomech_grid
-  type(option_type), pointer                   :: option
-  type(field_type), pointer                    :: field
-  type(geomech_field_type), pointer            :: geomech_field
-  type(gmdm_ptr_type), pointer                 :: dm_ptr
+  class(realization_subsurface_type) :: realization
+  class(realization_geomech_type) :: geomech_realization
+  type(grid_type), pointer :: grid
+  type(geomech_grid_type), pointer :: geomech_grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(geomech_field_type), pointer :: geomech_field
+  type(gmdm_ptr_type), pointer :: dm_ptr
 
   PetscErrorCode :: ierr
   PetscReal, pointer :: vec_p(:), xx_loc_p(:)
@@ -1670,14 +1670,14 @@ subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
   
   implicit none
   
-  class(realization_subsurface_type)                       :: realization
-  class(realization_geomech_type)               :: geomech_realization
-  type(grid_type), pointer                     :: grid
-  type(geomech_grid_type), pointer             :: geomech_grid
-  type(option_type), pointer                   :: option
-  type(field_type), pointer                    :: field
-  type(geomech_field_type), pointer            :: geomech_field
-  type(gmdm_ptr_type), pointer                 :: dm_ptr
+  class(realization_subsurface_type) :: realization
+  class(realization_geomech_type) :: geomech_realization
+  type(grid_type), pointer :: grid
+  type(geomech_grid_type), pointer :: geomech_grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(geomech_field_type), pointer :: geomech_field
+  type(gmdm_ptr_type), pointer :: dm_ptr
 
   PetscErrorCode :: ierr
 
@@ -1750,13 +1750,13 @@ subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  class(realization_subsurface_type)               :: realization
-  class(realization_geomech_type)       :: geomech_realization
+  class(realization_subsurface_type) :: realization
+  class(realization_geomech_type) :: geomech_realization
 
-  type(grid_type), pointer             :: grid
-  type(geomech_grid_type), pointer     :: geomech_grid
-  type(option_type), pointer           :: option
-  type(geomech_field_type), pointer    :: geomech_field
+  type(grid_type), pointer :: grid
+  type(geomech_grid_type), pointer :: geomech_grid
+  type(option_type), pointer :: option
+  type(geomech_field_type), pointer :: geomech_field
   
   PetscErrorCode :: ierr
   
@@ -1800,13 +1800,13 @@ subroutine GeomechCreateSubsurfStressStrainVec(realization,geomech_realization)
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  class(realization_subsurface_type)               :: realization
-  class(realization_geomech_type)       :: geomech_realization
+  class(realization_subsurface_type) :: realization
+  class(realization_geomech_type) :: geomech_realization
 
-  type(grid_type), pointer             :: grid
-  type(geomech_grid_type), pointer     :: geomech_grid
-  type(option_type), pointer           :: option
-  type(geomech_field_type), pointer    :: geomech_field
+  type(grid_type), pointer :: grid
+  type(geomech_grid_type), pointer :: geomech_grid
+  type(option_type), pointer :: option
+  type(geomech_field_type), pointer :: geomech_field
   
   PetscErrorCode :: ierr
   

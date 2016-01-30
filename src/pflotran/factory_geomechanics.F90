@@ -84,7 +84,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   class(realization_subsurface_type), pointer :: subsurf_realization
   class(realization_geomech_type), pointer :: geomech_realization
   class(pmc_base_type), pointer :: cur_process_model_coupler
-  type(gmdm_ptr_type), pointer  :: dm_ptr
+  type(gmdm_ptr_type), pointer :: dm_ptr
   class(pm_base_type), pointer :: cur_pm, prev_pm
   class(pm_geomech_force_type), pointer :: pm_geomech
   class(pmc_geomechanics_type), pointer :: pmc_geomech
@@ -338,13 +338,13 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   
   implicit none
   
-  class(realization_geomech_type)             :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
   
   character(len=MAXSTRINGLENGTH) :: string
   
-  type(option_type), pointer          :: option
-  type(input_type), pointer           :: input
+  type(option_type), pointer :: option
+  type(input_type), pointer :: input
   
   option         => geomech_realization%option  
   input          => geomech_realization%input
@@ -389,14 +389,14 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   
   implicit none
   
-  class(realization_geomech_type)             :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
-  type(geomech_patch_type), pointer          :: patch
-  type(input_type), pointer                  :: input
-  type(option_type), pointer                 :: option
-  character(len=MAXWORDLENGTH)               :: word
-  type(unstructured_grid_type), pointer      :: ugrid
-  character(len=MAXWORDLENGTH)               :: card
+  type(geomech_patch_type), pointer :: patch
+  type(input_type), pointer :: input
+  type(option_type), pointer :: option
+  character(len=MAXWORDLENGTH) :: word
+  type(unstructured_grid_type), pointer :: ugrid
+  character(len=MAXWORDLENGTH) :: card
   
   geomech_discretization       => geomech_realization%geomech_discretization
        
@@ -495,31 +495,31 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   
   implicit none
   
-  class(realization_geomech_type)              :: geomech_realization
-  type(solver_type)                            :: geomech_solver
-  type(input_type), pointer                    :: input
-  type(option_type)                            :: option
+  class(realization_geomech_type) :: geomech_realization
+  type(solver_type) :: geomech_solver
+  type(input_type), pointer :: input
+  type(option_type) :: option
   
-  type(geomech_discretization_type), pointer   :: geomech_discretization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_material_property_type),pointer :: geomech_material_property
-  type(waypoint_type), pointer                 :: waypoint
-  type(geomech_grid_type), pointer             :: grid
-  type(gm_region_type), pointer                :: region
-  type(geomech_debug_type), pointer            :: debug
-  type(geomech_strata_type), pointer           :: strata
-  type(geomech_condition_type), pointer        :: condition
-  type(geomech_coupler_type), pointer          :: coupler
-  type(output_option_type), pointer            :: output_option
-  PetscReal                                    :: units_conversion
+  type(waypoint_type), pointer :: waypoint
+  type(geomech_grid_type), pointer :: grid
+  type(gm_region_type), pointer :: region
+  type(geomech_debug_type), pointer :: debug
+  type(geomech_strata_type), pointer :: strata
+  type(geomech_condition_type), pointer :: condition
+  type(geomech_coupler_type), pointer :: coupler
+  type(output_option_type), pointer :: output_option
+  PetscReal :: units_conversion
 
-  character(len=MAXWORDLENGTH)                 :: word
-  character(len=MAXWORDLENGTH)                 :: card
-  character(len=MAXSTRINGLENGTH)               :: string
-  character(len=1)                             :: backslash
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: card
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=1) :: backslash
   
-  PetscReal                                    :: temp_real, temp_real2
-  PetscReal, pointer                           :: temp_real_array(:)
-  PetscInt                                     :: i
+  PetscReal :: temp_real, temp_real2
+  PetscReal, pointer :: temp_real_array(:)
+  PetscInt :: i
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
   input%ierr = 0

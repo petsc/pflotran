@@ -922,7 +922,7 @@ subroutine EOSGasEnergyIdealMethane(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   PetscErrorCode, intent(out) :: ierr
 
   ! Cpg units: J/mol-K
-  PetscReal, parameter:: Cp_methane = 35.69 ! at 298.15 K and 1 bar http://webbook.nist.gov/cgi/cbook.cgi?ID=C74828&Units=SI&Mask=1
+  PetscReal, parameter :: Cp_methane = 35.69 ! at 298.15 K and 1 bar http://webbook.nist.gov/cgi/cbook.cgi?ID=C74828&Units=SI&Mask=1
   PetscReal :: T_energy
   PetscReal :: T_k
 
@@ -957,7 +957,7 @@ subroutine EOSGasEnergyIdeal(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   PetscErrorCode, intent(out) :: ierr
 
   ! Cv_air units: J/mol-K
-  PetscReal, parameter:: Cv_air = 20.85 ! heat capacity wiki [J/mol-K]
+  PetscReal, parameter :: Cv_air = 20.85 ! heat capacity wiki [J/mol-K]
   PetscReal :: T_energy
   PetscReal :: T_k
 
@@ -1055,7 +1055,7 @@ subroutine EOSGasHenry_air_noderiv(tc,ps,Henry)
 
     implicit none
     PetscReal,intent(in) :: tc,ps
-    PetscReal,intent(out):: Henry
+    PetscReal,intent(out) :: Henry
 
     PetscReal  Tr,tao,tmp,t
     PetscReal, parameter :: a=-9.67578d0, b=4.72162d0, c=11.70585d0
@@ -1074,7 +1074,7 @@ end subroutine EOSGasHenry_air_noderiv
 subroutine EOSGasHenry_air(tc,ps,ps_p,ps_t,Henry,Henry_p,Henry_t)
    implicit none
     PetscReal,intent(in) :: tc,ps,ps_p,ps_t
-    PetscReal,intent(out):: Henry,Henry_p,Henry_t
+    PetscReal,intent(out) :: Henry,Henry_p,Henry_t
 ! note t/K, p/Pa, Henry/Pa 
 
     PetscReal  Tr,tao,tmp,t
@@ -1100,7 +1100,7 @@ subroutine EOSGasHenryConstant(T,Psat,Hc)
    implicit none
     PetscReal, intent(in) :: T    ! temperature [C]
     PetscReal, intent(in) :: Psat ! saturation pressure [Pa]
-    PetscReal, intent(out):: Hc   ! Henry's constant [Pa]
+    PetscReal, intent(out) :: Hc   ! Henry's constant [Pa]
 
     Hc = constant_henry
     

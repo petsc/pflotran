@@ -351,7 +351,7 @@ subroutine interp(x1,x2,y)
   
 #include "petsc/finclude/petscsys.h"
   
-      PetscReal:: x1,x2,y(15)   
+      PetscReal :: x1,x2,y(15)   
       
       PetscReal factor(1:4), fac(2,2) , iindex, jindex
       PetscReal funv(1:2,1:2,0:2), funi(1:2,1:2,0:2)

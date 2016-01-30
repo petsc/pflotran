@@ -116,11 +116,11 @@ subroutine PMSurfaceFlowRHSFunction(this,ts,time,xx,ff,ierr)
   implicit none
 
   class(pm_surface_flow_type) :: this
-  TS                                     :: ts
-  PetscReal                              :: time
-  Vec                                    :: xx
-  Vec                                    :: ff
-  PetscErrorCode                         :: ierr
+  TS :: ts
+  PetscReal :: time
+  Vec :: xx
+  Vec :: ff
+  PetscErrorCode :: ierr
 
   call SurfaceFlowRHSFunction(ts,time,xx,ff,this%surf_realization,ierr)
 
@@ -210,7 +210,7 @@ subroutine PMSurfaceFlowPostSolve(this)
 
   PetscReal, pointer :: xx_p(:)
   PetscInt :: local_id
-  type(surface_field_type), pointer   :: surf_field 
+  type(surface_field_type), pointer :: surf_field 
   PetscErrorCode :: ierr
 
   surf_field => this%surf_realization%surf_field

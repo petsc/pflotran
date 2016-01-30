@@ -179,25 +179,25 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
 
   class(pmc_subsurface_type) :: this
   
-  class(realization_subsurface_type), pointer     :: realization
-  type (patch_type),pointer            :: patch
-  type (grid_type),pointer             :: grid
-  type (coupler_list_type), pointer    :: coupler_list
-  type (coupler_type), pointer         :: coupler
-  type (option_type), pointer          :: option
-  type (field_type),pointer            :: field
-  type (connection_set_type), pointer  :: cur_connection_set
-  PetscBool                            :: coupler_found
-  PetscInt                             :: iconn
-  PetscReal                            :: den
-  PetscReal                            :: dt
-  PetscReal                            :: surfpress
-  PetscReal                            :: dum1
-  PetscReal, pointer                   :: mflux_p(:)
-  PetscReal, pointer                   :: hflux_p(:)
-  PetscReal, pointer                   :: head_p(:)
-  PetscReal, pointer                   :: temp_p(:)
-  PetscErrorCode                       :: ierr
+  class(realization_subsurface_type), pointer :: realization
+  type (patch_type),pointer :: patch
+  type (grid_type),pointer :: grid
+  type (coupler_list_type), pointer :: coupler_list
+  type (coupler_type), pointer :: coupler
+  type (option_type), pointer :: option
+  type (field_type),pointer :: field
+  type (connection_set_type), pointer :: cur_connection_set
+  PetscBool :: coupler_found
+  PetscInt :: iconn
+  PetscReal :: den
+  PetscReal :: dt
+  PetscReal :: surfpress
+  PetscReal :: dum1
+  PetscReal, pointer :: mflux_p(:)
+  PetscReal, pointer :: hflux_p(:)
+  PetscReal, pointer :: head_p(:)
+  PetscReal, pointer :: temp_p(:)
+  PetscErrorCode :: ierr
 
 #ifdef DEBUG
   print *, 'PMCSubsurfaceGetAuxData()'
@@ -437,26 +437,26 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 
   class(pmc_subsurface_type) :: this
   
-  class(realization_subsurface_type), pointer     :: realization
-  type (patch_type),pointer            :: patch
-  type (grid_type),pointer             :: grid
-  type (coupler_list_type), pointer    :: coupler_list
-  type (coupler_type), pointer         :: coupler
-  type (option_type), pointer          :: option
-  type (field_type),pointer            :: field
-  type (connection_set_type), pointer  :: cur_connection_set
-  PetscInt                             :: local_id
-  PetscInt                             :: ghosted_id
-  PetscInt                             :: iconn
-  PetscInt                             :: istart
-  PetscInt                             :: iend
-  PetscReal                            :: den
-  PetscReal                            :: dum1
-  PetscReal, pointer                   :: xx_loc_p(:)
-  PetscReal, pointer                   :: pres_top_bc_p(:)
-  PetscReal, pointer                   :: temp_top_bc_p(:)
-  PetscReal, pointer                   :: head_p(:)
-  PetscErrorCode                       :: ierr
+  class(realization_subsurface_type), pointer :: realization
+  type (patch_type),pointer :: patch
+  type (grid_type),pointer :: grid
+  type (coupler_list_type), pointer :: coupler_list
+  type (coupler_type), pointer :: coupler
+  type (option_type), pointer :: option
+  type (field_type),pointer :: field
+  type (connection_set_type), pointer :: cur_connection_set
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iconn
+  PetscInt :: istart
+  PetscInt :: iend
+  PetscReal :: den
+  PetscReal :: dum1
+  PetscReal, pointer :: xx_loc_p(:)
+  PetscReal, pointer :: pres_top_bc_p(:)
+  PetscReal, pointer :: temp_top_bc_p(:)
+  PetscReal, pointer :: head_p(:)
+  PetscErrorCode :: ierr
 
 #ifdef DEBUG
   print *, 'PMCSubsurfaceSetAuxData()'
@@ -560,17 +560,17 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
 
   class (pmc_subsurface_type) :: this
 
-  type(grid_type), pointer    :: subsurf_grid
-  type(option_type), pointer  :: option
-  type(field_type), pointer   :: subsurf_field
+  type(grid_type), pointer :: subsurf_grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: subsurf_field
 
-  PetscScalar, pointer        :: sim_por_p(:)
+  PetscScalar, pointer :: sim_por_p(:)
   class(material_auxvar_type), pointer :: subsurf_material_auxvars(:)
 
-  PetscInt                    :: local_id
-  PetscInt                    :: ghosted_id
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
 
-  PetscErrorCode              :: ierr
+  PetscErrorCode :: ierr
   PetscViewer :: viewer
 
   if (associated(this%sim_aux)) then
@@ -648,24 +648,24 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
 
   class (pmc_subsurface_type) :: this
 
-  type(grid_type), pointer                     :: subsurf_grid
-  type(option_type), pointer                   :: option
-  type(field_type), pointer                    :: subsurf_field
+  type(grid_type), pointer :: subsurf_grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: subsurf_field
 
-  PetscScalar, pointer                         :: xx_loc_p(:)
-  PetscScalar, pointer                         :: pres_p(:)
-  PetscScalar, pointer                         :: temp_p(:)
-  PetscScalar, pointer                         :: sub_por_loc_p(:)
-  PetscScalar, pointer                         :: sim_por0_p(:)
+  PetscScalar, pointer :: xx_loc_p(:)
+  PetscScalar, pointer :: pres_p(:)
+  PetscScalar, pointer :: temp_p(:)
+  PetscScalar, pointer :: sub_por_loc_p(:)
+  PetscScalar, pointer :: sim_por0_p(:)
 
-  PetscInt                                     :: local_id
-  PetscInt                                     :: ghosted_id
-  PetscInt                                     :: pres_dof
-  PetscInt                                     :: temp_dof
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: pres_dof
+  PetscInt :: temp_dof
 
   class(material_auxvar_type), pointer :: material_auxvars(:)
 
-  PetscErrorCode                               :: ierr
+  PetscErrorCode :: ierr
 
   select case(this%option%iflowmode)
     case (TH_MODE)

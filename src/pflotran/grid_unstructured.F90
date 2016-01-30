@@ -597,24 +597,24 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
 
   implicit none
 
-  type(unstructured_grid_type)   :: unstructured_grid
-  type(option_type)              :: option
+  type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
 
-  PetscMPIInt       :: hdf5_err
-  PetscMPIInt       :: rank_mpi
-  PetscInt          :: istart, iend, ii, jj
-  PetscInt          :: num_cells_local
-  PetscInt          :: num_cells_local_save
-  PetscInt          :: num_vertices_local
-  PetscInt          :: num_vertices_local_save
-  PetscInt          :: remainder
+  PetscMPIInt :: hdf5_err
+  PetscMPIInt :: rank_mpi
+  PetscInt :: istart, iend, ii, jj
+  PetscInt :: num_cells_local
+  PetscInt :: num_cells_local_save
+  PetscInt :: num_vertices_local
+  PetscInt :: num_vertices_local_save
+  PetscInt :: remainder
   PetscInt, pointer :: int_buffer(:,:)
   PetscReal, pointer :: double_buffer(:,:)
   PetscInt, parameter :: max_nvert_per_cell = 8  
-  PetscErrorCode    :: ierr
+  PetscErrorCode :: ierr
 
 #if defined(PETSC_HAVE_HDF5)
   integer(HID_T) :: file_id
@@ -878,24 +878,24 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
 
   implicit none
 
-  type(unstructured_grid_type)   :: unstructured_grid
-  type(option_type)              :: option
+  type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
 
-  PetscMPIInt       :: hdf5_err
-  PetscMPIInt       :: rank_mpi
-  PetscInt          :: istart, iend, ii, jj
-  PetscInt          :: num_cells_local
-  PetscInt          :: num_cells_local_save
-  PetscInt          :: num_vertices_local
-  PetscInt          :: num_vertices_local_save
-  PetscInt          :: remainder
-  PetscInt, pointer  :: int_buffer(:,:)
+  PetscMPIInt :: hdf5_err
+  PetscMPIInt :: rank_mpi
+  PetscInt :: istart, iend, ii, jj
+  PetscInt :: num_cells_local
+  PetscInt :: num_cells_local_save
+  PetscInt :: num_vertices_local
+  PetscInt :: num_vertices_local_save
+  PetscInt :: remainder
+  PetscInt, pointer :: int_buffer(:,:)
   PetscReal, pointer :: double_buffer(:,:)
   PetscInt, parameter :: max_nvert_per_cell = 8  
-  PetscErrorCode    :: ierr
+  PetscErrorCode :: ierr
 
 #if defined(PETSC_HAVE_HDF5)
   integer(HID_T) :: file_id
@@ -1159,18 +1159,18 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
 
   implicit none
 
-  type(unstructured_grid_type)   :: unstructured_grid
-  type(option_type)              :: option
+  type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
 
-  PetscInt,pointer  :: int_buffer(:,:)
+  PetscInt,pointer :: int_buffer(:,:)
   PetscReal,pointer :: double_buffer(:,:)
-  PetscInt          :: ii, jj
-  PetscInt          :: dims(2), dataset_dims(2)
+  PetscInt :: ii, jj
+  PetscInt :: dims(2), dataset_dims(2)
   PetscInt, parameter :: max_nvert_per_cell = 8
-  PetscInt          :: num_cells_local
+  PetscInt :: num_cells_local
 
   character(len=MAXSTRINGLENGTH) :: cell_dataset_name = &
                                                        '/Domain/Cells'//CHAR(0)
@@ -1936,7 +1936,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   PetscInt :: vertex_ids4(4)
   PetscInt :: nfaces, nfaces2, nvertices, nvertices2, cell_type, cell_type2
   PetscInt :: face_type, face_type2
-  PetscBool:: face_found, vertex_found
+  PetscBool :: face_found, vertex_found
   
   PetscReal :: v1(3), v2(3), v3(3), n1(3), n2(3), n_up_dn(3)
   PetscReal :: vcross(3), magnitude
@@ -2553,9 +2553,9 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
   
   PetscErrorCode :: ierr
   
-  PetscInt  :: face_id
-  PetscInt  :: ivert,vert_id
-  PetscInt  :: face_type
+  PetscInt :: face_id
+  PetscInt :: ivert,vert_id
+  PetscInt :: face_type
   PetscReal :: v1(3),v2(3),n_dist(3), dist
   type(point_type) :: vertex_8(8)
   type(plane_type) :: plane
@@ -3257,7 +3257,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   PetscReal :: min_verts_req
   PetscInt :: largest_vert_id, v_id_n
   Vec :: sideset_vert_vec
-  PetscInt,pointer::int_array(:)
+  PetscInt,pointer ::int_array(:)
   PetscInt :: offset
   IS :: is_tmp1, is_tmp2
   VecScatter :: scatter_gton
@@ -3732,11 +3732,11 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
   PetscInt :: ngmax_new
   PetscInt :: swidth
 
-  PetscInt, pointer               :: ia_p(:), ja_p(:)
-  PetscInt                        :: nrow,rstart,rend,icol(1)
-  PetscOffset                     :: iia,jja,aaa,iicol,jj
-  PetscBool                       :: done
-  PetscScalar                     :: aa(1)
+  PetscInt, pointer :: ia_p(:), ja_p(:)
+  PetscInt :: nrow,rstart,rend,icol(1)
+  PetscOffset :: iia,jja,aaa,iicol,jj
+  PetscBool :: done
+  PetscScalar :: aa(1)
 
   PetscReal, allocatable :: real_arrayV(:)
   PetscInt, allocatable :: int_arrayV(:)
@@ -3991,11 +3991,11 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
   PetscInt :: vertex_id_local
   PetscInt :: vertex_id_nat
 
-  PetscInt, pointer               :: ia_p(:), ja_p(:)
-  PetscInt                        :: nrow,rstart,rend,icol(1)
-  PetscOffset                     :: iia,jja,aaa,iicol,jj
-  PetscBool                       :: done
-  PetscScalar                     :: aa(1)
+  PetscInt, pointer :: ia_p(:), ja_p(:)
+  PetscInt :: nrow,rstart,rend,icol(1)
+  PetscOffset :: iia,jja,aaa,iicol,jj
+  PetscBool :: done
+  PetscScalar :: aa(1)
 
   PetscReal, allocatable :: real_arrayV(:)
   PetscInt, allocatable :: int_arrayV(:)
@@ -4153,7 +4153,7 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   
   PetscInt,allocatable :: int_array1(:)
   PetscInt,allocatable :: int_array2(:)
-  PetscScalar,pointer  :: tmp_scl_array(:)
+  PetscScalar,pointer :: tmp_scl_array(:)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
@@ -4161,8 +4161,8 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   Vec :: ghosts_petsc
   Vec :: cells_on_proc
   Vec :: cids_on_proc
-  IS  :: is_from
-  IS  :: is_to
+  IS :: is_from
+  IS :: is_to
   VecScatter :: vec_scatter
 
   ! Step-1: Find additional ghost cells
@@ -4400,7 +4400,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   PetscInt :: vertex_id_loc
   PetscInt :: offset
   PetscInt :: nverts
-  PetscInt  :: nverts_new
+  PetscInt :: nverts_new
   PetscInt :: cell_type
   PetscInt :: nvertices
     
@@ -4431,7 +4431,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   PetscInt,allocatable :: cell_ids_natural(:)
   PetscInt,allocatable :: ghost_cell_ids_petsc(:)
 
-  PetscScalar,pointer  :: tmp_scl_array(:)
+  PetscScalar,pointer :: tmp_scl_array(:)
   
   ! Step-1: Find the natural ids for vertices forming new ghost cells
   

@@ -510,8 +510,8 @@ subroutine CheckpointOpenFileForWriteHDF5(file_id, grp_id, id, option, id_stamp)
 
   PetscInt :: id
   integer, intent(out) :: file_id
-  integer:: prop_id
-  integer,intent(out):: grp_id
+  integer :: prop_id
+  integer,intent(out) :: grp_id
   type(option_type) :: option
   character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
   PetscErrorCode :: ierr
@@ -539,8 +539,8 @@ subroutine CheckpointOpenFileForWriteHDF5(file_id, grp_id, id, option, id_stamp)
 
 #if defined(SCORPIO_WRITE)
   integer, intent(out) :: file_id
-  integer:: prop_id
-  integer,intent(out):: grp_id
+  integer :: prop_id
+  integer,intent(out) :: grp_id
 #else
   integer(HID_T), intent(out) :: file_id
   integer(HID_T) :: prop_id
@@ -596,7 +596,7 @@ subroutine CheckpointOpenFileForReadHDF5(filename, file_id, grp_id, option)
 
   character(len=MAXSTRINGLENGTH),intent(in) :: filename
   integer, intent(out) :: file_id
-  integer,intent(out):: grp_id
+  integer,intent(out) :: grp_id
   type(option_type) :: option
 
   call printMsg(option,'')
@@ -620,8 +620,8 @@ subroutine CheckpointOpenFileForReadHDF5(filename, file_id, grp_id, option)
 
 #if defined(SCORPIO)
   integer, intent(out) :: file_id
-  integer:: prop_id
-  integer,intent(out):: grp_id
+  integer :: prop_id
+  integer,intent(out) :: grp_id
 #else
   integer(HID_T), intent(out) :: file_id
   integer(HID_T) :: prop_id

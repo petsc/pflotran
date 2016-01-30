@@ -15,13 +15,13 @@ subroutine ideal_gaseos_noderiv(p,tc,d,h,u)
     
   PetscReal,intent(in) :: p  ! [Pa]
   PetscReal,intent(in) :: tc ! [C]
-  PetscReal, intent(out):: d ! [kmol/m^3]
-  PetscReal, intent(out):: h ! [J/kmol]
-  PetscReal, intent(out):: u ! [J/kmol]
+  PetscReal, intent(out) :: d ! [kmol/m^3]
+  PetscReal, intent(out) :: h ! [J/kmol]
+  PetscReal, intent(out) :: u ! [J/kmol]
    
-  PetscReal, parameter:: Rg=8.31415 
+  PetscReal, parameter :: Rg=8.31415 
   ! Cpg units: J/mol-K
-  PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
+  PetscReal, parameter :: Cv_air = 20.85 ! head capacity wiki
   PetscReal  tk
     
   tk = tc + 273.15
@@ -37,14 +37,14 @@ subroutine ideal_gaseos(p,tc,d,d_p,d_t,h,h_p,h_t,u,u_p,u_t)
     
   PetscReal,intent(in) :: p  ! [Pa]
   PetscReal,intent(in) :: tc ! [C]
-  PetscReal, intent(out):: d ! [kmol/m^3]
-  PetscReal, intent(out):: h ! [J/kmol]
-  PetscReal, intent(out):: u ! [J/kmol]
-  PetscReal, intent(out):: d_p,d_t,h_p,h_t,u_p,u_t
+  PetscReal, intent(out) :: d ! [kmol/m^3]
+  PetscReal, intent(out) :: h ! [J/kmol]
+  PetscReal, intent(out) :: u ! [J/kmol]
+  PetscReal, intent(out) :: d_p,d_t,h_p,h_t,u_p,u_t
 
-  PetscReal, parameter:: Rg=8.31415 
+  PetscReal, parameter :: Rg=8.31415 
   ! Cpg units: J/mol-K
-  PetscReal, parameter:: Cv_air = 20.85 ! head capacity wiki
+  PetscReal, parameter :: Cv_air = 20.85 ! head capacity wiki
   PetscReal  tk
 
   tk = tc + 273.15
@@ -146,7 +146,7 @@ subroutine Henry_air_noderiv(p,tc,ps,Henry)
 
     implicit none
     PetscReal,intent(in) ::  p,tc,ps
-    PetscReal,intent(out)::  Henry
+    PetscReal,intent(out) ::  Henry
 
     PetscReal  Tr,tao,tmp,t
     PetscReal, parameter :: a=-9.67578, b=4.72162, c=11.70585
@@ -166,7 +166,7 @@ end subroutine Henry_air_noderiv
 subroutine Henry_air(p,tc,ps,ps_p,ps_t,Henry,Henry_p,Henry_t)
    implicit none
     PetscReal,intent(in) ::  p,tc,ps,ps_p,ps_t
-    PetscReal,intent(out)::  Henry,Henry_p,Henry_t
+    PetscReal,intent(out) ::  Henry,Henry_p,Henry_t
 ! note t/K, p/Pa, Henry/Pa 
 
     PetscReal  Tr,tao,tmp,t

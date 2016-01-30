@@ -233,10 +233,10 @@ subroutine SurfaceFlowUpdateSolution(surf_realization)
 
   implicit none
 
-  class(realization_surface_type)   :: surf_realization
+  class(realization_surface_type) :: surf_realization
 
   type(surface_field_type),pointer :: surf_field
-  PetscErrorCode                   :: ierr
+  PetscErrorCode :: ierr
 
   surf_field => surf_realization%surf_field
   call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr);CHKERRQ(ierr)
@@ -268,31 +268,31 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 
   implicit none
   
-  TS                             :: ts
-  PetscReal                      :: t
-  Vec                            :: xx
-  Vec                            :: ff
+  TS :: ts
+  PetscReal :: t
+  Vec :: xx
+  Vec :: ff
   class(realization_surface_type) :: surf_realization
-  PetscErrorCode                 :: ierr
+  PetscErrorCode :: ierr
 
   PetscViewer :: viewer
 
-  type(discretization_type), pointer        :: discretization
-  type(surface_field_type), pointer         :: surf_field
-  type(option_type), pointer                :: option
-  type(grid_type), pointer                  :: grid
-  type(patch_type), pointer                 :: patch
-  type(coupler_type), pointer               :: boundary_condition
-  type(coupler_type), pointer               :: source_sink
-  type(connection_set_list_type), pointer   :: connection_set_list
-  type(connection_set_type), pointer        :: cur_connection_set
+  type(discretization_type), pointer :: discretization
+  type(surface_field_type), pointer :: surf_field
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
   type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
   type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
 
-  PetscInt  :: local_id_up, local_id_dn, local_id
-  PetscInt  :: ghosted_id_up, ghosted_id_dn, ghosted_id
-  PetscInt  :: iconn
-  PetscInt  :: sum_connection
+  PetscInt :: local_id_up, local_id_dn, local_id
+  PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
+  PetscInt :: iconn
+  PetscInt :: sum_connection
   PetscReal :: dx, dy, dz
   PetscReal :: dist
   PetscReal :: vel
@@ -301,7 +301,7 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   PetscReal :: Res(surf_realization%option%nflowdof), v_darcy
   PetscReal :: qsrc, qsrc_flow
 
-  character(len=MAXSTRINGLENGTH)       :: string,string2
+  character(len=MAXSTRINGLENGTH) :: string,string2
 
   PetscReal, pointer :: ff_p(:), mannings_loc_p(:),area_p(:)
   PetscReal, pointer :: xc(:),yc(:),zc(:)
@@ -525,15 +525,15 @@ subroutine SurfaceFlowComputeMaxDt(surf_realization,max_allowable_dt)
   implicit none
   
   class(realization_surface_type) :: surf_realization
-  PetscErrorCode                 :: ierr
+  PetscErrorCode :: ierr
 
-  type(grid_type), pointer                  :: grid
-  type(patch_type), pointer                 :: patch
-  type(option_type), pointer                :: option
-  type(surface_field_type), pointer         :: surf_field
-  type(coupler_type), pointer               :: boundary_condition
-  type(connection_set_list_type), pointer   :: connection_set_list
-  type(connection_set_type), pointer        :: cur_connection_set
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(surface_field_type), pointer :: surf_field
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
   type(surface_global_auxvar_type), pointer :: surf_global_auxvars(:)
   type(surface_global_auxvar_type), pointer :: surf_global_auxvars_bc(:)
 
@@ -750,7 +750,7 @@ subroutine SurfaceFlowBCFlux(ibndtype, &
   PetscReal :: mannings
   PetscReal :: length
   PetscReal :: flux
-  PetscInt  :: ibndtype(:)
+  PetscInt :: ibndtype(:)
   PetscReal :: vel
   PetscReal :: Res(1:option%nflowdof) 
 
@@ -968,25 +968,25 @@ subroutine SurfaceFlowUpdateSurfState(surf_realization)
 
   class(realization_surface_type) :: surf_realization
 
-  type(coupler_list_type), pointer    :: coupler_list
-  type(coupler_type), pointer         :: coupler
-  type(connection_set_type), pointer  :: cur_connection_set
-  type(dm_ptr_type), pointer          :: dm_ptr
-  type(grid_type),pointer             :: grid,surf_grid
-  type(option_type), pointer          :: option
-  type(patch_type),pointer            :: patch,surf_patch
-  type(surface_field_type),pointer    :: surf_field
+  type(coupler_list_type), pointer :: coupler_list
+  type(coupler_type), pointer :: coupler
+  type(connection_set_type), pointer :: cur_connection_set
+  type(dm_ptr_type), pointer :: dm_ptr
+  type(grid_type),pointer :: grid,surf_grid
+  type(option_type), pointer :: option
+  type(patch_type),pointer :: patch,surf_patch
+  type(surface_field_type),pointer :: surf_field
 
-  PetscInt                :: iconn
-  PetscInt                :: local_id
-  PetscInt                :: sum_connection
+  PetscInt :: iconn
+  PetscInt :: local_id
+  PetscInt :: sum_connection
 
-  PetscReal               :: den
-  PetscReal               :: dum1
-  PetscReal, pointer      :: avg_vdarcy_p(:)   ! avg darcy velocity [m/s]
-  PetscReal, pointer      :: hw_p(:)           ! head [m]
-  PetscReal, pointer      :: surfpress_p(:)
-  PetscErrorCode          :: ierr
+  PetscReal :: den
+  PetscReal :: dum1
+  PetscReal, pointer :: avg_vdarcy_p(:)   ! avg darcy velocity [m/s]
+  PetscReal, pointer :: hw_p(:)           ! head [m]
+  PetscReal, pointer :: surfpress_p(:)
+  PetscErrorCode :: ierr
 
   PetscBool :: coupler_found = PETSC_FALSE
 

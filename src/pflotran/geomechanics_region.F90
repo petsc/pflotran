@@ -65,9 +65,9 @@ function GeomechRegionCreateWithNothing()
 
   implicit none
   
-  type(gm_region_type), pointer        :: GeomechRegionCreateWithNothing
+  type(gm_region_type), pointer :: GeomechRegionCreateWithNothing
   
-  type(gm_region_type), pointer        :: region
+  type(gm_region_type), pointer :: region
   
   allocate(region)
   region%id = 0
@@ -96,9 +96,9 @@ function GeomechRegionCreateWithList(list)
   
   PetscInt :: list(:)
   
-  type(gm_region_type), pointer     :: GeomechRegionCreateWithList
+  type(gm_region_type), pointer :: GeomechRegionCreateWithList
   
-  type(gm_region_type), pointer     :: region
+  type(gm_region_type), pointer :: region
 
   region => GeomechRegionCreateWithNothing()
   region%num_verts = size(list)
@@ -123,11 +123,11 @@ function GeomechRegionCreateWithGeomechRegion(region)
 
   implicit none
   
-  type(gm_region_type), pointer     :: GeomechRegionCreateWithGeomechRegion
-  type(gm_region_type), pointer     :: region
+  type(gm_region_type), pointer :: GeomechRegionCreateWithGeomechRegion
+  type(gm_region_type), pointer :: region
   
-  type(gm_region_type), pointer     :: new_region
-  PetscInt                          :: icount, temp_int
+  type(gm_region_type), pointer :: new_region
+  PetscInt :: icount, temp_int
   
   new_region => GeomechRegionCreateWithNothing()
   
@@ -161,7 +161,7 @@ subroutine GeomechRegionInitList(list)
 
   implicit none
 
-  type(gm_region_list_type)     :: list
+  type(gm_region_list_type) :: list
   
   nullify(list%first)
   nullify(list%last)
@@ -182,8 +182,8 @@ subroutine GeomechRegionAddToList(new_region,list)
 
   implicit none
   
-  type(gm_region_type), pointer     :: new_region
-  type(gm_region_list_type)         :: list
+  type(gm_region_type), pointer :: new_region
+  type(gm_region_list_type) :: list
   
   list%num_regions = list%num_regions + 1
   new_region%id = list%num_regions
@@ -209,11 +209,11 @@ subroutine GeomechRegionRead(region,input,option)
   
   implicit none
   
-  type(option_type)             :: option
-  type(gm_region_type)          :: region
-  type(input_type), pointer              :: input
+  type(option_type) :: option
+  type(gm_region_type) :: region
+  type(input_type), pointer :: input
   
-  character(len=MAXWORDLENGTH)  :: keyword, word
+  character(len=MAXWORDLENGTH) :: keyword, word
  
   input%ierr = 0
   do
@@ -275,10 +275,10 @@ subroutine GeomechRegionReadFromFilename(region,option,filename)
   
   implicit none
   
-  type(gm_region_type)               :: region
-  type(option_type)                  :: option
-  type(input_type), pointer          :: input
-  character(len=MAXSTRINGLENGTH)     :: filename
+  type(gm_region_type) :: region
+  type(option_type) :: option
+  type(input_type), pointer :: input
+  character(len=MAXSTRINGLENGTH) :: filename
   
   input => InputCreate(IUNIT_TEMP,filename,option)
   call GeomechRegionReadFromFileId(region,input,option)          
@@ -304,13 +304,13 @@ subroutine GeomechRegionReadFromFileId(region,input,option)
   
   implicit none
   
-  type(gm_region_type)              :: region
-  type(option_type)                 :: option
-  type(input_type), pointer         :: input
+  type(gm_region_type) :: region
+  type(option_type) :: option
+  type(input_type), pointer :: input
   
-  character(len=MAXWORDLENGTH)      :: word
-  character(len=1)                  :: backslash
-  character(len=MAXSTRINGLENGTH)    :: string, string1
+  character(len=MAXWORDLENGTH) :: word
+  character(len=1) :: backslash
+  character(len=MAXSTRINGLENGTH) :: string, string1
 
   PetscInt, pointer :: temp_int_array(:)
   PetscInt, pointer :: vertex_ids(:)
@@ -420,12 +420,12 @@ function GeomechRegionGetPtrFromList(region_name,region_list)
 
   implicit none
   
-  type(gm_region_type), pointer          :: GeomechRegionGetPtrFromList
-  character(len=MAXWORDLENGTH)           :: region_name
+  type(gm_region_type), pointer :: GeomechRegionGetPtrFromList
+  character(len=MAXWORDLENGTH) :: region_name
   PetscInt :: length
-  type(gm_region_list_type)              :: region_list
+  type(gm_region_list_type) :: region_list
 
-  type(gm_region_type), pointer          :: region
+  type(gm_region_type), pointer :: region
     
   nullify(GeomechRegionGetPtrFromList)
   region => region_list%first
@@ -455,9 +455,9 @@ subroutine GeomechRegionDestroyList(region_list)
 
   implicit none
   
-  type(gm_region_list_type), pointer        :: region_list
+  type(gm_region_list_type), pointer :: region_list
   
-  type(gm_region_type), pointer             :: region, prev_region
+  type(gm_region_type), pointer :: region, prev_region
   
   if (.not.associated(region_list)) return
   

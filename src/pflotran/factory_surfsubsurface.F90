@@ -401,17 +401,17 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  class(realization_subsurface_type),pointer         :: realization
+  class(realization_subsurface_type),pointer :: realization
   class(realization_surface_type),pointer :: surf_realization
-  VecScatter                             :: surf_to_subsurf
-  VecScatter                             :: subsurf_to_surf
+  VecScatter :: surf_to_subsurf
+  VecScatter :: subsurf_to_surf
 
-  type(option_type),pointer            :: option
+  type(option_type),pointer :: option
   type(unstructured_grid_type),pointer :: subsurf_grid
   type(unstructured_grid_type),pointer :: surf_grid
-  type(patch_type),pointer             :: cur_patch
-  type(region_type),pointer            :: cur_region,top_region
-  type(region_type),pointer            :: patch_region
+  type(patch_type),pointer :: cur_patch
+  type(region_type),pointer :: cur_region,top_region
+  type(region_type),pointer :: patch_region
 
   Mat :: Mat_vert_to_face_subsurf
   Mat :: Mat_vert_to_face_subsurf_transp
@@ -423,7 +423,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   PetscViewer :: viewer
 
   character(len=MAXSTRINGLENGTH) :: string
-  PetscInt,pointer::int_array(:)
+  PetscInt,pointer ::int_array(:)
   PetscInt :: offset
   PetscInt :: int_array4(4)
   PetscInt :: int_array4_0(4,1)
@@ -719,7 +719,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  class(realization_subsurface_type),pointer         :: realization
+  class(realization_subsurface_type),pointer :: realization
   class(realization_surface_type),pointer :: surf_realization
   Mat :: prod_mat
   Vec :: source_petsc_ids
@@ -730,8 +730,8 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
   Vec :: corr_dest_ids_vec
   Vec :: corr_dest_ids_vec_ndof
   Vec :: source_petsc_ids_ndof
-  IS  :: is_tmp1,is_tmp2
-  IS  :: is_tmp3,is_tmp4
+  IS :: is_tmp1,is_tmp2
+  IS :: is_tmp3,is_tmp4
   PetscInt,pointer :: corr_v2_ids(:)
   VecScatter :: scatter_ndof
 
@@ -743,7 +743,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
 
   type(dm_ptr_type),pointer :: dm_ptr
   character(len=MAXSTRINGLENGTH) :: string
-  PetscInt,pointer::int_array(:)
+  PetscInt,pointer ::int_array(:)
   PetscInt :: offset
   PetscInt :: int_array4(4)
   PetscInt :: int_array4_0(4,1)
@@ -753,18 +753,18 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
   PetscInt :: ivertex,cell_id,vertex_id_local
   PetscReal :: max_value
 
-  PetscInt,pointer               :: ia_p(:),ja_p(:)
-  PetscInt                        :: nrow,rstart,rend,icol(1)
-  PetscInt                        :: index
-  PetscInt                        :: vertex_id
-  PetscOffset                     :: iia,jja,iicol
-  PetscBool                       :: done
+  PetscInt,pointer :: ia_p(:),ja_p(:)
+  PetscInt :: nrow,rstart,rend,icol(1)
+  PetscInt :: index
+  PetscInt :: vertex_id
+  PetscOffset :: iia,jja,iicol
+  PetscBool :: done
 #ifdef USE_MATSEQAIJ_FIX
-  PetscScalar, pointer            :: aa_v(:)
+  PetscScalar, pointer :: aa_v(:)
 #else
-  PetscScalar, pointer            :: aa_v(:,:)
+  PetscScalar, pointer :: aa_v(:,:)
 #endif
-  PetscInt                        :: row, col
+  PetscInt :: row, col
 
   PetscErrorCode :: ierr
   PetscBool :: found

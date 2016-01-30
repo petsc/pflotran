@@ -5235,12 +5235,12 @@ subroutine EnergyToTemperatureBisection(T,TL,TR,h,energy,Cwi,Pr,option)
 
   implicit none
 
-  PetscReal      :: T,TL,TR,h,energy,Cwi,Pr
+  PetscReal :: T,TL,TR,h,energy,Cwi,Pr
   type(option_type), pointer :: option
 
-  PetscReal      :: Tp,rho,rho_t,f,fR,fL,rtol
-  PetscInt       :: iter,niter
-  PetscBool      :: found
+  PetscReal :: Tp,rho,rho_t,f,fR,fL,rtol
+  PetscInt :: iter,niter
+  PetscBool :: found
   PetscErrorCode :: ierr
 
   call EOSWaterdensity(TR,Pr,rho,rho_T,ierr)

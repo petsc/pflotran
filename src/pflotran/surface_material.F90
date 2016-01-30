@@ -11,9 +11,9 @@ module Surface_Material_module
   type, public :: surface_material_property_type
     
     character(len=MAXWORDLENGTH) :: name
-    PetscInt                     :: external_id
-    PetscInt                     :: internal_id
-    PetscReal                    :: mannings
+    PetscInt :: external_id
+    PetscInt :: internal_id
+    PetscReal :: mannings
     
     type(surface_material_property_type), pointer :: next
   end type surface_material_property_type
@@ -80,8 +80,8 @@ subroutine SurfaceMaterialPropertyRead(surf_material_property,input,option)
   implicit none
   
   type(surface_material_property_type) :: surf_material_property
-  type(input_type), pointer            :: input
-  type(option_type)                    :: option
+  type(input_type), pointer :: input
+  type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword, word
   character(len=MAXSTRINGLENGTH) :: string
@@ -296,9 +296,9 @@ function SurfaceMaterialPropGetPtrFromArray(surf_material_property_name, &
 
   implicit none
 
-  type(surface_material_property_type), pointer     :: SurfaceMaterialPropGetPtrFromArray
+  type(surface_material_property_type), pointer :: SurfaceMaterialPropGetPtrFromArray
   type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
-  character(len=MAXWORDLENGTH)                      :: surf_material_property_name
+  character(len=MAXWORDLENGTH) :: surf_material_property_name
   PetscInt :: length
   PetscInt :: isurf_material_property
 

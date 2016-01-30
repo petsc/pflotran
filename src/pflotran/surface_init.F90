@@ -43,15 +43,15 @@ subroutine SurfaceInitReadRequiredCards(surf_realization)
 
   implicit none
 
-  class(realization_surface_type)     :: surf_realization
+  class(realization_surface_type) :: surf_realization
   type(discretization_type), pointer :: discretization
 
   character(len=MAXSTRINGLENGTH) :: string
   
-  type(patch_type), pointer   :: patch
-  type(grid_type), pointer    :: grid
-  type(option_type), pointer  :: option
-  type(input_type), pointer   :: input
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(input_type), pointer :: input
   
   patch          => surf_realization%patch
   option         => surf_realization%option
@@ -120,14 +120,14 @@ subroutine SurfaceInit(surf_realization,input,option)
 
   implicit none
 
-  class(realization_surface_type)               :: surf_realization
-  type(discretization_type),pointer            :: discretization
-  type(grid_type), pointer                     :: grid
-  type(input_type), pointer                    :: input
-  type(option_type)                            :: option
-  type(unstructured_grid_type), pointer        :: un_str_sfgrid
-  character(len=MAXWORDLENGTH)                 :: word
-  character(len=MAXWORDLENGTH)                 :: unstructured_grid_ctype
+  class(realization_surface_type) :: surf_realization
+  type(discretization_type),pointer :: discretization
+  type(grid_type), pointer :: grid
+  type(input_type), pointer :: input
+  type(option_type) :: option
+  type(unstructured_grid_type), pointer :: un_str_sfgrid
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: unstructured_grid_ctype
   PetscInt :: unstructured_grid_itype
 
   discretization => surf_realization%discretization
@@ -227,30 +227,30 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 
   implicit none
 
-  class(realization_surface_type)              :: surf_realization
-  type(solver_type)                            :: surf_flow_solver
-  type(input_type), pointer                    :: input
-  type(option_type)                            :: option
+  class(realization_surface_type) :: surf_realization
+  type(solver_type) :: surf_flow_solver
+  type(input_type), pointer :: input
+  type(option_type) :: option
   
-  type(discretization_type),pointer            :: discretization
-  type(grid_type), pointer                     :: grid
-  type(unstructured_grid_type), pointer        :: un_str_sfgrid
+  type(discretization_type),pointer :: discretization
+  type(grid_type), pointer :: grid
+  type(unstructured_grid_type), pointer :: un_str_sfgrid
   type(surface_material_property_type),pointer :: surf_material_property
-  type(region_type), pointer                   :: region
-  type(flow_condition_type), pointer           :: flow_condition
-  type(coupler_type), pointer                  :: coupler
-  type(strata_type), pointer                   :: strata
-  class(dataset_base_type), pointer            :: dataset
+  type(region_type), pointer :: region
+  type(flow_condition_type), pointer :: flow_condition
+  type(coupler_type), pointer :: coupler
+  type(strata_type), pointer :: strata
+  class(dataset_base_type), pointer :: dataset
 
-  type(patch_type), pointer                    :: patch
-  type(output_option_type), pointer            :: output_option
+  type(patch_type), pointer :: patch
+  type(output_option_type), pointer :: output_option
   PetscReal :: units_conversion
   PetscReal, pointer :: temp_real_array(:)
   PetscInt :: i
 
-  character(len=MAXWORDLENGTH)                 :: word
-  character(len=MAXSTRINGLENGTH)               :: temp_string
-  character(len=MAXWORDLENGTH)                 :: card
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: temp_string
+  character(len=MAXWORDLENGTH) :: card
   character(len=1) :: backslash
 
   PetscBool :: velocities

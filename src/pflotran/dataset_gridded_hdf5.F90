@@ -927,7 +927,7 @@ subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
   implicit none
 
   class(dataset_gridded_hdf5_type) :: this
-  PetscReal, intent(in)  :: xx, yy, zz
+  PetscReal, intent(in) :: xx, yy, zz
   PetscInt :: i, j, k
   PetscReal :: x, y, z
   
@@ -1076,7 +1076,7 @@ subroutine DatasetGriddedHDF5Strip(this)
 
   implicit none
   
-  class(dataset_gridded_hdf5_type)  :: this
+  class(dataset_gridded_hdf5_type) :: this
   
   call DatasetCommonHDF5Strip(this)
   

@@ -31,7 +31,7 @@ subroutine GeomechGlobalSetup(geomech_realization)
   
   implicit none
 
-  class(realization_geomech_type)           :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   
   ! There is only one patch in each realization
   call GeomechGlobalSetupPatch(geomech_realization)
@@ -57,17 +57,17 @@ subroutine GeomechGlobalSetupPatch(geomech_realization)
  
   implicit none
   
-  class(realization_geomech_type)            :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
 
-  type(option_type), pointer                :: option
-  type(geomech_patch_type),pointer          :: patch
-  type(geomech_grid_type), pointer          :: grid
-  type(geomech_coupler_type), pointer       :: boundary_condition
-  type(geomech_coupler_type), pointer       :: source_sink
+  type(option_type), pointer :: option
+  type(geomech_patch_type),pointer :: patch
+  type(geomech_grid_type), pointer :: grid
+  type(geomech_coupler_type), pointer :: boundary_condition
+  type(geomech_coupler_type), pointer :: source_sink
 
   PetscInt :: ghosted_id
   type(geomech_global_auxvar_type), pointer :: aux_vars(:)
-  PetscInt                                  :: ivertex
+  PetscInt :: ivertex
   
   option => geomech_realization%option
   patch => geomech_realization%geomech_patch
