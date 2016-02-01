@@ -4114,7 +4114,7 @@ subroutine RTMaxChange(realization,dcmax,dvfmax)
         delta_volfrac = rt_auxvars(ghosted_id)%mnrl_rate(imnrl)* &
                         reaction%mineral%kinmnrl_molar_vol(imnrl)* &
                         option%tran_dt
-        dvfmax = max(delta_volfrac,dvfmax)
+        dvfmax = max(dabs(delta_volfrac),dvfmax)
       enddo
     enddo
   endif 
