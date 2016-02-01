@@ -19,6 +19,7 @@ module PM_Miscible_class
 
   type, public, extends(pm_subsurface_flow_type) :: pm_miscible_type
   contains
+    procedure, public :: Read => PMMiscibleRead
     procedure, public :: InitializeTimestep => PMMiscibleInitializeTimestep
     procedure, public :: Residual => PMMiscibleResidual
     procedure, public :: Jacobian => PMMiscibleJacobian
@@ -69,6 +70,58 @@ function PMMiscibleCreate()
   PMMiscibleCreate => miscible_pm
   
 end function PMMiscibleCreate
+
+! ************************************************************************** !
+
+subroutine PMMiscibleRead(this,input)
+  ! 
+  ! Reads input file parameters associated with the Miscible process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/15
+  use Input_Aux_module
+  use String_module
+  use Utility_module
+  use EOS_Water_module  
+  use Option_module
+  use Miscible_Aux_module
+ 
+  implicit none
+  
+  class(pm_miscible_type) :: this
+  type(input_type), pointer :: input
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  type(option_type), pointer :: option
+  PetscBool :: found
+
+  option => this%option
+  
+  error_string = 'Miscible Options'
+  
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+
+    found = PETSC_FALSE
+    call PMSubsurfaceFlowReadSelectCase(this,input,word,found,option)
+    if (found) cycle
+    
+    select case(trim(word))
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    end select
+  enddo
+  
+end subroutine PMMiscibleRead
 
 ! ************************************************************************** !
 
@@ -360,8 +413,6 @@ subroutine PMMiscibleMaxChange(this)
   implicit none
   
   class(pm_miscible_type) :: this
-  
-  PetscReal :: dpmax, dtmpmax, dsmax, dcmax
   
   !geh: yes, call Mphase.  No need to replicate code  
   call MphaseMaxChange(this%realization,this%max_pressure_change, &
