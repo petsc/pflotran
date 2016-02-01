@@ -109,6 +109,41 @@ function CheckpointFilename(id, option, id_stamp)
 
 ! ************************************************************************** !
 
+function CheckpointFilenameAppend(output_option,time,timestep)
+  !
+  ! This subroutine forms the appendage to the checkpoint filename.
+  !
+  ! Author: Jenn Frederick
+  ! Date: 1/29/2016
+  ! 
+
+  use Output_Aux_module
+  use Units_module
+
+  implicit none
+
+  type(output_option_type) :: output_option
+  character(len=MAXSTRINGLENGTH) :: CheckpointFilenameAppend
+  character(len=MAXWORDLENGTH) :: timestep_string
+  character(len=MAXWORDLENGTH) :: time_string
+  PetscReal :: time,timestep
+  
+  time = time * output_option%chkpt_tconv
+  ! something like this?
+  write(??,'(format?)') timestep_string
+  write(??,'(format?)') timestep_string
+
+  if (output_option%chkpt_ts_flag) then
+    CheckpointFilenameAppend = '-' // 'ts' // timestep_string
+  else
+    CheckpointFilenameAppend = '-' // time_string // trim(chkpt_tunit)
+  endif
+
+
+  end function CheckpointFilenameAppend
+
+! ************************************************************************** !
+
 subroutine CheckpointOpenFileForWriteBinary(viewer,id,option,id_stamp)
   ! 
   ! Opens checkpoint file; sets format
@@ -1583,6 +1618,7 @@ subroutine CheckpointRead(input,option,waypoint_list)
   
   output_option%periodic_checkpoint_time_incr = 0
   option%checkpoint_frequency = 0
+  output_option%chkpt_ts_flag = PETSC_FALSE
   
   do
     temp_string = input%buf

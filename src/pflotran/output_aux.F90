@@ -17,6 +17,7 @@ module Output_Aux_module
     character(len=MAXWORDLENGTH) :: chkpt_tunit
     PetscReal :: tconv
     PetscReal :: chkpt_tconv
+    PetscBool :: chkpt_ts_flag
 
     PetscBool :: print_initial
     PetscBool :: print_final
