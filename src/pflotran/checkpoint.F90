@@ -130,13 +130,14 @@ function CheckpointFilenameAppend(output_option,time,timestep)
   
   time = time * output_option%chkpt_tconv
   ! something like this?
-  write(??,'(format?)') timestep_string
-  write(??,'(format?)') timestep_string
+  ! write(??,'(format?)') timestep_string
+  ! write(??,'(format?)') time_string
 
   if (output_option%chkpt_ts_flag) then
     CheckpointFilenameAppend = '-' // 'ts' // timestep_string
   else
-    CheckpointFilenameAppend = '-' // time_string // trim(chkpt_tunit)
+    CheckpointFilenameAppend = '-' // time_string // &
+                               trim(output_option%chkpt_tunit)
   endif
 
 
