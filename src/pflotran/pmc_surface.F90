@@ -88,6 +88,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   ! 
 
   use Timestepper_Base_class
+  use Output_Aux_module
   use Output_module, only : Output
   use Realization_class, only : realization_subsurface_type
   use PM_Base_class
@@ -96,6 +97,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Surface_Flow_module
   use Surface_TH_module
   use Output_Surface_module
+  use Checkpoint_module
   
   implicit none
 #include "petsc/finclude/petscviewer.h"
@@ -103,7 +105,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   class(pmc_surface_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
-  
+  character(len=MAXSTRINGLENGTH) :: filename_append
   class(pmc_base_type), pointer :: pmc_base
   PetscInt :: local_stop_flag
   PetscBool :: failure
@@ -234,7 +236,12 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
         call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
       endif
       call this%GetAuxData()
-      call this%CheckpointBinary(viewer,this%timestepper%steps)
+      ! jmf
+      filename_append = CheckpointFilenameAppend(this%pm_list%output_option, &
+                                                 this%option%time, &
+                                                 this%timestepper%steps)
+      !call this%CheckpointBinary(viewer,this%timestepper%steps)
+      call this%CheckpointBinary(viewer,filename_append)
     endif
 
   enddo

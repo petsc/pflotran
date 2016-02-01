@@ -159,11 +159,13 @@ subroutine SurfSubsurfaceExecuteRun(this)
   PetscReal :: final_time
   PetscReal :: dt
   PetscViewer :: viewer
+  character(len=MAXSTRINGLENGTH) :: id
 
   time = 0.d0
   time = this%option%time
 
   final_time = SimulationGetFinalWaypointTime(this)
+  id = '-restart'
 
   call printMsg(this%option,'SurfSubsurfaceExecuteRun()')
 
@@ -194,8 +196,10 @@ subroutine SurfSubsurfaceExecuteRun(this)
 
   endif
   if (this%option%checkpoint_flag) then
-    call this%process_model_coupler_list%CheckpointBinary(viewer, &
-                                                          NEG_ONE_INTEGER)
+    ! jmf
+    !call this%process_model_coupler_list%CheckpointBinary(viewer, &
+    !                                                      NEG_ONE_INTEGER)
+    call this%process_model_coupler_list%CheckpointBinary(viewer,id)
   endif
 
 end subroutine SurfSubsurfaceExecuteRun

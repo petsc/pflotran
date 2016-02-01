@@ -4,6 +4,7 @@ module PMC_Base_class
   use PM_Base_class
   use Timestepper_Base_class
   use Option_module
+  use Output_Aux_module
   use Waypoint_module
   use PM_Base_Pointer_module
   use Output_module, only : Output
@@ -266,11 +267,13 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
 #if defined (PETSC_HAVE_HDF5)
   use hdf5
 #endif
+  use Checkpoint_module
   implicit none
   
 #include "petsc/finclude/petscviewer.h"  
 
   class(pmc_base_type), target :: this
+  character(len=MAXSTRINGLENGTH) :: filename_append
   PetscReal :: sync_time
   PetscInt :: stop_flag
   
@@ -392,9 +395,14 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
         call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
       endif
       ! jmf
-      call this%CheckpointBinary(viewer,this%timestepper%steps)
+      filename_append = CheckpointFilenameAppend(this%pm_list%output_option, &
+                                                 this%option%time, &
+                                                 this%timestepper%steps)
+      !call this%CheckpointBinary(viewer,this%timestepper%steps)
+      call this%CheckpointBinary(viewer,filename_append)
       if (this%option%checkpoint_format_hdf5) then
-        call this%CheckpointHDF5(chk_grp_id,this%timestepper%steps)
+        !call this%CheckpointHDF5(chk_grp_id,this%timestepper%steps)
+        call this%CheckpointHDF5(chk_grp_id,filename_append)
       endif
     endif
     
@@ -573,7 +581,9 @@ recursive subroutine PMCBaseCheckpointBinary(this,viewer,id,id_stamp)
 
   class(pmc_base_type) :: this
   PetscViewer :: viewer
-  PetscInt :: id
+  ! jmf
+  !PetscInt :: id
+  character(len=MAXSTRINGLENGTH) :: id
   character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
   
   class(pm_base_type), pointer :: cur_pm
@@ -619,11 +629,14 @@ recursive subroutine PMCBaseCheckpointBinary(this,viewer,id,id_stamp)
   enddo
   
   if (associated(this%child)) then
-    call this%child%CheckpointBinary(viewer,UNINITIALIZED_INTEGER)
+    ! jmf
+    !call this%child%CheckpointBinary(viewer,UNINITIALIZED_INTEGER)
+    call this%child%CheckpointBinary(viewer,id)
   endif
   
   if (associated(this%peer)) then
-    call this%peer%CheckpointBinary(viewer,UNINITIALIZED_INTEGER)
+    !call this%peer%CheckpointBinary(viewer,UNINITIALIZED_INTEGER)
+    call this%child%CheckpointBinary(viewer,id)
   endif
   
   if (this%is_master) then
@@ -992,7 +1005,9 @@ recursive subroutine PMCBaseCheckpointHDF5(this,chk_grp_id,id,id_stamp)
   implicit none
   class(pmc_base_type) :: this
   integer :: chk_grp_id
-  PetscInt :: id
+  ! jmf
+  !PetscInt :: id
+  character(len=MAXSTRINGLENGTH) :: id
   character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
   print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
         'write HDF5 formatted checkpoint file. Darn.'
@@ -1011,8 +1026,10 @@ recursive subroutine PMCBaseCheckpointHDF5(this,chk_grp_id,id,id_stamp)
 #else
   integer(HID_T) :: chk_grp_id
 #endif
-
-  PetscInt :: id
+  
+  ! jmf
+  !PetscInt :: id
+  character(len=MAXSTRINGLENGTH) :: id
   character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
 
 #if defined(SCORPIO_WRITE)
@@ -1077,11 +1094,14 @@ recursive subroutine PMCBaseCheckpointHDF5(this,chk_grp_id,id,id_stamp)
   call h5gclose_f(pmc_grp_id, hdf5_err)
 
   if (associated(this%child)) then
-    call this%child%CheckpointHDF5(chk_grp_id,UNINITIALIZED_INTEGER)
+    ! jmf
+    !call this%child%CheckpointHDF5(chk_grp_id,UNINITIALIZED_INTEGER)
+    call this%child%CheckpointHDF5(chk_grp_id,id)
   endif
 
   if (associated(this%peer)) then
-    call this%peer%CheckpointHDF5(chk_grp_id,UNINITIALIZED_INTEGER)
+    !call this%peer%CheckpointHDF5(chk_grp_id,UNINITIALIZED_INTEGER)
+    call this%peer%CheckpointHDF5(chk_grp_id,id)
   endif
 
   if (this%is_master) then
