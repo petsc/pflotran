@@ -11,7 +11,6 @@ module Realization_Surface_class
   use Region_module
   use Surface_Field_module
   use Surface_Material_module
-  use Waypoint_module
   use Dataset_Base_class
   use Reaction_Aux_module
   use Output_Aux_module
@@ -29,17 +28,15 @@ private
 
   type, public, extends(realization_base_type) :: realization_surface_type
 
-    type(waypoint_list_type), pointer  :: waypoint_list
-    
-    type(surface_field_type), pointer                 :: surf_field
-    type(region_list_type), pointer                   :: surf_regions
-    type(condition_list_type),pointer                 :: surf_flow_conditions
-    type(tran_condition_list_type),pointer            :: surf_transport_conditions
-    type(surface_material_property_type), pointer     :: surf_material_properties
+    type(surface_field_type), pointer :: surf_field
+    type(region_list_type), pointer :: surf_regions
+    type(condition_list_type),pointer :: surf_flow_conditions
+    type(tran_condition_list_type),pointer :: surf_transport_conditions
+    type(surface_material_property_type), pointer :: surf_material_properties
     type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
-    type(reaction_type), pointer                      :: surf_reaction
-    character(len=MAXSTRINGLENGTH)                    :: surf_filename
-    character(len=MAXSTRINGLENGTH)                    :: subsurf_filename
+    type(reaction_type), pointer :: surf_reaction
+    character(len=MAXSTRINGLENGTH) :: surf_filename
+    character(len=MAXSTRINGLENGTH) :: subsurf_filename
 
     class(dataset_base_type), pointer :: datasets
     
@@ -98,7 +95,7 @@ function RealizSurfCreate(option)
 
   implicit none
 
-  type(option_type), pointer             :: option
+  type(option_type), pointer :: option
   class(realization_surface_type),pointer :: RealizSurfCreate
   class(realization_surface_type),pointer :: surf_realization
   
@@ -153,10 +150,10 @@ subroutine RealizSurfAddCoupler(surf_realization,coupler)
   implicit none
   
   class(realization_surface_type) :: surf_realization
-  type(coupler_type), pointer    :: coupler
+  type(coupler_type), pointer :: coupler
   
-  type(patch_type), pointer      :: cur_patch
-  type(coupler_type), pointer    :: new_coupler
+  type(patch_type), pointer :: cur_patch
+  type(coupler_type), pointer :: new_coupler
   
   cur_patch => surf_realization%patch_list%first
   do
@@ -195,7 +192,7 @@ subroutine RealizSurfProcessCouplers(surf_realization)
   implicit none
   
   class(realization_surface_type) :: surf_realization
-  type(patch_type), pointer      :: cur_patch
+  type(patch_type), pointer :: cur_patch
   
   cur_patch => surf_realization%patch_list%first
   do
@@ -310,10 +307,10 @@ subroutine RealizSurfAddStrata(surf_realization,strata)
   implicit none
   
   class(realization_surface_type) :: surf_realization
-  type(strata_type), pointer     :: strata
+  type(strata_type), pointer :: strata
   
-  type(patch_type), pointer      :: cur_patch
-  type(strata_type), pointer     :: new_strata
+  type(patch_type), pointer :: cur_patch
+  type(strata_type), pointer :: new_strata
   
   cur_patch => surf_realization%patch_list%first
   do
@@ -348,12 +345,12 @@ subroutine RealizSurfCreateDiscretization(surf_realization)
   
   implicit none
 
-  class(realization_surface_type)      :: surf_realization
-  type(discretization_type), pointer  :: discretization
-  type(grid_type), pointer            :: grid
-  type(surface_field_type), pointer   :: surf_field
-  type(option_type), pointer          :: option
-  type(dm_ptr_type), pointer          :: dm_ptr
+  class(realization_surface_type) :: surf_realization
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  type(surface_field_type), pointer :: surf_field
+  type(option_type), pointer :: option
+  type(dm_ptr_type), pointer :: dm_ptr
 
   PetscErrorCode :: ierr
 
@@ -458,7 +455,7 @@ subroutine RealizSurfPassFieldPtrToPatches(surf_realization)
   
   class(realization_surface_type) :: surf_realization
 
-  type(patch_type), pointer      :: cur_patch
+  type(patch_type), pointer :: cur_patch
 
   cur_patch => surf_realization%patch_list%first
   do
@@ -509,10 +506,10 @@ subroutine RealizSurfLocalToLocalWithArray(surf_realization,array_id)
   implicit none
 
   class(realization_surface_type) :: surf_realization
-  PetscInt                       :: array_id
+  PetscInt :: array_id
   
-  type(patch_type), pointer         :: cur_patch
-  type(grid_type), pointer          :: grid
+  type(patch_type), pointer :: cur_patch
+  type(grid_type), pointer :: grid
   type(surface_field_type), pointer :: surf_field
 
   surf_field => surf_realization%surf_field
@@ -563,13 +560,13 @@ subroutine RealizSurfProcessFlowConditions(surf_realization)
 
   class(realization_surface_type) :: surf_realization
   
-  type(flow_condition_type), pointer     :: cur_surf_flow_condition
+  type(flow_condition_type), pointer :: cur_surf_flow_condition
   type(flow_sub_condition_type), pointer :: cur_surf_flow_sub_condition
-  type(option_type), pointer             :: option
-  character(len=MAXSTRINGLENGTH)         :: string
-  character(len=MAXWORDLENGTH)           :: dataset_name
-  class(dataset_base_type), pointer      :: dataset
-  PetscInt                               :: i
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: dataset_name
+  class(dataset_base_type), pointer :: dataset
+  PetscInt :: i
   
   option => surf_realization%option
   
@@ -693,15 +690,15 @@ subroutine RealizSurfMapSurfSubsurfGrids(realization,surf_realization)
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  class(realization_subsurface_type), pointer         :: realization
+  class(realization_subsurface_type), pointer :: realization
   class(realization_surface_type), pointer :: surf_realization
 
-  type(option_type), pointer           :: option
+  type(option_type), pointer :: option
   type(unstructured_grid_type),pointer :: subsurf_grid
   type(unstructured_grid_type),pointer :: surf_grid
-  type(patch_type), pointer            :: cur_patch 
-  type(region_type), pointer           :: cur_region, top_region
-  type(region_type), pointer           :: patch_region
+  type(patch_type), pointer :: cur_patch 
+  type(region_type), pointer :: cur_region, top_region
+  type(region_type), pointer :: patch_region
 
   Mat :: Mat_vert_to_face_subsurf
   Mat :: Mat_vert_to_face_subsurf_transp
@@ -714,7 +711,7 @@ subroutine RealizSurfMapSurfSubsurfGrids(realization,surf_realization)
 
 
   character(len=MAXSTRINGLENGTH) :: string
-  PetscInt,pointer::int_array(:)
+  PetscInt,pointer ::int_array(:)
   PetscInt :: offset
   PetscInt :: int_array4(4)
   PetscInt :: int_array4_0(4,1)
@@ -1022,10 +1019,10 @@ subroutine RealizSurfMapSurfSubsurfGrid( &
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  class(realization_subsurface_type), pointer         :: realization
+  class(realization_subsurface_type), pointer :: realization
   class(realization_surface_type), pointer :: surf_realization
   Mat :: prod_mat
-  PetscInt  :: source_grid_flag
+  PetscInt :: source_grid_flag
   Vec :: source_petsc_ids
 
   Mat :: prod_loc_mat
@@ -1033,8 +1030,8 @@ subroutine RealizSurfMapSurfSubsurfGrid( &
   Vec :: corr_dest_ids_vec
   Vec :: corr_dest_ids_vec_ndof
   Vec :: source_petsc_ids_ndof
-  IS  :: is_tmp1, is_tmp2
-  IS  :: is_tmp3, is_tmp4
+  IS :: is_tmp1, is_tmp2
+  IS :: is_tmp3, is_tmp4
   PetscInt,pointer :: corr_v2_ids(:)
   VecScatter :: scatter
   VecScatter :: scatter_ndof
@@ -1047,7 +1044,7 @@ subroutine RealizSurfMapSurfSubsurfGrid( &
 
   type(dm_ptr_type), pointer :: dm_ptr
   character(len=MAXSTRINGLENGTH) :: string
-  PetscInt,pointer::int_array(:)
+  PetscInt,pointer ::int_array(:)
   PetscInt :: offset
   PetscInt :: int_array4(4)
   PetscInt :: int_array4_0(4,1)
@@ -1057,18 +1054,18 @@ subroutine RealizSurfMapSurfSubsurfGrid( &
   PetscInt :: ivertex, cell_id, vertex_id_local
   PetscReal :: max_value
 
-  PetscInt, pointer               :: ia_p(:), ja_p(:)
-  PetscInt                        :: nrow,rstart,rend,icol(1)
-  PetscInt                        :: index
-  PetscInt                        :: vertex_id
-  PetscOffset                     :: iia,jja,iicol
-  PetscBool                       :: done
+  PetscInt, pointer :: ia_p(:), ja_p(:)
+  PetscInt :: nrow,rstart,rend,icol(1)
+  PetscInt :: index
+  PetscInt :: vertex_id
+  PetscOffset :: iia,jja,iicol
+  PetscBool :: done
 #ifdef USE_MATSEQAIJ_FIX
-  PetscScalar, pointer            :: aa_v(:)
+  PetscScalar, pointer :: aa_v(:)
 #else
-  PetscScalar, pointer            :: aa_v(:,:)
+  PetscScalar, pointer :: aa_v(:,:)
 #endif
-  PetscInt                        :: row, col
+  PetscInt :: row, col
 
   PetscErrorCode :: ierr
   PetscBool :: found
@@ -1304,8 +1301,6 @@ subroutine RealizSurfStrip(surf_realization)
   
   !geh: deallocate everything in base
   call RealizationBaseStrip(surf_realization)
-  
-  call WaypointListDestroy(surf_realization%waypoint_list)
   
   call SurfaceFieldDestroy(surf_realization%surf_field)
 

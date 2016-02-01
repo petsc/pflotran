@@ -175,11 +175,11 @@ subroutine PMSurfaceTHRHSFunction(this,ts,time,xx,ff,ierr)
   implicit none
 
   class(pm_surface_th_type) :: this
-  TS                                     :: ts
-  PetscReal                              :: time
-  Vec                                    :: xx
-  Vec                                    :: ff
-  PetscErrorCode                         :: ierr
+  TS :: ts
+  PetscReal :: time
+  Vec :: xx
+  Vec :: ff
+  PetscErrorCode :: ierr
 
   call SurfaceTHRHSFunction(ts,time,xx,ff,this%surf_realization,ierr)
 
@@ -271,8 +271,8 @@ subroutine PMSurfaceTHPostSolve(this)
   PetscReal, pointer :: xx_p(:)
   PetscInt :: local_id
   PetscInt :: istart, iend
-  type(surface_field_type), pointer   :: surf_field 
-  type(grid_type),pointer             :: surf_grid
+  type(surface_field_type), pointer :: surf_field 
+  type(grid_type),pointer :: surf_grid
   PetscErrorCode :: ierr
 
   surf_grid => this%surf_realization%discretization%grid

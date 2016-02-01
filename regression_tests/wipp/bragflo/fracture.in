@@ -65,7 +65,7 @@ FLOW_CONDITION well  ! INJQ in BF
   SYNC_TIMESTEP_WITH_UPDATE
   RATE LIST
     TIME_UNITS y
-    DATA_UNITS kg/s
+    DATA_UNITS kg/s kg/s MW
     0.d0 1.d-5 0.d0 0.d0
     5.d-1 -5.d-6 0.d0 0.d0
   /

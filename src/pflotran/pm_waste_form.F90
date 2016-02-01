@@ -706,7 +706,7 @@ subroutine PMGlassRead(this,input)
   
   type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word, units
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string, units_category
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
   class(waste_form_glass_type), pointer :: new_waste_form, prev_waste_form
@@ -795,8 +795,10 @@ subroutine PMGlassRead(this,input)
         dataset_ascii%array_width = 1 ! does not include time
         this%mass_fraction_dataset => dataset_ascii
         dataset_ascii%data_type = DATASET_REAL
+        units_category = 'unitless'
         call ConditionReadValues(input,option,word, &
-                                 this%mass_fraction_dataset,units)
+                                 this%mass_fraction_dataset, &
+                                 units,units_category)
         if (associated(dataset_ascii%time_storage)) then
           ! default time interpolation is linear
           if (dataset_ascii%time_storage%time_interpolation_method == &
@@ -1576,9 +1578,9 @@ subroutine PMFMDMSolve(this,time,ierr)
   interface
     subroutine AMP_step ( burnup, sTme, temperature_C, conc, initialRun, &
                           fuelDisRate, success )
-      real ( kind = 8), intent( in )  :: burnup   
-      real ( kind = 8), intent( in )  :: sTme   
-      real ( kind = 8), intent( in )  :: temperature_C   
+      real ( kind = 8), intent( in ) :: burnup   
+      real ( kind = 8), intent( in ) :: sTme   
+      real ( kind = 8), intent( in ) :: temperature_C   
       real ( kind = 8), intent( inout ),  dimension (:,:) :: conc
       logical ( kind = 4), intent( in ) :: initialRun
       real ( kind = 8), intent(out) :: fuelDisRate

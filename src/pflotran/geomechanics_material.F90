@@ -9,13 +9,13 @@ module Geomechanics_Material_module
 #include "petsc/finclude/petscsys.h"  
 
   type, public :: geomech_material_property_type
-    character(len=MAXWORDLENGTH)   :: name
-    PetscInt                       :: id
-    PetscReal                      :: youngs_modulus
-    PetscReal                      :: poissons_ratio
-    PetscReal                      :: density
-    PetscReal                      :: biot_coeff
-    PetscReal                      :: thermal_exp_coeff
+    character(len=MAXWORDLENGTH) :: name
+    PetscInt :: id
+    PetscReal :: youngs_modulus
+    PetscReal :: poissons_ratio
+    PetscReal :: density
+    PetscReal :: biot_coeff
+    PetscReal :: thermal_exp_coeff
   
     type(geomech_material_property_type), pointer :: next
   end type geomech_material_property_type
@@ -84,8 +84,8 @@ subroutine GeomechanicsMaterialPropertyRead(geomech_material_property, &
   implicit none
   
   type(geomech_material_property_type) :: geomech_material_property
-  type(input_type), pointer            :: input
-  type(option_type)                    :: option
+  type(input_type), pointer :: input
+  type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword, word
   character(len=MAXSTRINGLENGTH) :: string

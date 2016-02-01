@@ -19,19 +19,19 @@ module Geomechanics_Patch_module
 #include "petsc/finclude/petscsys.h"
 
   type, public :: geomech_patch_type
-    PetscInt                                      :: id
-    PetscInt, pointer                             :: imat(:)
-    type(geomech_grid_type), pointer              :: geomech_grid
+    PetscInt :: id
+    PetscInt, pointer :: imat(:)
+    type(geomech_grid_type), pointer :: geomech_grid
     type(geomech_material_property_type), pointer :: geomech_material_properties
     type(geomech_material_property_ptr_type),&
        pointer :: geomech_material_property_array(:)
-    type(geomech_strata_list_type), pointer       :: geomech_strata_list
-    type(gm_region_list_type), pointer            :: geomech_region_list
-    type(geomech_coupler_list_type), pointer      :: geomech_boundary_condition_list
-    type(geomech_coupler_list_type), pointer      :: geomech_source_sink_list
-    type(geomech_field_type), pointer             :: geomech_field
-    class(dataset_base_type), pointer             :: geomech_datasets
-    type(geomech_auxiliary_type)                  :: geomech_aux
+    type(geomech_strata_list_type), pointer :: geomech_strata_list
+    type(gm_region_list_type), pointer :: geomech_region_list
+    type(geomech_coupler_list_type), pointer :: geomech_boundary_condition_list
+    type(geomech_coupler_list_type), pointer :: geomech_source_sink_list
+    type(geomech_field_type), pointer :: geomech_field
+    class(dataset_base_type), pointer :: geomech_datasets
+    type(geomech_auxiliary_type) :: geomech_aux
   end type geomech_patch_type
 
 
@@ -104,12 +104,12 @@ subroutine GeomechPatchLocalizeRegions(geomech_patch,regions,option)
 
   implicit none
   
-  type(geomech_patch_type)           :: geomech_patch
-  type(gm_region_list_type)          :: regions
-  type(option_type)                  :: option
+  type(geomech_patch_type) :: geomech_patch
+  type(gm_region_list_type) :: regions
+  type(option_type) :: option
   
-  type(gm_region_type), pointer      :: cur_region
-  type(gm_region_type), pointer      :: patch_region
+  type(gm_region_type), pointer :: cur_region
+  type(gm_region_type), pointer :: patch_region
   
   cur_region => regions%first
   do
@@ -143,17 +143,17 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
   
   implicit none
   
-  type(geomech_patch_type)                         :: patch
-  type(geomech_condition_list_type)                :: conditions
-  type(option_type)                                :: option
+  type(geomech_patch_type) :: patch
+  type(geomech_condition_list_type) :: conditions
+  type(option_type) :: option
   
-  type(geomech_coupler_type), pointer              :: coupler
-  type(geomech_coupler_list_type), pointer         :: coupler_list 
-  type(geomech_strata_type), pointer               :: strata
- ! type(geomech_observation_type), pointer          :: observation, &
+  type(geomech_coupler_type), pointer :: coupler
+  type(geomech_coupler_list_type), pointer :: coupler_list 
+  type(geomech_strata_type), pointer :: strata
+ ! type(geomech_observation_type), pointer :: observation, &
  !                                                     next_observation
   
-  PetscInt                                         :: temp_int, isub
+  PetscInt :: temp_int, isub
   
   ! boundary conditions
   coupler => patch%geomech_boundary_condition_list%first

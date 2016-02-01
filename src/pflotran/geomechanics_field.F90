@@ -58,8 +58,8 @@ function GeomechFieldCreate()
 
   implicit none
   
-  type(geomech_field_type), pointer     :: GeomechFieldCreate
-  type(geomech_field_type), pointer     :: geomech_field
+  type(geomech_field_type), pointer :: GeomechFieldCreate
+  type(geomech_field_type), pointer :: geomech_field
   
   allocate(geomech_field)
 
@@ -109,8 +109,8 @@ subroutine GeomechFieldDestroy(geomech_field)
 
   implicit none
   
-  type(geomech_field_type), pointer     :: geomech_field
-  PetscErrorCode                        :: ierr
+  type(geomech_field_type), pointer :: geomech_field
+  PetscErrorCode :: ierr
   
   ! Destroy PetscVecs
   if (geomech_field%work /= 0) then

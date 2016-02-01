@@ -635,7 +635,6 @@ subroutine RegionReadFromFileId(region,input,option)
   type(option_type) :: option
   type(input_type), pointer :: input
   
-  PetscBool :: continuation_flag
   character(len=MAXWORDLENGTH) :: word
   character(len=1) :: backslash
 
@@ -690,29 +689,6 @@ subroutine RegionReadFromFileId(region,input,option)
   
   
   count = 0
-#if 0
-  continuation_flag = PETSC_TRUE
-  do
-    if (.not.continuation_flag) exit
-    call InputReadPflotranString(input,option)
-    if (InputError(input)) exit
-    continuation_flag = PETSC_FALSE
-    if (index(input%buf,backslash) > 0) &
-      continuation_flag = PETSC_TRUE
-    input%ierr = 0
-    do
-      if (InputError(input)) exit
-      call InputReadInt(input,option,temp_int)
-      if (.not.InputError(input)) then
-        count = count + 1
-        temp_int_array(count) = temp_int
-      endif
-      if (count+1 > max_size) then ! resize temporary array
-        call reallocateIntArray(temp_int_array,max_size) 
-      endif
-    enddo
-  enddo
-#endif
 
   ! Determine if region definition in the input data is one of the following:
   !  1) Contains cell ids only : Only ONE entry per line

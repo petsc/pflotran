@@ -141,10 +141,10 @@ subroutine UniformVelocityDatasetRead(dataset,input,option)
   enddo
 
   if (len_trim(units) > 1) then
-    units_conversion = UnitsConvertToInternal(units,option)
+    units_conversion = UnitsConvertToInternal(units,'length/time',option)
     dataset%values = dataset%values * units_conversion
-    word = units(index(units,'/')+1:)
-    units_conversion = UnitsConvertToInternal(word,option)
+    word = units(index(units,'/')+1:) 
+    units_conversion = UnitsConvertToInternal(word,'time',option)
     dataset%times = dataset%times * units_conversion
   endif
   

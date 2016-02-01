@@ -88,21 +88,21 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
   PetscInt :: dataset_size
-  integer:: file_id
+  integer :: file_id
   PetscInt, pointer :: indices(:)
   PetscInt :: num_indices
 
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: prop_id
-  integer:: dims(3)
-  integer:: offset(3), length(3), stride(3)
+  integer :: file_space_id
+  integer :: memory_space_id
+  integer :: data_set_id
+  integer :: prop_id
+  integer :: dims(3)
+  integer :: offset(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi
   PetscInt :: local_ghosted_id, local_id, natural_id
   PetscInt :: index_count
   PetscInt :: cell_count
-  integer:: num_cells_in_file
+  integer :: num_cells_in_file
   PetscInt :: temp_int, i
   PetscMPIInt :: int_mpi
   
@@ -419,13 +419,13 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   PetscReal, pointer :: real_array(:)
   
 #if defined(SCORPIO)    
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: prop_id
-  integer:: dims(3)
-  integer:: offset(3), length(3), stride(3)
-  integer:: num_reals_in_file
+  integer :: file_space_id
+  integer :: memory_space_id
+  integer :: data_set_id
+  integer :: prop_id
+  integer :: dims(3)
+  integer :: offset(3), length(3), stride(3)
+  integer :: num_reals_in_file
 #else
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
@@ -699,13 +699,13 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   PetscInt :: integer_array(:)
   
   integer :: file_id
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: prop_id
-  integer:: dims(3)
-  integer:: offset(3), length(3), stride(3)
-  integer:: num_integers
+  integer :: file_space_id
+  integer :: memory_space_id
+  integer :: data_set_id
+  integer :: prop_id
+  integer :: dims(3)
+  integer :: offset(3), length(3), stride(3)
+  integer :: num_integers
 
 
   PetscMPIInt :: rank_mpi
@@ -975,12 +975,12 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   PetscReal :: array(:)
 
 #if defined(SCORPIO_WRITE)    
-  integer:: file_id
-  integer:: data_type
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: prop_id
+  integer :: file_id
+  integer :: data_type
+  integer :: file_space_id
+  integer :: memory_space_id
+  integer :: data_set_id
+  integer :: prop_id
   integer :: dims(3),mem_dims(3)
   integer :: start(3), length(3), stride(3)
   integer :: nx_local, ny_local, nz_local, nlmax ! Sarat added nlmax 
@@ -1265,13 +1265,13 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
     
 #if defined(SCORPIO)    
   integer :: file_id
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: prop_id
-  integer:: dims(3)
-  integer:: offset(3), length(3), stride(3), globaldims(3)
-  integer:: num_data_in_file
+  integer :: file_space_id
+  integer :: memory_space_id
+  integer :: data_set_id
+  integer :: prop_id
+  integer :: dims(3)
+  integer :: offset(3), length(3), stride(3), globaldims(3)
+  integer :: num_data_in_file
 #else
   integer(HID_T) :: file_id
   integer(HID_T) :: file_space_id
@@ -1482,16 +1482,16 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   PetscInt, pointer :: indices(:)
   PetscInt :: num_indices
   Vec :: global_vec
-  integer:: data_type 
+  integer :: data_type 
   
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: prop_id
-  integer:: dims(3), globaldims(3)
-  integer:: offset(3), length(3), stride(3)
+  integer :: file_space_id
+  integer :: memory_space_id
+  integer :: data_set_id
+  integer :: prop_id
+  integer :: dims(3), globaldims(3)
+  integer :: offset(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi
-  integer:: num_data_in_file
+  integer :: num_data_in_file
   Vec :: natural_vec
   PetscInt :: i, istart, iend
   PetscReal, allocatable :: real_buffer(:)
@@ -2069,18 +2069,18 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  !class(realization_subsurface_type)         :: realization
+  !class(realization_subsurface_type) :: realization
   type(option_type), pointer :: option
-  type(region_type)              :: region
-  type(region_sideset_type),pointer:: sideset
+  type(region_type) :: region
+  type(region_sideset_type),pointer :: sideset
   character(len=MAXSTRINGLENGTH) :: filename
 
   ! local
   !type(option_type), pointer :: option
-  PetscMPIInt       :: hdf5_err
-  PetscMPIInt       :: rank_mpi
-  PetscInt          :: remainder
-  PetscInt          :: istart, iend, ii, jj
+  PetscMPIInt :: hdf5_err
+  PetscMPIInt :: rank_mpi
+  PetscInt :: remainder
+  PetscInt :: istart, iend, ii, jj
   PetscInt, pointer :: int_buffer_1d(:)
   PetscInt, pointer :: int_buffer_2d(:,:)
   character(len=MAXSTRINGLENGTH) :: string
@@ -2328,18 +2328,18 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  !class(realization_subsurface_type)         :: realization
+  !class(realization_subsurface_type) :: realization
   type(option_type), pointer :: option
-  type(region_type)              :: region
-  type(region_sideset_type),pointer:: sideset
+  type(region_type) :: region
+  type(region_sideset_type),pointer :: sideset
   character(len=MAXSTRINGLENGTH) :: filename
 
   ! local
   !type(option_type), pointer :: option
-  PetscMPIInt       :: hdf5_err
-  PetscMPIInt       :: rank_mpi
-  PetscInt          :: remainder
-  PetscInt          :: istart, iend, ii, jj
+  PetscMPIInt :: hdf5_err
+  PetscMPIInt :: rank_mpi
+  PetscInt :: remainder
+  PetscInt :: istart, iend, ii, jj
   PetscInt, pointer :: int_buffer_1d(:)
   PetscInt, pointer :: int_buffer_2d(:,:)
   character(len=MAXSTRINGLENGTH) :: string

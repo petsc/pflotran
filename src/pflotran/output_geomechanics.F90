@@ -69,13 +69,13 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
   implicit none
 
   type(realization_geomech_type) :: geomech_realization
-  PetscBool                       :: plot_flag
-  PetscBool                       :: transient_plot_flag
+  PetscBool :: plot_flag
+  PetscBool :: transient_plot_flag
 
   character(len=MAXSTRINGLENGTH) :: string
-  PetscErrorCode                 :: ierr
-  PetscLogDouble                 :: tstart, tend
-  type(option_type), pointer     :: option
+  PetscErrorCode :: ierr
+  PetscLogDouble :: tstart, tend
+  type(option_type), pointer :: option
 
   option => geomech_realization%option
 
@@ -1233,17 +1233,17 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
   PetscInt :: var_list_type
 
 #if defined(SCORPIO_WRITE)
-  integer:: file_id
-  integer:: data_type
-  integer:: grp_id
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: realization_set_id
-  integer:: prop_id
+  integer :: file_id
+  integer :: data_type
+  integer :: grp_id
+  integer :: file_space_id
+  integer :: memory_space_id
+  integer :: data_set_id
+  integer :: realization_set_id
+  integer :: prop_id
   PetscMPIInt :: rank
   integer :: rank_mpi,file_space_rank_mpi
-  integer:: dims(3)
+  integer :: dims(3)
   integer :: start(3), length(3), stride(3),istart
 #else
   integer(HID_T) :: file_id
@@ -1523,15 +1523,15 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   type(option_type), pointer :: option
 
 #if defined(SCORPIO_WRITE)
-  integer:: file_id
-  integer:: data_type
-  integer:: grp_id
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: realization_set_id
-  integer:: prop_id
-  integer:: dims(3)
+  integer :: file_id
+  integer :: data_type
+  integer :: grp_id
+  integer :: file_space_id
+  integer :: memory_space_id
+  integer :: data_set_id
+  integer :: realization_set_id
+  integer :: prop_id
+  integer :: dims(3)
   integer :: start(3), length(3), stride(3),istart
   integer :: rank_mpi,file_space_rank_mpi
   integer :: hdf5_flag

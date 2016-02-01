@@ -391,6 +391,7 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
       if (associated(this%peer)) then
         call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
       endif
+      ! jmf
       call this%CheckpointBinary(viewer,this%timestepper%steps)
       if (this%option%checkpoint_format_hdf5) then
         call this%CheckpointHDF5(chk_grp_id,this%timestepper%steps)

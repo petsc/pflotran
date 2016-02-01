@@ -103,7 +103,7 @@ end subroutine DatasetAsciiInit
 
 ! ************************************************************************** !
 
-subroutine DatasetAsciiOpenandLoad(this,filename,option)
+subroutine DatasetAsciiOpenandLoad(this,filename,data_units_category,option)
   ! 
   ! Opens a file and calls the load routine.
   ! 
@@ -118,19 +118,20 @@ subroutine DatasetAsciiOpenandLoad(this,filename,option)
   
   class(dataset_ascii_type) :: this
   character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: data_units_category
   type(option_type) :: option
   
   type(input_type), pointer :: input
   
   input => InputCreate(IUNIT_TEMP,filename,option)
-  call DatasetAsciiLoad(this,input,option)
+  call DatasetAsciiLoad(this,input,data_units_category,option)
   call InputDestroy(input)
 
 end subroutine DatasetAsciiOpenandLoad
 
 ! ************************************************************************** !
 
-subroutine DatasetAsciiLoad(this,input,option)
+subroutine DatasetAsciiLoad(this,input,data_units_category,option)
   ! 
   ! Reads a text-based dataset from an ASCII file.
   ! 
@@ -153,6 +154,8 @@ subroutine DatasetAsciiLoad(this,input,option)
 
   character(len=MAXWORDLENGTH) :: time_units
   character(len=MAXSTRINGLENGTH) :: string, data_units
+  character(len=*) :: data_units_category
+  character(len=MAXSTRINGLENGTH), pointer :: unit_cat_strings(:) 
   character(len=MAXWORDLENGTH) :: word
   PetscReal, pointer :: temp_array(:,:)
   PetscReal :: temp_time
@@ -166,6 +169,8 @@ subroutine DatasetAsciiLoad(this,input,option)
   time_units = ''
   data_units = ''
   max_size = 1000
+  
+  unit_cat_strings => StringSplit(data_units_category,',')
 
   row_count = 0
   ierr = 0
@@ -264,7 +269,7 @@ subroutine DatasetAsciiLoad(this,input,option)
   
   ! time units conversion
   if (len_trim(time_units) > 0) then
-    conversion = UnitsConvertToInternal(time_units,option)
+    conversion = UnitsConvertToInternal(time_units,'time',option)
     this%time_storage%times(:) = conversion * &
                                  this%time_storage%times(:)
   endif
@@ -285,10 +290,12 @@ subroutine DatasetAsciiLoad(this,input,option)
         call InputReadWord(data_units,word,PETSC_TRUE,ierr)
         input%ierr = ierr
         call InputErrorMsg(input,option,'DATA_UNITS','CONDITION FILE')
-        conversion = UnitsConvertToInternal(word,option)
+        conversion = UnitsConvertToInternal(word,unit_cat_strings(i),option)
       endif
       temp_array(i+1,:) = conversion * temp_array(i+1,:)
     enddo
+    deallocate(unit_cat_strings)
+    nullify(unit_cat_strings)
   else
     call InputCheckMandatoryUnits(input,option)
   endif
@@ -416,7 +423,7 @@ subroutine DatasetAsciiStrip(this)
 
   implicit none
   
-  class(dataset_ascii_type)  :: this
+  class(dataset_ascii_type) :: this
   
   call DatasetBaseStrip(this)
   

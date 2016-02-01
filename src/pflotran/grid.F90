@@ -758,37 +758,37 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscmat.h"
 
-  type(grid_type)                 :: grid
-  type(region_type)               :: region
-  type(option_type)               :: option
+  type(grid_type) :: grid
+  type(region_type) :: region
+  type(option_type) :: option
 
   ! local
-  type(unstructured_grid_type),pointer    :: ugrid
-  Vec                             :: vec_cell_ids,vec_cell_ids_loc
-  Vec                             :: vec_face_ids,vec_face_ids_loc
-  IS                              :: is_from, is_to
-  Mat                             :: adj, adj_t,adj_d, adj_o
-  VecScatter                      :: vec_scat
-  PetscErrorCode                  :: ierr
-  PetscViewer                     :: viewer
-  PetscInt                        :: ii,jj,kk,count
-  PetscInt                        :: istart, iend
-  PetscInt                        :: ghosted_id,local_id,natural_id
-  PetscInt,pointer                :: tmp_int_array(:),tmp_int_array2(:)
-  PetscScalar,pointer             :: v_loc_p(:),v_loc2_p(:)
-  PetscScalar,pointer             :: tmp_scl_array(:)
+  type(unstructured_grid_type),pointer :: ugrid
+  Vec :: vec_cell_ids,vec_cell_ids_loc
+  Vec :: vec_face_ids,vec_face_ids_loc
+  IS :: is_from, is_to
+  Mat :: adj, adj_t,adj_d, adj_o
+  VecScatter :: vec_scat
+  PetscErrorCode :: ierr
+  PetscViewer :: viewer
+  PetscInt :: ii,jj,kk,count
+  PetscInt :: istart, iend
+  PetscInt :: ghosted_id,local_id,natural_id
+  PetscInt,pointer :: tmp_int_array(:),tmp_int_array2(:)
+  PetscScalar,pointer :: v_loc_p(:),v_loc2_p(:)
+  PetscScalar,pointer :: tmp_scl_array(:)
 
 
-  PetscInt, pointer               :: ia_p(:), ja_p(:)
-  PetscInt                        :: n,rstart,rend,icol(1)
-  PetscInt                        :: index
-  PetscInt                        :: vertex_id
-  PetscOffset                     :: iia,jja,aaa,iicol
-  PetscBool                       :: done,found
-  PetscScalar                     :: aa(1)
-  PetscInt                        :: cell_id_max_local
-  PetscInt                        :: cell_id_max_global
-  ! PetscScalar, pointer            :: aa(:)
+  PetscInt, pointer :: ia_p(:), ja_p(:)
+  PetscInt :: n,rstart,rend,icol(1)
+  PetscInt :: index
+  PetscInt :: vertex_id
+  PetscOffset :: iia,jja,aaa,iicol
+  PetscBool :: done,found
+  PetscScalar :: aa(1)
+  PetscInt :: cell_id_max_local
+  PetscInt :: cell_id_max_global
+  ! PetscScalar, pointer :: aa(:)
   ! Would like to use the above, but I have to fix MatGetArrayF90() first. --RTM
   
   ugrid => grid%unstructured_grid
@@ -1565,8 +1565,8 @@ subroutine GridLocalizeRegionFromBlock(grid,region,option)
   implicit none
   
   type(region_type), pointer :: region
-  type(grid_type), pointer   :: grid
-  type(option_type)          :: option
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt, allocatable :: temp_int_array(:)
@@ -1658,8 +1658,8 @@ subroutine GridLocalizeRegionFromCartBound(grid,region,option)
   implicit none
   
   type(region_type), pointer :: region
-  type(grid_type), pointer   :: grid
-  type(option_type)          :: option
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt, allocatable :: temp_int_array(:)
@@ -1722,8 +1722,8 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
   implicit none
   
   type(region_type), pointer :: region
-  type(grid_type), pointer   :: grid
-  type(option_type)          :: option
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt, allocatable :: temp_int_array(:)

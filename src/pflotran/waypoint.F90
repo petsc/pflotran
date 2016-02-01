@@ -241,7 +241,7 @@ subroutine WaypointDeleteFromList(obsolete_waypoint,waypoint_list)
 
   type(waypoint_type), pointer :: obsolete_waypoint
   type(waypoint_type), pointer :: waypoint, prev_waypoint
-  type(waypoint_list_type)     :: waypoint_list
+  type(waypoint_list_type) :: waypoint_list
 
   waypoint => waypoint_list%first
 

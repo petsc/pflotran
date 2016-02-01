@@ -37,8 +37,8 @@ function GeomechDebugCreate()
 
   implicit none
   
-  type(geomech_debug_type), pointer          :: GeomechDebugCreate
-  type(geomech_debug_type), pointer          :: debug
+  type(geomech_debug_type), pointer :: GeomechDebugCreate
+  type(geomech_debug_type), pointer :: debug
   
   allocate(debug)
   
@@ -71,11 +71,11 @@ subroutine GeomechDebugRead(debug,input,option)
   
   implicit none
     
-  type(geomech_debug_type)                   :: debug
-  type(input_type), pointer                  :: input
-  type(option_type)                          :: option
+  type(geomech_debug_type) :: debug
+  type(input_type), pointer :: input
+  type(option_type) :: option
   
-  character(len=MAXWORDLENGTH)               :: keyword
+  character(len=MAXWORDLENGTH) :: keyword
 
   input%ierr = 0
   do

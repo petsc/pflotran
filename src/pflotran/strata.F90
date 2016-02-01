@@ -25,7 +25,7 @@ module Strata_module
     type(material_property_type), pointer :: material_property ! pointer to material in material array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(surface_material_property_type),pointer :: surf_material_property
-    PetscInt                                     :: isurf_material_property ! id of material in material array/list
+    PetscInt :: isurf_material_property ! id of material in material array/list
     PetscInt :: surf_or_subsurf_flag
     PetscReal :: start_time
     PetscReal :: final_time
@@ -186,6 +186,7 @@ subroutine StrataRead(strata,input,option)
   character(len=MAXWORDLENGTH) :: word
 
   input%ierr = 0
+
   do
   
     call InputReadPflotranString(input,option)
@@ -214,7 +215,7 @@ subroutine StrataRead(strata,input,option)
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
           strata%start_time = strata%start_time * &
-                              UnitsConvertToInternal(word,option)
+                              UnitsConvertToInternal(word,'time',option)
         endif
       case('FINAL_TIME')
         call InputReadDouble(input,option,strata%final_time)
@@ -223,7 +224,7 @@ subroutine StrataRead(strata,input,option)
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
           strata%final_time = strata%final_time * &
-                              UnitsConvertToInternal(word,option)
+                              UnitsConvertToInternal(word,'time',option)
         endif
       case('INACTIVE')
         strata%active = PETSC_FALSE

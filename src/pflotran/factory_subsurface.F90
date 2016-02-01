@@ -674,6 +674,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   ! 
 
   use Realization_class
+  use Realization_Base_class
   use Discretization_module
   use Option_module
   use Output_module, only : Output

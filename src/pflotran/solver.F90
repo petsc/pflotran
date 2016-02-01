@@ -70,10 +70,10 @@ module Solver_module
     ! PETSc nonlinear solver context
     SNES :: snes
     KSPType :: ksp_type
-    PCType  :: pc_type
-    KSP   ::  ksp
-    PC    ::  pc
-    TS    :: ts
+    PCType :: pc_type
+    KSP ::  ksp
+    PC ::  pc
+    TS :: ts
     
     PetscBool :: inexact_newton
 

@@ -528,7 +528,7 @@ subroutine DatasetBaseStrip(this)
 
   implicit none
   
-  class(dataset_base_type)  :: this
+  class(dataset_base_type) :: this
   
   call DeallocateArray(this%iarray)
   call DeallocateArray(this%rarray)

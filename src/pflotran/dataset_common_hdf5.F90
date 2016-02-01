@@ -385,7 +385,7 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
     call h5fclose_f(file_id,hdf5_err)
     call h5close_f(hdf5_err) 
     time_storage%times = time_storage%times * &
-      UnitsConvertToInternal(time_units,option)
+      UnitsConvertToInternal(time_units,'time',option)
   endif
 
   int_mpi = num_times
@@ -590,7 +590,7 @@ subroutine DatasetCommonHDF5Strip(this)
 
   implicit none
   
-  class(dataset_common_hdf5_type)  :: this
+  class(dataset_common_hdf5_type) :: this
   
   call DatasetBaseStrip(this)
   

@@ -88,13 +88,13 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
 
   class(realization_surface_type) :: surf_realization
   class(realization_subsurface_type) :: realization
-  PetscBool                      :: plot_flag
-  PetscBool                      :: transient_plot_flag
+  PetscBool :: plot_flag
+  PetscBool :: transient_plot_flag
 
   character(len=MAXSTRINGLENGTH) :: string
-  PetscErrorCode                 :: ierr
-  PetscLogDouble                 :: tstart, tend
-  type(option_type), pointer     :: option
+  PetscErrorCode :: ierr
+  PetscLogDouble :: tstart, tend
+  type(option_type), pointer :: option
 
   option => surf_realization%option
 
@@ -714,17 +714,17 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
   PetscInt :: var_list_type
 
 #if defined(SCORPIO_WRITE)
-  integer:: file_id
-  integer:: data_type
-  integer:: grp_id
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: realization_set_id
-  integer:: prop_id
+  integer :: file_id
+  integer :: data_type
+  integer :: grp_id
+  integer :: file_space_id
+  integer :: memory_space_id
+  integer :: data_set_id
+  integer :: realization_set_id
+  integer :: prop_id
   PetscMPIInt :: rank
   integer :: rank_mpi,file_space_rank_mpi
-  integer:: dims(3)
+  integer :: dims(3)
   integer :: start(3), length(3), stride(3),istart
 #else
   integer(HID_T) :: file_id
@@ -1022,15 +1022,15 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   type(option_type), pointer :: option
 
 #if defined(SCORPIO_WRITE)
-  integer:: file_id
-  integer:: data_type
-  integer:: grp_id
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: realization_set_id
-  integer:: prop_id
-  integer:: dims(3)
+  integer :: file_id
+  integer :: data_type
+  integer :: grp_id
+  integer :: file_space_id
+  integer :: memory_space_id
+  integer :: data_set_id
+  integer :: realization_set_id
+  integer :: prop_id
+  integer :: dims(3)
   integer :: start(3), length(3), stride(3),istart
   integer :: rank_mpi,file_space_rank_mpi
   integer :: hdf5_flag
@@ -2046,15 +2046,15 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
   PetscInt :: var_list_type  
 
 #if defined(SCORPIO_WRITE)
-  integer:: file_id
-  integer:: data_type
-  integer:: grp_id
-  integer:: file_space_id
-  integer:: memory_space_id
-  integer:: data_set_id
-  integer:: realization_set_id
-  integer:: prop_id
-  integer:: dims(3)
+  integer :: file_id
+  integer :: data_type
+  integer :: grp_id
+  integer :: file_space_id
+  integer :: memory_space_id
+  integer :: data_set_id
+  integer :: realization_set_id
+  integer :: prop_id
+  integer :: dims(3)
   integer :: start(3), length(3), stride(3),istart
   integer :: rank_mpi,file_space_rank_mpi
   integer :: hdf5_flag

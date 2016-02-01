@@ -173,13 +173,13 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   ! in
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  integer                        :: read_option
-  type(option_type)              :: option
+  integer :: read_option
+  type(option_type) :: option
   
   ! out
-  PetscInt,pointer               :: data(:,:)
-  PetscInt                       :: data_dims(2)
-  PetscInt                       :: dataset_dims(2)
+  PetscInt,pointer :: data(:,:)
+  PetscInt :: data_dims(2)
+  PetscInt :: dataset_dims(2)
   
   ! local
   PetscInt :: file_id
@@ -251,13 +251,13 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   ! in
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  integer                        :: read_option
-  type(option_type)              :: option
+  integer :: read_option
+  type(option_type) :: option
   
   ! out
-  PetscReal,pointer              :: data(:,:)
-  PetscInt                       :: data_dims(2)
-  PetscInt                       :: dataset_dims(2)
+  PetscReal,pointer :: data(:,:)
+  PetscInt :: data_dims(2)
+  PetscInt :: dataset_dims(2)
   
   ! local
   integer :: file_id

@@ -103,6 +103,7 @@ module Reaction_Aux_module
     PetscInt :: id
     character(len=MAXSTRINGLENGTH) :: reaction
     PetscReal :: rate_constant
+    PetscReal :: half_life
     PetscBool :: print_me
     type(database_rxn_type), pointer :: dbaserxn
     type(radioactive_decay_rxn_type), pointer :: next
@@ -824,6 +825,7 @@ function RadioactiveDecayRxnCreate()
   rxn%id = 0
   rxn%reaction = ''
   rxn%rate_constant = 0.d0
+  rxn%half_life = 0.d0
   rxn%print_me = PETSC_FALSE
   nullify(rxn%dbaserxn)
   nullify(rxn%next)

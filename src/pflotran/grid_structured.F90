@@ -338,6 +338,7 @@ subroutine StructGridReadDXYZ(structured_grid,input,option)
   ! Date: 10/23/07
   ! 
 
+  use Utility_module, only : UtilityReadArray
   use Option_module
   use Input_Aux_module
   
@@ -346,26 +347,20 @@ subroutine StructGridReadDXYZ(structured_grid,input,option)
   type(structured_grid_type) :: structured_grid
   type(input_type), pointer :: input
   type(option_type) :: option
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: string
   
   PetscInt :: i
 
-  allocate(structured_grid%dx_global(structured_grid%nx))
-  structured_grid%dx_global = 0.d0
-  allocate(structured_grid%dy_global(structured_grid%ny))
-  structured_grid%dy_global = 0.d0
-  allocate(structured_grid%dz_global(structured_grid%nz))
-  structured_grid%dz_global = 0.d0
-
-  word = 'X'
-  call StructGridReadArrayNew(structured_grid%dx_global, &
-                               structured_grid%nx,word,input,option)
-  word = 'Y'
-  call StructGridReadArrayNew(structured_grid%dy_global, &
-                               structured_grid%ny,word,input,option)
-  word = 'Z'
-  call StructGridReadArrayNew(structured_grid%dz_global, &
-                               structured_grid%nz,word,input,option)
+  ! the arrays are allocated within UtilityReadArray
+  string = 'DXYZ : X'
+  call UtilityReadArray(structured_grid%dx_global, &
+                        structured_grid%nx,string,input,option)
+  string = 'DXYZ : Y'
+  call UtilityReadArray(structured_grid%dy_global, &
+                        structured_grid%ny,string,input,option)
+  string = 'DXYZ : Z'
+  call UtilityReadArray(structured_grid%dz_global, &
+                        structured_grid%nz,string,input,option)
     
   if (OptionPrintToFile(option)) then
     write(option%fid_out,'(/," *DXYZ ")')
@@ -378,169 +373,6 @@ subroutine StructGridReadDXYZ(structured_grid,input,option)
   endif
 
 end subroutine StructGridReadDXYZ
-
-! ************************************************************************** !
-
-subroutine StructGridReadArray(a,n,input,option)
-  ! 
-  ! Reads structured grid spacing along an axis from
-  ! input file
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 10/23/07
-  ! 
-
-  use Input_Aux_module
-  use Option_module
-  
-  implicit none
-  
-  type(option_type) :: option
-  type(input_type), pointer :: input
-  PetscInt :: fid
-  PetscInt :: n
-  PetscInt :: i, i1, i2, m
-  PetscInt, parameter ::  nvalue=10
-  PetscReal, intent(inout) :: a(*)
-  character(len=MAXSTRINGLENGTH) :: string 
-
-!  call fiReadStringErrorMsg('DXYZ',ierr)
-
-!  call fiReadDouble(string,grid%radius_0,ierr)
-!  call fiDefaultMsg(option%myrank,'radius_0',ierr)
-
-  i2 = 0
-  do
-    i1 = i2+1
-    i2 = i2+nvalue
-    if (i2.gt.n) i2 = n
-    call InputReadPflotranString(input,option)
-    call InputReadStringErrorMsg(input,option,'DXYZ')
-    do i = i1, i2
-      call InputReadDouble(input,option,a(i))
-!geh  ierr, which comes from iostat, will not necessarily be 0 and 1, 
-!geh  it could be another number
-!geh      if (ierr == 1) a(i) = 0.d0
-      if (input%ierr /= 0) a(i) = 0.d0
-!     print *,i,i1,i2,nvalue,a(i),n,ierr
-!     call fiDefaultMsg("Error reading grid spacing", ierr)
-    enddo
-    do i = i1,i2
-      if (a(i) == 0.d0) then
-
-!---------if less than nx non-zero values are read, set all the zero
-!         values to the last non zero value read. Only for cartesian 
-!         system
-
-        do m = i,n
-          a(m) = a(i-1)
-        enddo
-        return
-      endif
-    enddo
-    if (i2 >= n) exit
-  enddo
-    
-end subroutine StructGridReadArray
-
-! ************************************************************************** !
-
-subroutine StructGridReadArrayNew(array,array_size,axis,input,option)
-  ! 
-  ! Reads structured grid spacing along an axis from
-  ! input file
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 05/21/09
-  ! 
-
-  use Input_Aux_module
-  use String_module
-  use Option_module
-  
-  implicit none
-  
-  type(option_type) :: option
-  type(input_type), pointer :: input
-  character(len=MAXWORDLENGTH) :: axis
-  PetscInt :: array_size
-  PetscReal :: array(array_size)
-  
-  PetscInt :: i, num_values, count
-  character(len=MAXSTRINGLENGTH) :: string, string2
-  character(len=MAXWORDLENGTH) :: word, word2, word3
-  character(len=1) :: backslash
-  PetscBool :: continuation_flag
-  PetscReal :: value
-  PetscErrorCode :: ierr
-
-  backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
-                          ! is a double quote as in c/c++
-  
-  count = 0
-  continuation_flag = PETSC_TRUE
-  do
-    
-    if (count >= array_size) exit
-    
-    if (.not.continuation_flag .and. count /= 1) then
-      option%io_buffer = 'Insufficient values read for ' // &
-                         trim(axis) // &
-                         ' direction in DXYZ card'
-      call printErrMsg(option)
-    else if (count == 1) then
-      array = array(count)
-      exit
-    endif
-    
-    call InputReadPflotranString(input,option)
-    call InputReadStringErrorMsg(input,option,'DXYZ')
-
-    continuation_flag = PETSC_FALSE
-    if (index(input%buf,backslash) > 0) &
-      continuation_flag = PETSC_TRUE
-
-    do 
-      call InputReadWord(input,option,word,PETSC_TRUE)
-      if (InputError(input) .or. StringCompare(word,backslash,ONE_INTEGER)) exit
-      i = index(word,'*')
-      if (i == 0) i = index(word,'@')
-      if (i /= 0) then
-        word2 = word(1:i-1)
-        word3 = word(i+1:len_trim(word))
-        string2 = word2
-        call InputReadInt(string2,option,num_values,input%ierr)
-        call InputErrorMsg(input,option,'# values','StructGridReadArrayNew')
-        string2 = word3
-        call InputReadDouble(string2,option,value,input%ierr)
-        call InputErrorMsg(input,option,'value','StructGridReadArrayNew')
-        do i=1, num_values
-          count = count + 1
-          if (count > array_size) then
-            option%io_buffer = 'Too many values read for ' // &
-                               trim(axis) // &
-                               ' direction in DXYZ card'
-            call printErrMsg(option)
-          endif
-          array(count) = value
-        enddo
-      else
-        string2 = word
-        call InputReadDouble(string2,option,value,input%ierr)
-        call InputErrorMsg(input,option,'value','StructGridReadDXYZ')
-        count = count + 1
-        if (count > array_size) then
-          option%io_buffer = 'Too many values read for ' // &
-                              trim(axis) // &
-                              ' direction in DXYZ card'
-          call printErrMsg(option)
-        endif
-        array(count) = value
-      endif
-    enddo
-  enddo
-
-end subroutine StructGridReadArrayNew
 
 ! ************************************************************************** !
 

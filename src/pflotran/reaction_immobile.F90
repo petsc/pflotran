@@ -121,12 +121,12 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
                         'CHEMISTRY,IMMOBILE_DECAY_REACTION RATE_CONSTANT UNITS')
         else
           immobile_decay_rxn%rate_constant = &
-            UnitsConvertToInternal(word,option) * &
+            UnitsConvertToInternal(word,'concentration/time',option) * &
             immobile_decay_rxn%rate_constant
         endif
       case('HALF_LIFE')
         call InputReadDouble(input,option, &
-                             immobile_decay_rxn%rate_constant)
+                             immobile_decay_rxn%half_life)
         call InputErrorMsg(input,option,'half life', &
                          'CHEMISTRY,IMMOBILE_DECAY_REACTION,REACTION')
         call InputReadWord(input,option,word,PETSC_TRUE)
@@ -134,13 +134,13 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
           call InputDefaultMsg(input,option, &
                             'CHEMISTRY,IMMOBILE_DECAY_REACTION HALF_LIFE UNITS')
         else
-          immobile_decay_rxn%rate_constant = &
-            UnitsConvertToInternal(word,option) * &
-            immobile_decay_rxn%rate_constant
+          immobile_decay_rxn%half_life = &
+            UnitsConvertToInternal(word,'time',option) * &
+            immobile_decay_rxn%half_life
         endif
         ! convert half life to rate constant
         immobile_decay_rxn%rate_constant = &
-          -1.d0*log(0.5d0)/immobile_decay_rxn%rate_constant
+          -1.d0*log(0.5d0)/immobile_decay_rxn%half_life
       case default
         call InputKeywordUnrecognized(word, &
                                       'CHEMISTRY,IMMOBILE_DECAY_REACTION', &

@@ -116,12 +116,12 @@ subroutine GeomechDiscretizationCreateDMs(geomech_discretization,option)
       
   implicit none
   
-  type(geomech_discretization_type)            :: geomech_discretization
-  type(option_type)                            :: option
+  type(geomech_discretization_type) :: geomech_discretization
+  type(option_type) :: option
       
-  PetscInt                                     :: ndof
-  PetscErrorCode                               :: ierr
-  type(geomech_grid_type), pointer             :: geomech_grid
+  PetscInt :: ndof
+  PetscErrorCode :: ierr
+  type(geomech_grid_type), pointer :: geomech_grid
 
   !-----------------------------------------------------------------------
   ! Generate the DM objects that will manage communication.
@@ -158,11 +158,11 @@ subroutine GeomechDiscretizationCreateDM(geomech_discretization,dm_ptr,ndof,opti
   
   implicit none
   
-  type(geomech_discretization_type)                :: geomech_discretization
-  type(gmdm_ptr_type), pointer                     :: dm_ptr
-  type(option_type)                                :: option
-  PetscInt                                         :: ndof
-  PetscErrorCode                                   :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  type(option_type) :: option
+  PetscInt :: ndof
+  PetscErrorCode :: ierr
 
   select case(geomech_discretization%itype)
     case(STRUCTURED_GRID)
@@ -193,14 +193,14 @@ subroutine GeomechDiscretizationCreateVector(geomech_discretization,dm_index,vec
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(option_type)                             :: option
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  PetscInt                                      :: dm_index
-  Vec                                           :: vector
-  PetscInt                                      :: vector_type
-  PetscInt                                      :: ndof
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(option_type) :: option
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  PetscInt :: dm_index
+  Vec :: vector
+  PetscInt :: vector_type
+  PetscInt :: ndof
+  PetscErrorCode :: ierr
   
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
@@ -224,10 +224,10 @@ subroutine GeomechDiscretizationDuplicateVector(geomech_discretization,vector1,v
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  Vec                                           :: vector1
-  Vec                                           :: vector2
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  Vec :: vector1
+  Vec :: vector2
+  PetscErrorCode :: ierr
   
   call VecDuplicate(vector1,vector2,ierr);CHKERRQ(ierr)
   call VecCopy(vector1,vector2,ierr);CHKERRQ(ierr)
@@ -247,9 +247,9 @@ function GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: GeomechDiscretizationGetDMPtrFromIndex
-  PetscInt                                      :: dm_index
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: GeomechDiscretizationGetDMPtrFromIndex
+  PetscInt :: dm_index
   
   select case (dm_index)
     case(ONEDOF)
@@ -279,13 +279,13 @@ subroutine GeomechDiscretizationCreateJacobian(geomech_discretization,dm_index, 
   
   implicit none
 
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(option_type)                             :: option
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
-  MatType                                       :: mat_type
-  Mat                                           :: Jacobian
+  type(geomech_discretization_type) :: geomech_discretization
+  type(option_type) :: option
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
+  MatType :: mat_type
+  Mat :: Jacobian
 
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
 
@@ -312,12 +312,12 @@ subroutine GeomechDiscretizationGlobalToLocal(geomech_discretization,global_vec,
 
   implicit none
 
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: global_vec
-  Vec                                           :: local_vec
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: global_vec
+  Vec :: local_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
     
@@ -342,12 +342,12 @@ subroutine GeomechDiscretizationLocalToGlobal(geomech_discretization,local_vec, 
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: local_vec
-  Vec                                           :: global_vec
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: local_vec
+  Vec :: global_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
@@ -372,12 +372,12 @@ subroutine GeomechDiscretizationLocalToGlobalAdd(geomech_discretization,local_ve
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: local_vec
-  Vec                                           :: global_vec
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: local_vec
+  Vec :: global_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
@@ -402,12 +402,12 @@ subroutine GeomechDiscretizationLocalToLocal(geomech_discretization,local_vec1, 
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: local_vec1
-  Vec                                           :: local_vec2
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: local_vec1
+  Vec :: local_vec2
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
@@ -432,12 +432,12 @@ subroutine GeomechDiscretizationGlobalToNatural(geomech_discretization,global_ve
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: global_vec
-  Vec                                           :: natural_vec
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
 
@@ -462,12 +462,12 @@ subroutine GeomechDiscretizationNaturalToGlobal(geomech_discretization,natural_v
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: global_vec
-  Vec                                           :: natural_vec
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
@@ -492,12 +492,12 @@ subroutine GeomechDiscretizationGlobalToLocalBegin(geomech_discretization,global
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: local_vec
-  Vec                                           :: global_vec
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: local_vec
+  Vec :: global_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
@@ -520,12 +520,12 @@ subroutine GeomechDiscretizationGlobalToLocalEnd(geomech_discretization,global_v
 
  implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: local_vec
-  Vec                                           :: global_vec
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: local_vec
+  Vec :: global_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
@@ -548,12 +548,12 @@ subroutine GeomechDiscretizationLocalToLocalBegin(geomech_discretization,local_v
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: local_vec1
-  Vec                                           :: local_vec2
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: local_vec1
+  Vec :: local_vec2
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
@@ -576,12 +576,12 @@ subroutine GeomechDiscretizationLocalToLocalEnd(geomech_discretization,local_vec
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: local_vec1
-  Vec                                           :: local_vec2
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: local_vec1
+  Vec :: local_vec2
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
@@ -604,12 +604,12 @@ subroutine GeomechDiscretizGlobalToNaturalBegin(geomech_discretization,global_ve
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: global_vec
-  Vec                                           :: natural_vec
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
@@ -632,12 +632,12 @@ subroutine GeomechDiscretizGlobalToNaturalEnd(geomech_discretization,global_vec,
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: global_vec
-  Vec                                           :: natural_vec
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
@@ -660,12 +660,12 @@ subroutine GeomechDiscretizNaturalToGlobalBegin(geomech_discretization,natural_v
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: global_vec
-  Vec                                           :: natural_vec
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
     
@@ -685,12 +685,12 @@ subroutine GeomechDiscretizNaturalToGlobalEnd(geomech_discretization,natural_vec
 
   implicit none
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  type(gmdm_ptr_type), pointer                  :: dm_ptr
-  Vec                                           :: global_vec
-  Vec                                           :: natural_vec
-  PetscInt                                      :: dm_index
-  PetscErrorCode                                :: ierr
+  type(geomech_discretization_type) :: geomech_discretization
+  type(gmdm_ptr_type), pointer :: dm_ptr
+  Vec :: global_vec
+  Vec :: natural_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
   
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
@@ -710,10 +710,10 @@ subroutine GeomechDiscretAOApplicationToPetsc(geomech_discretization,int_array)
   
 #include "petsc/finclude/petscao.h"  
   
-  type(geomech_discretization_type)             :: geomech_discretization
-  PetscInt                                      :: int_array(:)
-  PetscErrorCode                                :: ierr
-  AO                                            :: ao
+  type(geomech_discretization_type) :: geomech_discretization
+  PetscInt :: int_array(:)
+  PetscErrorCode :: ierr
+  AO :: ao
   
   ao = geomech_discretization%grid%ao_natural_to_petsc_nodes
   
