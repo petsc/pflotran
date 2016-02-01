@@ -128,12 +128,12 @@ function CheckpointFilenameAppend(output_option,time,timestep)
 
   if (output_option%chkpt_ts_flag) then
     write(timestep_string,'(i9)') timestep
-    CheckpointFilenameAppend = '-' // 'ts' // trim(adjustr(timestep_string))
+    CheckpointFilenameAppend = '-' // 'ts' // trim(adjustl(timestep_string))
   else
     time = time * output_option%chkpt_tconv
     !write(time_string,'(1pe12.4)') time
     write(time_string,'(f15.4)') time
-    CheckpointFilenameAppend = '-' // trim(adjustr(time_string)) // &
+    CheckpointFilenameAppend = '-' // trim(adjustl(time_string)) // &
                                trim(adjustl(output_option%chkpt_tunit))
   endif
 
