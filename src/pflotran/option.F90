@@ -166,10 +166,13 @@ module Option_module
     PetscReal :: restart_time
     character(len=MAXSTRINGLENGTH) :: restart_filename
     character(len=MAXSTRINGLENGTH) :: input_filename
+
+    !---- For checkpointing -------------------
     PetscBool :: checkpoint_flag
     PetscInt :: checkpoint_frequency
     PetscBool :: checkpoint_format_binary
     PetscBool :: checkpoint_format_hdf5
+    !------------------------------------------
     
     PetscLogDouble :: start_time
     PetscBool :: wallclock_stop_flag

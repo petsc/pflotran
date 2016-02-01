@@ -1708,7 +1708,8 @@ subroutine InitSubsurfaceReadInput(simulation)
 
       case ('CHECKPOINT')
         option%checkpoint_flag = PETSC_TRUE
-        call CheckpointRead(input,option,realization%waypoint_list)
+        call CheckpointRead(input,option,output_option, &
+                            realization%waypoint_list)
 
 !......................
 

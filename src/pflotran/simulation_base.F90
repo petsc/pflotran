@@ -206,8 +206,7 @@ subroutine ExecuteRun(this)
   PetscReal :: sync_time
   type(waypoint_type), pointer :: cur_waypoint
   PetscViewer :: viewer
-  ! jmf
-  character(len=MAXSTRINGLENGTH) :: id
+  character(len=MAXSTRINGLENGTH) :: append_name
 
 #if defined(PETSC_HAVE_HDF5)
 #if defined(SCORPIO_WRITE)
@@ -230,7 +229,7 @@ subroutine ExecuteRun(this)
     return
   endif
 
-  id = '-restart'
+  append_name = '-restart'
 
   final_time = SimulationGetFinalWaypointTime(this)
   cur_waypoint => this%waypoint_list%first
@@ -242,13 +241,11 @@ subroutine ExecuteRun(this)
     cur_waypoint => cur_waypoint%next
   enddo
   if (this%option%checkpoint_flag) then
-    !call this%process_model_coupler_list%CheckpointBinary(viewer, &
-    !                                                      NEG_ONE_INTEGER)
-    call this%process_model_coupler_list%CheckpointBinary(viewer,id)
+    call this%process_model_coupler_list%CheckpointBinary(viewer, &
+                                                          append_name)
     if (this%option%checkpoint_format_hdf5) then
-      !call this%process_model_coupler_list%CheckpointHDF5(chk_grp_id, &
-      !                                                    NEG_ONE_INTEGER)
-      call this%process_model_coupler_list%CheckpointHDF5(chk_grp_id,id)
+      call this%process_model_coupler_list%CheckpointHDF5(chk_grp_id, &
+                                                          append_name)
     endif
   endif
 
