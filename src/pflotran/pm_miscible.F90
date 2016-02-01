@@ -1,7 +1,7 @@
 module PM_Miscible_class
 
   use PM_Base_class
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
   
   use PFLOTRAN_Constants_module
 
@@ -17,8 +17,9 @@ module PM_Miscible_class
 #include "petsc/finclude/petscmat.h90"
 #include "petsc/finclude/petscsnes.h"
 
-  type, public, extends(pm_subsurface_type) :: pm_miscible_type
+  type, public, extends(pm_subsurface_flow_type) :: pm_miscible_type
   contains
+    procedure, public :: Read => PMMiscibleRead
     procedure, public :: InitializeTimestep => PMMiscibleInitializeTimestep
     procedure, public :: Residual => PMMiscibleResidual
     procedure, public :: Jacobian => PMMiscibleJacobian
@@ -63,12 +64,64 @@ function PMMiscibleCreate()
 
   allocate(miscible_pm)
 
-  call PMSubsurfaceCreate(miscible_pm)
+  call PMSubsurfaceFlowCreate(miscible_pm)
   miscible_pm%name = 'PMMiscible'
 
   PMMiscibleCreate => miscible_pm
   
 end function PMMiscibleCreate
+
+! ************************************************************************** !
+
+subroutine PMMiscibleRead(this,input)
+  ! 
+  ! Reads input file parameters associated with the Miscible process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/15
+  use Input_Aux_module
+  use String_module
+  use Utility_module
+  use EOS_Water_module  
+  use Option_module
+  use Miscible_Aux_module
+ 
+  implicit none
+  
+  class(pm_miscible_type) :: this
+  type(input_type), pointer :: input
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  type(option_type), pointer :: option
+  PetscBool :: found
+
+  option => this%option
+  
+  error_string = 'Miscible Options'
+  
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+
+    found = PETSC_FALSE
+    call PMSubsurfaceFlowReadSelectCase(this,input,word,found,option)
+    if (found) cycle
+    
+    select case(trim(word))
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    end select
+  enddo
+  
+end subroutine PMMiscibleRead
 
 ! ************************************************************************** !
 
@@ -86,14 +139,14 @@ subroutine PMMiscibleInitializeTimestep(this)
   
   class(pm_miscible_type) :: this
 
-  call PMSubsurfaceInitializeTimestepA(this)         
+  call PMSubsurfaceFlowInitializeTimestepA(this)         
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," MISCIBLE FLOW ",63("="))')
   endif
   
   call MiscibleInitializeTimestep(this%realization)
-  call PMSubsurfaceInitializeTimestepB(this)         
+  call PMSubsurfaceFlowInitializeTimestepB(this)         
   
 end subroutine PMMiscibleInitializeTimestep
 
@@ -166,10 +219,10 @@ subroutine PMMiscibleUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
       fac = 0.33d0
       ut = 0.d0
     else
-      up = this%option%dpmxe/(this%option%dpmax+0.1)
-      utmp = this%option%dtmpmxe/(this%option%dtmpmax+1.d-5)
-      uc = this%option%dcmxe/(this%option%dcmax+1.d-6)
-      uus= this%option%dsmxe/(this%option%dsmax+1.d-6)
+      up = this%pressure_change_governor/(this%max_pressure_change+0.1)
+      utmp = this%temperature_change_governor/(this%max_temperature_change+1.d-5)
+      uc = this%xmol_change_governor/(this%max_xmol_change+1.d-6)
+      uus= this%saturation_change_governor/(this%max_saturation_change+1.d-6)      
       ut = min(up,utmp,uc,uus)
     endif
     dtt = fac * dt * (1.d0 + ut)
@@ -178,7 +231,7 @@ subroutine PMMiscibleUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     dt_tfac = tfac(ifac) * dt
 
     fac = 0.5d0
-    up = this%option%dpmxe/(this%option%dpmax+0.1)
+    up = this%pressure_change_governor/(this%max_pressure_change+0.1)
     dt_p = fac * dt * (1.d0 + up)
 
     dtt = min(dt_tfac,dt_p)
@@ -304,7 +357,7 @@ subroutine PMMiscibleTimeCut(this)
   
   class(pm_miscible_type) :: this
   
-  call PMSubsurfaceTimeCut(this)
+  call PMSubsurfaceFlowTimeCut(this)
   call MiscibleTimeCut(this%realization)
 
 end subroutine PMMiscibleTimeCut
@@ -323,7 +376,7 @@ subroutine PMMiscibleUpdateSolution(this)
   
   class(pm_miscible_type) :: this
   
-  call PMSubsurfaceUpdateSolution(this)
+  call PMSubsurfaceFlowUpdateSolution(this)
   call MiscibleUpdateSolution(this%realization)
 
 end subroutine PMMiscibleUpdateSolution     
@@ -355,25 +408,29 @@ subroutine PMMiscibleMaxChange(this)
   ! Date: 11/27/13
   ! 
 
-  use Miscible_module, only : MiscibleMaxChange
+  use Mphase_module, only : MphaseMaxChange
 
   implicit none
   
   class(pm_miscible_type) :: this
   
-  call MiscibleMaxChange(this%realization)
+  !geh: yes, call Mphase.  No need to replicate code  
+  call MphaseMaxChange(this%realization,this%max_pressure_change, &
+                       this%max_temperature_change, &
+                       this%max_saturation_change, &
+                       this%max_xmol_change)
   if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dpmx= ",1pe12.4, &
       & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
-          this%option%dsmax
+          this%max_pressure_change,this%max_temperature_change, &
+          this%max_xmol_change,this%max_saturation_change
   endif
   if (this%option%print_file_flag) then
     write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
       & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-      this%option%dpmax,this%option%dtmpmax,this%option%dcmax, &
-      this%option%dsmax
-  endif  
+          this%max_pressure_change,this%max_temperature_change, &
+          this%max_xmol_change,this%max_saturation_change
+  endif     
 
 end subroutine PMMiscibleMaxChange
 
@@ -419,7 +476,7 @@ subroutine PMMiscibleDestroy(this)
 
   ! preserve this ordering
   call MiscibleDestroy(this%realization)
-  call PMSubsurfaceDestroy(this)
+  call PMSubsurfaceFlowDestroy(this)
   
 end subroutine PMMiscibleDestroy
   

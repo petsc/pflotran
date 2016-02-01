@@ -664,16 +664,21 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
       iipha = int(iphase_loc_p(grid%nL2G(n)))
   
 ! ******** Too huge change in pressure ****************     
-      if (dabs(xx_p(n0 + 1) - yy_p(n0 + 1)) > (1000.0D0 * option%dpmxe)) then
+!geh: I don't believe that this code is being used.  Therefore, I will add an
+!     error message and let someone sort the use of option%dpmxe later
+        option%io_buffer = 'option%dpmxe and option%dtmpmxe needs to be ' // &
+          'refactored in MPhaseUpdateReasonPatch'
+        call printErrMsg(option)      
+!geh      if (dabs(xx_p(n0 + 1) - yy_p(n0 + 1)) > (1000.0D0 * option%dpmxe)) then
         re = 0; print *,'large change in p', xx_p(n0 + 1), yy_p(n0 + 1)
         exit
-      endif
+!geh      endif
 
 ! ******** Too huge change in temperature ****************
-      if (dabs(xx_p(n0 + 2) - yy_p(n0 + 2)) > (10.0D0 * option%dtmpmxe)) then
+!geh      if (dabs(xx_p(n0 + 2) - yy_p(n0 + 2)) > (10.0D0 * option%dtmpmxe)) then
         re = 0; print *,'large change in T', xx_p(n0 + 2), yy_p(n0 + 2)
         exit
-      endif
+!geh      endif
  
 ! ******* Check 0 <= sat/con <= 1 **************************
       select case(iipha)
@@ -3913,7 +3918,7 @@ end subroutine MphaseCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine MphaseMaxChange(realization)
+subroutine MphaseMaxChange(realization,dpmax,dtmpmax,dsmax,dcmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -3922,7 +3927,6 @@ subroutine MphaseMaxChange(realization)
   ! 
 
   use Realization_class
-  use Patch_module
   use Field_module
   use Option_module
   use Field_module
@@ -3933,48 +3937,31 @@ subroutine MphaseMaxChange(realization)
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(patch_type), pointer :: cur_patch
-  PetscReal :: dcmax, dsmax, max_c, max_S  
+  PetscReal :: dpmax, dtmpmax, dsmax, dcmax
   PetscErrorCode :: ierr 
 
   option => realization%option
   field => realization%field
 
-  option%dpmax=0.D0
-  option%dtmpmax=0.D0 
-  option%dcmax=0.D0
-  option%dsmax=0.D0
-  dcmax=0.D0
-  dsmax=0.D0
+  dpmax = 0.d0
+  dtmpmax = 0.d0
+  dcmax = 0.d0
+  dsmax = 0.d0
 
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
                 ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
+  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,dpmax, &
                      ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax, &
+  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,dtmpmax, &
                      ierr);CHKERRQ(ierr)
 
-  cur_patch => realization%patch_list%first
-  do
-    if (.not.associated(cur_patch)) exit
-    realization%patch => cur_patch
-    call MphaseMaxChangePatch(realization, max_c, max_s)
-    if (dcmax <max_c)  dcmax =max_c
-    if (dsmax <max_s)  dsmax =max_s
-    cur_patch => cur_patch%next
-  enddo
+  call MphaseMaxChangePatch(realization, dcmax, dsmax)
 
-  if (option%mycommsize >1)then
-    call MPI_Allreduce(dcmax,max_c,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
-                       MPI_MAX,option%mycomm,ierr)
-    call MPI_Allreduce(dsmax,max_s,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
-                       MPI_MAX,option%mycomm,ierr)
-    dcmax= max_C
-    dsmax = max_s
-  endif 
-  option%dcmax=dcmax
-  option%dsmax=dsmax
-  !print *, 'Max changes=', option%dpmax,option%dtmpmax, option%dcmax,option%dsmax
+  call MPI_Allreduce(dcmax,MPI_IN_PLACE,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                     MPI_MAX,option%mycomm,ierr)
+  call MPI_Allreduce(dsmax,MPI_IN_PLACE,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                     MPI_MAX,option%mycomm,ierr)
+
 end subroutine MphaseMaxChange
 
 ! ************************************************************************** !

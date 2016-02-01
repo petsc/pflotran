@@ -2116,7 +2116,7 @@ end subroutine RichardsCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine RichardsMaxChange(realization)
+subroutine RichardsMaxChange(realization,dpmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -2133,7 +2133,8 @@ subroutine RichardsMaxChange(realization)
   class(realization_base_type) :: realization
   
   type(option_type), pointer :: option
-  type(field_type), pointer :: field  
+  type(field_type), pointer :: field 
+  PetscReal :: dpmax
   
   PetscErrorCode :: ierr
   PetscViewer :: viewer
@@ -2141,10 +2142,11 @@ subroutine RichardsMaxChange(realization)
   option => realization%option
   field => realization%field
 
+  dpmax = 0.d0
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
                 ierr);CHKERRQ(ierr)
   call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY, &
-                     option%dpmax,ierr);CHKERRQ(ierr)
+                     dpmax,ierr);CHKERRQ(ierr)
 
 end subroutine RichardsMaxChange
 

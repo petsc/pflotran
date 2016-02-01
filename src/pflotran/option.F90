@@ -129,10 +129,6 @@ module Option_module
     PetscBool :: match_waypoint
     PetscReal :: refactor_dt
   
-      ! Basically our target number of newton iterations per time step.
-    PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
-    PetscReal :: dpmax,dtmpmax,dsmax,dcmax
-
     PetscReal :: gravity(3)
     
     PetscReal :: scale
@@ -147,10 +143,6 @@ module Option_module
     PetscReal :: reference_porosity
     PetscReal :: reference_saturation
     
-    PetscReal :: pressure_dampening_factor
-    PetscReal :: saturation_change_limit
-    PetscReal :: pressure_change_limit
-    PetscReal :: temperature_change_limit
     PetscBool :: converged
     
     PetscReal :: infnorm_res_sec  ! inf. norm of secondary continuum rt residual
@@ -480,10 +472,6 @@ subroutine OptionInitRealization(option)
   option%reference_porosity = 0.25d0
   option%reference_saturation = 1.d0
   
-  option%pressure_dampening_factor = 0.d0
-  option%saturation_change_limit = 0.d0
-  option%pressure_change_limit = 0.d0
-  option%temperature_change_limit = 0.d0
   option%converged = PETSC_FALSE
   
   option%infnorm_res_sec = 0.d0
@@ -497,16 +485,6 @@ subroutine OptionInitRealization(option)
 
   option%gravity(:) = 0.d0
   option%gravity(3) = -9.8068d0    ! m/s^2
-
-  option%dpmxe = 5.d5
-  option%dtmpmxe = 5.d0
-  option%dsmxe = 0.5d0
-  option%dcmxe = 1.d0
-
-  option%dpmax = 0.d0
-  option%dtmpmax = 0.d0
-  option%dsmax = 0.d0
-  option%dcmax = 0.d0
 
   !physical constants and defult variables
 !  option%difaq = 1.d-9 ! m^2/s read from input file

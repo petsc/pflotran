@@ -70,7 +70,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   ! 
 
   use Option_module
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
   use PM_Base_class
   use PM_RT_class
   use PM_Waste_Form_class
@@ -94,7 +94,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   
   class(pmc_subsurface_type), pointer :: pmc_subsurface
   class(pmc_third_party_type), pointer :: pmc_third_party
-  class(pm_subsurface_type), pointer :: pm_flow
+  class(pm_subsurface_flow_type), pointer :: pm_flow
   class(pm_rt_type), pointer :: pm_rt
   class(pm_waste_form_type), pointer :: pm_waste_form
   class(pm_ufd_decay_type), pointer :: pm_ufd_decay
@@ -113,7 +113,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   do
     if (.not.associated(cur_pm)) exit
     select type(cur_pm)
-      class is(pm_subsurface_type)
+      class is(pm_subsurface_flow_type)
         pm_flow => cur_pm
       class is(pm_rt_type)
         pm_rt => cur_pm
@@ -314,7 +314,7 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
   ! 
 
   use Option_module
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
   use PM_Base_class
   use PM_Flash2_class
   use PM_General_class
@@ -328,7 +328,7 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
   implicit none 
 
   type(option_type) :: option
-  class(pm_subsurface_type), pointer :: pm_flow
+  class(pm_subsurface_flow_type), pointer :: pm_flow
   
   if (.not.associated(pm_flow)) then
     option%nphase = 1
@@ -515,22 +515,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             error_string
           call printErrMsg(option)
         endif
-        select type(pm)
-!          class is(pm_general_type,pm_richards_type,pm_th_type)
-          !geh: why I cannot shove all these in a single 'class is' statement
-          !     is beyond me.
-          class is(pm_general_type)
-            call pm%Read(input)
-          class is(pm_richards_type)
-            call pm%Read(input)
-          class is(pm_th_type)
-            call pm%Read(input)
-          class is(pm_toil_ims_type)
-            call pm%Read(input)
-          class default
-            option%io_buffer = 'OPTIONS not set up for PM.'
-            call printErrMsg(option)
-        end select
+        call pm%Read(input)
       case default
         error_string = trim(error_string) // ',SUBSURFACE_FLOW'
         call InputKeywordUnrecognized(word,error_string,option)
@@ -576,17 +561,7 @@ subroutine SubsurfaceReadRTPM(input, option, pm)
   pm => PMRTCreate()
   pm%option => option
   
-  word = ''
-  do   
-    call InputReadPflotranString(input,option)
-    if (InputCheckExit(input,option)) exit
-    call InputReadWord(input,option,word,PETSC_FALSE)
-    call StringToUpper(word)
-    select case(word)
-      case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
-      case default ! includes 'GLOBAL_IMPLICIT'
-    end select
-  enddo
+  call pm%Read(input)
   
 end subroutine SubsurfaceReadRTPM
 
@@ -719,7 +694,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   use PMC_Base_class
   use PM_Base_class
   use PM_Base_Pointer_module
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
   
   use PM_General_class
   use PM_Richards_class
@@ -836,8 +811,8 @@ subroutine InitSubsurfaceSimulation(simulation)
         if (.not.associated(cur_process_model)) exit
         ! set realization
         select type(cur_process_model)
-          class is (pm_subsurface_type)
-            call cur_process_model%PMSubsurfaceSetRealization(realization)
+          class is (pm_subsurface_flow_type)
+            call cur_process_model%PMSubsurfaceFlowSetRealization(realization)
           class is (pm_rt_type)
             if (.not.associated(realization%reaction)) then
               option%io_buffer = 'SUBSURFACE_TRANSPORT specified as a ' // &
@@ -852,7 +827,7 @@ subroutine InitSubsurfaceSimulation(simulation)
         end select
         ! set time stepper
         select type(cur_process_model)
-          class is (pm_subsurface_type)
+          class is (pm_subsurface_flow_type)
             cur_process_model_coupler%timestepper%dt = option%flow_dt
           class is (pm_rt_type)
             cur_process_model_coupler%timestepper%dt = option%tran_dt
@@ -867,7 +842,7 @@ subroutine InitSubsurfaceSimulation(simulation)
               ! Post
               select type(cur_process_model)
                 ! flow solutions
-                class is(pm_subsurface_type)
+                class is(pm_subsurface_flow_type)
                   if (ts%solver%check_post_convergence .or. &
                       cur_process_model%check_post_convergence) then
                     call SNESLineSearchSetPostCheck(linesearch, &
@@ -893,10 +868,10 @@ subroutine InitSubsurfaceSimulation(simulation)
                   endif
               end select
               ! Pre
-              select type(cur_process_model)
+              select type(pm => cur_process_model)
                 class is(pm_richards_type)
-                  if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-                      dabs(option%saturation_change_limit) > 0.d0) then
+                  if (Initialized(pm%pressure_dampening_factor) .or. &
+                      Initialized(pm%saturation_change_limit)) then
                     call SNESLineSearchSetPreCheck(linesearch, &
                                                    PMCheckUpdatePre, &
                                              cur_process_model_coupler%pm_ptr, &
@@ -913,9 +888,9 @@ subroutine InitSubsurfaceSimulation(simulation)
                                              cur_process_model_coupler%pm_ptr, &
                                                  ierr);CHKERRQ(ierr)
                 class is(pm_th_type)
-                  if (dabs(option%pressure_dampening_factor) > 0.d0 .or. &
-                      dabs(option%pressure_change_limit) > 0.d0 .or. &
-                      dabs(option%temperature_change_limit) > 0.d0) then
+                  if (Initialized(pm%pressure_dampening_factor) .or. &
+                      Initialized(pm%pressure_change_limit) .or. &
+                      Initialized(pm%temperature_change_limit)) then
                     call SNESLineSearchSetPreCheck(linesearch, &
                                                    PMCheckUpdatePre, &
                                              cur_process_model_coupler%pm_ptr, &

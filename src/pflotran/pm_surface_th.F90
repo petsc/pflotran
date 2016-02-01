@@ -24,6 +24,7 @@ module PM_Surface_TH_class
 
   type, public, extends(pm_surface_type) :: pm_surface_th_type
   contains
+    procedure, public :: Read => PMSurfaceTHRead
     procedure, public :: UpdateTimestep => PMSurfaceTHUpdateTimestep
     procedure, public :: PreSolve => PMSurfaceTHPreSolve
     procedure, public :: PostSolve => PMSurfaceTHPostSolve
@@ -61,6 +62,58 @@ function PMSurfaceTHCreate()
   PMSurfaceTHCreate => surface_th_pm
 
 end function PMSurfaceTHCreate
+
+! ************************************************************************** !
+
+subroutine PMSurfaceTHRead(this,input)
+  ! 
+  ! Reads input file parameters associated with the Surface TH process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/15
+  use Input_Aux_module
+  use String_module
+  use Utility_module
+  use EOS_Water_module  
+  use Option_module
+  use Surface_TH_Aux_module
+ 
+  implicit none
+  
+  class(pm_surface_th_type) :: this
+  type(input_type), pointer :: input
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  type(option_type), pointer :: option
+  PetscBool :: found
+
+  option => this%option
+  
+  error_string = 'Surface TH Options'
+  
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+
+    found = PETSC_FALSE
+    call PMSurfaceReadSelectCase(this,input,word,found,option)
+    if (found) cycle
+    
+    select case(trim(word))
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    end select
+  enddo
+  
+end subroutine PMSurfaceTHRead
 
 ! ************************************************************************** !
 
