@@ -336,7 +336,7 @@ class RegressionTest(object):
             cwd = os.getcwd()
             for entry in os.listdir(cwd):
                 if os.path.isfile(entry):
-                    search_checkpoint = "^({0}-)?{1}-([\d]+|restart).chk$".format(
+                    search_checkpoint = "^({0}-)?{1}-(ts[\d]+|restart).chk$".format(
                         self._RESTART_PREFIX, self.name())
                     if re.search(search_checkpoint, entry):
                         os.rename(entry, entry + ".old")
