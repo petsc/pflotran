@@ -1545,7 +1545,8 @@ subroutine TOilImsFlux(toil_auxvar_up,global_auxvar_up, &
     endif  ! if mobility larger than given tolerance                 
 
   enddo
-#endif ! TOIL_CONVECTION
+#endif 
+! TOIL_CONVECTION
 
 !#ifdef DEBUG_GENERAL_FILEOUTPUT
 !  if (debug_flag > 0) then  
@@ -1892,7 +1893,8 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
 !#endif
     endif
   enddo
-#endif ! end of TOIL_CONVECTION
+#endif 
+! end of TOIL_CONVECTION
   
 !#ifdef DEBUG_GENERAL_FILEOUTPUT
 !  if (debug_flag > 0) then 
@@ -1935,7 +1937,8 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
       call printErrMsg(option)
   end select
   Res(energy_id) = Res(energy_id) + heat_flux ! MW
-#endif ! end of TOIL_CONDUCTION
+#endif 
+! end of TOIL_CONDUCTION
 
 !#ifdef DEBUG_FLUXES  
 !  if (debug_connection) then  
