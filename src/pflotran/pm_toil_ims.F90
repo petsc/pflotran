@@ -572,14 +572,16 @@ subroutine PMTOilImsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
         temp_scale = min(temp_scale,temp_real)
       endif
     endif
-#endif !TRUNCATE_PRESSURE
+#endif 
+!TRUNCATE_PRESSURE
 
 #ifdef LIMIT_MAX_SATURATION_CHANGE
     if (dabs(del_saturation) > max_saturation_change) then
        temp_real = dabs(max_saturation_change/del_saturation)
        temp_scale = min(temp_scale,temp_real)
     endif
-#endif !LIMIT_MAX_SATURATION_CHANGE        
+#endif 
+!LIMIT_MAX_SATURATION_CHANGE        
     scale = min(scale,temp_scale) 
   enddo
 

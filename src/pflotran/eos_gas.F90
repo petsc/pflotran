@@ -988,6 +988,7 @@ subroutine EOSGasDensityConstant(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
   PetscReal, intent(out) :: dRho_dP ! derivative gas density wrt pressure
   PetscErrorCode, intent(out) :: ierr
   
+  ierr = 0
   Rho_gas = constant_density ! kmol/m^3
 
   dRho_dT = 0.d0
@@ -1013,6 +1014,7 @@ subroutine EOSGasEnergyConstant(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   
   PetscReal :: T_energy
 
+  ierr = 0
   H = constant_enthalpy ! J/kmol
   ! T_energy is either T or T + 273.15
   ! do not change below

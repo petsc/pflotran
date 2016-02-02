@@ -2760,7 +2760,8 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units, &
         if (associated(real_buffer)) deallocate(real_buffer)
         nullify(real_buffer)
 #endif    
-#endif    ! if 0
+#endif    
+! if 0
       else
         i = index(filename,'.',PETSC_TRUE)
         if (i > 2) then
