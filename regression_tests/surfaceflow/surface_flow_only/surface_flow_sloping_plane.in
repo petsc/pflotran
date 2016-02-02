@@ -5,6 +5,10 @@ SIMULATION
   PROCESS_MODELS
     SUBSURFACE_FLOW flow
       MODE RICHARDS
+      OPTIONS
+        PRESSURE_DAMPENING_FACTOR 0.1
+        MAX_PRESSURE_CHANGE 1.d4
+      /
     /
   /
 END
@@ -21,8 +25,6 @@ END
 
 #=========================== timestepper =================================
 TIMESTEPPER FLOW
-  PRESSURE_DAMPENING_FACTOR 0.1
-  MAX_PRESSURE_CHANGE 1.d4
   TS_ACCELERATION 20
 END
 

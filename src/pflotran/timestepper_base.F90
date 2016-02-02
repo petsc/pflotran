@@ -268,51 +268,23 @@ subroutine TimestepperBaseProcessKeyword(this,input,option,keyword)
     case('INITIALIZE_TO_STEADY_STATE')
       this%init_to_steady_state = PETSC_TRUE
       call InputReadDouble(input,option,this%steady_state_rel_tol)
-      call InputDefaultMsg(input,option,'steady state convergence relative tolerance')
+      call InputDefaultMsg(input,option,'steady state convergence relative &
+                                         &tolerance')
 
     case('RUN_AS_STEADY_STATE')
       this%run_as_steady_state = PETSC_TRUE
-
-    case('MAX_PRESSURE_CHANGE')
-      call InputReadDouble(input,option,option%dpmxe)
-      call InputDefaultMsg(input,option,'dpmxe')
-
-    case('MAX_TEMPERATURE_CHANGE')
-      call InputReadDouble(input,option,option%dtmpmxe)
-      call InputDefaultMsg(input,option,'dtmpmxe')
-  
-    case('MAX_CONCENTRATION_CHANGE')
-      call InputReadDouble(input,option,option%dcmxe)
-      call InputDefaultMsg(input,option,'dcmxe')
-
-    case('MAX_SATURATION_CHANGE')
-      call InputReadDouble(input,option,option%dsmxe)
-      call InputDefaultMsg(input,option,'dsmxe')
-
-    case('PRESSURE_DAMPENING_FACTOR')
-      call InputReadDouble(input,option,option%pressure_dampening_factor)
-      call InputErrorMsg(input,option,'PRESSURE_DAMPENING_FACTOR', &
-                          'TIMESTEPPER')
-
-    case('SATURATION_CHANGE_LIMIT')
-      call InputReadDouble(input,option,option%saturation_change_limit)
-      call InputErrorMsg(input,option,'SATURATION_CHANGE_LIMIT', &
-                          'TIMESTEPPER')
-                           
-    case('PRESSURE_CHANGE_LIMIT')
-      call InputReadDouble(input,option,option%pressure_change_limit)
-      call InputErrorMsg(input,option,'PRESSURE_CHANGE_LIMIT', &
-                          'TIMESTEPPER')
-                           
-    case('TEMPERATURE_CHANGE_LIMIT')
-      call InputReadDouble(input,option,option%temperature_change_limit)
-      call InputErrorMsg(input,option,'TEMPERATURE_CHANGE_LIMIT', &
-                          'TIMESTEPPER')
 
     case('PRINT_EKG')
       this%print_ekg = PETSC_TRUE
       option%print_ekg = PETSC_TRUE
 
+    case('MAX_PRESSURE_CHANGE','MAX_TEMPERATURE_CHANGE', &
+         'MAX_CONCENTRATION_CHANGE','MAX_SATURATION_CHANGE', &
+         'PRESSURE_DAMPENING_FACTOR','SATURATION_CHANGE_LIMIT', &
+         'PRESSURE_CHANGE_LIMIT','TEMPERATURE_CHANGE_LIMIT')
+      option%io_buffer = 'Keyword "' // trim(keyword) // '" has been &
+        &deprecated in TIMESTEPPER and moved to the FLOW PM OPTIONS block.'
+      call printErrMsg(option)
     case default
       call InputKeywordUnrecognized(keyword,'TIMESTEPPER',option)
   end select

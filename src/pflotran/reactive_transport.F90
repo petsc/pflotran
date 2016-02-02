@@ -4056,7 +4056,7 @@ end subroutine RTCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine RTMaxChange(realization)
+subroutine RTMaxChange(realization,dcmax,dvfmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -4073,23 +4073,52 @@ subroutine RTMaxChange(realization)
   implicit none
   
   type(realization_subsurface_type) :: realization
+  PetscReal :: dcmax
+  PetscReal :: dvfmax
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field 
+  type(reaction_type), pointer :: reaction
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   PetscReal, pointer :: dxx_ptr(:), xx_ptr(:), yy_ptr(:)
-  
+  PetscInt :: local_id, ghosted_id, imnrl
+  PetscReal :: delta_volfrac
   PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field
+  reaction => realization%reaction
+  patch => realization%patch
+  grid => patch%grid
+  rt_auxvars => patch%aux%RT%auxvars  
 
-  option%dcmax=0.D0
+  dcmax = 0.d0
+  dvfmax = 0.d0
   
   call VecWAXPY(field%tran_dxx,-1.d0,field%tran_xx,field%tran_yy, &
                 ierr);CHKERRQ(ierr)
   
-  call VecStrideNorm(field%tran_dxx,ZERO_INTEGER,NORM_INFINITY,option%dcmax, &
+  call VecStrideNorm(field%tran_dxx,ZERO_INTEGER,NORM_INFINITY,dcmax, &
                      ierr);CHKERRQ(ierr)
+                     
+#if 1
+  ! update mineral volume fractions
+  if (reaction%mineral%nkinmnrl > 0) then
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (patch%imat(ghosted_id) <= 0) cycle
+      do imnrl = 1, reaction%mineral%nkinmnrl
+        delta_volfrac = rt_auxvars(ghosted_id)%mnrl_rate(imnrl)* &
+                        reaction%mineral%kinmnrl_molar_vol(imnrl)* &
+                        option%tran_dt
+        dvfmax = max(dabs(delta_volfrac),dvfmax)
+      enddo
+    enddo
+  endif 
+#endif
       
 end subroutine RTMaxChange
 

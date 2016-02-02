@@ -3033,7 +3033,7 @@ end subroutine MiscibleCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine MiscibleMaxChange(realization)
+subroutine MiscibleMaxChange(realization,dpmax,dcmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -3042,7 +3042,6 @@ subroutine MiscibleMaxChange(realization)
   ! 
 
   use Realization_class
-  use Patch_module
   use Field_module
   use Option_module
   use Field_module
@@ -3053,30 +3052,26 @@ subroutine MiscibleMaxChange(realization)
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(patch_type), pointer :: cur_patch
-  PetscReal :: dcmax
+  PetscReal :: dpmax, dcmax
+  PetscReal :: temp
   PetscInt :: idof
   PetscErrorCode :: ierr 
 
   option => realization%option
   field => realization%field
 
-  option%dpmax=0.D0
-  option%dtmpmax=0.D0 
-  option%dcmax=0.D0
-  option%dsmax=0.D0
-  dcmax=0.D0
+  dpmax = 0.d0
+  dcmax = 0.d0
 
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
                 ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
+  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,dpmax, &
                      ierr);CHKERRQ(ierr)
 
   do idof = 1,option%nflowdof-1 
-    dcmax = 0.D0
-    call VecStrideNorm(field%flow_dxx,idof,NORM_INFINITY,dcmax, &
+    call VecStrideNorm(field%flow_dxx,idof,NORM_INFINITY,temp, &
                        ierr);CHKERRQ(ierr)
-    if (dcmax > option%dcmax) option%dcmax = dcmax
+    dcmax = max(dcmax,temp)
   enddo
   
 end subroutine MiscibleMaxChange

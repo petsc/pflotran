@@ -10,6 +10,10 @@ SIMULATION
   PROCESS_MODELS
     SUBSURFACE_FLOW flow
       MODE TH
+      OPTIONS
+        MAX_PRESSURE_CHANGE 1.e5
+        MAX_TEMPERATURE_CHANGE 5.
+      /
     /
   /
 END
@@ -41,8 +45,6 @@ END
 #=========================== solver options ===================================
 TIMESTEPPER FLOW
   TS_ACCELERATION 5
-  MAX_PRESSURE_CHANGE 1.e5
-  MAX_TEMPERATURE_CHANGE 5.
 /
 
 NEWTON_SOLVER FLOW
