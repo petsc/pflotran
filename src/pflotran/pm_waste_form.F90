@@ -40,7 +40,9 @@ module PM_Waste_Form_class
   
   type, public, extends(pm_base_type) :: pm_waste_form_type
     class(realization_subsurface_type), pointer :: realization
-    character(len=MAXWORDLENGTH) :: data_mediator_species
+    ! jmf
+    !character(len=MAXWORDLENGTH) :: data_mediator_species
+    character(len=MAXSTRINGLENGTH), pointer :: data_mediator_species(:)
     class(data_mediator_vec_type), pointer :: data_mediator
     class(waste_form_base_type), pointer :: waste_form_list
     PetscBool :: print_mass_balance
@@ -129,7 +131,8 @@ subroutine PMWasteFormInit(this)
   call PMBaseInit(this)
   nullify(this%realization)
   nullify(this%data_mediator)
-  this%data_mediator_species = ''
+  ! jmf
+  !this%data_mediator_species = ''
   this%print_mass_balance = PETSC_FALSE
 
 end subroutine PMWasteFormInit
@@ -143,8 +146,10 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
+
   use Input_Aux_module
   use Option_module
+  use String_module
   
   implicit none
   
@@ -159,8 +164,12 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   select case(trim(keyword))
     
     case('DATA_MEDIATOR_SPECIES')
-      call InputReadWord(input,option,this%data_mediator_species,PETSC_TRUE)
-      call InputErrorMsg(input,option,'data_mediator_species',error_string)
+      this%data_mediator_species => StringSplit(trim(adjustl(input%buf)),',')
+      write(*,*) shape(this%data_mediator_species)
+      this%data_mediator_species(3) = trim(this%data_mediator_species(3))
+      ! jmf
+      !call InputReadWord(input,option,this%data_mediator_species,PETSC_TRUE)
+      !call InputErrorMsg(input,option,'data_mediator_species',error_string)
     case('PRINT_MASS_BALANCE')
       this%print_mass_balance = PETSC_TRUE
     case default
@@ -226,8 +235,9 @@ end subroutine PMWasteFormSetRealization
     call PMWFOutput(this)
   endif
 
+  ! jmf
   data_mediator_species_id = &
-    GetPrimarySpeciesIDFromName(this%data_mediator_species, &
+    GetPrimarySpeciesIDFromName(this%data_mediator_species(1), &
                                 this%realization%reaction,this%option)
   ! set up mass transfer
   call RealizCreateTranMassTransferVec(this%realization)
@@ -831,7 +841,8 @@ subroutine PMGlassRead(this,input)
     call printErrMsg(option)
   endif
   
-  if (len_trim(this%data_mediator_species) == 0) then
+  ! jmf
+  if (len_trim(this%data_mediator_species(1)) == 0) then
     option%io_buffer = &
       'DATA_MEDIATOR_SPECIES must be specified must be specified in ' // &
       trim(error_string)
@@ -1390,7 +1401,8 @@ subroutine PMFMDMRead(this,input)
       'NUM_GRID_CELLS must be specified for fuel matrix degradation model.'
     call printErrMsg(option)
   endif
-  if (len_trim(this%data_mediator_species) == 0) then
+  ! jmf
+  if (len_trim(this%data_mediator_species(1)) == 0) then
     option%io_buffer = &
       'DATA_MEDIATOR_SPECIES must be specified for fuel matrix ' // &
       'degradation model.'
