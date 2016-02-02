@@ -348,11 +348,19 @@ subroutine InputReadInt1(input, option, int)
   PetscInt :: int
 
   character(len=MAXWORDLENGTH) :: word
+  PetscBool :: found
 
-  call InputReadWord(input%buf,word,PETSC_TRUE,input%ierr)
+  found = PETSC_FALSE
+  if (associated(dbase)) then
+    call InputParseDbaseForInt(input%buf,int,found,input%ierr)
+  endif
   
-  if (.not.InputError(input)) then
-    read(word,*,iostat=input%ierr) int
+  if (.not.found) then
+    call InputReadWord(input%buf,word,PETSC_TRUE,input%ierr)
+  
+    if (.not.InputError(input)) then
+      read(word,*,iostat=input%ierr) int
+    endif
   endif
 
 end subroutine InputReadInt1
@@ -375,12 +383,21 @@ subroutine InputReadInt2(string, option, int, ierr)
   PetscErrorCode :: ierr
 
   character(len=MAXWORDLENGTH) :: word
+  PetscBool :: found
 
   ierr = 0
-  call InputReadWord(string,word,PETSC_TRUE,ierr)
+
+  found = PETSC_FALSE
+  if (associated(dbase)) then
+    call InputParseDbaseForInt(string,int,found,ierr)
+  endif
   
-  if (.not.InputError(ierr)) then
-    read(word,*,iostat=ierr) int
+  if (.not.found) then
+    call InputReadWord(string,word,PETSC_TRUE,ierr)
+  
+    if (.not.InputError(ierr)) then
+      read(word,*,iostat=ierr) int
+    endif
   endif
 
 end subroutine InputReadInt2

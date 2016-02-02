@@ -592,7 +592,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
-#endif !LIMIT_MAX_PRESSURE_CHANGE
+#endif 
+!LIMIT_MAX_PRESSURE_CHANGE
 #ifdef TRUNCATE_LIQUID_PRESSURE
         ! truncate liquid pressure change to prevent liquid pressure from 
         ! dropping below the air pressure while in the liquid state
@@ -632,7 +633,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
-#endif !TRUNCATE_LIQUID_PRESSURE  
+#endif 
+!TRUNCATE_LIQUID_PRESSURE  
 #ifdef LIMIT_MAX_TEMPERATURE_CHANGE
         if (dabs(del_temperature) > max_temperature_change) then
           temp_real = dabs(max_temperature_change/del_temperature)
@@ -659,7 +661,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
-#endif !LIMIT_MAX_TEMPERATURE_CHANGE        
+#endif 
+!LIMIT_MAX_TEMPERATURE_CHANGE        
       case(TWO_PHASE_STATE)
         gas_pressure_index = offset + GENERAL_GAS_PRESSURE_DOF
 !        air_pressure_index = offset + 2
@@ -738,7 +741,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
             temp_scale = min(temp_scale,temp_real)
           endif
         endif
-#endif !TRUNCATE_GAS_PRESSURE
+#endif 
+!TRUNCATE_GAS_PRESSURE
 #ifdef TRUNCATE_AIR_PRESSURE
         if (air_pressure1 <= 0.d0) then
           if (dabs(del_air_pressure) > 1.d-40) then
@@ -768,7 +772,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
             temp_scale = min(temp_scale,temp_real)
           endif
         endif
-#endif !TRUNCATE_AIR_PRESSURE
+#endif 
+!TRUNCATE_AIR_PRESSURE
 #if defined(TRUNCATE_GAS_PRESSURE) && defined(TRUNCATE_AIR_PRESSURE)
         ! have to factor in scaled update from previous conditionals
         gas_pressure1 = gas_pressure0 - temp_scale * del_gas_pressure
@@ -822,7 +827,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
-#endif !TRUNCATE_GAS_PRESSURE && TRUNCATE_AIR_PRESSURE
+#endif 
+!TRUNCATE_GAS_PRESSURE && TRUNCATE_AIR_PRESSURE
 #ifdef LIMIT_MAX_SATURATION_CHANGE
         if (dabs(del_saturation) > max_saturation_change) then
           temp_real = dabs(max_saturation_change/del_saturation)
@@ -850,7 +856,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
-#endif !LIMIT_MAX_SATURATION_CHANGE        
+#endif 
+!LIMIT_MAX_SATURATION_CHANGE        
       case(GAS_STATE) 
         gas_pressure_index = offset + GENERAL_GAS_PRESSURE_DOF
         air_pressure_index = offset + GENERAL_GAS_STATE_AIR_PRESSURE_DOF
