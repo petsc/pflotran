@@ -181,9 +181,15 @@ function OutputOptionCreate()
   output_option%plot_name = ""
   output_option%aveg_var_time = 0.d0
   output_option%aveg_var_dtime = 0.d0
-  output_option%periodic_checkpoint_time_incr = 0.d0
   output_option%xmf_vert_len = 0
   output_option%filter_non_state_variables = PETSC_TRUE
+
+  !--- For checkpointing ---------------------------
+  output_option%periodic_checkpoint_time_incr = 0.d0
+  output_option%chkpt_ts_flag = PETSC_FALSE
+  output_option%chkpt_tconv = 1.d0
+  output_option%chkpt_tunit = ''
+  !-------------------------------------------------
 
   nullify(output_option%output_variable_list)
   output_option%output_variable_list => OutputVariableListCreate()
