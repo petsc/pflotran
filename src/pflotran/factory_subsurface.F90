@@ -515,22 +515,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             error_string
           call printErrMsg(option)
         endif
-        select type(pm)
-!          class is(pm_general_type,pm_richards_type,pm_th_type)
-          !geh: why I cannot shove all these in a single 'class is' statement
-          !     is beyond me.
-          class is(pm_general_type)
-            call pm%Read(input)
-          class is(pm_richards_type)
-            call pm%Read(input)
-          class is(pm_th_type)
-            call pm%Read(input)
-          class is(pm_toil_ims_type)
-            call pm%Read(input)
-          class default
-            option%io_buffer = 'OPTIONS not set up for PM.'
-            call printErrMsg(option)
-        end select
+        call pm%Read(input)
       case default
         error_string = trim(error_string) // ',SUBSURFACE_FLOW'
         call InputKeywordUnrecognized(word,error_string,option)
@@ -689,6 +674,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   ! 
 
   use Realization_class
+  use Realization_Base_class
   use Discretization_module
   use Option_module
   use Output_module, only : Output

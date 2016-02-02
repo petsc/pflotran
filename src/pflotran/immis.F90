@@ -404,7 +404,7 @@ end subroutine ImmisZeroMassBalDeltaPatch
   
   PetscInt ::  ImmisInitGuessCheck
   type(realization_subsurface_type) :: realization
-  type(option_type), pointer:: option
+  type(option_type), pointer :: option
   type(patch_type), pointer :: cur_patch
   PetscInt :: ipass, ipass0
   PetscErrorCode :: ierr    
@@ -449,7 +449,7 @@ subroutine ImmisUpdateReasonPatch(reason,realization)
 
   implicit none
  
-  PetscInt, intent(out):: reason
+  PetscInt, intent(out) :: reason
   type(realization_subsurface_type) :: realization  
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
@@ -1164,7 +1164,7 @@ subroutine ImmisSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,auxvar,isrctype,Res, &
   PetscReal :: well_status, well_diameter
   PetscReal :: pressure_bh, well_factor, pressure_max, pressure_min
   PetscReal :: well_inj_water, well_inj_co2
-  PetscInt  :: np
+  PetscInt :: np
   PetscInt :: iflag
   PetscErrorCode :: ierr
   

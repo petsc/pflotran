@@ -514,9 +514,9 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
   PetscInt :: ghosted_id
   PetscInt :: local_id
   PetscInt :: count
-  PetscReal, pointer      :: xx_p(:)
-  PetscReal, pointer      :: surfpress_p(:)
-  PetscReal, pointer      :: surftemp_p(:)
+  PetscReal, pointer :: xx_p(:)
+  PetscReal, pointer :: surfpress_p(:)
+  PetscReal, pointer :: surftemp_p(:)
   PetscInt :: istart, iend
   PetscReal :: den
   PetscReal :: dum1

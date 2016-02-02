@@ -1494,8 +1494,8 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
   PetscInt :: nintercp
   PetscInt :: iintercp
   PetscInt :: idx
-  PetscBool:: face_found
-  PetscBool:: vertex_found
+  PetscBool :: face_found
+  PetscBool :: vertex_found
   PetscBool :: cell_found
     
   PetscReal :: v1(3), v2(3), v3(3)
@@ -2084,9 +2084,9 @@ subroutine UGridPolyhedraPopulateConnection(ugrid, connection, iface_cell, &
   PetscInt :: ghosted_id
   type(option_type) :: option
   
-  PetscInt  :: face_id
-  PetscInt  :: ivert,vert_id
-  PetscInt  :: face_type
+  PetscInt :: face_id
+  PetscInt :: ivert,vert_id
+  PetscInt :: face_type
   PetscReal :: v1(3),v2(3),n_dist(3), dist
   type(point_type) :: vertex_8(8)
   type(plane_type) :: plane

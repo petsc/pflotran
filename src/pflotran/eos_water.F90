@@ -1907,7 +1907,7 @@ subroutine EOSWaterDensityNaCl(t,p_Pa,xnacl,dnacl_kg_m3)
   PetscReal :: rw_mol, hw
   PetscReal :: dum1,dum2
   PetscReal :: p_MPa, rw0_g_cm3, dnacl_g_cm3
-  PetscErrorCode  :: ierr
+  PetscErrorCode :: ierr
   !units: t [C], p [Pa], xnacl [mass fraction NaCl], dnacl [kg/m^3]
 
   !rw0 = 1.d0 + 1.d-6*(-80.d0*t - 3.3d0*t**2 + 0.00175d0*t**3 &

@@ -495,7 +495,6 @@ subroutine PMRTFinalizeTimestep(this)
   
   class(pm_rt_type) :: this
   PetscReal :: time  
-  PetscReal :: dcmax
   PetscErrorCode :: ierr
 
   if (this%transient_porosity) then
@@ -512,14 +511,27 @@ subroutine PMRTFinalizeTimestep(this)
   call RTMaxChange(this%realization,this%max_concentration_change, &
                    this%max_volfrac_change)
   if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4, &
+    write(*,'("  --> max chng: dcmx= ",1pe12.4,"  dc/dt= ",1pe12.4, &
             &" [mol/s]")') &
-      dcmax,dcmax/this%option%tran_dt
+      this%max_concentration_change, &
+      this%max_concentration_change/this%option%tran_dt
+    if (this%realization%reaction%mineral%nkinmnrl > 0) then
+      write(*,'("               dvfmx= ",1pe12.4," dvf/dt= ",1pe12.4, &
+            &" [1/s]")') &
+        this%max_volfrac_change, this%max_volfrac_change/this%option%tran_dt
+    endif
   endif
   if (this%option%print_file_flag) then  
-    write(this%option%fid_out,'("  --> max chng: dcmx= ",1pe12.4, &
-                              &" dc/dt= ",1pe12.4," [mol/s]")') &
-      dcmax,dcmax/this%option%tran_dt
+    write(this%option%fid_out,&
+            '("  --> max chng: dcmx= ",1pe12.4,"  dc/dt= ",1pe12.4, &
+            &" [mol/s]")') &
+      this%max_concentration_change, &
+      this%max_concentration_change/this%option%tran_dt
+    if (this%realization%reaction%mineral%nkinmnrl > 0) then
+      write(this%option%fid_out, &
+        '("               dvfmx= ",1pe12.4," dvf/dt= ",1pe12.4," [1/s]")') &
+        this%max_volfrac_change, this%max_volfrac_change/this%option%tran_dt
+    endif
   endif
   
 end subroutine PMRTFinalizeTimestep
@@ -568,22 +580,45 @@ subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   
   PetscReal :: dtt, uvf, dt_vf, dt_tfac, fac
   PetscInt :: ifac
+  PetscReal, parameter :: pert = 1.d-20
   
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%UpdateTimestep()')  
 #endif
   
-#if 1
-  dtt = dt
-  if (num_newton_iterations <= iacceleration) then
-    if (num_newton_iterations <= size(tfac)) then
-      dtt = tfac(num_newton_iterations) * dt
+  if (this%volfrac_change_governor < 1.d0) then
+    ! with volume fraction potentially scaling the time step.
+    if (iacceleration > 0) then
+      fac = 0.5d0
+      if (num_newton_iterations >= iacceleration) then
+        fac = 0.33d0
+        uvf = 0.d0
+      else
+        uvf = this%volfrac_change_governor/(this%max_volfrac_change+pert)
+      endif
+      dtt = fac * dt * (1.d0 + uvf)
+    else
+      ifac = max(min(num_newton_iterations,size(tfac)),1)
+      dt_tfac = tfac(ifac) * dt
+
+      fac = 0.5d0
+      uvf= this%volfrac_change_governor/(this%max_volfrac_change+pert)
+      dt_vf = fac * dt * (1.d0 + uvf)
+
+      dtt = min(dt_tfac,dt_vf)
+    endif
+  else
+    ! original implementation
+    dtt = dt
+    if (num_newton_iterations <= iacceleration) then
+      if (num_newton_iterations <= size(tfac)) then
+        dtt = tfac(num_newton_iterations) * dt
+      else
+        dtt = 0.5d0 * dt
+      endif
     else
       dtt = 0.5d0 * dt
     endif
-  else
-!       dtt = 2.d0 * dt
-    dtt = 0.5d0 * dt
   endif
 
   if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
@@ -592,37 +627,6 @@ subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   dtt = max(dtt,dt_min)
   dt = dtt
   
-#else
-
-  if (iacceleration > 0) then
-    fac = 0.5d0
-    if (num_newton_iterations >= iacceleration) then
-      fac = 0.33d0
-      uvf = 0.d0
-    else
-      uvf = this%volfrac_change_governor/(this%max_volfrac_change+1.d-6)
-    endif
-    dtt = fac * dt * (1.d0 + uvf)
-  else
-    ifac = max(min(num_newton_iterations,size(tfac)),1)
-    dt_tfac = tfac(ifac) * dt
-
-    fac = 0.5d0
-    uvf= this%volfrac_change_governor/(this%max_volfrac_change+1.d-6)
-    dt_vf = fac * dt * (1.d0 + uvf)
-
-    dtt = min(dt_tfac,dt_vf)
-  endif
-  
-  if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
-  if (dtt > dt_max) dtt = dt_max
-  ! geh: There used to be code here that cut the time step if it is too
-  !      large relative to the simulation time.  This has been removed.
-  dtt = max(dtt,dt_min)
-  dt = dtt
-  
-#endif  
-
 end subroutine PMRTUpdateTimestep
 
 ! ************************************************************************** !

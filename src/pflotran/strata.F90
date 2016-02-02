@@ -25,7 +25,7 @@ module Strata_module
     type(material_property_type), pointer :: material_property ! pointer to material in material array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(surface_material_property_type),pointer :: surf_material_property
-    PetscInt                                     :: isurf_material_property ! id of material in material array/list
+    PetscInt :: isurf_material_property ! id of material in material array/list
     PetscInt :: surf_or_subsurf_flag
     PetscReal :: start_time
     PetscReal :: final_time

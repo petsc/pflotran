@@ -193,21 +193,21 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
 
   implicit none
   
-  TS                             :: ts
-  PetscReal                      :: t
-  Vec                            :: xx
-  Vec                            :: ff
+  TS :: ts
+  PetscReal :: t
+  Vec :: xx
+  Vec :: ff
   class(realization_surface_type) :: surf_realization
-  PetscErrorCode                 :: ierr
+  PetscErrorCode :: ierr
 
-  type(grid_type), pointer                  :: grid
-  type(patch_type), pointer                 :: patch
-  type(option_type), pointer                :: option
-  type(surface_field_type), pointer         :: surf_field
-  type(coupler_type), pointer               :: boundary_condition
-  type(coupler_type), pointer               :: source_sink
-  type(connection_set_list_type), pointer   :: connection_set_list
-  type(connection_set_type), pointer        :: cur_connection_set
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(surface_field_type), pointer :: surf_field
+  type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
 
   type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
   type(Surface_TH_auxvar_type), pointer :: surf_auxvars_bc(:)
@@ -234,7 +234,7 @@ subroutine SurfaceTHRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   PetscReal :: dum1
 
   PetscViewer :: viewer
-  character(len=MAXSTRINGLENGTH)       :: string,string2
+  character(len=MAXSTRINGLENGTH) :: string,string2
 
   PetscReal, pointer :: ff_p(:), mannings_loc_p(:),area_p(:)
   PetscReal, pointer :: xc(:),yc(:),zc(:)
@@ -479,12 +479,12 @@ subroutine SurfaceTHIFunction(ts,t,xx,xxdot,ff,surf_realization,ierr)
 
   implicit none
   
-  TS                             :: ts
-  PetscReal                      :: t
-  Vec                            :: xx,xxdot
-  Vec                            :: ff
+  TS :: ts
+  PetscReal :: t
+  Vec :: xx,xxdot
+  Vec :: ff
   class(realization_surface_type) :: surf_realization
-  PetscErrorCode                 :: ierr
+  PetscErrorCode :: ierr
 
   ! Our equations are in the form: 
   !    xxdot = RHS(xx)
@@ -523,15 +523,15 @@ subroutine SurfaceTHComputeMaxDt(surf_realization,max_allowable_dt)
   implicit none
   
   class(realization_surface_type) :: surf_realization
-  PetscErrorCode                 :: ierr
+  PetscErrorCode :: ierr
 
-  type(grid_type), pointer                  :: grid
-  type(patch_type), pointer                 :: patch
-  type(option_type), pointer                :: option
-  type(surface_field_type), pointer         :: surf_field
-  type(coupler_type), pointer               :: boundary_condition
-  type(connection_set_list_type), pointer   :: connection_set_list
-  type(connection_set_type), pointer        :: cur_connection_set
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(surface_field_type), pointer :: surf_field
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
 
   type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
   type(Surface_TH_auxvar_type), pointer :: surf_auxvars_bc(:)
@@ -905,7 +905,7 @@ subroutine SurfaceTHBCFlux(ibndtype, &
   PetscReal :: mannings
   PetscReal :: length
   PetscReal :: flux
-  PetscInt  :: ibndtype(:)
+  PetscInt :: ibndtype(:)
   PetscReal :: vel
   PetscReal :: dt_max
   PetscReal :: Res(1:option%nflowdof)
@@ -1182,12 +1182,12 @@ subroutine EnergyToTemperatureBisection(T,TL,TR,h,energy,Cwi,Pr,option)
 
   implicit none
 
-  PetscReal      :: T,TL,TR,h,energy,Cwi,Pr
+  PetscReal :: T,TL,TR,h,energy,Cwi,Pr
   type(option_type), pointer :: option
 
-  PetscReal      :: Tp,rho,rho_t,f,fR,fL,rtol
-  PetscInt       :: iter,niter
-  PetscBool      :: found
+  PetscReal :: Tp,rho,rho_t,f,fR,fL,rtol
+  PetscInt :: iter,niter
+  PetscBool :: found
   PetscErrorCode :: ierr
 
   call EOSWaterdensity(TR,Pr,rho,rho_T,ierr)
@@ -1368,33 +1368,33 @@ subroutine SurfaceTHUpdateSurfState(surf_realization)
 
   class(realization_surface_type) :: surf_realization
 
-  type(coupler_list_type), pointer    :: coupler_list
-  type(coupler_type), pointer         :: coupler
-  type(connection_set_type), pointer  :: cur_connection_set
-  type(dm_ptr_type), pointer          :: dm_ptr
-  type(grid_type),pointer             :: grid,surf_grid
-  type(option_type), pointer          :: option
-  type(patch_type),pointer            :: patch,surf_patch
-  type(surface_field_type),pointer    :: surf_field
+  type(coupler_list_type), pointer :: coupler_list
+  type(coupler_type), pointer :: coupler
+  type(connection_set_type), pointer :: cur_connection_set
+  type(dm_ptr_type), pointer :: dm_ptr
+  type(grid_type),pointer :: grid,surf_grid
+  type(option_type), pointer :: option
+  type(patch_type),pointer :: patch,surf_patch
+  type(surface_field_type),pointer :: surf_field
   type(Surface_TH_auxvar_type), pointer :: surf_auxvars(:)
 
-  PetscInt                :: count
-  PetscInt                :: ghosted_id
-  PetscInt                :: local_id
-  PetscInt                :: ibeg
-  PetscInt                :: iend
-  PetscInt                :: iconn
-  PetscInt                :: sum_connection
+  PetscInt :: count
+  PetscInt :: ghosted_id
+  PetscInt :: local_id
+  PetscInt :: ibeg
+  PetscInt :: iend
+  PetscInt :: iconn
+  PetscInt :: sum_connection
 
-  PetscReal               :: den
-  PetscReal               :: dum1
-  PetscReal, pointer      :: avg_vdarcy_p(:)   ! avg darcy velocity [m/s]
-  PetscReal, pointer      :: xx_p(:)           ! head [m]
-  PetscReal, pointer      :: surfpress_p(:)
-  PetscReal, pointer      :: surftemp_p(:)
-  PetscReal               :: Cwi
-  PetscReal               :: temp_K
-  PetscErrorCode          :: ierr
+  PetscReal :: den
+  PetscReal :: dum1
+  PetscReal, pointer :: avg_vdarcy_p(:)   ! avg darcy velocity [m/s]
+  PetscReal, pointer :: xx_p(:)           ! head [m]
+  PetscReal, pointer :: surfpress_p(:)
+  PetscReal, pointer :: surftemp_p(:)
+  PetscReal :: Cwi
+  PetscReal :: temp_K
+  PetscErrorCode :: ierr
 
   PetscBool :: coupler_found = PETSC_FALSE
 
@@ -1463,12 +1463,12 @@ subroutine AtmEnergyToTemperatureBisection(T,TL,TR,shift,RHS,Pr,option)
 
   implicit none
 
-  PetscReal      :: T,TL,TR,shift,RHS,Pr
+  PetscReal :: T,TL,TR,shift,RHS,Pr
   type(option_type), pointer :: option
 
-  PetscReal      :: Tp,rho,rho_t,f,fR,fL,rtol
-  PetscInt       :: iter,niter
-  PetscBool      :: found
+  PetscReal :: Tp,rho,rho_t,f,fR,fL,rtol
+  PetscInt :: iter,niter
+  PetscBool :: found
   PetscErrorCode :: ierr
 
   call EOSWaterdensity(TR,Pr,rho,rho_T,ierr)
@@ -1666,10 +1666,10 @@ subroutine SurfaceTHUpdateSolution(surf_realization)
 
   implicit none
 
-  class(realization_surface_type)   :: surf_realization
+  class(realization_surface_type) :: surf_realization
 
   type(surface_field_type),pointer :: surf_field
-  PetscErrorCode                   :: ierr
+  PetscErrorCode :: ierr
 
   surf_field => surf_realization%surf_field
   call VecCopy(surf_field%flow_xx,surf_field%flow_yy,ierr);CHKERRQ(ierr)

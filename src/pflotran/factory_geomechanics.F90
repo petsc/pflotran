@@ -84,7 +84,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   class(realization_subsurface_type), pointer :: subsurf_realization
   class(realization_geomech_type), pointer :: geomech_realization
   class(pmc_base_type), pointer :: cur_process_model_coupler
-  type(gmdm_ptr_type), pointer  :: dm_ptr
+  type(gmdm_ptr_type), pointer :: dm_ptr
   class(pm_base_type), pointer :: cur_pm, prev_pm
   class(pm_geomech_force_type), pointer :: pm_geomech
   class(pmc_geomechanics_type), pointer :: pmc_geomech
@@ -338,13 +338,13 @@ subroutine GeomechicsInitReadRequiredCards(geomech_realization)
   
   implicit none
   
-  class(realization_geomech_type)             :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
   
   character(len=MAXSTRINGLENGTH) :: string
   
-  type(option_type), pointer          :: option
-  type(input_type), pointer           :: input
+  type(option_type), pointer :: option
+  type(input_type), pointer :: input
   
   option         => geomech_realization%option  
   input          => geomech_realization%input
@@ -389,14 +389,14 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   
   implicit none
   
-  class(realization_geomech_type)             :: geomech_realization
+  class(realization_geomech_type) :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
-  type(geomech_patch_type), pointer          :: patch
-  type(input_type), pointer                  :: input
-  type(option_type), pointer                 :: option
-  character(len=MAXWORDLENGTH)               :: word
-  type(unstructured_grid_type), pointer      :: ugrid
-  character(len=MAXWORDLENGTH)               :: card
+  type(geomech_patch_type), pointer :: patch
+  type(input_type), pointer :: input
+  type(option_type), pointer :: option
+  character(len=MAXWORDLENGTH) :: word
+  type(unstructured_grid_type), pointer :: ugrid
+  character(len=MAXWORDLENGTH) :: card
   
   geomech_discretization       => geomech_realization%geomech_discretization
        
@@ -489,34 +489,37 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   use Solver_module
   use Units_module
   use Waypoint_module
+  use Utility_module, only : DeallocateArray, UtilityReadArray
 
   ! Still need to add other geomech modules for output, etc once created
   
   implicit none
   
-  class(realization_geomech_type)              :: geomech_realization
-  type(solver_type)                            :: geomech_solver
-  type(input_type), pointer                    :: input
-  type(option_type)                            :: option
+  class(realization_geomech_type) :: geomech_realization
+  type(solver_type) :: geomech_solver
+  type(input_type), pointer :: input
+  type(option_type) :: option
   
-  type(geomech_discretization_type), pointer   :: geomech_discretization
+  type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_material_property_type),pointer :: geomech_material_property
-  type(waypoint_type), pointer                 :: waypoint
-  type(geomech_grid_type), pointer             :: grid
-  type(gm_region_type), pointer                :: region
-  type(geomech_debug_type), pointer            :: debug
-  type(geomech_strata_type), pointer           :: strata
-  type(geomech_condition_type), pointer        :: condition
-  type(geomech_coupler_type), pointer          :: coupler
-  type(output_option_type), pointer            :: output_option
-  PetscReal                                    :: units_conversion
+  type(waypoint_type), pointer :: waypoint
+  type(geomech_grid_type), pointer :: grid
+  type(gm_region_type), pointer :: region
+  type(geomech_debug_type), pointer :: debug
+  type(geomech_strata_type), pointer :: strata
+  type(geomech_condition_type), pointer :: condition
+  type(geomech_coupler_type), pointer :: coupler
+  type(output_option_type), pointer :: output_option
+  PetscReal :: units_conversion
 
-  character(len=MAXWORDLENGTH)                 :: word
-  character(len=MAXWORDLENGTH)                 :: card
-  character(len=1)                             :: backslash
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: card
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=1) :: backslash
   
-  PetscBool                                    :: continuation_flag
-  PetscReal                                    :: temp_real, temp_real2
+  PetscReal :: temp_real, temp_real2
+  PetscReal, pointer :: temp_real_array(:)
+  PetscInt :: i
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
   input%ierr = 0
@@ -690,12 +693,12 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
               output_option%print_initial = PETSC_FALSE
             case('PERMEABILITY')
               option%io_buffer = 'PERMEABILITY output must now be entered &
-                                  under OUTPUT/VARIABLES card.'
+                                 &under OUTPUT/VARIABLES card.'
               call printErrMsg(option)
 !              output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
               option%io_buffer = 'POROSITY output must now be entered under &
-                                  OUTPUT/VARIABLES card.'
+                                 &OUTPUT/VARIABLES card.'
               call printErrMsg(option)            
 !              output_option%print_porosity = PETSC_TRUE
             case('PRINT_COLUMN_IDS')
@@ -704,27 +707,17 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'units','GEOMECHANICS_OUTPUT')
               units_conversion = UnitsConvertToInternal(word,'time',option)
-              continuation_flag = PETSC_TRUE
-              do
-                continuation_flag = PETSC_FALSE
-                if (index(input%buf,backslash) > 0) &
-                  continuation_flag = PETSC_TRUE
-                input%ierr = 0
-                do
-                  if (InputError(input)) exit
-                  call InputReadDouble(input,option,temp_real)
-                  if (.not.InputError(input)) then
-                    waypoint => WaypointCreate()
-                    waypoint%time = temp_real*units_conversion
-                    waypoint%print_output = PETSC_TRUE
-                    write(*,*) 'Inserting waypoint in geomech_realization: ',waypoint%time
-                    call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)
-                  endif
-                enddo
-                if (.not.continuation_flag) exit
-                call InputReadPflotranString(input,option)
-                if (InputError(input)) exit
+              string = 'GEOMECHANICS_OUTPUT,TIMES'
+              call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
+                                    string,input,option)
+              do i = 1, size(temp_real_array)
+                waypoint => WaypointCreate()
+                waypoint%time = temp_real_array(i)*units_conversion
+                waypoint%print_output = PETSC_TRUE
+                call WaypointInsertInList(waypoint, &
+                                          geomech_realization%waypoint_list)
               enddo
+              call DeallocateArray(temp_real_array)
             case('OUTPUT_FILE')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'time increment', &

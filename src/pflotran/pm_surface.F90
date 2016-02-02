@@ -22,6 +22,11 @@ module PM_Surface_class
   type, public, extends(pm_base_type) :: pm_surface_type
     class(realization_surface_type), pointer :: surf_realization
     class(communicator_type), pointer :: comm1
+    PetscReal :: pressure_change_governor
+    PetscReal :: temperature_change_governor
+    PetscReal :: pressure_dampening_factor
+    PetscReal :: pressure_change_limit
+    PetscReal :: temperature_change_limit
   contains
     procedure, public :: Setup => PMSurfaceSetup
     procedure, public :: PMSurfaceSetRealization
@@ -36,6 +41,7 @@ module PM_Surface_class
   public :: PMSurfaceCreate, &
             PMSurfaceSetup, &
             PMSurfaceUpdateSolution, &
+            PMSurfaceReadSelectCase, &
             PMSurfaceDestroy
   
 contains
@@ -53,12 +59,72 @@ subroutine PMSurfaceCreate(this)
   
   class(pm_surface_type) :: this
   
+  this%pressure_change_governor = 5.d5
+  this%temperature_change_governor = 5.d0
+  this%pressure_dampening_factor = UNINITIALIZED_DOUBLE
+  this%pressure_change_limit = UNINITIALIZED_DOUBLE
+  this%temperature_change_limit = UNINITIALIZED_DOUBLE
+
   nullify(this%surf_realization)
   nullify(this%comm1)
   
   call PMBaseInit(this)
 
 end subroutine PMSurfaceCreate
+
+! ************************************************************************** !
+
+subroutine PMSurfaceReadSelectCase(this,input,keyword,found,option)
+  ! 
+  ! Reads input file parameters associated with the subsurface flow process 
+  !       model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/05/16
+
+  use Input_Aux_module
+  use String_module
+  use Option_module
+
+  implicit none
+
+  class(pm_surface_type) :: this
+  type(input_type) :: input
+
+  character(len=MAXWORDLENGTH) :: keyword
+  PetscBool :: found
+  type(option_type) :: option
+
+  found = PETSC_TRUE
+  select case(trim(keyword))
+
+    case('MAX_PRESSURE_CHANGE')
+      call InputReadDouble(input,option,this%pressure_change_governor)
+      call InputDefaultMsg(input,option,'dpmxe')
+
+    case('MAX_TEMPERATURE_CHANGE')
+      call InputReadDouble(input,option,this%temperature_change_governor)
+      call InputDefaultMsg(input,option,'dtmpmxe')
+
+    case('PRESSURE_DAMPENING_FACTOR')
+      call InputReadDouble(input,option,this%pressure_dampening_factor)
+      call InputErrorMsg(input,option,'PRESSURE_DAMPENING_FACTOR', &
+                          'TIMESTEPPER')
+
+    case('PRESSURE_CHANGE_LIMIT')
+      call InputReadDouble(input,option,this%pressure_change_limit)
+      call InputErrorMsg(input,option,'PRESSURE_CHANGE_LIMIT', &
+                          'TIMESTEPPER')
+
+    case('TEMPERATURE_CHANGE_LIMIT')
+      call InputReadDouble(input,option,this%temperature_change_limit)
+      call InputErrorMsg(input,option,'TEMPERATURE_CHANGE_LIMIT', &
+                          'TIMESTEPPER')
+    case default
+      found = PETSC_FALSE
+  end select
+
+end subroutine PMSurfaceReadSelectCase
 
 ! ************************************************************************** !
 

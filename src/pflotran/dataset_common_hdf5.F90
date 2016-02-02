@@ -590,7 +590,7 @@ subroutine DatasetCommonHDF5Strip(this)
 
   implicit none
   
-  class(dataset_common_hdf5_type)  :: this
+  class(dataset_common_hdf5_type) :: this
   
   call DatasetBaseStrip(this)
   

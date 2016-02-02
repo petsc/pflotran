@@ -77,11 +77,11 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
     character(len=MAXSTRINGLENGTH) :: surf_restart_filename
 
-    PetscBool  :: geomech_on
-    PetscInt  :: ngeomechdof
-    PetscInt  :: n_stress_strain_dof
+    PetscBool :: geomech_on
+    PetscInt :: ngeomechdof
+    PetscInt :: n_stress_strain_dof
     PetscReal :: geomech_time
-    PetscInt  :: geomech_subsurf_coupling
+    PetscInt :: geomech_subsurf_coupling
     PetscReal :: geomech_gravity(3)
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id

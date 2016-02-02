@@ -19,6 +19,7 @@ module PM_Mphase_class
 
   type, public, extends(pm_subsurface_flow_type) :: pm_mphase_type
   contains
+    procedure, public :: Read => PMMphaseRead
     procedure, public :: InitializeTimestep => PMMphaseInitializeTimestep
     procedure, public :: Residual => PMMphaseResidual
     procedure, public :: Jacobian => PMMphaseJacobian
@@ -65,6 +66,58 @@ function PMMphaseCreate()
   PMMphaseCreate => mphase_pm
   
 end function PMMphaseCreate
+
+! ************************************************************************** !
+
+subroutine PMMphaseRead(this,input)
+  ! 
+  ! Reads input file parameters associated with the Mphase process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/15
+  use Input_Aux_module
+  use String_module
+  use Utility_module
+  use EOS_Water_module  
+  use Option_module
+  use Mphase_Aux_module
+ 
+  implicit none
+  
+  class(pm_mphase_type) :: this
+  type(input_type), pointer :: input
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  type(option_type), pointer :: option
+  PetscBool :: found
+
+  option => this%option
+  
+  error_string = 'Mphase Options'
+  
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+
+    found = PETSC_FALSE
+    call PMSubsurfaceFlowReadSelectCase(this,input,word,found,option)
+    if (found) cycle
+    
+    select case(trim(word))
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    end select
+  enddo
+  
+end subroutine PMMphaseRead
 
 ! ************************************************************************** !
 
@@ -441,8 +494,6 @@ subroutine PMMphaseMaxChange(this)
   implicit none
   
   class(pm_mphase_type) :: this
-  
-  PetscReal :: dpmax, dtmpmax, dsmax, dcmax
   
   call MphaseMaxChange(this%realization,this%max_pressure_change, &
                        this%max_temperature_change, &

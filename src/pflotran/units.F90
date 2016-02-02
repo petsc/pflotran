@@ -313,9 +313,9 @@ subroutine UnitsConvert(units,units_category,units_conversion,ierr,ierr_msg)
       select case(trim(unit(k))) !-------------------------------------------------
 
       !---> VOLUME ---> (m^3)
-      case('cm^3','l','dm^3','m^3')
+      case('cm^3','l','dm^3','m^3','gal','gallon')
         unit_category_string = 'volume'
-        units_string = 'cm^3, l, dm^3, m^3'
+        units_string = 'cm^3, l, dm^3, m^3, gal, gallon'
         select case(trim(unit(k)))
         case('cm^3')
           conversion_factor = 1.d-6
@@ -323,6 +323,8 @@ subroutine UnitsConvert(units,units_category,units_conversion,ierr,ierr_msg)
           conversion_factor = 1.d-3
         case('m^3')
           conversion_factor = 1.d0
+        case('gal','gallon')
+          conversion_factor = 3.785411784d-3
         case default
           call UnitsError(unit(k),unit_category_string,units_string,ierr,ierr_msg)
         end select
@@ -517,11 +519,10 @@ subroutine UnitsConvert(units,units_category,units_conversion,ierr,ierr_msg)
                      &given, but not expected.'
           ierr = PETSC_TRUE
         endif
-        k = k + 1
       endif ! (.not. ierr)
       
     units_conversion = units_conversion * conversion_factor
-
+    k = k + 1
     enddo ! while (k < (num_units + 1))
 
   endif ! (.not. ierr)

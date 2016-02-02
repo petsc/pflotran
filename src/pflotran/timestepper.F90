@@ -621,7 +621,7 @@ end subroutine StepperUpdateDTMax
 
 ! ************************************************************************** !
 
-subroutine StepperSetTargetTimes(flow_timestepper,tran_timestepper, &
+subroutine StepperSetTargetTimes(flow_timestepper,tran_timestepper, &                         
 
   !
   ! Sets target time for flow and transport solvers
@@ -631,7 +631,7 @@ subroutine StepperSetTargetTimes(flow_timestepper,tran_timestepper, &
   ! 
                                  option,plot_flag, &
                                  transient_plot_flag, &
-                                 checkpoint_flag)
+                                 checkpoint_flag)                                    
 
   use Option_module
   
@@ -641,7 +641,7 @@ subroutine StepperSetTargetTimes(flow_timestepper,tran_timestepper, &
   type(option_type) :: option
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
-  PetscBool :: checkpoint_flag
+  PetscBool :: checkpoint_flag                                                               
   
   PetscReal :: target_time
   PetscReal :: dt

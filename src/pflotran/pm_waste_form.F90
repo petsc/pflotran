@@ -1578,9 +1578,9 @@ subroutine PMFMDMSolve(this,time,ierr)
   interface
     subroutine AMP_step ( burnup, sTme, temperature_C, conc, initialRun, &
                           fuelDisRate, success )
-      real ( kind = 8), intent( in )  :: burnup   
-      real ( kind = 8), intent( in )  :: sTme   
-      real ( kind = 8), intent( in )  :: temperature_C   
+      real ( kind = 8), intent( in ) :: burnup   
+      real ( kind = 8), intent( in ) :: sTme   
+      real ( kind = 8), intent( in ) :: temperature_C   
       real ( kind = 8), intent( inout ),  dimension (:,:) :: conc
       logical ( kind = 4), intent( in ) :: initialRun
       real ( kind = 8), intent(out) :: fuelDisRate

@@ -568,14 +568,13 @@ subroutine PMRichardsMaxChange(this)
   
   class(pm_richards_type) :: this
   
-  PetscReal :: dpmax
-  
-  call RichardsMaxChange(this%realization,dpmax)
+  call RichardsMaxChange(this%realization,this%max_pressure_change)
   if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4)') dpmax
+    write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%max_pressure_change
   endif
   if (this%option%print_file_flag) then
-    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') dpmax
+    write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') &
+      this%max_pressure_change
   endif    
 
 end subroutine PMRichardsMaxChange

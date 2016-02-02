@@ -1247,6 +1247,8 @@ subroutine InitSubsurfaceReadInput(simulation)
   use SrcSink_Sandbox_module
   use Klinkenberg_module
   use WIPP_module
+  use Utility_module
+  use Checkpoint_module
   
   use Simulation_Subsurface_class
   use PMC_Subsurface_class
@@ -1264,16 +1266,15 @@ subroutine InitSubsurfaceReadInput(simulation)
   PetscErrorCode :: ierr
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: card
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string, temp_string
   character(len=MAXSTRINGLENGTH) :: units_category
     
-  PetscBool :: continuation_flag
-  
   character(len=1) :: backslash
   PetscReal :: temp_real, temp_real2
+  PetscReal, pointer :: temp_real_array(:)
   PetscReal :: units_conversion
   PetscInt :: temp_int
-  PetscInt :: count, id
+  PetscInt :: id
   
   PetscBool :: vel_cent
   PetscBool :: vel_face
@@ -1710,79 +1711,7 @@ subroutine InitSubsurfaceReadInput(simulation)
 
       case ('CHECKPOINT')
         option%checkpoint_flag = PETSC_TRUE
-        call InputReadInt(input,option,option%checkpoint_frequency)
-
-        if (input%ierr == 1) then
-          option%checkpoint_frequency = 0
-          do
-            call InputReadPflotranString(input,option)
-            call InputReadStringErrorMsg(input,option,card)
-            if (InputCheckExit(input,option)) exit
-
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            call InputErrorMsg(input,option,'keyword','CHECKPOINT')
-            call StringToUpper(word)
-
-            select case(trim(word))
-              case ('PERIODIC')
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'time increment', &
-                                   'OUTPUT,PERIODIC')
-                call StringToUpper(word)
-
-                select case(trim(word))
-                  case('TIME')
-                    call InputReadDouble(input,option,temp_real)
-                    call InputErrorMsg(input,option,'time increment', &
-                                       'CHECKPOINT,PERIODIC,TIME')
-                    call InputReadWord(input,option,word,PETSC_TRUE)
-                    call InputErrorMsg(input,option,'time increment units', &
-                                       'CHECKPOINT,PERIODIC,TIME')
-                    units_category = 'time'
-                    units_conversion = UnitsConvertToInternal(word,units_category,option)
-                    output_option%periodic_checkpoint_time_incr = temp_real* &
-                                                              units_conversion
-                  case('TIMESTEP')
-                    call InputReadInt(input,option,option%checkpoint_frequency)
-                    call InputErrorMsg(input,option,'timestep increment', &
-                                       'CHECKPOINT,PERIODIC,TIMESTEP')
-                  case default
-                    call InputKeywordUnrecognized(word,'CHECKPOINT,PERIODIC', &
-                                                  option)
-                end select
-
-              case ('FORMAT')
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'format type', &
-                                   'CHECKPOINT,FORMAT')
-                call StringToUpper(word)
-                select case(trim(word))
-                  case('BINARY')
-                    option%checkpoint_format_binary = PETSC_TRUE
-                  case('HDF5')
-                    option%checkpoint_format_hdf5 = PETSC_TRUE
-                  case default
-                    call InputKeywordUnrecognized(word,'CHECKPOINT,FORMAT', &
-                                                  option)
-                end select
-
-              case default
-                call InputKeywordUnrecognized(word,'CHECKPOINT',option)
-            end select
-          enddo
-          if (output_option%periodic_checkpoint_time_incr /= 0.d0 .and. &
-              option%checkpoint_frequency /= 0) then
-            option%io_buffer = 'Both TIME and TIMESTEP cannot be specified ' // &
-              'for CHECKPOINT,PERIODIC.'
-            call printErrMsg(option)
-          endif
-          if (output_option%periodic_checkpoint_time_incr == 0.d0 .and. &
-              option%checkpoint_frequency == 0) then
-            option%io_buffer = 'Either, TIME and TIMESTEP need to be specified ' // &
-              'for CHECKPOINT,PERIODIC.'
-            call printErrMsg(option)
-          endif
-        endif
+        call CheckpointRead(input,option,realization%waypoint_list)
 
 !......................
 
@@ -2002,7 +1931,8 @@ subroutine InitSubsurfaceReadInput(simulation)
         units_conversion = UnitsConvertToInternal(word,units_category,option) 
         ! convert from hrs to seconds and add to start_time
         option%wallclock_stop_time = option%start_time + &
-                                     option%wallclock_stop_time*units_conversion
+                                     option%wallclock_stop_time* &
+                                     units_conversion
       
 !....................
       case ('OUTPUT')
@@ -2071,29 +2001,21 @@ subroutine InitSubsurfaceReadInput(simulation)
               output_option%print_column_ids = PETSC_TRUE
             case('TIMES')
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'units','OUTPUT')
+              call InputErrorMsg(input,option,'units','OUTPUT,TIMES')
               units_category = 'time'
-              units_conversion = UnitsConvertToInternal(word,units_category,option) 
-              continuation_flag = PETSC_TRUE
-              do
-                continuation_flag = PETSC_FALSE
-                if (index(input%buf,backslash) > 0) &
-                  continuation_flag = PETSC_TRUE
-                input%ierr = 0
-                do
-                  if (InputError(input)) exit
-                  call InputReadDouble(input,option,temp_real)
-                  if (.not.InputError(input)) then
-                    waypoint => WaypointCreate()
-                    waypoint%time = temp_real*units_conversion
-                    waypoint%print_output = PETSC_TRUE    
-                    call WaypointInsertInList(waypoint,realization%waypoint_list)
-                  endif
-                enddo
-                if (.not.continuation_flag) exit
-                call InputReadPflotranString(input,option)
-                if (InputError(input)) exit
+              units_conversion = &
+                UnitsConvertToInternal(word,units_category,option) 
+              string = 'OUTPUT,TIMES'
+              call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
+                                    string,input,option)
+              do temp_int = 1, size(temp_real_array)
+                waypoint => WaypointCreate()
+                waypoint%time = temp_real_array(temp_int)*units_conversion
+                waypoint%print_output = PETSC_TRUE    
+                call WaypointInsertInList(waypoint, &
+                                          realization%waypoint_list)
               enddo
+              call DeallocateArray(temp_real_array)
             case('OUTPUT_FILE')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'time increment', &

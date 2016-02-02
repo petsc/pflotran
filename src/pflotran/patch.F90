@@ -84,9 +84,9 @@ module Patch_module
 
     PetscInt :: surf_or_subsurf_flag  ! Flag to identify if the current patch
                                       ! is a surface or subsurface (default)
-    type(surface_material_property_type), pointer     :: surf_material_properties
+    type(surface_material_property_type), pointer :: surf_material_properties
     type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
-    type(surface_field_type), pointer                 :: surf_field
+    type(surface_field_type), pointer :: surf_field
     type(surface_auxiliary_type) :: surf_aux
     
   end type patch_type
@@ -2642,9 +2642,9 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
   type(connection_set_type), pointer :: cur_connection_set
   type(grid_type),pointer :: grid
   PetscErrorCode :: ierr
-  PetscInt       :: iconn,sum_connection
+  PetscInt :: iconn,sum_connection
   PetscInt :: ghosted_id,local_id
-  PetscInt,pointer::cell_ids_nat(:)
+  PetscInt,pointer ::cell_ids_nat(:)
   type(flow_sub_condition_type) :: flow_sub_condition
 
   class(dataset_map_hdf5_type), pointer :: dataset_map_hdf5
@@ -2735,7 +2735,7 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
 
   type(grid_type) :: grid
   class(dataset_map_hdf5_type) :: dataset_map_hdf5
-  type(option_type):: option
+  type(option_type) :: option
   PetscInt,pointer :: cell_ids(:)
   PetscInt :: ncells
   
@@ -2748,8 +2748,8 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
   PetscInt :: istart
   
   IS :: is_from, is_to
-  Vec:: map_ids_1, map_ids_2,map_ids_3
-  VecScatter::vec_scatter
+  Vec :: map_ids_1, map_ids_2,map_ids_3
+  VecScatter ::vec_scatter
   PetscViewer :: viewer
   
   ! Step-1: Rearrange map dataset

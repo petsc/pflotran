@@ -567,10 +567,10 @@ factory_subsurface.o : condition_control.o discretization.o general.o global.o \
                        pm_rt.o pm_subsurface_flow.o pm_th.o pm_toil_ims.o \
                        pm_ufd_decay.o pm_waste_form.o pmc_base.o \
                        pmc_material.o pmc_subsurface.o pmc_third_party.o \
-                       reactive_transport.o realization_subsurface.o \
-                       regression.o simulation_base.o simulation_subsurface.o \
-                       solver.o strata.o string.o timestepper_BE.o \
-                       timestepper_base.o waypoint.o wipp.o
+                       reactive_transport.o realization_base.o \
+                       realization_subsurface.o regression.o simulation_base.o \
+                       simulation_subsurface.o solver.o strata.o string.o \
+                       timestepper_BE.o timestepper_base.o waypoint.o wipp.o
 factory_surface.o : checkpoint_surface.o condition_control.o init_common.o \
                     input_aux.o logging.o option.o output.o output_aux.o \
                     output_surface.o pflotran_constants.o \
@@ -1066,7 +1066,8 @@ reactive_transport_aux.o : matrix_block_aux.o option.o pflotran_constants.o \
                            utility.o
 realization_base.o : communicator_base.o data_mediator.o data_mediator_base.o \
                      debug.o discretization.o field.o input_aux.o option.o \
-                     output_aux.o patch.o pflotran_constants.o reaction_aux.o
+                     output_aux.o patch.o pflotran_constants.o reaction_aux.o \
+                     time_storage.o waypoint.o
 realization_subsurface.o : characteristic_curves.o communicator_structured.o \
                            communicator_unstructured.o condition.o coupler.o \
                            data_mediator_base.o data_mediator_dataset.o \

@@ -423,7 +423,7 @@ subroutine DatasetAsciiStrip(this)
 
   implicit none
   
-  class(dataset_ascii_type)  :: this
+  class(dataset_ascii_type) :: this
   
   call DatasetBaseStrip(this)
   
