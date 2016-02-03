@@ -33,6 +33,7 @@ module Realization_Base_class
     type(field_type), pointer :: field
     type(debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
+    type(checkpoint_option_type), pointer :: checkpoint_option
     class(data_mediator_base_type), pointer :: flow_data_mediator_list
     class(data_mediator_base_type), pointer :: tran_data_mediator_list
     
@@ -84,6 +85,7 @@ subroutine RealizationBaseInit(realization_base,option)
 
   nullify(realization_base%reaction)
   nullify(realization_base%waypoint_list)
+  nullify(realization_base%checkpoint_option)
 
   nullify(realization_base%patch)
   nullify(realization_base%flow_data_mediator_list)
@@ -291,6 +293,7 @@ subroutine RealizationBaseStrip(this)
 
 !  call OptionDestroy(realization%option) !geh it will be destroy externally
   call OutputOptionDestroy(this%output_option)
+  call CheckpointOptionDestroy(this%checkpoint_option)
   
   call DiscretizationDestroy(this%discretization)
   

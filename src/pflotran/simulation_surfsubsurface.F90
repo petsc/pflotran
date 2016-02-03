@@ -148,17 +148,15 @@ subroutine SurfSubsurfaceExecuteRun(this)
 
   use Simulation_Base_class
   use Timestepper_Base_class, only : TS_CONTINUE
+  use Checkpoint_module
 
   implicit none
   
-#include "petsc/finclude/petscviewer.h"
-
   class(surfsubsurface_simulation_type) :: this
 
   PetscReal :: time
   PetscReal :: final_time
   PetscReal :: dt
-  PetscViewer :: viewer
   character(len=MAXSTRINGLENGTH) :: append_name
 
   time = 0.d0
@@ -195,8 +193,9 @@ subroutine SurfSubsurfaceExecuteRun(this)
     enddo
 
   endif
-  if (this%option%checkpoint_flag) then
-    call this%process_model_coupler_list%CheckpointBinary(viewer,append_name)
+  if (associated(this%process_model_coupler_list%checkpoint_option)) then
+    append_name = CheckpointFilename(append_name,this%option)
+    call this%process_model_coupler_list%Checkpoint(append_name)
   endif
 
 end subroutine SurfSubsurfaceExecuteRun

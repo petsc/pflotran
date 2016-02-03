@@ -49,7 +49,9 @@ module Checkpoint_module
     end subroutine
   end interface PetscBagGetData
 
-  public :: CheckpointFilenameAppend, &
+  public :: CheckpointFilename, &
+            CheckpointFilenameAtTime, &
+            CheckpointFilenameAtTimestep, &
             CheckpointOpenFileForWriteBinary, &
             CheckPointWriteCompatibilityBinary, &
             CheckPointReadCompatibilityBinary, &
@@ -71,7 +73,7 @@ contains
 
 ! ************************************************************************** !
 
-function CheckpointFilename(append_name, option, id_stamp)
+function CheckpointFilename(append_name, option)
   !
   ! This subroutine creates the filename of a checkpoint file without a suffix
   !
@@ -84,16 +86,8 @@ function CheckpointFilename(append_name, option, id_stamp)
 
   character(len=MAXSTRINGLENGTH) :: append_name
   type(option_type) :: option
-  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
 
   character(len=MAXSTRINGLENGTH) :: CheckpointFilename
-  character(len=MAXWORDLENGTH) :: id_string
-
-  if (present(id_stamp)) then
-     if (.not. StringNull(id_stamp)) then
-        append_name = id_stamp
-     end if
-  end if
 
   CheckpointFilename = trim(option%global_prefix) // &
                        trim(option%group_prefix) // &
@@ -105,7 +99,7 @@ end function CheckpointFilename
 
 ! ************************************************************************** !
 
-function CheckpointFilenameAppend(output_option,time,timestep)
+function CheckpointFilenameAtTime(checkpoint_option,time,option)
   !
   ! This subroutine forms the appendage to the checkpoint filename.
   !
@@ -115,34 +109,62 @@ function CheckpointFilenameAppend(output_option,time,timestep)
 
   use Output_Aux_module
   use Units_module
+  use Option_module
 
   implicit none
 
-  type(output_option_type) :: output_option
+  type(checkpoint_option_type) :: checkpoint_option
   PetscReal :: time
-  PetscInt :: timestep
+  type(option_type) :: option
 
-  character(len=MAXSTRINGLENGTH) :: CheckpointFilenameAppend
-  character(len=MAXWORDLENGTH) :: timestep_string
-  character(len=MAXWORDLENGTH) :: time_string
+  character(len=MAXSTRINGLENGTH) :: CheckpointFilenameAtTime
+  character(len=MAXWORDLENGTH) :: word
+  PetscReal :: temp_time
 
-  if (output_option%chkpt_ts_flag) then
-    write(timestep_string,'(i9)') timestep
-    CheckpointFilenameAppend = '-' // 'ts' // trim(adjustl(timestep_string))
-  else
-    time = time * output_option%chkpt_tconv
-    !write(time_string,'(1pe12.4)') time
-    write(time_string,'(f15.4)') time
-    CheckpointFilenameAppend = '-' // trim(adjustl(time_string)) // &
-                               trim(adjustl(output_option%chkpt_tunit))
-  endif
-
-end function CheckpointFilenameAppend
+  ! time is actually option%time. do not overwrite it.
+  temp_time = time * checkpoint_option%tconv
+  !write(time_string,'(1pe12.4)') time
+  write(word,'(f15.4)') temp_time
+  CheckpointFilenameAtTime = '-' // trim(adjustl(word)) // &
+                             trim(adjustl(checkpoint_option%tunit))
+  CheckpointFilenameAtTime = &
+    CheckpointFilename(CheckpointFilenameAtTime, option)
+    
+end function CheckpointFilenameAtTime
 
 ! ************************************************************************** !
 
-subroutine CheckpointOpenFileForWriteBinary(viewer,append_name,option, &
-                                            id_stamp)
+function CheckpointFilenameAtTimestep(checkpoint_option,timestep,option)
+  !
+  ! This subroutine forms the appendage to the checkpoint filename.
+  !
+  ! Author: Jenn Frederick
+  ! Date: 1/29/2016
+  ! 
+
+  use Output_Aux_module
+  use Units_module
+  use Option_module
+
+  implicit none
+
+  type(checkpoint_option_type) :: checkpoint_option
+  PetscInt :: timestep
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: CheckpointFilenameAtTimestep
+  character(len=MAXWORDLENGTH) :: word
+
+  write(word,'(i9)') timestep
+  CheckpointFilenameAtTimestep = '-' // 'ts' // trim(adjustl(word))
+  CheckpointFilenameAtTimestep = &
+    CheckpointFilename(CheckpointFilenameAtTimestep, option)
+
+end function CheckpointFilenameAtTimestep
+
+! ************************************************************************** !
+
+subroutine CheckpointOpenFileForWriteBinary(viewer,append_name,option)
   ! 
   ! Opens checkpoint file; sets format
   ! 
@@ -160,12 +182,11 @@ subroutine CheckpointOpenFileForWriteBinary(viewer,append_name,option, &
   PetscViewer :: viewer
   character(len=MAXSTRINGLENGTH) :: append_name
   type(option_type) :: option
-  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
 
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: filename
 
-  filename = CheckpointFilename(append_name,option,id_stamp)
+  filename = CheckpointFilename(append_name,option)
   filename = trim(filename) // '.chk'
 
   !geh: To skip .info file, need to split PetscViewerBinaryOpen() 
@@ -581,7 +602,7 @@ subroutine CheckpointOpenFileForWriteHDF5(file_id,grp_id,append_name,option, &
   integer(HID_T), intent(out) :: grp_id
 #endif
 
-  filename = CheckpointFilename(append_name, option, id_stamp)
+  filename = CheckpointFilename(append_name, option)
   filename = trim(filename) // '.h5'
 
 #if defined(SCORPIO_WRITE)
@@ -1584,7 +1605,7 @@ end subroutine RestartFlowProcessModelHDF5
 
 ! ************************************************************************** !
 
-subroutine CheckpointRead(input,option,output_option,waypoint_list)
+subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
   ! 
   ! Reads the CHECKPOINT card in an input file.
   ! 
@@ -1603,7 +1624,7 @@ subroutine CheckpointRead(input,option,output_option,waypoint_list)
 
   type(input_type),pointer :: input
   type(option_type) :: option
-  type(output_option_type) :: output_option
+  type(checkpoint_option_type), pointer :: checkpoint_option
   type(waypoint_list_type) :: waypoint_list
   
   character(len=MAXWORDLENGTH) :: word
@@ -1615,20 +1636,29 @@ subroutine CheckpointRead(input,option,output_option,waypoint_list)
   PetscReal :: temp_real
   PetscReal, pointer :: temp_real_array(:)
   PetscInt :: i
+  PetscBool :: format_binary
+  PetscBool :: format_hdf5
 
-  option%checkpoint_flag = PETSC_TRUE
+  if (.not.associated(checkpoint_option)) then
+    checkpoint_option => CheckpointOptionCreate()
+  endif
   
+  format_binary = PETSC_FALSE
+  format_hdf5 = PETSC_FALSE
   do
     temp_string = input%buf
     !--- For backwards compatibility: ---------------------------
-    call InputReadInt(input,option,option%checkpoint_frequency)
-    if (input%ierr == 0) output_option%chkpt_ts_flag = PETSC_TRUE
+    call InputReadInt(input,option,checkpoint_option%periodic_ts_incr)
+    if (input%ierr == 0) then
+      checkpoint_option%format = CHECKPOINT_BINARY
+      return
+    endif
     !------------------------------------------------------------
     if (input%ierr /= 0) then  
       input%ierr = 0
       input%buf = temp_string
       call InputReadPflotranString(input,option)
-      call InputReadStringErrorMsg(input,option,card)
+      call InputReadStringErrorMsg(input,option,'CHECKPOINT')
       if (InputCheckExit(input,option)) exit
       call InputReadWord(input,option,word,PETSC_TRUE)
       call InputErrorMsg(input,option,'checkpoint option or value', &
@@ -1650,14 +1680,11 @@ subroutine CheckpointRead(input,option,output_option,waypoint_list)
             units_category = 'time'
             units_conversion = UnitsConvertToInternal(word, &
                                 units_category,option)
-            output_option%chkpt_tconv = 1/units_conversion
-            output_option%chkpt_tunit = trim(word)
-            output_option%periodic_checkpoint_time_incr = temp_real* &
-                                                          units_conversion
-            option%checkpoint_frequency = 0
+            checkpoint_option%tconv = 1/units_conversion
+            checkpoint_option%tunit = trim(word)
+            checkpoint_option%periodic_time_incr = temp_real*units_conversion
           case('TIMESTEP')
-            output_option%chkpt_ts_flag = PETSC_TRUE
-            call InputReadInt(input,option,option%checkpoint_frequency)
+            call InputReadInt(input,option,checkpoint_option%periodic_ts_incr)
             call InputErrorMsg(input,option,'timestep increment', &
                                 'CHECKPOINT,PERIODIC,TIMESTEP')
           case default
@@ -1671,9 +1698,8 @@ subroutine CheckpointRead(input,option,output_option,waypoint_list)
           units_category = 'time'
           units_conversion = UnitsConvertToInternal(word,units_category, &
                                                     option)
-          output_option%chkpt_tconv = 1/units_conversion
-          output_option%chkpt_tunit = trim(word)
-          option%checkpoint_frequency = 0
+          checkpoint_option%tconv = 1/units_conversion
+          checkpoint_option%tunit = trim(word)
 !geh: this needs to be tested.
 #if 0
           temp_string = 'CHECKPOINT,TIMES'
@@ -1682,7 +1708,7 @@ subroutine CheckpointRead(input,option,output_option,waypoint_list)
           do i = 1, size(temp_real_array)
             waypoint => WaypointCreate()
             waypoint%time = temp_real_array(i)*units_conversion
-            waypoint%print_output = PETSC_TRUE
+            waypoint%print_checkpoint = PETSC_TRUE
             call WaypointInsertInList(waypoint,waypoint_list)
           enddo
           call DeallocateArray(temp_real_array)
@@ -1705,9 +1731,9 @@ subroutine CheckpointRead(input,option,output_option,waypoint_list)
           call StringToUpper(word)
           select case(trim(word))
             case('BINARY')
-              option%checkpoint_format_binary = PETSC_TRUE
+              format_binary = PETSC_TRUE
             case('HDF5')
-              option%checkpoint_format_hdf5 = PETSC_TRUE
+              format_hdf5 = PETSC_TRUE
             case default
               call InputKeywordUnrecognized(word,'CHECKPOINT,FORMAT', &
                                             option)
@@ -1718,8 +1744,15 @@ subroutine CheckpointRead(input,option,output_option,waypoint_list)
                                 &PERIODIC TIMESTEP, TIMES, or FORMAT')
           end select
     endif
-    if (output_option%periodic_checkpoint_time_incr /= 0.d0 .and. &
-        option%checkpoint_frequency /= 0) then
+    if (format_binary .and. format_hdf5) then
+      checkpoint_option%format = CHECKPOINT_BOTH
+    else if (format_hdf5) then
+      checkpoint_option%format = CHECKPOINT_HDF5
+    else ! default
+      checkpoint_option%format = CHECKPOINT_BINARY
+    endif
+    if (checkpoint_option%periodic_time_incr > 0.d0 .and. &
+        checkpoint_option%periodic_ts_incr /= 0) then
       option%io_buffer = 'Both PERIODIC TIME and PERIODIC TIMESTEP &
                           &cannot be specified for CHECKPOINT card.'
       call printErrMsg(option)

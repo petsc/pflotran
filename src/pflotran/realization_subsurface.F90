@@ -1537,19 +1537,21 @@ subroutine RealizationAddWaypointsToList(realization)
 
   endif
 
-  ! add waypoints for periodic checkpoint                                                    
-  if (realization%output_option%periodic_checkpoint_time_incr > 0.d0) then
+  ! add waypoints for periodic checkpoint
+  if (associated(realization%checkpoint_option)) then
+    if (realization%checkpoint_option%periodic_time_incr > 0.d0) then
 
-    ! standard output
-    temp_real = 0.d0
-    do
-      temp_real = temp_real + realization%output_option%periodic_checkpoint_time_incr
-      if (temp_real > final_time) exit
-      waypoint => WaypointCreate()
-      waypoint%time = temp_real
-      waypoint%print_checkpoint = PETSC_TRUE
-      call WaypointInsertInList(waypoint,realization%waypoint_list)
-    enddo
+      ! standard output
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + realization%checkpoint_option%periodic_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_checkpoint = PETSC_TRUE
+        call WaypointInsertInList(waypoint,realization%waypoint_list)
+      enddo
+    endif
   endif
 
   ! add in strata that change over time

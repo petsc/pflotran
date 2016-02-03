@@ -599,35 +599,16 @@ subroutine TimestepperBaseCheckpointHDF5(this, chk_grp_id, option)
   ! Date: 07/30/15
   ! 
 
-#if  !defined(PETSC_HAVE_HDF5)
   use Option_module
-  implicit none
-  class(timestepper_base_type) :: this
-  integer :: chk_grp_id
-  type(option_type) :: option
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
-
-  use Option_module
-  use hdf5
 
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
-
+  
   class(timestepper_base_type) :: this
-#if defined(SCORPIO_WRITE)
-  integer :: chk_grp_id
-#else
-  integer(HID_T) :: chk_grp_id
-#endif
+  PetscInt :: chk_grp_id
   type(option_type) :: option
 
   option%io_buffer = 'TimestepperBaseCheckpointHDF5 must be extended.'
   call printErrMsg(option)
-#endif
 
 end subroutine TimestepperBaseCheckpointHDF5
 
@@ -641,35 +622,16 @@ subroutine TimestepperBaseRestartHDF5(this, chk_grp_id, option)
   ! Date: 08/16/15
   ! 
 
-#if  !defined(PETSC_HAVE_HDF5)
   use Option_module
-  implicit none
-  class(timestepper_base_type) :: this
-  integer :: chk_grp_id
-  type(option_type) :: option
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
-
-  use Option_module
-  use hdf5
 
   implicit none
 
-#include "petsc/finclude/petscviewer.h"
-
   class(timestepper_base_type) :: this
-#if defined(SCORPIO_WRITE)
-  integer :: chk_grp_id
-#else
-  integer(HID_T) :: chk_grp_id
-#endif
+  PetscInt :: chk_grp_id
   type(option_type) :: option
 
   option%io_buffer = 'TimestepperBaseRestartHDF5 must be extended.'
   call printErrMsg(option)
-#endif
 
 end subroutine TimestepperBaseRestartHDF5
 

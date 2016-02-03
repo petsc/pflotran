@@ -775,8 +775,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 !......................
 
       case ('SURF_CHECKPOINT')
-        option%checkpoint_flag = PETSC_TRUE
-        call CheckpointRead(input,option,output_option, &
+        call CheckpointRead(input,option,surf_realization%checkpoint_option, &
                             surf_realization%waypoint_list)
         
 !......................

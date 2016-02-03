@@ -7,17 +7,29 @@ module Output_Aux_module
   private
 
 #include "petsc/finclude/petscsys.h"
+!#include "petsc/finclude/petscviewer.h"  
 
   PetscInt, parameter, public :: INSTANTANEOUS_VARS = 1
   PetscInt, parameter, public :: AVERAGED_VARS = 2
+  
+  PetscInt, parameter, public :: CHECKPOINT_BINARY = 1
+  PetscInt, parameter, public :: CHECKPOINT_HDF5 = 2
+  PetscInt, parameter, public :: CHECKPOINT_BOTH = 3
 
+  type, public :: checkpoint_option_type
+    character(len=MAXWORDLENGTH) :: tunit
+    PetscReal :: tconv
+    PetscReal :: periodic_time_incr
+    PetscInt :: periodic_ts_incr
+    PetscInt :: format
+!    PetscInt :: chk_grp_id
+!    PetscViewer :: viewer
+  end type checkpoint_option_type
+  
   type, public :: output_option_type
 
     character(len=MAXWORDLENGTH) :: tunit
-    character(len=MAXWORDLENGTH) :: chkpt_tunit
     PetscReal :: tconv
-    PetscReal :: chkpt_tconv
-    PetscBool :: chkpt_ts_flag
 
     PetscBool :: print_initial
     PetscBool :: print_final
@@ -55,7 +67,6 @@ module Output_Aux_module
     
     PetscReal :: periodic_output_time_incr
     PetscReal :: periodic_tr_output_time_incr
-    PetscReal :: periodic_checkpoint_time_incr
     
     PetscBool :: filter_non_state_variables
 
@@ -128,7 +139,9 @@ module Output_Aux_module
             OutputVariableRead, &
             OutputVariableAppendDefaults, &
             OutputOptionDestroy, &
-            OutputVariableListDestroy
+            OutputVariableListDestroy, &
+            CheckpointOptionCreate, &
+            CheckpointOptionDestroy
 
 contains
 
@@ -184,13 +197,6 @@ function OutputOptionCreate()
   output_option%xmf_vert_len = 0
   output_option%filter_non_state_variables = PETSC_TRUE
 
-  !--- For checkpointing ---------------------------
-  output_option%periodic_checkpoint_time_incr = 0.d0
-  output_option%chkpt_ts_flag = PETSC_FALSE
-  output_option%chkpt_tconv = 1.d0
-  output_option%chkpt_tunit = ''
-  !-------------------------------------------------
-
   nullify(output_option%output_variable_list)
   output_option%output_variable_list => OutputVariableListCreate()
   nullify(output_option%aveg_output_variable_list)
@@ -205,6 +211,34 @@ function OutputOptionCreate()
   
 end function OutputOptionCreate
 
+! ************************************************************************** !
+
+function CheckpointOptionCreate()
+  ! 
+  ! Creates output options object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/07/07
+  ! 
+
+  implicit none
+  
+  type(checkpoint_option_type), pointer :: CheckpointOptionCreate
+
+  type(checkpoint_option_type), pointer :: checkpoint_option
+  
+  allocate(checkpoint_option)
+  checkpoint_option%tunit = ''
+  checkpoint_option%tconv = 0.d0
+  checkpoint_option%periodic_time_incr = &
+    huge(checkpoint_option%periodic_time_incr)
+  checkpoint_option%periodic_ts_incr = huge(checkpoint_option%periodic_ts_incr)
+  checkpoint_option%format = CHECKPOINT_BINARY
+!  checkpoint_option%chk_grp_id = 0
+!  checkpoint_option%viewer = 0
+  
+end function CheckpointOptionCreate 
+  
 ! ************************************************************************** !
 
 function OutputVariableCreate1()
@@ -1069,6 +1103,27 @@ recursive subroutine OutputVariableDestroy(output_variable)
   nullify(output_variable)
   
 end subroutine OutputVariableDestroy
+
+! ************************************************************************** !
+
+subroutine CheckpointOptionDestroy(checkpoint_option)
+  ! 
+  ! Deallocates an output option
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/07/07
+  ! 
+
+  implicit none
+  
+  type(checkpoint_option_type), pointer :: checkpoint_option
+  
+  if (.not.associated(checkpoint_option)) return
+  
+  deallocate(checkpoint_option)
+  nullify(checkpoint_option)
+  
+end subroutine CheckpointOptionDestroy
 
 ! ************************************************************************** !
 

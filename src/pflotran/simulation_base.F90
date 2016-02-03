@@ -194,9 +194,7 @@ subroutine ExecuteRun(this)
 
   use Waypoint_module
   use Timestepper_Base_class, only : TS_CONTINUE
-#if defined(PETSC_HAVE_HDF5)
-  use hdf5
-#endif
+  use Checkpoint_module
 
   implicit none
   
@@ -205,21 +203,7 @@ subroutine ExecuteRun(this)
   PetscReal :: final_time
   PetscReal :: sync_time
   type(waypoint_type), pointer :: cur_waypoint
-  PetscViewer :: viewer
   character(len=MAXSTRINGLENGTH) :: append_name
-
-#if defined(PETSC_HAVE_HDF5)
-#if defined(SCORPIO_WRITE)
-  ! HDF5 + SCORPIO available
-  integer :: chk_grp_id
-#else
-  ! HDF5 available
-  integer(HID_T) :: chk_grp_id
-#endif
-#else
-  ! HDF5 unavailable
-  integer :: chk_grp_id
-#endif
 
 #ifdef DEBUG
   call printMsg(this%option,'SimulationBaseExecuteRun()')
@@ -240,13 +224,9 @@ subroutine ExecuteRun(this)
     call this%RunToTime(min(final_time,cur_waypoint%time))
     cur_waypoint => cur_waypoint%next
   enddo
-  if (this%option%checkpoint_flag) then
-    call this%process_model_coupler_list%CheckpointBinary(viewer, &
-                                                          append_name)
-    if (this%option%checkpoint_format_hdf5) then
-      call this%process_model_coupler_list%CheckpointHDF5(chk_grp_id, &
-                                                          append_name)
-    endif
+  if (associated(this%process_model_coupler_list%checkpoint_option)) then
+    append_name = CheckpointFilename(append_name,this%option)
+    call this%process_model_coupler_list%Checkpoint(append_name)
   endif
 
 end subroutine ExecuteRun
