@@ -91,7 +91,7 @@ function CheckpointFilename(append_name, option, id_stamp)
 
   if (present(id_stamp)) then
      if (.not. StringNull(id_stamp)) then
-        id_string = id_stamp
+        append_name = id_stamp
      end if
   end if
 
