@@ -57,6 +57,7 @@ module Checkpoint_module
             CheckPointReadCompatibilityBinary, &
             CheckpointFlowProcessModelBinary, &
             RestartFlowProcessModelBinary, &
+#if defined(PETSC_HAVE_HDF5)
             RestartFlowProcessModelHDF5, &
             CheckpointOpenFileForWriteHDF5, &
             CheckPointWriteCompatibilityHDF5, &
@@ -67,6 +68,7 @@ module Checkpoint_module
             CheckPointReadIntDatasetHDF5, &
             CheckpointOpenFileForReadHDF5, &
             CheckPointReadCompatibilityHDF5, &
+#endif
             CheckpointRead
 
 contains
@@ -549,6 +551,7 @@ end subroutine RestartFlowProcessModelBinary
 
 ! ************************************************************************** !
 
+#if defined(PETSC_HAVE_HDF5)
 subroutine CheckpointOpenFileForWriteHDF5(file_id,grp_id,append_name,option, &
                                           id_stamp)
   !
@@ -557,29 +560,7 @@ subroutine CheckpointOpenFileForWriteHDF5(file_id,grp_id,append_name,option, &
   ! Author: Gautam Bisht, LBNL
   ! Date: 07/30/15
   !
-
   use Option_module
-
-#if  !defined(PETSC_HAVE_HDF5)
-  implicit none
-
-  integer, intent(out) :: file_id
-  integer,intent(out) :: grp_id
-  character(len=MAXSTRINGLENGTH) :: append_name
-  type(option_type) :: option
-  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
-
-  PetscErrorCode :: ierr
-  integer :: prop_id
-
-  call printMsg(option,'')
-  write(option%io_buffer, &
-        '("PFLOTRAN must be compiled with HDF5 to &
-        &write HDF5 formatted checkpoint file. Darn.")')
-  call printErrMsg(option)
-
-#else
-
   use hdf5
 
   implicit none
@@ -630,7 +611,6 @@ subroutine CheckpointOpenFileForWriteHDF5(file_id,grp_id,append_name,option, &
   write(option%io_buffer,'(" --> Dump checkpoint file: ", a64)') &
     trim(adjustl(filename))
   call printMsg(option)
-#endif
 
 end subroutine CheckpointOpenFileForWriteHDF5
 
@@ -643,25 +623,7 @@ subroutine CheckpointOpenFileForReadHDF5(filename, file_id, grp_id, option)
   ! Author: Gautam Bisht, LBNL
   ! Date: 08/09/15
   !
-
   use Option_module
-
-#if  !defined(PETSC_HAVE_HDF5)
-  implicit none
-
-  character(len=MAXSTRINGLENGTH),intent(in) :: filename
-  integer, intent(out) :: file_id
-  integer,intent(out) :: grp_id
-  type(option_type) :: option
-
-  call printMsg(option,'')
-  write(option%io_buffer, &
-        '("PFLOTRAN must be compiled with HDF5 to &
-        &write HDF5 formatted checkpoint file. Darn.")')
-  call printErrMsg(option)
-
-#else
-
   use hdf5
 
   implicit none
@@ -701,9 +663,6 @@ subroutine CheckpointOpenFileForReadHDF5(filename, file_id, grp_id, option)
 
   string = "Checkpoint"
   call h5gopen_f(file_id, string, grp_id, hdf5_err)
-
-#endif
-
 #endif
 
 end subroutine CheckpointOpenFileForReadHDF5
@@ -719,33 +678,11 @@ subroutine CheckPointWriteIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank,
   ! Author: Gautam Bisht
   ! Date: 07/30/15
   ! 
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  PetscMPIInt :: dataset_rank
-  integer, pointer :: dims(:)
-  integer, pointer :: start(:)
-  integer, pointer :: stride(:)
-  integer, pointer :: length(:)
-  PetscInt, pointer :: data_int_array(:)
-  type(option_type) :: option
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-
-#else
-
   use Option_module
   use hdf5
   use HDF5_module, only : trick_hdf5
   
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscbag.h"
 
 #if defined(SCORPIO_WRITE)
   integer :: chk_grp_id
@@ -816,7 +753,6 @@ subroutine CheckPointWriteIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank,
   call h5sclose_f(grp_space_id, hdf5_err)
   call h5pclose_f(prop_id, hdf5_err)
   call h5dclose_f(data_set_id, hdf5_err)
-#endif
 
 end subroutine CheckPointWriteIntDatasetHDF5
 
@@ -831,25 +767,6 @@ subroutine CheckPointWriteRealDatasetHDF5(chk_grp_id, dataset_name, dataset_rank
   ! Author: Gautam Bisht
   ! Date: 07/30/15
   ! 
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  PetscMPIInt :: dataset_rank
-  integer, pointer :: dims(:)
-  integer, pointer :: start(:)
-  integer, pointer :: stride(:)
-  integer, pointer :: length(:)
-  PetscReal, pointer :: data_real_array(:)
-  type(option_type) :: option
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-
-#else
-
   use Option_module
   use hdf5
   use HDF5_module, only : trick_hdf5
@@ -928,7 +845,6 @@ subroutine CheckPointWriteRealDatasetHDF5(chk_grp_id, dataset_name, dataset_rank
   call h5sclose_f(grp_space_id, hdf5_err)
   call h5pclose_f(prop_id, hdf5_err)
   call h5dclose_f(data_set_id, hdf5_err)
-#endif
 
 end subroutine CheckPointWriteRealDatasetHDF5
 
@@ -942,25 +858,6 @@ subroutine CheckPointReadIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, 
   ! Author: Gautam Bisht
   ! Date: 08/16/15
   ! 
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  PetscMPIInt :: dataset_rank
-  integer, pointer :: dims(:)
-  integer, pointer :: start(:)
-  integer, pointer :: stride(:)
-  integer, pointer :: length(:)
-  PetscInt, pointer :: data_int_array(:)
-  type(option_type) :: option
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-
-#else
-
   use Option_module
   use hdf5
   use HDF5_module, only : trick_hdf5
@@ -1029,7 +926,6 @@ subroutine CheckPointReadIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, 
   call h5sclose_f(grp_space_id, hdf5_err)
   call h5pclose_f(prop_id, hdf5_err)
   call h5dclose_f(data_set_id, hdf5_err)
-#endif
 
 end subroutine CheckPointReadIntDatasetHDF5
 
@@ -1043,25 +939,6 @@ subroutine CheckPointReadRealDatasetHDF5(chk_grp_id, dataset_name, dataset_rank,
   ! Author: Gautam Bisht
   ! Date: 08/16/15
   ! 
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  PetscMPIInt :: dataset_rank
-  integer, pointer :: dims(:)
-  integer, pointer :: start(:)
-  integer, pointer :: stride(:)
-  integer, pointer :: length(:)
-  PetscReal, pointer :: data_real_array(:)
-  type(option_type) :: option
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-
-#else
-
   use Option_module
   use hdf5
   use HDF5_module, only : trick_hdf5
@@ -1130,7 +1007,6 @@ subroutine CheckPointReadRealDatasetHDF5(chk_grp_id, dataset_name, dataset_rank,
   call h5sclose_f(grp_space_id, hdf5_err)
   call h5pclose_f(prop_id, hdf5_err)
   call h5dclose_f(data_set_id, hdf5_err)
-#endif
 
 end subroutine CheckPointReadRealDatasetHDF5
 
@@ -1144,22 +1020,10 @@ subroutine CheckPointWriteCompatibilityHDF5(chk_grp_id, option)
   ! Author: Gautam Bisht
   ! Date: 08/30/15
   !
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  type(option_type) :: option
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
   use Option_module
   use hdf5
 
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscbag.h"
 
 #if defined(SCORPIO_WRITE)
   integer :: chk_grp_id
@@ -1205,7 +1069,6 @@ subroutine CheckPointWriteCompatibilityHDF5(chk_grp_id, option)
   deallocate(length)
   deallocate(stride)
   deallocate(int_array)
-#endif
 
 end subroutine CheckPointWriteCompatibilityHDF5
 
@@ -1219,15 +1082,6 @@ subroutine CheckPointReadCompatibilityHDF5(chk_grp_id, option)
   ! Author: Gautam Bisht
   ! Date: 08/16/15
   !
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  type(option_type) :: option
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
   use Option_module
   use hdf5
 
@@ -1285,7 +1139,6 @@ subroutine CheckPointReadCompatibilityHDF5(chk_grp_id, option)
   deallocate(length)
   deallocate(stride)
   deallocate(int_array)
-#endif
 
 end subroutine CheckPointReadCompatibilityHDF5
 
@@ -1298,17 +1151,6 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
   ! Author: Glenn Hammond
   ! Date: 07/26/13
   !
-
-#if  !defined(PETSC_HAVE_HDF5)
-  use Realization_class
-  implicit none
-  integer :: pm_grp_id
-  class(realization_subsurface_type) :: realization
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
-
   use Option_module
   use Realization_class
   use Field_module
@@ -1428,8 +1270,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
 
     call VecDestroy(global_vec, ierr);CHKERRQ(ierr)
     call VecDestroy(natural_vec, ierr);CHKERRQ(ierr)
- end if
-#endif
+  endif
 
 end subroutine CheckpointFlowProcessModelHDF5
 
@@ -1442,17 +1283,6 @@ subroutine RestartFlowProcessModelHDF5(pm_grp_id, realization)
   ! Author: Gautam Bisht, LBNL
   ! Date: 08/16/2015
   !
-
-#if  !defined(PETSC_HAVE_HDF5)
-  use Realization_class
-  implicit none
-  integer :: pm_grp_id
-  class(realization_subsurface_type) :: realization
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
-
   use Option_module
   use Realization_class
   use Field_module
@@ -1597,11 +1427,10 @@ subroutine RestartFlowProcessModelHDF5(pm_grp_id, realization)
 
     call VecDestroy(global_vec, ierr);CHKERRQ(ierr)
     call VecDestroy(natural_vec, ierr);CHKERRQ(ierr)
- end if
-#endif
+  endif
 
 end subroutine RestartFlowProcessModelHDF5
-
+#endif
 
 ! ************************************************************************** !
 

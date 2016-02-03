@@ -63,6 +63,8 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   use Simulation_Base_class
   use Logging_module
   use EOS_module
+  use PM_Surface_class
+  use PM_Geomechanics_Force_class
   
   implicit none
   
@@ -90,7 +92,23 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   endif
   
   call PFLOTRANReadSimulation(simulation,option)
-  
+
+  !geh: this is rigid, but has to do for now.
+  select type(pm => simulation%process_model_coupler_list%pm_list)
+    class is(pm_geomechforce_type)
+      simulation%process_model_coupler_list%checkpoint_option => &
+        pm%geomech_realization%checkpoint_option
+    class is(pm_surface_type)
+      simulation%process_model_coupler_list%checkpoint_option => &
+        pm%surf_realization%checkpoint_option
+    class is(pm_subsurface_flow_type)
+      simulation%process_model_coupler_list%checkpoint_option => &
+        pm%realization%checkpoint_option
+    class is(pm_rt_type)
+      simulation%process_model_coupler_list%checkpoint_option => &
+        pm%realization%checkpoint_option
+  end select
+
 end subroutine PFLOTRANInitializePostPetsc
 
 ! ************************************************************************** !

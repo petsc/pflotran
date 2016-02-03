@@ -1143,7 +1143,7 @@ subroutine PMCBaseSetHeaderHDF5(this, chk_grp_id, option)
 #if defined(SCORPIO_WRITE)
   integer :: chk_grp_id
 #else
-  integer(HSIZE_T) :: chk_grp_id
+  integer(HID_T) :: chk_grp_id
 #endif
   type(option_type) :: option
   
@@ -1216,7 +1216,7 @@ subroutine PMCBaseGetHeaderHDF5(this, chk_grp_id, option)
 #if defined(SCORPIO_WRITE)
   integer :: chk_grp_id
 #else
-  integer(HSIZE_T) :: chk_grp_id
+  integer(HID_T) :: chk_grp_id
 #endif
   type(option_type) :: option
 
