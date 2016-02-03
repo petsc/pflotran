@@ -225,7 +225,6 @@ subroutine ExecuteRun(this)
     cur_waypoint => cur_waypoint%next
   enddo
   if (associated(this%process_model_coupler_list%checkpoint_option)) then
-    append_name = CheckpointFilename(append_name,this%option)
     call this%process_model_coupler_list%Checkpoint(append_name)
   endif
 

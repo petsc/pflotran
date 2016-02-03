@@ -50,8 +50,8 @@ module Checkpoint_module
   end interface PetscBagGetData
 
   public :: CheckpointFilename, &
-            CheckpointFilenameAtTime, &
-            CheckpointFilenameAtTimestep, &
+            CheckpointAppendNameAtTime, &
+            CheckpointAppendNameAtTimestep, &
             CheckpointOpenFileForWriteBinary, &
             CheckPointWriteCompatibilityBinary, &
             CheckPointReadCompatibilityBinary, &
@@ -101,7 +101,7 @@ end function CheckpointFilename
 
 ! ************************************************************************** !
 
-function CheckpointFilenameAtTime(checkpoint_option,time,option)
+function CheckpointAppendNameAtTime(checkpoint_option,time,option)
   !
   ! This subroutine forms the appendage to the checkpoint filename.
   !
@@ -119,7 +119,7 @@ function CheckpointFilenameAtTime(checkpoint_option,time,option)
   PetscReal :: time
   type(option_type) :: option
 
-  character(len=MAXSTRINGLENGTH) :: CheckpointFilenameAtTime
+  character(len=MAXSTRINGLENGTH) :: CheckpointAppendNameAtTime
   character(len=MAXWORDLENGTH) :: word
   PetscReal :: temp_time
 
@@ -127,16 +127,14 @@ function CheckpointFilenameAtTime(checkpoint_option,time,option)
   temp_time = time * checkpoint_option%tconv
   !write(time_string,'(1pe12.4)') time
   write(word,'(f15.4)') temp_time
-  CheckpointFilenameAtTime = '-' // trim(adjustl(word)) // &
+  CheckpointAppendNameAtTime = '-' // trim(adjustl(word)) // &
                              trim(adjustl(checkpoint_option%tunit))
-  CheckpointFilenameAtTime = &
-    CheckpointFilename(CheckpointFilenameAtTime, option)
     
-end function CheckpointFilenameAtTime
+end function CheckpointAppendNameAtTime
 
 ! ************************************************************************** !
 
-function CheckpointFilenameAtTimestep(checkpoint_option,timestep,option)
+function CheckpointAppendNameAtTimestep(checkpoint_option,timestep,option)
   !
   ! This subroutine forms the appendage to the checkpoint filename.
   !
@@ -154,15 +152,13 @@ function CheckpointFilenameAtTimestep(checkpoint_option,timestep,option)
   PetscInt :: timestep
   type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: CheckpointFilenameAtTimestep
+  character(len=MAXSTRINGLENGTH) :: CheckpointAppendNameAtTimestep
   character(len=MAXWORDLENGTH) :: word
 
   write(word,'(i9)') timestep
-  CheckpointFilenameAtTimestep = '-' // 'ts' // trim(adjustl(word))
-  CheckpointFilenameAtTimestep = &
-    CheckpointFilename(CheckpointFilenameAtTimestep, option)
+  CheckpointAppendNameAtTimestep = '-' // 'ts' // trim(adjustl(word))
 
-end function CheckpointFilenameAtTimestep
+end function CheckpointAppendNameAtTimestep
 
 ! ************************************************************************** !
 
@@ -1579,12 +1575,6 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
       checkpoint_option%format = CHECKPOINT_HDF5
     else ! default
       checkpoint_option%format = CHECKPOINT_BINARY
-    endif
-    if (checkpoint_option%periodic_time_incr > 0.d0 .and. &
-        checkpoint_option%periodic_ts_incr /= 0) then
-      option%io_buffer = 'Both PERIODIC TIME and PERIODIC TIMESTEP &
-                          &cannot be specified for CHECKPOINT card.'
-      call printErrMsg(option)
     endif
   enddo
   

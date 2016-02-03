@@ -388,15 +388,15 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
       ! one at the time and another at the time step, but this is fine.
       if (checkpoint_at_this_time_flag) then
         filename_append = &
-          CheckpointFilenameAtTime(this%checkpoint_option, &
-                                   this%option%time,this%option)
+          CheckpointAppendNameAtTime(this%checkpoint_option, &
+                                     this%option%time,this%option)
         call this%Checkpoint(filename_append)
       endif
       if (checkpoint_at_this_timestep_flag) then
         filename_append = &
-          CheckpointFilenameAtTimestep(this%checkpoint_option, &
-                                     this%timestepper%steps, &
-                                     this%option)
+          CheckpointAppendNameAtTimestep(this%checkpoint_option, &
+                                         this%timestepper%steps, &
+                                         this%option)
         call this%Checkpoint(filename_append)
       endif
     endif
