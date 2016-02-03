@@ -12,6 +12,7 @@ module Dataset_Ascii_class
 
   type, public, extends(dataset_base_type) :: dataset_ascii_type
     PetscInt :: array_width
+    character(len=MAXSTRINGLENGTH) :: header
   end type dataset_ascii_type
   
   interface DatasetAsciiRead
@@ -98,6 +99,7 @@ subroutine DatasetAsciiInit(this)
   
   call DatasetBaseInit(this)
   this%array_width = 0
+  this%header = ''
     
 end subroutine DatasetAsciiInit
 
@@ -150,18 +152,18 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
   
   class(dataset_ascii_type) :: this
   type(input_type), pointer :: input
+  character(len=*) :: data_units_category
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: time_units
   character(len=MAXSTRINGLENGTH) :: string, data_units
-  character(len=*) :: data_units_category
   character(len=MAXSTRINGLENGTH), pointer :: unit_cat_strings(:) 
   character(len=MAXWORDLENGTH) :: word
   PetscReal, pointer :: temp_array(:,:)
   PetscReal :: temp_time
   PetscReal :: conversion
   PetscInt :: max_size, offset
-  PetscInt :: row_count, column_count, data_count, i
+  PetscInt :: row_count, column_count, data_count, i, k
   PetscInt :: default_interpolation_method
   PetscBool :: force_units_for_all_data
   PetscErrorCode :: ierr
@@ -174,13 +176,14 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
 
   row_count = 0
   ierr = 0
+  k = 0
   default_interpolation_method = INTERPOLATION_NULL
   do
     call InputReadPflotranString(input,option)
     ! reach the end of file or close out block
     if (InputError(input)) exit  ! check for end of file
     if (InputCheckExit(input,option)) exit  ! check for end of list
-    ! check for units on first line
+    ! check for units on first or second line
     if (row_count == 0) then
       string = input%buf
       ierr = 0
@@ -188,6 +191,11 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
       call InputErrorMsg(input,option,'KEYWORD','CONDITION (LIST or FILE)')
       call StringToUpper(word)
       select case(word)
+        case('HEADER')
+          call InputReadWord(string,word,PETSC_TRUE,ierr)
+          call InputErrorMsg(input,option,'header','CONDITION (LIST or FILE)')
+          this%header = trim(input%buf)
+          cycle
         case('TIME_UNITS')
           call InputReadWord(string,time_units,PETSC_TRUE,ierr)
           input%ierr = ierr

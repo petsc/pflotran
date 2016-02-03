@@ -17,6 +17,13 @@ module PM_Waste_Form_class
 
   PetscBool, public :: bypass_warning_message = PETSC_FALSE
 
+  type, public :: glass_species_type
+   PetscReal, allocatable :: formula_weight(:)
+   PetscInt, allocatable :: column_id(:)
+   PetscInt :: num_species
+   character(len=MAXWORDLENGTH), allocatable :: name(:)
+  end type glass_species_type
+
   type :: waste_form_base_type
     PetscInt :: id
     PetscInt :: local_cell_id
@@ -40,9 +47,7 @@ module PM_Waste_Form_class
   
   type, public, extends(pm_base_type) :: pm_waste_form_type
     class(realization_subsurface_type), pointer :: realization
-    ! jmf
-    !character(len=MAXWORDLENGTH) :: data_mediator_species
-    character(len=MAXSTRINGLENGTH), pointer :: data_mediator_species(:)
+    character(len=MAXWORDLENGTH) :: data_mediator_species
     class(data_mediator_vec_type), pointer :: data_mediator
     class(waste_form_base_type), pointer :: waste_form_list
     PetscBool :: print_mass_balance
@@ -52,8 +57,8 @@ module PM_Waste_Form_class
   
   type, public, extends(pm_waste_form_type) :: pm_waste_form_glass_type
     PetscReal :: specific_surface_area
-    PetscReal :: formula_weight
     class(dataset_base_type), pointer ::  mass_fraction_dataset
+    type(glass_species_type) :: glass_species
     PetscReal :: glass_density
   contains
     procedure, public :: Setup => PMGlassSetup
@@ -131,52 +136,9 @@ subroutine PMWasteFormInit(this)
   call PMBaseInit(this)
   nullify(this%realization)
   nullify(this%data_mediator)
-  ! jmf
-  !this%data_mediator_species = ''
   this%print_mass_balance = PETSC_FALSE
 
 end subroutine PMWasteFormInit
-
-! ************************************************************************** !
-
-subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
-                                     option)
-  ! 
-  ! Reads input file parameters associated with the waste form process model
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  use Input_Aux_module
-  use Option_module
-  use String_module
-  
-  implicit none
-  
-  class(pm_waste_form_type) :: this
-  type(input_type) :: input
-  character(len=MAXWORDLENGTH) :: keyword
-  PetscBool :: found
-  character(len=MAXSTRINGLENGTH) :: error_string
-  type(option_type) :: option  
-
-  found = PETSC_TRUE
-  select case(trim(keyword))
-    
-    case('DATA_MEDIATOR_SPECIES')
-      this%data_mediator_species => StringSplit(trim(adjustl(input%buf)),',')
-      write(*,*) shape(this%data_mediator_species)
-      this%data_mediator_species(3) = trim(this%data_mediator_species(3))
-      ! jmf
-      !call InputReadWord(input,option,this%data_mediator_species,PETSC_TRUE)
-      !call InputErrorMsg(input,option,'data_mediator_species',error_string)
-    case('PRINT_MASS_BALANCE')
-      this%print_mass_balance = PETSC_TRUE
-    case default
-      found = PETSC_FALSE
-  end select
-
-end subroutine PMWasteFormReadSelectCase
 
 ! ************************************************************************** !
 
@@ -201,7 +163,7 @@ end subroutine PMWasteFormSetRealization
 
  subroutine PMWFInitializeRun(this)
   ! 
-  ! IInitializes the process model for the simulation
+  ! Initializes the process model for the simulation
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/25/15
@@ -236,9 +198,9 @@ end subroutine PMWasteFormSetRealization
   endif
 
   ! jmf
-  data_mediator_species_id = &
-    GetPrimarySpeciesIDFromName(this%data_mediator_species(1), &
-                                this%realization%reaction,this%option)
+  data_mediator_species_id = 1 !&
+  !  GetPrimarySpeciesIDFromName(this%glass_species%name(1), &
+  !                              this%realization%reaction,this%option)
   ! set up mass transfer
   call RealizCreateTranMassTransferVec(this%realization)
   this%data_mediator => DataMediatorVecCreate()
@@ -687,7 +649,6 @@ function PMGlassCreate()
   call PMWasteFormInit(PMGlassCreate)
   nullify(PMGlassCreate%waste_form_list)
   PMGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE
-  PMGlassCreate%formula_weight = UNINITIALIZED_DOUBLE
   nullify(PMGlassCreate%mass_fraction_dataset)
   PMGlassCreate%glass_density = 2.65d3 ! kg/m^3
 
@@ -718,17 +679,21 @@ subroutine PMGlassRead(this,input)
   character(len=MAXWORDLENGTH) :: word, units
   character(len=MAXSTRINGLENGTH) :: string, units_category
   character(len=MAXSTRINGLENGTH) :: error_string
-  PetscBool :: found
+  character(len=MAXSTRINGLENGTH) :: species_name_buf
+  character(len=MAXSTRINGLENGTH) :: species_formula_wt_buf
   class(waste_form_glass_type), pointer :: new_waste_form, prev_waste_form
   class(dataset_ascii_type), pointer :: dataset_ascii
+  PetscBool :: found
+  PetscInt :: k, icol
 
   option => this%option
-  
+  k = 0
+  species_name_buf = ''
+  species_formula_wt_buf = ''
   error_string = 'GLASS'
-  
   input%ierr = 0
+
   do
-  
     call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
@@ -737,12 +702,43 @@ subroutine PMGlassRead(this,input)
     call InputErrorMsg(input,option,'keyword',error_string)
     call StringToUpper(word)
     
-    call PMWasteFormReadSelectCase(this,input,word,found,error_string,option)
-    
-    if (found) cycle
-    
+    !call PMWasteFormReadSelectCase(this,input,word,found,error_string,option)
+    !if (found) cycle
+
     select case(trim(word))
-    
+
+      case('SPECIES')
+        do
+          call InputReadPflotranString(input,option)
+          if (InputCheckExit(input,option)) exit
+          k = k + 1
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          species_name_buf = trim(species_name_buf) // ' ' // trim(word)
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          species_formula_wt_buf = trim(species_formula_wt_buf) // ' ' &
+                                   // trim(word)
+          this%glass_species%num_species = k
+        enddo
+        allocate(this%glass_species%name(k))  
+        allocate(this%glass_species%formula_weight(k))
+        allocate(this%glass_species%column_id(k))
+        input%buf = species_name_buf
+        k = 0
+        do while (k < this%glass_species%num_species)
+          k = k + 1
+          call InputReadWord(input,option, &
+                             this%glass_species%name(k),PETSC_TRUE)
+          call InputErrorMsg(input,option,'species name',error_string)
+        enddo
+        input%buf = species_formula_wt_buf
+        k = 0
+        do while (k < this%glass_species%num_species)
+          k = k + 1
+          call InputReadDouble(input,option, &
+                               this%glass_species%formula_weight(k))
+          call InputErrorMsg(input,option,'species formula weight',error_string)
+          this%glass_species%column_id(k) = UNINITIALIZED_INTEGER
+        enddo
       case('WASTE_FORM')
         error_string = 'GLASS,WASTE_FORM'
         allocate(new_waste_form)
@@ -797,12 +793,10 @@ subroutine PMGlassRead(this,input)
       case('SPECIFIC_SURFACE_AREA')
         call InputReadDouble(input,option,this%specific_surface_area)
         call InputErrorMsg(input,option,'specific surface area',error_string)
-      case('FORMULA_WEIGHT')
-        call InputReadDouble(input,option,this%formula_weight)
-        call InputErrorMsg(input,option,'formula_weight',error_string)
       case('MASS_FRACTION')
         dataset_ascii => DatasetAsciiCreate()
-        dataset_ascii%array_width = 1 ! does not include time
+        ! jmf
+        !dataset_ascii%array_width = 1 ! does not include time
         this%mass_fraction_dataset => dataset_ascii
         dataset_ascii%data_type = DATASET_REAL
         units_category = 'unitless'
@@ -817,6 +811,11 @@ subroutine PMGlassRead(this,input)
               INTERPOLATION_LINEAR
           endif
         endif
+        if (dataset_ascii%header == '') then
+          option%io_buffer = 'A HEADER must be specified in ' // &
+                             trim(error_string) // ' mass fraction file.'
+          call printErrMsg(option)
+        endif
       case('GLASS_DENSITY')
         call InputReadDouble(input,option,this%glass_density)
         call InputErrorMsg(input,option,'glass density',error_string)
@@ -824,15 +823,67 @@ subroutine PMGlassRead(this,input)
         call InputKeywordUnrecognized(word,error_string,option)
     end select
   enddo
-  
+
+  input%buf = dataset_ascii%header
+  icol = 0
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  call StringToUpper(word)
+  if ((input%ierr == 0) .and. (trim(word) == 'HEADER')) then
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'while reading the mass fraction file &
+                       &header',error_string)
+    call StringToUpper(word)
+    if (trim(word) == 'TIME') then
+      do
+        k = 0
+        call InputReadWord(input,option,word,PETSC_TRUE)
+          if (input%ierr == 0) then
+            icol = icol + 1
+            call StringToUpper(word)
+
+            do while (k < this%glass_species%num_species)
+              k = k + 1
+              if (trim(word) == trim(this%glass_species%name(k))) then
+                this%glass_species%column_id(k) = icol
+                exit
+                !k = this%glass_species%num_species ! forces exit out of do loop
+              endif
+            enddo ! k loop
+
+          else
+            exit
+          endif
+      enddo ! icol loop
+      k = 0
+      do while (k < this%glass_species%num_species)
+        k = k + 1
+        if (Uninitialized(this%glass_species%column_id(k))) then
+          option%io_buffer = 'Mismatch between species in ' &
+                             // trim(error_string) // ' mass fraction file &
+                             &header and those listed in ' &
+                             // trim(error_string) // ' block.'
+          call printErrMsg(option)
+        endif
+      enddo
+    else
+      option%io_buffer = 'The first column in the ' // trim(error_string) &
+                         // ' mass fraction file must be TIME.'
+      call printErrMsg(option)
+    endif
+  else
+    option%io_buffer = 'A HEADER must be specified in ' // &
+                       trim(error_string) // ' mass fraction file.'
+    call printErrMsg(option)
+  endif
+
   if (Uninitialized(this%specific_surface_area)) then
     option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' // &
       trim(error_string)
     call printErrMsg(option)
   endif
-  if (Uninitialized(this%formula_weight)) then
-    option%io_buffer = 'FORMULA_WEIGHT must be specified in ' // &
-      trim(error_string)
+  if (.not. allocated(this%glass_species%name)) then
+    option%io_buffer = 'A SPECIES NAME and FORMULA_WEIGHT must be specified &
+                       &in ' // trim(error_string)
     call printErrMsg(option)
   endif
   if (.not.associated(this%mass_fraction_dataset)) then
@@ -840,14 +891,7 @@ subroutine PMGlassRead(this,input)
       trim(error_string)
     call printErrMsg(option)
   endif
-  
-  ! jmf
-  if (len_trim(this%data_mediator_species(1)) == 0) then
-    option%io_buffer = &
-      'DATA_MEDIATOR_SPECIES must be specified must be specified in ' // &
-      trim(error_string)
-  endif
-  
+    
 end subroutine PMGlassRead
 
 ! ************************************************************************** !
@@ -862,7 +906,7 @@ subroutine PMGlassSetup(this)
   implicit none
   
   class(pm_waste_form_glass_type) :: this
-  
+
   call PMWFBaseSetup(this)
   
 end subroutine PMGlassSetup
@@ -1009,7 +1053,7 @@ subroutine PMGlassSolve(this,time,ierr)
       ! mol/sec
       cur_waste_form%instantaneous_mass_rate = &
         cur_waste_form%glass_dissolution_rate * & ! kg glass / sec
-        this%formula_weight * &                   ! kmol radionuclide/kg radionuclide
+        this%glass_species%formula_weight(1) * &  ! kmol radionuclide/kg radionuclide
         this%mass_fraction_dataset%rarray(1) * &  ! kg radionuclude/kg glass
         1.d3                                      ! kmol -> mol
       vec_p(i) = cur_waste_form%instantaneous_mass_rate    ! mol/sec
@@ -1190,6 +1234,10 @@ subroutine PMGlassStrip(this)
     nullify(prev_waste_form)
   enddo
   nullify(this%waste_form_list)
+
+  deallocate(this%glass_species%name)  
+  deallocate(this%glass_species%formula_weight)
+  deallocate(this%glass_species%column_id)
   
 end subroutine PMGlassStrip
   
@@ -1311,10 +1359,10 @@ subroutine PMFMDMRead(this,input)
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword',error_string)
     call StringToUpper(word)
+    ! jmf removed this subroutine, but need it here!
+    !call PMWasteFormReadSelectCase(this,input,word,found,error_string,option)
     
-    call PMWasteFormReadSelectCase(this,input,word,found,error_string,option)
-    
-    if (found) cycle
+    !if (found) cycle
     
     select case(trim(word))
     
@@ -1402,12 +1450,12 @@ subroutine PMFMDMRead(this,input)
     call printErrMsg(option)
   endif
   ! jmf
-  if (len_trim(this%data_mediator_species(1)) == 0) then
-    option%io_buffer = &
-      'DATA_MEDIATOR_SPECIES must be specified for fuel matrix ' // &
-      'degradation model.'
-    call printErrMsg(option)
-  endif
+!  if (len_trim(this%data_mediator_species(1)) == 0) then
+!    option%io_buffer = &
+!      'DATA_MEDIATOR_SPECIES must be specified for fuel matrix ' // &
+!      'degradation model.'
+!    call printErrMsg(option)
+!  endif
   
 end subroutine PMFMDMRead
 
