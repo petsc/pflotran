@@ -24,6 +24,13 @@ module PM_Waste_Form_class
    character(len=MAXWORDLENGTH), allocatable :: name(:)
   end type glass_species_type
 
+  type, public :: fmdm_species_type
+   PetscReal, allocatable :: formula_weight(:)
+   PetscInt, allocatable :: column_id(:)
+   PetscInt :: num_species
+   character(len=MAXWORDLENGTH), allocatable :: name(:)
+  end type fmdm_species_type
+
   type :: waste_form_base_type
     PetscInt :: id
     PetscInt :: local_cell_id
@@ -74,6 +81,8 @@ module PM_Waste_Form_class
   end type pm_waste_form_glass_type
   
   type, public, extends(pm_waste_form_type) :: pm_waste_form_fmdm_type
+    class(dataset_base_type), pointer ::  mass_fraction_dataset
+    type(fmdm_species_type) :: fmdm_species
     PetscInt :: num_grid_cells_in_waste_form
     ! mapping of fmdm species into fmdm concentration array
     PetscInt, pointer :: mapping_fmdm(:)
@@ -726,6 +735,8 @@ subroutine PMGlassRead(this,input)
         k = 0
         do while (k < this%glass_species%num_species)
           k = k + 1
+          ! check here is word is included in chemistry primary species
+          ! if not, throw an error
           call InputReadWord(input,option, &
                              this%glass_species%name(k),PETSC_TRUE)
           call InputErrorMsg(input,option,'species name',error_string)
@@ -819,6 +830,8 @@ subroutine PMGlassRead(this,input)
       case('GLASS_DENSITY')
         call InputReadDouble(input,option,this%glass_density)
         call InputErrorMsg(input,option,'glass density',error_string)
+      case('PRINT_MASS_BALANCE')
+        this%print_mass_balance = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
@@ -846,7 +859,6 @@ subroutine PMGlassRead(this,input)
               if (trim(word) == trim(this%glass_species%name(k))) then
                 this%glass_species%column_id(k) = icol
                 exit
-                !k = this%glass_species%num_species ! forces exit out of do loop
               endif
             enddo ! k loop
 
@@ -1053,7 +1065,9 @@ subroutine PMGlassSolve(this,time,ierr)
       ! mol/sec
       cur_waste_form%instantaneous_mass_rate = &
         cur_waste_form%glass_dissolution_rate * & ! kg glass / sec
+        ! jmf
         this%glass_species%formula_weight(1) * &  ! kmol radionuclide/kg radionuclide
+        ! jmf
         this%mass_fraction_dataset%rarray(1) * &  ! kg radionuclude/kg glass
         1.d3                                      ! kmol -> mol
       vec_p(i) = cur_waste_form%instantaneous_mass_rate    ! mol/sec
@@ -1333,6 +1347,8 @@ subroutine PMFMDMRead(this,input)
   use String_module
   use Utility_module
   use Option_module
+  use Condition_module, only : ConditionReadValues
+  use Dataset_Ascii_class
   
   implicit none
   
@@ -1340,18 +1356,23 @@ subroutine PMFMDMRead(this,input)
   type(input_type), pointer :: input
   
   type(option_type), pointer :: option
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, units
+  character(len=MAXSTRINGLENGTH) :: string, units_category
   character(len=MAXSTRINGLENGTH) :: error_string
-  PetscBool :: found
+  character(len=MAXSTRINGLENGTH) :: species_name_buf
+  character(len=MAXSTRINGLENGTH) :: species_formula_wt_buf
   class(waste_form_fmdm_type), pointer :: new_waste_form, prev_waste_form
+  class(dataset_ascii_type), pointer :: dataset_ascii
+  PetscInt :: k, icol
 
   option => this%option
-  
+  k = 0
+  species_name_buf = ''
+  species_formula_wt_buf = ''
   error_string = 'FMDM'
-  
   input%ierr = 0
+
   do
-  
     call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
@@ -1359,13 +1380,43 @@ subroutine PMFMDMRead(this,input)
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword',error_string)
     call StringToUpper(word)
-    ! jmf removed this subroutine, but need it here!
-    !call PMWasteFormReadSelectCase(this,input,word,found,error_string,option)
-    
-    !if (found) cycle
     
     select case(trim(word))
-    
+      
+      case('SPECIES')
+        do
+          call InputReadPflotranString(input,option)
+          if (InputCheckExit(input,option)) exit
+          k = k + 1
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          species_name_buf = trim(species_name_buf) // ' ' // trim(word)
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          species_formula_wt_buf = trim(species_formula_wt_buf) // ' ' &
+                                   // trim(word)
+          this%fmdm_species%num_species = k
+        enddo
+        allocate(this%fmdm_species%name(k))  
+        allocate(this%fmdm_species%formula_weight(k))
+        allocate(this%fmdm_species%column_id(k))
+        input%buf = species_name_buf
+        k = 0
+        do while (k < this%fmdm_species%num_species)
+          k = k + 1
+          ! check here is word is included in chemistry primary species
+          ! if not, throw an error
+          call InputReadWord(input,option, &
+                             this%fmdm_species%name(k),PETSC_TRUE)
+          call InputErrorMsg(input,option,'species name',error_string)
+        enddo
+        input%buf = species_formula_wt_buf
+        k = 0
+        do while (k < this%fmdm_species%num_species)
+          k = k + 1
+          call InputReadDouble(input,option, &
+                               this%fmdm_species%formula_weight(k))
+          call InputErrorMsg(input,option,'species formula weight',error_string)
+          this%fmdm_species%column_id(k) = UNINITIALIZED_INTEGER
+        enddo
       case('NUM_GRID_CELLS')
         call InputReadInt(input,option,this%num_grid_cells_in_waste_form)
         call InputErrorMsg(input,option,'num_grid_cells',error_string)
@@ -1437,26 +1488,103 @@ subroutine PMFMDMRead(this,input)
         endif
         nullify(new_waste_form)
         error_string = 'FMDM'
+      case('MASS_FRACTION')
+        dataset_ascii => DatasetAsciiCreate()
+        this%mass_fraction_dataset => dataset_ascii
+        dataset_ascii%data_type = DATASET_REAL
+        units_category = 'unitless'
+        call ConditionReadValues(input,option,word, &
+                                 this%mass_fraction_dataset, &
+                                 units,units_category)
+        if (associated(dataset_ascii%time_storage)) then
+          ! default time interpolation is linear
+          if (dataset_ascii%time_storage%time_interpolation_method == &
+              INTERPOLATION_NULL) then
+            dataset_ascii%time_storage%time_interpolation_method = &
+              INTERPOLATION_LINEAR
+          endif
+        endif
+        if (dataset_ascii%header == '') then
+          option%io_buffer = 'A HEADER must be specified in ' // &
+                             trim(error_string) // ' mass fraction file.'
+          call printErrMsg(option)
+        endif
       case('BYPASS_WARNING_MESSAGE')
         bypass_warning_message = PETSC_TRUE
+      case('PRINT_MASS_BALANCE')
+        this%print_mass_balance = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
   enddo
+
+  input%buf = dataset_ascii%header
+  icol = 0
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  call StringToUpper(word)
+  if ((input%ierr == 0) .and. (trim(word) == 'HEADER')) then
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'while reading the mass fraction file &
+                       &header',error_string)
+    call StringToUpper(word)
+    if (trim(word) == 'TIME') then
+      do
+        k = 0
+        call InputReadWord(input,option,word,PETSC_TRUE)
+          if (input%ierr == 0) then
+            icol = icol + 1
+            call StringToUpper(word)
+
+            do while (k < this%fmdm_species%num_species)
+              k = k + 1
+              if (trim(word) == trim(this%fmdm_species%name(k))) then
+                this%fmdm_species%column_id(k) = icol
+                exit
+              endif
+            enddo ! k loop
+
+          else
+            exit
+          endif
+      enddo ! icol loop
+      k = 0
+      do while (k < this%fmdm_species%num_species)
+        k = k + 1
+        if (Uninitialized(this%fmdm_species%column_id(k))) then
+          option%io_buffer = 'Mismatch between species in ' &
+                             // trim(error_string) // ' mass fraction file &
+                             &header and those listed in ' &
+                             // trim(error_string) // ' block.'
+          call printErrMsg(option)
+        endif
+      enddo
+    else
+      option%io_buffer = 'The first column in the ' // trim(error_string) &
+                         // ' mass fraction file must be TIME.'
+      call printErrMsg(option)
+    endif
+  else
+    option%io_buffer = 'A HEADER must be specified in ' // &
+                       trim(error_string) // ' mass fraction file.'
+    call printErrMsg(option)
+  endif
   
   if (Uninitialized(this%num_grid_cells_in_waste_form)) then
     option%io_buffer = &
       'NUM_GRID_CELLS must be specified for fuel matrix degradation model.'
     call printErrMsg(option)
   endif
-  ! jmf
-!  if (len_trim(this%data_mediator_species(1)) == 0) then
-!    option%io_buffer = &
-!      'DATA_MEDIATOR_SPECIES must be specified for fuel matrix ' // &
-!      'degradation model.'
-!    call printErrMsg(option)
-!  endif
-  
+  if (.not. allocated(this%fmdm_species%name)) then
+    option%io_buffer = 'A SPECIES NAME and FORMULA_WEIGHT must be specified &
+                       &in ' // trim(error_string)
+    call printErrMsg(option)
+  endif
+  if (.not.associated(this%mass_fraction_dataset)) then
+    option%io_buffer = 'MASS_FRACTION must be specified in ' // &
+      trim(error_string)
+    call printErrMsg(option)
+  endif
+
 end subroutine PMFMDMRead
 
 ! ************************************************************************** !
@@ -1925,6 +2053,9 @@ subroutine PMFMDMStrip(this)
   ! this is solely a pointer
 !  call DataMediatorVecDestroy(this%data_mediator)
   nullify(this%waste_form_list)
+  deallocate(this%fmdm_species%name)  
+  deallocate(this%fmdm_species%formula_weight)
+  deallocate(this%fmdm_species%column_id)
   
 end subroutine PMFMDMStrip
   
