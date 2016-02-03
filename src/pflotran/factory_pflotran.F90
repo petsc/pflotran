@@ -65,6 +65,8 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   use EOS_module
   use PM_Surface_class
   use PM_Geomechanics_Force_class
+  use PM_Subsurface_Flow_class
+  use PM_RT_class
   
   implicit none
   
@@ -95,7 +97,7 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
 
   !geh: this is rigid, but has to do for now.
   select type(pm => simulation%process_model_coupler_list%pm_list)
-    class is(pm_geomechforce_type)
+    class is(pm_geomech_force_type)
       simulation%process_model_coupler_list%checkpoint_option => &
         pm%geomech_realization%checkpoint_option
     class is(pm_surface_type)
