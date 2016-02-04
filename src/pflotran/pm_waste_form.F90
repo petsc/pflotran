@@ -251,8 +251,8 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
         endif
       endif
       if (dataset_ascii%header == '') then
-        option%io_buffer = 'A HEADER must be specified in ' // &
-                           trim(error_string) // ' mass fraction file.'
+        option%io_buffer = 'A HEADER must be specified in the ' // &
+                           trim(error_string) // ' mass fraction file/list.'
         call printErrMsg(option)
       endif
       
@@ -262,8 +262,8 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
       call StringToUpper(word)
       if ((input%ierr == 0) .and. (trim(word) == 'HEADER')) then
         call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'while reading the mass fraction file &
-                           &header',error_string)
+        call InputErrorMsg(input,option,'while reading the mass fraction file/&
+                           &list header',error_string)
         call StringToUpper(word)
         if (trim(word) == 'TIME') then
           do
@@ -288,27 +288,27 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
           do while (k < this%wf_species%num_species)
             k = k + 1
             if (Uninitialized(this%wf_species%column_id(k))) then
-              option%io_buffer = 'Mismatch between species in ' &
-                                 // trim(error_string) // ' mass fraction file &
-                                 &header and those listed in ' &
+              option%io_buffer = 'Mismatch between species in the ' &
+                                 // trim(error_string) // ' mass fraction file/&
+                                 &list header and those listed in the ' &
                                  // trim(error_string) // ' block.'
               call printErrMsg(option)
             endif
           enddo
         else
           option%io_buffer = 'The first column in the ' // trim(error_string) &
-                             // ' mass fraction file must be TIME.'
+                             // ' mass fraction file/list must be TIME.'
           call printErrMsg(option)
         endif
       else
-        option%io_buffer = 'A HEADER must be specified in ' // &
-                           trim(error_string) // ' mass fraction file.'
+        option%io_buffer = 'A HEADER must be specified in the ' // &
+                           trim(error_string) // ' mass fraction file/list.'
         call printErrMsg(option)
       endif
       
       if (.not.associated(this%mass_fraction_dataset)) then
-        option%io_buffer = 'MASS_FRACTION must be specified in ' // &
-                           trim(error_string)
+        option%io_buffer = 'MASS_FRACTION must be specified in the ' // &
+                           trim(error_string) // ' block.'
         call printErrMsg(option)
       endif
 !-------------------------------------
