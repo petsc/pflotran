@@ -7,7 +7,7 @@ module Simulation_Subsurface_class
   use PMC_Third_Party_class
   use PMC_Base_class
   use Realization_class
-
+  use Waypoint_module
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -25,6 +25,7 @@ module Simulation_Subsurface_class
     class(realization_subsurface_type), pointer :: realization 
     ! regression object
     type(regression_type), pointer :: regression
+    type(waypoint_list_type), pointer :: waypoint_list_subsurface
   contains
     procedure, public :: Init => SubsurfaceSimulationInit
     procedure, public :: JumpStart => SubsurfaceSimulationJumpStart
@@ -78,7 +79,7 @@ subroutine SubsurfaceSimulationInit(this,option)
   ! Author: Glenn Hammond
   ! Date: 04/22/13
   ! 
-
+  use Waypoint_module
   use Option_module
   
   implicit none
@@ -91,6 +92,7 @@ subroutine SubsurfaceSimulationInit(this,option)
   nullify(this%rt_process_model_coupler)
   nullify(this%realization)
   nullify(this%regression)
+  this%waypoint_list_subsurface => WaypointListCreate()
   
 end subroutine SubsurfaceSimulationInit
 
@@ -296,6 +298,7 @@ subroutine SubsurfaceSimulationStrip(this)
   deallocate(this%realization)
   nullify(this%realization)
   call RegressionDestroy(this%regression)
+  call WaypointListDestroy(this%waypoint_list_subsurface)
   
 end subroutine SubsurfaceSimulationStrip
 

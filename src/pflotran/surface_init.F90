@@ -188,7 +188,7 @@ end subroutine SurfaceInit
 
 ! ************************************************************************** !
 
-subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
+subroutine SurfaceInitReadInput(simulation,surf_flow_solver,input)
   ! 
   ! This routine reads surface flow data from the input file
   ! grids.
@@ -197,6 +197,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   ! Date: 02/09/12
   ! 
 
+  use Simulation_Surf_Subsurf_class
   use Option_module
   use Input_Aux_module
   use String_module
@@ -227,11 +228,12 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 
   implicit none
 
-  class(realization_surface_type) :: surf_realization
+  class(surfsubsurface_simulation_type) :: simulation
   type(solver_type) :: surf_flow_solver
   type(input_type), pointer :: input
-  type(option_type) :: option
   
+  class(realization_surface_type), pointer :: surf_realization
+  type(option_type), pointer :: option
   type(discretization_type),pointer :: discretization
   type(grid_type), pointer :: grid
   type(unstructured_grid_type), pointer :: un_str_sfgrid
@@ -241,6 +243,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
   type(coupler_type), pointer :: coupler
   type(strata_type), pointer :: strata
   class(dataset_base_type), pointer :: dataset
+  type(waypoint_list_type), pointer :: waypoint_list
 
   type(patch_type), pointer :: patch
   type(output_option_type), pointer :: output_option
@@ -269,8 +272,12 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
 ! we initialize the word to blanks to avoid error reported by valgrind
   word = ''
 
+  surf_realization => simulation%surf_realization
+  waypoint_list => simulation%waypoint_list_surfsubsurface
+  option => surf_realization%option
+  
   discretization => surf_realization%discretization
-  output_option => surf_realization%output_option
+  output_option => simulation%output_option
 
   patch => surf_realization%patch
 
@@ -446,8 +453,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                 waypoint => WaypointCreate()
                 waypoint%time = temp_real_array(i)*units_conversion
                 waypoint%print_output = PETSC_TRUE
-                call WaypointInsertInList(waypoint, &
-                                          surf_realization%waypoint_list)
+                call WaypointInsertInList(waypoint,waypoint_list)
               enddo
               call DeallocateArray(temp_real_array)
             case('OUTPUT_FILE')
@@ -526,7 +532,7 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
                         waypoint%print_output = PETSC_TRUE
-                        call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
+                        call WaypointInsertInList(waypoint,waypoint_list)
                         temp_real = temp_real + output_option%periodic_output_time_incr
                         if (temp_real > temp_real2) exit
                       enddo
@@ -760,23 +766,27 @@ subroutine SurfaceInitReadInput(surf_realization,surf_flow_solver,input,option)
       
       !.........................................................................
       case ('SURF_RESTART')
-        option%surf_restart_flag = PETSC_TRUE
-        call InputReadNChars(input,option,option%surf_restart_filename, &
-                             MAXSTRINGLENGTH,PETSC_TRUE)
-        call InputErrorMsg(input,option,'SURF_RESTART','Surface restart &
-                                                       &file name') 
-        call InputReadDouble(input,option,option%restart_time)
-        if (input%ierr == 0) then
-          call printErrMsg(option,'Setting time to value not supported in &
-                                  &surface-flow')
-        endif
-        option%first_step_after_restart = PETSC_TRUE
+        option%io_buffer = 'The SURF_RESTART card within SURFACE_FLOW &
+                           &block has been deprecated.'      
+        !option%surf_restart_flag = PETSC_TRUE
+        !call InputReadNChars(input,option,option%surf_restart_filename, &
+        !                     MAXSTRINGLENGTH,PETSC_TRUE)
+        !call InputErrorMsg(input,option,'SURF_RESTART','Surface restart &
+        !                                               &file name') 
+        !call InputReadDouble(input,option,option%restart_time)
+        !if (input%ierr == 0) then
+        !  call printErrMsg(option,'Setting time to value not supported in &
+        !                          &surface-flow')
+        !endif
+        !option%first_step_after_restart = PETSC_TRUE
 
 !......................
 
       case ('SURF_CHECKPOINT')
-        call CheckpointRead(input,option,surf_realization%checkpoint_option, &
-                            surf_realization%waypoint_list)
+        option%io_buffer = 'The SURF_CHECKPOINT card within SURFACE_FLOW &
+                           &block has been deprecated.'      
+!        call CheckpointRead(input,option,surf_realization%checkpoint_option, &
+!                            surf_realization%waypoint_list)
         
 !......................
 

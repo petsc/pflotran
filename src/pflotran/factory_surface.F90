@@ -115,7 +115,6 @@ subroutine SurfaceJumpStart(simulation)
   nullify(master_timestepper)
   
   option => surf_realization%option
-  output_option => surf_realization%output_option
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr);CHKERRQ(ierr)

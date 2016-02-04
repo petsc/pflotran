@@ -33,12 +33,12 @@ module Realization_Base_class
     type(field_type), pointer :: field
     type(debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
-    type(checkpoint_option_type), pointer :: checkpoint_option
+!geh_remove    type(checkpoint_option_type), pointer :: checkpoint_option
     class(data_mediator_base_type), pointer :: flow_data_mediator_list
     class(data_mediator_base_type), pointer :: tran_data_mediator_list
     
     type(reaction_type), pointer :: reaction
-    type(waypoint_list_type), pointer :: waypoint_list
+!geh_remove    type(waypoint_list_type), pointer :: waypoint_list
     
   end type realization_base_type
   
@@ -48,7 +48,6 @@ module Realization_Base_class
             RealizationSetVariable, &
             RealizCreateTranMassTransferVec, &
             RealizCreateFlowMassTransferVec, &
-            RealizCreateSyncWaypointList, &
             RealizationBaseStrip
 
 contains
@@ -79,13 +78,13 @@ subroutine RealizationBaseInit(realization_base,option)
   nullify(realization_base%comm1)  
   realization_base%field => FieldCreate()
   realization_base%debug => DebugCreate()
-  realization_base%output_option => OutputOptionCreate()
+  nullify(realization_base%output_option)
 
   realization_base%patch_list => PatchCreateList()
 
   nullify(realization_base%reaction)
-  nullify(realization_base%waypoint_list)
-  nullify(realization_base%checkpoint_option)
+!geh_remove  nullify(realization_base%waypoint_list)
+!geh_remove  nullify(realization_base%checkpoint_option)
 
   nullify(realization_base%patch)
   nullify(realization_base%flow_data_mediator_list)
@@ -235,47 +234,6 @@ end subroutine RealizCreateTranMassTransferVec
 
 ! ************************************************************************** !
 
-function RealizCreateSyncWaypointList(realization)
-  !
-  ! Creates a list of waypoints for outer synchronization of simulation process
-  ! model couplers
-  !
-  ! Author: Glenn Hammond
-  ! Date: 10/08/14
-  !
-
-  use Option_module
-  use Waypoint_module
-  use Time_Storage_module
-
-  implicit none
-
-  class(realization_base_type) :: realization
-
-  type(waypoint_list_type), pointer :: RealizCreateSyncWaypointList
-
-  type(waypoint_list_type), pointer :: new_waypoint_list
-  type(waypoint_type), pointer :: cur_waypoint
-  type(waypoint_type), pointer :: new_waypoint
-
-  new_waypoint_list => WaypointListCreate()
-
-  cur_waypoint => realization%waypoint_list%first
-  do
-    if (.not.associated(cur_waypoint)) exit
-    if (cur_waypoint%sync .or. cur_waypoint%final) then
-      new_waypoint => WaypointCreate(cur_waypoint)
-      call WaypointInsertInList(new_waypoint,new_waypoint_list)
-      if (cur_waypoint%final) exit
-    endif
-    cur_waypoint => cur_waypoint%next
-  enddo
-  RealizCreateSyncWaypointList => new_waypoint_list
-
-end function RealizCreateSyncWaypointList
-
-! ************************************************************************** !
-
 subroutine RealizationBaseStrip(this)
   ! 
   ! Deallocates members of base realization
@@ -292,8 +250,8 @@ subroutine RealizationBaseStrip(this)
   call FieldDestroy(this%field)
 
 !  call OptionDestroy(realization%option) !geh it will be destroy externally
-  call OutputOptionDestroy(this%output_option)
-  call CheckpointOptionDestroy(this%checkpoint_option)
+  nullify(this%output_option)
+!geh_remove  call CheckpointOptionDestroy(this%checkpoint_option)
   
   call DiscretizationDestroy(this%discretization)
   
@@ -311,7 +269,7 @@ subroutine RealizationBaseStrip(this)
   call DataMediatorDestroy(this%flow_data_mediator_list)
   call DataMediatorDestroy(this%tran_data_mediator_list)
 
-  call WaypointListDestroy(this%waypoint_list)
+!geh_remove  call WaypointListDestroy(this%waypoint_list)
 
 end subroutine RealizationBaseStrip
 

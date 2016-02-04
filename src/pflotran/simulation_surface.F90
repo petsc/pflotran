@@ -6,7 +6,7 @@ module Simulation_Surface_class
   use PMC_Surface_class
   use PMC_Base_class
   use Realization_Surface_class
-
+  use Waypoint_module
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -19,6 +19,7 @@ module Simulation_Surface_class
     class(pmc_surface_type), pointer :: surf_flow_process_model_coupler
     class(realization_surface_type), pointer :: surf_realization
     type(regression_type), pointer :: regression
+    type(waypoint_list_type), pointer :: waypoint_list_surface
   contains
     procedure, public :: Init => SurfaceSimulationInit
     procedure, public :: InitializeRun => SurfaceInitializeRun
@@ -68,7 +69,7 @@ subroutine SurfaceSimulationInit(this,option)
   ! Author: Gautam Bisht, LBNL
   ! Date: 06/27/13
   ! 
-
+  use Waypoint_module
   use Option_module
   
   implicit none
@@ -78,6 +79,7 @@ subroutine SurfaceSimulationInit(this,option)
   
   call SimulationBaseInit(this,option)
   nullify(this%regression)
+  this%waypoint_list_surface => WaypointListCreate()
   
 end subroutine SurfaceSimulationInit
 
@@ -180,6 +182,7 @@ subroutine SurfaceSimulationStrip(this)
   deallocate(this%surf_realization)
   nullify(this%surf_realization)
   call RegressionDestroy(this%regression)
+  call WaypointListDestroy(this%waypoint_list_surface)
   
 end subroutine SurfaceSimulationStrip
 

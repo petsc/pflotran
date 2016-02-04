@@ -69,6 +69,7 @@ module Checkpoint_module
             CheckpointOpenFileForReadHDF5, &
             CheckPointReadCompatibilityHDF5, &
 #endif
+            CheckpointPeriodicTimeWaypoints, &
             CheckpointRead
 
 contains
@@ -1471,30 +1472,19 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
   format_binary = PETSC_FALSE
   format_hdf5 = PETSC_FALSE
   do
-    temp_string = input%buf
-    !--- For backwards compatibility: ---------------------------
-    call InputReadInt(input,option,checkpoint_option%periodic_ts_incr)
-    if (input%ierr == 0) then
-      checkpoint_option%format = CHECKPOINT_BINARY
-      return
-    endif
-    !------------------------------------------------------------
-    if (input%ierr /= 0) then  
-      input%ierr = 0
-      input%buf = temp_string
-      call InputReadPflotranString(input,option)
-      call InputReadStringErrorMsg(input,option,'CHECKPOINT')
-      if (InputCheckExit(input,option)) exit
-      call InputReadWord(input,option,word,PETSC_TRUE)
-      call InputErrorMsg(input,option,'checkpoint option or value', &
-                          'CHECKPOINT')
-      call StringToUpper(word)
-      select case(trim(word))
-        case ('PERIODIC')
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'time increment', &
-                              'CHECKPOINT,PERIODIC')
-          select case(trim(word))
+    call InputReadPflotranString(input,option)
+    call InputReadStringErrorMsg(input,option,'CHECKPOINT')
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'checkpoint option or value', &
+                        'CHECKPOINT')
+    call StringToUpper(word)
+    select case(trim(word))
+      case ('PERIODIC')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'time increment', &
+                            'CHECKPOINT,PERIODIC')
+        select case(trim(word))
           case('TIME')
             call InputReadDouble(input,option,temp_real)
             call InputErrorMsg(input,option,'time increment', &
@@ -1515,60 +1505,59 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
           case default
             call InputKeywordUnrecognized(word,'CHECKPOINT,PERIODIC', &
                                           option)
-          end select
-        case ('TIMES')
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'time units', &
-                              'CHECKPOINT,TIMES')
-          units_category = 'time'
-          units_conversion = UnitsConvertToInternal(word,units_category, &
-                                                    option)
-          checkpoint_option%tconv = 1/units_conversion
-          checkpoint_option%tunit = trim(word)
+        end select
+      case ('TIMES')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'time units', &
+                            'CHECKPOINT,TIMES')
+        units_category = 'time'
+        units_conversion = UnitsConvertToInternal(word,units_category, &
+                                                  option)
+        checkpoint_option%tconv = 1/units_conversion
+        checkpoint_option%tunit = trim(word)
 !geh: this needs to be tested.
 #if 0
-          temp_string = 'CHECKPOINT,TIMES'
-          call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
-                                temp_string,input,option)
-          do i = 1, size(temp_real_array)
-            waypoint => WaypointCreate()
-            waypoint%time = temp_real_array(i)*units_conversion
-            waypoint%print_checkpoint = PETSC_TRUE
-            call WaypointInsertInList(waypoint,waypoint_list)
-          enddo
-          call DeallocateArray(temp_real_array)
+        temp_string = 'CHECKPOINT,TIMES'
+        call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
+                              temp_string,input,option)
+        do i = 1, size(temp_real_array)
+          waypoint => WaypointCreate()
+          waypoint%time = temp_real_array(i)*units_conversion
+          waypoint%print_checkpoint = PETSC_TRUE
+          call WaypointInsertInList(waypoint,waypoint_list)
+        enddo
+        call DeallocateArray(temp_real_array)
 #else
-          do
-            call InputReadDouble(input,option,temp_real)
-            if (input%ierr /= 0) exit
-            call InputErrorMsg(input,option,'checkpoint time', &
-                                'CHECKPOINT,TIMES') 
-            waypoint => WaypointCreate()
-            waypoint%time = temp_real * units_conversion
-            waypoint%print_checkpoint = PETSC_TRUE
-            call WaypointInsertInList(waypoint,waypoint_list)     
-          enddo
+        do
+          call InputReadDouble(input,option,temp_real)
+          if (input%ierr /= 0) exit
+          call InputErrorMsg(input,option,'checkpoint time', &
+                              'CHECKPOINT,TIMES') 
+          waypoint => WaypointCreate()
+          waypoint%time = temp_real * units_conversion
+          waypoint%print_checkpoint = PETSC_TRUE
+          call WaypointInsertInList(waypoint,waypoint_list)     
+        enddo
 #endif
-        case ('FORMAT')
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'format type', &
-                              'CHECKPOINT,FORMAT')
-          call StringToUpper(word)
-          select case(trim(word))
-            case('BINARY')
-              format_binary = PETSC_TRUE
-            case('HDF5')
-              format_hdf5 = PETSC_TRUE
-            case default
-              call InputKeywordUnrecognized(word,'CHECKPOINT,FORMAT', &
-                                            option)
-            end select
+      case ('FORMAT')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'format type', &
+                            'CHECKPOINT,FORMAT')
+        call StringToUpper(word)
+        select case(trim(word))
+          case('BINARY')
+            format_binary = PETSC_TRUE
+          case('HDF5')
+            format_hdf5 = PETSC_TRUE
           case default
-            call InputErrorMsg(input,option,'checkpoint option type', &
-                                'CHECKPOINT: Must specify PERIODIC TIME, &
-                                &PERIODIC TIMESTEP, TIMES, or FORMAT')
-          end select
-    endif
+            call InputKeywordUnrecognized(word,'CHECKPOINT,FORMAT', &
+                                          option)
+        end select
+      case default
+          call InputErrorMsg(input,option,'checkpoint option type', &
+                              'CHECKPOINT: Must specify PERIODIC TIME, &
+                              &PERIODIC TIMESTEP, TIMES, or FORMAT')
+    end select
     if (format_binary .and. format_hdf5) then
       checkpoint_option%format = CHECKPOINT_BOTH
     else if (format_hdf5) then
@@ -1579,5 +1568,54 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
   enddo
   
 end subroutine CheckpointRead
+
+! ************************************************************************** !
+
+subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
+  ! 
+  ! Inserts periodic time waypoints into list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/16
+  !  
+
+  use Option_module
+  use Waypoint_module
+  use Output_Aux_module
+
+  implicit none
+
+  type(option_type) :: option
+  type(checkpoint_option_type), pointer :: checkpoint_option
+  type(waypoint_list_type) :: waypoint_list
+  type(waypoint_type), pointer :: waypoint
+  PetscReal :: final_time
+  PetscReal :: temp_real
+  
+  final_time = WaypointListGetFinalTime(waypoint_list)
+
+  if (final_time < 1.d-40) then
+    option%io_buffer = 'No final time specified in waypoint list. &
+      &Send your input deck to pflotran-dev.'
+    call printMsg(option)
+  endif
+  
+  ! add waypoints for periodic checkpoint
+  if (associated(checkpoint_option)) then
+    if (Initialized(checkpoint_option%periodic_time_incr)) then
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + checkpoint_option%periodic_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_checkpoint = PETSC_TRUE
+        call WaypointInsertInList(waypoint,waypoint_list)
+      enddo
+    endif
+  endif
+
+end subroutine CheckpointPeriodicTimeWaypoints
+  
 
 end module Checkpoint_module

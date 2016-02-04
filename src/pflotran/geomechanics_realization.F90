@@ -948,7 +948,7 @@ end subroutine GeomechRealizAddGeomechCoupler
 
 ! ************************************************************************** !
 
-subroutine GeomechRealizAddWaypointsToList(geomech_realization)
+subroutine GeomechRealizAddWaypointsToList(geomech_realization,waypoint_list)
   ! 
   ! Adds waypoints from BCs and source/sink
   ! to waypoint list
@@ -964,8 +964,8 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
   implicit none
   
   class(realization_geomech_type) :: geomech_realization
-  
   type(waypoint_list_type), pointer :: waypoint_list
+
   type(geomech_condition_type), pointer :: cur_geomech_condition
   type(geomech_sub_condition_type), pointer :: sub_condition
   type(waypoint_type), pointer :: waypoint, cur_waypoint
@@ -975,7 +975,6 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
   PetscReal, pointer :: times(:)
 
   option => geomech_realization%option
-  waypoint_list => geomech_realization%waypoint_list
   nullify(times)
   
   ! set flag for final output
@@ -1043,7 +1042,7 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)
+        call WaypointInsertInList(waypoint,waypoint_list)
       enddo
     endif
     
@@ -1056,7 +1055,7 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_tr_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)
+        call WaypointInsertInList(waypoint,waypoint_list)
       enddo
     endif
 

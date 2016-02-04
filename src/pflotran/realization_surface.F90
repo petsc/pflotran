@@ -1386,7 +1386,7 @@ end subroutine RealizSurfGetVariable
 
 ! ************************************************************************** !
 
-subroutine RealizSurfAddWaypointsToList(surf_realization)
+subroutine RealizSurfAddWaypointsToList(surf_realization,waypoint_list)
   ! 
   ! This routine creates waypoints assocated with source/sink, boundary
   ! condition, etc. and adds to a list
@@ -1402,8 +1402,8 @@ subroutine RealizSurfAddWaypointsToList(surf_realization)
   implicit none
   
   class(realization_surface_type) :: surf_realization
-  
-  type(waypoint_list_type), pointer :: waypoint_list
+  type(waypoint_list_type) :: waypoint_list
+
   type(flow_condition_type), pointer :: cur_flow_condition
   type(flow_sub_condition_type), pointer :: sub_condition
   type(waypoint_type), pointer :: waypoint, cur_waypoint
@@ -1413,7 +1413,6 @@ subroutine RealizSurfAddWaypointsToList(surf_realization)
   PetscReal, pointer :: times(:)
 
   option => surf_realization%option
-  waypoint_list => surf_realization%waypoint_list
   nullify(times)
   
   ! set flag for final output
@@ -1467,7 +1466,9 @@ subroutine RealizSurfAddWaypointsToList(surf_realization)
     endif
     cur_flow_condition => cur_flow_condition%next
   enddo
-      
+     
+#if 0
+!geh_remove
   ! add waypoints for periodic output
   if (surf_realization%output_option%periodic_output_time_incr > 0.d0 .or. &
       surf_realization%output_option%periodic_tr_output_time_incr > 0.d0) then
@@ -1494,7 +1495,7 @@ subroutine RealizSurfAddWaypointsToList(surf_realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_tr_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
+        call WaypointInsertInList(waypoint,waypoint_list)
       enddo
     endif
 
@@ -1512,10 +1513,11 @@ subroutine RealizSurfAddWaypointsToList(surf_realization)
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_checkpoint = PETSC_TRUE
-        call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
+        call WaypointInsertInList(waypoint,waypoint_list)
       enddo
     endif
   endif
+#endif  
 
 end subroutine RealizSurfAddWaypointsToList
 

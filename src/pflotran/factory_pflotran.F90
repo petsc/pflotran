@@ -95,22 +95,6 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   
   call PFLOTRANReadSimulation(simulation,option)
 
-  !geh: this is rigid, but has to do for now.
-  select type(pm => simulation%process_model_coupler_list%pm_list)
-    class is(pm_geomech_force_type)
-      simulation%process_model_coupler_list%checkpoint_option => &
-        pm%geomech_realization%checkpoint_option
-    class is(pm_surface_type)
-      simulation%process_model_coupler_list%checkpoint_option => &
-        pm%surf_realization%checkpoint_option
-    class is(pm_subsurface_flow_type)
-      simulation%process_model_coupler_list%checkpoint_option => &
-        pm%realization%checkpoint_option
-    class is(pm_rt_type)
-      simulation%process_model_coupler_list%checkpoint_option => &
-        pm%realization%checkpoint_option
-  end select
-
 end subroutine PFLOTRANInitializePostPetsc
 
 ! ************************************************************************** !
@@ -131,6 +115,10 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   use PM_Surface_TH_class
   use PM_Geomechanics_Force_class
   use PMC_Base_class
+  use Checkpoint_module
+  use Output_Aux_module
+  use Waypoint_module
+  use Units_module
   
   use Factory_Subsurface_module
   use Factory_Hydrogeophysics_module
@@ -148,10 +136,13 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: simulation_type
+  character(len=MAXSTRINGLENGTH) :: units_category  
   
   class(pm_base_type), pointer :: pm_master
   class(pm_base_type), pointer :: cur_pm
   class(pm_base_type), pointer :: new_pm
+  type(checkpoint_option_type), pointer :: checkpoint_option
+  type(waypoint_list_type), pointer :: checkpoint_waypoint_list
 
   class(pmc_base_type), pointer :: pmc_master
   
@@ -162,6 +153,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   nullify(new_pm)
   
   nullify(pmc_master)
+  nullify(checkpoint_option)
+  nullify(checkpoint_waypoint_list)
   print_ekg = PETSC_FALSE
   
   input => InputCreate(IN_UNIT,option%input_filename,option)
@@ -228,6 +221,29 @@ subroutine PFLOTRANReadSimulation(simulation,option)
         call PFLOTRANSetupPMCHierarchy(input,option,pmc_master)
       case('PRINT_EKG')
         option%print_ekg = PETSC_TRUE
+      case('CHECKPOINT')
+        checkpoint_option => CheckpointOptionCreate()
+        checkpoint_waypoint_list => WaypointListCreate()
+        call CheckpointRead(input,option,checkpoint_option, &
+                            checkpoint_waypoint_list)
+      case ('RESTART')
+        option%io_buffer = 'The RESTART card within SUBSURFACE block has &
+                           &been deprecated.'
+        option%restart_flag = PETSC_TRUE
+        call InputReadNChars(input,option,option%restart_filename,MAXSTRINGLENGTH, &
+                             PETSC_TRUE)
+        call InputErrorMsg(input,option,'RESTART','Restart file name') 
+        call InputReadDouble(input,option,option%restart_time)
+        if (input%ierr == 0) then
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          if (input%ierr == 0) then
+            units_category = 'time'
+            option%restart_time = option%restart_time* &
+                                  UnitsConvertToInternal(word,units_category,option)
+          else
+            call InputDefaultMsg(input,option,'RESTART, time units')
+          endif
+        endif                            
       case default
         call InputKeywordUnrecognized(word,'SIMULATION',option)            
     end select
@@ -270,6 +286,13 @@ subroutine PFLOTRANReadSimulation(simulation,option)
                      'SIMULATION,SIMULATION_TYPE',option)            
   end select
   
+  if (associated(checkpoint_option)) then
+    simulation%checkpoint_option => checkpoint_option
+    call WaypointListMerge(simulation%waypoint_list_outer, &
+                           checkpoint_waypoint_list,option)
+    nullify(checkpoint_option)
+    nullify(checkpoint_waypoint_list)
+  endif
   call InputDestroy(input)
   
 end subroutine PFLOTRANReadSimulation

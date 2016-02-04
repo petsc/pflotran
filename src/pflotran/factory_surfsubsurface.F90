@@ -149,6 +149,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   if (associated(pm_surface_flow) .or. associated(pm_surface_th)) then
     simulation%surf_realization => RealizSurfCreate(option)
     surf_realization => simulation%surf_realization
+    surf_realization%output_option => simulation%output_option
     subsurf_realization => simulation%realization
     surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
     surf_realization%subsurf_filename = &
@@ -156,10 +157,9 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     call SurfaceInitReadRequiredCards(simulation%surf_realization)
   
     call setSurfaceFlowMode(option)
-    surf_realization%waypoint_list => WaypointListCreate()
   
     if (associated(pm_surface_flow)) then
-      pm_surface_flow%output_option => simulation%surf_realization%output_option
+      pm_surface_flow%output_option => simulation%output_option
       pmc_surface => PMCSurfaceCreate()
       pmc_surface%name = 'PMCSurface'
       simulation%surf_flow_process_model_coupler => pmc_surface
@@ -176,7 +176,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     endif
 
     if (associated(pm_surface_th)) then
-      pm_surface_th%output_option => simulation%surf_realization%output_option
+      pm_surface_th%output_option => simulation%output_option
       pmc_surface => PMCSurfaceCreate()
       pmc_surface%name = 'PMCSurface'
       simulation%surf_flow_process_model_coupler => pmc_surface
@@ -196,30 +196,33 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     string = 'SURFACE_FLOW'
     call InputFindStringInFile(input,option,string)
     call InputFindStringErrorMsg(input,option,string)  
-    call SurfaceInitReadInput(surf_realization, &
-                              timestepper%solver,input,option)
+    call SurfaceInitReadInput(simulation,timestepper%solver,input)
     ! Add first waypoint
     waypoint => WaypointCreate()
     waypoint%time = 0.d0
-    call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
+    call WaypointInsertInList(waypoint,simulation%waypoint_list_surfsubsurface)
   
     ! Add final_time waypoint to surface_realization
     waypoint => WaypointCreate()
     waypoint%final = PETSC_TRUE
-    waypoint%time = simulation%realization%waypoint_list%last%time
+    waypoint%time = simulation%waypoint_list_surfsubsurface%last%time
     waypoint%print_output = PETSC_TRUE
-    call WaypointInsertInList(waypoint,surf_realization%waypoint_list)   
+    call WaypointInsertInList(waypoint,simulation%waypoint_list_surfsubsurface)   
       
     if (associated(simulation%surf_flow_process_model_coupler)) then
       if (associated(simulation%surf_flow_process_model_coupler% &
                      timestepper)) then
         simulation%surf_flow_process_model_coupler%timestepper%cur_waypoint => &
-          surf_realization%waypoint_list%first
+          simulation%waypoint_list_surfsubsurface%first
       endif
     endif
 
-    call InitSurfaceSetupRealization(surf_realization,subsurf_realization)
-    call InitSurfaceSetupSolvers(surf_realization,timestepper%solver)
+    call InitSurfaceSetupRealization(surf_realization,subsurf_realization, &
+                                     simulation%waypoint_list_surfsubsurface)
+    call InitCommonAddOutputWaypoints(simulation%output_option, &
+                                      simulation%waypoint_list_surfsubsurface)
+    call InitSurfaceSetupSolvers(surf_realization,timestepper%solver, &
+                             simulation%waypoint_list_surfsubsurface%last%time)
 
     pmc_surface%timestepper%dt_init = surf_realization%dt_init
     pmc_surface%timestepper%dt_max = surf_realization%dt_max

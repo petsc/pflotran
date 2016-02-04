@@ -9,6 +9,7 @@ module Simulation_Surf_Subsurf_class
   use PMC_Surface_class
   use Realization_class
   use Realization_Surface_class
+  use Waypoint_module
 
   use PFLOTRAN_Constants_module
 
@@ -21,6 +22,7 @@ module Simulation_Surf_Subsurf_class
   type, public, extends(subsurface_simulation_type) :: surfsubsurface_simulation_type
     class(pmc_surface_type), pointer :: surf_flow_process_model_coupler
     class(realization_surface_type), pointer :: surf_realization
+    type(waypoint_list_type), pointer :: waypoint_list_surfsubsurface
   contains
     procedure, public :: Init => SurfSubsurfaceSimulationInit
     procedure, public :: InitializeRun => SurfSubsurfaceInitializeRun
@@ -72,7 +74,7 @@ subroutine SurfSubsurfaceSimulationInit(this,option)
   ! Author: Gautam Bisht, LBNL
   ! Date: 06/28/13
   ! 
-
+  use Waypoint_module
   use Option_module
   
   implicit none
@@ -82,6 +84,7 @@ subroutine SurfSubsurfaceSimulationInit(this,option)
   
   call SubsurfaceSimulationInit(this,option)
   nullify(this%surf_realization)
+  this%waypoint_list_surfsubsurface => WaypointListCreate()
   
 end subroutine SurfSubsurfaceSimulationInit
 
@@ -235,7 +238,7 @@ subroutine SurfSubsurfaceSimulationStrip(this)
   ! Author: Gautam Bisht, LBNL
   ! Date: 06/28/13
   ! 
-
+  use Waypoint_module
   use Simulation_Base_class
 
   implicit none
@@ -248,6 +251,7 @@ subroutine SurfSubsurfaceSimulationStrip(this)
   call RealizSurfStrip(this%surf_realization)
   deallocate(this%surf_realization)
   nullify(this%surf_realization)
+  call WaypointListDestroy(this%waypoint_list_surfsubsurface)
  
 end subroutine SurfSubsurfaceSimulationStrip
 

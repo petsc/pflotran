@@ -9,7 +9,8 @@ module Simulation_Geomechanics_class
   use Realization_class
   use Geomechanics_Realization_class
   use PFLOTRAN_Constants_module
-
+  use Waypoint_module
+  
   implicit none
 
   private
@@ -22,6 +23,7 @@ module Simulation_Geomechanics_class
     ! pointer to geomechanics coupler
     class(pmc_geomechanics_type), pointer :: geomech_process_model_coupler
     class(realization_geomech_type), pointer :: geomech_realization
+    type(waypoint_list_type), pointer :: waypoint_list_geomechanics
   contains
     procedure, public :: Init => GeomechanicsSimulationInit
     procedure, public :: InitializeRun => GeomechanicsSimulationInitializeRun
@@ -69,7 +71,7 @@ subroutine GeomechanicsSimulationInit(this, option)
   ! Author: Gautam Bisht, LBNL
   ! Date: 01/01/14
   ! 
-
+  use Waypoint_module
   use Option_module
 
   implicit none
@@ -79,6 +81,7 @@ subroutine GeomechanicsSimulationInit(this, option)
 
   call SubsurfaceSimulationInit(this, option)
   nullify(this%geomech_realization)
+  this%waypoint_list_geomechanics => WaypointListCreate()
 
 end subroutine GeomechanicsSimulationInit
 
@@ -212,6 +215,7 @@ subroutine GeomechanicsSimulationStrip(this)
   
   call SubsurfaceSimulationStrip(this)
   call RegressionDestroy(this%regression)
+  call WaypointListDestroy(this%waypoint_list_geomechanics)  
   
 end subroutine GeomechanicsSimulationStrip
 

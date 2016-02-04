@@ -12,7 +12,8 @@ contains
 
 ! ************************************************************************** !
 
-subroutine InitSurfaceSetupRealization(surf_realization,subsurf_realization)
+subroutine InitSurfaceSetupRealization(surf_realization,subsurf_realization, &
+                                       waypoint_list)
   ! 
   ! Initializes material property data structres and assign them to the domain.
   ! 
@@ -35,6 +36,8 @@ subroutine InitSurfaceSetupRealization(surf_realization,subsurf_realization)
   
   class(realization_surface_type), pointer :: surf_realization
   class(realization_subsurface_type), pointer :: subsurf_realization
+  type(waypoint_list_type) :: waypoint_list
+  
   type(option_type), pointer :: option
   PetscReal :: dum1
   PetscErrorCode :: ierr
@@ -72,9 +75,9 @@ subroutine InitSurfaceSetupRealization(surf_realization,subsurf_realization)
   !call SurfaceRealizationPrintCouplers(surf_realization)
 
   ! add waypoints associated with boundary conditions, source/sinks etc. to list
-  call RealizSurfAddWaypointsToList(surf_realization)
-  call WaypointListFillIn(option,surf_realization%waypoint_list)
-  call WaypointListRemoveExtraWaypnts(option,surf_realization%waypoint_list)
+  call RealizSurfAddWaypointsToList(surf_realization,waypoint_list)
+!geh_remove  call WaypointListFillIn(option,surf_realization%waypoint_list)
+!geh_remove  call WaypointListRemoveExtraWaypnts(option,surf_realization%waypoint_list)
 
   select case(option%iflowmode)
     case(RICHARDS_MODE)
@@ -111,7 +114,7 @@ end subroutine InitSurfaceSetupRealization
 
 ! ************************************************************************** !
 
-subroutine InitSurfaceSetupSolvers(surf_realization,solver)
+subroutine InitSurfaceSetupSolvers(surf_realization,solver,final_time)
   ! 
   ! Initializes material property data structres and assign them to the domain.
   ! 
@@ -139,6 +142,7 @@ subroutine InitSurfaceSetupSolvers(surf_realization,solver)
   
   class(realization_surface_type) :: surf_realization
   type(solver_type), pointer :: solver
+  PetscReal :: final_time
   
   type(option_type), pointer :: option
   type(convergence_context_type), pointer :: convergence_context
@@ -156,9 +160,7 @@ subroutine InitSurfaceSetupSolvers(surf_realization,solver)
   call SolverCreateTS(solver,option%mycomm)
   call TSSetProblemType(solver%ts,TS_NONLINEAR, &
                         ierr);CHKERRQ(ierr)
-  call TSSetDuration(solver%ts,ONE_INTEGER, &
-                      surf_realization%waypoint_list%last%time, &
-                      ierr);CHKERRQ(ierr)
+  call TSSetDuration(solver%ts,ONE_INTEGER,final_time,ierr);CHKERRQ(ierr)
   
 end subroutine InitSurfaceSetupSolvers
 

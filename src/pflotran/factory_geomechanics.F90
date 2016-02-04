@@ -38,7 +38,7 @@ subroutine GeomechanicsInitialize(simulation_base,pm_list,option)
   ! NOTE: PETSc must already have been initialized here!
   simulation => GeomechanicsSimulationCreate(option)
   simulation%process_model_list => pm_list
-  call GeomechanicsInitializePostPETSc(simulation,option)
+  call GeomechanicsInitializePostPETSc(simulation)
   
   simulation_base => simulation
 
@@ -46,7 +46,7 @@ end subroutine GeomechanicsInitialize
 
 ! ************************************************************************** !
 
-subroutine GeomechanicsInitializePostPETSc(simulation, option)
+subroutine GeomechanicsInitializePostPETSc(simulation)
   ! 
   ! This routine
   ! 
@@ -79,8 +79,8 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
 #include "petsc/finclude/petscvec.h90"
 
   class(geomechanics_simulation_type) :: simulation
+
   type(option_type), pointer :: option
-  
   class(realization_subsurface_type), pointer :: subsurf_realization
   class(realization_geomech_type), pointer :: geomech_realization
   class(pmc_base_type), pointer :: cur_process_model_coupler
@@ -94,6 +94,8 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   type(input_type), pointer :: input
   PetscErrorCode :: ierr
 
+  option => simulation%option
+  
   nullify(prev_pm)
   cur_pm => simulation%process_model_list
   do
@@ -119,11 +121,11 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
   if (option%geomech_on) then
     simulation%geomech_realization => GeomechRealizCreate(option)
     geomech_realization => simulation%geomech_realization
+    geomech_realization%output_option => simulation%output_option
     subsurf_realization => simulation%realization
     geomech_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
     call GeomechicsInitReadRequiredCards(geomech_realization)
-    geomech_realization%waypoint_list => WaypointListCreate()
-    pm_geomech%output_option => simulation%geomech_realization%output_option
+    pm_geomech%output_option => simulation%output_option
     pmc_geomech => PMCGeomechanicsCreate()
     pmc_geomech%name = 'PMCGeomech'
     simulation%geomech_process_model_coupler => pmc_geomech
@@ -142,30 +144,31 @@ subroutine GeomechanicsInitializePostPETSc(simulation, option)
     string = 'GEOMECHANICS'
     call InputFindStringInFile(input,option,string)
     call InputFindStringErrorMsg(input,option,string)  
-    call GeomechanicsInitReadInput(geomech_realization, &
-                              timestepper%solver,input,option)
+    call GeomechanicsInitReadInput(simulation,timestepper%solver,input)
 
     ! Add first waypoint
     waypoint => WaypointCreate()
     waypoint%time = 0.d0
-    call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)
+    call WaypointInsertInList(waypoint,simulation%waypoint_list_geomechanics)
  
     ! Add final_time waypoint to geomech_realization
     waypoint => WaypointCreate()
     waypoint%final = PETSC_TRUE
-    waypoint%time = simulation%realization%waypoint_list%last%time
+    waypoint%time = simulation%waypoint_list_geomechanics%last%time
     waypoint%print_output = PETSC_TRUE
-    call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)   
+    call WaypointInsertInList(waypoint,simulation%waypoint_list_geomechanics)   
 
     if (associated(simulation%geomech_process_model_coupler)) then
       if (associated(simulation%geomech_process_model_coupler% &
                      timestepper)) then
         simulation%geomech_process_model_coupler%timestepper%cur_waypoint => &
-          subsurf_realization%waypoint_list%first
+          simulation%waypoint_list_geomechanics%first
       endif
     endif
  
-    call GeomechInitSetupRealization(geomech_realization,subsurf_realization)
+    call GeomechInitSetupRealization(simulation)
+    call InitCommonAddOutputWaypoints(simulation%output_option, &
+                                      simulation%waypoint_list_geomechanics)    
     call GeomechInitSetupSolvers(geomech_realization,subsurf_realization, &
                                  timestepper%convergence_context, &
                                  timestepper%solver)
@@ -293,7 +296,6 @@ subroutine GeomechanicsJumpStart(simulation)
   nullify(master_timestepper)
 
   option => geomch_realization%option
-  output_option => geomch_realization%output_option
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", &
                            failure, ierr);CHKERRQ(ierr)
@@ -461,15 +463,15 @@ end subroutine GeomechanicsInit
 
 ! ************************************************************************** !
 
-subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
-                                     input,option)
+subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
+                                     input)
   ! 
   ! Reads the geomechanics input data
   ! 
   ! Author: Satish Karra, LANL
   ! Date: 05/23/13
   ! 
-
+  use Simulation_Geomechanics_class
   use Option_module
   use Input_Aux_module
   use String_module
@@ -495,11 +497,12 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   
   implicit none
   
-  class(realization_geomech_type) :: geomech_realization
+  class(geomechanics_simulation_type) :: simulation
   type(solver_type) :: geomech_solver
   type(input_type), pointer :: input
-  type(option_type) :: option
   
+  class(realization_geomech_type), pointer :: geomech_realization
+  type(option_type), pointer :: option
   type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_material_property_type),pointer :: geomech_material_property
   type(waypoint_type), pointer :: waypoint
@@ -510,6 +513,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
   type(geomech_condition_type), pointer :: condition
   type(geomech_coupler_type), pointer :: coupler
   type(output_option_type), pointer :: output_option
+  type(waypoint_list_type), pointer :: waypoint_list
   PetscReal :: units_conversion
 
   character(len=MAXWORDLENGTH) :: word
@@ -526,8 +530,11 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
 ! we initialize the word to blanks to avoid error reported by valgrind
   word = ''
   
+  waypoint_list => simulation%waypoint_list_geomechanics
+  geomech_realization => simulation%geomech_realization
+  option => simulation%option
   geomech_discretization => geomech_realization%geomech_discretization
-  output_option => geomech_realization%output_option
+  output_option => simulation%output_option
     
   if (associated(geomech_realization%geomech_patch)) grid => &
     geomech_realization%geomech_patch%geomech_grid
@@ -714,8 +721,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                 waypoint => WaypointCreate()
                 waypoint%time = temp_real_array(i)*units_conversion
                 waypoint%print_output = PETSC_TRUE
-                call WaypointInsertInList(waypoint, &
-                                          geomech_realization%waypoint_list)
+                call WaypointInsertInList(waypoint,waypoint_list)
               enddo
               call DeallocateArray(temp_real_array)
             case('OUTPUT_FILE')
@@ -795,7 +801,7 @@ subroutine GeomechanicsInitReadInput(geomech_realization,geomech_solver, &
                         waypoint%time = temp_real
                         waypoint%print_output = PETSC_TRUE
                         write(*,*) 'Inserting waypoint in geomech_realization: >>>>>>>> ',waypoint%time
-                        call WaypointInsertInList(waypoint,geomech_realization%waypoint_list)
+                        call WaypointInsertInList(waypoint,waypoint_list)
                         temp_real = temp_real + output_option%periodic_output_time_incr
                         if (temp_real > temp_real2) exit
                       enddo
@@ -1061,13 +1067,14 @@ end subroutine GeomechInitMatPropToGeomechRegions
 
 ! ************************************************************************** !
 
-subroutine GeomechInitSetupRealization(geomech_realization,subsurf_realization)
+subroutine GeomechInitSetupRealization(simulation)
   ! 
   ! Initializes material property data structres and assign them to the domain.
   ! 
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
+  use Simulation_Geomechanics_class
   use Geomechanics_Realization_class
   use Geomechanics_Global_module
   use Geomechanics_Force_module
@@ -1078,11 +1085,14 @@ subroutine GeomechInitSetupRealization(geomech_realization,subsurf_realization)
   
   implicit none
   
+  class(geomechanics_simulation_type) :: simulation
+  
   class(realization_subsurface_type), pointer :: subsurf_realization
   class(realization_geomech_type), pointer :: geomech_realization
-  
   type(option_type), pointer :: option
   
+  subsurf_realization => simulation%realization
+  geomech_realization => simulation%geomech_realization
   option => subsurf_realization%option
   
   call GeomechRealizCreateDiscretization(geomech_realization)
@@ -1105,11 +1115,9 @@ subroutine GeomechInitSetupRealization(geomech_realization,subsurf_realization)
   call GeomechInitMatPropToGeomechRegions(geomech_realization)
   call GeomechRealizInitAllCouplerAuxVars(geomech_realization)  
   call GeomechRealizPrintCouplers(geomech_realization)  
-  call GeomechRealizAddWaypointsToList(geomech_realization)
+  call GeomechRealizAddWaypointsToList(geomech_realization, &
+                                       simulation%waypoint_list_geomechanics)
   call GeomechGridElemSharedByNodes(geomech_realization)
-  call WaypointListFillIn(option,geomech_realization%waypoint_list)
-  call WaypointListRemoveExtraWaypnts(option, &
-                                  geomech_realization%waypoint_list)
   call GeomechForceSetup(geomech_realization)
   call GeomechGlobalSetup(geomech_realization)
     

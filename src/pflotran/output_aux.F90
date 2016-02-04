@@ -22,8 +22,6 @@ module Output_Aux_module
     PetscReal :: periodic_time_incr
     PetscInt :: periodic_ts_incr
     PetscInt :: format
-!    PetscInt :: chk_grp_id
-!    PetscViewer :: viewer
   end type checkpoint_option_type
   
   type, public :: output_option_type
@@ -230,12 +228,9 @@ function CheckpointOptionCreate()
   allocate(checkpoint_option)
   checkpoint_option%tunit = ''
   checkpoint_option%tconv = 0.d0
-  checkpoint_option%periodic_time_incr = &
-    huge(checkpoint_option%periodic_time_incr)
+  checkpoint_option%periodic_time_incr = UNINITIALIZED_DOUBLE
   checkpoint_option%periodic_ts_incr = huge(checkpoint_option%periodic_ts_incr)
   checkpoint_option%format = CHECKPOINT_BINARY
-!  checkpoint_option%chk_grp_id = 0
-!  checkpoint_option%viewer = 0
   
 end function CheckpointOptionCreate 
   

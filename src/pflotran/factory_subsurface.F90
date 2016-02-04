@@ -135,7 +135,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   call SubsurfaceSetFlowMode(pm_flow,option)
   realization => RealizationCreate(option)
   simulation%realization => realization
-  realization%waypoint_list => WaypointListCreate()
+  realization%output_option => simulation%output_option
+  simulation%waypoint_list_subsurface => WaypointListCreate()
   if (associated(pm_flow)) then
     pmc_subsurface => PMCSubsurfaceCreate()
     pmc_subsurface%option => option
@@ -247,8 +248,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   ! clean up waypoints
   if (.not.option%steady_state) then
     ! fill in holes in waypoint data
-    call WaypointListFillIn(option,realization%waypoint_list)
-    call WaypointListRemoveExtraWaypnts(option,realization%waypoint_list)
+    call WaypointListFillIn(option,simulation%waypoint_list_subsurface)
+    call WaypointListRemoveExtraWaypnts(option, &
+                                        simulation%waypoint_list_subsurface)
   endif
 
 
@@ -257,7 +259,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     call InitCommonVerifyAllCouplers(realization)
   endif
   if (realization%debug%print_waypoints) then
-    call WaypointListPrint(realization%waypoint_list,option, &
+    call WaypointListPrint(simulation%waypoint_list_subsurface,option, &
                            realization%output_option)
   endif  
 
@@ -685,6 +687,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   use Init_Subsurface_module
   use Init_Subsurface_Flow_module
   use Init_Subsurface_Tran_module
+  use Init_Common_module
   use Waypoint_module
   use Strata_module
   use Regression_module
@@ -729,19 +732,21 @@ subroutine InitSubsurfaceSimulation(simulation)
   option => realization%option
 
 ! begin from old Init()  
-  call InitSubsurfSetupRealization(realization)
+  call InitSubsurfSetupRealization(simulation)
+  call InitCommonAddOutputWaypoints(simulation%output_option, &
+                                    simulation%waypoint_list_subsurface)
   
   !TODO(geh): refactor
   if (associated(simulation%flow_process_model_coupler)) then
     if (associated(simulation%flow_process_model_coupler%timestepper)) then
       simulation%flow_process_model_coupler%timestepper%cur_waypoint => &
-        realization%waypoint_list%first
+        simulation%waypoint_list_subsurface%first
     endif
   endif
   if (associated(simulation%rt_process_model_coupler)) then
     if (associated(simulation%rt_process_model_coupler%timestepper)) then
       simulation%rt_process_model_coupler%timestepper%cur_waypoint => &
-        realization%waypoint_list%first
+        simulation%waypoint_list_subsurface%first
     endif
   endif
   
@@ -778,13 +783,12 @@ subroutine InitSubsurfaceSimulation(simulation)
   call DiscretizationPrintInfo(realization%discretization, &
                                realization%patch%grid,option)
   
-  simulation%waypoint_list => RealizCreateSyncWaypointList(realization)
+  simulation%waypoint_list_outer => &
+    WaypointCreateSyncWaypointList(simulation%waypoint_list_subsurface)
 
   !----------------------------------------------------------------------------!
   ! This section for setting up new process model approach
   !----------------------------------------------------------------------------!
-  simulation%output_option => realization%output_option
-
   
   if (StrataEvolves(realization%patch%strata_list)) then
     material_process_model_coupler => PMCMaterialCreate()
@@ -802,7 +806,8 @@ subroutine InitSubsurfaceSimulation(simulation)
   cur_process_model_coupler_top => simulation%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler_top)) exit
-    cur_process_model_coupler_top%waypoint_list => realization%waypoint_list
+    cur_process_model_coupler_top%waypoint_list => &
+      simulation%waypoint_list_subsurface
     cur_process_model_coupler => cur_process_model_coupler_top
     do
       if (.not.associated(cur_process_model_coupler)) exit
@@ -832,7 +837,7 @@ subroutine InitSubsurfaceSimulation(simulation)
           class is (pm_rt_type)
             cur_process_model_coupler%timestepper%dt = option%tran_dt
         end select
-        cur_process_model%output_option => realization%output_option
+        cur_process_model%output_option => simulation%output_option
         call cur_process_model%Setup()
         if (associated(cur_process_model_coupler%timestepper)) then
           select type(ts => cur_process_model_coupler%timestepper)
@@ -978,7 +983,6 @@ subroutine SubsurfaceJumpStart(simulation)
   nullify(master_timestepper)
   
   option => realization%option
-  output_option => realization%output_option
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr);CHKERRQ(ierr)
