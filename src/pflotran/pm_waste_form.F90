@@ -183,7 +183,7 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: word, units
-  character(len=MAXSTRINGLENGTH) :: string, units_category
+  character(len=MAXSTRINGLENGTH) :: temp_buf, string, units_category
   character(len=MAXSTRINGLENGTH) :: species_name_buf
   character(len=MAXSTRINGLENGTH) :: species_formula_wt_buf
   class(dataset_ascii_type), pointer :: dataset_ascii
@@ -208,6 +208,12 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
                                  // trim(word)
         this%wf_species%num_species = k
       enddo
+      if (k == 0) then
+        option%io_buffer = 'At least one species name and formula weight &
+                           &must be given in the ' // trim(error_string) &
+                           // ' block.'
+        call printErrMsg(option)
+      endif
       allocate(this%wf_species%name(k))  
       allocate(this%wf_species%formula_weight(k))
       allocate(this%wf_species%column_id(k))
@@ -228,14 +234,23 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
         this%wf_species%column_id(k) = UNINITIALIZED_INTEGER
         this%wf_species%ispecies(k) = UNINITIALIZED_INTEGER
       enddo
-      
-      if (.not. allocated(this%wf_species%name)) then
-        option%io_buffer = 'A SPECIES NAME and FORMULA_WEIGHT must be specified &
-                           &in ' // trim(error_string)
-        call printErrMsg(option)
-      endif
 !-------------------------------------
     case('MASS_FRACTION')
+      temp_buf = input%buf
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      call InputErrorMsg(input,option,'mass fraction file/list',error_string)
+      call StringToUpper(word)
+      select case(trim(word))
+        case('FILE') ! OK format, do now throw error
+        case('LIST') ! OK format, do not throw error
+        case default
+          option%io_buffer = 'A mass fraction FILE or LIST must be given in &
+                             &the ' // trim(error_string) // ' block. Only &
+                             &FILE or LIST supported in the ' &
+                             // trim(error_string) // ' block.'
+        call printErrMsg(option)
+      end select
+      input%buf = temp_buf
       dataset_ascii => DatasetAsciiCreate()
       this%mass_fraction_dataset => dataset_ascii
       dataset_ascii%data_type = DATASET_REAL
@@ -305,12 +320,7 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
                            trim(error_string) // ' mass fraction file/list.'
         call printErrMsg(option)
       endif
-      
-      if (.not.associated(this%mass_fraction_dataset)) then
-        option%io_buffer = 'MASS_FRACTION must be specified in the ' // &
-                           trim(error_string) // ' block.'
-        call printErrMsg(option)
-      endif
+
 !-------------------------------------
     case('PRINT_MASS_BALANCE')
       this%print_mass_balance = PETSC_TRUE
@@ -930,6 +940,8 @@ subroutine PMGlassRead(this,input)
               call GeometryReadCoordinate(input,option, &
                                           new_waste_form%coordinate, &
                                           error_string)
+            case default
+              call InputKeywordUnrecognized(word,error_string,option)
           end select
         enddo
         if (Uninitialized(new_waste_form%volume)) then
@@ -979,7 +991,21 @@ subroutine PMGlassRead(this,input)
       trim(error_string)
     call printErrMsg(option)
   endif
-
+  if (.not.associated(this%mass_fraction_dataset)) then
+    option%io_buffer = 'MASS_FRACTION must be specified in the ' // &
+                       trim(error_string) // ' block.'
+    call printErrMsg(option)
+  endif
+  if (.not.associated(this%waste_form_list)) then
+    option%io_buffer = 'At least one WASTE_FORM must be specified in the ' // &
+                       trim(error_string) // ' block.'
+    call printErrMsg(option)
+  endif
+  if (.not.allocated(this%wf_species%name)) then
+    option%io_buffer = 'At least one SPECIES NAME and FORMULA_WEIGHT must be &
+                       &specified in the ' // trim(error_string) // ' block.'
+    call printErrMsg(option)
+  endif
     
 end subroutine PMGlassRead
 
@@ -1491,6 +1517,8 @@ subroutine PMFMDMRead(this,input)
               call GeometryReadCoordinate(input,option, &
                                           new_waste_form%coordinate, &
                                           error_string)
+            case default
+              call InputKeywordUnrecognized(word,error_string,option)
           end select
         enddo
         if (Uninitialized(new_waste_form%specific_surface_area)) then
@@ -1539,6 +1567,21 @@ subroutine PMFMDMRead(this,input)
   if (Uninitialized(this%num_grid_cells_in_waste_form)) then
     option%io_buffer = &
       'NUM_GRID_CELLS must be specified for fuel matrix degradation model.'
+    call printErrMsg(option)
+  endif
+  if (.not.associated(this%mass_fraction_dataset)) then
+    option%io_buffer = 'MASS_FRACTION must be specified in the ' // &
+                       trim(error_string) // ' block.'
+    call printErrMsg(option)
+  endif
+  if (.not.associated(this%waste_form_list)) then
+    option%io_buffer = 'At least one WASTE_FORM must be specified in the ' // &
+                       trim(error_string) // ' block.'
+    call printErrMsg(option)
+  endif
+  if (.not.allocated(this%wf_species%name)) then
+    option%io_buffer = 'At least one SPECIES NAME and FORMULA_WEIGHT must be &
+                       &specified in the ' // trim(error_string) // ' block.'
     call printErrMsg(option)
   endif
 
