@@ -318,7 +318,6 @@ misc_obj = \
 	${common_src}init_subsurface.o \
 	${common_src}init_subsurface_flow.o \
 	${common_src}init_subsurface_transport.o \
-	${common_src}init_surface.o \
 	${common_src}integral_flux.o \
 	${common_src}lookup_table.o \
 	${common_src}matrix_buffer.o \
@@ -355,13 +354,13 @@ surface_obj = \
 	${common_src}checkpoint_surface.o \
 	${common_src}factory_surface.o \
 	${common_src}factory_surfsubsurface.o \
+	${common_src}init_surface.o \
 	${common_src}pmc_surface.o \
 	${common_src}simulation_surface.o \
 	${common_src}simulation_surfsubsurface.o \
 	${common_src}surface_auxiliary.o \
 	${common_src}surface_field.o \
 	${common_src}surface_flow.o \
-	${common_src}surface_init.o \
 	${common_src}surface_global_aux.o \
 	${common_src}surface_global.o \
 	${common_src}surface_material.o \

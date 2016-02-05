@@ -51,7 +51,6 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
   use Option_module
   use Init_Common_module
   use Init_Surface_module
-  use Surface_Init_module  
   use Surface_Flow_module
   use Surface_TH_module
   use Simulation_Aux_module
