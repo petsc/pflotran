@@ -365,6 +365,11 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
                        transient_plot_flag)
     endif
     
+    ! if time step is cut, we will not print the checkpoint file prescribed at
+    ! the specified time since it will be met in a later time step.
+    if (this%timestepper%time_step_cut_flag) then
+      checkpoint_at_this_time_flag = PETSC_FALSE
+    endif
     if (this%is_master .and. associated(this%checkpoint_option)) then
       if (this%checkpoint_option%periodic_ts_incr > 0 .and. &
           mod(this%timestepper%steps, &
@@ -1392,8 +1397,6 @@ subroutine PMCBaseStrip(this)
     deallocate(this%pm_list)
     nullify(this%pm_list)
   endif
-  nullify(this%waypoint_list) ! deleted in realization
-!  call WaypointListDestroy(this%waypoint_list)
   if (associated(this%pm_ptr)) then
     nullify(this%pm_ptr%pm) ! solely a pointer
     deallocate(this%pm_ptr)
