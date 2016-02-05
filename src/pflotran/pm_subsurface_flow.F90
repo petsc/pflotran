@@ -3,7 +3,7 @@ module PM_Subsurface_Flow_class
   use PM_Base_class
 !geh: using Init_Subsurface_module here fails with gfortran (internal compiler error)
 !  use Init_Subsurface_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Communicator_Base_module
   use Option_module
   
@@ -257,7 +257,7 @@ subroutine PMSubsurfaceFlowSetRealization(this,realization)
   ! Author: Glenn Hammond
   ! Date: 04/21/14
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
 
   implicit none

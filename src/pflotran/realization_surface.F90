@@ -678,7 +678,7 @@ subroutine RealizSurfMapSurfSubsurfGrids(realization,surf_realization)
   use Grid_Unstructured_module
   use Grid_Unstructured_Aux_module
   use Grid_Unstructured_Cell_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Region_module
@@ -1003,7 +1003,7 @@ subroutine RealizSurfMapSurfSubsurfGrid( &
   use String_module
   use Grid_Unstructured_module
   use Grid_Unstructured_Cell_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Surface_Field_module

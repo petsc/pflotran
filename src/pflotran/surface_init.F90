@@ -228,7 +228,7 @@ subroutine SurfaceInitReadInput(simulation,surf_flow_solver,input)
 
   implicit none
 
-  class(surfsubsurface_simulation_type) :: simulation
+  class(subsurface_surfsimulation_type) :: simulation
   type(solver_type) :: surf_flow_solver
   type(input_type), pointer :: input
   

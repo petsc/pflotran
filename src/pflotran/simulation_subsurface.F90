@@ -6,7 +6,7 @@ module Simulation_Subsurface_class
   use PMC_Subsurface_class
   use PMC_Third_Party_class
   use PMC_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Waypoint_module
   use PFLOTRAN_Constants_module
 
@@ -16,7 +16,7 @@ module Simulation_Subsurface_class
   
   private
 
-  type, public, extends(simulation_base_type) :: subsurface_simulation_type
+  type, public, extends(simulation_base_type) :: simulation_subsurface_type
     ! pointer to flow process model coupler
     class(pmc_subsurface_type), pointer :: flow_process_model_coupler
     ! pointer to reactive transport process model coupler
@@ -33,7 +33,7 @@ module Simulation_Subsurface_class
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => SubsurfaceFinalizeRun
     procedure, public :: Strip => SubsurfaceSimulationStrip
-  end type subsurface_simulation_type
+  end type simulation_subsurface_type
   
   public :: SubsurfaceSimulationCreate, &
             SubsurfaceSimulationInit, &
@@ -59,7 +59,7 @@ function SubsurfaceSimulationCreate(option)
   
   type(option_type), pointer :: option
 
-  class(subsurface_simulation_type), pointer :: SubsurfaceSimulationCreate
+  class(simulation_subsurface_type), pointer :: SubsurfaceSimulationCreate
   
 #ifdef DEBUG
   print *, 'SimulationCreate'
@@ -84,7 +84,7 @@ subroutine SubsurfaceSimulationInit(this,option)
   
   implicit none
   
-  class(subsurface_simulation_type) :: this
+  class(simulation_subsurface_type) :: this
   type(option_type), pointer :: option
   
   call SimulationBaseInit(this,option)
@@ -113,7 +113,7 @@ subroutine SubsurfaceSimulationJumpStart(this)
 
   implicit none
   
-  class(subsurface_simulation_type) :: this
+  class(simulation_subsurface_type) :: this
 
   class(timestepper_base_type), pointer :: master_timestepper
   class(timestepper_base_type), pointer :: flow_timestepper
@@ -237,7 +237,7 @@ subroutine SubsurfaceFinalizeRun(this)
 
   implicit none
   
-  class(subsurface_simulation_type) :: this
+  class(simulation_subsurface_type) :: this
   
   PetscErrorCode :: ierr
   
@@ -287,7 +287,7 @@ subroutine SubsurfaceSimulationStrip(this)
 
   implicit none
   
-  class(subsurface_simulation_type) :: this
+  class(simulation_subsurface_type) :: this
   
 #ifdef DEBUG
   call printMsg(this%option,'SubsurfaceSimulationStrip()')
@@ -314,7 +314,7 @@ subroutine SubsurfaceSimulationDestroy(simulation)
 
   implicit none
   
-  class(subsurface_simulation_type), pointer :: simulation
+  class(simulation_subsurface_type), pointer :: simulation
   
 #ifdef DEBUG
   call printMsg(simulation%option,'SimulationDestroy()')

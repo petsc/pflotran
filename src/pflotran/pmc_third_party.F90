@@ -1,7 +1,7 @@
 module PMC_Third_Party_class
 
   use PMC_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
 
   use PFLOTRAN_Constants_module

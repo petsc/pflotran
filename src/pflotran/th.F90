@@ -49,7 +49,7 @@ subroutine THTimeCut(realization)
   ! Date: 12/13/07
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
  
@@ -76,7 +76,7 @@ subroutine THSetup(realization)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
   type(realization_subsurface_type) :: realization
@@ -105,7 +105,7 @@ subroutine THSetupPatch(realization)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -327,7 +327,7 @@ subroutine THComputeMassBalance(realization, mass_balance)
   ! Date: 07/21/2010
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
   type(realization_subsurface_type) :: realization
@@ -358,7 +358,7 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
   ! Date: 07/21/2010
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
@@ -439,7 +439,7 @@ subroutine THZeroMassBalDeltaPatch(realization)
   ! Date: 12/13/11
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -492,7 +492,7 @@ subroutine THUpdateMassBalancePatch(realization)
   ! Date: 12/13/11
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -552,7 +552,7 @@ subroutine THUpdateAuxVars(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
   type(realization_subsurface_type) :: realization
@@ -580,7 +580,7 @@ subroutine THUpdateAuxVarsPatch(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -806,7 +806,7 @@ subroutine THInitializeTimestep(realization)
   ! Date: 02/20/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
@@ -826,7 +826,7 @@ subroutine THUpdateSolution(realization)
   ! Date: 02/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Patch_module
   
@@ -863,7 +863,7 @@ subroutine THUpdateSolutionPatch(realization)
   ! 
 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -941,7 +941,7 @@ subroutine THUpdateFixedAccumulation(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
   type(realization_subsurface_type) :: realization
@@ -969,7 +969,7 @@ subroutine THUpdateFixedAccumPatch(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -1082,7 +1082,7 @@ subroutine THNumericalJacobianTest(xx,realization)
   ! Date: 12/13/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -3352,7 +3352,7 @@ subroutine THResidual(snes,xx,r,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Discretization_module
   use Field_module
@@ -3436,7 +3436,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3951,7 +3951,7 @@ subroutine THJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -4030,7 +4030,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -4602,7 +4602,7 @@ subroutine THMaxChange(realization,dpmax,dtmpmax)
   ! Date: 01/15/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   
@@ -4641,7 +4641,7 @@ subroutine THResidualToMass(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Discretization_module
   use Field_module
@@ -4707,7 +4707,7 @@ function THGetTecplotHeader(realization,icolumn)
   ! Date: 02/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
 
@@ -4833,7 +4833,7 @@ subroutine THSetPlotVariables(realization)
   ! Date: 10/15/12
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
   use Material_Aux_class
@@ -5297,7 +5297,7 @@ subroutine THUpdateSurfaceBC(realization)
   ! Date: 10/23/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -5534,7 +5534,7 @@ subroutine THUpdateSurfaceWaterFlag(realization)
   ! Date: 04/17/14
   !
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -5613,7 +5613,7 @@ subroutine THComputeCoeffsForSurfFlux(realization)
   ! Date: 05/21/14
   !
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module

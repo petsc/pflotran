@@ -27,7 +27,7 @@ subroutine SurfSubsurfaceInitialize(simulation)
   
   implicit none
   
-  class(surfsubsurface_simulation_type) :: simulation
+  class(subsurface_surfsimulation_type) :: simulation
 
   ! NOTE: PETSc must already have been initialized here!
   call SurfSubsurfaceInitializePostPETSc(simulation)
@@ -64,7 +64,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
   use PM_Surface_Flow_class
   use PM_Surface_TH_class
   use Input_Aux_module
-  use Realization_class
+  use Realization_Subsurface_class
   use String_module
   use Waypoint_module
   use Realization_Surface_class
@@ -75,7 +75,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(surfsubsurface_simulation_type) :: simulation
+  class(subsurface_surfsimulation_type) :: simulation
   
   type(option_type), pointer :: option
   class(realization_subsurface_type), pointer :: subsurf_realization
@@ -392,7 +392,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   use Grid_Unstructured_module
   use Grid_Unstructured_Aux_module
   use Grid_Unstructured_Cell_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Region_module
@@ -706,7 +706,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
   use String_module
   use Grid_Unstructured_module
   use Grid_Unstructured_Cell_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Surface_Field_module
@@ -879,7 +879,7 @@ subroutine SurfSubsurfCreateSubsurfVecs(subsurf_realization, option, &
   ! Date: 08/20/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Coupler_module
   use Option_module
   use String_module

@@ -1,7 +1,7 @@
 module PMC_Surface_class
 
   use PMC_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Surface_class
   use Timestepper_Surface_class
 
@@ -90,7 +90,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Timestepper_Base_class
   use Output_Aux_module
   use Output_module, only : Output
-  use Realization_class, only : realization_subsurface_type
+  use Realization_Subsurface_class, only : realization_subsurface_type
   use PM_Base_class
   use PM_Surface_Flow_class
   use Option_module

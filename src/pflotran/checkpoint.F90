@@ -352,7 +352,7 @@ subroutine CheckpointFlowProcessModelBinary(viewer,realization)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Discretization_module
   use Grid_module
@@ -446,7 +446,7 @@ subroutine RestartFlowProcessModelBinary(viewer,realization)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Discretization_module
   use Grid_module
@@ -1149,7 +1149,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
   ! Date: 07/26/13
   !
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Discretization_module
   use Grid_module
@@ -1281,7 +1281,7 @@ subroutine RestartFlowProcessModelHDF5(pm_grp_id, realization)
   ! Date: 08/16/2015
   !
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Discretization_module
   use Grid_module

@@ -1,7 +1,7 @@
 module PMC_Subsurface_class
 
   use PMC_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
 
   use PFLOTRAN_Constants_module
 
@@ -168,7 +168,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
   use Option_module
   use Patch_module
 !  use Realization_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use String_module
   use EOS_Water_module
 
@@ -421,7 +421,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 
   use Grid_module
   use String_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Coupler_module
@@ -546,7 +546,7 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
   use Field_module
   use Grid_module
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use PFLOTRAN_Constants_module
   use Material_Aux_class
   use Material_module
@@ -635,7 +635,7 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
   ! Date: 01/04/14
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Material_Aux_class

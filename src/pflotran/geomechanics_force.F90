@@ -1554,7 +1554,7 @@ subroutine GeomechUpdateFromSubsurf(realization,geomech_realization)
   ! Date: 09/10/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Geomechanics_Realization_class
@@ -1657,7 +1657,7 @@ subroutine GeomechUpdateSubsurfFromGeomech(realization,geomech_realization)
   ! Date: 10/10/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Grid_module
   use Field_module
@@ -1740,7 +1740,7 @@ subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
   use Geomechanics_Grid_module
   use Geomechanics_Field_module
   use String_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
 
   implicit none
@@ -1790,7 +1790,7 @@ subroutine GeomechCreateSubsurfStressStrainVec(realization,geomech_realization)
   use Geomechanics_Grid_module
   use Geomechanics_Field_module
   use String_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
 
   implicit none
@@ -2250,7 +2250,7 @@ subroutine GeomechStoreInitialPorosity(realization,geomech_realization)
   ! 
 
   use Geomechanics_Realization_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
     
   implicit none 
@@ -2304,7 +2304,7 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
   ! Date: 10/08/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module

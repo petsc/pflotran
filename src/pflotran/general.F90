@@ -67,7 +67,7 @@ subroutine GeneralSetup(realization)
   ! Date: 03/10/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -255,7 +255,7 @@ subroutine GeneralInitializeTimestep(realization)
   ! Date: 03/10/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
@@ -287,7 +287,7 @@ subroutine GeneralUpdateSolution(realization)
   ! Date: 03/10/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Patch_module
   use Discretization_module
@@ -341,7 +341,7 @@ subroutine GeneralTimeCut(realization)
   ! Author: Glenn Hammond
   ! Date: 03/10/11
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Patch_module
@@ -390,7 +390,7 @@ subroutine GeneralNumericalJacobianTest(xx,realization,B)
   ! Date: 03/03/15
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -512,7 +512,7 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   ! Date: 03/10/11
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
@@ -580,7 +580,7 @@ subroutine GeneralZeroMassBalanceDelta(realization)
   ! Date: 03/10/11
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -621,7 +621,7 @@ subroutine GeneralUpdateMassBalance(realization)
   ! Date: 03/10/11
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -673,7 +673,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   ! Date: 03/10/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -948,7 +948,7 @@ subroutine GeneralUpdateFixedAccum(realization)
   ! Date: 03/10/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -2328,7 +2328,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! Date: 03/09/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Patch_module
   use Discretization_module
@@ -2753,7 +2753,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 03/09/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3148,7 +3148,7 @@ subroutine GeneralCreateZeroArray(patch,option)
   ! Date: 03/09/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3228,7 +3228,7 @@ function GeneralGetTecplotHeader(realization,icolumn)
   ! Date: 03/09/11
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
     
@@ -3354,7 +3354,7 @@ subroutine GeneralSetPlotVariables(realization)
   ! Date: 02/15/13
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
     
@@ -3648,7 +3648,7 @@ subroutine GeneralMapBCAuxVarsToGlobal(realization)
   ! Date: 03/09/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Coupler_module
@@ -3704,7 +3704,7 @@ subroutine GeneralSetReferencePressures(realization)
   ! Author: Glenn Hammond
   ! Date: 07/09/15
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Patch_module
   use Grid_module
@@ -3771,7 +3771,7 @@ subroutine GeneralDestroy(realization)
   ! Date: 03/09/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   implicit none
 

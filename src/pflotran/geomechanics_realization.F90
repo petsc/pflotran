@@ -327,7 +327,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization,geomech_realization, &
 
   use Option_module
   use Geomechanics_Grid_Aux_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
 
   implicit none

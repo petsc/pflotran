@@ -1,4 +1,4 @@
-module Realization_class
+module Realization_Subsurface_class
   
   use Realization_Base_class
 
@@ -2433,4 +2433,4 @@ subroutine RealizationStrip(this)
   
 end subroutine RealizationStrip
 
-end module Realization_class
+end module Realization_Subsurface_class

@@ -952,7 +952,7 @@ subroutine SurfaceFlowUpdateSurfState(surf_realization)
   use Grid_module
   use Option_module
   use Patch_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use String_module
   use Surface_Field_module

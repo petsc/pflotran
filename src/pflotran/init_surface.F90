@@ -25,7 +25,7 @@ subroutine InitSurfaceSetupRealization(surf_realization,subsurf_realization, &
   use Surface_TH_module
   use Surface_Global_module
   use Timestepper_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   
   use Option_module
   use Waypoint_module

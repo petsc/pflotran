@@ -54,7 +54,7 @@ subroutine RichardsTimeCut(realization)
   ! Date: 12/13/07
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
  
@@ -74,7 +74,7 @@ subroutine RichardsSetup(realization)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
   type(realization_subsurface_type) :: realization
@@ -94,7 +94,7 @@ subroutine RichardsSetupPatch(realization)
   ! Date: 12/13/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -213,7 +213,7 @@ subroutine RichardsComputeMassBalance(realization,mass_balance)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   type(realization_subsurface_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
@@ -234,7 +234,7 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
@@ -288,7 +288,7 @@ subroutine RichardsZeroMassBalDeltaPatch(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -341,7 +341,7 @@ subroutine RichardsUpdateMassBalancePatch(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -403,7 +403,7 @@ subroutine RichardsUpdatePermPatch(realization)
   ! 
 
   use Grid_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Discretization_module
   use Patch_module
@@ -520,7 +520,7 @@ subroutine RichardsUpdateAuxVars(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   type(realization_subsurface_type) :: realization
   
   call RichardsUpdateAuxVarsPatch(realization)
@@ -538,7 +538,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -679,7 +679,7 @@ subroutine RichardsInitializeTimestep(realization)
   ! Date: 02/20/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module 
   
   implicit none
@@ -721,7 +721,7 @@ subroutine RichardsUpdateSolution(realization)
   ! Date: 02/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   
   implicit none
@@ -743,7 +743,7 @@ subroutine RichardsUpdateSolutionPatch(realization)
   ! Date: 02/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
     
   implicit none
   
@@ -771,7 +771,7 @@ subroutine RichardsUpdateFixedAccum(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   type(realization_subsurface_type) :: realization
   
@@ -790,7 +790,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -865,7 +865,7 @@ subroutine RichardsNumericalJacTest(xx,realization)
   ! Date: 12/13/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -959,7 +959,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Discretization_module
   use Option_module
@@ -1058,7 +1058,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1269,7 +1269,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1471,7 +1471,7 @@ subroutine RichardsJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1568,7 +1568,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -1819,7 +1819,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -2048,7 +2048,7 @@ subroutine RichardsCreateZeroArray(patch,option)
   ! Date: 12/13/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2160,7 +2160,7 @@ subroutine RichardsSetPlotVariables(realization)
   ! Date: 10/15/12
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
     
@@ -2231,7 +2231,7 @@ subroutine RichardsUpdateSurfacePress(realization)
   ! Date: 07/31/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -2327,7 +2327,7 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
   ! Date: 05/21/14
   !
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -2703,7 +2703,7 @@ subroutine RichardsDestroy(realization)
   ! Date: 02/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
 
@@ -2723,7 +2723,7 @@ subroutine RichardsDestroyPatch(realization)
   ! Date: 02/03/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   implicit none
 
