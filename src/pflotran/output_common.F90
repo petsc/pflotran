@@ -576,7 +576,7 @@ subroutine GetCellConnections(grid, vec)
 #include "petsc/finclude/petscvec.h90"
 
   type(grid_type) :: grid
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   Vec :: vec
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -668,7 +668,7 @@ subroutine GetCellConnectionsExplicit(grid, vec)
 #include "petsc/finclude/petscvec.h90"
 
   type(grid_type) :: grid
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   type(unstructured_explicit_type), pointer :: explicit_grid
   Vec :: vec
   PetscInt :: offset
@@ -1082,7 +1082,7 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   type(coupler_type), pointer :: boundary_condition
@@ -1453,7 +1453,7 @@ subroutine OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   type(field_type), pointer :: field
   type(ugdm_type), pointer :: ugdm  
   type(connection_set_list_type), pointer :: connection_set_list
@@ -1610,7 +1610,7 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   type(field_type), pointer :: field
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
@@ -1699,7 +1699,7 @@ subroutine OutputGetExplicitAuxVars(realization_base,count,vec_proc,density)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   type(field_type), pointer :: field
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
@@ -1808,7 +1808,7 @@ subroutine OutputGetExplicitCellInfo(realization_base,num_cells,ids,sat,por, &
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   type(field_type), pointer :: field
   type(global_auxvar_type), pointer :: global_auxvar(:)
 

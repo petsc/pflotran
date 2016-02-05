@@ -387,7 +387,7 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   type(input_type), pointer :: input
   type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word
-  type(unstructured_grid_type), pointer :: ugrid
+  type(grid_unstructured_type), pointer :: ugrid
   character(len=MAXWORDLENGTH) :: card
   
   geomech_discretization       => geomech_realization%geomech_discretization

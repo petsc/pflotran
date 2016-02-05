@@ -1722,7 +1722,7 @@ subroutine GetCellConnectionsTecplot(grid, vec)
   implicit none
   
   type(grid_type) :: grid
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   Vec :: vec
   PetscInt :: local_id
   PetscInt :: ghosted_id

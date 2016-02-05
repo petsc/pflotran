@@ -75,8 +75,8 @@ module Grid_module
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash_bins
 
-    type(structured_grid_type), pointer :: structured_grid
-    type(unstructured_grid_type), pointer :: unstructured_grid
+    type(grid_structured_type), pointer :: structured_grid
+    type(grid_unstructured_type), pointer :: unstructured_grid
     
     type(connection_set_list_type), pointer :: internal_connection_set_list
     type(connection_set_list_type), pointer :: boundary_connection_set_list
@@ -763,7 +763,7 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
   type(option_type) :: option
 
   ! local
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   Vec :: vec_cell_ids,vec_cell_ids_loc
   Vec :: vec_face_ids,vec_face_ids_loc
   IS :: is_from, is_to
@@ -918,7 +918,7 @@ subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
 
   implicit none
   
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(region_type) :: region
   type(option_type) :: option
   Vec :: volume

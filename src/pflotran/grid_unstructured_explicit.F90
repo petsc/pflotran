@@ -44,7 +44,7 @@ subroutine UGridExplicitRead(unstructured_grid,filename,option)
   
   implicit none
  
-  type(unstructured_grid_type) :: unstructured_grid 
+  type(grid_unstructured_type) :: unstructured_grid 
   type(unstructured_explicit_type), pointer :: explicit_grid
   character(len=MAXSTRINGLENGTH) :: filename
   type(option_type) :: option
@@ -444,7 +444,7 @@ subroutine UGridExplicitDecompose(ugrid,option)
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscviewer.h"
   
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(option_type) :: option
 
   type(unstructured_explicit_type), pointer :: explicit_grid
@@ -1331,7 +1331,7 @@ subroutine UGridExplicitComputeVolumes(ugrid,option,volume)
 
   implicit none
   
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(option_type) :: option
   Vec :: volume
 

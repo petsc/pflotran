@@ -694,8 +694,8 @@ subroutine RealizSurfMapSurfSubsurfGrids(realization,surf_realization)
   class(realization_surface_type), pointer :: surf_realization
 
   type(option_type), pointer :: option
-  type(unstructured_grid_type),pointer :: subsurf_grid
-  type(unstructured_grid_type),pointer :: surf_grid
+  type(grid_unstructured_type),pointer :: subsurf_grid
+  type(grid_unstructured_type),pointer :: surf_grid
   type(patch_type), pointer :: cur_patch 
   type(region_type), pointer :: cur_region, top_region
   type(region_type), pointer :: patch_region

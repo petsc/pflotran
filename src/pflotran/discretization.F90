@@ -149,8 +149,8 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
   type(discretization_type),pointer :: discretization
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid, grid2
-  type(structured_grid_type), pointer :: str_grid
-  type(unstructured_grid_type), pointer :: un_str_grid
+  type(grid_structured_type), pointer :: str_grid
+  type(grid_unstructured_type), pointer :: un_str_grid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
   character(len=MAXWORDLENGTH) :: unstructured_grid_ctype
 
@@ -189,7 +189,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
           case('structured')
             discretization%itype = STRUCTURED_GRID
             call InputReadWord(input,option,structured_grid_ctype,PETSC_TRUE)
-            call InputDefaultMsg(input,option,'structured_grid_type') 
+            call InputDefaultMsg(input,option,'grid_structured_type') 
             call StringToLower(structured_grid_ctype)
             select case(trim(structured_grid_ctype))
               case('cartesian')
@@ -345,8 +345,8 @@ subroutine DiscretizationRead(discretization,input,option)
   type(discretization_type),pointer :: discretization
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid, grid2
-  type(structured_grid_type), pointer :: str_grid
-  type(unstructured_grid_type), pointer :: un_str_grid
+  type(grid_structured_type), pointer :: str_grid
+  type(grid_unstructured_type), pointer :: un_str_grid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
@@ -556,7 +556,7 @@ subroutine DiscretizationCreateDMs(discretization, o_nflowdof, o_ntrandof, &
   !PetscInt, parameter :: stencil_width = 1
   PetscErrorCode :: ierr
   PetscInt :: i
-  type(unstructured_grid_type), pointer :: ugrid
+  type(grid_unstructured_type), pointer :: ugrid
 
   select case(discretization%itype)
     case(STRUCTURED_GRID)
