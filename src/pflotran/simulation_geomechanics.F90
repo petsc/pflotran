@@ -182,7 +182,6 @@ subroutine GeomechanicsSimulationFinalizeRun(this)
   ! Date: 01/01/14
   ! 
 
-  use Simulation_Base_class
   use Timestepper_Base_class
 
   implicit none
@@ -206,7 +205,6 @@ subroutine GeomechanicsSimulationStrip(this)
   ! Date: 01/01/14
   ! 
 
-  use Simulation_Base_class
 
   implicit none
   

@@ -87,7 +87,7 @@ subroutine MatrixBufferInit(A,matrix_buffer,grid)
   MatType :: mat_type
   PetscInt :: local_id, ghosted_id
   PetscInt :: i, j, k
-  type(structured_grid_type), pointer :: structured_grid
+  type(grid_structured_type), pointer :: structured_grid
   PetscErrorCode :: ierr
 
   matrix_buffer%grid => grid
