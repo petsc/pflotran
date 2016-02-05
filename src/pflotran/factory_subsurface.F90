@@ -23,7 +23,7 @@ contains
 
 ! ************************************************************************** !
 
-subroutine SubsurfaceInitialize(simulation_base,pm_list,option)
+subroutine SubsurfaceInitialize(simulation)
   ! 
   ! Sets up PFLOTRAN subsurface simulation
   ! 
@@ -31,36 +31,25 @@ subroutine SubsurfaceInitialize(simulation_base,pm_list,option)
   ! Date: 06/10/13
   ! 
 
-  use Option_module
-  use Simulation_Base_class
-  use PM_Base_class
   use WIPP_module
   use Klinkenberg_module
   
   implicit none
   
-  class(simulation_base_type), pointer :: simulation_base
-  class(pm_base_type), pointer :: pm_list
-  type(option_type), pointer :: option
-
-  class(subsurface_simulation_type), pointer :: simulation
+  class(subsurface_simulation_type) :: simulation
 
   ! Modules that must be initialized
   call WIPPInit()
   call KlinkenbergInit()
   
   ! NOTE: PETSc must already have been initialized here!
-  simulation => SubsurfaceSimulationCreate(option)
-  simulation%process_model_list => pm_list
-  call SubsurfaceInitializePostPetsc(simulation,option)
+  call SubsurfaceInitializePostPetsc(simulation)
   
-  simulation_base => simulation
-
 end subroutine SubsurfaceInitialize
 
 ! ************************************************************************** !
 
-subroutine SubsurfaceInitializePostPetsc(simulation, option)
+subroutine SubsurfaceInitializePostPetsc(simulation)
   ! 
   ! Sets up PFLOTRAN subsurface simulation
   ! framework after to PETSc initialization
@@ -90,8 +79,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   implicit none
   
   class(subsurface_simulation_type) :: simulation
-  type(option_type), pointer :: option
   
+  type(option_type), pointer :: option
   class(pmc_subsurface_type), pointer :: pmc_subsurface
   class(pmc_third_party_type), pointer :: pmc_third_party
   class(pm_subsurface_flow_type), pointer :: pm_flow
@@ -103,6 +92,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   class(timestepper_BE_type), pointer :: timestepper
   character(len=MAXSTRINGLENGTH) :: string
   
+  option => simulation%option
   ! process command line arguments specific to subsurface
   call SubsurfInitCommandLineSettings(option)
   nullify(pm_flow)
@@ -140,6 +130,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   if (associated(pm_flow)) then
     pmc_subsurface => PMCSubsurfaceCreate()
     pmc_subsurface%option => option
+    pmc_subsurface%checkpoint_option => simulation%checkpoint_option
+    pmc_subsurface%waypoint_list => simulation%waypoint_list_subsurface
     pmc_subsurface%pm_list => pm_flow
     pmc_subsurface%pm_ptr%pm => pm_flow
     pmc_subsurface%realization => realization
@@ -157,6 +149,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     pmc_subsurface => PMCSubsurfaceCreate()
     pmc_subsurface%name = 'PMCSubsurfaceTransport'
     pmc_subsurface%option => option
+    pmc_subsurface%checkpoint_option => simulation%checkpoint_option
+    pmc_subsurface%waypoint_list => simulation%waypoint_list_subsurface
     pmc_subsurface%pm_list => pm_rt
     pmc_subsurface%pm_ptr%pm => pm_rt
     pmc_subsurface%realization => realization
@@ -205,6 +199,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     endif
     pmc_third_party => PMCThirdPartyCreate()
     pmc_third_party%option => option
+    pmc_third_party%checkpoint_option => simulation%checkpoint_option
     pmc_third_party%pm_list => pm_waste_form
     pmc_third_party%pm_ptr%pm => pm_waste_form
     pmc_third_party%realization => realization
@@ -228,6 +223,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     endif
     pmc_third_party => PMCThirdPartyCreate()
     pmc_third_party%option => option
+    pmc_third_party%checkpoint_option => simulation%checkpoint_option
+    pmc_third_party%waypoint_list => simulation%waypoint_list_subsurface
     pmc_third_party%pm_list => pm_ufd_decay
     pmc_third_party%pm_ptr%pm => pm_ufd_decay
     pmc_third_party%realization => realization
@@ -247,12 +244,14 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
 
   ! clean up waypoints
   if (.not.option%steady_state) then
+    ! merge in outer waypoints (e.g. checkpoint times)
+    call WaypointListCopyAndMerge(simulation%waypoint_list_subsurface, &
+                                  simulation%waypoint_list_outer,option)
     ! fill in holes in waypoint data
-    call WaypointListFillIn(option,simulation%waypoint_list_subsurface)
-    call WaypointListRemoveExtraWaypnts(option, &
-                                        simulation%waypoint_list_subsurface)
+    call WaypointListFillIn(simulation%waypoint_list_subsurface,option)
+    call WaypointListRemoveExtraWaypnts(simulation%waypoint_list_subsurface, &
+                                        option)
   endif
-
 
   ! debugging output
   if (realization%debug%print_couplers) then

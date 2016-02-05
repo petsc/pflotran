@@ -1504,58 +1504,6 @@ subroutine RealizationAddWaypointsToList(realization,waypoint_list)
     enddo
   endif 
 
-#if 0  
-!geh_remove
-  ! add waypoints for periodic output
-  if (realization%output_option%periodic_output_time_incr > 0.d0 .or. &
-      realization%output_option%periodic_tr_output_time_incr > 0.d0) then
-
-    if (realization%output_option%periodic_output_time_incr > 0.d0) then
-      ! standard output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + realization%output_option%periodic_output_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,waypoint_list)
-      enddo
-    endif
-    
-    if (realization%output_option%periodic_tr_output_time_incr > 0.d0) then
-      ! transient observation output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + realization%output_option%periodic_tr_output_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_tr_output = PETSC_TRUE 
-        call WaypointInsertInList(waypoint,waypoint_list)
-      enddo
-    endif
-
-  endif
-
-  ! add waypoints for periodic checkpoint
-  if (associated(realization%checkpoint_option)) then
-    if (realization%checkpoint_option%periodic_time_incr > 0.d0) then
-
-      ! standard output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + realization%checkpoint_option%periodic_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_checkpoint = PETSC_TRUE
-        call WaypointInsertInList(waypoint,waypoint_list)
-      enddo
-    endif
-  endif
-#endif  
-
   ! add in strata that change over time
   cur_strata => realization%patch%strata_list%first
   do

@@ -42,13 +42,14 @@ module Waypoint_module
             WaypointInsertInList, &
             WaypointDeleteFromList, &
             WaypointListFillIn, &
+            WaypointListCopy, &
             WaypointListMerge, &
+            WaypointListCopyAndMerge, &
             WaypointListRemoveExtraWaypnts, &
             WaypointConvertTimes, &
             WaypointReturnAtTime, &
             WaypointSkipToTime, &
             WaypointForceMatchToTime, &
-            WaypointListCopy, &
             WaypointListPrint, &
             WaypointListGetFinalTime, &
             WaypointCreateSyncWaypointList
@@ -198,6 +199,32 @@ end subroutine WaypointListMerge
 
 ! ************************************************************************** !
 
+subroutine WaypointListCopyAndMerge(waypoint_list1,waypoint_list2,option)
+  ! 
+  ! Creates a simulation waypoint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/16
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  type(waypoint_list_type), pointer :: waypoint_list1
+  type(waypoint_list_type), pointer :: waypoint_list2
+  
+  type(option_type) :: option
+ 
+  type(waypoint_list_type), pointer :: new_waypoint_list
+
+  new_waypoint_list => WaypointListCopy(waypoint_list2)
+  call WaypointListMerge(waypoint_list1,new_waypoint_list,option)
+  nullify(new_waypoint_list)
+  
+end subroutine WaypointListCopyAndMerge 
+
+! ************************************************************************** !
+
 subroutine WaypointInsertInList(new_waypoint,waypoint_list)
   ! 
   ! Correctly inserts a waypoing in a list
@@ -295,6 +322,7 @@ subroutine WaypointDeleteFromList(obsolete_waypoint,waypoint_list)
     if (waypoint%time == obsolete_waypoint%time) then
       waypoint_list%first => waypoint%next
       call WaypointDestroy(waypoint)
+      waypoint_list%num_waypoints = waypoint_list%num_waypoints - 1
       return
     else
 
@@ -305,6 +333,7 @@ subroutine WaypointDeleteFromList(obsolete_waypoint,waypoint_list)
           if (dabs(waypoint%time-obsolete_waypoint%time) < 1.d-10) then
             prev_waypoint%next => waypoint%next
             call WaypointDestroy(waypoint)
+            waypoint_list%num_waypoints = waypoint_list%num_waypoints - 1
             return
           endif
           prev_waypoint => waypoint
@@ -325,7 +354,7 @@ end subroutine WaypointDeleteFromList
 
 ! ************************************************************************** !
 
-subroutine WaypointListFillIn(option,waypoint_list)
+subroutine WaypointListFillIn(waypoint_list,option)
   ! 
   ! Fills in missing values (e.g. dt_max) in waypoint list
   ! 
@@ -335,8 +364,8 @@ subroutine WaypointListFillIn(option,waypoint_list)
   
   implicit none
   
-  type(option_type) :: option
   type(waypoint_list_type) :: waypoint_list
+  type(option_type) :: option
   
   type(waypoint_type), pointer :: waypoint, prev_waypoint
   PetscReal :: dt_max = UNINITIALIZED_DOUBLE
@@ -420,7 +449,7 @@ end subroutine WaypointConvertTimes
 
 ! ************************************************************************** !
 
-subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
+subroutine WaypointListRemoveExtraWaypnts(waypoint_list,option)
   ! 
   ! Author: Glenn Hammond
   ! Date: 11/09/07
@@ -428,8 +457,8 @@ subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
 
   implicit none
   
-  type(option_type) :: option
   type(waypoint_list_type) :: waypoint_list
+  type(option_type) :: option
   
   type(waypoint_type), pointer :: waypoint, prev_waypoint
   
@@ -454,6 +483,7 @@ subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
           prev_waypoint%time
     call printWrnMsg(option)
     call WaypointDestroy(prev_waypoint)   
+    waypoint_list%num_waypoints = waypoint_list%num_waypoints - 1
   enddo
 
 end subroutine WaypointListRemoveExtraWaypnts 

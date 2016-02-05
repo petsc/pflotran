@@ -333,7 +333,8 @@ function SimulationGetFinalWaypointTime(this)
   cur_process_model_coupler => this%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler)) exit
-    final_time = WaypointListGetFinalTime(cur_process_model_coupler%waypoint_list)
+    final_time = WaypointListGetFinalTime(cur_process_model_coupler% &
+                                            waypoint_list)
     if (SimulationGetFinalWaypointTime < 1.d-40 .or. &
         final_time < SimulationGetFinalWaypointTime) then
       SimulationGetFinalWaypointTime = final_time

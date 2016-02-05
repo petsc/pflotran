@@ -687,7 +687,7 @@ subroutine InitCommonAddOutputWaypoints(output_option,waypoint_list)
   
   implicit none
   
-  class(output_option_type) :: output_option
+  type(output_option_type) :: output_option
   type(waypoint_list_type) :: waypoint_list
   
   type(waypoint_type), pointer :: waypoint

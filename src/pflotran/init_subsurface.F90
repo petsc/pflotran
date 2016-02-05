@@ -114,8 +114,6 @@ subroutine InitSubsurfSetupRealization(simulation)
     call RealizationAddWaypointsToList(realization, &
                                        simulation%waypoint_list_subsurface)
     ! fill in holes in waypoint data
-!geh_remove    call WaypointListFillIn(option,realization%waypoint_list)
-!geh_remove    call WaypointListRemoveExtraWaypnts(option,realization%waypoint_list)
   endif
   call PetscLogEventEnd(logging%event_setup,ierr);CHKERRQ(ierr)
   

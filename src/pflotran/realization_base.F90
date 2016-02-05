@@ -33,12 +33,10 @@ module Realization_Base_class
     type(field_type), pointer :: field
     type(debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
-!geh_remove    type(checkpoint_option_type), pointer :: checkpoint_option
     class(data_mediator_base_type), pointer :: flow_data_mediator_list
     class(data_mediator_base_type), pointer :: tran_data_mediator_list
     
     type(reaction_type), pointer :: reaction
-!geh_remove    type(waypoint_list_type), pointer :: waypoint_list
     
   end type realization_base_type
   
@@ -83,8 +81,6 @@ subroutine RealizationBaseInit(realization_base,option)
   realization_base%patch_list => PatchCreateList()
 
   nullify(realization_base%reaction)
-!geh_remove  nullify(realization_base%waypoint_list)
-!geh_remove  nullify(realization_base%checkpoint_option)
 
   nullify(realization_base%patch)
   nullify(realization_base%flow_data_mediator_list)
@@ -249,9 +245,7 @@ subroutine RealizationBaseStrip(this)
   
   call FieldDestroy(this%field)
 
-!  call OptionDestroy(realization%option) !geh it will be destroy externally
   nullify(this%output_option)
-!geh_remove  call CheckpointOptionDestroy(this%checkpoint_option)
   
   call DiscretizationDestroy(this%discretization)
   
@@ -268,8 +262,6 @@ subroutine RealizationBaseStrip(this)
   
   call DataMediatorDestroy(this%flow_data_mediator_list)
   call DataMediatorDestroy(this%tran_data_mediator_list)
-
-!geh_remove  call WaypointListDestroy(this%waypoint_list)
 
 end subroutine RealizationBaseStrip
 

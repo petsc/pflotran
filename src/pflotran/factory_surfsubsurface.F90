@@ -17,38 +17,26 @@ contains
 
 ! ************************************************************************** !
 
-subroutine SurfSubsurfaceInitialize(simulation_base,pm_list,option)
+subroutine SurfSubsurfaceInitialize(simulation)
   ! 
   ! This routine
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 06/28/13
   ! 
-
-  use Option_module
-  use Simulation_Base_class
-  use PM_Base_class
   
   implicit none
   
-  class(simulation_base_type), pointer :: simulation_base
-  class(pm_base_type), pointer :: pm_list
-  type(option_type), pointer :: option
-
-  class(surfsubsurface_simulation_type), pointer :: simulation
+  class(surfsubsurface_simulation_type) :: simulation
 
   ! NOTE: PETSc must already have been initialized here!
-  simulation => SurfSubsurfaceSimulationCreate(option)
-  simulation%process_model_list => pm_list
-  call SurfSubsurfaceInitializePostPETSc(simulation,option)
+  call SurfSubsurfaceInitializePostPETSc(simulation)
   
-  simulation_base => simulation
-
 end subroutine SurfSubsurfaceInitialize
 
 ! ************************************************************************** !
 
-subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
+subroutine SurfSubsurfaceInitializePostPETSc(simulation)
   ! 
   ! This routine
   ! 
@@ -88,8 +76,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
 #include "petsc/finclude/petscvec.h90"
 
   class(surfsubsurface_simulation_type) :: simulation
-  type(option_type), pointer :: option
   
+  type(option_type), pointer :: option
   class(realization_subsurface_type), pointer :: subsurf_realization
   class(realization_surface_type), pointer :: surf_realization
   class(pmc_base_type), pointer :: cur_process_model_coupler
@@ -109,6 +97,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
   type(waypoint_type), pointer :: waypoint
   PetscErrorCode :: ierr
   
+  option => simulation%option
   ! process command line arguments specific to subsurface
   !call SurfSubsurfInitCommandLineSettings(option)
   
@@ -141,7 +130,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     prev_pm => cur_pm
     cur_pm => cur_pm%next
   enddo
-  call SubsurfaceInitializePostPetsc(simulation,option)
+  call SubsurfaceInitializePostPetsc(simulation)
   ! in SubsurfaceInitializePostPetsc, the first pmc in the list is set as
   ! the master, we need to negate this setting
   simulation%process_model_coupler_list%is_master = PETSC_FALSE
@@ -164,6 +153,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       pmc_surface%name = 'PMCSurface'
       simulation%surf_flow_process_model_coupler => pmc_surface
       pmc_surface%option => option
+      pmc_surface%checkpoint_option => simulation%checkpoint_option
+      pmc_surface%waypoint_list => simulation%waypoint_list_surfsubsurface
       pmc_surface%pm_list => pm_surface_flow
       pmc_surface%pm_ptr%pm => pm_surface_flow
       pmc_surface%surf_realization => simulation%surf_realization
@@ -181,6 +172,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
       pmc_surface%name = 'PMCSurface'
       simulation%surf_flow_process_model_coupler => pmc_surface
       pmc_surface%option => option
+      pmc_surface%checkpoint_option => simulation%checkpoint_option
+      pmc_surface%waypoint_list => simulation%waypoint_list_surfsubsurface
       pmc_surface%pm_list => pm_surface_th
       pmc_surface%pm_ptr%pm => pm_surface_th
       pmc_surface%surf_realization => simulation%surf_realization
@@ -205,9 +198,22 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
     ! Add final_time waypoint to surface_realization
     waypoint => WaypointCreate()
     waypoint%final = PETSC_TRUE
-    waypoint%time = simulation%waypoint_list_surfsubsurface%last%time
+    waypoint%time = simulation%waypoint_list_subsurface%last%time
     waypoint%print_output = PETSC_TRUE
     call WaypointInsertInList(waypoint,simulation%waypoint_list_surfsubsurface)   
+    ! merge in outer waypoints (e.g. checkpoint times)
+    call WaypointListCopyAndMerge(simulation%waypoint_list_surfsubsurface, &
+                                  simulation%waypoint_list_outer,option)
+    call WaypointListCopyAndMerge(simulation%waypoint_list_surfsubsurface, &
+                                  simulation%waypoint_list_subsurface,option)
+    call InitSurfaceSetupRealization(surf_realization,subsurf_realization, &
+                                     simulation%waypoint_list_surfsubsurface)
+    call InitCommonAddOutputWaypoints(simulation%output_option, &
+                                      simulation%waypoint_list_surfsubsurface)
+    ! fill in holes in waypoint data
+    call WaypointListFillIn(simulation%waypoint_list_surfsubsurface,option)
+    call WaypointListRemoveExtraWaypnts(simulation% &
+                                            waypoint_list_surfsubsurface,option)
       
     if (associated(simulation%surf_flow_process_model_coupler)) then
       if (associated(simulation%surf_flow_process_model_coupler% &
@@ -216,11 +222,6 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation, option)
           simulation%waypoint_list_surfsubsurface%first
       endif
     endif
-
-    call InitSurfaceSetupRealization(surf_realization,subsurf_realization, &
-                                     simulation%waypoint_list_surfsubsurface)
-    call InitCommonAddOutputWaypoints(simulation%output_option, &
-                                      simulation%waypoint_list_surfsubsurface)
     call InitSurfaceSetupSolvers(surf_realization,timestepper%solver, &
                              simulation%waypoint_list_surfsubsurface%last%time)
 

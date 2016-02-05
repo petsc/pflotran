@@ -1467,58 +1467,6 @@ subroutine RealizSurfAddWaypointsToList(surf_realization,waypoint_list)
     cur_flow_condition => cur_flow_condition%next
   enddo
      
-#if 0
-!geh_remove
-  ! add waypoints for periodic output
-  if (surf_realization%output_option%periodic_output_time_incr > 0.d0 .or. &
-      surf_realization%output_option%periodic_tr_output_time_incr > 0.d0) then
-
-    if (surf_realization%output_option%periodic_output_time_incr > 0.d0) then
-      ! standard output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + surf_realization%output_option%periodic_output_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
-      enddo
-    endif
-    
-    if (surf_realization%output_option%periodic_tr_output_time_incr > 0.d0) then
-      ! transient observation output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + surf_realization%output_option%periodic_tr_output_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_tr_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,waypoint_list)
-      enddo
-    endif
-
-  endif
-
-  ! add waypoints for periodic checkpoint
-  if (associated(surf_realization%checkpoint_option)) then
-    if (surf_realization%checkpoint_option%periodic_time_incr > 0.d0) then
-
-      ! standard output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + surf_realization%checkpoint_option%periodic_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_checkpoint = PETSC_TRUE
-        call WaypointInsertInList(waypoint,waypoint_list)
-      enddo
-    endif
-  endif
-#endif  
-
 end subroutine RealizSurfAddWaypointsToList
 
 end module Realization_Surface_class

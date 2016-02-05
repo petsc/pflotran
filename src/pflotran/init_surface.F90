@@ -76,8 +76,6 @@ subroutine InitSurfaceSetupRealization(surf_realization,subsurf_realization, &
 
   ! add waypoints associated with boundary conditions, source/sinks etc. to list
   call RealizSurfAddWaypointsToList(surf_realization,waypoint_list)
-!geh_remove  call WaypointListFillIn(option,surf_realization%waypoint_list)
-!geh_remove  call WaypointListRemoveExtraWaypnts(option,surf_realization%waypoint_list)
 
   select case(option%iflowmode)
     case(RICHARDS_MODE)

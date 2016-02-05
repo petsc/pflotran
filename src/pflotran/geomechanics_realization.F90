@@ -1028,39 +1028,6 @@ subroutine GeomechRealizAddWaypointsToList(geomech_realization,waypoint_list)
     cur_geomech_condition => cur_geomech_condition%next
   enddo
       
-  ! add waypoints for periodic output
-  if (geomech_realization%output_option%periodic_output_time_incr > 0.d0 .or. &
-      geomech_realization%output_option%periodic_tr_output_time_incr > 0.d0) then
-
-    if (geomech_realization%output_option%periodic_output_time_incr > 0.d0) then
-      ! standard output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + geomech_realization% &
-                      output_option%periodic_output_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,waypoint_list)
-      enddo
-    endif
-    
-    if (geomech_realization%output_option%periodic_tr_output_time_incr > 0.d0) then
-      ! transient observation output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + geomech_realization%output_option%periodic_tr_output_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_tr_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,waypoint_list)
-      enddo
-    endif
-
-  endif
-
 end subroutine GeomechRealizAddWaypointsToList
 
 ! ************************************************************************** !

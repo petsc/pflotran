@@ -110,6 +110,10 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   use String_module
   
   use Simulation_Base_class
+  use Simulation_Subsurface_class
+  use Simulation_Surf_Subsurf_class
+  use Simulation_Geomechanics_class
+  use Simulation_Hydrogeophysics_class
   use PM_Base_class
   use PM_Surface_Flow_class
   use PM_Surface_TH_class
@@ -248,6 +252,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
         call InputKeywordUnrecognized(word,'SIMULATION',option)            
     end select
   enddo
+  call InputDestroy(input)
 
   if (.not.associated(pm_master)) then
     option%io_buffer = 'No process models defined in SIMULATION block.'
@@ -263,37 +268,34 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     enddo
   endif
 
+  ! create the simulation objects
   select case(simulation_type)
-    case('CUSTOM')
-      ! link process models with their respective couplers
-      cur_pm => pm_master
-      do
-        if (.not.associated(cur_pm)) exit
-        call PFLOTRANLinkPMToPMC(input,option,pmc_master,cur_pm)
-        cur_pm => cur_pm%next
-      enddo
-      call pmc_master%CheckNullPM(option)
     case('SUBSURFACE')
-      call SubsurfaceInitialize(simulation,pm_master,option)  
+      simulation => SubsurfaceSimulationCreate(option)
     case('HYDROGEOPHYSICS')
-      call HydrogeophysicsInitialize(simulation,pm_master,option)
+      simulation => HydrogeophysicsCreate(option)
     case('SURFACE_SUBSURFACE')
-      call SurfSubsurfaceInitialize(simulation,pm_master,option)
+      simulation => SurfSubsurfaceSimulationCreate(option)
     case('GEOMECHANICS_SUBSURFACE')
-      call GeomechanicsInitialize(simulation,pm_master,option)
+      simulation => GeomechanicsSimulationCreate(option)
     case default
       call InputKeywordUnrecognized(word, &
                      'SIMULATION,SIMULATION_TYPE',option)            
   end select
-  
-  if (associated(checkpoint_option)) then
-    simulation%checkpoint_option => checkpoint_option
-    call WaypointListMerge(simulation%waypoint_list_outer, &
-                           checkpoint_waypoint_list,option)
-    nullify(checkpoint_option)
-    nullify(checkpoint_waypoint_list)
-  endif
-  call InputDestroy(input)
+  simulation%process_model_list => pm_master
+  simulation%checkpoint_option => checkpoint_option
+  call WaypointListMerge(simulation%waypoint_list_outer, &
+                         checkpoint_waypoint_list,option)
+  select type(simulation)
+    class is(subsurface_simulation_type)
+      call SubsurfaceInitialize(simulation)  
+    class is(hydrogeophysics_simulation_type)
+      call HydrogeophysicsInitialize(simulation)
+    class is(surfsubsurface_simulation_type)
+      call SurfSubsurfaceInitialize(simulation)
+    class is(geomechanics_simulation_type)
+      call GeomechanicsInitialize(simulation)
+  end select
   
 end subroutine PFLOTRANReadSimulation
 

@@ -15,7 +15,7 @@ contains
 
 ! ************************************************************************** !
 
-subroutine GeomechanicsInitialize(simulation_base,pm_list,option)
+subroutine GeomechanicsInitialize(simulation)
   ! 
   ! This routine
   ! 
@@ -23,25 +23,13 @@ subroutine GeomechanicsInitialize(simulation_base,pm_list,option)
   ! Date: 01/01/14
   ! 
 
-  use Option_module 
-  use Simulation_Base_class
-  use PM_Base_class
-
   implicit none
   
-  class(simulation_base_type), pointer :: simulation_base
-  class(pm_base_type), pointer :: pm_list
-  type(option_type), pointer :: option
-
-  class(geomechanics_simulation_type), pointer :: simulation
+  class(geomechanics_simulation_type) :: simulation
 
   ! NOTE: PETSc must already have been initialized here!
-  simulation => GeomechanicsSimulationCreate(option)
-  simulation%process_model_list => pm_list
   call GeomechanicsInitializePostPETSc(simulation)
   
-  simulation_base => simulation
-
 end subroutine GeomechanicsInitialize
 
 ! ************************************************************************** !
@@ -115,7 +103,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     cur_pm => cur_pm%next
   enddo
   
-  call SubsurfaceInitializePostPetsc(simulation,option)  
+  call SubsurfaceInitializePostPetsc(simulation)  
   simulation%process_model_coupler_list%is_master = PETSC_TRUE
     
   if (option%geomech_on) then
@@ -130,6 +118,8 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     pmc_geomech%name = 'PMCGeomech'
     simulation%geomech_process_model_coupler => pmc_geomech
     pmc_geomech%option => option
+    pmc_geomech%checkpoint_option => simulation%checkpoint_option
+    pmc_geomech%waypoint_list => simulation%waypoint_list_geomechanics
     pmc_geomech%pm_list => pm_geomech
     pmc_geomech%pm_ptr%pm => pm_geomech
     pmc_geomech%geomech_realization => simulation%geomech_realization
