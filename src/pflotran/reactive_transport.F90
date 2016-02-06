@@ -62,7 +62,7 @@ subroutine RTTimeCut(realization)
   ! Date: 02/15/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Global_module
@@ -114,7 +114,7 @@ subroutine RTSetup(realization)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -325,7 +325,7 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   ! Date: 12/23/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
@@ -431,7 +431,7 @@ subroutine RTZeroMassBalanceDelta(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -479,7 +479,7 @@ subroutine RTUpdateMassBalance(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -531,7 +531,7 @@ subroutine RTInitializeTimestep(realization)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   type(realization_subsurface_type) :: realization
   
@@ -552,7 +552,7 @@ subroutine RTUpdateEquilibriumState(realization)
   ! Date: 09/04/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Patch_module
   use Option_module
@@ -642,7 +642,7 @@ subroutine RTUpdateKineticState(realization)
   ! Date: 06/27/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Patch_module
   use Option_module
@@ -726,7 +726,7 @@ subroutine RTUpdateFixedAccumulation(realization)
   ! Date: 02/15/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Reactive_Transport_Aux_module
   use Option_module
@@ -851,7 +851,7 @@ subroutine RTUpdateTransportCoefs(realization)
   ! Date: 02/24/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Patch_module
   use Connection_module
@@ -998,7 +998,7 @@ subroutine RTUpdateRHSCoefs(realization)
   ! Date: 04/25/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1059,7 +1059,7 @@ subroutine RTCalculateRHS_t0(realization)
   ! Date: 04/25/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1124,7 +1124,7 @@ subroutine RTCalculateRHS_t1(realization)
   ! Date: 04/25/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1344,7 +1344,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
   ! Date: 04/25/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Grid_module
   use Patch_module
@@ -1567,7 +1567,7 @@ subroutine RTReact(realization)
   ! Date: 05/03/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1773,7 +1773,7 @@ subroutine RTComputeBCMassBalanceOS(realization)
   ! Date: 05/04/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -1925,7 +1925,7 @@ subroutine RTNumericalJacobianTest(realization)
   ! Date: 02/20/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -2018,7 +2018,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Patch_module
   use Discretization_module
@@ -2107,7 +2107,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
   ! Date: 02/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -2402,7 +2402,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   ! Date: 02/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -2738,7 +2738,7 @@ subroutine RTResidualEquilibrateCO2(r,realization)
   ! Date: 12/12/14
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -2854,7 +2854,7 @@ subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2950,7 +2950,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,realization,ierr)
   ! Date: 02/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -3197,7 +3197,7 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,realization,ierr)
   ! Date: 02/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -3469,7 +3469,7 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
   ! Date: 12/12/14
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -3561,7 +3561,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
   ! Date: 02/15/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Coupler_module
@@ -4064,7 +4064,7 @@ subroutine RTMaxChange(realization,dcmax,dvfmax)
   ! Date: 02/15/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Patch_module
@@ -4132,7 +4132,7 @@ subroutine RTSetPlotVariables(realization)
   ! Date: 10/15/12
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Output_Aux_module
   use Variables_module
@@ -4454,7 +4454,7 @@ subroutine RTJumpStartKineticSorption(realization)
   ! Date: 08/05/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -4506,7 +4506,7 @@ subroutine RTCheckpointKineticSorptionBinary(realization,viewer,checkpoint)
   ! Date: 08/06/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -4597,7 +4597,7 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
   !
 
 #if  !defined(PETSC_HAVE_HDF5)
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
 
   implicit none
@@ -4616,7 +4616,7 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
 
 #else
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -4748,7 +4748,7 @@ subroutine RTExplicitAdvection(realization)
   ! Date: 02/03/12
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   use Discretization_module
   use Patch_module
@@ -5156,7 +5156,7 @@ subroutine RTClearActivityCoefficients(realization)
   ! Date: 08/11/14
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Reactive_Transport_Aux_module
   use Option_module
   use Field_module  
@@ -5191,7 +5191,7 @@ subroutine RTDestroy(realization)
   ! Date: 02/03/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
 

@@ -125,7 +125,7 @@ subroutine SurfaceInit(surf_realization,input,option)
   type(grid_type), pointer :: grid
   type(input_type), pointer :: input
   type(option_type) :: option
-  type(unstructured_grid_type), pointer :: un_str_sfgrid
+  type(grid_unstructured_type), pointer :: un_str_sfgrid
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: unstructured_grid_ctype
   PetscInt :: unstructured_grid_itype
@@ -228,7 +228,7 @@ subroutine SurfaceInitReadInput(simulation,surf_flow_solver,input)
 
   implicit none
 
-  class(surfsubsurface_simulation_type) :: simulation
+  class(subsurface_surfsimulation_type) :: simulation
   type(solver_type) :: surf_flow_solver
   type(input_type), pointer :: input
   
@@ -236,7 +236,7 @@ subroutine SurfaceInitReadInput(simulation,surf_flow_solver,input)
   type(option_type), pointer :: option
   type(discretization_type),pointer :: discretization
   type(grid_type), pointer :: grid
-  type(unstructured_grid_type), pointer :: un_str_sfgrid
+  type(grid_unstructured_type), pointer :: un_str_sfgrid
   type(surface_material_property_type),pointer :: surf_material_property
   type(region_type), pointer :: region
   type(flow_condition_type), pointer :: flow_condition

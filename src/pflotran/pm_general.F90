@@ -424,7 +424,7 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Option_module
@@ -923,7 +923,7 @@ subroutine PMGeneralCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   use Global_Aux_module
   use Grid_module
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Patch_module
@@ -1286,7 +1286,7 @@ subroutine PMGeneralMaxChange(this)
   ! 
 
   use Realization_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Grid_module

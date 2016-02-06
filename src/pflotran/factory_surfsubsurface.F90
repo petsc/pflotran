@@ -27,7 +27,7 @@ subroutine SurfSubsurfaceInitialize(simulation)
   
   implicit none
   
-  class(surfsubsurface_simulation_type) :: simulation
+  class(subsurface_surfsimulation_type) :: simulation
 
   ! NOTE: PETSc must already have been initialized here!
   call SurfSubsurfaceInitializePostPETSc(simulation)
@@ -51,7 +51,6 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
   use Option_module
   use Init_Common_module
   use Init_Surface_module
-  use Surface_Init_module  
   use Surface_Flow_module
   use Surface_TH_module
   use Simulation_Aux_module
@@ -64,7 +63,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
   use PM_Surface_Flow_class
   use PM_Surface_TH_class
   use Input_Aux_module
-  use Realization_class
+  use Realization_Subsurface_class
   use String_module
   use Waypoint_module
   use Realization_Surface_class
@@ -75,7 +74,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(surfsubsurface_simulation_type) :: simulation
+  class(subsurface_surfsimulation_type) :: simulation
   
   type(option_type), pointer :: option
   class(realization_subsurface_type), pointer :: subsurf_realization
@@ -392,7 +391,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   use Grid_Unstructured_module
   use Grid_Unstructured_Aux_module
   use Grid_Unstructured_Cell_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Region_module
@@ -411,8 +410,8 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   VecScatter :: subsurf_to_surf
 
   type(option_type),pointer :: option
-  type(unstructured_grid_type),pointer :: subsurf_grid
-  type(unstructured_grid_type),pointer :: surf_grid
+  type(grid_unstructured_type),pointer :: subsurf_grid
+  type(grid_unstructured_type),pointer :: surf_grid
   type(patch_type),pointer :: cur_patch
   type(region_type),pointer :: cur_region,top_region
   type(region_type),pointer :: patch_region
@@ -706,7 +705,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
   use String_module
   use Grid_Unstructured_module
   use Grid_Unstructured_Cell_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Surface_Field_module
@@ -879,7 +878,7 @@ subroutine SurfSubsurfCreateSubsurfVecs(subsurf_realization, option, &
   ! Date: 08/20/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Coupler_module
   use Option_module
   use String_module

@@ -26,7 +26,7 @@ subroutine InitSubsurfSetupRealization(simulation)
   ! Date: 12/04/14
   !
   use Simulation_Subsurface_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Logging_module
   use Waypoint_module
@@ -38,7 +38,7 @@ subroutine InitSubsurfSetupRealization(simulation)
   
   implicit none
 
-  class(subsurface_simulation_type) :: simulation
+  class(simulation_subsurface_type) :: simulation
   
   class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
@@ -140,7 +140,7 @@ subroutine SubsurfInitMaterialProperties(realization)
   ! Author: Glenn Hammond
   ! Date: 10/07/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
@@ -161,7 +161,7 @@ subroutine SubsurfAllocMatPropDataStructs(realization)
   ! Author: Glenn Hammond
   ! Date: 10/07/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Material_module
   use Option_module
   use Discretization_module
@@ -233,7 +233,7 @@ subroutine InitSubsurfAssignMatIDsToRegns(realization)
   ! Author: Glenn Hammond
   ! Date: 11/02/07
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Strata_module
   use Region_module
   use Option_module
@@ -342,7 +342,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
   ! Author: Glenn Hammond
   ! Date: 10/07/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Discretization_module
   use Field_module
@@ -618,7 +618,7 @@ subroutine SubsurfReadMaterialIDsFromFile(realization,realization_dependent, &
   ! Date: 1/03/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Grid_module
   use Option_module
@@ -716,7 +716,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   ! Date: 01/19/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Grid_module
   use Option_module
@@ -861,7 +861,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
   ! Date: 01/19/2016
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Grid_module
   use Option_module
@@ -993,7 +993,7 @@ subroutine SubsurfAssignVolsToMatAuxVars(realization)
   ! Date: 01/13/14, 12/04/14
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Material_module
   use Discretization_module
@@ -1026,7 +1026,7 @@ subroutine SubsurfSandboxesSetup(realization)
   ! Author: Glenn Hammond
   ! Date: 05/06/14, 12/04/14
 
-  use Realization_class
+  use Realization_Subsurface_class
   use SrcSink_Sandbox_module
   
   class(realization_subsurface_type) :: realization
@@ -1051,7 +1051,7 @@ subroutine InitSubsurfaceReadRequiredCards(simulation)
   use Input_Aux_module
   use String_module
   use Patch_module
-  use Realization_class
+  use Realization_Subsurface_class
   use HDF5_Aux_module
 
   use Simulation_Subsurface_class
@@ -1062,7 +1062,7 @@ subroutine InitSubsurfaceReadRequiredCards(simulation)
 
   implicit none
 
-  class(subsurface_simulation_type) :: simulation
+  class(simulation_subsurface_type) :: simulation
 
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -1220,7 +1220,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   use Dataset_module
   use Dataset_Common_HDF5_class
   use Fluid_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Region_module
   use Condition_module
@@ -1263,7 +1263,7 @@ subroutine InitSubsurfaceReadInput(simulation)
  
   implicit none
   
-  class(subsurface_simulation_type) :: simulation
+  class(simulation_subsurface_type) :: simulation
 
   PetscErrorCode :: ierr
   character(len=MAXWORDLENGTH) :: word

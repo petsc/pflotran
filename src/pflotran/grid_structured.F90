@@ -21,7 +21,7 @@ module Grid_Structured_module
   PetscInt, parameter, public :: CYLINDRICAL_GRID = 4
   PetscInt, parameter, public :: SPHERICAL_GRID = 5
 
-  type, public :: structured_grid_type
+  type, public :: grid_structured_type
 
     character(len=MAXWORDLENGTH) :: ctype
     PetscInt :: itype  ! type of grid (e.g. structured, unstructured, etc.)
@@ -66,7 +66,7 @@ module Grid_Structured_module
     
     PetscInt, pointer :: cell_neighbors(:,:)
     
-  end type structured_grid_type
+  end type grid_structured_type
 
   public :: StructGridCreate, &
             StructGridDestroy, &
@@ -101,9 +101,9 @@ function StructGridCreate()
 
   implicit none
   
-  type(structured_grid_type), pointer :: StructGridCreate
+  type(grid_structured_type), pointer :: StructGridCreate
 
-  type(structured_grid_type), pointer :: structured_grid
+  type(grid_structured_type), pointer :: structured_grid
 
   allocate(structured_grid)
   
@@ -212,7 +212,7 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
 #include "petsc/finclude/petscdmda.h"
 
   type(option_type) :: option
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   DM :: da
   PetscInt :: ndof
   PetscInt :: stencil_width
@@ -261,7 +261,7 @@ subroutine StructGridComputeLocalBounds(structured_grid,da,option)
 #include "petsc/finclude/petscdm.h"
 #include "petsc/finclude/petscdm.h90"
 
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(option_type) :: option
   DM :: da
 
@@ -344,7 +344,7 @@ subroutine StructGridReadDXYZ(structured_grid,input,option)
   
   implicit none
   
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
@@ -388,7 +388,7 @@ subroutine StructGridComputeSpacing(structured_grid,origin_global,option)
   
   implicit none
   
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   PetscReal :: origin_global(3)
   type(option_type) :: option
   
@@ -535,7 +535,7 @@ subroutine StructGridComputeCoord(structured_grid,option,origin_global, &
   
 implicit none
   
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(option_type) :: option
   PetscReal :: origin_global(3)
   PetscReal :: grid_x(:), grid_y(:), grid_z(:)
@@ -638,7 +638,7 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
   
   implicit none
     
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: i, j, k
   PetscInt :: i_local, j_local, k_local
@@ -726,7 +726,7 @@ subroutine StructGridGetIJKFromLocalID(structured_grid,local_id,i,j,k)
   
   implicit none
   
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: local_id
   PetscReal :: i, j, k
@@ -752,7 +752,7 @@ subroutine StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
   
   implicit none
   
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: ghosted_id
   PetscInt :: i, j, k
@@ -778,7 +778,7 @@ function StructGridGetLocalIDFromIJK(structured_grid,i,j,k)
   
   implicit none
   
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: i, j, k
   
@@ -804,7 +804,7 @@ function StructGridGetGhostedIDFromIJK(structured_grid,i,j,k)
   
   implicit none
   
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: i, j, k
   
@@ -834,7 +834,7 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
 !  PetscReal :: radius(:)
   type(connection_set_type), pointer :: StructGridComputeInternConnect
   type(option_type) :: option
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   PetscReal, pointer :: xc(:),yc(:),zc(:)
   
   PetscReal, parameter :: Pi=3.141592653590d0
@@ -1121,7 +1121,7 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
   
   implicit none
  
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(connection_set_type) :: connection
   PetscInt :: iface
   PetscInt :: iconn
@@ -1298,7 +1298,7 @@ subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: nL2G(:)
   PetscReal :: radius(:)
@@ -1380,7 +1380,7 @@ subroutine StructGridMapIndices(structured_grid,stencil_type, &
 #include "petsc/finclude/petscdm.h90"
 #include "petsc/finclude/petscdmda.h"  
 
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   PetscEnum :: stencil_type
   PetscInt, pointer :: nG2L(:), nL2G(:), nG2A(:)
   type(option_type) :: option
@@ -1501,7 +1501,7 @@ subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
   implicit none
 #include "petsc/finclude/petscdmda.h"
   
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: ghosted_id
   PetscEnum :: stencil_type
@@ -1579,7 +1579,7 @@ subroutine StructGridGetGhostedNeighborsCorners(structured_grid,ghosted_id, &
   implicit none
 #include "petsc/finclude/petscdmda.h"
   
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: ghosted_id
   PetscEnum :: stencil_type
@@ -1636,7 +1636,7 @@ subroutine StructGridDestroy(structured_grid)
   
   implicit none
   
-  type(structured_grid_type), pointer :: structured_grid
+  type(grid_structured_type), pointer :: structured_grid
   
   PetscErrorCode :: ierr
     
@@ -1682,7 +1682,7 @@ subroutine StructGridCreateTVDGhosts(structured_grid,ndof,global_vec, &
 #include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petscviewer.h"
 
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   PetscInt :: ndof
   DM :: dm_1dof
   Vec :: global_vec
@@ -1903,7 +1903,7 @@ function StructGetTVDGhostConnection(ghosted_id,structured_grid,iface,option)
   implicit none
   
   PetscInt :: ghosted_id
-  type(structured_grid_type) :: structured_grid
+  type(grid_structured_type) :: structured_grid
   PetscInt :: iface
   type(option_type) :: option
   

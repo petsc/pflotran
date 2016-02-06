@@ -15,7 +15,7 @@ module Simulation_Surface_class
 
   private
 
-  type, public, extends(simulation_base_type) :: surface_simulation_type
+  type, public, extends(simulation_base_type) :: simulation_surface_type
     class(pmc_surface_type), pointer :: surf_flow_process_model_coupler
     class(realization_surface_type), pointer :: surf_realization
     type(regression_type), pointer :: regression
@@ -25,7 +25,7 @@ module Simulation_Surface_class
     procedure, public :: InitializeRun => SurfaceInitializeRun
     procedure, public :: FinalizeRun => SurfaceFinalizeRun
     procedure, public :: Strip => SurfaceSimulationStrip
-  end type surface_simulation_type
+  end type simulation_surface_type
 
   public :: SurfaceSimulationCreate, &
             SurfaceSimulationInit, &
@@ -51,7 +51,7 @@ function SurfaceSimulationCreate(option)
   
   type(option_type), pointer :: option
 
-  class(surface_simulation_type), pointer :: SurfaceSimulationCreate
+  class(simulation_surface_type), pointer :: SurfaceSimulationCreate
   
   print *, 'SurfaceSimulationCreate'
   
@@ -74,7 +74,7 @@ subroutine SurfaceSimulationInit(this,option)
   
   implicit none
   
-  class(surface_simulation_type) :: this
+  class(simulation_surface_type) :: this
   type(option_type), pointer :: option
   
   call SimulationBaseInit(this,option)
@@ -98,7 +98,7 @@ subroutine SurfaceInitializeRun(this)
 
   implicit none
   
-  class(surface_simulation_type) :: this
+  class(simulation_surface_type) :: this
 
   class(pmc_base_type), pointer :: cur_process_model_coupler
   class(pmc_base_type), pointer :: cur_process_model_coupler_top
@@ -146,7 +146,7 @@ subroutine SurfaceFinalizeRun(this)
 
   implicit none
   
-  class(surface_simulation_type) :: this
+  class(simulation_surface_type) :: this
   
   PetscErrorCode :: ierr
 
@@ -173,7 +173,7 @@ subroutine SurfaceSimulationStrip(this)
 
   implicit none
   
-  class(surface_simulation_type) :: this
+  class(simulation_surface_type) :: this
   
   call printMsg(this%option,'SurfaceSimulationStrip()')
   
@@ -198,7 +198,7 @@ subroutine SurfaceSimulationDestroy(simulation)
 
   implicit none
   
-  class(surface_simulation_type), pointer :: simulation
+  class(simulation_surface_type), pointer :: simulation
   
   call printMsg(simulation%option,'SurfaceSimulationDestroy()')
   

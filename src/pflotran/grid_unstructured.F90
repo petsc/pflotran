@@ -70,7 +70,7 @@ subroutine UGridRead(unstructured_grid,filename,option)
   
   implicit none
   
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   character(len=MAXSTRINGLENGTH) :: filename
   type(option_type) :: option
   
@@ -298,7 +298,7 @@ subroutine UGridReadSurfGrid(unstructured_grid,filename,surf_filename,option)
   
   implicit none
   
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: surf_filename
   type(option_type) :: option
@@ -597,7 +597,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
 
   implicit none
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name
@@ -878,7 +878,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
 
   implicit none
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name
@@ -1159,7 +1159,7 @@ subroutine UGridReadHDF5PIOLib(unstructured_grid, filename, &
 
   implicit none
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name
@@ -1256,7 +1256,7 @@ subroutine UGridDecompose(unstructured_grid,option)
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscviewer.h"
   
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
   
   PetscInt :: local_id, local_id2
@@ -1906,7 +1906,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   type(connection_set_type), pointer :: UGridComputeInternConnect
   type(option_type) :: option
   PetscReal :: grid_x(*), grid_y(*), grid_z(*)
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
 
   type(connection_set_type), pointer :: connections
   PetscInt :: nconn, iconn
@@ -2544,7 +2544,7 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
   
   implicit none
   
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(connection_set_type) :: connection
   PetscInt :: iface_cell
   PetscInt :: iconn
@@ -2648,7 +2648,7 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
   
   implicit none
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
   PetscReal :: grid_x(:), grid_y(:), grid_z(:)
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
@@ -2708,7 +2708,7 @@ subroutine UGridComputeVolumes(unstructured_grid,option,volume)
   
   implicit none
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
   Vec :: volume
   
@@ -2757,7 +2757,7 @@ subroutine UGridComputeAreas(unstructured_grid,option,area)
   
   implicit none
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
   Vec :: area
   
@@ -2814,7 +2814,7 @@ subroutine UGridComputeQuality(unstructured_grid,option)
   
   implicit none
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
 
   PetscInt :: local_id
@@ -2886,7 +2886,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
   
   implicit none
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   PetscReal :: x(:), y(:), z(:)
   PetscInt :: nG2A(:)
   PetscInt :: nL2G(:)
@@ -3046,7 +3046,7 @@ subroutine UGridGetCellFromPoint(x,y,z,unstructured_grid,option,icell)
   
   PetscReal :: x, y, z
   PetscInt :: icell
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
   
   PetscInt :: cell_type, num_faces, iface, face_type
@@ -3123,7 +3123,7 @@ subroutine UGridGetCellsInRectangle(x_min,x_max,y_min,y_max,z_min,z_max, &
   implicit none
                   
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
   PetscInt :: num_cells
   PetscInt, pointer :: cell_ids(:)
@@ -3227,7 +3227,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   PetscInt :: face_vertices(:,:)
   PetscInt :: n_ss_faces
   character(len=MAXWORDLENGTH) :: region_name
@@ -3544,7 +3544,7 @@ subroutine UGridMapBoundFacesInPolVol(unstructured_grid,polygonal_volume, &
 
   implicit none
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(polygonal_volume_type) :: polygonal_volume
   character(len=MAXWORDLENGTH) :: region_name
   type(option_type) :: option
@@ -3642,7 +3642,7 @@ subroutine UGridGetBoundaryFaces(unstructured_grid,option,boundary_faces)
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   PetscInt, pointer :: boundary_faces(:)
   type(option_type) :: option
   
@@ -3713,7 +3713,7 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
   PetscInt :: stencil_width
   PetscInt, pointer :: ghosted_level(:)
@@ -4137,7 +4137,7 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   PetscInt :: cids_new(:)
   type(option_type) :: option
   PetscInt :: ngmax_new
@@ -4385,7 +4385,7 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
   PetscInt :: ngmax_new
 

@@ -25,7 +25,7 @@ subroutine GeomechanicsInitialize(simulation)
 
   implicit none
   
-  class(geomechanics_simulation_type) :: simulation
+  class(simulation_geomechanics_type) :: simulation
 
   ! NOTE: PETSc must already have been initialized here!
   call GeomechanicsInitializePostPETSc(simulation)
@@ -57,7 +57,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
   use Geomechanics_Force_module
   use Geomechanics_Realization_class
   use Simulation_Aux_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Timestepper_Steady_class
   use Input_Aux_module
   use Logging_module
@@ -66,7 +66,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(geomechanics_simulation_type) :: simulation
+  class(simulation_geomechanics_type) :: simulation
 
   type(option_type), pointer :: option
   class(realization_subsurface_type), pointer :: subsurf_realization
@@ -263,7 +263,7 @@ subroutine GeomechanicsJumpStart(simulation)
 
   implicit none
 
-  type(geomechanics_simulation_type) :: simulation
+  type(simulation_geomechanics_type) :: simulation
 
   class(realization_geomech_type), pointer :: geomch_realization
   class(timestepper_steady_type), pointer :: master_timestepper
@@ -387,7 +387,7 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
   type(input_type), pointer :: input
   type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word
-  type(unstructured_grid_type), pointer :: ugrid
+  type(grid_unstructured_type), pointer :: ugrid
   character(len=MAXWORDLENGTH) :: card
   
   geomech_discretization       => geomech_realization%geomech_discretization
@@ -487,7 +487,7 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
   
   implicit none
   
-  class(geomechanics_simulation_type) :: simulation
+  class(simulation_geomechanics_type) :: simulation
   type(solver_type) :: geomech_solver
   type(input_type), pointer :: input
   
@@ -1068,14 +1068,14 @@ subroutine GeomechInitSetupRealization(simulation)
   use Geomechanics_Realization_class
   use Geomechanics_Global_module
   use Geomechanics_Force_module
-  use Realization_class
+  use Realization_Subsurface_class
   
   use Option_module
   use Waypoint_module
   
   implicit none
   
-  class(geomechanics_simulation_type) :: simulation
+  class(simulation_geomechanics_type) :: simulation
   
   class(realization_subsurface_type), pointer :: subsurf_realization
   class(realization_geomech_type), pointer :: geomech_realization
@@ -1128,7 +1128,7 @@ subroutine GeomechInitSetupSolvers(geomech_realization,realization, &
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Geomechanics_Realization_class
   use Option_module
   

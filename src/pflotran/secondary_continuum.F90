@@ -461,7 +461,7 @@ subroutine SecondaryRTTimeCut(realization)
   ! Date: 05/29/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Reaction_Aux_module
   
@@ -1398,7 +1398,7 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dX_changed, &
   ! Date: 02/22/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Grid_module
   use Reaction_Aux_module

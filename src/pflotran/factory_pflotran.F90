@@ -287,13 +287,13 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   call WaypointListMerge(simulation%waypoint_list_outer, &
                          checkpoint_waypoint_list,option)
   select type(simulation)
-    class is(subsurface_simulation_type)
+    class is(simulation_subsurface_type)
       call SubsurfaceInitialize(simulation)  
-    class is(hydrogeophysics_simulation_type)
+    class is(simulation_hydrogeophysics_type)
       call HydrogeophysicsInitialize(simulation)
-    class is(surfsubsurface_simulation_type)
+    class is(subsurface_surfsimulation_type)
       call SurfSubsurfaceInitialize(simulation)
-    class is(geomechanics_simulation_type)
+    class is(simulation_geomechanics_type)
       call GeomechanicsInitialize(simulation)
   end select
   

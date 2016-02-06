@@ -454,7 +454,7 @@ subroutine PMTOilImsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! Author: Paolo Orsini (OGS)
   ! Date: 11/09/15
   ! 
-  !use Realization_class
+  !use Realization_Subsurface_class
   use Grid_module
   use TOilIms_Aux_module
   !use Global_Aux_module
@@ -642,7 +642,7 @@ subroutine PMTOilImsCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   use TOilIms_Aux_module
   use Grid_module
   use Option_module
-  !use Realization_class
+  !use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Patch_module
@@ -850,7 +850,7 @@ subroutine PMTOilImsMaxChange(this)
   ! 
 
   use Realization_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Grid_module

@@ -52,7 +52,7 @@ subroutine TOilImsSetup(realization)
   ! Date: 10/20/15
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -215,7 +215,7 @@ subroutine TOilImsInitializeTimestep(realization)
   ! Date: 03/10/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
@@ -236,7 +236,7 @@ subroutine TOilImsCreateZeroArray(patch,option)
   ! Date: 10/20/15
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -315,7 +315,7 @@ end subroutine TOilImsCreateZeroArray
 !  ! Date: 10/22/15
 !  !
 !
-!  use Realization_class
+!  use Realization_Subsurface_class
 !  use Grid_module
 !  use Field_module
 !  use Option_module
@@ -457,7 +457,7 @@ end subroutine TOilImsCreateZeroArray
 !  ! Date: 11/07/15
 !  ! 
 !
-!  use Realization_class
+!  use Realization_Subsurface_class
 !  use Grid_module
 !  use Field_module
 !  use Patch_module
@@ -617,7 +617,7 @@ subroutine TOilImsSetPlotVariables(realization)
   ! Date: 10/20/15
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
     
@@ -700,7 +700,7 @@ subroutine TOilImsTimeCut(realization)
   ! Author: Paolo Orsini
   ! Date: 11/09/15
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   !use Option_module
   !use Field_module
   !use Patch_module
@@ -757,7 +757,7 @@ subroutine TOilImsUpdateAuxVars(realization)
   ! Date: 10/21/15
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -899,7 +899,7 @@ subroutine TOilImsUpdateFixedAccum(realization)
   ! Date: 10/23/15
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -999,7 +999,7 @@ subroutine TOilImsUpdateSolution(realization)
   ! Date: 10/23/15
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   !use Field_module
   !use Patch_module
   !use Discretization_module
@@ -1044,7 +1044,7 @@ subroutine TOilImsComputeMassBalance(realization,mass_balance)
   ! Date: 11/12/15
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
@@ -1114,7 +1114,7 @@ subroutine TOilImsUpdateMassBalance(realization)
   ! Date: 10/23/15
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -1175,7 +1175,7 @@ subroutine TOilImsZeroMassBalanceDelta(realization)
   ! Date: 10/23/15
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -1216,7 +1216,7 @@ subroutine TOilImsMapBCAuxVarsToGlobal(realization)
   ! Date: 10/23/15
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Coupler_module
@@ -2487,7 +2487,7 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
   ! Date: 03/09/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Patch_module
   use Discretization_module
@@ -2862,7 +2862,7 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 11/05/15
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3246,7 +3246,7 @@ subroutine TOilImsDestroy(realization)
   ! Date: 11/09/15
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   implicit none
 
@@ -3271,7 +3271,7 @@ end subroutine TOilImsDestroy
 !  ! Date: 11/05/15
 !  ! 
 !
-!  use Realization_class
+!  use Realization_Subsurface_class
 !  use Grid_module
 !  use Field_module
 !  use Option_module

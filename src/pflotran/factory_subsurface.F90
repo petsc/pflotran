@@ -36,7 +36,7 @@ subroutine SubsurfaceInitialize(simulation)
   
   implicit none
   
-  class(subsurface_simulation_type) :: simulation
+  class(simulation_subsurface_type) :: simulation
 
   ! Modules that must be initialized
   call WIPPInit()
@@ -67,7 +67,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   use PMC_Subsurface_class
   use PMC_Third_Party_class
   use Timestepper_BE_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Logging_module
   use Simulation_Subsurface_class
   use Solver_module
@@ -78,7 +78,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   
   implicit none
   
-  class(subsurface_simulation_type) :: simulation
+  class(simulation_subsurface_type) :: simulation
   
   type(option_type), pointer :: option
   class(pmc_subsurface_type), pointer :: pmc_subsurface
@@ -674,7 +674,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   ! Date: 06/11/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Discretization_module
   use Option_module
@@ -712,7 +712,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   
 #include "petsc/finclude/petscsnes.h" 
 
-  class(subsurface_simulation_type) :: simulation
+  class(simulation_subsurface_type) :: simulation
   
   class(pmc_subsurface_type), pointer :: flow_process_model_coupler
   class(pmc_subsurface_type), pointer :: tran_process_model_coupler
@@ -933,7 +933,7 @@ subroutine SubsurfaceJumpStart(simulation)
   ! Date: 06/11/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Timestepper_Base_class
   use Timestepper_BE_class
@@ -944,7 +944,7 @@ subroutine SubsurfaceJumpStart(simulation)
 
   implicit none
 
-  type(subsurface_simulation_type) :: simulation
+  type(simulation_subsurface_type) :: simulation
   
   class(realization_subsurface_type), pointer :: realization
   class(timestepper_base_type), pointer :: master_timestepper

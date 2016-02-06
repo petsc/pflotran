@@ -341,11 +341,15 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
       call this%GetAuxData()
     endif
     
+    ! if time step is cut, we will not print the checkpoint file prescribed at
+    ! the specified time since it will be met in a later time step.
+    if (this%timestepper%time_step_cut_flag) then
+      checkpoint_at_this_time_flag = PETSC_FALSE
+      plot_flag = PETSC_FALSE
+    endif
+
     ! only print output for process models of depth 0
     if (associated(this%Output)) then
-      if (this%timestepper%time_step_cut_flag) then
-        plot_flag = PETSC_FALSE
-      endif
       ! however, if we are using the modulus of the output_option%imod, we may
       ! still print
       if (mod(this%timestepper%steps, &
@@ -365,11 +369,6 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
                        transient_plot_flag)
     endif
     
-    ! if time step is cut, we will not print the checkpoint file prescribed at
-    ! the specified time since it will be met in a later time step.
-    if (this%timestepper%time_step_cut_flag) then
-      checkpoint_at_this_time_flag = PETSC_FALSE
-    endif
     if (this%is_master .and. associated(this%checkpoint_option)) then
       if (this%checkpoint_option%periodic_ts_incr > 0 .and. &
           mod(this%timestepper%steps, &

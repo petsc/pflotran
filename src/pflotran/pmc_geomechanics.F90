@@ -1,7 +1,7 @@
 module PMC_Geomechanics_class
 
   use PMC_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Geomechanics_Realization_class
   use PFLOTRAN_Constants_module
 

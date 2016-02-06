@@ -38,7 +38,7 @@ subroutine HydrogeophysicsInitialize(simulation)
 #include "petsc/finclude/petscis.h"
 #include "petsc/finclude/petscviewer.h"
   
-  class(hydrogeophysics_simulation_type), pointer :: simulation
+  class(simulation_hydrogeophysics_type) :: simulation
 
   type(option_type), pointer :: option
   PetscMPIInt :: mycolor_mpi, mykey_mpi
@@ -339,7 +339,7 @@ subroutine HydrogeophysicsInitPostPetsc(simulation)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  class(hydrogeophysics_simulation_type) :: simulation
+  class(simulation_hydrogeophysics_type) :: simulation
   
   class(pmc_hydrogeophysics_type), pointer :: hydrogeophysics_coupler
   character(len=MAXSTRINGLENGTH) :: string

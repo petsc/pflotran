@@ -192,7 +192,7 @@ subroutine RegressionCreateMapping(regression,realization)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Discretization_module
   
@@ -467,7 +467,7 @@ subroutine RegressionOutput(regression,realization,flow_timestepper, &
   ! Date: 10/12/12
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Timestepper_BE_class
   use Option_module
   use Discretization_module

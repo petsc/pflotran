@@ -79,7 +79,7 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
   ! 
 
   use Realization_Surface_class, only : realization_surface_type
-  use Realization_class, only : realization_subsurface_type
+  use Realization_Subsurface_class, only : realization_subsurface_type
   use Option_module, only : OptionCheckTouch, option_type, &
                             printMsg, printErrMsg
   use PFLOTRAN_Constants_module
@@ -165,7 +165,7 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   ! 
 
   use Realization_Surface_class, only : realization_surface_type
-  use Realization_class, only : realization_subsurface_type
+  use Realization_Subsurface_class, only : realization_subsurface_type
   use Discretization_module
   use Grid_module
   use Grid_Unstructured_Aux_module
@@ -673,7 +673,7 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
   ! 
 
   use Realization_Surface_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Option_module
   use Grid_module
@@ -1009,7 +1009,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   use hdf5
   use HDF5_module
   use Realization_Surface_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Option_module
   use Grid_Unstructured_Aux_module
@@ -1569,7 +1569,7 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
   ! 
 
   use Realization_Surface_class, only : realization_surface_type
-  use Realization_class, only : realization_subsurface_type
+  use Realization_Subsurface_class, only : realization_subsurface_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg
   use Output_Aux_module
   use Output_Common_module, only : OutputGetVarFromArray  
@@ -1834,7 +1834,7 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
 
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   type(coupler_type), pointer :: boundary_condition
@@ -2077,7 +2077,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
 
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   type(coupler_type), pointer :: boundary_condition

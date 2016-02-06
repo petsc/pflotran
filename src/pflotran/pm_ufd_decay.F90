@@ -1,7 +1,7 @@
 module PM_UFD_Decay_class
 
   use PM_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   
   use PFLOTRAN_Constants_module
@@ -505,7 +505,7 @@ subroutine PMUFDDecaySetRealization(this,realization)
   ! Author: Glenn Hammond
   ! Date: 06/24/15
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   implicit none
   

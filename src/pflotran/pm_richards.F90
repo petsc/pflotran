@@ -286,7 +286,7 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! Date: 03/14/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Option_module
@@ -414,7 +414,7 @@ subroutine PMRichardsCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Option_module

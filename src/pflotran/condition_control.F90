@@ -34,7 +34,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   ! Date: 11/02/07, 10/18/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -500,7 +500,7 @@ subroutine CondControlAssignTranInitCond(realization)
   ! Date: 11/02/07, 10/18/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -954,7 +954,7 @@ subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
   ! Author: Glenn Hammond
   ! Date: 03/23/12
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Dataset_Common_HDF5_class
@@ -1020,7 +1020,7 @@ subroutine CondControlScaleSourceSink(realization)
   ! Date: 09/03/08, 10/18/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -1182,7 +1182,7 @@ subroutine CondControlReadTransportIC(realization,filename)
   ! Date: 03/05/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Grid_module
