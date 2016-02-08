@@ -27,7 +27,7 @@ subroutine SurfSubsurfaceInitialize(simulation)
   
   implicit none
   
-  class(subsurface_surfsimulation_type) :: simulation
+  class(simulation_surfsubsurface_type) :: simulation
 
   ! NOTE: PETSc must already have been initialized here!
   call SurfSubsurfaceInitializePostPETSc(simulation)
@@ -74,7 +74,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(subsurface_surfsimulation_type) :: simulation
+  class(simulation_surfsubsurface_type) :: simulation
   
   type(option_type), pointer :: option
   class(realization_subsurface_type), pointer :: subsurf_realization
