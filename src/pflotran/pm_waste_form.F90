@@ -393,7 +393,7 @@ end subroutine PMWasteFormSetRealization
       this%option%overwrite_restart_transport) then
   endif
   
-  if (.not.this%option%restart_flag) then
+  if (.not.this%option%restart_flag .and. this%print_mass_balance) then
     call PMWFOutputHeader(this)
     call PMWFOutput(this)
   endif
@@ -629,7 +629,9 @@ subroutine PMWFOutput(this)
     enddo
     select type(cur_waste_form)
       class is (waste_form_glass_type)
-        write(fid,100,advance="no") cur_waste_form%volume
+        write(fid,100,advance="no") cur_waste_form%volume, &
+                                    cur_waste_form%glass_dissolution_rate * &
+                                    output_option%tconv
       class is (waste_form_fmdm_type)
     end select
     cur_waste_form => cur_waste_form%next
@@ -736,6 +738,10 @@ subroutine PMWFOutputHeader(this)
         units_string = 'm^3'
         call OutputWriteToHeader(fid,variable_string,units_string, &
                                  cell_string,icolumn)
+        variable_string = 'WF Dissolution Rate'
+        units_string = 'kg/' // trim(adjustl(output_option%tunit))
+        call OutputWriteToHeader(fid,variable_string,units_string, &
+                                 cell_string,icolumn)
       class is (waste_form_fmdm_type)
     end select
     cur_waste_form => cur_waste_form%next
@@ -780,7 +786,7 @@ end subroutine PMWFInitializeTimestep
 
 subroutine WFGlassInit(glass)
   ! 
-  ! Initializes the fuel matrix degradation model waste form
+  ! Initializes the glass waste form
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
