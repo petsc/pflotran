@@ -20,7 +20,7 @@ module Simulation_Surf_Subsurf_class
 #include "petsc/finclude/petscsys.h"
 
   type, public, extends(simulation_subsurface_type) :: &
-    subsurface_surfsimulation_type
+    simulation_surfsubsurface_type
     class(pmc_surface_type), pointer :: surf_flow_process_model_coupler
     class(realization_surface_type), pointer :: surf_realization
     type(waypoint_list_type), pointer :: waypoint_list_surfsubsurface
@@ -31,7 +31,7 @@ module Simulation_Surf_Subsurf_class
     procedure, public :: Strip => SurfSubsurfaceSimulationStrip
     procedure, public :: ExecuteRun => SurfSubsurfaceExecuteRun
     procedure, public :: RunToTime => SurfSubsurfaceSimulationRunToTime
-  end type subsurface_surfsimulation_type
+  end type simulation_surfsubsurface_type
 
   public :: SurfSubsurfaceSimulationCreate, &
             SurfSubsurfaceSimulationInit, &
@@ -57,7 +57,7 @@ function SurfSubsurfaceSimulationCreate(option)
   
   type(option_type), pointer :: option
 
-  class(subsurface_surfsimulation_type), pointer :: SurfSubsurfaceSimulationCreate
+  class(simulation_surfsubsurface_type), pointer :: SurfSubsurfaceSimulationCreate
   
   print *, 'SurfSubsurfaceSimulationCreate'
   
@@ -80,7 +80,7 @@ subroutine SurfSubsurfaceSimulationInit(this,option)
   
   implicit none
   
-  class(subsurface_surfsimulation_type) :: this
+  class(simulation_surfsubsurface_type) :: this
   type(option_type), pointer :: option
   
   call SubsurfaceSimulationInit(this,option)
@@ -107,7 +107,7 @@ subroutine SurfSubsurfaceInitializeRun(this)
   
 #include "petsc/finclude/petscviewer.h"
 
-  class(subsurface_surfsimulation_type) :: this
+  class(simulation_surfsubsurface_type) :: this
 
   class(pmc_base_type), pointer :: cur_process_model_coupler
   class(pmc_base_type), pointer :: cur_process_model_coupler_top
@@ -156,7 +156,7 @@ subroutine SurfSubsurfaceExecuteRun(this)
 
   implicit none
   
-  class(subsurface_surfsimulation_type) :: this
+  class(simulation_surfsubsurface_type) :: this
 
   PetscReal :: time
   PetscReal :: final_time
@@ -219,7 +219,7 @@ subroutine SurfSubsurfaceFinalizeRun(this)
 
   implicit none
   
-  class(subsurface_surfsimulation_type) :: this
+  class(simulation_surfsubsurface_type) :: this
   
   PetscErrorCode :: ierr
   
@@ -244,7 +244,7 @@ subroutine SurfSubsurfaceSimulationStrip(this)
 
   implicit none
   
-  class(subsurface_surfsimulation_type) :: this
+  class(simulation_surfsubsurface_type) :: this
   
   call printMsg(this%option,'SurfSubsurfaceSimulationStrip()')
   
@@ -273,7 +273,7 @@ subroutine SurfSubsurfaceSimulationRunToTime(this,target_time)
 
 #include "petsc/finclude/petscviewer.h"
 
-  class(subsurface_surfsimulation_type) :: this
+  class(simulation_surfsubsurface_type) :: this
   PetscReal :: target_time
 
   class(pmc_base_type), pointer :: cur_process_model_coupler
@@ -298,7 +298,7 @@ subroutine SurfSubsurfaceSimulationDestroy(simulation)
 
   implicit none
   
-  class(subsurface_surfsimulation_type), pointer :: simulation
+  class(simulation_surfsubsurface_type), pointer :: simulation
   
   call printMsg(simulation%option,'SimulationDestroy()')
   
