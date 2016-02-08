@@ -47,7 +47,7 @@ subroutine PMResidual(snes,xx,r,this,ierr)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
@@ -78,7 +78,7 @@ subroutine PMResidualPtr(snes,xx,r,this,ierr)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   

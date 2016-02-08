@@ -4,7 +4,7 @@ module PM_TH_class
   use PM_Subsurface_Flow_class
 !geh: using TH_module here fails with gfortran (internal compiler error)
 !  use TH_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Communicator_Base_module
   use Option_module
   
@@ -377,7 +377,7 @@ subroutine PMTHCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! Date: 03/90/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Option_module
@@ -530,7 +530,7 @@ subroutine PMTHCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   ! Date: 03/90/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Option_module

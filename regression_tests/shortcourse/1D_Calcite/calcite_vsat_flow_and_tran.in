@@ -10,6 +10,9 @@ SIMULATION
       GLOBAL_IMPLICIT
     /
   /
+  CHECKPOINT
+    PERIODIC TIMESTEP 10
+  /
 END
 
 SUBSURFACE
@@ -222,9 +225,5 @@ STRATA
   REGION all
   MATERIAL soil1
 END
-
-
-#=========================== checkpoint / restart =============================
-CHECKPOINT 10
 
 END_SUBSURFACE

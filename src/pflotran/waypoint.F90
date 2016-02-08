@@ -1,8 +1,6 @@
 module Waypoint_module
  
   use Option_module
-  use Output_Aux_module
-  
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -44,14 +42,17 @@ module Waypoint_module
             WaypointInsertInList, &
             WaypointDeleteFromList, &
             WaypointListFillIn, &
+            WaypointListCopy, &
+            WaypointListMerge, &
+            WaypointListCopyAndMerge, &
             WaypointListRemoveExtraWaypnts, &
             WaypointConvertTimes, &
             WaypointReturnAtTime, &
             WaypointSkipToTime, &
             WaypointForceMatchToTime, &
-            WaypointListCopy, &
             WaypointListPrint, &
-            WaypointListGetFinalTime
+            WaypointListGetFinalTime, &
+            WaypointCreateSyncWaypointList
 
 contains
 
@@ -145,6 +146,83 @@ function WaypointListCreate()
   
 end function WaypointListCreate 
 
+
+! ************************************************************************** !
+
+subroutine WaypointListMerge(waypoint_list1,waypoint_list2,option)
+  ! 
+  ! Creates a simulation waypoint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/16
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  type(waypoint_list_type), pointer :: waypoint_list1
+  type(waypoint_list_type), pointer :: waypoint_list2
+  
+  type(option_type) :: option
+  type(waypoint_type), pointer :: cur_waypoint, next_waypoint
+  
+  if (.not.associated(waypoint_list1) .and. &
+      .not.associated(waypoint_list2)) then
+    option%io_buffer = 'Two null waypoints lists.  Send input deck to &
+      &pflotran-dev.'
+    call printErrMsg(option)
+  else if (.not.associated(waypoint_list1)) then
+    waypoint_list1 => waypoint_list2
+    return
+  else if (.not.associated(waypoint_list2)) then
+    waypoint_list2 => waypoint_list1
+    return
+  endif
+  
+  cur_waypoint => waypoint_list2%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    next_waypoint => cur_waypoint%next
+    nullify(cur_waypoint%next)
+    call WaypointInsertInList(cur_waypoint,waypoint_list1)
+    cur_waypoint => next_waypoint
+    nullify(next_waypoint)
+  enddo
+  ! must nullify the first waypoint in waypoint_list2 to avoid deleting 
+  ! first waypoint which will subsequently delete all waypoints after it 
+  ! in waypoint_list1
+  nullify(waypoint_list2%first)
+  call WaypointListDestroy(waypoint_list2)
+  waypoint_list2 => waypoint_list1
+  
+end subroutine WaypointListMerge 
+
+! ************************************************************************** !
+
+subroutine WaypointListCopyAndMerge(waypoint_list1,waypoint_list2,option)
+  ! 
+  ! Creates a simulation waypoint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/16
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  type(waypoint_list_type), pointer :: waypoint_list1
+  type(waypoint_list_type), pointer :: waypoint_list2
+  
+  type(option_type) :: option
+ 
+  type(waypoint_list_type), pointer :: new_waypoint_list
+
+  new_waypoint_list => WaypointListCopy(waypoint_list2)
+  call WaypointListMerge(waypoint_list1,new_waypoint_list,option)
+  nullify(new_waypoint_list)
+  
+end subroutine WaypointListCopyAndMerge 
+
 ! ************************************************************************** !
 
 subroutine WaypointInsertInList(new_waypoint,waypoint_list)
@@ -161,13 +239,6 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
   type(waypoint_list_type) :: waypoint_list
 
   type(waypoint_type), pointer :: waypoint
-
-!    PetscReal :: time
-!    PetscBool :: print_output
-!    type(output_option_type), pointer :: output_option
-!    PetscBool :: update_bcs
-!    PetscBool :: update_srcs
-!    PetscReal :: dt_max
     
     ! place new waypoint in proper location within list
   waypoint => waypoint_list%first
@@ -251,6 +322,7 @@ subroutine WaypointDeleteFromList(obsolete_waypoint,waypoint_list)
     if (waypoint%time == obsolete_waypoint%time) then
       waypoint_list%first => waypoint%next
       call WaypointDestroy(waypoint)
+      waypoint_list%num_waypoints = waypoint_list%num_waypoints - 1
       return
     else
 
@@ -261,6 +333,7 @@ subroutine WaypointDeleteFromList(obsolete_waypoint,waypoint_list)
           if (dabs(waypoint%time-obsolete_waypoint%time) < 1.d-10) then
             prev_waypoint%next => waypoint%next
             call WaypointDestroy(waypoint)
+            waypoint_list%num_waypoints = waypoint_list%num_waypoints - 1
             return
           endif
           prev_waypoint => waypoint
@@ -281,7 +354,7 @@ end subroutine WaypointDeleteFromList
 
 ! ************************************************************************** !
 
-subroutine WaypointListFillIn(option,waypoint_list)
+subroutine WaypointListFillIn(waypoint_list,option)
   ! 
   ! Fills in missing values (e.g. dt_max) in waypoint list
   ! 
@@ -291,8 +364,8 @@ subroutine WaypointListFillIn(option,waypoint_list)
   
   implicit none
   
-  type(option_type) :: option
   type(waypoint_list_type) :: waypoint_list
+  type(option_type) :: option
   
   type(waypoint_type), pointer :: waypoint, prev_waypoint
   PetscReal :: dt_max = UNINITIALIZED_DOUBLE
@@ -376,7 +449,7 @@ end subroutine WaypointConvertTimes
 
 ! ************************************************************************** !
 
-subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
+subroutine WaypointListRemoveExtraWaypnts(waypoint_list,option)
   ! 
   ! Author: Glenn Hammond
   ! Date: 11/09/07
@@ -384,8 +457,8 @@ subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
 
   implicit none
   
-  type(option_type) :: option
   type(waypoint_list_type) :: waypoint_list
+  type(option_type) :: option
   
   type(waypoint_type), pointer :: waypoint, prev_waypoint
   
@@ -410,6 +483,7 @@ subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
           prev_waypoint%time
     call printWrnMsg(option)
     call WaypointDestroy(prev_waypoint)   
+    waypoint_list%num_waypoints = waypoint_list%num_waypoints - 1
   enddo
 
 end subroutine WaypointListRemoveExtraWaypnts 
@@ -550,9 +624,8 @@ subroutine WaypointListPrint(list,option,output_option)
   ! Author: Glenn Hammond
   ! Date: 05/20/11
   ! 
-
-  use Option_module
   use Output_Aux_module
+  use Option_module
 
   implicit none
   
@@ -611,7 +684,6 @@ function WaypointListCopy(list)
   ! 
 
   use Option_module
-  use Output_Aux_module
 
   implicit none
   
@@ -678,6 +750,46 @@ function WaypointForceMatchToTime(waypoint)
   
 end function WaypointForceMatchToTime
 
+
+! ************************************************************************** !
+
+function WaypointCreateSyncWaypointList(waypoint_list)
+  !
+  ! Creates a list of waypoints for outer synchronization of simulation process
+  ! model couplers
+  !
+  ! Author: Glenn Hammond
+  ! Date: 10/08/14
+  !
+
+  use Option_module
+
+  implicit none
+
+  type(waypoint_list_type), pointer :: waypoint_list
+
+  type(waypoint_list_type), pointer :: WaypointCreateSyncWaypointList
+
+  type(waypoint_list_type), pointer :: new_waypoint_list
+  type(waypoint_type), pointer :: cur_waypoint
+  type(waypoint_type), pointer :: new_waypoint
+
+  new_waypoint_list => WaypointListCreate()
+
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%sync .or. cur_waypoint%final) then
+      new_waypoint => WaypointCreate(cur_waypoint)
+      call WaypointInsertInList(new_waypoint,new_waypoint_list)
+      if (cur_waypoint%final) exit
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+  WaypointCreateSyncWaypointList => new_waypoint_list
+
+end function WaypointCreateSyncWaypointList
+
 ! ************************************************************************** !
 
 subroutine WaypointPrint(waypoint,option,output_option)
@@ -687,7 +799,7 @@ subroutine WaypointPrint(waypoint,option,output_option)
   ! Author: Glenn Hammond
   ! Date: 05/20/11
   ! 
-
+  use Output_Aux_module
   use Option_module
 
   implicit none
@@ -785,15 +897,13 @@ function WaypointListGetFinalTime(waypoint_list)
 
   implicit none
   
-  type(waypoint_list_type), pointer :: waypoint_list
+  type(waypoint_list_type) :: waypoint_list
   
   PetscReal :: WaypointListGetFinalTime
   
   type(waypoint_type), pointer :: cur_waypoint
 
   WaypointListGetFinalTime = 0.d0
-  
-  if (.not.associated(waypoint_list)) return
   
   cur_waypoint => waypoint_list%first
   do

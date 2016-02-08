@@ -53,8 +53,8 @@ module PM_Base_class
     procedure, public :: Destroy => PMBaseThisOnly
     procedure, public :: RHSFunction => PMBaseRHSFunction
     procedure, public :: CheckpointBinary => PMBaseCheckpointBinary
-    procedure, public :: CheckpointHDF5 => PMBaseCheckpointHDF5
     procedure, public :: RestartBinary => PMBaseCheckpointBinary
+    procedure, public :: CheckpointHDF5 => PMBaseCheckpointHDF5
     procedure, public :: RestartHDF5 => PMBaseCheckpointHDF5
   end type pm_base_type
   

@@ -18,14 +18,15 @@ contains
 
 ! ************************************************************************** !
 
-subroutine InitSubsurfSetupRealization(realization)
+subroutine InitSubsurfSetupRealization(simulation)
   ! 
   ! Initializes material property data structres and assign them to the domain.
   ! 
   ! Author: Glenn Hammond
   ! Date: 12/04/14
-  ! 
-  use Realization_class
+  !
+  use Simulation_Subsurface_class
+  use Realization_Subsurface_class
   use Option_module
   use Logging_module
   use Waypoint_module
@@ -36,13 +37,15 @@ subroutine InitSubsurfSetupRealization(realization)
   use Dataset_module
   
   implicit none
+
+  class(simulation_subsurface_type) :: simulation
   
-  class(realization_subsurface_type) :: realization
-  
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   PetscReal :: dum1
   PetscErrorCode :: ierr
   
+  realization => simulation%realization
   option => realization%option
   
   call PetscLogEventBegin(logging%event_setup,ierr);CHKERRQ(ierr)
@@ -108,10 +111,9 @@ subroutine InitSubsurfSetupRealization(realization)
   call RealizationPrintCouplers(realization)
   if (.not.option%steady_state) then
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
-    call RealizationAddWaypointsToList(realization)
+    call RealizationAddWaypointsToList(realization, &
+                                       simulation%waypoint_list_subsurface)
     ! fill in holes in waypoint data
-!    call WaypointListFillIn(option,realization%waypoint_list)
-!    call WaypointListRemoveExtraWaypnts(option,realization%waypoint_list)
   endif
   call PetscLogEventEnd(logging%event_setup,ierr);CHKERRQ(ierr)
   
@@ -138,7 +140,7 @@ subroutine SubsurfInitMaterialProperties(realization)
   ! Author: Glenn Hammond
   ! Date: 10/07/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
@@ -159,7 +161,7 @@ subroutine SubsurfAllocMatPropDataStructs(realization)
   ! Author: Glenn Hammond
   ! Date: 10/07/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Material_module
   use Option_module
   use Discretization_module
@@ -231,7 +233,7 @@ subroutine InitSubsurfAssignMatIDsToRegns(realization)
   ! Author: Glenn Hammond
   ! Date: 11/02/07
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Strata_module
   use Region_module
   use Option_module
@@ -331,7 +333,7 @@ subroutine InitSubsurfAssignMatIDsToRegns(realization)
 
 end subroutine InitSubsurfAssignMatIDsToRegns
 
- ! ************************************************************************** !
+! ************************************************************************** !
 
 subroutine InitSubsurfAssignMatProperties(realization)
   ! 
@@ -340,7 +342,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
   ! Author: Glenn Hammond
   ! Date: 10/07/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Discretization_module
   use Field_module
@@ -616,7 +618,7 @@ subroutine SubsurfReadMaterialIDsFromFile(realization,realization_dependent, &
   ! Date: 1/03/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Grid_module
   use Option_module
@@ -714,7 +716,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   ! Date: 01/19/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Grid_module
   use Option_module
@@ -859,7 +861,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
   ! Date: 01/19/2016
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Grid_module
   use Option_module
@@ -991,7 +993,7 @@ subroutine SubsurfAssignVolsToMatAuxVars(realization)
   ! Date: 01/13/14, 12/04/14
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Material_module
   use Discretization_module
@@ -1024,7 +1026,7 @@ subroutine SubsurfSandboxesSetup(realization)
   ! Author: Glenn Hammond
   ! Date: 05/06/14, 12/04/14
 
-  use Realization_class
+  use Realization_Subsurface_class
   use SrcSink_Sandbox_module
   
   class(realization_subsurface_type) :: realization
@@ -1049,7 +1051,7 @@ subroutine InitSubsurfaceReadRequiredCards(simulation)
   use Input_Aux_module
   use String_module
   use Patch_module
-  use Realization_class
+  use Realization_Subsurface_class
   use HDF5_Aux_module
 
   use Simulation_Subsurface_class
@@ -1060,7 +1062,7 @@ subroutine InitSubsurfaceReadRequiredCards(simulation)
 
   implicit none
 
-  class(subsurface_simulation_type) :: simulation
+  class(simulation_subsurface_type) :: simulation
 
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -1218,7 +1220,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   use Dataset_module
   use Dataset_Common_HDF5_class
   use Fluid_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Region_module
   use Condition_module
@@ -1261,7 +1263,7 @@ subroutine InitSubsurfaceReadInput(simulation)
  
   implicit none
   
-  class(subsurface_simulation_type) :: simulation
+  class(simulation_subsurface_type) :: simulation
 
   PetscErrorCode :: ierr
   character(len=MAXWORDLENGTH) :: word
@@ -1312,6 +1314,7 @@ subroutine InitSubsurfaceReadInput(simulation)
   class(dataset_base_type), pointer :: dataset
   class(data_mediator_dataset_type), pointer :: flow_data_mediator
   class(data_mediator_dataset_type), pointer :: rt_data_mediator
+  type(waypoint_list_type), pointer :: waypoint_list
   type(input_type), pointer :: input, input_parent
   
   PetscReal :: dt_init
@@ -1323,12 +1326,13 @@ subroutine InitSubsurfaceReadInput(simulation)
   units_category = 'not_assigned'
 
   realization => simulation%realization
+  output_option => simulation%output_option
+  waypoint_list => simulation%waypoint_list_subsurface
   patch => realization%patch
   
   if (associated(patch)) grid => patch%grid
 
   option => realization%option
-  output_option => realization%output_option
   field => realization%field
   reaction => realization%reaction
   input => realization%input
@@ -1691,28 +1695,33 @@ subroutine InitSubsurfaceReadInput(simulation)
 !......................
 
       case ('RESTART')
-        option%restart_flag = PETSC_TRUE
-        call InputReadNChars(input,option,option%restart_filename,MAXSTRINGLENGTH, &
-                             PETSC_TRUE)
-        call InputErrorMsg(input,option,'RESTART','Restart file name') 
-        call InputReadDouble(input,option,option%restart_time)
-        if (input%ierr == 0) then
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          if (input%ierr == 0) then
-            units_category = 'time'
-            option%restart_time = option%restart_time* &
-                                  UnitsConvertToInternal(word,units_category,option)
-          else
-            call InputDefaultMsg(input,option,'RESTART, time units')
-          endif
-        endif
+        option%io_buffer = 'The RESTART card within SUBSURFACE block has &
+                           &been deprecated.'
+        call printErrMsg(option)
+!        option%restart_flag = PETSC_TRUE
+        !call InputReadNChars(input,option,option%restart_filename,MAXSTRINGLENGTH, &
+        !                     PETSC_TRUE)
+        !call InputErrorMsg(input,option,'RESTART','Restart file name') 
+        !call InputReadDouble(input,option,option%restart_time)
+        !if (input%ierr == 0) then
+        !  call InputReadWord(input,option,word,PETSC_TRUE)
+        !  if (input%ierr == 0) then
+        !    units_category = 'time'
+        !    option%restart_time = option%restart_time* &
+        !                          UnitsConvertToInternal(word,units_category,option)
+        !  else
+        !    call InputDefaultMsg(input,option,'RESTART, time units')
+        !  endif
+        !endif
 
 !......................
 
       case ('CHECKPOINT')
-        option%checkpoint_flag = PETSC_TRUE
-        call CheckpointRead(input,option,output_option, &
-                            realization%waypoint_list)
+        option%io_buffer = 'The CHECKPOINT card within SUBSURFACE block has &
+                           &been deprecated.'
+        call printErrMsg(option)
+!        call CheckpointRead(input,option,realization%checkpoint_option, &
+!                            realization%waypoint_list)
 
 !......................
 
@@ -1955,9 +1964,9 @@ subroutine InitSubsurfaceReadInput(simulation)
             case('TIME_UNITS')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Output Time Units','OUTPUT')
-              realization%output_option%tunit = trim(word)
+              output_option%tunit = trim(word)
               units_category = 'time'
-              realization%output_option%tconv = &
+              output_option%tconv = &
                 UnitsConvertToInternal(word,units_category,option)
             case('NO_FINAL','NO_PRINT_FINAL')
               output_option%print_final = PETSC_FALSE
@@ -2013,8 +2022,7 @@ subroutine InitSubsurfaceReadInput(simulation)
                 waypoint => WaypointCreate()
                 waypoint%time = temp_real_array(temp_int)*units_conversion
                 waypoint%print_output = PETSC_TRUE    
-                call WaypointInsertInList(waypoint, &
-                                          realization%waypoint_list)
+                call WaypointInsertInList(waypoint,waypoint_list)
               enddo
               call DeallocateArray(temp_real_array)
             case('OUTPUT_FILE')
@@ -2095,7 +2103,7 @@ subroutine InitSubsurfaceReadInput(simulation)
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
                         waypoint%print_output = PETSC_TRUE    
-                        call WaypointInsertInList(waypoint,realization%waypoint_list)
+                        call WaypointInsertInList(waypoint,waypoint_list)
                         temp_real = temp_real + output_option%periodic_output_time_incr
                         if (temp_real > temp_real2) exit
                       enddo
@@ -2318,15 +2326,15 @@ subroutine InitSubsurfaceReadInput(simulation)
               call InputErrorMsg(input,option,'Final Time Units','TIME')
               units_category = 'time'
               temp_real2 = UnitsConvertToInternal(word,units_category,option)
-              if (len_trim(realization%output_option%tunit) == 0) then
-                realization%output_option%tunit = trim(word)
-                realization%output_option%tconv = temp_real2
+              if (len_trim(output_option%tunit) == 0) then
+                output_option%tunit = trim(word)
+                output_option%tconv = temp_real2
               endif
               waypoint => WaypointCreate()
               waypoint%final = PETSC_TRUE
               waypoint%time = temp_real*temp_real2
               waypoint%print_output = PETSC_TRUE              
-              call WaypointInsertInList(waypoint,realization%waypoint_list)
+              call WaypointInsertInList(waypoint,waypoint_list)
             case('INITIAL_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Initial Timestep Size','TIME') 
@@ -2368,7 +2376,7 @@ subroutine InitSubsurfaceReadInput(simulation)
               else
                 waypoint%time = 0.d0
               endif     
-              call WaypointInsertInList(waypoint,realization%waypoint_list)
+              call WaypointInsertInList(waypoint,waypoint_list)
             case default
               call InputKeywordUnrecognized(word,'TIME',option)
           end select

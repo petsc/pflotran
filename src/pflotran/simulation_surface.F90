@@ -6,7 +6,7 @@ module Simulation_Surface_class
   use PMC_Surface_class
   use PMC_Base_class
   use Realization_Surface_class
-
+  use Waypoint_module
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -15,16 +15,17 @@ module Simulation_Surface_class
 
   private
 
-  type, public, extends(simulation_base_type) :: surface_simulation_type
+  type, public, extends(simulation_base_type) :: simulation_surface_type
     class(pmc_surface_type), pointer :: surf_flow_process_model_coupler
     class(realization_surface_type), pointer :: surf_realization
     type(regression_type), pointer :: regression
+    type(waypoint_list_type), pointer :: waypoint_list_surface
   contains
     procedure, public :: Init => SurfaceSimulationInit
     procedure, public :: InitializeRun => SurfaceInitializeRun
     procedure, public :: FinalizeRun => SurfaceFinalizeRun
     procedure, public :: Strip => SurfaceSimulationStrip
-  end type surface_simulation_type
+  end type simulation_surface_type
 
   public :: SurfaceSimulationCreate, &
             SurfaceSimulationInit, &
@@ -50,7 +51,7 @@ function SurfaceSimulationCreate(option)
   
   type(option_type), pointer :: option
 
-  class(surface_simulation_type), pointer :: SurfaceSimulationCreate
+  class(simulation_surface_type), pointer :: SurfaceSimulationCreate
   
   print *, 'SurfaceSimulationCreate'
   
@@ -68,16 +69,17 @@ subroutine SurfaceSimulationInit(this,option)
   ! Author: Gautam Bisht, LBNL
   ! Date: 06/27/13
   ! 
-
+  use Waypoint_module
   use Option_module
   
   implicit none
   
-  class(surface_simulation_type) :: this
+  class(simulation_surface_type) :: this
   type(option_type), pointer :: option
   
   call SimulationBaseInit(this,option)
   nullify(this%regression)
+  this%waypoint_list_surface => WaypointListCreate()
   
 end subroutine SurfaceSimulationInit
 
@@ -96,7 +98,7 @@ subroutine SurfaceInitializeRun(this)
 
   implicit none
   
-  class(surface_simulation_type) :: this
+  class(simulation_surface_type) :: this
 
   class(pmc_base_type), pointer :: cur_process_model_coupler
   class(pmc_base_type), pointer :: cur_process_model_coupler_top
@@ -144,7 +146,7 @@ subroutine SurfaceFinalizeRun(this)
 
   implicit none
   
-  class(surface_simulation_type) :: this
+  class(simulation_surface_type) :: this
   
   PetscErrorCode :: ierr
 
@@ -171,7 +173,7 @@ subroutine SurfaceSimulationStrip(this)
 
   implicit none
   
-  class(surface_simulation_type) :: this
+  class(simulation_surface_type) :: this
   
   call printMsg(this%option,'SurfaceSimulationStrip()')
   
@@ -180,6 +182,7 @@ subroutine SurfaceSimulationStrip(this)
   deallocate(this%surf_realization)
   nullify(this%surf_realization)
   call RegressionDestroy(this%regression)
+  call WaypointListDestroy(this%waypoint_list_surface)
   
 end subroutine SurfaceSimulationStrip
 
@@ -195,7 +198,7 @@ subroutine SurfaceSimulationDestroy(simulation)
 
   implicit none
   
-  class(surface_simulation_type), pointer :: simulation
+  class(simulation_surface_type), pointer :: simulation
   
   call printMsg(simulation%option,'SurfaceSimulationDestroy()')
   

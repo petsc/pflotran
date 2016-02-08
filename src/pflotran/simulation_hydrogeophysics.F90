@@ -14,8 +14,8 @@ module Simulation_Hydrogeophysics_class
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  type, public, extends(subsurface_simulation_type) :: &
-    hydrogeophysics_simulation_type
+  type, public, extends(simulation_subsurface_type) :: &
+    simulation_hydrogeophysics_type
     ! pointer to hydrogeophysics coupler
     class(pmc_hydrogeophysics_type), pointer :: hydrogeophysics_coupler
     PetscMPIInt :: pf_e4d_scatter_comm
@@ -44,7 +44,7 @@ module Simulation_Hydrogeophysics_class
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => HydrogeophysicsFinalizeRun
     procedure, public :: Strip => HydrogeophysicsStrip
-  end type hydrogeophysics_simulation_type
+  end type simulation_hydrogeophysics_type
   
   public :: HydrogeophysicsCreate, &
             HydrogeophysicsDestroy
@@ -67,7 +67,7 @@ function HydrogeophysicsCreate(option)
   
   type(option_type), pointer :: option
 
-  class(hydrogeophysics_simulation_type), pointer :: HydrogeophysicsCreate
+  class(simulation_hydrogeophysics_type), pointer :: HydrogeophysicsCreate
   
   call printMsg(option,'HydrogeophysicsCreate()')
   
@@ -90,7 +90,7 @@ subroutine HydrogeophysicsInit(this,option)
   
   implicit none
   
-  class(hydrogeophysics_simulation_type) :: this
+  class(simulation_hydrogeophysics_type) :: this
   type(option_type), pointer :: option
   
   call SubsurfaceSimulationInit(this,option)
@@ -127,7 +127,7 @@ subroutine HydrogeophysicsExecuteRun(this)
 
   implicit none
   
-  class(hydrogeophysics_simulation_type) :: this
+  class(simulation_hydrogeophysics_type) :: this
   
   PetscReal :: final_time
   PetscReal :: dt
@@ -163,7 +163,7 @@ subroutine HydrogeophysicsFinalizeRun(this)
 
   implicit none
   
-  class(hydrogeophysics_simulation_type) :: this
+  class(simulation_hydrogeophysics_type) :: this
   
   PetscErrorCode :: ierr
   
@@ -189,7 +189,7 @@ subroutine HydrogeophysicsStrip(this)
 
   implicit none
   
-  class(hydrogeophysics_simulation_type) :: this
+  class(simulation_hydrogeophysics_type) :: this
   
   PetscErrorCode :: ierr
   
@@ -243,7 +243,7 @@ subroutine HydrogeophysicsDestroy(simulation)
 
   implicit none
   
-  class(hydrogeophysics_simulation_type), pointer :: simulation
+  class(simulation_hydrogeophysics_type), pointer :: simulation
 
   call printMsg(simulation%option,'Hydrogeophysics%Destroy()')
   

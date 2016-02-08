@@ -37,7 +37,7 @@ subroutine SurfaceInitialize(simulation_base,option)
   class(simulation_base_type), pointer :: simulation_base
   type(option_type), pointer :: option
 
-  class(surface_simulation_type), pointer :: simulation
+  class(simulation_surface_type), pointer :: simulation
 
   ! NOTE: PETSc must already have been initialized here!
   simulation => SurfaceSimulationCreate(option)
@@ -62,7 +62,7 @@ subroutine SurfaceInitializePostPETSc(simulation, option)
   
   implicit none
   
-  class(surface_simulation_type) :: simulation
+  class(simulation_surface_type) :: simulation
   type(option_type), pointer :: option
   
   call SurfaceJumpStart(simulation)
@@ -91,7 +91,7 @@ subroutine SurfaceJumpStart(simulation)
 
   implicit none
 
-  type(surface_simulation_type) :: simulation
+  type(simulation_surface_type) :: simulation
   
   class(realization_surface_type), pointer :: surf_realization
   class(timestepper_surface_type), pointer :: master_timestepper
@@ -115,7 +115,6 @@ subroutine SurfaceJumpStart(simulation)
   nullify(master_timestepper)
   
   option => surf_realization%option
-  output_option => surf_realization%output_option
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr);CHKERRQ(ierr)

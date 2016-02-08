@@ -1,7 +1,7 @@
 module PM_Waste_Form_class
 
   use PM_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Geometry_module
   use Data_Mediator_Vec_class
@@ -339,7 +339,7 @@ subroutine PMWasteFormSetRealization(this,realization)
   ! Author: Glenn Hammond
   ! Date: 08/26/15
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   implicit none
   

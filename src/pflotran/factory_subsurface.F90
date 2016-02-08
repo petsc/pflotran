@@ -23,7 +23,7 @@ contains
 
 ! ************************************************************************** !
 
-subroutine SubsurfaceInitialize(simulation_base,pm_list,option)
+subroutine SubsurfaceInitialize(simulation)
   ! 
   ! Sets up PFLOTRAN subsurface simulation
   ! 
@@ -31,36 +31,25 @@ subroutine SubsurfaceInitialize(simulation_base,pm_list,option)
   ! Date: 06/10/13
   ! 
 
-  use Option_module
-  use Simulation_Base_class
-  use PM_Base_class
   use WIPP_module
   use Klinkenberg_module
   
   implicit none
   
-  class(simulation_base_type), pointer :: simulation_base
-  class(pm_base_type), pointer :: pm_list
-  type(option_type), pointer :: option
-
-  class(subsurface_simulation_type), pointer :: simulation
+  class(simulation_subsurface_type) :: simulation
 
   ! Modules that must be initialized
   call WIPPInit()
   call KlinkenbergInit()
   
   ! NOTE: PETSc must already have been initialized here!
-  simulation => SubsurfaceSimulationCreate(option)
-  simulation%process_model_list => pm_list
-  call SubsurfaceInitializePostPetsc(simulation,option)
+  call SubsurfaceInitializePostPetsc(simulation)
   
-  simulation_base => simulation
-
 end subroutine SubsurfaceInitialize
 
 ! ************************************************************************** !
 
-subroutine SubsurfaceInitializePostPetsc(simulation, option)
+subroutine SubsurfaceInitializePostPetsc(simulation)
   ! 
   ! Sets up PFLOTRAN subsurface simulation
   ! framework after to PETSc initialization
@@ -78,7 +67,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   use PMC_Subsurface_class
   use PMC_Third_Party_class
   use Timestepper_BE_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Logging_module
   use Simulation_Subsurface_class
   use Solver_module
@@ -89,9 +78,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   
   implicit none
   
-  class(subsurface_simulation_type) :: simulation
-  type(option_type), pointer :: option
+  class(simulation_subsurface_type) :: simulation
   
+  type(option_type), pointer :: option
   class(pmc_subsurface_type), pointer :: pmc_subsurface
   class(pmc_third_party_type), pointer :: pmc_third_party
   class(pm_subsurface_flow_type), pointer :: pm_flow
@@ -103,6 +92,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   class(timestepper_BE_type), pointer :: timestepper
   character(len=MAXSTRINGLENGTH) :: string
   
+  option => simulation%option
   ! process command line arguments specific to subsurface
   call SubsurfInitCommandLineSettings(option)
   nullify(pm_flow)
@@ -135,10 +125,13 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
   call SubsurfaceSetFlowMode(pm_flow,option)
   realization => RealizationCreate(option)
   simulation%realization => realization
-  realization%waypoint_list => WaypointListCreate()
+  realization%output_option => simulation%output_option
+  simulation%waypoint_list_subsurface => WaypointListCreate()
   if (associated(pm_flow)) then
     pmc_subsurface => PMCSubsurfaceCreate()
     pmc_subsurface%option => option
+    pmc_subsurface%checkpoint_option => simulation%checkpoint_option
+    pmc_subsurface%waypoint_list => simulation%waypoint_list_subsurface
     pmc_subsurface%pm_list => pm_flow
     pmc_subsurface%pm_ptr%pm => pm_flow
     pmc_subsurface%realization => realization
@@ -156,6 +149,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     pmc_subsurface => PMCSubsurfaceCreate()
     pmc_subsurface%name = 'PMCSubsurfaceTransport'
     pmc_subsurface%option => option
+    pmc_subsurface%checkpoint_option => simulation%checkpoint_option
+    pmc_subsurface%waypoint_list => simulation%waypoint_list_subsurface
     pmc_subsurface%pm_list => pm_rt
     pmc_subsurface%pm_ptr%pm => pm_rt
     pmc_subsurface%realization => realization
@@ -204,6 +199,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     endif
     pmc_third_party => PMCThirdPartyCreate()
     pmc_third_party%option => option
+    pmc_third_party%checkpoint_option => simulation%checkpoint_option
     pmc_third_party%pm_list => pm_waste_form
     pmc_third_party%pm_ptr%pm => pm_waste_form
     pmc_third_party%realization => realization
@@ -227,6 +223,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
     endif
     pmc_third_party => PMCThirdPartyCreate()
     pmc_third_party%option => option
+    pmc_third_party%checkpoint_option => simulation%checkpoint_option
+    pmc_third_party%waypoint_list => simulation%waypoint_list_subsurface
     pmc_third_party%pm_list => pm_ufd_decay
     pmc_third_party%pm_ptr%pm => pm_ufd_decay
     pmc_third_party%realization => realization
@@ -246,18 +244,21 @@ subroutine SubsurfaceInitializePostPetsc(simulation, option)
 
   ! clean up waypoints
   if (.not.option%steady_state) then
+    ! merge in outer waypoints (e.g. checkpoint times)
+    call WaypointListCopyAndMerge(simulation%waypoint_list_subsurface, &
+                                  simulation%waypoint_list_outer,option)
     ! fill in holes in waypoint data
-    call WaypointListFillIn(option,realization%waypoint_list)
-    call WaypointListRemoveExtraWaypnts(option,realization%waypoint_list)
+    call WaypointListFillIn(simulation%waypoint_list_subsurface,option)
+    call WaypointListRemoveExtraWaypnts(simulation%waypoint_list_subsurface, &
+                                        option)
   endif
-
 
   ! debugging output
   if (realization%debug%print_couplers) then
     call InitCommonVerifyAllCouplers(realization)
   endif
   if (realization%debug%print_waypoints) then
-    call WaypointListPrint(realization%waypoint_list,option, &
+    call WaypointListPrint(simulation%waypoint_list_subsurface,option, &
                            realization%output_option)
   endif  
 
@@ -673,7 +674,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   ! Date: 06/11/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Discretization_module
   use Option_module
@@ -685,6 +686,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   use Init_Subsurface_module
   use Init_Subsurface_Flow_module
   use Init_Subsurface_Tran_module
+  use Init_Common_module
   use Waypoint_module
   use Strata_module
   use Regression_module
@@ -710,7 +712,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   
 #include "petsc/finclude/petscsnes.h" 
 
-  class(subsurface_simulation_type) :: simulation
+  class(simulation_subsurface_type) :: simulation
   
   class(pmc_subsurface_type), pointer :: flow_process_model_coupler
   class(pmc_subsurface_type), pointer :: tran_process_model_coupler
@@ -729,19 +731,21 @@ subroutine InitSubsurfaceSimulation(simulation)
   option => realization%option
 
 ! begin from old Init()  
-  call InitSubsurfSetupRealization(realization)
+  call InitSubsurfSetupRealization(simulation)
+  call InitCommonAddOutputWaypoints(simulation%output_option, &
+                                    simulation%waypoint_list_subsurface)
   
   !TODO(geh): refactor
   if (associated(simulation%flow_process_model_coupler)) then
     if (associated(simulation%flow_process_model_coupler%timestepper)) then
       simulation%flow_process_model_coupler%timestepper%cur_waypoint => &
-        realization%waypoint_list%first
+        simulation%waypoint_list_subsurface%first
     endif
   endif
   if (associated(simulation%rt_process_model_coupler)) then
     if (associated(simulation%rt_process_model_coupler%timestepper)) then
       simulation%rt_process_model_coupler%timestepper%cur_waypoint => &
-        realization%waypoint_list%first
+        simulation%waypoint_list_subsurface%first
     endif
   endif
   
@@ -778,13 +782,12 @@ subroutine InitSubsurfaceSimulation(simulation)
   call DiscretizationPrintInfo(realization%discretization, &
                                realization%patch%grid,option)
   
-  simulation%waypoint_list => RealizCreateSyncWaypointList(realization)
+  simulation%waypoint_list_outer => &
+    WaypointCreateSyncWaypointList(simulation%waypoint_list_subsurface)
 
   !----------------------------------------------------------------------------!
   ! This section for setting up new process model approach
   !----------------------------------------------------------------------------!
-  simulation%output_option => realization%output_option
-
   
   if (StrataEvolves(realization%patch%strata_list)) then
     material_process_model_coupler => PMCMaterialCreate()
@@ -802,7 +805,8 @@ subroutine InitSubsurfaceSimulation(simulation)
   cur_process_model_coupler_top => simulation%process_model_coupler_list
   do
     if (.not.associated(cur_process_model_coupler_top)) exit
-    cur_process_model_coupler_top%waypoint_list => realization%waypoint_list
+    cur_process_model_coupler_top%waypoint_list => &
+      simulation%waypoint_list_subsurface
     cur_process_model_coupler => cur_process_model_coupler_top
     do
       if (.not.associated(cur_process_model_coupler)) exit
@@ -832,7 +836,7 @@ subroutine InitSubsurfaceSimulation(simulation)
           class is (pm_rt_type)
             cur_process_model_coupler%timestepper%dt = option%tran_dt
         end select
-        cur_process_model%output_option => realization%output_option
+        cur_process_model%output_option => simulation%output_option
         call cur_process_model%Setup()
         if (associated(cur_process_model_coupler%timestepper)) then
           select type(ts => cur_process_model_coupler%timestepper)
@@ -929,7 +933,7 @@ subroutine SubsurfaceJumpStart(simulation)
   ! Date: 06/11/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Timestepper_Base_class
   use Timestepper_BE_class
@@ -940,7 +944,7 @@ subroutine SubsurfaceJumpStart(simulation)
 
   implicit none
 
-  type(subsurface_simulation_type) :: simulation
+  type(simulation_subsurface_type) :: simulation
   
   class(realization_subsurface_type), pointer :: realization
   class(timestepper_base_type), pointer :: master_timestepper
@@ -978,7 +982,6 @@ subroutine SubsurfaceJumpStart(simulation)
   nullify(master_timestepper)
   
   option => realization%option
-  output_option => realization%output_option
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr);CHKERRQ(ierr)

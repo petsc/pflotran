@@ -1570,7 +1570,7 @@ subroutine OutputIntegralFlux(realization_base)
   ! Date: 10/21/14
   ! 
 
-  use Realization_class, only : realization_subsurface_type
+  use Realization_Subsurface_class, only : realization_subsurface_type
   use Realization_Base_class, only : realization_base_type
   use Option_module
   use Grid_module
@@ -1841,7 +1841,7 @@ subroutine OutputMassBalance(realization_base)
   ! Date: 06/18/08
   ! 
 
-  use Realization_class, only : realization_subsurface_type
+  use Realization_Subsurface_class, only : realization_subsurface_type
   use Realization_Base_class, only : realization_base_type
   use Patch_module
   use Grid_module

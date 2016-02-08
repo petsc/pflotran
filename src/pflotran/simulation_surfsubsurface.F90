@@ -7,8 +7,9 @@ module Simulation_Surf_Subsurf_class
   use PMC_Base_class
   use PMC_Subsurface_class
   use PMC_Surface_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Surface_class
+  use Waypoint_module
 
   use PFLOTRAN_Constants_module
 
@@ -18,9 +19,11 @@ module Simulation_Surf_Subsurf_class
 
 #include "petsc/finclude/petscsys.h"
 
-  type, public, extends(subsurface_simulation_type) :: surfsubsurface_simulation_type
+  type, public, extends(simulation_subsurface_type) :: &
+    subsurface_surfsimulation_type
     class(pmc_surface_type), pointer :: surf_flow_process_model_coupler
     class(realization_surface_type), pointer :: surf_realization
+    type(waypoint_list_type), pointer :: waypoint_list_surfsubsurface
   contains
     procedure, public :: Init => SurfSubsurfaceSimulationInit
     procedure, public :: InitializeRun => SurfSubsurfaceInitializeRun
@@ -28,7 +31,7 @@ module Simulation_Surf_Subsurf_class
     procedure, public :: Strip => SurfSubsurfaceSimulationStrip
     procedure, public :: ExecuteRun => SurfSubsurfaceExecuteRun
     procedure, public :: RunToTime => SurfSubsurfaceSimulationRunToTime
-  end type surfsubsurface_simulation_type
+  end type subsurface_surfsimulation_type
 
   public :: SurfSubsurfaceSimulationCreate, &
             SurfSubsurfaceSimulationInit, &
@@ -54,7 +57,7 @@ function SurfSubsurfaceSimulationCreate(option)
   
   type(option_type), pointer :: option
 
-  class(surfsubsurface_simulation_type), pointer :: SurfSubsurfaceSimulationCreate
+  class(subsurface_surfsimulation_type), pointer :: SurfSubsurfaceSimulationCreate
   
   print *, 'SurfSubsurfaceSimulationCreate'
   
@@ -72,16 +75,17 @@ subroutine SurfSubsurfaceSimulationInit(this,option)
   ! Author: Gautam Bisht, LBNL
   ! Date: 06/28/13
   ! 
-
+  use Waypoint_module
   use Option_module
   
   implicit none
   
-  class(surfsubsurface_simulation_type) :: this
+  class(subsurface_surfsimulation_type) :: this
   type(option_type), pointer :: option
   
   call SubsurfaceSimulationInit(this,option)
   nullify(this%surf_realization)
+  this%waypoint_list_surfsubsurface => WaypointListCreate()
   
 end subroutine SurfSubsurfaceSimulationInit
 
@@ -103,7 +107,7 @@ subroutine SurfSubsurfaceInitializeRun(this)
   
 #include "petsc/finclude/petscviewer.h"
 
-  class(surfsubsurface_simulation_type) :: this
+  class(subsurface_surfsimulation_type) :: this
 
   class(pmc_base_type), pointer :: cur_process_model_coupler
   class(pmc_base_type), pointer :: cur_process_model_coupler_top
@@ -148,17 +152,15 @@ subroutine SurfSubsurfaceExecuteRun(this)
 
   use Simulation_Base_class
   use Timestepper_Base_class, only : TS_CONTINUE
+  use Checkpoint_module
 
   implicit none
   
-#include "petsc/finclude/petscviewer.h"
-
-  class(surfsubsurface_simulation_type) :: this
+  class(subsurface_surfsimulation_type) :: this
 
   PetscReal :: time
   PetscReal :: final_time
   PetscReal :: dt
-  PetscViewer :: viewer
   character(len=MAXSTRINGLENGTH) :: append_name
 
   time = 0.d0
@@ -195,8 +197,9 @@ subroutine SurfSubsurfaceExecuteRun(this)
     enddo
 
   endif
-  if (this%option%checkpoint_flag) then
-    call this%process_model_coupler_list%CheckpointBinary(viewer,append_name)
+  if (associated(this%process_model_coupler_list%checkpoint_option)) then
+    append_name = CheckpointFilename(append_name,this%option)
+    call this%process_model_coupler_list%Checkpoint(append_name)
   endif
 
 end subroutine SurfSubsurfaceExecuteRun
@@ -216,7 +219,7 @@ subroutine SurfSubsurfaceFinalizeRun(this)
 
   implicit none
   
-  class(surfsubsurface_simulation_type) :: this
+  class(subsurface_surfsimulation_type) :: this
   
   PetscErrorCode :: ierr
   
@@ -236,12 +239,12 @@ subroutine SurfSubsurfaceSimulationStrip(this)
   ! Author: Gautam Bisht, LBNL
   ! Date: 06/28/13
   ! 
-
+  use Waypoint_module
   use Simulation_Base_class
 
   implicit none
   
-  class(surfsubsurface_simulation_type) :: this
+  class(subsurface_surfsimulation_type) :: this
   
   call printMsg(this%option,'SurfSubsurfaceSimulationStrip()')
   
@@ -249,6 +252,7 @@ subroutine SurfSubsurfaceSimulationStrip(this)
   call RealizSurfStrip(this%surf_realization)
   deallocate(this%surf_realization)
   nullify(this%surf_realization)
+  call WaypointListDestroy(this%waypoint_list_surfsubsurface)
  
 end subroutine SurfSubsurfaceSimulationStrip
 
@@ -269,7 +273,7 @@ subroutine SurfSubsurfaceSimulationRunToTime(this,target_time)
 
 #include "petsc/finclude/petscviewer.h"
 
-  class(surfsubsurface_simulation_type) :: this
+  class(subsurface_surfsimulation_type) :: this
   PetscReal :: target_time
 
   class(pmc_base_type), pointer :: cur_process_model_coupler
@@ -294,7 +298,7 @@ subroutine SurfSubsurfaceSimulationDestroy(simulation)
 
   implicit none
   
-  class(surfsubsurface_simulation_type), pointer :: simulation
+  class(subsurface_surfsimulation_type), pointer :: simulation
   
   call printMsg(simulation%option,'SimulationDestroy()')
   

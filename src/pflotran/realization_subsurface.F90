@@ -1,4 +1,4 @@
-module Realization_class
+module Realization_Subsurface_class
   
   use Realization_Base_class
 
@@ -1339,7 +1339,7 @@ end subroutine RealizUpdateUniformVelocity
 
 ! ************************************************************************** !
 
-subroutine RealizationAddWaypointsToList(realization)
+subroutine RealizationAddWaypointsToList(realization,waypoint_list)
   ! 
   ! Creates waypoints associated with source/sinks
   ! boundary conditions, etc. and add to list
@@ -1358,8 +1358,8 @@ subroutine RealizationAddWaypointsToList(realization)
   implicit none
   
   class(realization_subsurface_type) :: realization
-  
-  type(waypoint_list_type), pointer :: waypoint_list
+  type(waypoint_list_type) :: waypoint_list
+
   type(flow_condition_type), pointer :: cur_flow_condition
   type(tran_condition_type), pointer :: cur_tran_condition
   type(flow_sub_condition_type), pointer :: sub_condition
@@ -1373,7 +1373,6 @@ subroutine RealizationAddWaypointsToList(realization)
   PetscReal, pointer :: times(:)
 
   option => realization%option
-  waypoint_list => realization%waypoint_list
   nullify(times)
   
   ! set flag for final output
@@ -1474,7 +1473,7 @@ subroutine RealizationAddWaypointsToList(realization)
               waypoint%time = &
                 cur_data_mediator%dataset%time_storage%times(itime)
               waypoint%update_conditions = PETSC_TRUE
-              call WaypointInsertInList(waypoint,realization%waypoint_list)
+              call WaypointInsertInList(waypoint,waypoint_list)
             enddo
           endif
         class default
@@ -1496,7 +1495,7 @@ subroutine RealizationAddWaypointsToList(realization)
               waypoint%time = &
                 cur_data_mediator%dataset%time_storage%times(itime)
               waypoint%update_conditions = PETSC_TRUE
-              call WaypointInsertInList(waypoint,realization%waypoint_list)
+              call WaypointInsertInList(waypoint,waypoint_list)
             enddo
           endif
         class default
@@ -1504,53 +1503,6 @@ subroutine RealizationAddWaypointsToList(realization)
       cur_data_mediator => cur_data_mediator%next
     enddo
   endif 
-
-  ! add waypoints for periodic output
-  if (realization%output_option%periodic_output_time_incr > 0.d0 .or. &
-      realization%output_option%periodic_tr_output_time_incr > 0.d0) then
-
-    if (realization%output_option%periodic_output_time_incr > 0.d0) then
-      ! standard output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + realization%output_option%periodic_output_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,realization%waypoint_list)
-      enddo
-    endif
-    
-    if (realization%output_option%periodic_tr_output_time_incr > 0.d0) then
-      ! transient observation output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + realization%output_option%periodic_tr_output_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_tr_output = PETSC_TRUE 
-        call WaypointInsertInList(waypoint,realization%waypoint_list)
-      enddo
-    endif
-
-  endif
-
-  ! add waypoints for periodic checkpoint                                                    
-  if (realization%output_option%periodic_checkpoint_time_incr > 0.d0) then
-
-    ! standard output
-    temp_real = 0.d0
-    do
-      temp_real = temp_real + realization%output_option%periodic_checkpoint_time_incr
-      if (temp_real > final_time) exit
-      waypoint => WaypointCreate()
-      waypoint%time = temp_real
-      waypoint%print_checkpoint = PETSC_TRUE
-      call WaypointInsertInList(waypoint,realization%waypoint_list)
-    enddo
-  endif
 
   ! add in strata that change over time
   cur_strata => realization%patch%strata_list%first
@@ -1560,13 +1512,13 @@ subroutine RealizationAddWaypointsToList(realization)
       waypoint => WaypointCreate()
       waypoint%time = cur_strata%start_time
       waypoint%sync = PETSC_TRUE
-      call WaypointInsertInList(waypoint,realization%waypoint_list)
+      call WaypointInsertInList(waypoint,waypoint_list)
     endif
     if (Initialized(cur_strata%final_time)) then
       waypoint => WaypointCreate()
       waypoint%time = cur_strata%final_time
       waypoint%sync = PETSC_TRUE
-      call WaypointInsertInList(waypoint,realization%waypoint_list)
+      call WaypointInsertInList(waypoint,waypoint_list)
     endif
     cur_strata => cur_strata%next
   enddo
@@ -2481,4 +2433,4 @@ subroutine RealizationStrip(this)
   
 end subroutine RealizationStrip
 
-end module Realization_class
+end module Realization_Subsurface_class

@@ -3,7 +3,7 @@ module PM_Subsurface_Flow_class
   use PM_Base_class
 !geh: using Init_Subsurface_module here fails with gfortran (internal compiler error)
 !  use Init_Subsurface_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Communicator_Base_module
   use Option_module
   
@@ -59,9 +59,11 @@ module PM_Subsurface_Flow_class
 !    procedure, public :: UpdateSolution => PMSubsurfaceFlowUpdateSolution
     procedure, public :: UpdateAuxvars => PMSubsurfaceFlowUpdateAuxvars
     procedure, public :: CheckpointBinary => PMSubsurfaceFlowCheckpointBinary
-    procedure, public :: CheckpointHDF5 => PMSubsurfaceFlowCheckpointHDF5
     procedure, public :: RestartBinary => PMSubsurfaceFlowRestartBinary
+#if defined(PETSC_HAVE_HDF5)
+    procedure, public :: CheckpointHDF5 => PMSubsurfaceFlowCheckpointHDF5
     procedure, public :: RestartHDF5 => PMSubsurfaceFlowRestartHDF5
+#endif
 !    procedure, public :: Destroy => PMSubsurfaceFlowDestroy
   end type pm_subsurface_flow_type
   
@@ -255,7 +257,7 @@ subroutine PMSubsurfaceFlowSetRealization(this,realization)
   ! Author: Glenn Hammond
   ! Date: 04/21/14
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
 
   implicit none
@@ -662,21 +664,13 @@ end subroutine PMSubsurfaceFlowRestartBinary
 
 ! ************************************************************************** !
 
+#if defined(PETSC_HAVE_HDF5)
 subroutine PMSubsurfaceFlowCheckpointHDF5(this, pm_grp_id)
   !
   ! Checkpoints data associated with Subsurface PM
   !
   ! Author: Gautam Bisht, LBNL
   ! Date: 07/30/15
-
-#if  !defined(PETSC_HAVE_HDF5)
-  implicit none
-  class(pm_subsurface_flow_type) :: this
-  integer :: pm_grp_id
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
 
   use Checkpoint_module
   use hdf5
@@ -692,8 +686,6 @@ subroutine PMSubsurfaceFlowCheckpointHDF5(this, pm_grp_id)
 
   call CheckpointFlowProcessModelHDF5(pm_grp_id, this%realization)
 
-#endif
-
 end subroutine PMSubsurfaceFlowCheckpointHDF5
 
 ! ************************************************************************** !
@@ -704,15 +696,6 @@ subroutine PMSubsurfaceFlowRestartHDF5(this, pm_grp_id)
   !
   ! Author: Gautam Bisht, LBNL
   ! Date: 07/30/15
-
-#if  !defined(PETSC_HAVE_HDF5)
-  implicit none
-  class(pm_subsurface_flow_type) :: this
-  integer :: pm_grp_id
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
 
   use Checkpoint_module
   use hdf5
@@ -730,9 +713,9 @@ subroutine PMSubsurfaceFlowRestartHDF5(this, pm_grp_id)
   call this%UpdateAuxVars()
   call this%UpdateSolution()
 
-#endif
 
 end subroutine PMSubsurfaceFlowRestartHDF5
+#endif
 
 ! ************************************************************************** !
 

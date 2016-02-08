@@ -22,7 +22,7 @@ subroutine InitSubsurfTranSetupRealization(realization)
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   
   use Reactive_Transport_module
@@ -69,7 +69,7 @@ subroutine InitSubsurfTranSetupSolvers(realization,convergence_context,solver)
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Init_Common_module
 

@@ -678,7 +678,7 @@ subroutine RealizSurfMapSurfSubsurfGrids(realization,surf_realization)
   use Grid_Unstructured_module
   use Grid_Unstructured_Aux_module
   use Grid_Unstructured_Cell_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Region_module
@@ -694,8 +694,8 @@ subroutine RealizSurfMapSurfSubsurfGrids(realization,surf_realization)
   class(realization_surface_type), pointer :: surf_realization
 
   type(option_type), pointer :: option
-  type(unstructured_grid_type),pointer :: subsurf_grid
-  type(unstructured_grid_type),pointer :: surf_grid
+  type(grid_unstructured_type),pointer :: subsurf_grid
+  type(grid_unstructured_type),pointer :: surf_grid
   type(patch_type), pointer :: cur_patch 
   type(region_type), pointer :: cur_region, top_region
   type(region_type), pointer :: patch_region
@@ -1003,7 +1003,7 @@ subroutine RealizSurfMapSurfSubsurfGrid( &
   use String_module
   use Grid_Unstructured_module
   use Grid_Unstructured_Cell_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Surface_Field_module
@@ -1386,7 +1386,7 @@ end subroutine RealizSurfGetVariable
 
 ! ************************************************************************** !
 
-subroutine RealizSurfAddWaypointsToList(surf_realization)
+subroutine RealizSurfAddWaypointsToList(surf_realization,waypoint_list)
   ! 
   ! This routine creates waypoints assocated with source/sink, boundary
   ! condition, etc. and adds to a list
@@ -1402,8 +1402,8 @@ subroutine RealizSurfAddWaypointsToList(surf_realization)
   implicit none
   
   class(realization_surface_type) :: surf_realization
-  
-  type(waypoint_list_type), pointer :: waypoint_list
+  type(waypoint_list_type) :: waypoint_list
+
   type(flow_condition_type), pointer :: cur_flow_condition
   type(flow_sub_condition_type), pointer :: sub_condition
   type(waypoint_type), pointer :: waypoint, cur_waypoint
@@ -1413,7 +1413,6 @@ subroutine RealizSurfAddWaypointsToList(surf_realization)
   PetscReal, pointer :: times(:)
 
   option => surf_realization%option
-  waypoint_list => surf_realization%waypoint_list
   nullify(times)
   
   ! set flag for final output
@@ -1467,54 +1466,7 @@ subroutine RealizSurfAddWaypointsToList(surf_realization)
     endif
     cur_flow_condition => cur_flow_condition%next
   enddo
-      
-  ! add waypoints for periodic output
-  if (surf_realization%output_option%periodic_output_time_incr > 0.d0 .or. &
-      surf_realization%output_option%periodic_tr_output_time_incr > 0.d0) then
-
-    if (surf_realization%output_option%periodic_output_time_incr > 0.d0) then
-      ! standard output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + surf_realization%output_option%periodic_output_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
-      enddo
-    endif
-    
-    if (surf_realization%output_option%periodic_tr_output_time_incr > 0.d0) then
-      ! transient observation output
-      temp_real = 0.d0
-      do
-        temp_real = temp_real + surf_realization%output_option%periodic_tr_output_time_incr
-        if (temp_real > final_time) exit
-        waypoint => WaypointCreate()
-        waypoint%time = temp_real
-        waypoint%print_tr_output = PETSC_TRUE
-        call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
-      enddo
-    endif
-
-  endif
-
-  ! add waypoints for periodic checkpoint
-  if (surf_realization%output_option%periodic_checkpoint_time_incr > 0.d0) then
-
-    ! standard output
-    temp_real = 0.d0
-    do
-      temp_real = temp_real + surf_realization%output_option%periodic_checkpoint_time_incr
-      if (temp_real > final_time) exit
-      waypoint => WaypointCreate()
-      waypoint%time = temp_real
-      waypoint%print_checkpoint = PETSC_TRUE
-      call WaypointInsertInList(waypoint,surf_realization%waypoint_list)
-    enddo
-  endif
-
+     
 end subroutine RealizSurfAddWaypointsToList
 
 end module Realization_Surface_class

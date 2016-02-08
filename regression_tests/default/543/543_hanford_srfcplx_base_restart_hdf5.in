@@ -11,6 +11,7 @@ SIMULATION
       GLOBAL_IMPLICIT
     /
   /
+  RESTART 543_hanford_srfcplx_base-restart.h5 0.d0
 END
 
 SUBSURFACE
@@ -670,9 +671,5 @@ END
 STRATA
   MATERIAL ./543.h5
 END
-
-#=========================== checkpoint / restart =============================
-#CHECKPOINT 10
-RESTART 543_hanford_srfcplx_base-restart.h5 0.d0
 
 END_SUBSURFACE

@@ -64,7 +64,7 @@ subroutine ImmisTimeCut(realization)
   ! Date: 9/13/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
  
@@ -91,7 +91,7 @@ subroutine ImmisSetup(realization)
   ! Date: 9/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use co2_span_wagner_module
   use co2_sw_module
@@ -123,7 +123,7 @@ subroutine ImmisSetupPatch(realization)
   ! Date: 10/1/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -250,7 +250,7 @@ subroutine ImmisComputeMassBalance(realization,mass_balance)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
   type(realization_subsurface_type) :: realization
@@ -281,7 +281,7 @@ subroutine ImmisComputeMassBalancePatch(realization,mass_balance)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
@@ -344,7 +344,7 @@ subroutine ImmisZeroMassBalDeltaPatch(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -398,7 +398,7 @@ end subroutine ImmisZeroMassBalDeltaPatch
   ! Date: 12/10/07
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   
@@ -441,7 +441,7 @@ subroutine ImmisUpdateReasonPatch(reason,realization)
   ! Author: Chuan Lu
   ! Date: 10/10/08
   ! 
-   use Realization_class
+   use Realization_Subsurface_class
    use Patch_module
    use Field_module
    use Option_module
@@ -523,7 +523,7 @@ subroutine ImmisUpdateReason(reason, realization)
   ! Date: 10/10/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   implicit none
 
@@ -569,7 +569,7 @@ end subroutine ImmisUpdateReason
    
     use co2_span_wagner_module
      
-    use Realization_class
+    use Realization_Subsurface_class
     use Patch_module
     use Field_module
     use Grid_module
@@ -633,7 +633,7 @@ subroutine ImmisUpdateAuxVars(realization)
   ! Date: 10/10/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
   type(realization_subsurface_type) :: realization
@@ -661,7 +661,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Field_module
   use Option_module
@@ -837,7 +837,7 @@ subroutine ImmisInitializeTimestep(realization)
   ! Date: 10/12/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
@@ -857,7 +857,7 @@ subroutine ImmisUpdateSolution(realization)
   ! Date: 10/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Patch_module
   
@@ -894,7 +894,7 @@ subroutine ImmisUpdateSolutionPatch(realization)
   ! Date: 11/18/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
     
   implicit none
   
@@ -916,7 +916,7 @@ subroutine ImmisUpdateMassBalancePatch(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -969,7 +969,7 @@ subroutine ImmisUpdateFixedAccumulation(realization)
   ! Date: 10/12/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
   type(realization_subsurface_type) :: realization
@@ -997,7 +997,7 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
   ! Date: 10/12/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -1634,7 +1634,7 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
   ! Date: 10/10/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Discretization_module
   use Field_module
@@ -1704,7 +1704,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   ! 
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2231,7 +2231,7 @@ subroutine ImmisJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 10/10/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2270,7 +2270,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -2925,7 +2925,7 @@ subroutine ImmisMaxChange(realization,dpmax,dtmpmax,dsmax)
   ! Date: 01/15/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Option_module
   use Field_module
@@ -2969,7 +2969,7 @@ function ImmisGetTecplotHeader(realization, icolumn)
   ! Date: 10/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
 
@@ -3115,7 +3115,7 @@ subroutine ImmisSetPlotVariables(realization)
   ! Date: 10/15/12
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
 
@@ -3216,7 +3216,7 @@ subroutine ImmisDestroy(realization)
   ! Date: 10/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   implicit none
   

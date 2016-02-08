@@ -23,7 +23,8 @@ module Init_Common_module
             InitCommonReadVelocityField, &
 #endif
             InitCommonVerifyAllCouplers, &
-            setSurfaceFlowMode
+            setSurfaceFlowMode, &
+            InitCommonAddOutputWaypoints
 
 #if defined(SCORPIO)
   public :: InitCommonCreateIOGroups
@@ -140,7 +141,7 @@ subroutine InitCommonVerifyAllCouplers(realization)
   ! Date: 1/8/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Coupler_module
 
@@ -176,7 +177,7 @@ subroutine InitCommonVerifyCoupler(realization,patch,coupler_list)
   ! Date: 1/8/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Option_module 
   use Coupler_module
@@ -266,7 +267,7 @@ subroutine InitCommonReadRegionFiles(realization)
   ! Date: 1/03/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Region_module
   use HDF5_module
   use Option_module
@@ -346,7 +347,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   ! Date: 03/18/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Field_module
   use Grid_module
@@ -567,7 +568,7 @@ subroutine InitCommonReadVelocityField(realization)
   ! Date: 02/05/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Field_module
   use Grid_module
@@ -671,5 +672,62 @@ subroutine InitCommonReadVelocityField(realization)
 end subroutine InitCommonReadVelocityField
 
 #endif
+
+! ************************************************************************** !
+
+subroutine InitCommonAddOutputWaypoints(output_option,waypoint_list)
+  ! 
+  ! Adds waypoints associated with output options to waypoint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/16
+  ! 
+  use Output_Aux_module
+  use Waypoint_module
+  
+  implicit none
+  
+  type(output_option_type) :: output_option
+  type(waypoint_list_type) :: waypoint_list
+  
+  type(waypoint_type), pointer :: waypoint
+  PetscReal :: temp_real
+  PetscReal :: final_time
+  
+  final_time = WaypointListGetFinalTime(waypoint_list)
+  
+  ! add waypoints for periodic output
+  if (output_option%periodic_output_time_incr > 0.d0 .or. &
+      output_option%periodic_tr_output_time_incr > 0.d0) then
+
+    if (output_option%periodic_output_time_incr > 0.d0) then
+      ! standard output
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + output_option%periodic_output_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_output = PETSC_TRUE
+        call WaypointInsertInList(waypoint,waypoint_list)
+      enddo
+    endif
+    
+    if (output_option%periodic_tr_output_time_incr > 0.d0) then
+      ! transient observation output
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + output_option%periodic_tr_output_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_tr_output = PETSC_TRUE 
+        call WaypointInsertInList(waypoint,waypoint_list)
+      enddo
+    endif
+
+  endif  
+  
+end subroutine InitCommonAddOutputWaypoints
 
 end module Init_Common_module

@@ -45,7 +45,7 @@ subroutine UGridPolyhedraRead(ugrid, filename, option)
   
   implicit none
 
-  type(unstructured_grid_type) :: ugrid 
+  type(grid_unstructured_type) :: ugrid 
   character(len=MAXSTRINGLENGTH) :: filename
   type(option_type) :: option
 
@@ -502,7 +502,7 @@ subroutine UGridPolyhedraDecompose(ugrid, option)
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscviewer.h"
 
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(option_type) :: option
 
   type(unstructured_polyhedra_type), pointer :: pgrid
@@ -1445,7 +1445,7 @@ function UGridPolyhedraComputeInternConnect(ugrid, grid_x, &
   implicit none
 
   type(connection_set_type), pointer :: UGridPolyhedraComputeInternConnect
-  type(unstructured_grid_type) :: ugrid 
+  type(grid_unstructured_type) :: ugrid 
   PetscReal :: grid_x(*), grid_y(*), grid_z(*)
   type(option_type) :: option
 
@@ -2039,7 +2039,7 @@ subroutine UGridPolyhedraComputeVolumes(ugrid, option, volume)
 
   implicit none
   
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(option_type) :: option
   Vec :: volume
 
@@ -2077,7 +2077,7 @@ subroutine UGridPolyhedraPopulateConnection(ugrid, connection, iface_cell, &
   
   implicit none
   
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(connection_set_type) :: connection
   PetscInt :: iface_cell
   PetscInt :: iconn
@@ -2162,7 +2162,7 @@ subroutine UGridPolyhedraGetCellsInRectangle(x_min, x_max, y_min, y_max, z_min, 
   implicit none
                   
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(option_type) :: option
   PetscInt :: num_cells
   PetscInt, pointer :: cell_ids(:)
@@ -2269,7 +2269,7 @@ subroutine UGridPolyhedraComputeOutputInfo(ugrid, nL2G, nG2L, nG2A, option)
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscviewer.h"
 
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(option_type) :: option
   PetscInt, pointer :: nL2G(:)
   PetscInt, pointer :: nG2L(:)

@@ -1,7 +1,7 @@
 module PMC_Surface_class
 
   use PMC_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Surface_class
   use Timestepper_Surface_class
 
@@ -90,7 +90,7 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Timestepper_Base_class
   use Output_Aux_module
   use Output_module, only : Output
-  use Realization_class, only : realization_subsurface_type
+  use Realization_Subsurface_class, only : realization_subsurface_type
   use PM_Base_class
   use PM_Surface_Flow_class
   use Option_module
@@ -111,7 +111,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   PetscBool :: failure
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
-  PetscBool :: checkpoint_flag
+  PetscBool :: checkpoint_at_this_time_flag
+  PetscBool :: checkpoint_at_this_timestep_flag
   class(pm_base_type), pointer :: cur_pm
   PetscReal :: dt_max_loc
   PetscReal :: dt_max_glb
@@ -136,7 +137,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     call SetOutputFlags(this)
     plot_flag = PETSC_FALSE
     transient_plot_flag = PETSC_FALSE
-    checkpoint_flag = PETSC_FALSE
+    checkpoint_at_this_time_flag = PETSC_FALSE
+    checkpoint_at_this_timestep_flag = PETSC_FALSE
     
     cur_pm => this%pm_list
 
@@ -159,7 +161,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     end select
     call this%timestepper%SetTargetTime(sync_time,this%option, &
                                         local_stop_flag,plot_flag, &
-                                        transient_plot_flag,checkpoint_flag)
+                                        transient_plot_flag, &
+                                        checkpoint_at_this_time_flag)
 
     this%option%surf_flow_dt = this%timestepper%dt
 
@@ -214,19 +217,16 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
                          plot_flag, transient_plot_flag)
     !endif
 
-    if (this%is_master) then
-      if (.not.checkpoint_flag) then
-        if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
-          if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
-           checkpoint_flag = PETSC_TRUE
-          endif
-        endif
-       endif
-    else
-      checkpoint_flag = PETSC_FALSE
+    if (this%is_master .and. associated(this%checkpoint_option)) then
+      if (this%checkpoint_option%periodic_ts_incr > 0 .and. &
+          mod(this%timestepper%steps, &
+              this%checkpoint_option%periodic_ts_incr) == 0) then
+        checkpoint_at_this_timestep_flag = PETSC_TRUE
+      endif
     endif
 
-    if (checkpoint_flag) then
+    if (checkpoint_at_this_time_flag .or. &
+        checkpoint_at_this_timestep_flag) then
       ! if checkpointing, need to sync all other PMCs.  Those "below" are
       ! already in sync, but not those "next".
       ! Set data needed by process-model
@@ -236,12 +236,24 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
         call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
       endif
       call this%GetAuxData()
-      filename_append = CheckpointFilenameAppend(this%pm_list%output_option, &
-                                                 this%option%time, &
-                                                 this%timestepper%steps)
-      call this%CheckpointBinary(viewer,filename_append)
-    endif
-
+      ! it is possible that two identical checkpoint files will be created,
+      ! one at the time and another at the time step, but this is fine.
+      if (checkpoint_at_this_time_flag) then
+        filename_append = &
+          CheckpointAppendNameAtTime(this%checkpoint_option, &
+                                     this%option%time, &
+                                     this%option)
+        call this%Checkpoint(filename_append)
+      endif
+      if (checkpoint_at_this_timestep_flag) then
+        filename_append = &
+          CheckpointAppendNameAtTimestep(this%checkpoint_option, &
+                                         this%timestepper%steps, &
+                                         this%option)
+        call this%Checkpoint(filename_append)
+      endif
+    endif                         
+                         
   enddo
   
   this%option%surf_flow_time = this%timestepper%target_time

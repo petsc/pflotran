@@ -158,13 +158,6 @@ module Option_module
     PetscReal :: restart_time
     character(len=MAXSTRINGLENGTH) :: restart_filename
     character(len=MAXSTRINGLENGTH) :: input_filename
-
-    !---- For checkpointing -------------------
-    PetscBool :: checkpoint_flag
-    PetscInt :: checkpoint_frequency
-    PetscBool :: checkpoint_format_binary
-    PetscBool :: checkpoint_format_hdf5
-    !------------------------------------------
     
     PetscLogDouble :: start_time
     PetscBool :: wallclock_stop_flag
@@ -500,10 +493,6 @@ subroutine OptionInitRealization(option)
   option%restart_flag = PETSC_FALSE
   option%restart_filename = ""
   option%restart_time = UNINITIALIZED_DOUBLE
-  option%checkpoint_flag = PETSC_FALSE
-  option%checkpoint_frequency = huge(option%checkpoint_frequency)
-  option%checkpoint_format_binary = PETSC_TRUE
-  option%checkpoint_format_hdf5 = PETSC_FALSE
   
   option%start_time = 0.d0
   option%wallclock_stop_flag = PETSC_FALSE
@@ -592,9 +581,6 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', &
                              option%restart_filename, &
                              option%restart_flag, ierr);CHKERRQ(ierr)
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', &
-                          option%checkpoint_frequency, &
-                          option%checkpoint_flag, ierr);CHKERRQ(ierr)
   ! check on possible modes                                                     
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &

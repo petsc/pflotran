@@ -4,7 +4,7 @@ module PM_RT_class
 !geh: using Reactive_Transport_module here fails with gfortran (internal 
 !     compiler error)
 !  use Reactive_Transport_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Communicator_Base_module  
   use Option_module
   
@@ -228,7 +228,7 @@ subroutine PMRTSetRealization(this,realization)
   ! Date: 03/14/13
   ! 
 
-  use Realization_class  
+  use Realization_Subsurface_class  
 
   implicit none
   
@@ -718,7 +718,7 @@ subroutine PMRTCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! Date: 03/16/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Option_module
   use Reaction_Aux_module
@@ -822,7 +822,7 @@ subroutine PMRTCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   ! Author: Glenn Hammond
   ! Date: 03/04/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Patch_module
@@ -1137,7 +1137,7 @@ subroutine PMRTCheckpointBinary(this,viewer)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Field_module
   use Discretization_module
@@ -1275,7 +1275,7 @@ subroutine PMRTRestartBinary(this,viewer)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Field_module
   use Discretization_module
@@ -1435,7 +1435,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
 #else
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Field_module
   use Discretization_module
@@ -1622,7 +1622,7 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
 #else
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Field_module
   use Discretization_module
