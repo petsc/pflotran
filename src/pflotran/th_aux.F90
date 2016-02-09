@@ -414,8 +414,8 @@ subroutine THAuxVarComputeNoFreezing(x,auxvar,global_auxvar, &
   endif  
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-  call EOSWaterDensityEnthalpy(global_auxvar%temp,pw,dw_kg,dw_mol,hw, &
-                               dw_dp,dw_dt,hw_dp,hw_dt,ierr)
+  call EOSWaterDensity(global_auxvar%temp,pw,dw_kg,dw_mol,dw_dp,dw_dt,ierr)
+  call EOSWaterEnthalpy(global_auxvar%temp,pw,hw,hw_dp,hw_dt,ierr)
   ! J/kmol -> whatever units
   hw = hw * option%scale
   hw_dp = hw_dp * option%scale
@@ -644,8 +644,8 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
       call printErrMsg(option)
   end select
 
-  call EOSWaterDensityEnthalpy(global_auxvar%temp,pw,dw_kg,dw_mol,hw, &
-                               dw_dp,dw_dt,hw_dp,hw_dt,ierr)
+  call EOSWaterDensity(global_auxvar%temp,pw,dw_kg,dw_mol,dw_dp,dw_dt,ierr)
+  call EOSWaterEnthalpy(global_auxvar%temp,pw,hw,hw_dp,hw_dt,ierr)
   ! J/kmol -> MJ/kmol
   hw = hw * option%scale
   hw_dp = hw_dp * option%scale

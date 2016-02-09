@@ -376,7 +376,8 @@ subroutine ImmisAuxVarCompute_NINC(x,auxvar,saturation_function, &
 !***************  Liquid phase properties **************************
  
 !  avgmw(1)= xmol(1)*FMWH2O + xmol(2)*FMWCO2 
-  call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,ierr) 
+  call EOSWaterDensity(t,pw,dw_kg,dw_mol,ierr) 
+  call EOSWaterEnthalpy(t,pw,hw,ierr) 
   ! J/kmol -> whatever units
   hw = hw * option%scale
 

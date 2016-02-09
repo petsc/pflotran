@@ -1186,8 +1186,8 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
       if (msrc(1) /= 0.d0) then ! H2O injection
-        call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
-                                     enth_src_h2o,ierr) 
+        call EOSWaterDensity(tsrc,auxvar%pres,dw_kg,dw_mol,ierr) 
+        call EOSWaterEnthalpy(tsrc,auxvar%pres,enth_src_h2o,ierr) 
         enth_src_h2o = enth_src_h2o*option%scale ! J/kmol -> whatever units
 
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
@@ -1297,8 +1297,8 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
     ! injection well (well status = 2)
       if (dabs(well_status - 2D0) < 1D-1) then
 
-        call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
-                                     enth_src_h2o,ierr)
+        call EOSWaterDensity(tsrc,auxvar%pres,dw_kg,dw_mol,ierr)
+        call EOSWaterEnthalpy(tsrc,auxvar%pres,enth_src_h2o,ierr)
         enth_src_h2o = enth_src_h2o * option%scale ! J/kmol -> whatever units
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
