@@ -1931,7 +1931,7 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   PetscBool :: debug_cell
       
   PetscReal :: qsrc_mol
-  PetscReal :: den, den_kg, enthalpy, internal_energy
+  PetscReal :: enthalpy, internal_energy
   PetscReal :: cell_pressure, dummy_pressure
   PetscInt :: icomp
   PetscErrorCode :: ierr
@@ -1969,8 +1969,7 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
       cell_pressure = &
         maxval(gen_auxvar%pres(option%liquid_phase:option%gas_phase))
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
-        call EOSWaterDensityEnthalpy(gen_auxvar%temp,cell_pressure, &
-                                     den_kg,den,enthalpy,ierr)
+        call EOSWaterEnthalpy(gen_auxvar%temp,cell_pressure,enthalpy,ierr)
         enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
         ! enthalpy units: MJ/kmol                       ! water component mass
         Res(option%energy_id) = Res(option%energy_id) + Res(ONE_INTEGER) * &

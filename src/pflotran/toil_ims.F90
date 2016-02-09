@@ -2121,9 +2121,12 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
     ! water injection 
     if (qsrc(option%liquid_phase) > 0.d0) then !implies qsrc(option%oil_phase)>=0
       if ( energy_var == SRC_TEMPERATURE ) then
-        call EOSWaterDensityEnthalpy(src_sink_condition%temperature% &
-                                     dataset%rarray(1), cell_pressure, &
-                                     den_kg,den,enthalpy,ierr)
+        call EOSWaterDensity(src_sink_condition%temperature% &
+                             dataset%rarray(1), cell_pressure, &
+                             den_kg,den,ierr)
+        call EOSWaterEnthalpy(src_sink_condition%temperature% &
+                              dataset%rarray(1), cell_pressure, &
+                              enthalpy,ierr)
         ! enthalpy = [J/kmol]
       else if ( energy_var == SRC_ENTHALPY ) then
         !input as J/kg

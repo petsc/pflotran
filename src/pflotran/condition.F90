@@ -2796,7 +2796,8 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units, &
     allocate(dataset_ascii%rarray(dataset_ascii%array_width))
     do icol=1,dataset_ascii%array_width
       call InputReadDouble(input,option,dataset_ascii%rarray(icol))
-      write(input%err_buf,'(a,i2)') trim(keyword) // ' dataset_values, icol = ', icol
+      write(input%err_buf,'(a,i2)') trim(keyword) // &
+                                    ' dataset_values, icol = ', icol
       input%err_buf2 = 'CONDITION'
       call InputErrorMsg(input,option) 
     enddo
@@ -2813,7 +2814,7 @@ subroutine ConditionReadValues(input,option,keyword,dataset_base,units, &
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,keyword,'CONDITION')   
         dataset_ascii%rarray(icol) = UnitsConvertToInternal(word, &
-                                     unit_cat_strings(icol),option) * &                     
+                                     unit_cat_strings(icol),option) * &
                                      dataset_ascii%rarray(icol)
         units = trim(units) // ' ' // trim(word)
       enddo

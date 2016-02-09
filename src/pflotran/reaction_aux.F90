@@ -1141,7 +1141,7 @@ function GetPrimarySpeciesIDFromName2(name,reaction,return_error,option)
 
   if (return_error .and. GetPrimarySpeciesIDFromName2 <= 0) then
     option%io_buffer = 'Species "' // trim(name) // &
-      '" not founds among primary species in GetPrimarySpeciesIDFromName().'
+      '" not found among primary species in GetPrimarySpeciesIDFromName().'
     call printErrMsg(option)
   endif
   
