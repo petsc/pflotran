@@ -2051,7 +2051,7 @@ subroutine EOSWaterSetEnthalpyPainter()
   implicit none
 
   EOSWaterDensityEnthalpyPtr => EOSWaterDensityEnthalpyPainter
-  EOSWaterDensityPtr => EOSWaterDensityPainter
+  EOSWaterEnthalpyPtr => EOSWaterEnthalpyPainter
 
 end subroutine EOSWaterSetEnthalpyPainter
 
