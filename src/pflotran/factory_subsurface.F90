@@ -692,7 +692,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   use Regression_module
   
   use PMC_Subsurface_class
-  use PMC_Material_class
+  use PMC_Auxiliary_class
   use PMC_Base_class
   use PM_Base_class
   use PM_Base_Pointer_module
@@ -716,7 +716,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   
   class(pmc_subsurface_type), pointer :: flow_process_model_coupler
   class(pmc_subsurface_type), pointer :: tran_process_model_coupler
-  class(pmc_material_type), pointer :: material_process_model_coupler
+  class(pmc_auxiliary_type), pointer :: material_process_model_coupler
   class(pmc_base_type), pointer :: cur_process_model_coupler
   class(pmc_base_type), pointer :: cur_process_model_coupler_top
   class(pm_base_type), pointer :: cur_process_model
@@ -790,7 +790,7 @@ subroutine InitSubsurfaceSimulation(simulation)
   !----------------------------------------------------------------------------!
   
   if (StrataEvolves(realization%patch%strata_list)) then
-    material_process_model_coupler => PMCMaterialCreate()
+    material_process_model_coupler => PMCAuxiliaryCreate()
     material_process_model_coupler%option => option
     material_process_model_coupler%realization => realization
     ! place the material process model as %peer for the top pmc

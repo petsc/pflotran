@@ -8,8 +8,8 @@ module Init_Subsurface_module
 
 #include "petsc/finclude/petscsys.h"
 
-  public :: InitSubsurfAssignMatIDsToRegns, &
-            InitSubsurfAssignMatProperties, &
+  public :: & !geh_remove InitSubsurfAssignMatIDsToRegns, &
+            & !InitSubsurfAssignMatProperties, &
             InitSubsurfSetupRealization, &
             InitSubsurfaceReadRequiredCards, &
             InitSubsurfaceReadInput
@@ -225,7 +225,8 @@ subroutine SubsurfAllocMatPropDataStructs(realization)
 end subroutine SubsurfAllocMatPropDataStructs
 
 ! ************************************************************************** !
-
+#if 0
+!geh_remove
 subroutine InitSubsurfAssignMatIDsToRegns(realization)
   ! 
   ! Assigns material properties to associated regions in the model
@@ -606,7 +607,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
   endif
   
 end subroutine InitSubsurfAssignMatProperties
-
+#endif
 ! ************************************************************************** !
 
 subroutine SubsurfReadMaterialIDsFromFile(realization,realization_dependent, &
