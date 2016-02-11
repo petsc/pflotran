@@ -574,12 +574,16 @@ subroutine GeomechConditionPrint(condition,option)
   else
     string = 'no'
   endif
-  write(option%fid_out,'(4x,''Synchronize time with update: '', a)') trim(string)
-  write(option%fid_out,'(4x,''Time units: '', a)') trim(condition%time_units)
-  write(option%fid_out,'(4x,''Length units: '', a)') trim(condition%length_units)
+  write(option%fid_out,'(4x,''Synchronize time with update: '', a)') &
+    trim(string)
+  write(option%fid_out,'(4x,''Time units: '', a)') &
+    trim(condition%time_units)
+  write(option%fid_out,'(4x,''Length units: '', a)') &
+    trim(condition%length_units)
   
   do i=1, condition%num_sub_conditions
-    call GeomechConditionPrintSubCondition(condition%sub_condition_ptr(i)%ptr, &
+    call GeomechConditionPrintSubCondition(&
+                                        condition%sub_condition_ptr(i)%ptr, &
                                         option)
   enddo
   write(option%fid_out,99)
