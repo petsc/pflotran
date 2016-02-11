@@ -13,7 +13,6 @@ module PMC_Auxiliary_class
   private
 
   type, public, extends(pmc_base_type) :: pmc_auxiliary_type
-    class(realization_subsurface_type), pointer :: realization
     class(pm_auxiliary_type), pointer :: pm_aux
   contains
     procedure, public :: Init => PMCAuxiliaryInit
@@ -73,7 +72,6 @@ subroutine PMCAuxiliaryInit(this)
   
   call PMCBaseInit(this)
   this%name = 'PMCAuxiliary'
-  nullify(this%realization)
 
 end subroutine PMCAuxiliaryInit
 
@@ -115,8 +113,6 @@ recursive subroutine PMCAuxiliaryRunToTime(this,sync_time,stop_flag)
   ! if at end of simulation, skip update of material properties
   if (stop_flag /= TS_STOP_END_SIMULATION) then
     call this%pm_aux%Evaluate(sync_time,local_stop_flag)
-!    call InitSubsurfAssignMatIDsToRegns(this%realization)
-!    call InitSubsurfAssignMatProperties(this%realization)
   endif
   
   ! Run underlying process model couplers
@@ -169,8 +165,6 @@ recursive subroutine PMCAuxiliaryFinalizeRun(this)
   call printMsg(this%option,'PMCAuxiliary%FinalizeRun()')
 #endif
   
-  nullify(this%realization)
-  
 end subroutine PMCAuxiliaryFinalizeRun
 
 ! ************************************************************************** !
@@ -187,7 +181,7 @@ subroutine PMCAuxiliaryStrip(this)
   class(pmc_auxiliary_type) :: this
 
   call PMCBaseStrip(this)
-  nullify(this%realization)
+  nullify(this%pm_aux)
 
 end subroutine PMCAuxiliaryStrip
 

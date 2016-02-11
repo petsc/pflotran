@@ -17,6 +17,8 @@ module PM_Auxiliary_class
     class(communicator_type), pointer :: comm1
     procedure(PMAuxliaryEvaluate), pointer :: Evaluate => null()
   contains
+    procedure, public :: InitializeRun => PMAuxiliaryInitializeRun
+    procedure, public :: Destroy => PMAuxiliaryDestroy
   end type pm_auxiliary_type
   
   ! interface blocks
@@ -30,7 +32,8 @@ module PM_Auxiliary_class
     end subroutine PMAuxliaryEvaluate
   end interface
   
-  public :: PMAuxiliaryInit
+  public :: PMAuxiliaryInit, &
+            PMAuxiliarySetFunctionPointer
   
 contains
 
@@ -71,10 +74,10 @@ subroutine PMAuxiliarySetFunctionPointer(this,string)
   character(len=MAXSTRINGLENGTH) :: string
 
   select case(string)
-    case('A')
+    case('EVOLVING_STRATA')
       this%Evaluate => PMAuxiliaryEvaluateA
     case('B')
-      this%Evaluate => PMAuxiliaryEvaluateb
+      this%Evaluate => PMAuxiliaryEvaluateB
     case default
       this%option%io_buffer = 'Function pointer "' // trim(string) // '" not &
         &found among available functions in PMAuxiliarySetFunctionPointer.'
@@ -85,6 +88,21 @@ end subroutine PMAuxiliarySetFunctionPointer
 
 ! ************************************************************************** !
 
+recursive subroutine PMAuxiliaryInitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/10/16 
+
+  implicit none
+
+  class(pm_auxiliary_type) :: this
+
+end subroutine PMAuxiliaryInitializeRun
+
+! ************************************************************************** !
+
 subroutine PMAuxiliaryEvaluateA(this,time,ierr)
   ! 
   ! Initializes auxiliary process model
@@ -92,14 +110,16 @@ subroutine PMAuxiliaryEvaluateA(this,time,ierr)
   ! Author: Glenn Hammond
   ! Date: 02/10/16
 
+  use Init_Subsurface_module
+
   implicit none
   
   class(pm_auxiliary_type) :: this
   PetscReal :: time
   PetscErrorCode :: ierr
 
- ! call InitSubsurfAssignMatIDsToRegns(this%realization)
-!  call InitSubsurfAssignMatProperties(this%realization)
+  call InitSubsurfAssignMatIDsToRegns(this%realization)
+  call InitSubsurfAssignMatProperties(this%realization)
   
 end subroutine PMAuxiliaryEvaluateA
 
