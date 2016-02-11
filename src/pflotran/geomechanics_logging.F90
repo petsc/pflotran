@@ -69,7 +69,8 @@ subroutine GeomechLoggingCreate()
                              geomech_logging%stage(GEOMECH_OUTPUT_STAGE), &
                              ierr);CHKERRQ(ierr)
                              
-  call PetscClassIdRegister('Geomech PFLOTRAN',geomech_logging%class_pflotran, &
+  call PetscClassIdRegister('Geomech PFLOTRAN', &
+                            geomech_logging%class_pflotran, &
                             ierr);CHKERRQ(ierr)
 
   call PetscLogEventRegister('GeomechCondRead', &
@@ -78,9 +79,9 @@ subroutine GeomechLoggingCreate()
                              ierr);CHKERRQ(ierr)
  
   call PetscLogEventRegister('GeomechCondReadVals', &
-                             geomech_logging%class_pflotran, &
-                             geomech_logging%event_geomech_condition_read_values, &
-                             ierr);CHKERRQ(ierr)
+                        geomech_logging%class_pflotran, &
+                        geomech_logging%event_geomech_condition_read_values, &
+                        ierr);CHKERRQ(ierr)
 
   call PetscLogEventRegister('GeomechResidual', &
                              geomech_logging%class_pflotran, &
