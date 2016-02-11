@@ -23,14 +23,21 @@ contains
  
 !#if 0
     call read_input 
+
     if (ios .eq. -1) then
        call send_command(0)
        return
     end if
+    open(13,file=trim(log_file),action='write',status='old',position='append')
+    write(13,*) "Read Input Complete___________________________________"
+    close(13)
 
     call send_info
 
     call setup_forward
+    open(13,file=trim(log_file),action='write',status='old',position='append')
+    write(13,*) "Setup Forward Complete___________________________________"
+    close(13)
     if (ios .eq. -1) then
        call send_command(0)
        return
@@ -40,7 +47,9 @@ contains
 !    call send_info_geh
 
     call send_command(0)
-  
+    open(13,file=trim(log_file),action='write',status='old',position='append')
+    write(13,*) "Setup Phase Complete___________________________________"
+    close(13)
   end subroutine setup_e4d
   !________________________________________________________________
 
@@ -83,12 +92,12 @@ contains
        return
     end if
 
-    read(10,*,IOSTAT=ios) mapfile
-    call elog(4,ios,flg); 
-    if (flg .eq. -1) then
-       ios=-1
-       return
-    end if
+    !read(10,*,IOSTAT=ios) mapfile
+    !call elog(4,ios,flg); 
+    !if (flg .eq. -1) then
+    !   ios=-1
+    !   return
+    !end if
    
 
     read(10,*,IOSTAT=ios) list_file
@@ -199,27 +208,14 @@ contains
           end if
        end do
        close(10)
-      
-       open(10,file=trim(mapfile),status='old',action='read')
-       read(10,*,IOSTAT=ios) nmap
-       call elog(13,ios,flg)
-       if (flg.ne.0) then
+
+       !make sure pf_mesh.txt exists
+       call elog(37,ios,flg)
+       if(ios.ne.0) then
           ios=-1
-          close(10)
+          close(1)
           return
        end if
-          
-       allocate(map_inds(nmap,2),map(nmap)) 
-       do i=1,nmap
-          read(10,*,IOSTAT=ios) map_inds(i,:),map(i)
-          if (ios .ne. 0) then
-             call elog(14,i,flg)
-             ios=-1
-             close(10)
-             return
-          end if
-       end do
-       close(10) 
 
        !!read the list file and all files listed and check for errors
        open(10,file=trim(list_file),status='old',action='read')
@@ -248,88 +244,6 @@ contains
           end if
        end do
           
-!!$          !!check the survey files
-!!$          open(11,file=trim(csrv_file),status='old',action='read')
-!!$          read(11,*,IOSTAT=ios) junk
-!!$          call elog(27,ios,junk)
-!!$          if (ios .ne. 0) then
-!!$             ios=-1
-!!$             close(10)
-!!$             close(11)
-!!$             return
-!!$          end if
-!!$          do i=1,ne
-!!$             read(11,*,IOSTAT=ios) junk,ex,ey,ez,eflg
-!!$             ex=ex-xorig
-!!$             ey=ey-yorig
-!!$             ez=ez-zorig
-!!$             if (ios.ne.0 .or. ex.ne.e_pos(i,1) .or. ey.ne.(e_pos(i,2)) &
-!!$                  .or. ez.ne.e_pos(i,3) .or. eflg.ne.e_pos(i,4)) then
-!!$                write(13,*) e_pos(i,:)
-!!$                write(13,*) ex,ey,ez,eflg
-!!$                call elog(28,i,flg)
-!!$                ios=-1
-!!$                close(10)
-!!$                close(11)
-!!$                return
-!!$             end if
-!!$          end do
-!!$
-!!$          read(11,*,IOSTAT=ios) junk
-!!$          call elog(29,ios,junk)
-!!$          if (ios .ne. 0) then
-!!$             ios=-1
-!!$             close(10)
-!!$             close(11)
-!!$             return
-!!$          end if
-!!$          do i=1,nm
-!!$             read(11,*,IOSTAT=ios) junk,a,b,m,n,vi,wd
-!!$             if (ios.ne.0 .or. a.ne.s_conf(i,1) .or. b.ne.s_conf(i,2) &
-!!$                  .or. m.ne.s_conf(i,3) .or. n.ne.s_conf(i,4)) then
-!!$                call elog(30,i,flg)
-!!$                ios=-1
-!!$                close(10)
-!!$                close(11)
-!!$                return
-!!$             end if
-!!$          end do
-!!$          close(11)
-!!$
-!!$          !!check the conductivity file
-!!$          open(11,file=trim(ccond_file),status='old',action='read')
-!!$          read(11,*,IOSTAT=ios) junk
-!!$          if (ios.ne.0) then
-!!$             call elog(31,flnum,flg)
-!!$             ios=-1
-!!$             close(10)
-!!$             close(11)
-!!$             return
-!!$          end if
-!!$          if (flnum.le.1) then
-!!$             nsig=junk
-!!$          else
-!!$             if (junk .ne. nsig) then
-!!$                call elog(32,junk,flnum)
-!!$                 ios=-1
-!!$                 close(10)
-!!$                 close(11)
-!!$                 return
-!!$              end if
-!!$           end if
-!!$
-!!$           do i=1,nsig
-!!$              read(11,*,IOSTAT=ios) tsig
-!!$              if (ios.ne.0 .or. tsig .le.0) then
-!!$                 call elog(33,i,flg)
-!!$                 ios=-1
-!!$                 close(10)
-!!$                 close(11)
-!!$                 return
-!!$              end if
-!!$           end do
-!!$           close(11)
-!!$        end do
        
   end subroutine read_input
   !________________________________________________________________
@@ -414,11 +328,6 @@ contains
        ios=-1
        return
     end if
-!!$    if (nelem .ne. nsig) then
-!!$       call elog(34,nsig,nelem)
-!!$       ios=-1
-!!$       return
-!!$    end if
 
     allocate(elements(nelem,4),zones(nelem))
     do i=1,nelem
@@ -430,13 +339,16 @@ contains
        end if
     end do
     close(10)
-
+ 
     call MPI_BCAST(nelem, 1, MPI_INTEGER, 0,E4D_COMM,ierr)
     call MPI_BCAST(elements, nelem*4,MPI_INTEGER,0,E4D_COMM,ierr)
-       
+ 
     !send the assignments
     call send_dists
-    
+
+    !build the mesh interpolation matrix
+    call get_mesh_interp
+ 
     !get electrode nodes
     call get_electrode_nodes 
  
@@ -444,7 +356,52 @@ contains
     ios=0
   end subroutine setup_forward
   !____________________________________________________________________
+ 
+  !____________________________________________________________________
+  subroutine get_mesh_interp
+    implicit none
+    integer :: i,ierr,st,en
+    integer :: status(MPI_STATUS_SIZE)
+    integer, dimension(n_rank-1) :: tnmap
+    
+    nmap=0
+    
+    do i=1,n_rank-1
+       call MPI_RECV(tnmap(i),1,MPI_INTEGER,i,i,E4D_COMM,status,ierr)
+      
+    end do
+   
+    nmap=sum(tnmap)
 
+    open(13,file=trim(log_file),status='old',action='write',position='append')
+    write(13,*) "Total number of mapping weights: ",nmap
+    do i=1,n_rank-1
+       write(13,*) "Rank ",i,": ",tnmap(i)
+    end do
+    close(13)
+   
+  
+    allocate(map_inds(nmap,2),map(nmap))
+    
+    do i=1,n_rank-1
+       if(i==1) then
+          st=1
+          en=tnmap(1)
+          call MPI_RECV(map_inds(st:en,1),tnmap(i),MPI_INTEGER,i,i,E4D_COMM,status,ierr)
+          call MPI_RECV(map_inds(st:en,2),tnmap(i),MPI_INTEGER,i,i,E4D_COMM,status,ierr)
+          call MPI_RECV(map(st:en),tnmap(i),MPI_REAL,i,i,E4D_COMM,status,ierr)
+       else
+          st=sum(tnmap(1:i-1))+1
+          en=sum(tnmap(1:i))
+          call MPI_RECV(map_inds(st:en,1),tnmap(i),MPI_INTEGER,i,i,E4D_COMM,status,ierr)
+          call MPI_RECV(map_inds(st:en,2),tnmap(i),MPI_INTEGER,i,i,E4D_COMM,status,ierr)
+          call MPI_RECV(map(st:en),tnmap(i),MPI_REAL,i,i,E4D_COMM,status,ierr)
+        
+       end if
+    end do
+  
+  end subroutine get_mesh_interp
+  !____________________________________________________________________
  !____________________________________________________________________
   subroutine send_dists
     !read inputs and distribute the run info to the slave
@@ -485,13 +442,85 @@ contains
        end do
     end if
 
+    !!Build jaco assignments
+    if(allocated(jind)) deallocate(jind)
+    allocate(jind(n_rank-1,2))
+    jind = 0
+    if(nelem < (n_rank-1)) then
+       do i=1,nelem
+          jind(i,1:2)=i
+       end do
+    else
+       neven = nelem/(n_rank-1)
+       nextra = nelem - neven*(n_rank-1)
+       
+       jind=0
+       if(neven > 0) then
+          ce = 1
+          do i=1,n_rank-1-nextra
+             jind(i,1) = ce
+             jind(i,2) = ce+neven-1
+             ce = ce+neven
+          end do
+          
+          if(nextra > 0) then
+             do i=n_rank-nextra,n_rank-1    
+                jind(i,1) = ce
+                jind(i,2) = ce+neven
+                ce=ce+neven+1
+             end do
+          end if
+       end if
+    end if
+    
+    !this will be replaced with mesh info from pflotran
+    call get_pfmesh
+ 
     !!send assignments
     call MPI_BCAST(tne, 1, MPI_INTEGER , 0, E4D_COMM, ierr )
     call MPI_BCAST(e_pos,4*tne ,MPI_REAL , 0, E4D_COMM, ierr )
     call MPI_BCAST(eind,2*(n_rank-1),MPI_INTEGER , 0, E4D_COMM, ierr )
+    call MPI_BCAST(jind,2*(n_rank-1),MPI_INTEGER , 0, E4D_COMM, ierr )
+    call MPI_BCAST(pfnx,1,MPI_INTEGER,0,E4D_COMM, ierr)
+    call MPI_BCAST(pfny,1,MPI_INTEGER,0,E4D_COMM, ierr)
+    call MPI_BCAST(pfnz,1,MPI_INTEGER,0,E4D_COMM, ierr)
+    call MPI_BCAST(pfxcb,pfnx+1,MPI_REAL,0,E4D_COMM,ierr)
+    call MPI_BCAST(pfycb,pfny+1,MPI_REAL,0,E4D_COMM,ierr)
+    call MPI_BCAST(pfzcb,pfnz+1,MPI_REAL,0,E4D_COMM,ierr)
+    deallocate(pfxcb)
+    deallocate(pfycb)
+    deallocate(pfzcb)
+  
 
   end subroutine send_dists
   !______________________________________________________________
+
+ 
+  !____________________________________________________________________
+  subroutine get_pfmesh
+    implicit none
+    integer :: i
+    logical :: chech
+    
+
+    open(12,file='pf_mesh.txt',status='old',action='read')
+    read(12,*) pfnx
+    allocate(pfxcb(pfnx+1))
+    read(12,*) pfxcb(1:pfnx+1)
+  
+    read(12,*) pfny
+    allocate(pfycb(pfny+1))
+    read(12,*) pfycb(1:pfny+1)
+
+    read(12,*) pfnz
+    allocate(pfzcb(pfnz+1))
+    read(12,*) pfzcb(1:pfnz+1)
+
+    close(12)
+    
+    
+  end subroutine get_pfmesh
+  !____________________________________________________________________
 
   !______________________________________________________________
   subroutine get_electrode_nodes
@@ -614,6 +643,9 @@ contains
     !receive the assignments
     call receive_dists
     
+    !build the mesh interpolation matrix for my elements
+    call send_my_mesh_interp
+
     !build A_map and delA.......................................
     call build_delA
 
@@ -658,17 +690,229 @@ contains
    
     if (allocated(eind)) deallocate(eind)
     if (allocated(e_pos)) deallocate(e_pos)
+    if (allocated(jind)) deallocate(jind)
     allocate(eind(n_rank-1,2))
+    allocate(jind(n_rank-1,2))
     
     call MPI_BCAST(tne, 1, MPI_INTEGER , 0, E4D_COMM, ierr )
     allocate(e_pos(tne,4))
     call MPI_BCAST(e_pos,4*tne,MPI_REAL,0,E4D_COMM,ierr)
     call MPI_BCAST(eind,2*(n_rank-1),MPI_INTEGER , 0, E4D_COMM, ierr )
-    
+    call MPI_BCAST(jind,2*(n_rank-1),MPI_INTEGER , 0, E4D_COMM, ierr )
+    call MPI_BCAST(pfnx,1,MPI_INTEGER,0,E4D_COMM, ierr)
+    call MPI_BCAST(pfny,1,MPI_INTEGER,0,E4D_COMM, ierr)
+    call MPI_BCAST(pfnz,1,MPI_INTEGER,0,E4D_COMM, ierr)
+    allocate(pfxcb(pfnx+1),pfycb(pfny+1),pfzcb(pfnz+1))
+    call MPI_BCAST(pfxcb,pfnx+1,MPI_REAL,0,E4D_COMM,ierr)
+    call MPI_BCAST(pfycb,pfny+1,MPI_REAL,0,E4D_COMM,ierr)
+    call MPI_BCAST(pfzcb,pfnz+1,MPI_REAL,0,E4D_COMM,ierr)
     my_ne = eind(my_rank,2)-eind(my_rank,1)+1
+   
   end subroutine receive_dists
   !__________________________________________________________________
 
+  !____________________________________________________________________
+  subroutine send_my_mesh_interp
+    implicit none
+    integer :: i,j,my_nelem,cnt,n_tets,indx,indy,indz,k,cct,cpos
+    real :: xmn,xmx,ymn,ymx,zmn,zmx,imn,imx
+    logical, dimension(:), allocatable :: flags
+    real, dimension(:), allocatable :: midx,midy,midz,w
+    integer, dimension(:), allocatable :: rw,v
+    real, dimension(9,3) :: pts
+    real, dimension(4,3) :: mfaces
+    real, dimension(3) :: vc
+    real, dimension(8) :: wi,C
+    integer, dimension(8) :: vi
+    real, dimension(72) :: twi
+    integer, dimension(72) :: tvi
+
+    
+    !!get the pf mesh midpoints
+    xmn=1e15
+    ymn=xmn
+    zmn=xmn
+    xmx=-1e15
+    ymx=xmx
+    xmx=xmx
+   
+    allocate(midx(pfnx),midy(pfny),midz(pfnz))
+    do i=1,pfnx
+       midx(i) = 0.5*(pfxcb(i+1)+pfxcb(i))
+       if(midx(i)<xmn) xmn=midx(i)
+       if(midx(i)>xmx) xmx=midx(i)
+    end do
+   
+    do i=1,pfny
+       midy(i) = 0.5*(pfycb(i+1)+pfycb(i))
+       if(midy(i)<ymn) ymn=midy(i)
+       if(midy(i)>ymn) ymx=midy(i)
+    end do
+
+    do i=1,pfnz
+       midz(i) = 0.5*(pfzcb(i+1)+pfzcb(i))
+       if(midz(i)<zmn) zmn=midz(i)
+       if(midz(i)>zmn) zmx=midz(i)
+    end do
+
+    nodes(:,1)=nodes(:,1)+xorig
+    nodes(:,2)=nodes(:,2)+yorig
+    nodes(:,3)=nodes(:,3)+zorig
+    
+    my_nelem = jind(my_rank,2)-jind(my_rank,1)+1
+    allocate(flags(my_nelem))
+
+    flags=.true.
+    cnt=0
+    n_tets=0
+
+
+    !!find which elements we need to map
+    do i=jind(my_rank,1),jind(my_rank,2)
+       cnt=cnt+1
+       imx=maxval(nodes(elements(i,1:4),1))
+       imn=minval(nodes(elements(i,1:4),1))
+       if(imn<xmn .or. imx>xmx) then
+          flags(cnt)=.false.
+          goto 100
+       end if
+     
+
+       imx=maxval(nodes(elements(i,1:4),2))
+       imn=minval(nodes(elements(i,1:4),2))
+       if(imn<ymn .or. imx>ymx) then
+          flags(cnt)=.false.
+          goto 100
+       end if
+  
+
+       imx=maxval(nodes(elements(i,1:4),3))
+       imn=minval(nodes(elements(i,1:4),3)) 
+    
+       if(imn<zmn .or. imx>zmx) then
+          flags(cnt)=.false.
+          goto 100
+       end if
+
+       n_tets=n_tets+1
+100    continue
+    end do
+ 
+    allocate(rw(72*n_tets),v(72*n_tets),w(72*n_tets))
+    cnt=0
+    cct=0
+    cpos=0
+    do i=jind(my_rank,1),jind(my_rank,2)
+       cct=cct+1
+       if(flags(cct)) then
+          !get the nine points
+          cnt=cnt+1
+          do j=1,3
+             pts(1,j)=.25*sum(nodes(elements(i,1:4),j)) !tet midpoint
+          end do
+        
+          do j=1,3
+             mfaces(1,j) = sum(nodes(elements(i,[1,2,3]),j))/3
+             mfaces(2,j) = sum(nodes(elements(i,[1,2,4]),j))/3
+             mfaces(3,j) = sum(nodes(elements(i,[1,3,4]),j))/3
+             mfaces(4,j) = sum(nodes(elements(i,[2,3,4]),j))/3       
+          end do
+          do j=1,4
+             vc=mfaces(j,:)-pts(1,:)
+             pts(j+1,:) = pts(1,:) + 0.5*vc
+             vc=nodes(elements(i,j),:)-pts(1,:)
+             pts(j+5,:) = pts(1,:) + 0.5*vc
+          end do
+          
+
+          !get the weighting function for each point
+          do j=1,9
+             do k=1,pfnx
+                 if(midx(k)>pts(j,1)) then
+                    indx=k-1
+                    exit
+                 end if
+              end do
+              do k=1,pfny
+                 if(midy(k)>pts(j,2)) then
+                    indy=k-1
+                    exit
+                 end if
+              end do
+              do k=1,pfnz
+                 if(midz(k)>pts(j,3)) then
+                    indz=k-1
+                    exit
+                 end if
+              end do
+              
+              vi(5) = indx + (indy-1)*pfnx + (indz-1)*pfnx*pfny
+              vi(8) = vi(5)+1
+              vi(6) = vi(5)+pfnx
+              vi(7) = vi(6)+1
+              vi(1:4) = vi(5:8) + pfnx*pfny
+
+              C(1)=(pts(j,1)-midx(indx))/(midx(indx+1)-midx(indx));
+              C(2)=C(1);
+              C(3)=C(1);
+              C(4)=C(1);
+              C(5)=(pts(j,2)-midy(indy))/(midy(indy+1)-midy(indy));
+              C(6)=C(5);
+              C(7)=(pts(j,3)-midz(indz))/(midz(indz+1)-midz(indz));
+
+              wi(1)=(1-C(1))*(1-C(6))*C(7);
+              wi(2)=(1-C(2))*C(6)*C(7);
+              wi(3)=C(2)*C(6)*C(7);
+              wi(4)=C(1)*C(7)*(1-C(6));
+              wi(5)=(1-C(3))*(1-C(5))*(1-C(7));
+              wi(6)=C(5)*(1-C(4))*(1-C(7));
+              wi(7)=C(4)*C(5)*(1-C(7));
+              wi(8)=C(3)*(1-C(5))*(1-C(7));
+           
+              !write(*,*) vi
+              !write(*,*) wi
+
+              tvi(8*(j-1)+1:8*j)=vi
+              twi(8*(j-1)+1:8*j)=wi
+              
+           end do
+           
+           !consolidate the weights
+           do j=1,71
+              do k=j+1,72
+                 if(tvi(k)==tvi(j)) then
+                    twi(j)=twi(j)+twi(k)
+                    twi(k)=0
+                    tvi(k)=0;
+                 end if
+              end do
+           end do
+           twi=twi/9
+          
+           do j=1,72
+              if(tvi(j) .ne. 0) then
+                 cpos=cpos+1;
+                 rw(cpos)=i
+                 v(cpos)=tvi(j)
+                 w(cpos)=twi(j)
+              end if
+           end do
+        end if
+     
+    end do
+  
+    call MPI_SEND(cpos,1,MPI_INTEGER,0,my_rank,E4D_COMM, ierr)
+    call MPI_SEND(rw(1:cpos),cpos,MPI_INTEGER,0,my_rank,E4D_COMM,ierr)
+    call MPI_SEND(v(1:cpos),cpos,MPI_INTEGER,0,my_rank,E4D_COMM,ierr)
+    call MPI_SEND(w(1:cpos),cpos,MPI_REAL,0,my_rank,E4D_COMM,ierr)
+    
+    deallocate(flags,midx,midy,midz,rw,v,w)
+    nodes(:,1)=nodes(:,1)-xorig
+    nodes(:,2)=nodes(:,2)-yorig
+    nodes(:,3)=nodes(:,3)-zorig
+    
+  end subroutine send_my_mesh_interp
+  !____________________________________________________________________
   !____________________________________________________________________
   subroutine build_delA
 
