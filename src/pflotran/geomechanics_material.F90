@@ -138,7 +138,8 @@ end subroutine GeomechanicsMaterialPropertyRead
 
 ! ************************************************************************** !
 
-subroutine GeomechanicsMaterialPropertyAddToList(geomech_material_property,list)
+subroutine GeomechanicsMaterialPropertyAddToList(geomech_material_property, &
+                                                 list)
   ! 
   ! Destroys a geomechanics material
   ! property
@@ -315,7 +316,8 @@ end function GeomechanicsMaterialPropGetPtrFromArray
 
 ! ************************************************************************** !
 
-recursive subroutine GeomechanicsMaterialPropertyDestroy(geomech_material_property)
+recursive subroutine GeomechanicsMaterialPropertyDestroy(&
+                                                    geomech_material_property)
   ! 
   ! Destroys a geomechanics material
   ! property

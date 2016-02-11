@@ -127,17 +127,19 @@ subroutine GeomechDiscretizationCreateDMs(geomech_discretization,option)
   ! Generate the DM objects that will manage communication.
   !-----------------------------------------------------------------------
   ndof = 1
-  call GeomechDiscretizationCreateDM(geomech_discretization,geomech_discretization%dm_1dof, &
+  call GeomechDiscretizationCreateDM(geomech_discretization, &
+                                     geomech_discretization%dm_1dof, &
                                      ndof,option)
   
   if (option%ngeomechdof > 0) then
     ndof = option%ngeomechdof
-    call GeomechDiscretizationCreateDM(geomech_discretization,geomech_discretization%dm_ngeodof, &
+    call GeomechDiscretizationCreateDM(geomech_discretization, &
+                                       geomech_discretization%dm_ngeodof, &
                                        ndof,option)
 
     call GeomechDiscretizationCreateDM(geomech_discretization, &
-                                       geomech_discretization%dm_n_stress_strain_dof, &
-                                       option%n_stress_strain_dof,option)
+                              geomech_discretization%dm_n_stress_strain_dof, &
+                              option%n_stress_strain_dof,option)
   endif
 
 
@@ -145,7 +147,8 @@ end subroutine GeomechDiscretizationCreateDMs
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationCreateDM(geomech_discretization,dm_ptr,ndof,option)
+subroutine GeomechDiscretizationCreateDM(geomech_discretization,dm_ptr, &
+                                         ndof,option)
   ! 
   ! creates a distributed, parallel mesh/grid
   ! for geomechanics
@@ -173,7 +176,8 @@ subroutine GeomechDiscretizationCreateDM(geomech_discretization,dm_ptr,ndof,opti
       call GMCreateGMDM(geomech_discretization%grid, &
                         dm_ptr%gmdm,ndof,option)
       call DMShellCreate(option%mycomm,dm_ptr%dm,ierr);CHKERRQ(ierr)
-      call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm,dm_ptr%gmdm%scatter_gtol, &
+      call DMShellSetGlobalToLocalVecScatter(dm_ptr%dm, &
+                                             dm_ptr%gmdm%scatter_gtol, &
                                              ierr);CHKERRQ(ierr)
   end select
 
@@ -181,7 +185,8 @@ end subroutine GeomechDiscretizationCreateDM
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationCreateVector(geomech_discretization,dm_index,vector, &
+subroutine GeomechDiscretizationCreateVector(geomech_discretization, &
+                                             dm_index,vector, &
                                              vector_type,option)
   ! 
   ! Creates a PETSc vector for the nodes
@@ -203,7 +208,8 @@ subroutine GeomechDiscretizationCreateVector(geomech_discretization,dm_index,vec
   PetscErrorCode :: ierr
   
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
 
   call GMGridDMCreateVector(geomech_discretization%grid,dm_ptr%gmdm,vector, &
                             vector_type,option)
@@ -214,7 +220,8 @@ end subroutine GeomechDiscretizationCreateVector
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationDuplicateVector(geomech_discretization,vector1,vector2)
+subroutine GeomechDiscretizationDuplicateVector(geomech_discretization, &
+                                                vector1,vector2)
   ! 
   ! Duplicates a Petsc vector
   ! 
@@ -253,9 +260,11 @@ function GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
   
   select case (dm_index)
     case(ONEDOF)
-      GeomechDiscretizationGetDMPtrFromIndex => geomech_discretization%dm_1dof
+      GeomechDiscretizationGetDMPtrFromIndex => &
+        geomech_discretization%dm_1dof
     case(NGEODOF)
-      GeomechDiscretizationGetDMPtrFromIndex => geomech_discretization%dm_ngeodof
+      GeomechDiscretizationGetDMPtrFromIndex => &
+        geomech_discretization%dm_ngeodof
     case(SIX_INTEGER)
       GeomechDiscretizationGetDMPtrFromIndex => &
         geomech_discretization%dm_n_stress_strain_dof
@@ -265,7 +274,8 @@ end function GeomechDiscretizationGetDMPtrFromIndex
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationCreateJacobian(geomech_discretization,dm_index, &
+subroutine GeomechDiscretizationCreateJacobian(geomech_discretization, &
+                                               dm_index, &
                                                mat_type,Jacobian,option)
   ! 
   ! Creates Jacobian matrix associated
@@ -287,7 +297,8 @@ subroutine GeomechDiscretizationCreateJacobian(geomech_discretization,dm_index, 
   MatType :: mat_type
   Mat :: Jacobian
 
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                    dm_index)
 
 
   call GMGridDMCreateJacobian(geomech_discretization%grid,dm_ptr%gmdm, &
@@ -300,7 +311,8 @@ end subroutine GeomechDiscretizationCreateJacobian
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationGlobalToLocal(geomech_discretization,global_vec, &
+subroutine GeomechDiscretizationGlobalToLocal(geomech_discretization, &
+                                              global_vec, &
                                               local_vec,dm_index)
   ! 
   ! Performs global to local communication
@@ -319,7 +331,8 @@ subroutine GeomechDiscretizationGlobalToLocal(geomech_discretization,global_vec,
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
     
   call DMGlobalToLocalBegin(dm_ptr%dm,global_vec,INSERT_VALUES,local_vec, &
                             ierr);CHKERRQ(ierr)
@@ -330,7 +343,8 @@ end subroutine GeomechDiscretizationGlobalToLocal
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationLocalToGlobal(geomech_discretization,local_vec, &
+subroutine GeomechDiscretizationLocalToGlobal(geomech_discretization, & 
+                                              local_vec, &
                                               global_vec,dm_index)
   ! 
   ! Performs local to global communication
@@ -349,7 +363,8 @@ subroutine GeomechDiscretizationLocalToGlobal(geomech_discretization,local_vec, 
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
@@ -360,7 +375,8 @@ end subroutine GeomechDiscretizationLocalToGlobal
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationLocalToGlobalAdd(geomech_discretization,local_vec, &
+subroutine GeomechDiscretizationLocalToGlobalAdd(geomech_discretization, &
+                                                 local_vec, &
                                                  global_vec,dm_index)
   ! 
   ! Performs local to global communication
@@ -379,7 +395,8 @@ subroutine GeomechDiscretizationLocalToGlobalAdd(geomech_discretization,local_ve
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltog,local_vec,global_vec, &
                        ADD_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
@@ -390,7 +407,8 @@ end subroutine GeomechDiscretizationLocalToGlobalAdd
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationLocalToLocal(geomech_discretization,local_vec1, &
+subroutine GeomechDiscretizationLocalToLocal(geomech_discretization, &
+                                             local_vec1, &
                                              local_vec2,dm_index)
   ! 
   ! Performs local to local communication
@@ -409,7 +427,8 @@ subroutine GeomechDiscretizationLocalToLocal(geomech_discretization,local_vec1, 
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
@@ -420,7 +439,8 @@ end subroutine GeomechDiscretizationLocalToLocal
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationGlobalToNatural(geomech_discretization,global_vec, &
+subroutine GeomechDiscretizationGlobalToNatural(geomech_discretization, &
+                                                global_vec, &
                                                 natural_vec,dm_index)
   ! 
   ! Performs global to natural
@@ -439,7 +459,8 @@ subroutine GeomechDiscretizationGlobalToNatural(geomech_discretization,global_ve
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
 
   call VecScatterBegin(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
@@ -450,7 +471,8 @@ end subroutine GeomechDiscretizationGlobalToNatural
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationNaturalToGlobal(geomech_discretization,natural_vec, &
+subroutine GeomechDiscretizationNaturalToGlobal(geomech_discretization, &
+                                                natural_vec, &
                                                 global_vec,dm_index)
   ! 
   ! Performs natural to global
@@ -469,7 +491,8 @@ subroutine GeomechDiscretizationNaturalToGlobal(geomech_discretization,natural_v
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ntog,natural_vec,global_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
@@ -480,7 +503,8 @@ end subroutine GeomechDiscretizationNaturalToGlobal
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationGlobalToLocalBegin(geomech_discretization,global_vec, &
+subroutine GeomechDiscretizationGlobalToLocalBegin(geomech_discretization, &
+                                                   global_vec, &
                                                    local_vec,dm_index)
   ! 
   ! Begins global to local
@@ -499,7 +523,8 @@ subroutine GeomechDiscretizationGlobalToLocalBegin(geomech_discretization,global
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_gtol,global_vec,local_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
@@ -508,7 +533,8 @@ end subroutine GeomechDiscretizationGlobalToLocalBegin
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationGlobalToLocalEnd(geomech_discretization,global_vec, &
+subroutine GeomechDiscretizationGlobalToLocalEnd(geomech_discretization, &
+                                                 global_vec, &
                                                  local_vec,dm_index)
   ! 
   ! Ends global to local communication
@@ -527,7 +553,8 @@ subroutine GeomechDiscretizationGlobalToLocalEnd(geomech_discretization,global_v
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
   
   call VecScatterEnd(dm_ptr%gmdm%scatter_gtol,global_vec,local_vec, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
@@ -536,7 +563,8 @@ end subroutine GeomechDiscretizationGlobalToLocalEnd
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationLocalToLocalBegin(geomech_discretization,local_vec1, &
+subroutine GeomechDiscretizationLocalToLocalBegin(geomech_discretization, &
+                                                  local_vec1, &
                                                   local_vec2,dm_index)
   ! 
   ! Begins local to local communication
@@ -555,7 +583,8 @@ subroutine GeomechDiscretizationLocalToLocalBegin(geomech_discretization,local_v
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
@@ -564,7 +593,8 @@ end subroutine GeomechDiscretizationLocalToLocalBegin
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizationLocalToLocalEnd(geomech_discretization,local_vec1, &
+subroutine GeomechDiscretizationLocalToLocalEnd(geomech_discretization, &
+                                                local_vec1, &
                                                 local_vec2,dm_index)
   ! 
   ! Ends local to local communication
@@ -583,7 +613,8 @@ subroutine GeomechDiscretizationLocalToLocalEnd(geomech_discretization,local_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
   
   call VecScatterEnd(dm_ptr%gmdm%scatter_ltol,local_vec1,local_vec2, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
@@ -592,7 +623,8 @@ end subroutine GeomechDiscretizationLocalToLocalEnd
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizGlobalToNaturalBegin(geomech_discretization,global_vec, &
+subroutine GeomechDiscretizGlobalToNaturalBegin(geomech_discretization, &
+                                                global_vec, &
                                                 natural_vec,dm_index)
   ! 
   ! Begins global to natural communication
@@ -611,7 +643,8 @@ subroutine GeomechDiscretizGlobalToNaturalBegin(geomech_discretization,global_ve
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
   
   call VecScatterBegin(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
@@ -620,7 +653,8 @@ end subroutine GeomechDiscretizGlobalToNaturalBegin
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizGlobalToNaturalEnd(geomech_discretization,global_vec, &
+subroutine GeomechDiscretizGlobalToNaturalEnd(geomech_discretization, &
+                                              global_vec, &
                                               natural_vec,dm_index)
   ! 
   ! Ends global to natural communication
@@ -639,7 +673,8 @@ subroutine GeomechDiscretizGlobalToNaturalEnd(geomech_discretization,global_vec,
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
   
   call VecScatterEnd(dm_ptr%gmdm%scatter_gton,global_vec,natural_vec, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
@@ -648,7 +683,8 @@ end subroutine GeomechDiscretizGlobalToNaturalEnd
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizNaturalToGlobalBegin(geomech_discretization,natural_vec, &
+subroutine GeomechDiscretizNaturalToGlobalBegin(geomech_discretization, &
+                                                natural_vec, &
                                                 global_vec,dm_index)
   ! 
   ! Begins natural to global communication
@@ -667,13 +703,15 @@ subroutine GeomechDiscretizNaturalToGlobalBegin(geomech_discretization,natural_v
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
     
 end subroutine GeomechDiscretizNaturalToGlobalBegin
 
 ! ************************************************************************** !
 
-subroutine GeomechDiscretizNaturalToGlobalEnd(geomech_discretization,natural_vec, &
+subroutine GeomechDiscretizNaturalToGlobalEnd(geomech_discretization, &
+                                              natural_vec, &
                                               global_vec,dm_index)
   ! 
   ! Ends natural to global communication
@@ -692,7 +730,8 @@ subroutine GeomechDiscretizNaturalToGlobalEnd(geomech_discretization,natural_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   
-  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization,dm_index)
+  dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
+                                                   dm_index)
   
 end subroutine GeomechDiscretizNaturalToGlobalEnd
 
