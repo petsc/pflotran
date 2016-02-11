@@ -144,15 +144,18 @@ subroutine GeomechGlobalSetAuxVarScalarPatch(geomech_realization,value,ivar)
   select case(ivar)
     case(GEOMECH_DISP_X)
       do i=1, patch%geomech_aux%GeomechGlobal%num_aux
-        patch%geomech_aux%GeomechGlobal%aux_vars(i)%disp_vector(GEOMECH_DISP_X_DOF) = value
+        patch%geomech_aux%GeomechGlobal%aux_vars(i)%disp_vector(&
+          GEOMECH_DISP_X_DOF) = value
       enddo
     case(GEOMECH_DISP_Y)
       do i=1, patch%geomech_aux%GeomechGlobal%num_aux
-        patch%geomech_aux%GeomechGlobal%aux_vars(i)%disp_vector(GEOMECH_DISP_Y_DOF) = value
+        patch%geomech_aux%GeomechGlobal%aux_vars(i)%disp_vector(&
+          GEOMECH_DISP_Y_DOF) = value
       enddo
     case(GEOMECH_DISP_Z)
       do i=1, patch%geomech_aux%GeomechGlobal%num_aux
-        patch%geomech_aux%GeomechGlobal%aux_vars(i)%disp_vector(GEOMECH_DISP_Z_DOF) = value
+        patch%geomech_aux%GeomechGlobal%aux_vars(i)%disp_vector(&
+          GEOMECH_DISP_Z_DOF) = value
       enddo
   end select
   
@@ -160,7 +163,8 @@ end subroutine GeomechGlobalSetAuxVarScalarPatch
 
 ! ************************************************************************** !
 
-subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar,isubvar)
+subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar, &
+                                        isubvar)
   ! 
   ! Strips a geomech global auxvar
   ! 
@@ -190,7 +194,8 @@ end subroutine GeomechGlobalSetAuxVarVecLoc
 
 ! ************************************************************************** !
 
-subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,isubvar)
+subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,&
+                                             isubvar)
   ! 
   ! Strips a geomech global auxvar
   ! 
@@ -236,7 +241,8 @@ subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,is
       select case(isubvar)
         case default
           do ghosted_id=1, grid%ngmax_node
-            patch%geomech_aux%GeomechGlobal%aux_vars(ghosted_id)%disp_vector(GEOMECH_DISP_X_DOF) &
+            patch%geomech_aux%GeomechGlobal%aux_vars(&
+              ghosted_id)%disp_vector(GEOMECH_DISP_X_DOF) &
               = vec_loc_p(ghosted_id)
           enddo
       end select
@@ -244,7 +250,8 @@ subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,is
       select case(isubvar)
         case default
           do ghosted_id=1, grid%ngmax_node
-            patch%geomech_aux%GeomechGlobal%aux_vars(ghosted_id)%disp_vector(GEOMECH_DISP_Y_DOF) &
+            patch%geomech_aux%GeomechGlobal%aux_vars(&
+              ghosted_id)%disp_vector(GEOMECH_DISP_Y_DOF) &
               = vec_loc_p(ghosted_id)
           enddo
       end select
@@ -252,7 +259,8 @@ subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,is
       select case(isubvar)
         case default
           do ghosted_id=1, grid%ngmax_node
-            patch%geomech_aux%GeomechGlobal%aux_vars(ghosted_id)%disp_vector(GEOMECH_DISP_Z_DOF) &
+            patch%geomech_aux%GeomechGlobal%aux_vars(&
+              ghosted_id)%disp_vector(GEOMECH_DISP_Z_DOF) &
               = vec_loc_p(ghosted_id)
           enddo
       end select
@@ -292,25 +300,31 @@ subroutine GeomechGlobalUpdateAuxVars(geomech_realization,time_level)
   ! x displacement
   call GeomechRealizGetDataset(geomech_realization,geomech_field%work, &
                                GEOMECH_DISP_X,ZERO_INTEGER)
-  call GeomechDiscretizationGlobalToLocal(geomech_realization%geomech_discretization, &
+  call GeomechDiscretizationGlobalToLocal(&
+                              geomech_realization%geomech_discretization, &
                               geomech_field%work,geomech_field%work_loc,ONEDOF)
-  call GeomechGlobalSetAuxVarVecLoc(geomech_realization,geomech_field%work_loc, &
+  call GeomechGlobalSetAuxVarVecLoc(geomech_realization,&
+                                    geomech_field%work_loc, &
                                     GEOMECH_DISP_X,time_level)
                                   
   ! y displacement
   call GeomechRealizGetDataset(geomech_realization,geomech_field%work, &
                                GEOMECH_DISP_Y,ZERO_INTEGER)
-  call GeomechDiscretizationGlobalToLocal(geomech_realization%geomech_discretization, &
+  call GeomechDiscretizationGlobalToLocal(&
+                              geomech_realization%geomech_discretization, &
                               geomech_field%work,geomech_field%work_loc,ONEDOF)
-  call GeomechGlobalSetAuxVarVecLoc(geomech_realization,geomech_field%work_loc, &
+  call GeomechGlobalSetAuxVarVecLoc(geomech_realization, &
+                                    geomech_field%work_loc, &
                                     GEOMECH_DISP_Y,time_level)
 
   ! z displacement
   call GeomechRealizGetDataset(geomech_realization,geomech_field%work, &
                                GEOMECH_DISP_Z,ZERO_INTEGER)
-  call GeomechDiscretizationGlobalToLocal(geomech_realization%geomech_discretization, &
+  call GeomechDiscretizationGlobalToLocal(&
+                              geomech_realization%geomech_discretization, &
                               geomech_field%work,geomech_field%work_loc,ONEDOF)
-  call GeomechGlobalSetAuxVarVecLoc(geomech_realization,geomech_field%work_loc, &
+  call GeomechGlobalSetAuxVarVecLoc(geomech_realization, &
+                                    geomech_field%work_loc, &
                                     GEOMECH_DISP_Z,time_level)
 
 

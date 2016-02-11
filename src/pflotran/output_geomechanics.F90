@@ -176,7 +176,8 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
   option%global_prefix = tmp_global_prefix
     
   if (option%myrank == option%io_rank) then
-    option%io_buffer = '--> write tecplot geomech output file: ' // trim(filename)
+    option%io_buffer = '--> write tecplot geomech output file: ' // &
+        trim(filename)
     call printMsg(option)
     open(unit=OUTPUT_UNIT,file=filename,action="write")
     call OutputTecplotHeader(OUTPUT_UNIT,geomech_realization,icolumn)
@@ -199,7 +200,8 @@ subroutine OutputTecplotGeomechanics(geomech_realization)
     call OutputGeomechGetVarFromArray(geomech_realization,global_vec, &
                                       cur_variable%ivar, &
                                       cur_variable%isubvar)
-    call GeomechDiscretizationGlobalToNatural(geomech_discretization,global_vec, &
+    call GeomechDiscretizationGlobalToNatural(geomech_discretization, &
+                                              global_vec, &
                                               natural_vec,ONEDOF)
     if (cur_variable%iformat == 0) then
       call WriteTecplotDataSetGeomechFromVec(OUTPUT_UNIT,geomech_realization, &
@@ -689,7 +691,8 @@ end subroutine OutputGeomechGetVarFromArray
 
 ! ************************************************************************** !
 
-subroutine WriteTecplotDataSetGeomechFromVec(fid,geomech_realization,vec,datatype)
+subroutine WriteTecplotDataSetGeomechFromVec(fid,geomech_realization,vec, &
+                                             datatype)
   ! 
   ! Writes data from a Petsc Vec within a block
   ! of a Tecplot file
@@ -830,7 +833,8 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
       call MPI_Allreduce(grid%nlmax_node,max_local_size,ONE_INTEGER_MPI, &
                          MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
       max_local_node_size_saved = max_local_size
-      write(option%io_buffer,'("max_local_node_size_saved: ",i9)') max_local_size
+      write(option%io_buffer,'("max_local_node_size_saved: ",i9)') &
+          max_local_size
       call printMsg(option)
     endif
     max_local_size = max_local_node_size_saved
@@ -933,7 +937,8 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
           num_in_array = num_in_array-iend
         endif
       else
-        call MPI_Recv(real_data_recv,recv_size_mpi,MPI_DOUBLE_PRECISION,iproc_mpi, &
+        call MPI_Recv(real_data_recv,recv_size_mpi, &
+                      MPI_DOUBLE_PRECISION,iproc_mpi, &
                       MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
         if (recv_size_mpi > 0) then
           real_data(num_in_array+1:num_in_array+recv_size_mpi) = &
@@ -995,7 +1000,8 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
       call MPI_Send(integer_data,local_size_mpi,MPIU_INTEGER,option%io_rank, &
                     local_size_mpi,option%mycomm,ierr)
     else
-      call MPI_Send(real_data,local_size_mpi,MPI_DOUBLE_PRECISION,option%io_rank, &
+      call MPI_Send(real_data,local_size_mpi, &
+                    MPI_DOUBLE_PRECISION,option%io_rank, &
                     local_size_mpi,option%mycomm,ierr)
     endif
 #ifdef HANDSHAKE    
@@ -1083,7 +1089,8 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
   write(fid,'(a)') trim(string)
 
   write(string2,*) ngvert
-  string="        <DataItem Format=""HDF"" Dimensions=""" // trim(adjustl(string2)) // " 3"">"
+  string="        <DataItem Format=""HDF"" Dimensions=""" // &
+      trim(adjustl(string2)) // " 3"">"
   write(fid,'(a)') trim(string)
 
   string="          "//trim(filename) //":/Domain/Vertices"
@@ -1100,7 +1107,8 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
   write(fid,'(a)') trim(string)
 
   write(string2,*) ngvert
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  string="        <DataItem Dimensions=""" // &
+      trim(adjustl(string2)) // " 1"" Format=""HDF""> "
   write(fid,'(a)') trim(string)
 
   string="        " // trim(filename) //":/Domain/X"
@@ -1163,7 +1171,8 @@ subroutine OutputXMFAttributeGeomech(fid,nmax,attname,att_datasetname)
   write(fid,'(a)') trim(string)
 
   write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  string="        <DataItem Dimensions=""" // &
+      trim(adjustl(string2)) // " 1"" Format=""HDF""> "
   write(fid,'(a)') trim(string)
 
   string="        " // trim(att_datasetname)
@@ -1302,7 +1311,8 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
       xmf_filename = OutputFilename(output_option,option,'xmf','geomech')
     case (AVERAGED_VARS)
       string2='-aveg'
-      write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
+      write(string3,'(i4)') &
+          int(option%time/output_option%periodic_output_time_incr)
       xmf_filename = OutputFilename(output_option,option,'xmf','geomech_aveg')
   end select
   if (output_option%print_single_h5_file) then
@@ -1313,7 +1323,8 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
     string = OutputHDF5FilenameID(output_option,option,var_list_type)
     select case (var_list_type)
       case (INSTANTANEOUS_VARS)
-        if (mod(output_option%plot_number,output_option%times_per_h5_file)==0) then
+        if (mod(output_option%plot_number, &
+              output_option%times_per_h5_file)==0) then
           first = PETSC_TRUE
         else
           first = PETSC_FALSE
@@ -1405,9 +1416,11 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
   call h5eset_auto_f(ON,hdf5_err)
 
   ! write out data sets 
-  call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF,global_vec, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF, &
+                                         global_vec, &
                                          GLOBAL,option)
-  call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF,natural_vec, &
+  call GeomechDiscretizationCreateVector(geomech_discretization,ONEDOF, &
+                                         natural_vec, &
                                          NATURAL,option)
 
   select case (var_list_type)
@@ -1420,7 +1433,8 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
         call OutputGeomechGetVarFromArray(geomech_realization,global_vec, &
                                           cur_variable%ivar, &
                                           cur_variable%isubvar)
-        call GeomechDiscretizationGlobalToNatural(geomech_discretization,global_vec, &
+        call GeomechDiscretizationGlobalToNatural(geomech_discretization, &
+                                                  global_vec, &
                                                   natural_vec,ONEDOF)
         string = cur_variable%name
         if (len_trim(cur_variable%units) > 0) then
@@ -1435,7 +1449,8 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
           call HDF5WriteDataSetFromVec(string,option, &
                                           natural_vec,grp_id,H5T_NATIVE_INTEGER)
         endif
-        att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+        att_datasetname = trim(filename) // ":/" // &
+            trim(group_name) // "/" // trim(string)
         if (option%myrank == option%io_rank) then
           call OutputXMFAttributeGeomech(OUTPUT_UNIT,grid%nmax_node,string, &
                                          att_datasetname)
@@ -1460,7 +1475,8 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
                                             natural_vec,ONEDOF)
           call HDF5WriteDataSetFromVec(string,option, &
                                           natural_vec,grp_id,H5T_NATIVE_DOUBLE)
-          att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
+          att_datasetname = trim(filename) // ":/" // &
+              trim(group_name) // "/" // trim(string)
           if (option%myrank == option%io_rank) then
             call OutputXMFAttributeGeomech(OUTPUT_UNIT,grid%nlmax_node,string, &
                                            att_datasetname)
@@ -1590,9 +1606,12 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   call VecGetLocalSize(global_y_vertex_vec,local_size,ierr);CHKERRQ(ierr)
   call VecGetLocalSize(global_z_vertex_vec,local_size,ierr);CHKERRQ(ierr)
 
-  call GetVertexCoordinatesGeomech(grid,global_x_vertex_vec,X_COORDINATE,option)
-  call GetVertexCoordinatesGeomech(grid,global_y_vertex_vec,Y_COORDINATE,option)
-  call GetVertexCoordinatesGeomech(grid,global_z_vertex_vec,Z_COORDINATE,option)
+  call GetVertexCoordinatesGeomech(grid,global_x_vertex_vec, &
+                                   X_COORDINATE,option)
+  call GetVertexCoordinatesGeomech(grid,global_y_vertex_vec, &
+                                   Y_COORDINATE,option)
+  call GetVertexCoordinatesGeomech(grid,global_z_vertex_vec, &
+                                   Z_COORDINATE,option)
 
   call VecGetArrayF90(global_x_vertex_vec,vec_x_ptr,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr);CHKERRQ(ierr)
@@ -1735,7 +1754,8 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   dims(1) = vert_count
   call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
-  call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI, &
+                     MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
   geomech_realization%output_option%xmf_vert_len=int(dims(1))
 
   ! file space which is a 2D block

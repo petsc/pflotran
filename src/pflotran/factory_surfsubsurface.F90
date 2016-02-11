@@ -188,7 +188,8 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
     string = 'SURFACE_FLOW'
     call InputFindStringInFile(input,option,string)
     call InputFindStringErrorMsg(input,option,string)  
-    call SurfaceInitReadInput(simulation,timestepper%solver,input)
+    call SurfaceReadInput(surf_realization,timestepper%solver, &
+                          simulation%waypoint_list_surfsubsurface,input)
     ! Add first waypoint
     waypoint => WaypointCreate()
     waypoint%time = 0.d0
@@ -202,9 +203,9 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
     call WaypointInsertInList(waypoint,simulation%waypoint_list_surfsubsurface)   
     ! merge in outer waypoints (e.g. checkpoint times)
     call WaypointListCopyAndMerge(simulation%waypoint_list_surfsubsurface, &
-                                  simulation%waypoint_list_outer,option)
-    call WaypointListCopyAndMerge(simulation%waypoint_list_surfsubsurface, &
                                   simulation%waypoint_list_subsurface,option)
+    call WaypointListCopyAndMerge(simulation%waypoint_list_surfsubsurface, &
+                                  simulation%waypoint_list_outer,option)
     call InitSurfaceSetupRealization(surf_realization,subsurf_realization, &
                                      simulation%waypoint_list_surfsubsurface)
     call InitCommonAddOutputWaypoints(simulation%output_option, &

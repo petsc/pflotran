@@ -1,6 +1,7 @@
-module PMC_Material_class
+module PMC_Auxiliary_class
 
   use PMC_Base_class
+  use PM_Auxiliary_class
   use Realization_Subsurface_class
 
   use PFLOTRAN_Constants_module
@@ -11,21 +12,21 @@ module PMC_Material_class
   
   private
 
-  type, public, extends(pmc_base_type) :: pmc_material_type
-    class(realization_subsurface_type), pointer :: realization
+  type, public, extends(pmc_base_type) :: pmc_auxiliary_type
+    class(pm_auxiliary_type), pointer :: pm_aux
   contains
-    procedure, public :: Init => PMCMaterialInit
-    procedure, public :: RunToTime => PMCMaterialRunToTime
-    procedure, public :: Destroy => PMCMaterialDestroy
-  end type pmc_material_type
+    procedure, public :: Init => PMCAuxiliaryInit
+    procedure, public :: RunToTime => PMCAuxiliaryRunToTime
+    procedure, public :: Destroy => PMCAuxiliaryDestroy
+  end type pmc_auxiliary_type
   
-  public :: PMCMaterialCreate
+  public :: PMCAuxiliaryCreate
   
 contains
 
 ! ************************************************************************** !
 
-function PMCMaterialCreate()
+function PMCAuxiliaryCreate()
   ! 
   ! Allocates and initializes a new process_model_coupler
   ! object.
@@ -36,24 +37,24 @@ function PMCMaterialCreate()
 
   implicit none
   
-  class(pmc_material_type), pointer :: PMCMaterialCreate
+  class(pmc_auxiliary_type), pointer :: PMCAuxiliaryCreate
   
-  class(pmc_material_type), pointer :: pmc
+  class(pmc_auxiliary_type), pointer :: pmc
 
 #ifdef DEBUG
-  print *, 'PMCMaterial%Create()'
+  print *, 'PMCAuxiliary%Create()'
 #endif
   
   allocate(pmc)
   call pmc%Init()
   
-  PMCMaterialCreate => pmc  
+  PMCAuxiliaryCreate => pmc  
   
-end function PMCMaterialCreate
+end function PMCAuxiliaryCreate
 
 ! ************************************************************************** !
 
-subroutine PMCMaterialInit(this)
+subroutine PMCAuxiliaryInit(this)
   ! 
   ! Initializes a new process model coupler object.
   ! 
@@ -63,21 +64,20 @@ subroutine PMCMaterialInit(this)
 
   implicit none
   
-  class(pmc_material_type) :: this
+  class(pmc_auxiliary_type) :: this
   
 #ifdef DEBUG
-  print *, 'PMCMaterial%Init()'
+  print *, 'PMCAuxiliary%Init()'
 #endif
   
   call PMCBaseInit(this)
-  this%name = 'PMCMaterial'
-  nullify(this%realization)
+  this%name = 'PMCAuxiliary'
 
-end subroutine PMCMaterialInit
+end subroutine PMCAuxiliaryInit
 
 ! ************************************************************************** !
 
-recursive subroutine PMCMaterialRunToTime(this,sync_time,stop_flag)
+recursive subroutine PMCAuxiliaryRunToTime(this,sync_time,stop_flag)
   ! 
   ! Runs the actual simulation.
   ! 
@@ -86,14 +86,14 @@ recursive subroutine PMCMaterialRunToTime(this,sync_time,stop_flag)
   ! 
 
   use Timestepper_Base_class
-  use Init_Subsurface_module
+!  use Init_Subsurface_module
   use Option_module
   
   implicit none
   
 #include "petsc/finclude/petscviewer.h"  
 
-  class(pmc_material_type), target :: this
+  class(pmc_auxiliary_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
   
@@ -112,8 +112,7 @@ recursive subroutine PMCMaterialRunToTime(this,sync_time,stop_flag)
   local_stop_flag = TS_CONTINUE
   ! if at end of simulation, skip update of material properties
   if (stop_flag /= TS_STOP_END_SIMULATION) then
-    call InitSubsurfAssignMatIDsToRegns(this%realization)
-    call InitSubsurfAssignMatProperties(this%realization)
+    call this%pm_aux%Evaluate(sync_time,local_stop_flag)
   endif
   
   ! Run underlying process model couplers
@@ -139,16 +138,16 @@ recursive subroutine PMCMaterialRunToTime(this,sync_time,stop_flag)
     call PetscLogStagePop(ierr);CHKERRQ(ierr)
   endif
   
-end subroutine PMCMaterialRunToTime
+end subroutine PMCAuxiliaryRunToTime
 
 ! ************************************************************************** !
 !
-! PMCMaterialFinalizeRun: Finalizes the time stepping
+! PMCAuxiliaryFinalizeRun: Finalizes the time stepping
 ! author: Glenn Hammond
 ! date: 03/18/13
 !
 ! ************************************************************************** !
-recursive subroutine PMCMaterialFinalizeRun(this)
+recursive subroutine PMCAuxiliaryFinalizeRun(this)
   ! 
   ! Finalizes the time stepping
   ! 
@@ -160,37 +159,35 @@ recursive subroutine PMCMaterialFinalizeRun(this)
   
   implicit none
   
-  class(pmc_material_type) :: this
+  class(pmc_auxiliary_type) :: this
   
 #ifdef DEBUG
-  call printMsg(this%option,'PMCMaterial%FinalizeRun()')
+  call printMsg(this%option,'PMCAuxiliary%FinalizeRun()')
 #endif
   
-  nullify(this%realization)
-  
-end subroutine PMCMaterialFinalizeRun
+end subroutine PMCAuxiliaryFinalizeRun
 
 ! ************************************************************************** !
 
-subroutine PMCMaterialStrip(this)
+subroutine PMCAuxiliaryStrip(this)
   !
-  ! Deallocates members of PMC Material.
+  ! Deallocates members of PMC Auxiliary.
   !
   ! Author: Glenn Hammond
   ! Date: 01/13/14
   
   implicit none
   
-  class(pmc_material_type) :: this
+  class(pmc_auxiliary_type) :: this
 
   call PMCBaseStrip(this)
-  nullify(this%realization)
+  nullify(this%pm_aux)
 
-end subroutine PMCMaterialStrip
+end subroutine PMCAuxiliaryStrip
 
 ! ************************************************************************** !
 
-recursive subroutine PMCMaterialDestroy(this)
+recursive subroutine PMCAuxiliaryDestroy(this)
   ! 
   ! ProcessModelCouplerDestroy: Deallocates a process_model_coupler object
   ! 
@@ -202,13 +199,13 @@ recursive subroutine PMCMaterialDestroy(this)
 
   implicit none
   
-  class(pmc_material_type) :: this
+  class(pmc_auxiliary_type) :: this
   
 #ifdef DEBUG
-  call printMsg(this%option,'PMCMaterial%Destroy()')
+  call printMsg(this%option,'PMCAuxiliary%Destroy()')
 #endif
 
-  call PMCMaterialStrip(this)
+  call PMCAuxiliaryStrip(this)
   
   if (associated(this%child)) then
     call this%child%Destroy()
@@ -224,6 +221,6 @@ recursive subroutine PMCMaterialDestroy(this)
     nullify(this%peer)
   endif
   
-end subroutine PMCMaterialDestroy
+end subroutine PMCAuxiliaryDestroy
   
-end module PMC_Material_class
+end module PMC_Auxiliary_class
