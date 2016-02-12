@@ -274,57 +274,6 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
                            trim(error_string) // ' mass fraction file/list.'
         call printErrMsg(option)
       endif
-      
-      input%buf = dataset_ascii%header
-      icol = 0
-      call InputReadWord(input,option,word,PETSC_TRUE)
-      call StringToUpper(word)
-      if ((input%ierr == 0) .and. (trim(word) == 'HEADER')) then
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'while reading the mass fraction file/&
-                           &list header',error_string)
-        call StringToUpper(word)
-        if (trim(word) == 'TIME') then
-          do
-            k = 0
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            if (input%ierr == 0) then
-              icol = icol + 1
-              
-              do while (k < this%wf_species%num_species)
-                k = k + 1
-                if (trim(word) == trim(this%wf_species%name(k))) then
-                  this%wf_species%column_id(k) = icol
-                  exit
-                endif
-              enddo ! k loop
-
-            else
-              exit
-            endif
-          enddo ! icol loop
-          k = 0
-          do while (k < this%wf_species%num_species)
-            k = k + 1
-            if (Uninitialized(this%wf_species%column_id(k))) then
-              option%io_buffer = 'Mismatch between species in the ' &
-                                 // trim(error_string) // ' mass fraction file/&
-                                 &list header and those listed in the ' &
-                                 // trim(error_string) // ' block.'
-              call printErrMsg(option)
-            endif
-          enddo
-        else
-          option%io_buffer = 'The first column in the ' // trim(error_string) &
-                             // ' mass fraction file/list must be TIME.'
-          call printErrMsg(option)
-        endif
-      else
-        option%io_buffer = 'A HEADER must be specified in the ' // &
-                           trim(error_string) // ' mass fraction file/list.'
-        call printErrMsg(option)
-      endif
-
 !-------------------------------------
     case('PRINT_MASS_BALANCE')
       this%print_mass_balance = PETSC_TRUE
@@ -338,6 +287,83 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   end select
 
 end subroutine PMWasteFormReadSelectCase
+
+! ************************************************************************** !
+
+subroutine PMWFAssignColIdsFromHeader(this,input,option,error_string)
+  ! 
+  ! Reads the mass fraction file header and assigns a column id to each species
+  ! in the waste form process model.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 02/12/2016
+
+  use Option_module
+  use String_module, only : StringToUpper
+  use Input_Aux_module
+
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  type(input_type), pointer :: input
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: error_string
+
+  PetscInt :: icol, k
+  character(len=MAXWORDLENGTH) :: word
+
+  input%buf = this%mass_fraction_dataset%header
+  input%ierr = 0
+  icol = 0
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  call StringToUpper(word)
+  if ((input%ierr == 0) .and. (trim(word) == 'HEADER')) then
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'while reading the mass fraction file/&
+                       &list header',error_string)
+    call StringToUpper(word)
+    if (trim(word) == 'TIME') then
+      do
+        k = 0
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          icol = icol + 1
+              
+          do while (k < this%wf_species%num_species)
+            k = k + 1
+            if (trim(word) == trim(this%wf_species%name(k))) then
+              this%wf_species%column_id(k) = icol
+              exit
+            endif
+          enddo ! k loop
+
+        else
+          exit
+        endif
+      enddo ! icol loop
+      k = 0
+      do while (k < this%wf_species%num_species)
+        k = k + 1
+        if (Uninitialized(this%wf_species%column_id(k))) then
+          option%io_buffer = 'Mismatch between species in the ' &
+                              // trim(error_string) // ' mass fraction file/&
+                              &list header and those listed in the ' &
+                              // trim(error_string) // ' block.'
+          call printErrMsg(option)
+        endif
+      enddo
+    else
+      option%io_buffer = 'The first column in the ' // trim(error_string) &
+                         // ' mass fraction file/list must be TIME.'
+      call printErrMsg(option)
+    endif
+  else
+    option%io_buffer = 'A HEADER must be specified in the ' // &
+                       trim(error_string) // ' mass fraction file/list.'
+    call printErrMsg(option)
+  endif
+
+end subroutine PMWFAssignColIdsFromHeader
 
 ! ************************************************************************** !
 
@@ -1012,6 +1038,8 @@ subroutine PMGlassRead(this,input)
     end select
   enddo
 
+  call PMWFAssignColIdsFromHeader(this,input,option,error_string)
+
   if (Uninitialized(this%specific_surface_area)) then
     option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' // &
       trim(error_string)
@@ -1484,12 +1512,9 @@ subroutine PMFMDMRead(this,input)
   ! Date: 08/26/15
 
   use Input_Aux_module
-! jmf
   use String_module
   use Utility_module
   use Option_module
- ! use Condition_module, only : ConditionReadValues
- ! use Dataset_Ascii_class
   
   implicit none
   
@@ -1603,6 +1628,8 @@ subroutine PMFMDMRead(this,input)
     !-------------------------------------
     end select
   enddo
+
+  call PMWFAssignColIdsFromHeader(this,input,option,error_string)
   
   if (Uninitialized(this%num_grid_cells_in_waste_form)) then
     option%io_buffer = &

@@ -12,7 +12,6 @@ module Dataset_Ascii_class
 
   type, public, extends(dataset_base_type) :: dataset_ascii_type
     PetscInt :: array_width
-    character(len=MAXSTRINGLENGTH) :: header
   end type dataset_ascii_type
   
   interface DatasetAsciiRead
@@ -99,7 +98,6 @@ subroutine DatasetAsciiInit(this)
   
   call DatasetBaseInit(this)
   this%array_width = 0
-  this%header = ''
     
 end subroutine DatasetAsciiInit
 

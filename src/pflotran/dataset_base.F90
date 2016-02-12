@@ -14,6 +14,7 @@ module Dataset_Base_class
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXSTRINGLENGTH) :: filename
     type(time_storage_type), pointer :: time_storage ! stores transient times
+    character(len=MAXSTRINGLENGTH) :: header
     PetscInt :: rank  ! size of dims(:)
     PetscInt, pointer :: dims(:)    ! dimensions of arrays (excludes time)
     PetscInt :: data_type
@@ -82,6 +83,7 @@ subroutine DatasetBaseInit(this)
   
   this%name = ''
   this%filename = ''
+  this%header = ''
   this%rank = 0
   this%data_type = 0
   nullify(this%time_storage)
