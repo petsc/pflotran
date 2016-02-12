@@ -41,6 +41,7 @@ module PM_Waste_Form_class
     PetscReal, pointer :: cumulative_mass(:)            ! mol
     PetscBool :: canister_degradation_flag
     PetscReal :: canister_vitality
+    PetscReal :: canister_vitality_rate
     class(waste_form_base_type), pointer :: next
   end type waste_form_base_type
   
@@ -64,6 +65,9 @@ module PM_Waste_Form_class
     class(dataset_base_type), pointer ::  mass_fraction_dataset
     PetscBool :: print_mass_balance
     PetscBool :: canister_degradation_model
+    PetscReal :: vitality_rate_mean
+    PetscReal :: vitality_rate_stdev
+    PetscReal :: vitality_rate_trunc
   contains
     procedure, public :: PMWasteFormSetRealization
   end type pm_waste_form_type
@@ -150,7 +154,12 @@ subroutine PMWasteFormInit(this)
   nullify(this%data_mediator)
   nullify(this%mass_fraction_dataset)
   this%wf_species%num_species = 0
+ !------- canister degradation model --------------
   this%canister_degradation_model = PETSC_FALSE
+  this%vitality_rate_mean = UNINITIALIZED_DOUBLE
+  this%vitality_rate_stdev = UNINITIALIZED_DOUBLE
+  this%vitality_rate_trunc = UNINITIALIZED_DOUBLE
+ !-------------------------------------------------
 !geh: only initialize if a pointer, instead of allocatable
 !  nullify(this%wf_species%name)
 !  nullify(this%wf_species%formula_weight)
@@ -275,11 +284,36 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
         call printErrMsg(option)
       endif
 !-------------------------------------
-    case('PRINT_MASS_BALANCE')
-      this%print_mass_balance = PETSC_TRUE
-!-------------------------------------
     case('CANISTER_DEGRADATION_MODEL')
       this%canister_degradation_model = PETSC_TRUE
+      do
+        call InputReadPflotranString(input,option)
+        if (InputCheckExit(input,option)) exit
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call StringToUpper(word)
+        select case(trim(word))
+          case('VITALITY_LOG10_MEAN')
+            call InputReadDouble(input,option,this%vitality_rate_mean)
+            call InputErrorMsg(input,option,'canister vitality log-10 &
+                               &mean value',error_string)
+          case('VITALITY_LOG10_STDEV')
+            call InputReadDouble(input,option,this%vitality_rate_stdev)
+            call InputErrorMsg(input,option,'canister vitality log-10 &
+                               &st. dev. value',error_string)
+          case('VITALITY_UPPER_TRUNCATION')
+            call InputReadDouble(input,option,this%vitality_rate_trunc)
+            call InputErrorMsg(input,option,'canister vitality log-10 &
+                               &upper truncation value',error_string)
+          case default
+            option%io_buffer = 'Keyword ' // trim(word) // ' not recognized &
+                               &in the ' // trim(error_string) // &
+                               ' CANISTER_DEGRADATION_MODEL block.'
+            call printErrMsg(option)
+        end select
+      enddo
+!-------------------------------------
+    case('PRINT_MASS_BALANCE')
+      this%print_mass_balance = PETSC_TRUE
 !-------------------------------------    
     case default
       found = PETSC_FALSE
@@ -287,6 +321,64 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   end select
 
 end subroutine PMWasteFormReadSelectCase
+
+! ************************************************************************** !
+
+subroutine PMWFReadError(this,input,option,error_string)
+  ! 
+  ! Checks for input deck reading errors for the waste form process model.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 02/12/2016
+
+  use Option_module
+  use Input_Aux_module
+
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  type(input_type), pointer :: input
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: error_string
+
+  if (.not.associated(this%mass_fraction_dataset)) then
+    option%io_buffer = 'MASS_FRACTION must be specified in the ' // &
+                       trim(error_string) // ' block.'
+    call printErrMsg(option)
+  endif
+  if (.not.associated(this%waste_form_list)) then
+    option%io_buffer = 'At least one WASTE_FORM must be specified in the ' // &
+                       trim(error_string) // ' block.'
+    call printErrMsg(option)
+  endif
+  if (.not.allocated(this%wf_species%name)) then
+    option%io_buffer = 'At least one SPECIES NAME and FORMULA_WEIGHT must be &
+                       &specified in the ' // trim(error_string) // ' block.'
+    call printErrMsg(option)
+  endif
+  
+  if (this%canister_degradation_model) then
+    if (uninitialized(this%vitality_rate_mean)) then
+      option%io_buffer = 'VITALITY_LOG10_MEAN must be given in the '&
+                         // trim(error_string) // &
+                         ', CANISTER_DEGRADATION_MODEL block.'
+      call printErrMsg(option)
+    endif
+    if (uninitialized(this%vitality_rate_stdev)) then
+      option%io_buffer = 'VITALITY_LOG10_STDEV must be given in the '&
+                         // trim(error_string) // &
+                         ', CANISTER_DEGRADATION_MODEL block.'
+      call printErrMsg(option)
+    endif
+    if (uninitialized(this%vitality_rate_trunc)) then
+      option%io_buffer = 'VITALITY_UPPER_TRUNCATION must be given in the '&
+                         // trim(error_string) // &
+                         ', CANISTER_DEGRADATION_MODEL block.'
+      call printErrMsg(option)
+    endif
+  endif
+
+end subroutine PMWFReadError
 
 ! ************************************************************************** !
 
@@ -394,6 +486,7 @@ end subroutine PMWasteFormSetRealization
   ! Date: 08/25/15
   use Reaction_Aux_module
   use Realization_Base_class
+  use Utility_module, only : GetRndNumFromNormalDist
   
   implicit none
 
@@ -419,15 +512,23 @@ end subroutine PMWasteFormSetRealization
                                   (this%wf_species%num_species))
     allocate(cur_waste_form%cumulative_mass&
                                   (this%wf_species%num_species))
-    this%waste_form_list%instantaneous_mass_rate = UNINITIALIZED_DOUBLE
-    this%waste_form_list%cumulative_mass = UNINITIALIZED_DOUBLE
+    cur_waste_form%instantaneous_mass_rate = UNINITIALIZED_DOUBLE
+    cur_waste_form%cumulative_mass = UNINITIALIZED_DOUBLE
+    if (this%canister_degradation_model) then
+      cur_waste_form%canister_degradation_flag = PETSC_TRUE
+      cur_waste_form%canister_vitality = 1.d0
+      call GetRndNumFromNormalDist(this%vitality_rate_mean, &
+                                   this%vitality_rate_stdev, &
+                                   cur_waste_form%canister_vitality_rate)
+      if (cur_waste_form%canister_vitality_rate > this%vitality_rate_trunc) then
+        cur_waste_form%canister_vitality_rate = this%vitality_rate_trunc
+      endif
+      ! Given rates are in units of log-10/yr, so convert to 1/yr:
+      cur_waste_form%canister_vitality_rate = &
+                                10.0**(cur_waste_form%canister_vitality_rate)
+    endif
     cur_waste_form => cur_waste_form%next
   enddo
-
-  if (this%canister_degradation_model) then
-    this%waste_form_list%canister_degradation_flag = PETSC_TRUE
-    this%waste_form_list%canister_vitality = 1.d0
-  endif
   
   ! restart
   if (this%option%restart_flag .and. &
@@ -496,7 +597,7 @@ end subroutine PMWasteFormSetRealization
   call ISDestroy(is,ierr);CHKERRQ(ierr)
   
 end subroutine PMWFInitializeRun
-  
+
 ! ************************************************************************** !
 
 subroutine PMWasteFormStrip(this)
@@ -520,7 +621,6 @@ subroutine PMWasteFormStrip(this)
   
 end subroutine PMWasteFormStrip
 
-
 ! ************************************************************************** !
 
 subroutine WasteFormBaseInit(base)
@@ -542,6 +642,11 @@ subroutine WasteFormBaseInit(base)
   nullify(base%instantaneous_mass_rate)
   nullify(base%cumulative_mass)
   base%volume = UNINITIALIZED_DOUBLE
+ !------- canister degradation model -----------------
+  base%canister_degradation_flag = PETSC_FALSE
+  base%canister_vitality = 0d0
+  base%canister_vitality_rate = UNINITIALIZED_DOUBLE
+ !----------------------------------------------------
 
 end subroutine WasteFormBaseInit
 
@@ -848,7 +953,6 @@ subroutine WFGlassInit(glass)
   call WasteFormBaseInit(glass)
   glass%exposure_factor = UNINITIALIZED_DOUBLE
   glass%glass_dissolution_rate = UNINITIALIZED_DOUBLE
-  glass%canister_vitality = 0.d0
   nullify(glass%next)
 
 end subroutine WFGlassInit
@@ -1041,26 +1145,12 @@ subroutine PMGlassRead(this,input)
     end select
   enddo
 
+  call PMWFReadError(this,input,option,error_string)
   call PMWFAssignColIdsFromHeader(this,input,option,error_string)
 
   if (Uninitialized(this%specific_surface_area)) then
     option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' // &
       trim(error_string)
-    call printErrMsg(option)
-  endif
-  if (.not.associated(this%mass_fraction_dataset)) then
-    option%io_buffer = 'MASS_FRACTION must be specified in the ' // &
-                       trim(error_string) // ' block.'
-    call printErrMsg(option)
-  endif
-  if (.not.associated(this%waste_form_list)) then
-    option%io_buffer = 'At least one WASTE_FORM must be specified in the ' // &
-                       trim(error_string) // ' block.'
-    call printErrMsg(option)
-  endif
-  if (.not.allocated(this%wf_species%name)) then
-    option%io_buffer = 'At least one SPECIES NAME and FORMULA_WEIGHT must be &
-                       &specified in the ' // trim(error_string) // ' block.'
     call printErrMsg(option)
   endif
     
@@ -1210,16 +1300,15 @@ subroutine PMGlassSolve(this,time,ierr)
   do 
     if (.not.associated(cur_waste_form)) exit
     if (cur_waste_form%canister_degradation_flag) then
-    ! ---------------- Temporary vitality degradation function ----------------
-      cur_waste_form%canister_vitality = cur_waste_form%canister_vitality * &
-             (15/global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))%temp)
-      if (cur_waste_form%canister_vitality > 1.d0) then
-        cur_waste_form%canister_vitality = 1.d0
-      endif
+!     ---------------- Vitality degradation function --------------------------
+      cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
+                        - ( cur_waste_form%canister_vitality_rate * & ! [1/yr]
+                            this%option%tran_dt * &                   ! [sec]
+                            (1.0/(365.0*24.0*3600.0)) )               ! [yr/sec]
       if (cur_waste_form%canister_vitality < 1.d-3) then
         cur_waste_form%canister_vitality = 0.d0
       endif
-    ! -------------------------------------------------------------------------
+!     -------------------------------------------------------------------------
     endif
     if ((cur_waste_form%volume > 0.d0) .and. &
         (cur_waste_form%canister_vitality == 0.d0)) then
@@ -1239,9 +1328,9 @@ subroutine PMGlassSolve(this,time,ierr)
         i = i + 1
         cur_waste_form%instantaneous_mass_rate(j) = &
           cur_waste_form%glass_dissolution_rate * & ! kg glass / sec
-          this%wf_species%formula_weight(j) * &  ! kmol radionuclide/kg radionuclide
+          this%wf_species%formula_weight(j) * &  ! kmol radnuclide/kg radnuclide
           this%mass_fraction_dataset% &
-          rarray(this%wf_species%column_id(j)) * &  ! kg radionuclude/kg glass
+          rarray(this%wf_species%column_id(j)) * &  ! kg radionuclide/kg glass
           1.d3                                      ! kmol -> mol
         vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)    ! mol/sec
       enddo
@@ -1458,7 +1547,6 @@ subroutine WFFMDMInit(fmdm)
   call WasteFormBaseInit(fmdm)  
   fmdm%specific_surface_area = UNINITIALIZED_DOUBLE
   fmdm%burnup = UNINITIALIZED_DOUBLE
-  fmdm%canister_vitality = 1.0
   nullify(fmdm%concentration)
   nullify(fmdm%next)
   
@@ -1632,26 +1720,12 @@ subroutine PMFMDMRead(this,input)
     end select
   enddo
 
+  call PMWFReadError(this,input,option,error_string)
   call PMWFAssignColIdsFromHeader(this,input,option,error_string)
   
   if (Uninitialized(this%num_grid_cells_in_waste_form)) then
     option%io_buffer = &
       'NUM_GRID_CELLS must be specified for fuel matrix degradation model.'
-    call printErrMsg(option)
-  endif
-  if (.not.associated(this%mass_fraction_dataset)) then
-    option%io_buffer = 'MASS_FRACTION must be specified in the ' // &
-                       trim(error_string) // ' block.'
-    call printErrMsg(option)
-  endif
-  if (.not.associated(this%waste_form_list)) then
-    option%io_buffer = 'At least one WASTE_FORM must be specified in the ' // &
-                       trim(error_string) // ' block.'
-    call printErrMsg(option)
-  endif
-  if (.not.allocated(this%wf_species%name)) then
-    option%io_buffer = 'At least one SPECIES NAME and FORMULA_WEIGHT must be &
-                       &specified in the ' // trim(error_string) // ' block.'
     call printErrMsg(option)
   endif
 

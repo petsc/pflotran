@@ -608,20 +608,21 @@ subroutine ReactionReadPass1(reaction,input,option)
                       endif
                     case('DISTRIBUTION_COEFFICIENT','KD')
                       call InputReadDouble(input,option,kd_rxn%Kd)
-                      call InputErrorMsg(input,option,'DISTRIBUTION_COEFFICIENT', &
+                      call InputErrorMsg(input,option, &
+                                         'DISTRIBUTION_COEFFICIENT', &
                                          'CHEMISTRY,ISOTHERM_REACTIONS')
                     ! S.Karra, 02/20/2014
                     case('SEC_CONT_DISTRIBUTION_COEFFICIENT', &
                          'SEC_CONT_KD')
                          if (.not.option%use_mc) then
-                           option%io_buffer = 'Make sure MULTIPLE_CONTINUUM ' // &
-                             'keyword is set, SECONDARY_CONTINUUM_KD.'
+                           option%io_buffer = 'Make sure MULTIPLE_CONTINUUM ' &
+                                   // 'keyword is set, SECONDARY_CONTINUUM_KD.'
                            call printErrMsg(option)
                          else
                            call InputReadDouble(input,option,sec_cont_kd_rxn%Kd)
                            call InputErrorMsg(input,option, &
                              'SECONDARY_CONTINUUM_DISTRIBUTION_COEFFICIENT', &
-                             'CHEMISTRY,ISOTHERM_REACTIONS')                           
+                             'CHEMISTRY,ISOTHERM_REACTIONS')                    
                         endif
                     case('LANGMUIR_B')
                       call InputReadDouble(input,option,kd_rxn%Langmuir_B)

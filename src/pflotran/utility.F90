@@ -48,7 +48,8 @@ module Utility_module
     module procedure InterfaceApproxWithoutDeriv
   end interface
 
-  public :: DotProduct, &
+  public :: GetRndNumFromNormalDist, &
+            DotProduct, &
             CrossProduct, &
             reallocateRealArray, &
             reallocateIntArray, &
@@ -201,6 +202,50 @@ function ran2(idum)
   return
 end function ran2
 
+! ************************************************************************** !
+
+subroutine GetRndNumFromNormalDist(mean,st_dev,number)
+  ! 
+  ! Generates a random number that is normally distributed, as defined by the
+  ! mean and standard deviation given. This subroutine uses the Box-Muller
+  ! transform.
+  ! G. E. P. Box and M. E. Muller (1958), A note on the generation of random
+  ! normal deviates, The Annals of Mathematical Statistics, Vol. 29, No. 2,
+  ! pp. 610-611.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 2/12/2016
+
+  implicit none
+  
+  PetscReal :: mean, st_dev, number
+
+  PetscBool, save :: switch
+  PetscReal, save :: z0, z1
+  PetscReal :: u1, u2
+  PetscReal :: TWO_PI
+
+  switch = .not.switch
+  TWO_PI = 2*3.14159265358979323846264338327950288419716939937510582
+
+  if (.not.switch) then
+
+    ! Generate two random numbers between (0,1)
+    u1 = rnd()
+    u2 = rnd()
+    
+    z0 = sqrt(-2.0*log(u1)) * cos(TWO_PI*u2)
+    z1 = sqrt(-2.0*log(u1)) * sin(TWO_PI*u2) 
+    
+    number = z0*st_dev + mean
+
+  else
+    
+    number = z1*st_dev + mean
+
+  endif
+
+end subroutine GetRndNumFromNormalDist
 ! ************************************************************************** !
 
 subroutine Natural2LocalIndex(ir, nl, llist, llength)
