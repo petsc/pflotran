@@ -67,8 +67,12 @@ subroutine MicrobialRead(microbial,input,option)
                             'CHEMISTRY,MICROBIAL_REACTION,REACTION')     
       case('RATE_CONSTANT')
         call InputReadDouble(input,option,microbial_rxn%rate_constant)  
-        call InputDefaultMsg(input,option, &
-                              'CHEMISTRY,MICROBIAL_REACTION,RATE_CONSTANT') 
+        call InputErrorMsg(input,option,'rate constant', &
+                           'CHEMISTRY,MICROBIAL_REACTION') 
+      case('ACTIVATION_ENERGY')
+        call InputReadDouble(input,option,microbial_rxn%activation_energy)  
+        call InputErrorMsg(input,option,'activation energy', &
+                           'CHEMISTRY,MICROBIAL_REACTION') 
       case('MONOD')
         monod => MicrobialMonodCreate()
         do 
@@ -288,6 +292,11 @@ subroutine RMicrobial(Res,Jac,compute_derivative,rt_auxvar, &
     ncomp = microbial%specid(0,irxn)
     rate_constant = microbial%rate_constant(irxn)
     Im = rate_constant
+    if (associated(microbial%activation_energy)) then
+      ! ideal gas constant units: J/mol-K
+      Im = Im * exp(microbial%activation_energy(irxn)/IDEAL_GAS_CONSTANT* &
+                    (1.d0/298.15d0-1.d0/(global_auxvar%temp+273.15d0)))
+    endif
     yield = 0.d0
     biomass_conc = 0.d0
 
