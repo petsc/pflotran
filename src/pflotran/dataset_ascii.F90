@@ -203,7 +203,8 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
                              'CONDITION (LIST or FILE)')
           cycle
         case('INTERPOLATION')
-          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputReadWord(string,word,PETSC_TRUE,ierr)
+          input%ierr = ierr
           call InputErrorMsg(input,option,'INTERPOLATION','CONDITION')   
           call StringToUpper(word)
           select case(word)

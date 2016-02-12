@@ -39,6 +39,8 @@ module PM_Waste_Form_class
     PetscReal :: volume
     PetscReal, pointer :: instantaneous_mass_rate(:)    ! mol/sec
     PetscReal, pointer :: cumulative_mass(:)            ! mol
+    PetscBool :: canister_degradation_flag
+    PetscReal :: canister_vitality
     class(waste_form_base_type), pointer :: next
   end type waste_form_base_type
   
@@ -61,6 +63,7 @@ module PM_Waste_Form_class
     type(wf_species_type) :: wf_species
     class(dataset_base_type), pointer ::  mass_fraction_dataset
     PetscBool :: print_mass_balance
+    PetscBool :: canister_degradation_model
   contains
     procedure, public :: PMWasteFormSetRealization
   end type pm_waste_form_type
@@ -147,6 +150,7 @@ subroutine PMWasteFormInit(this)
   nullify(this%data_mediator)
   nullify(this%mass_fraction_dataset)
   this%wf_species%num_species = 0
+  this%canister_degradation_model = PETSC_FALSE
 !geh: only initialize if a pointer, instead of allocatable
 !  nullify(this%wf_species%name)
 !  nullify(this%wf_species%formula_weight)
@@ -324,6 +328,9 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
 !-------------------------------------
     case('PRINT_MASS_BALANCE')
       this%print_mass_balance = PETSC_TRUE
+!-------------------------------------
+    case('CANISTER_DEGRADATION_MODEL')
+      this%canister_degradation_model = PETSC_TRUE
 !-------------------------------------    
     case default
       found = PETSC_FALSE
@@ -387,6 +394,11 @@ end subroutine PMWasteFormSetRealization
     this%waste_form_list%instantaneous_mass_rate(j) = UNINITIALIZED_DOUBLE
     this%waste_form_list%cumulative_mass(j) = UNINITIALIZED_DOUBLE
   enddo
+
+  if (this%canister_degradation_model) then
+    this%waste_form_list%canister_degradation_flag = PETSC_TRUE
+    this%waste_form_list%canister_vitality = 1.d0
+  endif
   
   ! restart
   if (this%option%restart_flag .and. &
@@ -631,8 +643,10 @@ subroutine PMWFOutput(this)
       class is (waste_form_glass_type)
         write(fid,100,advance="no") cur_waste_form%volume, &
                                     cur_waste_form%glass_dissolution_rate * &
-                                    output_option%tconv
+                                    output_option%tconv, &
+                                    cur_waste_form%canister_vitality*100.0
       class is (waste_form_fmdm_type)
+        write(fid,100,advance="no") cur_waste_form%canister_vitality*100.0
     end select
     cur_waste_form => cur_waste_form%next
   enddo
@@ -742,7 +756,15 @@ subroutine PMWFOutputHeader(this)
         units_string = 'kg/' // trim(adjustl(output_option%tunit))
         call OutputWriteToHeader(fid,variable_string,units_string, &
                                  cell_string,icolumn)
+        variable_string = 'WF Canister Vitality'
+        units_string = '%' 
+        call OutputWriteToHeader(fid,variable_string,units_string, &
+                                 cell_string,icolumn)
       class is (waste_form_fmdm_type)
+        variable_string = 'WF Canister Vitality'
+        units_string = '%' 
+        call OutputWriteToHeader(fid,variable_string,units_string, &
+                                 cell_string,icolumn)
     end select
     cur_waste_form => cur_waste_form%next
   enddo
@@ -797,6 +819,7 @@ subroutine WFGlassInit(glass)
   call WasteFormBaseInit(glass)
   glass%exposure_factor = UNINITIALIZED_DOUBLE
   glass%glass_dissolution_rate = UNINITIALIZED_DOUBLE
+  glass%canister_vitality = 0.d0
   nullify(glass%next)
 
 end subroutine WFGlassInit
@@ -891,9 +914,6 @@ subroutine PMGlassRead(this,input)
   use Utility_module
   use Option_module
   use String_module
-  ! jmf
- ! use Condition_module, only : ConditionReadValues
- ! use Dataset_Ascii_class
   
   implicit none
   
@@ -1158,7 +1178,20 @@ subroutine PMGlassSolve(this,time,ierr)
   i = 0
   do 
     if (.not.associated(cur_waste_form)) exit
-    if (cur_waste_form%volume > 0.d0) then
+    if (cur_waste_form%canister_degradation_flag) then
+    ! ---------------- Temporary vitality degradation function ----------------
+      cur_waste_form%canister_vitality = cur_waste_form%canister_vitality * &
+             (15/global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))%temp)
+      if (cur_waste_form%canister_vitality > 1.d0) then
+        cur_waste_form%canister_vitality = 1.d0
+      endif
+      if (cur_waste_form%canister_vitality < 1.d-3) then
+        cur_waste_form%canister_vitality = 0.d0
+      endif
+    ! -------------------------------------------------------------------------
+    endif
+    if ((cur_waste_form%volume > 0.d0) .and. &
+        (cur_waste_form%canister_vitality == 0.d0)) then
       fuel_dissolution_rate = & ! kg glass/m^2/day
         560.d0*exp(-7397.d0/ &
             (global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))%temp+273.15d0))
@@ -1394,6 +1427,7 @@ subroutine WFFMDMInit(fmdm)
   call WasteFormBaseInit(fmdm)  
   fmdm%specific_surface_area = UNINITIALIZED_DOUBLE
   fmdm%burnup = UNINITIALIZED_DOUBLE
+  fmdm%canister_vitality = 1.0
   nullify(fmdm%concentration)
   nullify(fmdm%next)
   
