@@ -412,13 +412,16 @@ end subroutine PMWasteFormSetRealization
   PetscInt, allocatable :: species_indices_in_residual(:)
   PetscErrorCode :: ierr
 
-  allocate(this%waste_form_list%instantaneous_mass_rate&
-                                (this%wf_species%num_species))
-  allocate(this%waste_form_list%cumulative_mass&
-                                (this%wf_species%num_species))
-  do j = 1, this%wf_species%num_species
-    this%waste_form_list%instantaneous_mass_rate(j) = UNINITIALIZED_DOUBLE
-    this%waste_form_list%cumulative_mass(j) = UNINITIALIZED_DOUBLE
+  cur_waste_form => this%waste_form_list
+  do
+    if (.not.associated(cur_waste_form)) exit
+    allocate(cur_waste_form%instantaneous_mass_rate&
+                                  (this%wf_species%num_species))
+    allocate(cur_waste_form%cumulative_mass&
+                                  (this%wf_species%num_species))
+    this%waste_form_list%instantaneous_mass_rate = UNINITIALIZED_DOUBLE
+    this%waste_form_list%cumulative_mass = UNINITIALIZED_DOUBLE
+    cur_waste_form => cur_waste_form%next
   enddo
 
   if (this%canister_degradation_model) then

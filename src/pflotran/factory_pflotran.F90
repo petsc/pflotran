@@ -483,15 +483,6 @@ subroutine PFLOTRANInitCommandLineSettings(option)
     option%id = i
   endif
   
-  ! this will get overwritten later if stochastic
-  string = '-simulation_mode'
-  call InputGetCommandLineString(string,string2, &
-                                 option_found,option)
-  if (option_found) then
-    call StringToUpper(string2)
-    option%simulation_mode = string2
-  endif
-
 end subroutine PFLOTRANInitCommandLineSettings
 
 end module Factory_PFLOTRAN_module

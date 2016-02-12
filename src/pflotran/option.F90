@@ -48,7 +48,6 @@ module Option_module
   
     PetscInt :: fid_out
     
-    character(len=MAXWORDLENGTH) :: simulation_mode
     ! defines the mode (e.g. mph, richards, vadose, etc.
     character(len=MAXWORDLENGTH) :: flowmode
     PetscInt :: iflowmode
@@ -361,7 +360,6 @@ subroutine OptionInitAll(option)
 
   option%out_of_table = PETSC_FALSE
 
-  option%simulation_mode = 'SUBSURFACE'
   option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
  
   option%rel_perm_aveg = UPWIND
