@@ -200,7 +200,9 @@ module EOS_Water_module
 
   public :: EOSWaterSetDensity, &
             EOSWaterSetEnthalpy, &
-            EOSWaterSetViscosity
+            EOSWaterSetViscosity, &
+            EOSWaterSetSteamDensity, &
+            EOSWaterSetSteamEnthalpy
  
   contains
 
@@ -314,7 +316,7 @@ subroutine EOSWaterSetDensity(keyword,aux)
     case('CONSTANT')
       constant_density = aux(1)  
       EOSWaterDensityPtr => EOSWaterDensityConstant
-    case('IFC67')
+    case('DEFAULT','IFC67')
       EOSWaterDensityPtr => EOSWaterDensityIFC67
     case('EXPONENTIAL')
       exponent_reference_density = aux(1)
@@ -346,7 +348,7 @@ subroutine EOSWaterSetEnthalpy(keyword,aux)
     case('CONSTANT')
       constant_enthalpy = aux(1)  
       EOSWaterEnthalpyPtr => EOSWaterEnthalpyConstant
-    case('IFC67')
+    case('DEFAULT','IFC67')
       EOSWaterEnthalpyPtr => EOSWaterEnthalpyIFC67
     case('PAINTER')
       EOSWaterEnthalpyPtr => EOSWaterEnthalpyPainter      
@@ -372,6 +374,8 @@ subroutine EOSWaterSetViscosity(keyword,aux)
     case('CONSTANT')
       constant_viscosity = aux(1)  
       EOSWaterViscosityPtr => EOSWaterViscosityConstant
+    case('DEFAULT')
+      EOSWaterViscosityPtr => EOSWaterViscosity1
     case default
       print *, 'Unknown pointer type "' // trim(keyword) // &
         '" in EOSWaterSetViscosity().'  
@@ -417,7 +421,7 @@ subroutine EOSWaterSetSteamEnthalpy(keyword,aux)
     case('CONSTANT')
       constant_steam_enthalpy = aux(1)  
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDenEnthConstant
-    case('IFC67')
+    case('DEFAULT','IFC67')
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDensityEnthalpyIFC67
     case default
       print *, 'Unknown pointer type "' // trim(keyword) // &
@@ -2279,10 +2283,11 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
   
   PetscReal :: t_, t_C
   PetscReal :: p_, p_MPa
-  PetscReal :: w(5,4) = [1402.85d0,4.871d0,-0.04783d0,1.487d-4,-2.197d-7, &
-                         1.524d0,-0.0111d0,2.747d-4,-6.503d-7,7.987d-10, &
-                         3.437d-3,1.739d-4,-2.135d-6,-1.455d-8,5.230d-11, &
-                         -1.197d-5,-1.628d-6,1.237d-8,1.327d-10,-4.614d-13]
+  PetscReal, parameter :: w(5,4) = &
+      reshape((/1402.85d0,4.871d0,-0.04783d0,1.487d-4,-2.197d-7, &
+               1.524d0,-0.0111d0,2.747d-4,-6.503d-7,7.987d-10, &
+               3.437d-3,1.739d-4,-2.135d-6,-1.455d-8,5.230d-11, &
+               -1.197d-5,-1.628d-6,1.237d-8,1.327d-10,-4.614d-13/),(/5,4/))
   PetscReal :: tempreal, sum
   PetscInt :: i, j
                          

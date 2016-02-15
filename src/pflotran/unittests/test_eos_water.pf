@@ -108,9 +108,11 @@ contains
     PetscReal, parameter :: density = 1234.5
     PetscReal, parameter :: temperature = -23.4
     PetscReal, parameter :: pressure = 1.0
+    PetscReal :: aux(1)
     PetscReal :: dw, dwmol, dwp, dwt
 
-    call EOSWaterSetDensityConstant(density)
+    aux(1) = density
+    call EOSWaterSetDensity('CONSTANT',aux)
 
     call EOSWaterVerify(ierr, error_string)
     @assertEqual(0, ierr)

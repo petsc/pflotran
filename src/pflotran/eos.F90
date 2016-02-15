@@ -92,11 +92,10 @@ subroutine EOSRead(input,option)
                                    'EOS,WATER,DENSITY,EXPONENTIAL')
               case('IFC67','DEFAULT')
               case('TGDPB01')
-                call EOSWaterSetDensityTGDPB01()
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,DENSITY',option)
             end select
-            call EOSWaterSetDensity(keyword,temparray)
+            call EOSWaterSetDensity(word,temparray)
           case('ENTHALPY') 
             call InputReadWord(input,option,word,PETSC_TRUE)
             call InputErrorMsg(input,option,'ENTHALPY','EOS,WATER')
@@ -107,11 +106,10 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,ENTHALPY,CONSTANT')
                case('IFC67','DEFAULT')
-                call EOSWaterSetEnthalpyIFC67()
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,ENTHALPY',option)
             end select
-            call EOSWaterSetEnthalpy(keyword,temparray)            
+            call EOSWaterSetEnthalpy(word,temparray)            
           case('VISCOSITY') 
             call InputReadWord(input,option,word,PETSC_TRUE)
             call InputErrorMsg(input,option,'VISCOSITY','EOS,WATER')
@@ -126,7 +124,7 @@ subroutine EOSRead(input,option)
                 call InputKeywordUnrecognized(word,'EOS,WATER,VISCOSITY', &
                                               option)
             end select
-            call EOSWaterSetViscosity(keyword,temparray)              
+            call EOSWaterSetViscosity(word,temparray)              
           case('STEAM_DENSITY') 
             call InputReadWord(input,option,word,PETSC_TRUE)
             call InputErrorMsg(input,option,'STEAM_DENSITY','EOS,WATER')
