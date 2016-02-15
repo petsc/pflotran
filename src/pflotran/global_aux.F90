@@ -201,6 +201,11 @@ subroutine GlobalAuxVarInit(auxvar,option)
     case default
   end select
   
+  if (option%flow%density_depends_on_salinity) then
+    allocate(auxvar%m_nacl(ONE_INTEGER))
+    auxvar%m_nacl = 0.d0
+  endif
+  
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
     allocate(auxvar%mass_balance(option%nflowspec,option%nphase))
     auxvar%mass_balance = 0.d0

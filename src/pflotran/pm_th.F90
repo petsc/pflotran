@@ -136,8 +136,8 @@ subroutine PMTHRead(this,input)
         option%io_buffer = ' TH: using FREEZING submode!'
         call printMsg(option)
         ! Override the default setting for TH-mode with freezing
-        call EOSWaterSetDensityPainter()
-        call EOSWaterSetEnthalpyPainter()
+        call EOSWaterSetDensity('PAINTER')
+        call EOSWaterSetEnthalpy('PAINTER')
       case('ICE_MODEL')
         call InputReadWord(input,option,word,PETSC_FALSE)
         call StringToUpper(word)
