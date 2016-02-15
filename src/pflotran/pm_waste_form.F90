@@ -286,6 +286,8 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
 !-------------------------------------
     case('CANISTER_DEGRADATION_MODEL')
       this%canister_degradation_model = PETSC_TRUE
+      option%io_buffer = 'canister degradation model'
+      call printMsg(option)
       do
         call InputReadPflotranString(input,option)
         if (InputCheckExit(input,option)) exit
@@ -1047,6 +1049,7 @@ subroutine PMGlassRead(this,input)
   use Utility_module
   use Option_module
   use String_module
+  use Units_module
   
   implicit none
   
@@ -1062,6 +1065,9 @@ subroutine PMGlassRead(this,input)
   option => this%option
   error_string = 'GLASS'
   input%ierr = 0
+
+  option%io_buffer = 'pflotran card:: ' // trim(error_string)
+  call printMsg(option)
 
   do
     call InputReadPflotranString(input,option)
@@ -1095,6 +1101,11 @@ subroutine PMGlassRead(this,input)
             case('VOLUME')
               call InputReadDouble(input,option,new_waste_form%volume)
               call InputErrorMsg(input,option,'volume',error_string)
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                new_waste_form%volume = UnitsConvertToInternal(word,'volume', &
+                                        option) * new_waste_form%volume
+              endif
             case('COORDINATE')
               call GeometryReadCoordinate(input,option, &
                                           new_waste_form%coordinate, &
@@ -1134,6 +1145,11 @@ subroutine PMGlassRead(this,input)
       case('SPECIFIC_SURFACE_AREA')
         call InputReadDouble(input,option,this%specific_surface_area)
         call InputErrorMsg(input,option,'specific surface area',error_string)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          this%specific_surface_area = UnitsConvertToInternal(word, &
+                            'area/volume',option) * this%specific_surface_area
+        endif
     !-------------------------------------
       case('GLASS_DENSITY')
         call InputReadDouble(input,option,this%glass_density)
@@ -1606,6 +1622,7 @@ subroutine PMFMDMRead(this,input)
   use String_module
   use Utility_module
   use Option_module
+  use Units_module
   
   implicit none
   
@@ -1621,6 +1638,9 @@ subroutine PMFMDMRead(this,input)
   option => this%option
   error_string = 'FMDM'
   input%ierr = 0
+
+  option%io_buffer = 'pflotran card:: ' // trim(error_string)
+  call printMsg(option)
 
   do
     call InputReadPflotranString(input,option)
@@ -1663,9 +1683,20 @@ subroutine PMFMDMRead(this,input)
                                    new_waste_form%specific_surface_area)
               call InputErrorMsg(input,option,'specific surface area', &
                                  error_string)
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                new_waste_form%specific_surface_area = &
+                           UnitsConvertToInternal(word,'area/volume',option) * &
+                           new_waste_form%specific_surface_area
+              endif
             case('VOLUME')
               call InputReadDouble(input,option,new_waste_form%volume)
               call InputErrorMsg(input,option,'volume',error_string)
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                new_waste_form%volume = UnitsConvertToInternal(word,'volume', &
+                                        option) * new_waste_form%volume
+              endif
             case('BURNUP')
               call InputReadDouble(input,option,new_waste_form%burnup)
               call InputErrorMsg(input,option,'burnup',error_string)
