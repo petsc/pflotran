@@ -43,7 +43,7 @@ subroutine MineralRead(mineral,input,option)
   implicit none
   
   type(mineral_type) :: mineral
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   type(mineral_rxn_type), pointer :: cur_mineral, prev_mineral
@@ -91,7 +91,7 @@ subroutine MineralReadKinetics(mineral,input,option)
   implicit none
   
   type(mineral_type) :: mineral
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -160,7 +160,9 @@ subroutine MineralReadKinetics(mineral,input,option)
                 input%err_buf = trim(cur_mineral%name) // ' RATE UNITS'
                 call InputDefaultMsg(input,option)
               else
-                tstrxn%rate = tstrxn%rate * UnitsConvertToInternal(word,option)
+                tstrxn%rate = tstrxn%rate * &
+                              UnitsConvertToInternal(word, &
+                              'mass/area-time',option)
               endif
             case('ACTIVATION_ENERGY')
 !             read activation energy for Arrhenius law
@@ -241,7 +243,8 @@ subroutine MineralReadKinetics(mineral,input,option)
                       call InputDefaultMsg(input,option)
                     else
                       prefactor%rate = prefactor%rate * &
-                                       UnitsConvertToInternal(word,option)
+                                       UnitsConvertToInternal(word, &
+                                       'mass/area-time',option)
                     endif
                   case('ACTIVATION_ENERGY')
                     ! read activation energy for Arrhenius law
@@ -411,7 +414,7 @@ subroutine MineralReadFromDatabase(mineral,num_dbase_temperatures,input, &
   
   type(mineral_rxn_type) :: mineral
   PetscInt :: num_dbase_temperatures
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   PetscInt :: ispec

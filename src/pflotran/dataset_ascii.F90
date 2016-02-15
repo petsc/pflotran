@@ -103,7 +103,7 @@ end subroutine DatasetAsciiInit
 
 ! ************************************************************************** !
 
-subroutine DatasetAsciiOpenandLoad(this,filename,option)
+subroutine DatasetAsciiOpenandLoad(this,filename,data_units_category,option)
   ! 
   ! Opens a file and calls the load routine.
   ! 
@@ -118,19 +118,20 @@ subroutine DatasetAsciiOpenandLoad(this,filename,option)
   
   class(dataset_ascii_type) :: this
   character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: data_units_category
   type(option_type) :: option
   
   type(input_type), pointer :: input
   
   input => InputCreate(IUNIT_TEMP,filename,option)
-  call DatasetAsciiLoad(this,input,option)
+  call DatasetAsciiLoad(this,input,data_units_category,option)
   call InputDestroy(input)
 
 end subroutine DatasetAsciiOpenandLoad
 
 ! ************************************************************************** !
 
-subroutine DatasetAsciiLoad(this,input,option)
+subroutine DatasetAsciiLoad(this,input,data_units_category,option)
   ! 
   ! Reads a text-based dataset from an ASCII file.
   ! 
@@ -148,17 +149,19 @@ subroutine DatasetAsciiLoad(this,input,option)
   implicit none
   
   class(dataset_ascii_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
+  character(len=*) :: data_units_category
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: time_units
   character(len=MAXSTRINGLENGTH) :: string, data_units
+  character(len=MAXSTRINGLENGTH), pointer :: unit_cat_strings(:) 
   character(len=MAXWORDLENGTH) :: word
   PetscReal, pointer :: temp_array(:,:)
   PetscReal :: temp_time
   PetscReal :: conversion
   PetscInt :: max_size, offset
-  PetscInt :: row_count, column_count, data_count, i
+  PetscInt :: row_count, column_count, data_count, i, k
   PetscInt :: default_interpolation_method
   PetscBool :: force_units_for_all_data
   PetscErrorCode :: ierr
@@ -166,16 +169,19 @@ subroutine DatasetAsciiLoad(this,input,option)
   time_units = ''
   data_units = ''
   max_size = 1000
+  
+  unit_cat_strings => StringSplit(data_units_category,',')
 
   row_count = 0
   ierr = 0
+  k = 0
   default_interpolation_method = INTERPOLATION_NULL
   do
     call InputReadPflotranString(input,option)
     ! reach the end of file or close out block
     if (InputError(input)) exit  ! check for end of file
     if (InputCheckExit(input,option)) exit  ! check for end of list
-    ! check for units on first line
+    ! check for units on first or second line
     if (row_count == 0) then
       string = input%buf
       ierr = 0
@@ -183,6 +189,11 @@ subroutine DatasetAsciiLoad(this,input,option)
       call InputErrorMsg(input,option,'KEYWORD','CONDITION (LIST or FILE)')
       call StringToUpper(word)
       select case(word)
+        case('HEADER')
+          call InputReadWord(string,word,PETSC_TRUE,ierr)
+          call InputErrorMsg(input,option,'header','CONDITION (LIST or FILE)')
+          this%header = trim(input%buf)
+          cycle
         case('TIME_UNITS')
           call InputReadWord(string,time_units,PETSC_TRUE,ierr)
           input%ierr = ierr
@@ -190,19 +201,20 @@ subroutine DatasetAsciiLoad(this,input,option)
                              'CONDITION (LIST or FILE)')
           cycle
         case('INTERPOLATION')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'INTERPOLATION','CONDITION')   
-        call StringToUpper(word)
-        select case(word)
-          case('STEP')
-            default_interpolation_method = INTERPOLATION_STEP
-          case('LINEAR') 
-            default_interpolation_method = INTERPOLATION_LINEAR
-          case default
-            call InputKeywordUnrecognized(word,'CONDITION,INTERPOLATION', &
-                                          option)
-        end select
-
+          call InputReadWord(string,word,PETSC_TRUE,ierr)
+          input%ierr = ierr
+          call InputErrorMsg(input,option,'INTERPOLATION','CONDITION')   
+          call StringToUpper(word)
+          select case(word)
+            case('STEP')
+              default_interpolation_method = INTERPOLATION_STEP
+            case('LINEAR') 
+              default_interpolation_method = INTERPOLATION_LINEAR
+            case default
+              call InputKeywordUnrecognized(word,'CONDITION,INTERPOLATION', &
+                                            option)
+          end select
+          cycle
         case('DATA_UNITS')
           ! it is possible to have more than one data unit. therefore, read the
           ! entire string
@@ -264,7 +276,7 @@ subroutine DatasetAsciiLoad(this,input,option)
   
   ! time units conversion
   if (len_trim(time_units) > 0) then
-    conversion = UnitsConvertToInternal(time_units,option)
+    conversion = UnitsConvertToInternal(time_units,'time',option)
     this%time_storage%times(:) = conversion * &
                                  this%time_storage%times(:)
   endif
@@ -285,10 +297,12 @@ subroutine DatasetAsciiLoad(this,input,option)
         call InputReadWord(data_units,word,PETSC_TRUE,ierr)
         input%ierr = ierr
         call InputErrorMsg(input,option,'DATA_UNITS','CONDITION FILE')
-        conversion = UnitsConvertToInternal(word,option)
+        conversion = UnitsConvertToInternal(word,unit_cat_strings(i),option)
       endif
       temp_array(i+1,:) = conversion * temp_array(i+1,:)
     enddo
+    deallocate(unit_cat_strings)
+    nullify(unit_cat_strings)
   else
     call InputCheckMandatoryUnits(input,option)
   endif
@@ -416,7 +430,7 @@ subroutine DatasetAsciiStrip(this)
 
   implicit none
   
-  class(dataset_ascii_type)  :: this
+  class(dataset_ascii_type) :: this
   
   call DatasetBaseStrip(this)
   

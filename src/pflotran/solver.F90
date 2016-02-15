@@ -70,10 +70,10 @@ module Solver_module
     ! PETSc nonlinear solver context
     SNES :: snes
     KSPType :: ksp_type
-    PCType  :: pc_type
-    KSP   ::  ksp
-    PC    ::  pc
-    TS    :: ts
+    PCType :: pc_type
+    KSP ::  ksp
+    PC ::  pc
+    TS :: ts
     
     PetscBool :: inexact_newton
 
@@ -327,7 +327,7 @@ subroutine SolverReadLinear(solver,input,option)
   implicit none
 
   type(solver_type) :: solver
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   PetscErrorCode :: ierr
   
@@ -701,7 +701,7 @@ subroutine SolverReadNewton(solver,input,option)
   implicit none
 
   type(solver_type) :: solver
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword, word, word2

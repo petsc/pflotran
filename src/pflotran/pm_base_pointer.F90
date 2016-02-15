@@ -22,7 +22,7 @@ module PM_Base_Pointer_module
   ! pm_ptr%this%Residual
   !  
   type, public :: pm_base_pointer_type
-    class(pm_base_type), pointer :: ptr
+    class(pm_base_type), pointer :: pm
   end type pm_base_pointer_type
 
   public :: PMResidual, &
@@ -47,7 +47,7 @@ subroutine PMResidual(snes,xx,r,this,ierr)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
@@ -61,7 +61,7 @@ subroutine PMResidual(snes,xx,r,this,ierr)
   class(pm_base_type) :: this
   PetscErrorCode :: ierr
   
-#ifdef PM_TOP_DEBUG    
+#ifdef DEBUG
   print *, 'PMResidual()'
 #endif
 
@@ -78,7 +78,7 @@ subroutine PMResidualPtr(snes,xx,r,this,ierr)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
@@ -92,11 +92,11 @@ subroutine PMResidualPtr(snes,xx,r,this,ierr)
   type(pm_base_pointer_type) :: this
   PetscErrorCode :: ierr
   
-#ifdef PM_TOP_DEBUG    
-  print *, 'PMResidual()'
+#ifdef DEBUG
+  print *, 'PMResidualPtr()'
 #endif
 
-  call this%ptr%Residual(snes,xx,r,ierr)
+  call this%pm%Residual(snes,xx,r,ierr)
 
 end subroutine PMResidualPtr
 
@@ -123,7 +123,7 @@ subroutine PMJacobian(snes,xx,A,B,this,ierr)
   class(pm_base_type) :: this
   PetscErrorCode :: ierr
   
-#ifdef PM_TOP_DEBUG    
+#ifdef DEBUG
   print *, 'PMJacobian()'
 #endif
 
@@ -154,11 +154,11 @@ subroutine PMJacobianPtr(snes,xx,A,B,this,ierr)
   type(pm_base_pointer_type) :: this
   PetscErrorCode :: ierr
   
-#ifdef PM_TOP_DEBUG    
-  print *, 'PMJacobian()'
+#ifdef DEBUG
+  print *, 'PMJacobianPtr()'
 #endif
 
-  call this%ptr%Jacobian(snes,xx,A,B,ierr)
+  call this%pm%Jacobian(snes,xx,A,B,ierr)
     
 end subroutine PMJacobianPtr
 
@@ -183,7 +183,7 @@ subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
   class(pm_base_type) :: this
   PetscErrorCode :: ierr
   
-#ifdef PM_TOP_DEBUG
+#ifdef DEBUG
   print *, 'PMRHSFunction()'
 #endif
 
@@ -212,11 +212,11 @@ subroutine PMRHSFunctionPtr(ts,time,xx,ff,this,ierr)
   type(pm_base_pointer_type) :: this
   PetscErrorCode :: ierr
   
-#ifdef PM_TOP_DEBUG
-  print *, 'PMRHSFunction()'
+#ifdef DEBUG
+  print *, 'PMRHSFunctionPtr()'
 #endif
 
-  call this%ptr%RHSFunction(ts,time,xx,ff,ierr)
+  call this%pm%RHSFunction(ts,time,xx,ff,ierr)
 
 end subroutine PMRHSFunctionPtr
 
@@ -243,7 +243,7 @@ subroutine PMCheckUpdatePre(line_search,X,dX,changed,this,ierr)
   class(pm_base_type) :: this
   PetscErrorCode :: ierr
   
-#ifdef PM_TOP_DEBUG    
+#ifdef DEBUG
   print *, 'PMCheckUpdatePre()'
 #endif
 
@@ -274,11 +274,11 @@ subroutine PMCheckUpdatePrePtr(line_search,X,dX,changed,this,ierr)
   type(pm_base_pointer_type) :: this
   PetscErrorCode :: ierr
   
-#ifdef PM_TOP_DEBUG    
-  print *, 'PMCheckUpdatePre()'
+#ifdef DEBUG
+  print *, 'PMCheckUpdatePrePtr()'
 #endif
 
-  call this%ptr%CheckUpdatePre(line_search,X,dX,changed,ierr)
+  call this%pm%CheckUpdatePre(line_search,X,dX,changed,ierr)
     
 end subroutine PMCheckUpdatePrePtr
 
@@ -308,7 +308,7 @@ subroutine PMCheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,this, &
   class(pm_base_type) :: this
   PetscErrorCode :: ierr
   
-#ifdef PM_TOP_DEBUG    
+#ifdef DEBUG
   print *, 'PMCheckUpdatePost()'
 #endif
 
@@ -342,11 +342,11 @@ subroutine PMCheckUpdatePostPtr(line_search,X0,dX,X1,dX_changed,X1_changed, &
   type(pm_base_pointer_type) :: this
   PetscErrorCode :: ierr
   
-#ifdef PM_TOP_DEBUG    
-  print *, 'PMCheckUpdatePost()'
+#ifdef DEBUG
+  print *, 'PMCheckUpdatePostPtr()'
 #endif
 
-  call this%ptr%CheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,ierr)
+  call this%pm%CheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,ierr)
     
 end subroutine PMCheckUpdatePostPtr
 

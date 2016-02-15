@@ -23,7 +23,8 @@ module Init_Common_module
             InitCommonReadVelocityField, &
 #endif
             InitCommonVerifyAllCouplers, &
-            setSurfaceFlowMode
+            setSurfaceFlowMode, &
+            InitCommonAddOutputWaypoints
 
 #if defined(SCORPIO)
   public :: InitCommonCreateIOGroups
@@ -101,159 +102,6 @@ end subroutine InitReadInputFilenames
 
 ! ************************************************************************** !
 
-subroutine InitSubsurfaceReadRequiredCards(realization)
-  ! 
-  ! Reads pflow input file
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 10/23/07, refactored 08/20/14
-  ! 
-
-  use Option_module
-  use Discretization_module
-  use Grid_module
-  use Input_Aux_module
-  use String_module
-  use Patch_module
-  use Realization_class
-  use HDF5_Aux_module
-
-  use General_module
-  use Reaction_module  
-  use Reaction_Aux_module  
-
-  implicit none
-
-  class(realization_type) :: realization
-
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: card
-  type(patch_type), pointer :: patch, patch2 
-  type(grid_type), pointer :: grid
-  type(discretization_type), pointer :: discretization
-  type(option_type), pointer :: option
-  type(input_type), pointer :: input
-  
-  patch => realization%patch
-  option => realization%option
-  discretization => realization%discretization
-  
-  input => realization%input
-  
-! Read in select required cards
-!.........................................................................
-  
-  ! GRID information - GRID is a required card for every simulation
-  string = "GRID"
-  call InputFindStringInFile(input,option,string)
-  call InputFindStringErrorMsg(input,option,string)
-
-  call DiscretizationReadRequiredCards(discretization,input,option)
-  
-  select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-      patch => PatchCreate()
-      patch%grid => discretization%grid
-      if (.not.associated(realization%patch_list)) then
-        realization%patch_list => PatchCreateList()
-      endif
-      call PatchAddToList(patch,realization%patch_list)
-      realization%patch => patch
-  end select
-
-  ! optional required cards - yes, an oxymoron, but we need to know if
-  ! these exist before we can go any further.
-  rewind(input%fid)  
-  do
-    call InputReadPflotranString(input,option)
-    if (InputError(input)) exit
-
-    call InputReadWord(input,option,word,PETSC_FALSE)
-    call StringToUpper(word)
-    card = trim(word)
-
-    select case(trim(card))
-
-!....................
-      case('DBASE_FILENAME')
-        call InputReadWord(input,option,word,PETSC_FALSE)
-        call InputErrorMsg(input,option,'filename','DBASE_FILENAME')
-        if (index(word,'.h5') > 0) then
-#if defined(PETSC_HAVE_HDF5)
-          call HDF5ReadDbase(word,option)
-#endif
-        else
-          call InputReadASCIIDbase(word,option)
-        endif
-
-!....................
-#if defined(SCORPIO)
-      case('HDF5_WRITE_GROUP_SIZE')
-        call InputReadInt(input,option,option%hdf5_write_group_size)
-        call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
-        call InputSkipToEnd(input,option,'HDF5_WRITE_GROUP_SIZE')
-
-      case('HDF5_READ_GROUP_SIZE')
-        call InputReadInt(input,option,option%hdf5_read_group_size)
-        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
-#endif
-
-!....................
-      case('PROC')
-        ! processor decomposition
-        if (realization%discretization%itype == STRUCTURED_GRID) then
-          grid => realization%patch%grid
-          ! strip card from front of string
-          call InputReadInt(input,option,grid%structured_grid%npx)
-          call InputDefaultMsg(input,option,'npx')
-          call InputReadInt(input,option,grid%structured_grid%npy)
-          call InputDefaultMsg(input,option,'npy')
-          call InputReadInt(input,option,grid%structured_grid%npz)
-          call InputDefaultMsg(input,option,'npz')
- 
-          if (option%myrank == option%io_rank .and. &
-              option%print_to_screen) then
-            option%io_buffer = ' Processor Decomposition:'
-            call printMsg(option)
-            write(option%io_buffer,'("  npx   = ",3x,i4)') &
-              grid%structured_grid%npx
-            call printMsg(option)
-            write(option%io_buffer,'("  npy   = ",3x,i4)') &
-              grid%structured_grid%npy
-            call printMsg(option)
-            write(option%io_buffer,'("  npz   = ",3x,i4)') &
-              grid%structured_grid%npz
-            call printMsg(option)
-          endif
-  
-          if (option%mycommsize /= grid%structured_grid%npx * &
-                                 grid%structured_grid%npy * &
-                                 grid%structured_grid%npz) then
-            write(option%io_buffer,*) 'Incorrect number of processors specified: ', &
-                           grid%structured_grid%npx*grid%structured_grid%npy* &
-                           grid%structured_grid%npz,' commsize = ',option%mycommsize
-            call printErrMsg(option)
-          endif
-        endif
-  
-!....................
-      case('CHEMISTRY')
-        !geh: for some reason, we need this with CHEMISTRY read for 
-        !     multicontinuum
-        option%use_mc = PETSC_TRUE
-        call ReactionInit(realization%reaction,input,option)
-    end select
-  enddo
-  
-#if defined(SCORPIO)
-  call InitCommonCreateIOGroups(option)
-#endif  
-
-end subroutine InitSubsurfaceReadRequiredCards
-
-! ************************************************************************** !
-
 subroutine setSurfaceFlowMode(option)
   ! 
   ! Sets the flow mode for surface (richards, th, etc.)
@@ -293,13 +141,13 @@ subroutine InitCommonVerifyAllCouplers(realization)
   ! Date: 1/8/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Coupler_module
 
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
 
@@ -329,7 +177,7 @@ subroutine InitCommonVerifyCoupler(realization,patch,coupler_list)
   ! Date: 1/8/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Option_module 
   use Coupler_module
@@ -341,7 +189,7 @@ subroutine InitCommonVerifyCoupler(realization,patch,coupler_list)
 
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   type(coupler_list_type), pointer :: coupler_list
 
   type(option_type), pointer :: option
@@ -419,14 +267,14 @@ subroutine InitCommonReadRegionFiles(realization)
   ! Date: 1/03/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Region_module
   use HDF5_module
   use Option_module
 
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(region_type), pointer :: region
@@ -499,7 +347,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   ! Date: 03/18/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Field_module
   use Grid_module
@@ -511,7 +359,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   Vec :: vector
   character(len=MAXWORDLENGTH) :: filename
   PetscInt :: vector_type
@@ -720,7 +568,7 @@ subroutine InitCommonReadVelocityField(realization)
   ! Date: 02/05/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Field_module
   use Grid_module
@@ -733,7 +581,7 @@ subroutine InitCommonReadVelocityField(realization)
 
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   type(field_type), pointer :: field
@@ -824,5 +672,62 @@ subroutine InitCommonReadVelocityField(realization)
 end subroutine InitCommonReadVelocityField
 
 #endif
+
+! ************************************************************************** !
+
+subroutine InitCommonAddOutputWaypoints(output_option,waypoint_list)
+  ! 
+  ! Adds waypoints associated with output options to waypoint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/04/16
+  ! 
+  use Output_Aux_module
+  use Waypoint_module
+  
+  implicit none
+  
+  type(output_option_type) :: output_option
+  type(waypoint_list_type) :: waypoint_list
+  
+  type(waypoint_type), pointer :: waypoint
+  PetscReal :: temp_real
+  PetscReal :: final_time
+  
+  final_time = WaypointListGetFinalTime(waypoint_list)
+  
+  ! add waypoints for periodic output
+  if (output_option%periodic_output_time_incr > 0.d0 .or. &
+      output_option%periodic_tr_output_time_incr > 0.d0) then
+
+    if (output_option%periodic_output_time_incr > 0.d0) then
+      ! standard output
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + output_option%periodic_output_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_output = PETSC_TRUE
+        call WaypointInsertInList(waypoint,waypoint_list)
+      enddo
+    endif
+    
+    if (output_option%periodic_tr_output_time_incr > 0.d0) then
+      ! transient observation output
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + output_option%periodic_tr_output_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_tr_output = PETSC_TRUE 
+        call WaypointInsertInList(waypoint,waypoint_list)
+      enddo
+    endif
+
+  endif  
+  
+end subroutine InitCommonAddOutputWaypoints
 
 end module Init_Common_module

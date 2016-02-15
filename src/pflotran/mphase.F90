@@ -64,13 +64,13 @@ subroutine MphaseTimeCut(realization)
   ! Date: 5/13/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -93,10 +93,10 @@ subroutine MphaseSetup(realization)
   ! Date: 5/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
    
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -122,7 +122,7 @@ subroutine MphaseSetupPatch(realization)
   ! Date: 5/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -133,7 +133,7 @@ subroutine MphaseSetupPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -339,10 +339,10 @@ subroutine MphaseComputeMassBalance(realization,mass_balance,mass_trapped)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_trapped(realization%option%nphase)
 
@@ -371,7 +371,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
@@ -382,7 +382,7 @@ subroutine MphaseComputeMassBalancePatch(realization,mass_balance,mass_trapped)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 ! type(saturation_function_type) :: saturation_function_type
 
   PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
@@ -470,14 +470,14 @@ subroutine MphaseZeroMassBalDeltaPatch(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -524,14 +524,14 @@ subroutine MphaseUpdateMassBalancePatch(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -585,13 +585,13 @@ function MphaseInitGuessCheck(realization)
   ! Date: 12/10/07
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   
   PetscInt ::  MphaseInitGuessCheck
-  type(realization_type) :: realization
-  type(option_type), pointer:: option
+  type(realization_subsurface_type) :: realization
+  type(option_type), pointer :: option
   type(patch_type), pointer :: cur_patch
   PetscInt :: ipass, ipass0
   PetscErrorCode :: ierr    
@@ -624,7 +624,7 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
   ! Author: Chuan Lu
   ! Date: 12/10/07
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Field_module
   use Option_module
@@ -632,8 +632,8 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
 
   implicit none
  
-  PetscInt, intent(out):: reason
-  type(realization_type) :: realization  
+  PetscInt, intent(out) :: reason
+  type(realization_subsurface_type) :: realization  
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -664,16 +664,21 @@ subroutine MPhaseUpdateReasonPatch(reason,realization)
       iipha = int(iphase_loc_p(grid%nL2G(n)))
   
 ! ******** Too huge change in pressure ****************     
-      if (dabs(xx_p(n0 + 1) - yy_p(n0 + 1)) > (1000.0D0 * option%dpmxe)) then
+!geh: I don't believe that this code is being used.  Therefore, I will add an
+!     error message and let someone sort the use of option%dpmxe later
+        option%io_buffer = 'option%dpmxe and option%dtmpmxe needs to be ' // &
+          'refactored in MPhaseUpdateReasonPatch'
+        call printErrMsg(option)      
+!geh      if (dabs(xx_p(n0 + 1) - yy_p(n0 + 1)) > (1000.0D0 * option%dpmxe)) then
         re = 0; print *,'large change in p', xx_p(n0 + 1), yy_p(n0 + 1)
         exit
-      endif
+!geh      endif
 
 ! ******** Too huge change in temperature ****************
-      if (dabs(xx_p(n0 + 2) - yy_p(n0 + 2)) > (10.0D0 * option%dtmpmxe)) then
+!geh      if (dabs(xx_p(n0 + 2) - yy_p(n0 + 2)) > (10.0D0 * option%dtmpmxe)) then
         re = 0; print *,'large change in T', xx_p(n0 + 2), yy_p(n0 + 2)
         exit
-      endif
+!geh      endif
  
 ! ******* Check 0 <= sat/con <= 1 **************************
       select case(iipha)
@@ -736,11 +741,11 @@ subroutine MPhaseUpdateReason(reason, realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
@@ -783,7 +788,7 @@ end subroutine MPhaseUpdateReason
    
     use co2_span_wagner_module
      
-    use Realization_class
+    use Realization_Subsurface_class
     use Patch_module
     use Field_module
     use Grid_module
@@ -791,7 +796,7 @@ end subroutine MPhaseUpdateReason
     implicit none
     
     PetscInt :: MphaseInitGuessCheckPatch 
-    type(realization_type) :: realization
+    type(realization_subsurface_type) :: realization
     type(grid_type), pointer :: grid
     type(patch_type), pointer :: patch
     type(option_type), pointer :: option
@@ -849,10 +854,10 @@ subroutine MphaseUpdateAuxVars(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -877,7 +882,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Field_module
   use Option_module
@@ -888,7 +893,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1097,11 +1102,11 @@ subroutine MphaseInitializeTimestep(realization)
   ! Date: 02/20/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   call MphaseUpdateFixedAccumulation(realization)
 
@@ -1117,13 +1122,13 @@ subroutine MphaseUpdateSolution(realization)
   ! Date: 02/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Patch_module
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(field_type), pointer :: field
   type(patch_type), pointer :: cur_patch
@@ -1162,7 +1167,7 @@ subroutine MphaseUpdateSolutionPatch(realization)
   ! Date: 08/23/11, 02/27/14
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1172,7 +1177,7 @@ subroutine MphaseUpdateSolutionPatch(realization)
     
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -1249,10 +1254,10 @@ subroutine MphaseUpdateFixedAccumulation(realization)
   ! Date: 05/12/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -1277,7 +1282,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   ! Date: 05/12/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -1287,7 +1292,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1482,7 +1487,7 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
   PetscReal :: well_status, well_diameter
   PetscReal :: pressure_bh, well_factor, pressure_max, pressure_min
   PetscReal :: well_inj_water, well_inj_co2
-  PetscInt  :: np
+  PetscInt :: np
   PetscInt :: iflag
   PetscErrorCode :: ierr
   
@@ -1502,8 +1507,8 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
       if (msrc(1) > 0.d0) then ! H2O injection
-        call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
-                                     enth_src_h2o,ierr)
+        call EOSWaterDensity(tsrc,auxvar%pres,dw_kg,dw_mol,ierr)
+        call EOSWaterEnthalpy(tsrc,auxvar%pres,enth_src_h2o,ierr)
         ! J/kmol -> whatever units
         enth_src_h2o = enth_src_h2o * option%scale
                                      
@@ -1519,8 +1524,8 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
         ! store volumetric rate for ss_fluid_fluxes()
         qsrc_vol(1) = msrc(1)/dw_mol
       elseif (msrc(1) < 0.d0) then ! H2O extraction
-        call EOSWaterDensityEnthalpy(auxvar%temp,auxvar%pres,dw_kg,dw_mol, &
-                                     enth_src_h2o,ierr)
+        call EOSWaterDensity(auxvar%temp,auxvar%pres,dw_kg,dw_mol,ierr)
+        call EOSWaterEnthalpy(auxvar%temp,auxvar%pres,enth_src_h2o,ierr)
         ! J/kmol -> whatever
         enth_src_h2o = enth_src_h2o * option%scale                            
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
@@ -1638,8 +1643,8 @@ subroutine MphaseSourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
     ! injection well (well status = 2)
       if ( dabs(well_status - 2.D0) < 1.D-1) then
 
-        call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
-                                     enth_src_h2o,ierr)
+        call EOSWaterDensity(tsrc,auxvar%pres,dw_kg,dw_mol,ierr)
+        call EOSWaterEnthalpy(tsrc,auxvar%pres,enth_src_h2o,ierr)
         ! J/kmol -> whatever units
         enth_src_h2o = enth_src_h2o * option%scale
 
@@ -2071,7 +2076,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Discretization_module
   use Field_module
@@ -2085,7 +2090,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
   
   type(discretization_type), pointer :: discretization
@@ -2166,7 +2171,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   ! Date: 3/10/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Grid_module
@@ -2181,7 +2186,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   Vec, intent(in) :: xx
   PetscInt :: icri,ichange 
@@ -2497,7 +2502,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   ! 
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2513,7 +2518,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -3150,7 +3155,7 @@ subroutine MphaseJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3161,7 +3166,7 @@ subroutine MphaseJacobian(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -3226,7 +3231,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -3239,7 +3244,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -3913,7 +3918,7 @@ end subroutine MphaseCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine MphaseMaxChange(realization)
+subroutine MphaseMaxChange(realization,dpmax,dtmpmax,dsmax,dcmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -3921,74 +3926,56 @@ subroutine MphaseMaxChange(realization)
   ! Date: 01/15/08
   ! 
 
-  use Realization_class
-  use Patch_module
+  use Realization_Subsurface_class
   use Field_module
   use Option_module
   use Field_module
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(patch_type), pointer :: cur_patch
-  PetscReal :: dcmax, dsmax, max_c, max_S  
+  PetscReal :: dpmax, dtmpmax, dsmax, dcmax
   PetscErrorCode :: ierr 
 
   option => realization%option
   field => realization%field
 
-  option%dpmax=0.D0
-  option%dtmpmax=0.D0 
-  option%dcmax=0.D0
-  option%dsmax=0.D0
-  dcmax=0.D0
-  dsmax=0.D0
+  dpmax = 0.d0
+  dtmpmax = 0.d0
+  dcmax = 0.d0
+  dsmax = 0.d0
 
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
                 ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
+  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,dpmax, &
                      ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax, &
+  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,dtmpmax, &
                      ierr);CHKERRQ(ierr)
 
-  cur_patch => realization%patch_list%first
-  do
-    if (.not.associated(cur_patch)) exit
-    realization%patch => cur_patch
-    call MphaseMaxChangePatch(realization, max_c, max_s)
-    if (dcmax <max_c)  dcmax =max_c
-    if (dsmax <max_s)  dsmax =max_s
-    cur_patch => cur_patch%next
-  enddo
+  call MphaseMaxChangePatch(realization, dcmax, dsmax)
 
-  if (option%mycommsize >1)then
-    call MPI_Allreduce(dcmax,max_c,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
-                       MPI_MAX,option%mycomm,ierr)
-    call MPI_Allreduce(dsmax,max_s,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
-                       MPI_MAX,option%mycomm,ierr)
-    dcmax= max_C
-    dsmax = max_s
-  endif 
-  option%dcmax=dcmax
-  option%dsmax=dsmax
-  !print *, 'Max changes=', option%dpmax,option%dtmpmax, option%dcmax,option%dsmax
+  call MPI_Allreduce(dcmax,MPI_IN_PLACE,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                     MPI_MAX,option%mycomm,ierr)
+  call MPI_Allreduce(dsmax,MPI_IN_PLACE,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                     MPI_MAX,option%mycomm,ierr)
+
 end subroutine MphaseMaxChange
 
 ! ************************************************************************** !
 
 subroutine MphaseMaxChangePatch(realization,  max_c, max_s)
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Patch_module
   use Field_module
   use Option_module
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscReal :: max_s, max_c 
 
 
@@ -4055,14 +4042,14 @@ function MphaseGetTecplotHeader(realization,icolumn)
   ! Date: 02/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
 
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: MphaseGetTecplotHeader
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -4221,13 +4208,13 @@ subroutine MphaseSetPlotVariables(realization)
   ! Date: 10/15/12
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   type(output_variable_type) :: output_variable
   
   character(len=MAXWORDLENGTH) :: name, units
@@ -4529,11 +4516,11 @@ subroutine MphaseDestroy(realization)
   ! Date: 02/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   ! need to free array in aux vars
   !call MphaseAuxDestroy(patch%aux%mphase)

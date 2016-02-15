@@ -80,7 +80,7 @@ subroutine FluidPropertyRead(fluid_property,input,option)
   implicit none
   
   type(fluid_property_type) :: fluid_property
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword, word

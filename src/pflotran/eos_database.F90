@@ -50,7 +50,7 @@ function EOSDatabaseCreate(filename,dbase_name)
 
   class(eos_database_type), pointer :: EOSDatabaseCreate
   character(len=MAXWORDLENGTH) :: filename
-  character(len=MAXWORDLENGTH) :: dbase_name
+  character(len=*) :: dbase_name
 
   allocate(EOSDatabaseCreate)
   EOSDatabaseCreate%dbase_name = dbase_name 
@@ -202,7 +202,7 @@ subroutine EOSDatabaseRead(this,option)
   allocate(this%data(prop_idx,data_size))
 
   !create lookup table  
-  this%lookup_table => LookupTableCreateUniform(2)
+  this%lookup_table => LookupTableCreateUniform(TWO_INTEGER)
   this%lookup_table%dims(1) = this%num_dt
   this%lookup_table%dims(2) = this%num_dp
   allocate(this%lookup_table%axis1%values(this%num_dt))
@@ -263,7 +263,7 @@ function EOSPropPresent(this,prop_iname)
   implicit none
 
   class(eos_database_type) :: this
-  PetscInt, intent(in)  :: prop_iname
+  PetscInt, intent(in) :: prop_iname
   PetscBool :: EOSPropPresent
                                         
   EOSPropPresent = Initialized(this%prop_to_data_map(prop_iname))
@@ -292,9 +292,9 @@ subroutine EOSPropLinearInterp(this,T,P,prop_iname,prop_value,ierr)
   implicit none
 
   class(eos_database_type) :: this
-  PetscReal, intent(in)  :: T        ! temperature [C]
-  PetscReal, intent(in)  :: P        ! pressure [Pa]
-  PetscInt, intent(in)  :: prop_iname
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscInt, intent(in) :: prop_iname
   PetscReal, intent(out) :: prop_value ! database units (SI) 
   PetscErrorCode, intent(out) :: ierr
 

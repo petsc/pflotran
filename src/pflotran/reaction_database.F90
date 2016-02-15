@@ -870,7 +870,7 @@ subroutine BasisInit(reaction,option)
   PetscInt :: itemp_high, itemp_low
   PetscInt :: species_count, max_species_count
   PetscInt :: max_monod_count, max_inhibition_count
-  PetscInt :: monod_count, inhibition_count
+  PetscInt :: monod_count, inhibition_count, activation_energy_count
   PetscInt :: forward_count, max_forward_count
   PetscInt :: backward_count, max_backward_count
   PetscInt :: max_aq_species
@@ -3171,6 +3171,7 @@ subroutine BasisInit(reaction,option)
     max_inhibition_count = 0
     monod_count = 0
     inhibition_count = 0
+    activation_energy_count = 0
     cur_microbial_rxn => microbial%microbial_rxn_list
     do
       if (.not.associated(cur_microbial_rxn)) exit
@@ -3183,6 +3184,9 @@ subroutine BasisInit(reaction,option)
                                        reaction%offset_immobile, &
                                        reaction%immobile%names, &
                                        PETSC_TRUE,option)
+      if (cur_microbial_rxn%activation_energy > 0.d0) then
+        activation_energy_count = activation_energy_count + 1
+      endif
       temp_int = cur_microbial_rxn%dbaserxn%nspec
       if (temp_int > max_species_count) max_species_count = temp_int
       temp_int = MicrobialGetMonodCount(cur_microbial_rxn)
@@ -3198,6 +3202,12 @@ subroutine BasisInit(reaction,option)
     ! rate constant
     allocate(microbial%rate_constant(microbial%nrxn))
     microbial%rate_constant = 0.d0
+
+    ! activation_energy
+    if (activation_energy_count > 0) then
+      allocate(microbial%activation_energy(microbial%nrxn))
+      microbial%activation_energy = 0.d0
+    endif
     
     ! species ids and stoichiometry
     allocate(microbial%specid(0:max_species_count,microbial%nrxn))
@@ -3249,6 +3259,9 @@ subroutine BasisInit(reaction,option)
       irxn = irxn + 1
      
       microbial%rate_constant(irxn) = cur_microbial_rxn%rate_constant
+      if (associated(microbial%activation_energy)) then
+        microbial%activation_energy(irxn) = cur_microbial_rxn%activation_energy
+      endif
       
       microbial%specid(0,irxn) = dbaserxn%nspec
       do i = 1, dbaserxn%nspec

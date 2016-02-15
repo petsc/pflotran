@@ -67,7 +67,7 @@ subroutine DataMediatorDatasetRead(data_mediator,input,option)
   implicit none
   
   class(data_mediator_dataset_type) :: data_mediator
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword, word

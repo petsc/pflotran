@@ -173,13 +173,13 @@ subroutine HDF5ReadDatasetInteger2D(filename,dataset_name,read_option,option, &
   ! in
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  integer                        :: read_option
-  type(option_type)              :: option
+  integer :: read_option
+  type(option_type) :: option
   
   ! out
-  PetscInt,pointer               :: data(:,:)
-  PetscInt                       :: data_dims(2)
-  PetscInt                       :: dataset_dims(2)
+  PetscInt,pointer :: data(:,:)
+  PetscInt :: data_dims(2)
+  PetscInt :: dataset_dims(2)
   
   ! local
   PetscInt :: file_id
@@ -251,13 +251,13 @@ subroutine HDF5ReadDatasetReal2D(filename,dataset_name,read_option,option, &
   ! in
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  integer                        :: read_option
-  type(option_type)              :: option
+  integer :: read_option
+  type(option_type) :: option
   
   ! out
-  PetscReal,pointer              :: data(:,:)
-  PetscInt                       :: data_dims(2)
-  PetscInt                       :: dataset_dims(2)
+  PetscReal,pointer :: data(:,:)
+  PetscInt :: data_dims(2)
+  PetscInt :: dataset_dims(2)
   
   ! local
   integer :: file_id
@@ -541,11 +541,14 @@ subroutine HDF5ReadDbase(filename,option)
   
   PetscInt :: icount
   PetscReal, allocatable :: buffer(:)
-  PetscInt :: num_objects, i_object, object_type, dummy_int
+  PetscInt :: dummy_int
   PetscInt :: value_index
   character(len=MAXWORDLENGTH) :: object_name, word
 #if defined(PETSC_HAVE_HDF5)  
   integer(HID_T) :: file_id
+  integer(HID_T) :: num_objects
+  integer(HID_T) :: i_object
+  integer(HID_T) :: object_type
   integer(HID_T) :: prop_id
   integer(HID_T) :: dataset_id
   integer(HID_T) :: file_space_id

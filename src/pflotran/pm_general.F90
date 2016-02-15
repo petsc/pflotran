@@ -1,7 +1,7 @@
 module PM_General_class
 
   use PM_Base_class
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
   
   use PFLOTRAN_Constants_module
 
@@ -17,15 +17,7 @@ module PM_General_class
 #include "petsc/finclude/petscmat.h90"
 #include "petsc/finclude/petscsnes.h"
 
-  type, public, extends(pm_subsurface_type) :: pm_general_type
-    PetscReal :: dPmax
-    PetscReal :: dTmax
-    PetscReal :: dXmax
-    PetscReal :: dSmax
-    PetscReal :: dPmax_allowable
-    PetscReal :: dTmax_allowable
-    PetscReal :: dXmax_allowable
-    PetscReal :: dSmax_allowable
+  type, public, extends(pm_subsurface_flow_type) :: pm_general_type
     PetscInt, pointer :: max_change_ivar(:)
     PetscInt, pointer :: max_change_isubvar(:)
   contains
@@ -76,15 +68,6 @@ function PMGeneralCreate()
 #endif  
 
   allocate(general_pm)
-
-  general_pm%dPmax = 0.d0
-  general_pm%dTmax = 0.d0
-  general_pm%dXmax = 0.d0
-  general_pm%dSmax = 0.d0
-  general_pm%dPmax_allowable = 5.d5
-  general_pm%dTmax_allowable = 5.d0
-  general_pm%dXmax_allowable = 0.5d0
-  general_pm%dSmax_allowable = 1.d0
   allocate(general_pm%max_change_ivar(6))
   general_pm%max_change_ivar = [LIQUID_PRESSURE, GAS_PRESSURE, AIR_PRESSURE, &
                                 LIQUID_MOLE_FRACTION, TEMPERATURE, &
@@ -95,7 +78,7 @@ function PMGeneralCreate()
                                        ! 2 = air in xmol(air,liquid)
   general_pm%max_change_isubvar = [0,0,0,2,0,0]
   
-  call PMSubsurfaceCreate(general_pm)
+  call PMSubsurfaceFlowCreate(general_pm)
   general_pm%name = 'PMGeneral'
 
   PMGeneralCreate => general_pm
@@ -119,13 +102,14 @@ subroutine PMGeneralRead(this,input)
 
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   character(len=MAXWORDLENGTH) :: keyword, word
   class(pm_general_type) :: this
   type(option_type), pointer :: option
   PetscReal :: tempreal
   character(len=MAXSTRINGLENGTH) :: error_string
+  PetscBool :: found
 
   option => this%option
 
@@ -140,8 +124,12 @@ subroutine PMGeneralRead(this,input)
 
     call InputReadWord(input,option,keyword,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword',error_string)
-    call StringToUpper(keyword)   
-      
+    call StringToUpper(keyword)
+    
+    found = PETSC_FALSE
+    call PMSubsurfaceFlowReadSelectCase(this,input,keyword,found,option)    
+    if (found) cycle
+    
     select case(trim(keyword))
       case('ITOL_SCALED_RESIDUAL')
         call InputReadDouble(input,option,general_itol_scaled_res)
@@ -192,6 +180,7 @@ subroutine PMGeneralRead(this,input)
       case('DAMPING_FACTOR')
         call InputReadDouble(input,option,general_damping_factor)
         call InputErrorMsg(input,option,'damping factor',error_string)
+#if 0        
       case('GOVERN_MAXIMUM_PRESSURE_CHANGE')
         call InputReadDouble(input,option,this%dPmax_allowable)
         call InputErrorMsg(input,option,'maximum allowable pressure change', &
@@ -210,6 +199,7 @@ subroutine PMGeneralRead(this,input)
         call InputErrorMsg(input,option, &
                            'maximum allowable mole fraction change', &
                            error_string)
+#endif
       case('DEBUG_CELL')
         call InputReadInt(input,option,general_debug_cell_id)
         call InputErrorMsg(input,option,'debug cell id',error_string)
@@ -267,12 +257,12 @@ recursive subroutine PMGeneralInitializeRun(this)
                                 this%max_change_isubvar(i))
   enddo
 
-  ! this call must come before PMSubsurfaceInitializeRun() so that auxvars
+  ! this call must come before PMSubsurfaceFlowInitializeRun() so that auxvars
   ! are updated at beginning of run and prior to initial output.
   call GeneralSetReferencePressures(this%realization)
 
   ! call parent implementation
-  call PMSubsurfaceInitializeRun(this)
+  call PMSubsurfaceFlowInitializeRun(this)
 
 end subroutine PMGeneralInitializeRun
 
@@ -295,18 +285,19 @@ subroutine PMGeneralInitializeTimestep(this)
   
   class(pm_general_type) :: this
 
-  call PMSubsurfaceInitializeTimestepA(this)                                 
+  call PMSubsurfaceFlowInitializeTimestepA(this)                                 
 !geh:remove   everywhere                                
   call MaterialAuxVarCommunicate(this%comm1, &
                                  this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc,TORTUOSITY,0)
+                                 this%realization%field%work_loc,TORTUOSITY, &
+                                 ZERO_INTEGER)
                                  
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," GENERAL FLOW ",64("="))')
   endif
   
   call GeneralInitializeTimestep(this%realization)
-  call PMSubsurfaceInitializeTimestepB(this)                                 
+  call PMSubsurfaceFlowInitializeTimestepB(this)                                 
   
 end subroutine PMGeneralInitializeTimestep
 
@@ -368,10 +359,10 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     fac = 0.33d0
     umin = 0.d0
   else
-    up = this%dPmax_allowable/(this%dPmax+0.1)
-    ut = this%dTmax_allowable/(this%dTmax+1.d-5)
-    ux = this%dXmax_allowable/(this%dXmax+1.d-5)
-    us = this%dSmax_allowable/(this%dSmax+1.d-5)
+    up = this%pressure_change_governor/(this%max_pressure_change+0.1)
+    ut = this%temperature_change_governor/(this%max_temperature_change+1.d-5)
+    ux = this%xmol_change_governor/(this%max_xmol_change+1.d-5)
+    us = this%saturation_change_governor/(this%max_saturation_change+1.d-5)
     umin = min(up,ut,ux,us)
   endif
   ifac = max(min(num_newton_iterations,size(tfac)),1)
@@ -399,7 +390,7 @@ subroutine PMGeneralResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
-  call PMSubsurfaceUpdatePropertiesNI(this)
+  call PMSubsurfaceFlowUpdatePropertiesNI(this)
   call GeneralResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMGeneralResidual
@@ -433,7 +424,7 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Option_module
@@ -601,7 +592,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
-#endif !LIMIT_MAX_PRESSURE_CHANGE
+#endif 
+!LIMIT_MAX_PRESSURE_CHANGE
 #ifdef TRUNCATE_LIQUID_PRESSURE
         ! truncate liquid pressure change to prevent liquid pressure from 
         ! dropping below the air pressure while in the liquid state
@@ -641,7 +633,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
-#endif !TRUNCATE_LIQUID_PRESSURE  
+#endif 
+!TRUNCATE_LIQUID_PRESSURE  
 #ifdef LIMIT_MAX_TEMPERATURE_CHANGE
         if (dabs(del_temperature) > max_temperature_change) then
           temp_real = dabs(max_temperature_change/del_temperature)
@@ -668,7 +661,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
-#endif !LIMIT_MAX_TEMPERATURE_CHANGE        
+#endif 
+!LIMIT_MAX_TEMPERATURE_CHANGE        
       case(TWO_PHASE_STATE)
         gas_pressure_index = offset + GENERAL_GAS_PRESSURE_DOF
 !        air_pressure_index = offset + 2
@@ -747,7 +741,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
             temp_scale = min(temp_scale,temp_real)
           endif
         endif
-#endif !TRUNCATE_GAS_PRESSURE
+#endif 
+!TRUNCATE_GAS_PRESSURE
 #ifdef TRUNCATE_AIR_PRESSURE
         if (air_pressure1 <= 0.d0) then
           if (dabs(del_air_pressure) > 1.d-40) then
@@ -777,7 +772,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
             temp_scale = min(temp_scale,temp_real)
           endif
         endif
-#endif !TRUNCATE_AIR_PRESSURE
+#endif 
+!TRUNCATE_AIR_PRESSURE
 #if defined(TRUNCATE_GAS_PRESSURE) && defined(TRUNCATE_AIR_PRESSURE)
         ! have to factor in scaled update from previous conditionals
         gas_pressure1 = gas_pressure0 - temp_scale * del_gas_pressure
@@ -831,7 +827,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
-#endif !TRUNCATE_GAS_PRESSURE && TRUNCATE_AIR_PRESSURE
+#endif 
+!TRUNCATE_GAS_PRESSURE && TRUNCATE_AIR_PRESSURE
 #ifdef LIMIT_MAX_SATURATION_CHANGE
         if (dabs(del_saturation) > max_saturation_change) then
           temp_real = dabs(max_saturation_change/del_saturation)
@@ -859,7 +856,8 @@ subroutine PMGeneralCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 #endif
           temp_scale = min(temp_scale,temp_real)
         endif
-#endif !LIMIT_MAX_SATURATION_CHANGE        
+#endif 
+!LIMIT_MAX_SATURATION_CHANGE        
       case(GAS_STATE) 
         gas_pressure_index = offset + GENERAL_GAS_PRESSURE_DOF
         air_pressure_index = offset + GENERAL_GAS_STATE_AIR_PRESSURE_DOF
@@ -925,7 +923,7 @@ subroutine PMGeneralCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   use Global_Aux_module
   use Grid_module
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Patch_module
@@ -1235,7 +1233,7 @@ subroutine PMGeneralTimeCut(this)
   
   class(pm_general_type) :: this
   
-  call PMSubsurfaceTimeCut(this)
+  call PMSubsurfaceFlowTimeCut(this)
   call GeneralTimeCut(this%realization)
 
 end subroutine PMGeneralTimeCut
@@ -1255,7 +1253,7 @@ subroutine PMGeneralUpdateSolution(this)
   
   class(pm_general_type) :: this
   
-  call PMSubsurfaceUpdateSolution(this)
+  call PMSubsurfaceFlowUpdateSolution(this)
   call GeneralUpdateSolution(this%realization)
   call GeneralMapBCAuxVarsToGlobal(this%realization)
 
@@ -1288,7 +1286,7 @@ subroutine PMGeneralMaxChange(this)
   ! 
 
   use Realization_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Grid_module
@@ -1301,7 +1299,7 @@ subroutine PMGeneralMaxChange(this)
   
   class(pm_general_type) :: this
   
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
@@ -1322,6 +1320,9 @@ subroutine PMGeneralMaxChange(this)
 
   max_change_global = 0.d0
   max_change_local = 0.d0
+  
+  ! max change variables: [LIQUID_PRESSURE, GAS_PRESSURE, AIR_PRESSURE, &
+  !                        LIQUID_MOLE_FRACTION, TEMPERATURE, GAS_SATURATION]
   do i = 1, 6
     call RealizationGetVariable(realization,field%work, &
                                 this%max_change_ivar(i), &
@@ -1358,11 +1359,14 @@ subroutine PMGeneralMaxChange(this)
       & " dsg= ",1pe12.4)') &
       max_change_global(1:6)
   endif
+
+  ! max change variables: [LIQUID_PRESSURE, GAS_PRESSURE, AIR_PRESSURE, &
+  !                        LIQUID_MOLE_FRACTION, TEMPERATURE, GAS_SATURATION]
   ! ignore air pressure as it jumps during phase change
-  this%dPmax = maxval(max_change_global(1:2))
-  this%dXmax = max_change_global(4)
-  this%dTmax = max_change_global(5)
-  this%dSmax = max_change_global(6)
+  this%max_pressure_change = maxval(max_change_global(1:2))
+  this%max_xmol_change = max_change_global(4)
+  this%max_temperature_change = max_change_global(5)
+  this%max_saturation_change = max_change_global(6)
   
 end subroutine PMGeneralMaxChange
 
@@ -1407,7 +1411,7 @@ subroutine PMGeneralCheckpointBinary(this,viewer)
   call GlobalGetAuxVarVecLoc(this%realization, &
                              this%realization%field%iphas_loc, &
                              STATE,ZERO_INTEGER)
-  call PMSubsurfaceCheckpointBinary(this,viewer)
+  call PMSubsurfaceFlowCheckpointBinary(this,viewer)
   
 end subroutine PMGeneralCheckpointBinary
 
@@ -1430,7 +1434,7 @@ subroutine PMGeneralRestartBinary(this,viewer)
   class(pm_general_type) :: this
   PetscViewer :: viewer
   
-  call PMSubsurfaceRestartBinary(this,viewer)
+  call PMSubsurfaceFlowRestartBinary(this,viewer)
   call GlobalSetAuxVarVecLoc(this%realization, &
                              this%realization%field%iphas_loc, &
                              STATE,ZERO_INTEGER)
@@ -1463,7 +1467,7 @@ subroutine PMGeneralDestroy(this)
 
   ! preserve this ordering
   call GeneralDestroy(this%realization)
-  call PMSubsurfaceDestroy(this)
+  call PMSubsurfaceFlowDestroy(this)
   
 end subroutine PMGeneralDestroy
   

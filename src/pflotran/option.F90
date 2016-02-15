@@ -48,7 +48,6 @@ module Option_module
   
     PetscInt :: fid_out
     
-    character(len=MAXWORDLENGTH) :: simulation_mode
     ! defines the mode (e.g. mph, richards, vadose, etc.
     character(len=MAXWORDLENGTH) :: flowmode
     PetscInt :: iflowmode
@@ -77,11 +76,11 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: surf_initialize_flow_filename
     character(len=MAXSTRINGLENGTH) :: surf_restart_filename
 
-    PetscBool  :: geomech_on
-    PetscInt  :: ngeomechdof
-    PetscInt  :: n_stress_strain_dof
+    PetscBool :: geomech_on
+    PetscInt :: ngeomechdof
+    PetscInt :: n_stress_strain_dof
     PetscReal :: geomech_time
-    PetscInt  :: geomech_subsurf_coupling
+    PetscInt :: geomech_subsurf_coupling
     PetscReal :: geomech_gravity(3)
     PetscBool :: sec_vars_update
     PetscInt :: air_pressure_id
@@ -129,10 +128,6 @@ module Option_module
     PetscBool :: match_waypoint
     PetscReal :: refactor_dt
   
-      ! Basically our target number of newton iterations per time step.
-    PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
-    PetscReal :: dpmax,dtmpmax,dsmax,dcmax
-
     PetscReal :: gravity(3)
     
     PetscReal :: scale
@@ -147,10 +142,6 @@ module Option_module
     PetscReal :: reference_porosity
     PetscReal :: reference_saturation
     
-    PetscReal :: pressure_dampening_factor
-    PetscReal :: saturation_change_limit
-    PetscReal :: pressure_change_limit
-    PetscReal :: temperature_change_limit
     PetscBool :: converged
     
     PetscReal :: infnorm_res_sec  ! inf. norm of secondary continuum rt residual
@@ -166,10 +157,6 @@ module Option_module
     PetscReal :: restart_time
     character(len=MAXSTRINGLENGTH) :: restart_filename
     character(len=MAXSTRINGLENGTH) :: input_filename
-    PetscBool :: checkpoint_flag
-    PetscInt :: checkpoint_frequency
-    PetscBool :: checkpoint_format_binary
-    PetscBool :: checkpoint_format_hdf5
     
     PetscLogDouble :: start_time
     PetscBool :: wallclock_stop_flag
@@ -373,7 +360,6 @@ subroutine OptionInitAll(option)
 
   option%out_of_table = PETSC_FALSE
 
-  option%simulation_mode = 'SUBSURFACE'
   option%subsurface_simulation_type = SUBSURFACE_SIM_TYPE
  
   option%rel_perm_aveg = UPWIND
@@ -477,10 +463,6 @@ subroutine OptionInitRealization(option)
   option%reference_porosity = 0.25d0
   option%reference_saturation = 1.d0
   
-  option%pressure_dampening_factor = 0.d0
-  option%saturation_change_limit = 0.d0
-  option%pressure_change_limit = 0.d0
-  option%temperature_change_limit = 0.d0
   option%converged = PETSC_FALSE
   
   option%infnorm_res_sec = 0.d0
@@ -494,16 +476,6 @@ subroutine OptionInitRealization(option)
 
   option%gravity(:) = 0.d0
   option%gravity(3) = -9.8068d0    ! m/s^2
-
-  option%dpmxe = 5.d5
-  option%dtmpmxe = 5.d0
-  option%dsmxe = 0.5d0
-  option%dcmxe = 1.d0
-
-  option%dpmax = 0.d0
-  option%dtmpmax = 0.d0
-  option%dsmax = 0.d0
-  option%dcmax = 0.d0
 
   !physical constants and defult variables
 !  option%difaq = 1.d-9 ! m^2/s read from input file
@@ -519,10 +491,6 @@ subroutine OptionInitRealization(option)
   option%restart_flag = PETSC_FALSE
   option%restart_filename = ""
   option%restart_time = UNINITIALIZED_DOUBLE
-  option%checkpoint_flag = PETSC_FALSE
-  option%checkpoint_frequency = huge(option%checkpoint_frequency)
-  option%checkpoint_format_binary = PETSC_TRUE
-  option%checkpoint_format_hdf5 = PETSC_FALSE
   
   option%start_time = 0.d0
   option%wallclock_stop_flag = PETSC_FALSE
@@ -611,9 +579,6 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', &
                              option%restart_filename, &
                              option%restart_flag, ierr);CHKERRQ(ierr)
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', &
-                          option%checkpoint_frequency, &
-                          option%checkpoint_flag, ierr);CHKERRQ(ierr)
   ! check on possible modes                                                     
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &

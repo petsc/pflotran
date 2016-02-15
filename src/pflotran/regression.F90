@@ -107,7 +107,7 @@ subroutine RegressionRead(regression,input,option)
   implicit none
   
   type(regression_type), pointer :: regression
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword, word
@@ -192,7 +192,7 @@ subroutine RegressionCreateMapping(regression,realization)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Discretization_module
   
@@ -203,7 +203,7 @@ subroutine RegressionCreateMapping(regression,realization)
 #include "petsc/finclude/petscviewer.h"
 
   type(regression_type), pointer :: regression
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   IS :: is_petsc
   PetscInt, allocatable :: int_array(:)
@@ -467,7 +467,7 @@ subroutine RegressionOutput(regression,realization,flow_timestepper, &
   ! Date: 10/12/12
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Timestepper_BE_class
   use Option_module
   use Discretization_module
@@ -479,7 +479,7 @@ subroutine RegressionOutput(regression,realization,flow_timestepper, &
   implicit none
   
   type(regression_type), pointer :: regression
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   ! these must be pointers as they can be null
   class(timestepper_BE_type), pointer :: flow_timestepper
   class(timestepper_BE_type), pointer :: tran_timestepper  

@@ -31,6 +31,7 @@ module Reaction_Immobile_Aux_module
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: species_name
     PetscReal :: rate_constant
+    PetscReal :: half_life
     PetscBool :: print_me
     type(immobile_decay_rxn_type), pointer :: next
   end type immobile_decay_rxn_type
@@ -183,6 +184,7 @@ function ImmobileDecayRxnCreate()
   rxn%id = 0
   rxn%species_name = ''
   rxn%rate_constant = 0.d0
+  rxn%half_life = 0.d0
   rxn%print_me = PETSC_FALSE
   nullify(rxn%next)
   

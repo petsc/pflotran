@@ -64,13 +64,13 @@ subroutine Flash2TimeCut(realization)
   ! Date: 9/13/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -91,13 +91,13 @@ subroutine Flash2Setup(realization)
   ! Date: 9/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 !  use span_wagner_module
 !  use co2_sw_module
 !  use span_wagner_spline_module 
    
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
  
@@ -123,7 +123,7 @@ subroutine Flash2SetupPatch(realization)
   ! Date: 10/1/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -132,7 +132,7 @@ subroutine Flash2SetupPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -238,10 +238,10 @@ subroutine Flash2ComputeMassBalance(realization,mass_balance,mass_trapped)
 ! Date: 02/22/08
 !
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: mass_trapped(realization%option%nphase)
 
@@ -270,7 +270,7 @@ subroutine Flash2ComputeMassBalancePatch(realization,mass_balance,mass_trapped)
 ! Date: 12/19/08
 !
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
@@ -281,7 +281,7 @@ subroutine Flash2ComputeMassBalancePatch(realization,mass_balance,mass_trapped)
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 ! type(saturation_function_type) :: saturation_function_type
 
   PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
@@ -369,14 +369,14 @@ subroutine FLASH2ZeroMassBalDeltaPatch(realization)
 ! Date: 12/19/08
 !
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -423,14 +423,14 @@ subroutine FLASH2UpdateMassBalancePatch(realization)
 ! Date: 12/19/08
 !
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -484,13 +484,13 @@ end subroutine FLASH2UpdateMassBalancePatch
   ! Date: 12/10/07
   !
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
 
   PetscInt ::  Flash2InitGuessCheck
-  type(realization_type) :: realization
-  type(option_type), pointer:: option
+  type(realization_subsurface_type) :: realization
+  type(option_type), pointer :: option
   type(patch_type), pointer :: cur_patch
   PetscInt :: ipass, ipass0
   PetscErrorCode :: ierr
@@ -527,7 +527,7 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
   ! Date: 10/10/08
   ! 
 
-   use Realization_class
+   use Realization_Subsurface_class
    use Patch_module
    use Field_module
    use Option_module
@@ -536,8 +536,8 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
   implicit none
 
 
-  PetscInt, intent(out):: reason
-  type(realization_type) :: realization  
+  PetscInt, intent(out) :: reason
+  type(realization_subsurface_type) :: realization  
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -566,16 +566,21 @@ subroutine Flash2UpdateReasonPatch(reason,realization)
       n0=(n-1)* option%nflowdof
   
 ! ******** Too huge change in pressure ****************     
-      if (dabs(xx_p(n0 + 1) - yy_p(n0 + 1)) > (10.0D0 * option%dpmxe)) then
+!geh: I don't believe that this code is being used.  Therefore, I will add an
+!     error message and let someone sort the use of option%dpmxe later
+        option%io_buffer = 'option%dpmxe and option%dtmpmxe needs to be ' // &
+          'refactored in Flash2UpdateReasonPatch'
+        call printErrMsg(option)
+!geh      if (dabs(xx_p(n0 + 1) - yy_p(n0 + 1)) > (10.0D0 * option%dpmxe)) then
         re=0; print *,'huge change in p', xx_p(n0 + 1), yy_p(n0 + 1)
         exit
-      endif
+!geh      endif
 
 ! ******** Too huge change in temperature ****************
-      if (dabs(xx_p(n0 + 2) - yy_p(n0 + 2)) > (10.0D0 * option%dtmpmxe)) then
+!geh      if (dabs(xx_p(n0 + 2) - yy_p(n0 + 2)) > (10.0D0 * option%dtmpmxe)) then
         re=0; print *,'huge change in T', xx_p(n0 + 2), yy_p(n0 + 2)
         exit
-      endif
+!geh      endif
  
 ! ******* Check 0<=total mass fraction <=1 **************************
       if (xx_p(n0 + 3) > 1.D0) then
@@ -605,11 +610,11 @@ subroutine Flash2UpdateReason(reason, realization)
   ! Date: 10/10/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
@@ -651,7 +656,7 @@ end subroutine Flash2UpdateReason
    
     use co2_span_wagner_module
      
-    use Realization_class
+    use Realization_Subsurface_class
     use Patch_module
     use Field_module
     use Grid_module
@@ -659,7 +664,7 @@ end subroutine Flash2UpdateReason
     implicit none
     
     PetscInt :: Flash2InitGuessCheckPatch 
-    type(realization_type) :: realization
+    type(realization_subsurface_type) :: realization
     type(grid_type), pointer :: grid
     type(patch_type), pointer :: patch
     type(option_type), pointer :: option
@@ -719,10 +724,10 @@ subroutine Flash2UpdateAuxVars(realization)
   ! Date: 10/10/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -747,7 +752,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Field_module
   use Option_module
@@ -758,7 +763,7 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -915,11 +920,11 @@ subroutine Flash2InitializeTimestep(realization)
   ! Date: 10/12/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   call Flash2UpdateFixedAccumulation(realization)
 
@@ -935,11 +940,11 @@ subroutine Flash2UpdateSolution(realization)
   ! Date: 10/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   
@@ -962,10 +967,10 @@ subroutine Flash2UpdateFixedAccumulation(realization)
   ! Date: 10/12/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -990,7 +995,7 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
   ! Date: 10/12/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -999,7 +1004,7 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1163,7 +1168,7 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
   PetscReal :: well_status, well_diameter
   PetscReal :: pressure_bh, well_factor, pressure_max, pressure_min
   PetscReal :: well_inj_water, well_inj_co2
-  PetscInt  :: np
+  PetscInt :: np
   PetscInt :: iflag
   PetscErrorCode :: ierr
   
@@ -1181,8 +1186,8 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
       msrc(1) =  msrc(1) / FMWH2O
       msrc(2) =  msrc(2) / FMWCO2
       if (msrc(1) /= 0.d0) then ! H2O injection
-        call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
-                                     enth_src_h2o,ierr) 
+        call EOSWaterDensity(tsrc,auxvar%pres,dw_kg,dw_mol,ierr) 
+        call EOSWaterEnthalpy(tsrc,auxvar%pres,enth_src_h2o,ierr) 
         enth_src_h2o = enth_src_h2o*option%scale ! J/kmol -> whatever units
 
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
@@ -1292,8 +1297,8 @@ subroutine Flash2SourceSink(mmsrc,nsrcpara,psrc,tsrc,hsrc,csrc,auxvar,isrctype,R
     ! injection well (well status = 2)
       if (dabs(well_status - 2D0) < 1D-1) then
 
-        call EOSWaterDensityEnthalpy(tsrc,auxvar%pres,dw_kg,dw_mol, &
-                                     enth_src_h2o,ierr)
+        call EOSWaterDensity(tsrc,auxvar%pres,dw_kg,dw_mol,ierr)
+        call EOSWaterEnthalpy(tsrc,auxvar%pres,enth_src_h2o,ierr)
         enth_src_h2o = enth_src_h2o * option%scale ! J/kmol -> whatever units
         Dq = msrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
@@ -1981,7 +1986,7 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   ! Date: 10/10/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Discretization_module
   use Field_module
@@ -1997,7 +2002,7 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -2093,7 +2098,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   ! 
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2107,7 +2112,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -2614,7 +2619,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   ! 
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2633,7 +2638,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -2901,7 +2906,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   ! 
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2914,7 +2919,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -3058,7 +3063,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   ! 
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3072,7 +3077,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -3300,7 +3305,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,realization,ierr)
   ! Date: 10/10/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3313,7 +3318,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,realization,ierr)
   Vec :: xx
   Mat :: A, B, J
   MatType :: mat_type
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
   PetscViewer :: viewer
   type(patch_type), pointer :: cur_patch
@@ -3391,7 +3396,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -3403,7 +3408,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -3947,7 +3952,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -3959,7 +3964,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -4347,7 +4352,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -4359,7 +4364,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -4761,7 +4766,7 @@ end subroutine Flash2CreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine Flash2MaxChange(realization)
+subroutine Flash2MaxChange(realization,dpmax,dtmpmax,dsmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -4769,38 +4774,35 @@ subroutine Flash2MaxChange(realization)
   ! Date: 01/15/08
   ! 
 
-  use Realization_class
-  use Patch_module
+  use Realization_Subsurface_class
   use Field_module
   use Option_module
   use Field_module
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(patch_type), pointer :: cur_patch
-  PetscReal :: dsmax, max_S  
   PetscErrorCode :: ierr 
+  
+  PetscReal :: dpmax, dtmpmax, dsmax 
 
   option => realization%option
   field => realization%field
 
-  option%dpmax=0.D0
-  option%dtmpmax=0.D0 
-  option%dcmax=0.D0
-  option%dsmax=0.D0
-  dsmax=0.D0
+  dpmax = 0.d0
+  dtmpmax = 0.d0
+  dsmax = 0.d0
 
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
                 ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
+  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,dpmax, &
                      ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax, &
+  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,dtmpmax, &
                      ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dsmax, &
+  call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,dsmax, &
                      ierr);CHKERRQ(ierr)
 
 end subroutine Flash2MaxChange
@@ -4816,14 +4818,14 @@ function Flash2GetTecplotHeader(realization, icolumn)
   ! Date: 10/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
 
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: Flash2GetTecplotHeader
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -4973,13 +4975,13 @@ subroutine Flash2SetPlotVariables(realization)
   ! Date: 10/15/12
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
   
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   type(output_variable_type) :: output_variable
   
   character(len=MAXWORDLENGTH) :: name, units
@@ -5094,11 +5096,11 @@ subroutine Flash2Destroy(realization)
   ! Date: 10/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   ! need to free array in aux vars
   !call Flash2AuxDestroy(patch%aux%Flash2)

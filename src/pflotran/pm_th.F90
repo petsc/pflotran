@@ -1,10 +1,10 @@
 module PM_TH_class
 
   use PM_Base_class
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
 !geh: using TH_module here fails with gfortran (internal compiler error)
 !  use TH_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Communicator_Base_module
   use Option_module
   
@@ -22,7 +22,7 @@ module PM_TH_class
 #include "petsc/finclude/petscmat.h90"
 #include "petsc/finclude/petscsnes.h"
 
-  type, public, extends(pm_subsurface_type) :: pm_th_type
+  type, public, extends(pm_subsurface_flow_type) :: pm_th_type
     class(communicator_type), pointer :: commN
   contains
     procedure, public :: Setup => PMTHSetup
@@ -71,7 +71,7 @@ function PMTHCreate()
 
   nullify(th_pm%commN)
 
-  call PMSubsurfaceCreate(th_pm)
+  call PMSubsurfaceFlowCreate(th_pm)
   th_pm%name = 'PMTH'
 
   PMTHCreate => th_pm
@@ -96,11 +96,12 @@ subroutine PMTHRead(this,input)
   implicit none
   
   class(pm_th_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   type(option_type), pointer :: option
+  PetscBool :: found
 
   option => this%option
   
@@ -116,6 +117,10 @@ subroutine PMTHRead(this,input)
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword',error_string)
     call StringToUpper(word)
+
+    found = PETSC_FALSE
+    call PMSubsurfaceFlowReadSelectCase(this,input,word,found,option)
+    if (found) cycle
     
     select case(trim(word))
       case('ITOL_SCALED_RESIDUAL')
@@ -180,7 +185,7 @@ subroutine PMTHSetup(this)
   
   class(pm_th_type) :: this
 
-  call PMSubsurfaceSetup(this)
+  call PMSubsurfaceFlowSetup(this)
   
   ! set up communicator
   select case(this%realization%discretization%itype)
@@ -209,7 +214,7 @@ subroutine PMTHInitializeTimestep(this)
   
   class(pm_th_type) :: this
 
-  call PMSubsurfaceInitializeTimestepA(this)
+  call PMSubsurfaceFlowInitializeTimestepA(this)
 
   ! update porosity
   call this%comm1%LocalToLocal(this%realization%field%icap_loc, &
@@ -224,7 +229,7 @@ subroutine PMTHInitializeTimestep(this)
   endif
   
   call THInitializeTimestep(this%realization)
-  call PMSubsurfaceInitializeTimestepB(this)
+  call PMSubsurfaceFlowInitializeTimestepB(this)
   
 end subroutine PMTHInitializeTimestep
 
@@ -299,8 +304,8 @@ subroutine PMTHUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     fac = 0.33d0
     ut = 0.d0
   else
-    up = this%option%dpmxe/(this%option%dpmax+0.1)
-    utmp = this%option%dtmpmxe/(this%option%dtmpmax+1.d-5)
+    up = this%pressure_change_governor/(this%max_pressure_change+0.1)
+    utmp = this%temperature_change_governor/(this%max_temperature_change+1.d-5)
     ut = min(up,utmp)
   endif
   dtt = fac * dt * (1.d0 + ut)
@@ -372,7 +377,7 @@ subroutine PMTHCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! Date: 03/90/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Option_module
@@ -411,12 +416,12 @@ subroutine PMTHCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   TH_auxvars => patch%aux%TH%auxvars
   global_auxvars => patch%aux%Global%auxvars
 
-  if (dabs(option%pressure_change_limit) > 0.d0) then
+  if (Initialized(this%pressure_change_limit)) then
 
     call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(X,X_p,ierr);CHKERRQ(ierr)
 
-    press_limit = dabs(option%pressure_change_limit)
+    press_limit = dabs(this%pressure_change_limit)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
@@ -438,12 +443,12 @@ subroutine PMTHCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 
   endif
   
-  if (dabs(option%temperature_change_limit) > 0.d0) then
+  if (dabs(this%temperature_change_limit) > 0.d0) then
       
     call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(X,X_p,ierr);CHKERRQ(ierr)
 
-    temp_limit = dabs(option%temperature_change_limit)
+    temp_limit = dabs(this%temperature_change_limit)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       iend = local_id*option%nflowdof
@@ -465,10 +470,10 @@ subroutine PMTHCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   endif
 
 
-  if (dabs(option%pressure_dampening_factor) > 0.d0) then
+  if (Initialized(this%pressure_dampening_factor)) then
     ! P^p+1 = P^p - dP^p
     P_R = option%reference_pressure
-    scale = option%pressure_dampening_factor
+    scale = this%pressure_dampening_factor
 
     call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(X,X_p,ierr);CHKERRQ(ierr)
@@ -525,7 +530,7 @@ subroutine PMTHCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   ! Date: 03/90/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Option_module
@@ -640,7 +645,7 @@ subroutine PMTHTimeCut(this)
   
   class(pm_th_type) :: this
   
-  call PMSubsurfaceTimeCut(this)
+  call PMSubsurfaceFlowTimeCut(this)
   call THTimeCut(this%realization)
 
 end subroutine PMTHTimeCut
@@ -661,7 +666,7 @@ subroutine PMTHUpdateSolution(this)
   
   class(pm_th_type) :: this
   
-  call PMSubsurfaceUpdateSolution(this)
+  call PMSubsurfaceFlowUpdateSolution(this)
   call THUpdateSolution(this%realization)
   if (this%option%surf_flow_on) &
     call THUpdateSurfaceBC(this%realization)
@@ -701,15 +706,16 @@ subroutine PMTHMaxChange(this)
   
   class(pm_th_type) :: this
   
-  call THMaxChange(this%realization)
+  call THMaxChange(this%realization,this%max_pressure_change, &
+                   this%max_temperature_change)
     if (this%option%print_screen_flag) then
     write(*,'("  --> max chng: dpmx= ",1pe12.4," dtmpmx= ",1pe12.4)') &
-      this%option%dpmax,this%option%dtmpmax
+      this%max_pressure_change,this%max_temperature_change
   endif
   if (this%option%print_file_flag) then
     write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
       & " dtmpmx= ",1pe12.4)') &
-      this%option%dpmax,this%option%dtmpmax
+      this%max_pressure_change,this%max_temperature_change
   endif 
 
 end subroutine PMTHMaxChange
@@ -759,7 +765,7 @@ subroutine PMTHDestroy(this)
 
   ! preserve this ordering
   call THDestroy(this%realization%patch)
-  call PMSubsurfaceDestroy(this)
+  call PMSubsurfaceFlowDestroy(this)
 
 end subroutine PMTHDestroy
 

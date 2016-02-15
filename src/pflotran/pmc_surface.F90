@@ -1,8 +1,8 @@
 module PMC_Surface_class
 
   use PMC_Base_class
-  use Realization_class
-  use Surface_Realization_class
+  use Realization_Subsurface_class
+  use Realization_Surface_class
   use Timestepper_Surface_class
 
   use PFLOTRAN_Constants_module
@@ -14,8 +14,8 @@ module PMC_Surface_class
   private
 
   type, public, extends(pmc_base_type) :: pmc_surface_type
-    class(realization_type), pointer :: subsurf_realization
-    class(surface_realization_type), pointer :: surf_realization
+    class(realization_subsurface_type), pointer :: subsurf_realization
+    class(realization_surface_type), pointer :: surf_realization
   contains
     procedure, public :: Init => PMCSurfaceInit
     procedure, public :: RunToTime => PMCSurfaceRunToTime
@@ -88,14 +88,16 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   ! 
 
   use Timestepper_Base_class
+  use Output_Aux_module
   use Output_module, only : Output
-  use Realization_class, only : realization_type
+  use Realization_Subsurface_class, only : realization_subsurface_type
   use PM_Base_class
   use PM_Surface_Flow_class
   use Option_module
   use Surface_Flow_module
   use Surface_TH_module
   use Output_Surface_module
+  use Checkpoint_module
   
   implicit none
 #include "petsc/finclude/petscviewer.h"
@@ -103,20 +105,21 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   class(pmc_surface_type), target :: this
   PetscReal :: sync_time
   PetscInt :: stop_flag
-  
+  character(len=MAXSTRINGLENGTH) :: filename_append
   class(pmc_base_type), pointer :: pmc_base
   PetscInt :: local_stop_flag
   PetscBool :: failure
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
-  PetscBool :: checkpoint_flag
+  PetscBool :: checkpoint_at_this_time_flag
+  PetscBool :: checkpoint_at_this_timestep_flag
   class(pm_base_type), pointer :: cur_pm
   PetscReal :: dt_max_loc
   PetscReal :: dt_max_glb
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
-  this%option%io_buffer = trim(this%name) // ':' // trim(this%pms%name)
+  this%option%io_buffer = trim(this%name) // ':' // trim(this%pm_list%name)
   call printVerboseMsg(this%option)
   
   ! Get data of other process-model
@@ -134,9 +137,10 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     call SetOutputFlags(this)
     plot_flag = PETSC_FALSE
     transient_plot_flag = PETSC_FALSE
-    checkpoint_flag = PETSC_FALSE
+    checkpoint_at_this_time_flag = PETSC_FALSE
+    checkpoint_at_this_timestep_flag = PETSC_FALSE
     
-    cur_pm => this%pms
+    cur_pm => this%pm_list
 
     select case(this%option%iflowmode)
       case (RICHARDS_MODE)
@@ -157,20 +161,21 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     end select
     call this%timestepper%SetTargetTime(sync_time,this%option, &
                                         local_stop_flag,plot_flag, &
-                                        transient_plot_flag,checkpoint_flag)
+                                        transient_plot_flag, &
+                                        checkpoint_at_this_time_flag)
 
     this%option%surf_flow_dt = this%timestepper%dt
 
     ! Accumulate data needed by process-model
     call this%AccumulateAuxData()
 
-    call this%timestepper%StepDT(this%pms,local_stop_flag)
+    call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
     if (local_stop_flag  == TS_STOP_FAILURE) exit ! failure
     ! Have to loop over all process models coupled in this object and update
     ! the time step size.  Still need code to force all process models to
     ! use the same time step size if tightly or iteratively coupled.
-    cur_pm => this%pms
+    cur_pm => this%pm_list
     do
       if (.not.associated(cur_pm)) exit
       ! have to update option%time for conditions
@@ -197,34 +202,31 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
       ! however, if we are using the modulus of the output_option%imod, we may
       ! still print
       if (mod(this%timestepper%steps, &
-              this%pms% &
+              this%pm_list% &
                 output_option%periodic_output_ts_imod) == 0) then
         plot_flag = PETSC_TRUE
       endif
       if (plot_flag .or. mod(this%timestepper%steps, &
-                             this%pms%output_option% &
+                             this%pm_list%output_option% &
                                periodic_tr_output_ts_imod) == 0) then
         transient_plot_flag = PETSC_TRUE
       endif
-      !call this%Output(this%pms%realization_base,plot_flag, &
+      !call this%Output(this%pm_list%realization_base,plot_flag, &
       !                 transient_plot_flag)
       call OutputSurface(this%surf_realization, this%subsurf_realization, &
                          plot_flag, transient_plot_flag)
     !endif
 
-    if (this%is_master) then
-      if (.not.checkpoint_flag) then
-        if (this%option%checkpoint_flag .and. this%option%checkpoint_frequency > 0) then
-          if (mod(this%timestepper%steps,this%option%checkpoint_frequency) == 0) then
-           checkpoint_flag = PETSC_TRUE
-          endif
-        endif
-       endif
-    else
-      checkpoint_flag = PETSC_FALSE
+    if (this%is_master .and. associated(this%checkpoint_option)) then
+      if (this%checkpoint_option%periodic_ts_incr > 0 .and. &
+          mod(this%timestepper%steps, &
+              this%checkpoint_option%periodic_ts_incr) == 0) then
+        checkpoint_at_this_timestep_flag = PETSC_TRUE
+      endif
     endif
 
-    if (checkpoint_flag) then
+    if (checkpoint_at_this_time_flag .or. &
+        checkpoint_at_this_timestep_flag) then
       ! if checkpointing, need to sync all other PMCs.  Those "below" are
       ! already in sync, but not those "next".
       ! Set data needed by process-model
@@ -234,9 +236,24 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
         call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
       endif
       call this%GetAuxData()
-      call this%CheckpointBinary(viewer,this%timestepper%steps)
-    endif
-
+      ! it is possible that two identical checkpoint files will be created,
+      ! one at the time and another at the time step, but this is fine.
+      if (checkpoint_at_this_time_flag) then
+        filename_append = &
+          CheckpointAppendNameAtTime(this%checkpoint_option, &
+                                     this%option%time, &
+                                     this%option)
+        call this%Checkpoint(filename_append)
+      endif
+      if (checkpoint_at_this_timestep_flag) then
+        filename_append = &
+          CheckpointAppendNameAtTimestep(this%checkpoint_option, &
+                                         this%timestepper%steps, &
+                                         this%option)
+        call this%Checkpoint(filename_append)
+      endif
+    endif                         
+                         
   enddo
   
   this%option%surf_flow_time = this%timestepper%target_time
@@ -345,7 +362,7 @@ subroutine PMCSurfaceSetAuxData(this)
   use Surface_Flow_module
   use Surface_TH_module
   use Surface_TH_Aux_module
-  use Surface_Realization_class
+  use Realization_Surface_class
   use String_module
 
   implicit none
@@ -361,7 +378,7 @@ subroutine PMCSurfaceSetAuxData(this)
   type(patch_type), pointer :: surf_patch
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
-  class(surface_realization_type), pointer :: surf_realization
+  class(realization_surface_type), pointer :: surf_realization
 
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -514,9 +531,9 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
   PetscInt :: ghosted_id
   PetscInt :: local_id
   PetscInt :: count
-  PetscReal, pointer      :: xx_p(:)
-  PetscReal, pointer      :: surfpress_p(:)
-  PetscReal, pointer      :: surftemp_p(:)
+  PetscReal, pointer :: xx_p(:)
+  PetscReal, pointer :: surfpress_p(:)
+  PetscReal, pointer :: surftemp_p(:)
   PetscInt :: istart, iend
   PetscReal :: den
   PetscReal :: dum1
@@ -680,6 +697,7 @@ recursive subroutine PMCSurfaceDestroy(this)
   ! Author: Glenn Hammond
   ! Date: 12/02/14
   ! 
+  use Option_module
 
   implicit none
   

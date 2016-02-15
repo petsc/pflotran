@@ -11,6 +11,11 @@ SIMULATION
       GLOBAL_IMPLICIT
     /
   /
+  CHECKPOINT
+    PERIODIC TIMESTEP 10
+    FORMAT BINARY
+    FORMAT HDF5
+  /
 END
 
 SUBSURFACE
@@ -670,13 +675,6 @@ END
 #=========================== stratigraphy couplers ============================
 STRATA
   MATERIAL ./543.h5
-END
-
-#=========================== checkpoint / restart =============================
-CHECKPOINT
-  PERIODIC TIMESTEP 10
-  FORMAT BINARY
-  FORMAT HDF5
 END
 
 END_SUBSURFACE

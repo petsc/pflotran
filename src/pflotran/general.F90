@@ -67,7 +67,7 @@ subroutine GeneralSetup(realization)
   ! Date: 03/10/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -78,7 +78,7 @@ subroutine GeneralSetup(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -255,11 +255,11 @@ subroutine GeneralInitializeTimestep(realization)
   ! Date: 03/10/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   call GeneralUpdateFixedAccum(realization)
   
@@ -287,7 +287,7 @@ subroutine GeneralUpdateSolution(realization)
   ! Date: 03/10/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Patch_module
   use Discretization_module
@@ -296,7 +296,7 @@ subroutine GeneralUpdateSolution(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -341,7 +341,7 @@ subroutine GeneralTimeCut(realization)
   ! Author: Glenn Hammond
   ! Date: 03/10/11
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Patch_module
@@ -350,7 +350,7 @@ subroutine GeneralTimeCut(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
@@ -390,7 +390,7 @@ subroutine GeneralNumericalJacobianTest(xx,realization,B)
   ! Date: 03/03/15
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -399,7 +399,7 @@ subroutine GeneralNumericalJacobianTest(xx,realization,B)
   implicit none
 
   Vec :: xx
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   Mat :: B
 
   Vec :: xx_pert
@@ -512,7 +512,7 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
   ! Date: 03/10/11
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
@@ -521,7 +521,7 @@ subroutine GeneralComputeMassBalance(realization,mass_balance)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscReal :: mass_balance(realization%option%nflowspec, &
                             realization%option%nphase)
 
@@ -580,14 +580,14 @@ subroutine GeneralZeroMassBalanceDelta(realization)
   ! Date: 03/10/11
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -621,14 +621,14 @@ subroutine GeneralUpdateMassBalance(realization)
   ! Date: 03/10/11
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -673,7 +673,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   ! Date: 03/10/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -687,7 +687,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscBool :: update_state
   
   type(option_type), pointer :: option
@@ -736,7 +736,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
   word = 'genaux' // trim(adjustl(word))
 #endif
   do ghosted_id = 1, grid%ngmax
-     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
      
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
@@ -745,6 +745,7 @@ subroutine GeneralUpdateAuxVars(realization,update_state)
     ! GENERAL_UPDATE_FOR_ACCUM indicates call from non-perturbation
     option%iflag = GENERAL_UPDATE_FOR_ACCUM
     natural_id = grid%nG2A(ghosted_id)
+    if (grid%nG2L(ghosted_id) == 0) natural_id = -natural_id
     call GeneralAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
                        gen_auxvars(ZERO_INTEGER,ghosted_id), &
                        global_auxvars(ghosted_id), &
@@ -947,7 +948,7 @@ subroutine GeneralUpdateFixedAccum(realization)
   ! Date: 03/10/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -956,7 +957,7 @@ subroutine GeneralUpdateFixedAccum(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1930,9 +1931,10 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   PetscBool :: debug_cell
       
   PetscReal :: qsrc_mol
-  PetscReal :: den, den_kg, enthalpy, internal_energy
+  PetscReal :: enthalpy, internal_energy
   PetscReal :: cell_pressure, dummy_pressure
-  PetscInt :: icomp, ierr
+  PetscInt :: icomp
+  PetscErrorCode :: ierr
 
   Res = 0.d0
   do icomp = 1, option%nflowspec
@@ -1967,8 +1969,7 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
       cell_pressure = &
         maxval(gen_auxvar%pres(option%liquid_phase:option%gas_phase))
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
-        call EOSWaterDensityEnthalpy(gen_auxvar%temp,cell_pressure, &
-                                     den_kg,den,enthalpy,ierr)
+        call EOSWaterEnthalpy(gen_auxvar%temp,cell_pressure,enthalpy,ierr)
         enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
         ! enthalpy units: MJ/kmol                       ! water component mass
         Res(option%energy_id) = Res(option%energy_id) + Res(ONE_INTEGER) * &
@@ -2326,7 +2327,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   ! Date: 03/09/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Patch_module
   use Discretization_module
@@ -2348,7 +2349,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
@@ -2751,7 +2752,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 03/09/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2766,7 +2767,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
 
   Mat :: J
@@ -3146,7 +3147,7 @@ subroutine GeneralCreateZeroArray(patch,option)
   ! Date: 03/09/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3226,14 +3227,14 @@ function GeneralGetTecplotHeader(realization,icolumn)
   ! Date: 03/09/11
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
     
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: GeneralGetTecplotHeader
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -3352,13 +3353,13 @@ subroutine GeneralSetPlotVariables(realization)
   ! Date: 02/15/13
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
     
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
@@ -3646,7 +3647,7 @@ subroutine GeneralMapBCAuxVarsToGlobal(realization)
   ! Date: 03/09/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Coupler_module
@@ -3654,7 +3655,7 @@ subroutine GeneralMapBCAuxVarsToGlobal(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -3702,7 +3703,7 @@ subroutine GeneralSetReferencePressures(realization)
   ! Author: Glenn Hammond
   ! Date: 07/09/15
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Patch_module
   use Grid_module
@@ -3713,7 +3714,7 @@ subroutine GeneralSetReferencePressures(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
@@ -3769,11 +3770,11 @@ subroutine GeneralDestroy(realization)
   ! Date: 03/09/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   ! place anything that needs to be freed here.
   ! auxvars are deallocated in auxiliary.F90.

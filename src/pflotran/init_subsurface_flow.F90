@@ -22,7 +22,7 @@ subroutine InitSubsurfFlowSetupRealization(realization)
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Init_Common_module
@@ -41,7 +41,7 @@ subroutine InitSubsurfFlowSetupRealization(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -140,7 +140,7 @@ subroutine InitSubsurfFlowSetupSolvers(realization,convergence_context,solver)
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Init_Common_module
   
@@ -164,7 +164,7 @@ subroutine InitSubsurfFlowSetupSolvers(realization,convergence_context,solver)
 #include "petsc/finclude/petscsnes.h"
 #include "petsc/finclude/petscpc.h"
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   type(convergence_context_type), pointer :: convergence_context
   type(solver_type), pointer :: solver
   
@@ -294,7 +294,7 @@ subroutine InitSubsurfFlowReadInitCond(realization,filename)
   ! Date: 03/05/10, 12/04/14
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Grid_module
@@ -307,7 +307,7 @@ subroutine InitSubsurfFlowReadInitCond(realization,filename)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   PetscInt :: local_id, idx, offset

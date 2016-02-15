@@ -28,7 +28,7 @@ subroutine GlobalSetup(realization)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -37,7 +37,7 @@ subroutine GlobalSetup(realization)
  
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -125,7 +125,7 @@ subroutine GlobalSetAuxVarScalar(realization,value,ivar)
   ! Date: 11/19/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Variables_module, only : LIQUID_PRESSURE, LIQUID_SATURATION, &
@@ -135,7 +135,7 @@ subroutine GlobalSetAuxVarScalar(realization,value,ivar)
   
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscReal :: value
   PetscInt :: ivar
 
@@ -197,7 +197,7 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
   ! Date: 11/19/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -212,7 +212,7 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   Vec :: vec_loc
   PetscInt :: ivar
   PetscInt :: isubvar  
@@ -410,7 +410,7 @@ subroutine GlobalGetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
   ! Date: 11/19/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -421,7 +421,7 @@ subroutine GlobalGetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   Vec :: vec_loc
   PetscInt :: ivar
   PetscInt :: isubvar  
@@ -466,13 +466,13 @@ subroutine GlobalWeightAuxVars(realization,weight)
   ! Date: 11/03/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Material_module, only : MaterialWeightAuxVars
   
   implicit none
 
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscReal :: weight
   
   type(option_type), pointer :: option
@@ -534,12 +534,12 @@ subroutine GlobalUpdateState(realization)
   ! Date: 01/14/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class, only : RealizationGetVariable
   use Communicator_Base_module
   use Variables_module, only : STATE
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   call RealizationGetVariable(realization,realization%field%work,STATE, &
                               ZERO_INTEGER)
@@ -561,7 +561,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
   ! Date: 01/14/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class, only : RealizationGetVariable
   use Field_module
   use Option_module
@@ -572,7 +572,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
                                GAS_DENSITY, GAS_SATURATION, &
                                TEMPERATURE, SC_FUGA_COEFF, GAS_DENSITY_MOL
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscReal :: time
   PetscInt :: time_level
   

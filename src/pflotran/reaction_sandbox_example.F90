@@ -81,7 +81,7 @@ subroutine ExampleRead(this,input,option)
   implicit none
   
   class(reaction_sandbox_example_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   PetscInt :: i
@@ -139,7 +139,7 @@ subroutine ExampleRead(this,input,option)
         else              
           ! If units exist, convert to internal units of 1/s
           this%rate_constant = this%rate_constant * &
-            UnitsConvertToInternal(word,option)
+            UnitsConvertToInternal(word,'unitless/time',option)
         endif
       case default
         call InputKeywordUnrecognized(word, &

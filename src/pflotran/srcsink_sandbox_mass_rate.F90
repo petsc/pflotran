@@ -64,7 +64,7 @@ subroutine MassRateRead(this,input,option)
   implicit none
   
   class(srcsink_sandbox_mass_rate_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   PetscInt :: i

@@ -1,0 +1,311 @@
+!Description: 3D variably saturated flow with infiltration at top
+
+SIMULATION
+  SIMULATION_TYPE HYDROGEOPHYSICS
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
+!DEBUG
+!  PRINT_COUPLERS River
+!END
+
+!=========================== flow mode ========================================
+
+CHEMISTRY
+  PRIMARY_SPECIES
+  Tracer
+  /
+END
+
+!=========================== solver options ===================================
+TIMESTEPPER FLOW
+  TS_ACCELERATION 8
+  MAX_TS_CUTS 5
+END
+
+NEWTON_SOLVER FLOW
+  MAXIT 20
+  RTOL 1.d-50
+  ATOL 1.d-50
+  STOL 1.e-60
+  ITOL_UPDATE 1.d0
+!  NO_INFINITY_NORM
+!  NO_PRINT_CONVERGENCE
+!  PRINT_DETAILED_CONVERGENCE
+END
+
+LINEAR_SOLVER FLOW
+END
+
+NEWTON_SOLVER TRANSPORT
+!  RTOL 1.d-4
+!  ATOL 1.d-4
+!  STOL 1.e-60
+!  DTOL 1.e4
+!  ITOL_UPDATE 1.d-4
+  NO_INFINITY_NORM
+!  NO_PRINT_CONVERGENCE
+!  PRINT_DETAILED_CONVERGENCE
+END
+
+LINEAR_SOLVER TRANSPORT
+END
+
+!=========================== discretization ===================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 5 5 4
+  BOUNDS
+    0.d0 0.d0 90.d0
+    400.d0 400.d0 110.d0
+  /
+END
+
+!=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+!=========================== material properties ==============================
+MATERIAL_PROPERTY Hanford
+  ID 1
+  POROSITY 0.2d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 7.387d-9
+    PERM_Y 7.387d-9
+    PERM_Z 7.387d-10
+  /
+END
+
+MATERIAL_PROPERTY Ringold
+  ID 4
+  POROSITY 0.43d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf2
+  PERMEABILITY
+    PERM_X 1.055d-12
+    PERM_Y 1.055d-12
+    PERM_Z 1.055d-12
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES sf1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.3391d0
+    ALPHA 7.2727d-4
+    LIQUID_RESIDUAL_SATURATION 0.16d0
+    MAX_CAPILLARY_PRESSURE 1.d8
+  /
+  PERMEABILITY_FUNCTION BURDINE_VG_LIQ
+    M 0.3391d0
+    LIQUID_RESIDUAL_SATURATION 0.16d0
+  /
+END
+
+CHARACTERISTIC_CURVES sf2
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.7479d0
+    ALPHA 1.4319d-4
+    LIQUID_RESIDUAL_SATURATION 0.1299d0
+    MAX_CAPILLARY_PRESSURE 1.d8
+  /
+  PERMEABILITY_FUNCTION BURDINE_VG_LIQ
+    M 0.7479d0
+    LIQUID_RESIDUAL_SATURATION 0.1299d0
+  /
+END
+
+!=========================== output options ===================================
+OUTPUT
+skip
+!  MASS_BALANCE
+!  PERMEABILITY
+!  POROSITY
+!  TIMES y 0.25d0 0.5d0 0.75d0
+  PERIODIC TIME 1. w
+!  FORMAT TECPLOT BLOCK
+  FORMAT HDF5 MULTIPLE_FILES
+!  VELOCITIES
+!  FORMAT TECPLOT BLOCK
+!  PERIODIC TIME .1 y
+noskip
+END
+
+!=========================== times ============================================
+TIME
+!STEADY_STATE
+!  FINAL_TIME 10 y
+  FINAL_TIME 0.25 y
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 1.d0 d at 1.d0 h
+END
+
+!=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 90.d0
+    400.d0 400.d0 110.d0
+  /
+END
+
+REGION bottom
+  FACE BOTTOM
+  COORDINATES
+    0.d0 0.d0 90.d0
+    400.d0 400.d0 90.d0
+  /
+END
+
+REGION top
+  FACE TOP
+  COORDINATES
+    0.d0 0.d0 110.d0
+    400.d0 400.d0 110.d0
+  /
+END
+
+REGION south
+  FACE SOUTH
+  COORDINATES
+    0.d0 0.d0 90.d0
+    400.d0 0.d0 110.d0
+  /
+END
+
+REGION north
+  FACE NORTH
+  COORDINATES
+    0.d0 400.d0 90.d0
+    400.d0 400.d0 110.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 90.d0
+    0.d0 400.d0 110.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    400.d0 0.d0 90.d0
+    400.d0 400.d0 110.d0
+  /
+END
+!=========================== flow conditions ==================================
+
+MINIMUM_HYDROSTATIC_PRESSURE -1.d0
+
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 105.d0
+  GRADIENT
+    PRESSURE 2.5d-4 0.d0 0.d0
+  /
+  PRESSURE 101325.d0
+END
+
+FLOW_CONDITION river_stage
+  TYPE
+    PRESSURE hydrostatic
+  /
+  INTERPOLATION LINEAR
+  CYCLIC
+  DATUM LIST
+    TIME_UNITS mo
+    0.d0 0.d0 0.d0 105.d0
+    0.5d0 0.d0 0.d0 105.d0
+    1.d0 0.d0 0.d0 105.8d0
+    1.5d0 0.d0 0.d0 105.8d0
+    2.d0 0.d0 0.d0 105.d0
+    2.5d0 0.d0 0.d0 105.d0
+  /
+  GRADIENT
+    PRESSURE LIST
+      TIME_UNITS mo
+      0.d0 0.d0 2.5d-4 0.d0
+      0.5d0 0.d0 2.5d-4 0.d0
+      1.d0 0.d0 -2.5d-4 0.0d0
+      1.5d0 0.d0 -2.5d-4 0.d0
+      2.d0 0.d0 2.5d-4 0.d0
+    /
+  /
+  PRESSURE 101325 ! Pa
+END
+
+
+!=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+TRANSPORT_CONDITION solute
+  TYPE dirichlet
+  CONSTRAINT_LIST
+    0.d0 solute_concentration
+  /
+END
+
+!=========================== constraints ======================================
+CONSTRAINT solute_concentration
+  CONCENTRATIONS
+    Tracer 1.d0 T
+  /
+END
+
+CONSTRAINT initial
+  CONCENTRATIONS
+    Tracer 1.d-40 T
+  /
+END
+
+!=========================== condition couplers ===============================
+! initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+! east boundary condition
+BOUNDARY_CONDITION east
+  FLOW_CONDITION river_stage
+  TRANSPORT_CONDITION solute
+  REGION east
+END
+
+! west boundary condition
+BOUNDARY_CONDITION west
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION west
+END
+
+!=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL Hanford
+  REGION all
+END
+
+END_SUBSURFACE

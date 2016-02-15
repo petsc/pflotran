@@ -90,13 +90,13 @@ subroutine DownregRead(this,input,option)
   implicit none
   
   class(srcsink_sandbox_downreg_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   class(dataset_ascii_type), pointer :: dataset_ascii
 
   PetscInt :: i
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string, units_category
   character(len=MAXWORDLENGTH) :: units
   type(time_storage_type), pointer :: null_time_storage
   PetscBool :: found
@@ -127,7 +127,9 @@ subroutine DownregRead(this,input,option)
     select case(trim(word))
 
       case('RATE')
-        call ConditionReadValues(input,option,word,this%dataset,units)
+        units_category = 'concentration/time'
+        call ConditionReadValues(input,option,word,this%dataset, &
+                                 units,units_category)
       case('POSITIVE_REG_PRESSURE')
         call InputReadDouble(input,option,this%pressure_max)
         call InputErrorMsg(input,option,'maximum pressure (Pa)', &

@@ -77,7 +77,7 @@ subroutine GeometryReadCoordinates(input,option,region_name,coordinates)
 
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: region_name
   type(point3d_type), pointer :: coordinates(:)

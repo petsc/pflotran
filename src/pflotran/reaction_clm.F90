@@ -57,7 +57,7 @@ module CLM_Rxn_Base_class
       implicit none
   
       class(clm_rxn_base_type) :: this
-      type(input_type) :: input
+      type(input_type), pointer :: input
       type(option_type) :: option
   
     end subroutine Base_Read 
@@ -72,7 +72,7 @@ module CLM_Rxn_Base_class
       implicit none
   
       class(clm_rxn_base_type) :: this
-      type(input_type) :: input
+      type(input_type), pointer :: input
       type(option_type) :: option
   
     end subroutine Base_SkipBlock 
@@ -158,7 +158,7 @@ contains
     implicit none
   
     class(clm_rxn_base_type) :: this
-    type(input_type) :: input
+    type(input_type), pointer :: input
     type(option_type) :: option
   
   end subroutine Base_Read
@@ -173,7 +173,7 @@ contains
     implicit none
   
     class(clm_rxn_base_type) :: this
-    type(input_type) :: input
+    type(input_type), pointer :: input
     type(option_type) :: option
   
   end subroutine Base_SkipBlock   
@@ -337,11 +337,11 @@ module CLM_Rxn_Decomp_class
   type, public, &
     extends(clm_rxn_base_type) :: clm_rxn_clmdec_type
 
-    PetscInt  :: temperature_response_function
+    PetscInt :: temperature_response_function
     PetscReal :: Q10
-    PetscInt  :: moisture_response_function
+    PetscInt :: moisture_response_function
 
-    PetscInt  :: litter_decomp_type          ! CLM-CN or CLM-Microbe
+    PetscInt :: litter_decomp_type          ! CLM-CN or CLM-Microbe
 
     PetscReal :: half_saturation_nh4
     PetscReal :: half_saturation_no3
@@ -524,7 +524,7 @@ subroutine CLMDec_Read(this,input,option)
   implicit none
   
   class(clm_rxn_clmdec_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: word
@@ -735,7 +735,8 @@ subroutine CLMDec_Read(this,input,option)
                 call InputDefaultMsg(input,option)
               else              
                 rate_constant = rate_constant * &
-                  UnitsConvertToInternal(word,option)
+                  UnitsConvertToInternal(word, &
+                  'mass/volume-time|unitless/time|volume/mass-time',option)
               endif
             case('TURNOVER_TIME')
               call InputReadDouble(input,option,turnover_time)
@@ -747,7 +748,7 @@ subroutine CLMDec_Read(this,input,option)
                 call InputDefaultMsg(input,option)
               else              
                 turnover_time = turnover_time * &
-                  UnitsConvertToInternal(word,option)
+                  UnitsConvertToInternal(word,'time',option)
               endif
             case default
               call InputKeywordUnrecognized(word, &
@@ -3225,7 +3226,7 @@ subroutine PlantNRead(this,input,option)
   implicit none
   
   class(clm_rxn_plantn_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   PetscInt :: i
@@ -3820,7 +3821,7 @@ subroutine NitrRead(this,input,option)
   implicit none
   
   class(clm_rxn_nitr_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   PetscInt :: i
@@ -4519,7 +4520,7 @@ subroutine DeniRead(this,input,option)
   implicit none
   
   class(clm_rxn_deni_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   PetscInt :: i
@@ -4963,7 +4964,7 @@ subroutine RCLMRxnRead1(input,option)
   
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   call RCLMRxnRead(clmrxn_list,input,option)
@@ -4985,7 +4986,7 @@ subroutine RCLMRxnRead2(local_clmrxn_list,input,option)
   implicit none
   
   class(clm_rxn_base_type), pointer :: local_clmrxn_list  
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   character(len=MAXSTRINGLENGTH) :: string
@@ -5083,7 +5084,7 @@ subroutine RCLMRxnSkipInput(input,option)
   
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   class(clm_rxn_base_type), pointer :: dummy_list

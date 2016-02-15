@@ -62,7 +62,7 @@ subroutine RTTimeCut(realization)
   ! Date: 02/15/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Global_module
@@ -70,7 +70,7 @@ subroutine RTTimeCut(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   
@@ -114,7 +114,7 @@ subroutine RTSetup(realization)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -135,7 +135,7 @@ subroutine RTSetup(realization)
  
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -325,13 +325,13 @@ subroutine RTComputeMassBalance(realization,mass_balance)
   ! Date: 12/23/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
   use Grid_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscReal :: mass_balance(realization%option%ntrandof, &
                             realization%option%nphase)
   type(option_type), pointer :: option
@@ -431,14 +431,14 @@ subroutine RTZeroMassBalanceDelta(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -479,14 +479,14 @@ subroutine RTUpdateMassBalance(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -531,9 +531,9 @@ subroutine RTInitializeTimestep(realization)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   call RTUpdateFixedAccumulation(realization)
   ! geh: never use transport coefs evaluated at time k
@@ -552,7 +552,7 @@ subroutine RTUpdateEquilibriumState(realization)
   ! Date: 09/04/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Patch_module
   use Option_module
@@ -565,7 +565,7 @@ subroutine RTUpdateEquilibriumState(realization)
  
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -642,7 +642,7 @@ subroutine RTUpdateKineticState(realization)
   ! Date: 06/27/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Patch_module
   use Option_module
@@ -655,7 +655,7 @@ subroutine RTUpdateKineticState(realization)
  
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -726,7 +726,7 @@ subroutine RTUpdateFixedAccumulation(realization)
   ! Date: 02/15/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Reactive_Transport_Aux_module
   use Option_module
@@ -736,7 +736,7 @@ subroutine RTUpdateFixedAccumulation(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
@@ -851,7 +851,7 @@ subroutine RTUpdateTransportCoefs(realization)
   ! Date: 02/24/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Patch_module
   use Connection_module
@@ -862,7 +862,7 @@ subroutine RTUpdateTransportCoefs(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars_bc(:)
@@ -998,7 +998,7 @@ subroutine RTUpdateRHSCoefs(realization)
   ! Date: 04/25/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1008,7 +1008,7 @@ subroutine RTUpdateRHSCoefs(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(global_auxvar_type), pointer :: global_auxvars(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
@@ -1059,7 +1059,7 @@ subroutine RTCalculateRHS_t0(realization)
   ! Date: 04/25/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1069,7 +1069,7 @@ subroutine RTCalculateRHS_t0(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   type(option_type), pointer :: option
@@ -1124,7 +1124,7 @@ subroutine RTCalculateRHS_t1(realization)
   ! Date: 04/25/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1134,7 +1134,7 @@ subroutine RTCalculateRHS_t1(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars_bc(:)
@@ -1344,7 +1344,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
   ! Date: 04/25/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Grid_module
   use Patch_module
@@ -1355,7 +1355,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
 
   implicit none
       
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   Mat :: T
   
   type(global_auxvar_type), pointer :: global_auxvars(:)
@@ -1567,7 +1567,7 @@ subroutine RTReact(realization)
   ! Date: 05/03/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Connection_module
   use Coupler_module
@@ -1581,7 +1581,7 @@ subroutine RTReact(realization)
      
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
@@ -1773,7 +1773,7 @@ subroutine RTComputeBCMassBalanceOS(realization)
   ! Date: 05/04/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -1785,7 +1785,7 @@ subroutine RTComputeBCMassBalanceOS(realization)
   
   implicit none
 
-  type(realization_type) :: realization  
+  type(realization_subsurface_type) :: realization  
 
   PetscInt :: local_id, ghosted_id
   PetscInt, parameter :: iphase = 1
@@ -1925,7 +1925,7 @@ subroutine RTNumericalJacobianTest(realization)
   ! Date: 02/20/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -1934,7 +1934,7 @@ subroutine RTNumericalJacobianTest(realization)
   implicit none
 
   Vec :: xx
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   Vec :: xx_pert
   Vec :: res
@@ -2018,7 +2018,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Patch_module
   use Discretization_module
@@ -2032,7 +2032,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscReal, pointer :: xx_p(:), log_xx_p(:)
   PetscErrorCode :: ierr
   
@@ -2107,7 +2107,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
   ! Date: 02/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -2128,7 +2128,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization  
+  type(realization_subsurface_type) :: realization  
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:)
@@ -2402,7 +2402,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   ! Date: 02/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -2422,7 +2422,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization  
+  type(realization_subsurface_type) :: realization  
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:), accum_p(:), vec_p(:)
@@ -2738,7 +2738,7 @@ subroutine RTResidualEquilibrateCO2(r,realization)
   ! Date: 12/12/14
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -2752,7 +2752,7 @@ subroutine RTResidualEquilibrateCO2(r,realization)
   implicit none
 
   Vec :: r
-  type(realization_type) :: realization  
+  type(realization_subsurface_type) :: realization  
   
   PetscInt :: local_id, ghosted_id
   PetscInt :: jco2
@@ -2854,7 +2854,7 @@ subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2867,7 +2867,7 @@ subroutine RTJacobian(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
 
   Mat :: J
@@ -2950,7 +2950,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,realization,ierr)
   ! Date: 02/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -2967,7 +2967,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization  
+  type(realization_subsurface_type) :: realization  
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:)
@@ -3197,7 +3197,7 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,realization,ierr)
   ! Date: 02/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Transport_module
   use Option_module
@@ -3215,7 +3215,7 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization  
+  type(realization_subsurface_type) :: realization  
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:)
@@ -3469,7 +3469,7 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
   ! Date: 12/12/14
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -3478,7 +3478,7 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
   implicit none
 
   Mat :: J
-  type(realization_type) :: realization  
+  type(realization_subsurface_type) :: realization  
   
   PetscInt :: local_id, ghosted_id
   PetscInt :: idof                  
@@ -3561,7 +3561,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
   ! Date: 02/15/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Coupler_module
@@ -3578,7 +3578,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
   
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscBool :: update_bcs
   PetscBool :: update_cells
   PetscBool :: update_activity_coefs
@@ -4056,7 +4056,7 @@ end subroutine RTCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine RTMaxChange(realization)
+subroutine RTMaxChange(realization,dcmax,dvfmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -4064,7 +4064,7 @@ subroutine RTMaxChange(realization)
   ! Date: 02/15/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Patch_module
@@ -4072,24 +4072,53 @@ subroutine RTMaxChange(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
+  PetscReal :: dcmax
+  PetscReal :: dvfmax
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field 
+  type(reaction_type), pointer :: reaction
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   PetscReal, pointer :: dxx_ptr(:), xx_ptr(:), yy_ptr(:)
-  
+  PetscInt :: local_id, ghosted_id, imnrl
+  PetscReal :: delta_volfrac
   PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field
+  reaction => realization%reaction
+  patch => realization%patch
+  grid => patch%grid
+  rt_auxvars => patch%aux%RT%auxvars  
 
-  option%dcmax=0.D0
+  dcmax = 0.d0
+  dvfmax = 0.d0
   
   call VecWAXPY(field%tran_dxx,-1.d0,field%tran_xx,field%tran_yy, &
                 ierr);CHKERRQ(ierr)
   
-  call VecStrideNorm(field%tran_dxx,ZERO_INTEGER,NORM_INFINITY,option%dcmax, &
+  call VecStrideNorm(field%tran_dxx,ZERO_INTEGER,NORM_INFINITY,dcmax, &
                      ierr);CHKERRQ(ierr)
+                     
+#if 1
+  ! update mineral volume fractions
+  if (reaction%mineral%nkinmnrl > 0) then
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (patch%imat(ghosted_id) <= 0) cycle
+      do imnrl = 1, reaction%mineral%nkinmnrl
+        delta_volfrac = rt_auxvars(ghosted_id)%mnrl_rate(imnrl)* &
+                        reaction%mineral%kinmnrl_molar_vol(imnrl)* &
+                        option%tran_dt
+        dvfmax = max(dabs(delta_volfrac),dvfmax)
+      enddo
+    enddo
+  endif 
+#endif
       
 end subroutine RTMaxChange
 
@@ -4103,14 +4132,14 @@ subroutine RTSetPlotVariables(realization)
   ! Date: 10/15/12
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Output_Aux_module
   use Variables_module
     
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   character(len=MAXWORDLENGTH) :: name,  units
   type(output_variable_list_type), pointer :: list
@@ -4425,7 +4454,7 @@ subroutine RTJumpStartKineticSorption(realization)
   ! Date: 08/05/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -4433,7 +4462,7 @@ subroutine RTJumpStartKineticSorption(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -4477,13 +4506,13 @@ subroutine RTCheckpointKineticSorptionBinary(realization,viewer,checkpoint)
   ! Date: 08/06/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
   use Field_module
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscViewer :: viewer
   PetscBool :: checkpoint
   
@@ -4568,12 +4597,12 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
   !
 
 #if  !defined(PETSC_HAVE_HDF5)
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   integer :: pm_grp_id
   PetscBool :: checkpoint
 
@@ -4587,7 +4616,7 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
 
 #else
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -4597,7 +4626,7 @@ subroutine RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, checkpoint)
   use HDF5_module, only : HDF5WriteDataSetFromVec, &
                           HDF5ReadDataSetInVec
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 #if defined(SCORPIO_WRITE)
   integer :: pm_grp_id
 #else
@@ -4719,7 +4748,7 @@ subroutine RTExplicitAdvection(realization)
   ! Date: 02/03/12
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   use Discretization_module
   use Patch_module
@@ -4732,7 +4761,7 @@ subroutine RTExplicitAdvection(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
@@ -5127,7 +5156,7 @@ subroutine RTClearActivityCoefficients(realization)
   ! Date: 08/11/14
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Reactive_Transport_Aux_module
   use Option_module
   use Field_module  
@@ -5136,7 +5165,7 @@ subroutine RTClearActivityCoefficients(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   PetscInt :: ghosted_id
@@ -5162,11 +5191,11 @@ subroutine RTDestroy(realization)
   ! Date: 02/03/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
 #ifdef OS_STATISTICS
   type(option_type), pointer :: option

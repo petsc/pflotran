@@ -22,7 +22,7 @@ subroutine InitSubsurfTranSetupRealization(realization)
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   
   use Reactive_Transport_module
@@ -32,7 +32,7 @@ subroutine InitSubsurfTranSetupRealization(realization)
   
   implicit none
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   
@@ -69,7 +69,7 @@ subroutine InitSubsurfTranSetupSolvers(realization,convergence_context,solver)
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Init_Common_module
 
@@ -88,7 +88,7 @@ subroutine InitSubsurfTranSetupSolvers(realization,convergence_context,solver)
 #include "petsc/finclude/petscsnes.h"
 #include "petsc/finclude/petscpc.h"
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   type(convergence_context_type), pointer :: convergence_context
   type(solver_type), pointer :: solver
   

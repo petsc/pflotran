@@ -1,7 +1,7 @@
 module PM_TOilIms_class
 
   use PM_Base_class
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
   
   use PFLOTRAN_Constants_module
 
@@ -17,7 +17,7 @@ module PM_TOilIms_class
 #include "petsc/finclude/petscmat.h90"
 #include "petsc/finclude/petscsnes.h"
 
-  type, public, extends(pm_subsurface_type) :: pm_toil_ims_type
+  type, public, extends(pm_subsurface_flow_type) :: pm_toil_ims_type
     PetscReal :: dPmax
     PetscReal :: dTmax
     PetscReal :: dSmax
@@ -88,7 +88,7 @@ function PMTOilImsCreate()
   allocate(toil_ims_pm%max_change_isubvar(4))
   toil_ims_pm%max_change_isubvar = [0,0,0,0]
   
-  call PMSubsurfaceCreate(toil_ims_pm)
+  call PMSubsurfaceFlowCreate(toil_ims_pm)
   toil_ims_pm%name = 'PMTOilIms'
 
   PMTOilImsCreate => toil_ims_pm
@@ -113,7 +113,7 @@ subroutine PMTOilImsRead(this,input)
   implicit none
 
   class(pm_toil_ims_type) :: this  
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   character(len=MAXWORDLENGTH) :: keyword, word
   
@@ -238,7 +238,7 @@ recursive subroutine PMTOilImsInitializeRun(this)
 
 
   ! call parent implementation
-  call PMSubsurfaceInitializeRun(this)
+  call PMSubsurfaceFlowInitializeRun(this)
 
 end subroutine PMTOilImsInitializeRun
 
@@ -261,11 +261,12 @@ subroutine PMTOilImsInitializeTimestep(this)
   
   class(pm_toil_ims_type) :: this
 
-  call PMSubsurfaceInitializeTimestepA(this)                                 
+  call PMSubsurfaceFlowInitializeTimestepA(this)                                 
 !geh:remove   everywhere                                
   call MaterialAuxVarCommunicate(this%comm1, &
                                  this%realization%patch%aux%Material, &
-                                 this%realization%field%work_loc,TORTUOSITY,0)
+                                 this%realization%field%work_loc,TORTUOSITY, &
+                                 ZERO_INTEGER)
                                  
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," TOIL_IMS FLOW ",64("="))')
@@ -273,7 +274,7 @@ subroutine PMTOilImsInitializeTimestep(this)
   
   call TOilImsInitializeTimestep(this%realization)
 
-  call PMSubsurfaceInitializeTimestepB(this)                                 
+  call PMSubsurfaceFlowInitializeTimestepB(this)                                 
   
 end subroutine PMTOilImsInitializeTimestep
 
@@ -325,7 +326,7 @@ subroutine PMTOilImsUpdateSolution(this)
   
   class(pm_toil_ims_type) :: this
   
-  call PMSubsurfaceUpdateSolution(this)
+  call PMSubsurfaceFlowUpdateSolution(this)
   call TOilImsUpdateSolution(this%realization)
   call TOilImsMapBCAuxVarsToGlobal(this%realization)
 
@@ -395,7 +396,7 @@ subroutine PMTOilImsResidual(this,snes,xx,r,ierr)
   PetscErrorCode :: ierr
   
   ! in theroy call for material properties update - currently does nothing 
-  call PMSubsurfaceUpdatePropertiesNI(this) 
+  call PMSubsurfaceFlowUpdatePropertiesNI(this) 
   call TOilImsResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMTOilImsResidual
@@ -453,7 +454,7 @@ subroutine PMTOilImsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! Author: Paolo Orsini (OGS)
   ! Date: 11/09/15
   ! 
-  !use Realization_class
+  !use Realization_Subsurface_class
   use Grid_module
   use TOilIms_Aux_module
   !use Global_Aux_module
@@ -571,14 +572,16 @@ subroutine PMTOilImsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
         temp_scale = min(temp_scale,temp_real)
       endif
     endif
-#endif !TRUNCATE_PRESSURE
+#endif 
+!TRUNCATE_PRESSURE
 
 #ifdef LIMIT_MAX_SATURATION_CHANGE
     if (dabs(del_saturation) > max_saturation_change) then
        temp_real = dabs(max_saturation_change/del_saturation)
        temp_scale = min(temp_scale,temp_real)
     endif
-#endif !LIMIT_MAX_SATURATION_CHANGE        
+#endif 
+!LIMIT_MAX_SATURATION_CHANGE        
     scale = min(scale,temp_scale) 
   enddo
 
@@ -639,7 +642,7 @@ subroutine PMTOilImsCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   use TOilIms_Aux_module
   use Grid_module
   use Option_module
-  !use Realization_class
+  !use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Patch_module
@@ -829,7 +832,7 @@ subroutine PMTOilImsTimeCut(this)
   
   class(pm_toil_ims_type) :: this
   
-  call PMSubsurfaceTimeCut(this)
+  call PMSubsurfaceFlowTimeCut(this)
   call TOilImsTimeCut(this%realization)
 
 end subroutine PMTOilImsTimeCut
@@ -847,7 +850,7 @@ subroutine PMTOilImsMaxChange(this)
   ! 
 
   use Realization_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Grid_module
@@ -859,7 +862,7 @@ subroutine PMTOilImsMaxChange(this)
   
   class(pm_toil_ims_type) :: this
   
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
@@ -947,7 +950,7 @@ subroutine PMTOilImsCheckpointBinary(this,viewer)
   call GlobalGetAuxVarVecLoc(this%realization, &
                              this%realization%field%iphas_loc, &
                              STATE,ZERO_INTEGER)
-  call PMSubsurfaceCheckpointBinary(this,viewer)
+  call PMSubsurfaceFlowCheckpointBinary(this,viewer)
   
 end subroutine PMTOilImsCheckpointBinary
 
@@ -970,7 +973,7 @@ subroutine PMTOilImsRestartBinary(this,viewer)
   class(pm_toil_ims_type) :: this
   PetscViewer :: viewer
   
-  call PMSubsurfaceRestartBinary(this,viewer)
+  call PMSubsurfaceFlowRestartBinary(this,viewer)
   ! currently doing this but it is not needed for TOIL_IMS
   call GlobalSetAuxVarVecLoc(this%realization, &
                              this%realization%field%iphas_loc, &
@@ -1005,7 +1008,7 @@ subroutine PMTOilImsDestroy(this)
 
   ! preserve this ordering
   call TOilImsDestroy(this%realization)
-  call PMSubsurfaceDestroy(this)
+  call PMSubsurfaceFlowDestroy(this)
   
 end subroutine PMTOilImsDestroy
 

@@ -117,7 +117,7 @@ subroutine SSSandboxRead1(input,option)
   
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   call SSSandboxRead(ss_sandbox_list,input,option)
@@ -142,7 +142,7 @@ subroutine SSSandboxRead2(local_sandbox_list,input,option)
   implicit none
   
   class(srcsink_sandbox_base_type), pointer :: local_sandbox_list  
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   character(len=MAXSTRINGLENGTH) :: string

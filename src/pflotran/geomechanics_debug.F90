@@ -37,8 +37,8 @@ function GeomechDebugCreate()
 
   implicit none
   
-  type(geomech_debug_type), pointer          :: GeomechDebugCreate
-  type(geomech_debug_type), pointer          :: debug
+  type(geomech_debug_type), pointer :: GeomechDebugCreate
+  type(geomech_debug_type), pointer :: debug
   
   allocate(debug)
   
@@ -71,11 +71,11 @@ subroutine GeomechDebugRead(debug,input,option)
   
   implicit none
     
-  type(geomech_debug_type)                   :: debug
-  type(input_type)                           :: input
-  type(option_type)                          :: option
+  type(geomech_debug_type) :: debug
+  type(input_type), pointer :: input
+  type(option_type) :: option
   
-  character(len=MAXWORDLENGTH)               :: keyword
+  character(len=MAXWORDLENGTH) :: keyword
 
   input%ierr = 0
   do
@@ -100,7 +100,8 @@ subroutine GeomechDebugRead(debug,input,option)
       case('PRINT_COUPLERS','PRINT_COUPLER')
         debug%print_couplers = PETSC_TRUE
         debug%coupler_string = trim(adjustl(input%buf))
-      case('PRINT_JACOBIAN_DETAILED','MATVIEW_JACOBIAN_DETAILED','VIEW_JACOBIAN_DETAILED')
+      case('PRINT_JACOBIAN_DETAILED','MATVIEW_JACOBIAN_DETAILED', &
+           'VIEW_JACOBIAN_DETAILED')
         debug%matview_Jacobian_detailed = PETSC_TRUE
       case('PRINT_NUMERICAL_DERIVATIVES','VIEW_NUMERICAL_DERIVATIVES')
         debug%print_numerical_derivatives = PETSC_TRUE

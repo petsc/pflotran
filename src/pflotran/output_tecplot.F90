@@ -1343,7 +1343,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization_base)
     count = 0
     do k=1,nz+1
       do j=1,ny+1
-        temp_real = realization_base%discretization%origin(X_DIRECTION)
+        temp_real = realization_base%discretization%origin_global(X_DIRECTION)
         write(fid,1000,advance='no') temp_real
         count = count + 1
         if (mod(count,10) == 0) then
@@ -1365,7 +1365,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization_base)
     ! y-dir
     count = 0
     do k=1,nz+1
-      temp_real = realization_base%discretization%origin(Y_DIRECTION)
+      temp_real = realization_base%discretization%origin_global(Y_DIRECTION)
       do i=1,nx+1
         write(fid,1000,advance='no') temp_real
         count = count + 1
@@ -1389,7 +1389,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization_base)
     if (count /= 0) write(fid,'(a)') ""
     ! z-dir
     count = 0
-    temp_real = realization_base%discretization%origin(Z_DIRECTION)
+    temp_real = realization_base%discretization%origin_global(Z_DIRECTION)
     do i=1,(nx+1)*(ny+1)
       write(fid,1000,advance='no') temp_real
       count = count + 1
@@ -1722,7 +1722,7 @@ subroutine GetCellConnectionsTecplot(grid, vec)
   implicit none
   
   type(grid_type) :: grid
-  type(unstructured_grid_type),pointer :: ugrid
+  type(grid_unstructured_type),pointer :: ugrid
   Vec :: vec
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -2712,31 +2712,31 @@ subroutine WriteTecplotPolyUGridElements(fid,realization_base)
 
   write(fid,'(a)') '# number of vertices/nodes per face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
-                        grid%unstructured_grid%polyhedra_grid%uface_nverts*1.d0, &
-                        TECPLOT_INTEGER, &
-                        grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
-                        10)
+                      grid%unstructured_grid%polyhedra_grid%uface_nverts*1.d0, &
+                      TECPLOT_INTEGER, &
+                      grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
+                      TEN_INTEGER)
 
   write(fid,'(a)') '# id of vertices/nodes forming a face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
-                        grid%unstructured_grid%polyhedra_grid%uface_natvertids*1.d0, &
-                        TECPLOT_INTEGER, &
-                        grid%unstructured_grid%polyhedra_grid%num_verts_of_ufaces_local, &
-                        4)
+                  grid%unstructured_grid%polyhedra_grid%uface_natvertids*1.d0, &
+                  TECPLOT_INTEGER, &
+                  grid%unstructured_grid%polyhedra_grid%num_verts_of_ufaces_local, &
+                  FOUR_INTEGER)
 
   write(fid,'(a)') '# id of control-volume/element left of a face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
-                        grid%unstructured_grid%polyhedra_grid%uface_left_natcellids*1.d0, &
-                        TECPLOT_INTEGER, &
-                        grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
-                        10)
+             grid%unstructured_grid%polyhedra_grid%uface_left_natcellids*1.d0, &
+             TECPLOT_INTEGER, &
+             grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
+             TEN_INTEGER)
 
   write(fid,'(a)') '# id of control-volume/element right of a face'
   call WriteTecplotDataSetNumPerLine(fid, realization_base, &
-                        grid%unstructured_grid%polyhedra_grid%uface_right_natcellids*1.d0, &
-                        TECPLOT_INTEGER, &
-                        grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
-                        10)
+            grid%unstructured_grid%polyhedra_grid%uface_right_natcellids*1.d0, &
+            TECPLOT_INTEGER, &
+            grid%unstructured_grid%polyhedra_grid%num_ufaces_local, &
+            TEN_INTEGER)
 
 end subroutine WriteTecplotPolyUGridElements
 

@@ -63,6 +63,10 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   use Simulation_Base_class
   use Logging_module
   use EOS_module
+  use PM_Surface_class
+  use PM_Geomechanics_Force_class
+  use PM_Subsurface_Flow_class
+  use PM_RT_class
   
   implicit none
   
@@ -90,7 +94,7 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   endif
   
   call PFLOTRANReadSimulation(simulation,option)
-  
+
 end subroutine PFLOTRANInitializePostPetsc
 
 ! ************************************************************************** !
@@ -106,17 +110,24 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   use String_module
   
   use Simulation_Base_class
+  use Simulation_Subsurface_class
+  use Simulation_Surf_Subsurf_class
+  use Simulation_Geomechanics_class
+  use Simulation_Hydrogeophysics_class
   use PM_Base_class
   use PM_Surface_Flow_class
   use PM_Surface_TH_class
   use PM_Geomechanics_Force_class
   use PMC_Base_class
+  use Checkpoint_module
+  use Output_Aux_module
+  use Waypoint_module
+  use Units_module
   
   use Factory_Subsurface_module
   use Factory_Hydrogeophysics_module
   use Factory_Surf_Subsurf_module
   use Factory_Geomechanics_module
-  use Factory_Surf_Subsurf_module, only : SurfSubsurfaceReadFlowPM
   
   implicit none
   
@@ -129,10 +140,13 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: simulation_type
+  character(len=MAXSTRINGLENGTH) :: units_category  
   
   class(pm_base_type), pointer :: pm_master
   class(pm_base_type), pointer :: cur_pm
   class(pm_base_type), pointer :: new_pm
+  type(checkpoint_option_type), pointer :: checkpoint_option
+  type(waypoint_list_type), pointer :: checkpoint_waypoint_list
 
   class(pmc_base_type), pointer :: pmc_master
   
@@ -143,6 +157,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   nullify(new_pm)
   
   nullify(pmc_master)
+  nullify(checkpoint_option)
+  nullify(checkpoint_waypoint_list)
   print_ekg = PETSC_FALSE
   
   input => InputCreate(IN_UNIT,option%input_filename,option)
@@ -209,10 +225,34 @@ subroutine PFLOTRANReadSimulation(simulation,option)
         call PFLOTRANSetupPMCHierarchy(input,option,pmc_master)
       case('PRINT_EKG')
         option%print_ekg = PETSC_TRUE
+      case('CHECKPOINT')
+        checkpoint_option => CheckpointOptionCreate()
+        checkpoint_waypoint_list => WaypointListCreate()
+        call CheckpointRead(input,option,checkpoint_option, &
+                            checkpoint_waypoint_list)
+      case ('RESTART')
+        option%io_buffer = 'The RESTART card within SUBSURFACE block has &
+                           &been deprecated.'
+        option%restart_flag = PETSC_TRUE
+        call InputReadNChars(input,option,option%restart_filename,MAXSTRINGLENGTH, &
+                             PETSC_TRUE)
+        call InputErrorMsg(input,option,'RESTART','Restart file name') 
+        call InputReadDouble(input,option,option%restart_time)
+        if (input%ierr == 0) then
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          if (input%ierr == 0) then
+            units_category = 'time'
+            option%restart_time = option%restart_time* &
+                                  UnitsConvertToInternal(word,units_category,option)
+          else
+            call InputDefaultMsg(input,option,'RESTART, time units')
+          endif
+        endif                            
       case default
         call InputKeywordUnrecognized(word,'SIMULATION',option)            
     end select
   enddo
+  call InputDestroy(input)
 
   if (.not.associated(pm_master)) then
     option%io_buffer = 'No process models defined in SIMULATION block.'
@@ -228,30 +268,34 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     enddo
   endif
 
+  ! create the simulation objects
   select case(simulation_type)
-    case('CUSTOM')
-      ! link process models with their respective couplers
-      cur_pm => pm_master
-      do
-        if (.not.associated(cur_pm)) exit
-        call PFLOTRANLinkPMToPMC(input,option,pmc_master,cur_pm)
-        cur_pm => cur_pm%next
-      enddo
-      call pmc_master%CheckNullPM(option)
     case('SUBSURFACE')
-      call SubsurfaceInitialize(simulation,pm_master,option)  
+      simulation => SubsurfaceSimulationCreate(option)
     case('HYDROGEOPHYSICS')
-      call HydrogeophysicsInitialize(simulation,pm_master,option)
+      simulation => HydrogeophysicsCreate(option)
     case('SURFACE_SUBSURFACE')
-      call SurfSubsurfaceInitialize(simulation,pm_master,option)
+      simulation => SurfSubsurfaceSimulationCreate(option)
     case('GEOMECHANICS_SUBSURFACE')
-      call GeomechanicsInitialize(simulation,pm_master,option)
+      simulation => GeomechanicsSimulationCreate(option)
     case default
       call InputKeywordUnrecognized(word, &
                      'SIMULATION,SIMULATION_TYPE',option)            
   end select
-  
-  call InputDestroy(input)
+  simulation%process_model_list => pm_master
+  simulation%checkpoint_option => checkpoint_option
+  call WaypointListMerge(simulation%waypoint_list_outer, &
+                         checkpoint_waypoint_list,option)
+  select type(simulation)
+    class is(simulation_subsurface_type)
+      call SubsurfaceInitialize(simulation)  
+    class is(simulation_hydrogeophysics_type)
+      call HydrogeophysicsInitialize(simulation)
+    class is(simulation_surfsubsurface_type)
+      call SurfSubsurfaceInitialize(simulation)
+    class is(simulation_geomechanics_type)
+      call GeomechanicsInitialize(simulation)
+  end select
   
 end subroutine PFLOTRANReadSimulation
 
@@ -270,7 +314,7 @@ recursive subroutine PFLOTRANSetupPMCHierarchy(input,option,pmc)
   
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   class(pmc_base_type), pointer :: pmc
   
@@ -316,7 +360,7 @@ recursive subroutine PFLOTRANLinkPMToPMC(input,option,pmc,pm)
   
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   class(pmc_base_type), pointer :: pmc
   class(pm_base_type), pointer :: pm
@@ -325,7 +369,7 @@ recursive subroutine PFLOTRANLinkPMToPMC(input,option,pmc,pm)
   
   print *, pmc%name, pm%name
   if (StringCompareIgnoreCase(pmc%name,pm%name)) then
-    pmc%pms => pm
+    pmc%pm_list => pm
     return
   endif
   
@@ -439,15 +483,6 @@ subroutine PFLOTRANInitCommandLineSettings(option)
     option%id = i
   endif
   
-  ! this will get overwritten later if stochastic
-  string = '-simulation_mode'
-  call InputGetCommandLineString(string,string2, &
-                                 option_found,option)
-  if (option_found) then
-    call StringToUpper(string2)
-    option%simulation_mode = string2
-  endif
-
 end subroutine PFLOTRANInitCommandLineSettings
 
 end module Factory_PFLOTRAN_module

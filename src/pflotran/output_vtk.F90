@@ -298,6 +298,7 @@ subroutine WriteVTKGrid(fid,realization_base)
   ! 
 
   use Realization_Base_class, only : realization_base_type
+  use Discretization_module
   use Grid_module
   use Option_module
   use Patch_module
@@ -310,6 +311,7 @@ subroutine WriteVTKGrid(fid,realization_base)
   PetscInt :: fid
   class(realization_base_type) :: realization_base
   
+  type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch  
@@ -324,6 +326,7 @@ subroutine WriteVTKGrid(fid,realization_base)
   
   call PetscLogEventBegin(logging%event_output_grid_vtk,ierr);CHKERRQ(ierr)
                               
+  discretization => realization_base%discretization
   patch => realization_base%patch
   grid => patch%grid
   option => realization_base%option
@@ -346,15 +349,15 @@ subroutine WriteVTKGrid(fid,realization_base)
         if (k > 0) then
           z = z + grid%structured_grid%dz_global(k)
         else
-          z = grid%structured_grid%origin(Z_DIRECTION)
+          z = discretization%origin_global(Z_DIRECTION)
         endif
         do j=0,ny
           if (j > 0) then
             y = y + grid%structured_grid%dy_global(j)
           else
-            y = grid%structured_grid%origin(Y_DIRECTION)
+            y = discretization%origin_global(Y_DIRECTION)
           endif
-          x = grid%structured_grid%origin(X_DIRECTION)
+          x = discretization%origin_global(X_DIRECTION)
           write(fid,1000) x,y,z
           do i=1,nx
             x = x + grid%structured_grid%dx_global(i)

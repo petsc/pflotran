@@ -43,6 +43,10 @@ module vars
   integer :: nmap
   integer :: ntime                                         !!number of e4d simulation times
 
+  integer :: pfnx                                          !!number of pf cells in x dim
+  integer :: pfny                                          !!number of pf cells in y dim
+  integer :: pfnz                                          !!number of pf cells in z dim
+
   real :: gw_sig                                           !!groundwater electrical conductivity
   real :: sw_sig                                           !!surface water electrical condctivity
   real :: FF                                               !!formation factor
@@ -52,6 +56,7 @@ module vars
   integer, dimension(:,:), allocatable :: map_inds
   integer, dimension(:,:), allocatable :: s_conf           !!abmn survey configuration
   integer, dimension(:,:), allocatable :: eind             !!electrode assignments
+  integer, dimension(:,:), allocatable :: jind             !!element map assignments
   integer, dimension(:), allocatable :: nbounds,zones      !!node boundaries and element zones
   integer, dimension(:,:), allocatable :: elements         !!elements connections
   integer, dimension(:,:), allocatable :: faces            !!face connections
@@ -75,6 +80,12 @@ module vars
   real, dimension(:), allocatable :: my_dvals              !!values in my data assembly vector
   real, dimension(:), allocatable :: map
   real, dimension(:), allocatable :: base_sigma            !!baseline element conductivity
+  real, dimension(:), allocatable :: ffac                  !!formation factor
+
+  real, dimension(:), allocatable :: pfxcb                 !!pf cell boundaries in x
+  real, dimension(:), allocatable :: pfycb                 !!pf cell boundaries in y
+  real, dimension(:), allocatable :: pfzcb                 !!pf cell boundaries in z
+ 
   
 
   PetscInt, dimension(:), allocatable :: d_nnz             !!petsc prealloc vec (diag blocks)
@@ -106,6 +117,8 @@ subroutine elog(com,i1,i2)
   implicit none
   integer :: com,i1,i2
   logical :: exst
+  integer :: d1,d2,d3
+  real :: v1,v2,v3
 
   select case (com)
      
@@ -567,7 +580,28 @@ subroutine elog(com,i1,i2)
         open(13,file=trim(log_file),status='old',action='write',position='append')
         write(13,*) "Received Time: ",pf_time, " from PFLOTRAN"
         close(13)
+     
+
+     case(37)
+        inquire(file='pf_mesh.txt',exist=exst)
+        if(.not.exst) then
+           open(13,file=trim(log_file),status='old',action='write',position='append')
+           write(*,*) "E4D couldn't find the pflotran mesh description file pf_mesh.txt"
+           write(*,*) "E4D is aborting ..."
+           write(13,*) "E4D couldn't find the pflotran mesh description file pf_mesh.txt"
+           write(13,*) "Aborting ..."
+           i1=-1
+           close(13)
+           return
+        else
+           i1=0
+           return
+        end if
+           
      end select
+
+
+        
 end subroutine elog
 !_________________________________________________________________	
  

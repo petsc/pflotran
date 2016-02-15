@@ -155,7 +155,7 @@ subroutine FractureRead(this,input,option)
   implicit none
   
   class(fracture_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: keyword, word
   
@@ -473,7 +473,7 @@ subroutine CreepClosureRead(this,input,option)
   implicit none
   
   class(creep_closure_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: filename
@@ -487,6 +487,7 @@ subroutine CreepClosureRead(this,input,option)
   time_units_conversion = 1.d0
   filename = ''
   input%ierr = 0
+
   do
   
     call InputReadPflotranString(input,option)
@@ -515,7 +516,7 @@ subroutine CreepClosureRead(this,input,option)
     call printErrMsg(option)
   endif
   
-  this%lookup_table => LookupTableCreateGeneral(2)
+  this%lookup_table => LookupTableCreateGeneral(TWO_INTEGER)
   error_string = 'CREEP_CLOSURE file'
   input2 => InputCreate(IUNIT_TEMP,filename,option)
   input2%ierr = 0
@@ -540,7 +541,7 @@ subroutine CreepClosureRead(this,input,option)
         call InputReadWord(input2,option,word,PETSC_TRUE) 
         call InputErrorMsg(input2,option,'UNITS','CONDITION')   
         call StringToLower(word)
-        time_units_conversion = UnitsConvertToInternal(word,option)
+        time_units_conversion = UnitsConvertToInternal(word,'time',option)
       case('TIME')
         if (Uninitialized(this%num_times) .or. &
             Uninitialized(this%num_values_per_time)) then
@@ -555,21 +556,21 @@ subroutine CreepClosureRead(this,input,option)
         allocate(this%lookup_table%axis2%values(temp_int))
         allocate(this%lookup_table%data(temp_int))
         string = 'TIME in CREEP_CLOSURE'
-        call UtilityReadRealArray(this%lookup_table%axis1%values, &
-                                  -1,string, &
-                                  input2,option)
+        call UtilityReadArray(this%lookup_table%axis1%values, &
+                              NEG_ONE_INTEGER,string, &
+                              input2,option)
         this%lookup_table%axis1%values = this%lookup_table%axis1%values * &
           time_units_conversion
       case('PRESSURE') 
         string = 'PRESSURE in CREEP_CLOSURE'
-        call UtilityReadRealArray(this%lookup_table%axis2%values, &
-                                  -1, &
-                                  string,input2,option)
+        call UtilityReadArray(this%lookup_table%axis2%values, &
+                              NEG_ONE_INTEGER, &
+                              string,input2,option)
       case('POROSITY') 
         string = 'POROSITY in CREEP_CLOSURE'
-        call UtilityReadRealArray(this%lookup_table%data, &
-                                  -1, &
-                                  string,input2,option)
+        call UtilityReadArray(this%lookup_table%data, &
+                              NEG_ONE_INTEGER, &
+                              string,input2,option)
      case default
         error_string = trim(error_string) // ': ' // filename
         call InputKeywordUnrecognized(keyword,error_string,option)
@@ -765,7 +766,7 @@ subroutine KlinkenbergRead(this,input,option)
   implicit none
   
   class(klinkenberg_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -979,7 +980,7 @@ subroutine WIPPRead(input,option)
   
   implicit none
   
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   type(wipp_type), pointer :: wipp

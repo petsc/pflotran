@@ -14,34 +14,34 @@ module Geomechanics_Coupler_module
   ! SK: Note that there is no initial coupler since we solve 
   ! a quasi-static problem for geomechanics (when coupled to flow, otherwise
   ! it is a steady state problem)
-  PetscInt, parameter, public                 :: GM_BOUNDARY_COUPLER_TYPE = 1
-  PetscInt, parameter, public                 :: GM_SRC_SINK_COUPLER_TYPE = 2
+  PetscInt, parameter, public :: GM_BOUNDARY_COUPLER_TYPE = 1
+  PetscInt, parameter, public :: GM_SRC_SINK_COUPLER_TYPE = 2
 
    type, public :: geomech_coupler_type
-    PetscInt                                  :: id                           ! id of coupler
-    character(len=MAXWORDLENGTH)              :: name                         ! name of coupler
-    PetscInt                                  :: itype                        ! integer defining type
-    character(len=MAXWORDLENGTH)              :: ctype                        ! character string defining type
-    character(len=MAXWORDLENGTH)              :: geomech_condition_name       ! character string defining name of condition to be applied
-    character(len=MAXWORDLENGTH)              :: region_name                  ! character string defining name of region to be applied
-    PetscInt                                  :: igeomech_condition           ! id of condition in condition array/list
-    PetscInt                                  :: iregion                      ! id of region in region array/list
-    PetscInt, pointer                         :: geomech_aux_int_var(:,:)     ! auxiliary array for integer value
-    PetscReal, pointer                        :: geomech_aux_real_var(:,:)    ! auxiliary array for real values
-    type(geomech_condition_type), pointer     :: geomech_condition            ! pointer to condition in condition array/list
-    type(gm_region_type), pointer             :: region                       ! pointer to region in region array/list
-    type(geomech_coupler_type), pointer       :: next                         ! pointer to next coupler
+    PetscInt :: id                           ! id of coupler
+    character(len=MAXWORDLENGTH) :: name                         ! name of coupler
+    PetscInt :: itype                        ! integer defining type
+    character(len=MAXWORDLENGTH) :: ctype                        ! character string defining type
+    character(len=MAXWORDLENGTH) :: geomech_condition_name       ! character string defining name of condition to be applied
+    character(len=MAXWORDLENGTH) :: region_name                  ! character string defining name of region to be applied
+    PetscInt :: igeomech_condition           ! id of condition in condition array/list
+    PetscInt :: iregion                      ! id of region in region array/list
+    PetscInt, pointer :: geomech_aux_int_var(:,:)     ! auxiliary array for integer value
+    PetscReal, pointer :: geomech_aux_real_var(:,:)    ! auxiliary array for real values
+    type(geomech_condition_type), pointer :: geomech_condition            ! pointer to condition in condition array/list
+    type(gm_region_type), pointer :: region                       ! pointer to region in region array/list
+    type(geomech_coupler_type), pointer :: next                         ! pointer to next coupler
   end type geomech_coupler_type
   
   type, public :: geomech_coupler_ptr_type
-    type(geomech_coupler_type), pointer       :: ptr
+    type(geomech_coupler_type), pointer :: ptr
   end type geomech_coupler_ptr_type
     
   type, public :: geomech_coupler_list_type
     PetscInt :: num_couplers
-    type(geomech_coupler_type), pointer       :: first
-    type(geomech_coupler_type), pointer       :: last
-    type(geomech_coupler_type), pointer       :: array(:)    
+    type(geomech_coupler_type), pointer :: first
+    type(geomech_coupler_type), pointer :: last
+    type(geomech_coupler_type), pointer :: array(:)    
   end type geomech_coupler_list_type
   
   public :: GeomechCouplerCreate, &
@@ -177,7 +177,7 @@ subroutine GeomechCouplerInitList(list)
 
   implicit none
 
-  type(geomech_coupler_list_type)                  :: list
+  type(geomech_coupler_list_type) :: list
   
   nullify(list%first)
   nullify(list%last)
@@ -202,11 +202,11 @@ subroutine GeomechCouplerRead(coupler,input,option)
   
   implicit none
   
-  type(option_type)                                :: option
-  type(geomech_coupler_type)                       :: coupler
-  type(input_type)                                 :: input
+  type(option_type) :: option
+  type(geomech_coupler_type) :: coupler
+  type(input_type), pointer :: input
   
-  character(len=MAXWORDLENGTH)                     :: word
+  character(len=MAXWORDLENGTH) :: word
 
   input%ierr = 0
   do
@@ -247,8 +247,8 @@ subroutine GeomechCouplerAddToList(new_coupler,list)
 
   implicit none
   
-  type(geomech_coupler_type), pointer              :: new_coupler
-  type(geomech_coupler_list_type)                  :: list
+  type(geomech_coupler_type), pointer :: new_coupler
+  type(geomech_coupler_list_type) :: list
   
   list%num_couplers = list%num_couplers + 1
   new_coupler%id = list%num_couplers
@@ -273,10 +273,10 @@ function GeomechCouplerGetPtrFromList(coupler_name,coupler_list)
 
   implicit none
   
-  type(geomech_coupler_type), pointer           :: GeomechCouplerGetPtrFromList
-  character(len=MAXWORDLENGTH)                  :: coupler_name
-  PetscInt                                      :: length
-  type(geomech_coupler_list_type)               :: coupler_list
+  type(geomech_coupler_type), pointer :: GeomechCouplerGetPtrFromList
+  character(len=MAXWORDLENGTH) :: coupler_name
+  PetscInt :: length
+  type(geomech_coupler_list_type) :: coupler_list
 
   type(geomech_coupler_type), pointer :: coupler
     
@@ -308,9 +308,9 @@ subroutine GeomechCouplerDestroyList(coupler_list)
 
   implicit none
   
-  type(geomech_coupler_list_type), pointer         :: coupler_list
+  type(geomech_coupler_list_type), pointer :: coupler_list
   
-  type(geomech_coupler_type), pointer              :: coupler, prev_coupler
+  type(geomech_coupler_type), pointer :: coupler, prev_coupler
   
   if (.not.associated(coupler_list)) return
   

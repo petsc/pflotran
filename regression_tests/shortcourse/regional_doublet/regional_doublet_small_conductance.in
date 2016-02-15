@@ -70,6 +70,7 @@ END
 #=========================== data sets ========================================
 DATASET perm_field
   FILENAME ./perm_fields_10x5x4.h5
+  HDF5_DATASET_NAME Permeability
   REALIZATION_DEPENDENT
 /
 

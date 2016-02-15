@@ -56,7 +56,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: gas_pressure
   PetscReal :: xm_nacl
   PetscReal :: max_z, min_z, temp_real
-  PetscInt  :: num_faces, face_id_ghosted, conn_id, num_regions
+  PetscInt :: num_faces, face_id_ghosted, conn_id, num_regions
   type(connection_set_type), pointer :: conn_set_ptr
   PetscReal, pointer :: pressure_array(:)
   PetscReal, allocatable :: density_array(:), z(:)
@@ -364,7 +364,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       call DatasetGriddedHDF5InterpolateReal(datum_dataset, &
                                           grid%x(ghosted_id)-dx_conn, &
                                           grid%y(ghosted_id)-dy_conn, &
-                                          0.d0, &
                                           0.d0,temp_real,option)
       ! temp_real is now the real datum
       dist_z = grid%z(ghosted_id)-dz_conn-temp_real

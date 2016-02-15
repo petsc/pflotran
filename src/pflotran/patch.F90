@@ -84,9 +84,9 @@ module Patch_module
 
     PetscInt :: surf_or_subsurf_flag  ! Flag to identify if the current patch
                                       ! is a surface or subsurface (default)
-    type(surface_material_property_type), pointer     :: surf_material_properties
+    type(surface_material_property_type), pointer :: surf_material_properties
     type(surface_material_property_ptr_type), pointer :: surf_material_property_array(:)
-    type(surface_field_type), pointer                 :: surf_field
+    type(surface_field_type), pointer :: surf_field
     type(surface_auxiliary_type) :: surf_aux
     
   end type patch_type
@@ -2024,14 +2024,19 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
   
   PetscInt :: idof, num_connections,sum_connection
   PetscInt :: iconn, local_id, ghosted_id
+  PetscInt :: iphase
   
   num_connections = coupler%connection_set%num_connections
 
   flow_condition => coupler%flow_condition
 
   if (associated(flow_condition%pressure)) then
-    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                flow_condition%iphase
+    !geh: this is a fix for an Intel compiler bug. Not sure why Intel cannot
+    !     access flow_condition%iphase directly....
+    iphase = flow_condition%iphase
+    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = iphase
+!    coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+!                                                        flow_condition%iphase
     select case(flow_condition%pressure%itype)
       case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC,SPILLOVER_BC)
         select type(selector =>flow_condition%pressure%dataset)
@@ -2443,8 +2448,7 @@ subroutine PatchUpdateCouplerFromDataset(coupler,option,grid,dataset,dof)
       y = y-dist(0)*dist(2)
       z = z-dist(0)*dist(3)
     endif
-    call DatasetGriddedHDF5InterpolateReal(dataset,x,y,z, &
-                                           0.d0,temp_real,option)
+    call DatasetGriddedHDF5InterpolateReal(dataset,x,y,z,temp_real,option)
     coupler%flow_aux_real_var(dof,iconn) = temp_real
   enddo
   
@@ -2530,6 +2534,7 @@ subroutine PatchScaleSourceSink(patch,source_sink,iscale_type,option)
       do iconn = 1, cur_connection_set%num_connections
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
+        !geh: kludge for 64-bit integers.
         call GridGetGhostedNeighbors(grid,ghosted_id,DMDA_STENCIL_STAR, &
                                     x_width,y_width,z_width, &
                                     x_count,y_count,z_count, &
@@ -2638,9 +2643,9 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
   type(connection_set_type), pointer :: cur_connection_set
   type(grid_type),pointer :: grid
   PetscErrorCode :: ierr
-  PetscInt       :: iconn,sum_connection
+  PetscInt :: iconn,sum_connection
   PetscInt :: ghosted_id,local_id
-  PetscInt,pointer::cell_ids_nat(:)
+  PetscInt,pointer ::cell_ids_nat(:)
   type(flow_sub_condition_type) :: flow_sub_condition
 
   class(dataset_map_hdf5_type), pointer :: dataset_map_hdf5
@@ -2731,7 +2736,7 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
 
   type(grid_type) :: grid
   class(dataset_map_hdf5_type) :: dataset_map_hdf5
-  type(option_type):: option
+  type(option_type) :: option
   PetscInt,pointer :: cell_ids(:)
   PetscInt :: ncells
   
@@ -2744,8 +2749,8 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
   PetscInt :: istart
   
   IS :: is_from, is_to
-  Vec:: map_ids_1, map_ids_2,map_ids_3
-  VecScatter::vec_scatter
+  Vec :: map_ids_1, map_ids_2,map_ids_3
+  VecScatter ::vec_scatter
   PetscViewer :: viewer
   
   ! Step-1: Rearrange map dataset

@@ -34,7 +34,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   ! Date: 11/02/07, 10/18/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -58,7 +58,7 @@ subroutine CondControlAssignFlowInitCond(realization)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   PetscInt :: icell, iconn, idof, iface
   PetscInt :: local_id, ghosted_id, iend, ibegin
@@ -500,7 +500,7 @@ subroutine CondControlAssignTranInitCond(realization)
   ! Date: 11/02/07, 10/18/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -524,7 +524,7 @@ subroutine CondControlAssignTranInitCond(realization)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   PetscInt :: icell, iconn, idof, isub_condition, temp_int, iimmobile
   PetscInt :: local_id, ghosted_id, iend, ibegin
@@ -954,7 +954,7 @@ subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
   ! Author: Glenn Hammond
   ! Date: 03/23/12
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Dataset_Common_HDF5_class
@@ -967,7 +967,7 @@ subroutine ConditionControlMapDatasetToVec(realization,dataset,idof, &
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"  
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   class(dataset_base_type), pointer :: dataset
   PetscInt :: idof
   Vec :: mdof_vec
@@ -1020,7 +1020,7 @@ subroutine CondControlScaleSourceSink(realization)
   ! Date: 09/03/08, 10/18/11
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -1040,7 +1040,7 @@ subroutine CondControlScaleSourceSink(realization)
 #include "petsc/finclude/petscdmda.h"
 
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   
   PetscErrorCode :: ierr
   
@@ -1182,7 +1182,7 @@ subroutine CondControlReadTransportIC(realization,filename)
   ! Date: 03/05/10
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   use Grid_module
@@ -1197,7 +1197,7 @@ subroutine CondControlReadTransportIC(realization,filename)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   character(len=MAXSTRINGLENGTH) :: filename
   
   PetscInt :: local_id, idx, offset, idof
@@ -1268,7 +1268,7 @@ end subroutine CondControlReadTransportIC
 
 subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 
-  use Surface_Realization_class
+  use Realization_Surface_class
   use Discretization_module
   use Region_module
   use Option_module
@@ -1286,7 +1286,7 @@ subroutine CondControlAssignFlowInitCondSurface(surf_realization)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  class(surface_realization_type) :: surf_realization
+  class(realization_surface_type) :: surf_realization
   
   PetscInt :: icell, iconn, idof, iface
   PetscInt :: local_id, ghosted_id, iend, ibegin

@@ -427,7 +427,8 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
     end select
     auxvar%avgmw(2) = auxvar%xmol(3)*FMWH2O + auxvar%xmol(4)*FMWCO2
     pw = p
-    call EOSWaterDensityEnthalpy(t,pw,dw_kg,dw_mol,hw,ierr) 
+    call EOSWaterDensity(t,pw,dw_kg,dw_mol,ierr) 
+    call EOSWaterEnthalpy(t,pw,hw,ierr) 
     hw = hw * option%scale ! J/kmol -> whatever units
     auxvar%den(2) = 1.D0/(auxvar%xmol(4)/dg + auxvar%xmol(3)/dw_mol)
     auxvar%h(2) = hg  

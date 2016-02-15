@@ -11,6 +11,9 @@ SIMULATION
       GLOBAL_IMPLICIT
     /
   /
+  CHECKPOINT
+    PERIODIC TIMESTEP 10
+  /
 END
 
 SUBSURFACE
@@ -420,8 +423,5 @@ END
 STRATA
   MATERIAL ./543.h5
 END
-
-#=========================== checkpoint / restart =============================
-CHECKPOINT 10
 
 END_SUBSURFACE

@@ -6,10 +6,11 @@ module Simulation_Geomechanics_class
   use PMC_Base_class
   use PMC_Subsurface_class
   use PMC_Geomechanics_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Geomechanics_Realization_class
   use PFLOTRAN_Constants_module
-
+  use Waypoint_module
+  
   implicit none
 
   private
@@ -18,17 +19,19 @@ module Simulation_Geomechanics_class
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
   
-  type, public, extends(subsurface_simulation_type) :: geomechanics_simulation_type
+  type, public, extends(simulation_subsurface_type) :: &
+    simulation_geomechanics_type
     ! pointer to geomechanics coupler
     class(pmc_geomechanics_type), pointer :: geomech_process_model_coupler
-    class(geomech_realization_type), pointer :: geomech_realization
+    class(realization_geomech_type), pointer :: geomech_realization
+    type(waypoint_list_type), pointer :: waypoint_list_geomechanics
   contains
     procedure, public :: Init => GeomechanicsSimulationInit
     procedure, public :: InitializeRun => GeomechanicsSimulationInitializeRun
     procedure, public :: ExecuteRun => GeomechanicsSimulationExecuteRun
     procedure, public :: FinalizeRun => GeomechanicsSimulationFinalizeRun
     procedure, public :: Strip => GeomechanicsSimulationStrip
-  end type Geomechanics_simulation_type
+  end type simulation_geomechanics_type
   
   public :: GeomechanicsSimulationCreate, &
             GeomechanicsSimulationDestroy
@@ -51,7 +54,7 @@ function GeomechanicsSimulationCreate(option)
 
   type(option_type), pointer :: option
 
-  class(geomechanics_simulation_type), pointer :: GeomechanicsSimulationCreate
+  class(simulation_geomechanics_type), pointer :: GeomechanicsSimulationCreate
 
   print *,'GeomechanicsSimulationCreate'
 
@@ -69,16 +72,17 @@ subroutine GeomechanicsSimulationInit(this, option)
   ! Author: Gautam Bisht, LBNL
   ! Date: 01/01/14
   ! 
-
+  use Waypoint_module
   use Option_module
 
   implicit none
 
-  class(geomechanics_simulation_type) :: this
+  class(simulation_geomechanics_type) :: this
   type(option_type), pointer :: option
 
   call SubsurfaceSimulationInit(this, option)
   nullify(this%geomech_realization)
+  this%waypoint_list_geomechanics => WaypointListCreate()
 
 end subroutine GeomechanicsSimulationInit
 
@@ -97,7 +101,7 @@ subroutine GeomechanicsSimulationInitializeRun(this)
 
   implicit none
 
-  class(geomechanics_simulation_type) :: this
+  class(simulation_geomechanics_type) :: this
 
   call printMsg(this%option,'Simulation%InitializeRun()')
   call this%process_model_coupler_list%InitializeRun()
@@ -124,7 +128,7 @@ subroutine GeomechanicsSimulationExecuteRun(this)
 
   implicit none
   
-  class(geomechanics_simulation_type) :: this
+  class(simulation_geomechanics_type) :: this
   
   PetscReal :: time
   PetscReal :: final_time
@@ -178,12 +182,11 @@ subroutine GeomechanicsSimulationFinalizeRun(this)
   ! Date: 01/01/14
   ! 
 
-  use Simulation_Base_class
   use Timestepper_Base_class
 
   implicit none
 
-  class(geomechanics_simulation_type) :: this
+  class(simulation_geomechanics_type) :: this
 
   call printMsg(this%option,'GeomechanicsSimulationFinalizeRun')
 
@@ -202,16 +205,16 @@ subroutine GeomechanicsSimulationStrip(this)
   ! Date: 01/01/14
   ! 
 
-  use Simulation_Base_class
 
   implicit none
   
-  class(geomechanics_simulation_type) :: this
+  class(simulation_geomechanics_type) :: this
   
   call printMsg(this%option,'GeomechanicsSimulationStrip()')
   
   call SubsurfaceSimulationStrip(this)
   call RegressionDestroy(this%regression)
+  call WaypointListDestroy(this%waypoint_list_geomechanics)  
   
 end subroutine GeomechanicsSimulationStrip
 
@@ -227,7 +230,7 @@ subroutine GeomechanicsSimulationDestroy(simulation)
 
   implicit none
   
-  class(geomechanics_simulation_type), pointer :: simulation
+  class(simulation_geomechanics_type), pointer :: simulation
   
   call printMsg(simulation%option,'GeomehanicsSimulationDestroy()')
   

@@ -49,13 +49,13 @@ subroutine THTimeCut(realization)
   ! Date: 12/13/07
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
@@ -76,10 +76,10 @@ subroutine THSetup(realization)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -105,7 +105,7 @@ subroutine THSetupPatch(realization)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -118,7 +118,7 @@ subroutine THSetupPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -327,10 +327,10 @@ subroutine THComputeMassBalance(realization, mass_balance)
   ! Date: 07/21/2010
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
    
   type(patch_type), pointer :: cur_patch
@@ -358,7 +358,7 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
   ! Date: 07/21/2010
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
@@ -369,7 +369,7 @@ subroutine THComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
 
   type(option_type), pointer :: option
@@ -439,14 +439,14 @@ subroutine THZeroMassBalDeltaPatch(realization)
   ! Date: 12/13/11
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -492,14 +492,14 @@ subroutine THUpdateMassBalancePatch(realization)
   ! Date: 12/13/11
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -552,10 +552,10 @@ subroutine THUpdateAuxVars(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -580,7 +580,7 @@ subroutine THUpdateAuxVarsPatch(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -591,7 +591,7 @@ subroutine THUpdateAuxVarsPatch(realization)
    
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -806,11 +806,11 @@ subroutine THInitializeTimestep(realization)
   ! Date: 02/20/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   call THUpdateFixedAccumulation(realization)
 
@@ -826,13 +826,13 @@ subroutine THUpdateSolution(realization)
   ! Date: 02/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Patch_module
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(field_type), pointer :: field
   type(patch_type), pointer :: cur_patch
@@ -863,7 +863,7 @@ subroutine THUpdateSolutionPatch(realization)
   ! 
 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -873,7 +873,7 @@ subroutine THUpdateSolutionPatch(realization)
     
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -941,10 +941,10 @@ subroutine THUpdateFixedAccumulation(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
   
@@ -969,7 +969,7 @@ subroutine THUpdateFixedAccumPatch(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -979,7 +979,7 @@ subroutine THUpdateFixedAccumPatch(realization)
 
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1082,7 +1082,7 @@ subroutine THNumericalJacobianTest(xx,realization)
   ! Date: 12/13/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -1091,7 +1091,7 @@ subroutine THNumericalJacobianTest(xx,realization)
   implicit none
 
   Vec :: xx
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   Vec :: xx_pert
   Vec :: res
@@ -3352,7 +3352,7 @@ subroutine THResidual(snes,xx,r,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Discretization_module
   use Field_module
@@ -3365,7 +3365,7 @@ subroutine THResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
   
   type(discretization_type), pointer :: discretization
@@ -3436,7 +3436,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3451,7 +3451,7 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: i, jn
@@ -3951,7 +3951,7 @@ subroutine THJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -3962,7 +3962,7 @@ subroutine THJacobian(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -4030,7 +4030,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Coupler_module
   use Field_module
@@ -4040,7 +4040,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
@@ -4091,6 +4091,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
 
   type(sec_heat_type), pointer :: sec_heat_vars(:)
   character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: ithrm
 
   PetscViewer :: viewer
   Vec :: debug_vec
@@ -4140,11 +4141,11 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
       vol_frac_prim = sec_heat_vars(local_id)%epsilon
     endif
 
+    ithrm = int(ithrm_loc_p(ghosted_id))
     call THAccumDerivative(auxvars(ghosted_id),global_auxvars(ghosted_id), &
                             material_auxvars(ghosted_id), &
-                            TH_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                            TH_parameter, int(ithrm_loc_p(ghosted_id)), &
-                            option, &
+                            TH_parameter%dencpr(ithrm), &
+                            TH_parameter, ithrm, option, &
                             patch%saturation_function_array(icap)%ptr, &
                             vol_frac_prim,Jup) 
 
@@ -4593,7 +4594,7 @@ end subroutine THCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine THMaxChange(realization)
+subroutine THMaxChange(realization,dpmax,dtmpmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -4601,34 +4602,32 @@ subroutine THMaxChange(realization)
   ! Date: 01/15/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
   
+  PetscReal :: dpmax, dtmpmax
   PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field
 
-  option%dcmax=0.D0
+  dpmax = 0.d0
+  dtmpmax = 0.d0
   
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
                 ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax, &
+  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,dpmax, &
                      ierr);CHKERRQ(ierr)
-  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax, &
+  call VecStrideNorm(field%flow_dxx,ONE_INTEGER,NORM_INFINITY,dtmpmax, &
                      ierr);CHKERRQ(ierr)
-  if (option%nflowdof > 2) then
-    call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dcmax, &
-                       ierr);CHKERRQ(ierr)
-  endif
     
 end subroutine THMaxChange
 
@@ -4642,7 +4641,7 @@ subroutine THResidualToMass(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Discretization_module
   use Field_module
@@ -4652,7 +4651,7 @@ subroutine THResidualToMass(realization)
   implicit none
 
   Vec :: ts_mass_balance
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(field_type), pointer :: field
   type(patch_type), pointer :: cur_patch
@@ -4708,14 +4707,14 @@ function THGetTecplotHeader(realization,icolumn)
   ! Date: 02/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
 
   implicit none
   
   character(len=MAXSTRINGLENGTH) :: THGetTecplotHeader
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -4834,7 +4833,7 @@ subroutine THSetPlotVariables(realization)
   ! Date: 10/15/12
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
   use Material_Aux_class
@@ -4842,7 +4841,7 @@ subroutine THSetPlotVariables(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   type(output_variable_type) :: output_variable
   
   character(len=MAXWORDLENGTH) :: name, units
@@ -5234,12 +5233,12 @@ subroutine EnergyToTemperatureBisection(T,TL,TR,h,energy,Cwi,Pr,option)
 
   implicit none
 
-  PetscReal      :: T,TL,TR,h,energy,Cwi,Pr
+  PetscReal :: T,TL,TR,h,energy,Cwi,Pr
   type(option_type), pointer :: option
 
-  PetscReal      :: Tp,rho,rho_t,f,fR,fL,rtol
-  PetscInt       :: iter,niter
-  PetscBool      :: found
+  PetscReal :: Tp,rho,rho_t,f,fR,fL,rtol
+  PetscInt :: iter,niter
+  PetscBool :: found
   PetscErrorCode :: ierr
 
   call EOSWaterdensity(TR,Pr,rho,rho_T,ierr)
@@ -5298,7 +5297,7 @@ subroutine THUpdateSurfaceBC(realization)
   ! Date: 10/23/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -5314,7 +5313,7 @@ subroutine THUpdateSurfaceBC(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscInt :: ghosted_id
   PetscInt :: local_id
@@ -5535,7 +5534,7 @@ subroutine THUpdateSurfaceWaterFlag(realization)
   ! Date: 04/17/14
   !
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -5545,7 +5544,7 @@ subroutine THUpdateSurfaceWaterFlag(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(coupler_type), pointer :: boundary_condition
   type(TH_auxvar_type), pointer :: TH_auxvars_bc(:)
@@ -5614,7 +5613,7 @@ subroutine THComputeCoeffsForSurfFlux(realization)
   ! Date: 05/21/14
   !
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -5630,7 +5629,7 @@ subroutine THComputeCoeffsForSurfFlux(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch

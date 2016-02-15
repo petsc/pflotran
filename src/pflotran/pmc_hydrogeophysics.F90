@@ -1,7 +1,7 @@
 module PMC_Hydrogeophysics_class
 
   use PMC_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
 
   use PFLOTRAN_Constants_module
@@ -15,10 +15,10 @@ module PMC_Hydrogeophysics_class
 #include "petsc/finclude/petscvec.h90"
   
   type, public, extends(pmc_base_type) :: pmc_hydrogeophysics_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
     Vec :: tracer_seq
     Vec :: saturation_seq
-    ! a pointer to xxx_mpi in hydrogeophysics_simulation_type
+    ! a pointer to xxx_mpi in simulation_hydrogeophysics_type
     Vec :: tracer_mpi 
     Vec :: saturation_mpi 
     VecScatter :: pf_to_e4d_scatter
@@ -197,7 +197,7 @@ subroutine PMCHydrogeophysicsSynchronize(this)
 #if 1
   ! tracer
   call RealizationGetVariable(this%realization,this%realization%field%work, &
-                              PRIMARY_MOLALITY,ONE_INTEGER,0)
+                              PRIMARY_MOLALITY,ONE_INTEGER,ZERO_INTEGER)
 #else
   call DiscretizationCreateVector(this%realization%discretization,ONEDOF, &
                                   natural_vec,NATURAL,this%option)

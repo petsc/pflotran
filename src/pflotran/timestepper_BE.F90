@@ -35,9 +35,11 @@ module Timestepper_BE_class
     procedure, public :: StepDT => TimestepperBEStepDT
     procedure, public :: UpdateDT => TimestepperBEUpdateDT
     procedure, public :: CheckpointBinary => TimestepperBECheckpointBinary
-    procedure, public :: CheckpointHDF5 => TimestepperBECheckpointHDF5
     procedure, public :: RestartBinary => TimestepperBERestartBinary
+#if defined(PETSC_HAVE_HDF5)
+    procedure, public :: CheckpointHDF5 => TimestepperBECheckpointHDF5
     procedure, public :: RestartHDF5 => TimestepperBERestartHDF5
+#endif
     procedure, public :: Reset => TimestepperBEReset
     procedure, public :: PrintInfo => TimestepperBEPrintInfo
     procedure, public :: FinalizeRun => TimestepperBEFinalizeRun
@@ -150,7 +152,7 @@ subroutine TimestepperBERead(this,input,option)
   implicit none
 
   class(timestepper_BE_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword
@@ -560,6 +562,47 @@ end subroutine TimestepperBESetHeader
 
 ! ************************************************************************** !
 
+subroutine TimestepperBERestartBinary(this,viewer,option)
+  ! 
+  ! Checkpoints parameters/variables associated with
+  ! a time stepper.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/25/13
+  ! 
+
+  use Option_module
+
+  implicit none
+
+#include "petsc/finclude/petscviewer.h"
+#include "petsc/finclude/petscbag.h"
+
+  class(timestepper_BE_type) :: this
+  PetscViewer :: viewer
+  type(option_type) :: option
+  
+  class(stepper_BE_header_type), pointer :: header
+  type(stepper_BE_header_type) :: dummy_header
+  character(len=1),pointer :: dummy_char(:)
+  PetscBag :: bag
+  PetscSizeT :: bagsize
+  PetscErrorCode :: ierr
+
+  bagsize = size(transfer(dummy_header,dummy_char))
+  
+  call PetscBagCreate(option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
+  call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
+  call TimestepperBERegisterHeader(this,bag,header)
+  call PetscBagLoad(viewer,bag,ierr);CHKERRQ(ierr)
+  call TimestepperBEGetHeader(this,header)
+  call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
+
+end subroutine TimestepperBERestartBinary
+
+! ************************************************************************** !
+
+#if defined(PETSC_HAVE_HDF5)
 subroutine TimestepperBECheckpointHDF5(this, chk_grp_id, option)
   !
   ! Checkpoints parameters/variables associated with
@@ -568,34 +611,19 @@ subroutine TimestepperBECheckpointHDF5(this, chk_grp_id, option)
   ! Author: Gautam Bisht
   ! Date: 07/30/15
   !
-
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  class(timestepper_BE_type) :: this
-  integer :: chk_grp_id
-  PetscInt :: stop_flag
-  type(option_type) :: option
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
   use Option_module
   use hdf5
   use Checkpoint_module, only : CheckPointWriteIntDatasetHDF5
   use Checkpoint_module, only : CheckPointWriteRealDatasetHDF5
 
   implicit none
-
+  
   class(timestepper_BE_type) :: this
-#if defined(SCORPIO_WRITE)
-  integer :: chk_grp_id
-#else
-  integer(HID_T) :: chk_grp_id
-#endif
+  PetscInt :: chk_grp_id
   type(option_type) :: option
 
 #if defined(SCORPIO_WRITE)
+  integer :: h5_chk_grp_id
   integer, pointer :: dims(:)
   integer, pointer :: start(:)
   integer, pointer :: stride(:)
@@ -607,6 +635,7 @@ subroutine TimestepperBECheckpointHDF5(this, chk_grp_id, option)
   integer(HSIZE_T), pointer :: stride(:)
   integer(HSIZE_T), pointer :: length(:)
   integer(HID_T) :: timestepper_grp_id
+  integer(HID_T) :: h5_chk_grp_id
 #endif
 
   PetscMPIInt :: dataset_rank
@@ -696,49 +725,8 @@ subroutine TimestepperBECheckpointHDF5(this, chk_grp_id, option)
   deallocate(stride)
   deallocate(int_array)
   deallocate(real_array)
-#endif
 
 end subroutine TimestepperBECheckpointHDF5
-
-! ************************************************************************** !
-
-subroutine TimestepperBERestartBinary(this,viewer,option)
-  ! 
-  ! Checkpoints parameters/variables associated with
-  ! a time stepper.
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 07/25/13
-  ! 
-
-  use Option_module
-
-  implicit none
-
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscbag.h"
-
-  class(timestepper_BE_type) :: this
-  PetscViewer :: viewer
-  type(option_type) :: option
-  
-  class(stepper_BE_header_type), pointer :: header
-  type(stepper_BE_header_type) :: dummy_header
-  character(len=1),pointer :: dummy_char(:)
-  PetscBag :: bag
-  PetscSizeT :: bagsize
-  PetscErrorCode :: ierr
-
-  bagsize = size(transfer(dummy_header,dummy_char))
-  
-  call PetscBagCreate(option%mycomm,bagsize,bag,ierr);CHKERRQ(ierr)
-  call PetscBagGetData(bag,header,ierr);CHKERRQ(ierr)
-  call TimestepperBERegisterHeader(this,bag,header)
-  call PetscBagLoad(viewer,bag,ierr);CHKERRQ(ierr)
-  call TimestepperBEGetHeader(this,header)
-  call PetscBagDestroy(bag,ierr);CHKERRQ(ierr)
-
-end subroutine TimestepperBERestartBinary
 
 ! ************************************************************************** !
 
@@ -750,34 +738,19 @@ subroutine TimestepperBERestartHDF5(this, chk_grp_id, option)
   ! Author: Gautam Bisht
   ! Date: 08/16/15
   !
-
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  class(timestepper_BE_type) :: this
-  integer :: chk_grp_id
-  PetscInt :: stop_flag
-  type(option_type) :: option
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
   use Option_module
   use hdf5
   use Checkpoint_module, only : CheckPointReadIntDatasetHDF5
   use Checkpoint_module, only : CheckPointReadRealDatasetHDF5
 
   implicit none
-
+  
   class(timestepper_BE_type) :: this
-#if defined(SCORPIO_WRITE)
-  integer :: chk_grp_id
-#else
-  integer(HID_T) :: chk_grp_id
-#endif
+  PetscInt :: chk_grp_id
   type(option_type) :: option
 
 #if defined(SCORPIO_WRITE)
+  integer :: h5_chk_grp_id
   integer, pointer :: dims(:)
   integer, pointer :: start(:)
   integer, pointer :: stride(:)
@@ -789,6 +762,7 @@ subroutine TimestepperBERestartHDF5(this, chk_grp_id, option)
   integer(HSIZE_T), pointer :: stride(:)
   integer(HSIZE_T), pointer :: length(:)
   integer(HID_T) :: timestepper_grp_id
+  integer(HID_T) :: h5_chk_grp_id
 #endif
 
   PetscMPIInt :: dataset_rank
@@ -799,7 +773,8 @@ subroutine TimestepperBERestartHDF5(this, chk_grp_id, option)
   PetscMPIInt :: hdf5_err
 
   string = "Timestepper"
-  call h5gopen_f(chk_grp_id, string, timestepper_grp_id, hdf5_err)
+  h5_chk_grp_id = chk_grp_id
+  call h5gopen_f(h5_chk_grp_id, string, timestepper_grp_id, hdf5_err)
 
   allocate(start(1))
   allocate(dims(1))
@@ -877,9 +852,9 @@ subroutine TimestepperBERestartHDF5(this, chk_grp_id, option)
   deallocate(stride)
   deallocate(int_array)
   deallocate(real_array)
-#endif
 
 end subroutine TimestepperBERestartHDF5
+#endif
 
 ! ************************************************************************** !
 

@@ -22,6 +22,7 @@ module Region_module
   PetscInt, parameter, public :: DEFINED_BY_FACE_UGRID_EXP = 7
   PetscInt, parameter, public :: DEFINED_BY_POLY_BOUNDARY_FACE = 8
   PetscInt, parameter, public :: DEFINED_BY_POLY_CELL_CENTER = 9
+  PetscInt, parameter, public :: DEFINED_BY_CARTESIAN_BOUNDARY = 10
 
   type, public :: block_type        
     PetscInt :: i1,i2,j1,j2,k1,k2    
@@ -412,7 +413,7 @@ subroutine RegionRead(region,input,option)
   
   type(option_type) :: option
   type(region_type) :: region
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   character(len=MAXWORDLENGTH) :: keyword, word
 
@@ -449,6 +450,29 @@ subroutine RegionRead(region,input,option)
         call InputErrorMsg(input,option,'k1','REGION')
         call InputReadInt(input,option,region%k2)
         call InputErrorMsg(input,option,'k2','REGION')
+      case('CARTESIAN_BOUNDARY')
+        region%def_type = DEFINED_BY_CARTESIAN_BOUNDARY
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'cartesian boundary face','REGION')
+        call StringToUpper(word)
+        select case(word)
+          case('WEST')
+            region%iface = WEST_FACE
+          case('EAST')
+            region%iface = EAST_FACE
+          case('NORTH')
+            region%iface = NORTH_FACE
+          case('SOUTH')
+            region%iface = SOUTH_FACE
+          case('BOTTOM')
+            region%iface = BOTTOM_FACE
+          case('TOP')
+            region%iface = TOP_FACE
+          case default
+            option%io_buffer = 'Cartesian boundary face "' // trim(word) // &
+              '" not recognized.'
+            call printErrMsg(option)
+        end select
       case('COORDINATE')
         region%def_type = DEFINED_BY_COORD
         allocate(region%coordinates(1))
@@ -537,6 +561,10 @@ subroutine RegionRead(region,input,option)
             region%iface = BOTTOM_FACE
           case('TOP')
             region%iface = TOP_FACE
+          case default
+            option%io_buffer = 'FACE "' // trim(word) // &
+              '" not recognized.'
+            call printErrMsg(option)
         end select
       case('GRID','SURF_GRID')
         call InputReadWord(input,option,word,PETSC_TRUE)
@@ -605,9 +633,8 @@ subroutine RegionReadFromFileId(region,input,option)
   
   type(region_type) :: region
   type(option_type) :: option
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
-  PetscBool :: continuation_flag
   character(len=MAXWORDLENGTH) :: word
   character(len=1) :: backslash
 
@@ -662,29 +689,6 @@ subroutine RegionReadFromFileId(region,input,option)
   
   
   count = 0
-#if 0
-  continuation_flag = PETSC_TRUE
-  do
-    if (.not.continuation_flag) exit
-    call InputReadPflotranString(input,option)
-    if (InputError(input)) exit
-    continuation_flag = PETSC_FALSE
-    if (index(input%buf,backslash) > 0) &
-      continuation_flag = PETSC_TRUE
-    input%ierr = 0
-    do
-      if (InputError(input)) exit
-      call InputReadInt(input,option,temp_int)
-      if (.not.InputError(input)) then
-        count = count + 1
-        temp_int_array(count) = temp_int
-      endif
-      if (count+1 > max_size) then ! resize temporary array
-        call reallocateIntArray(temp_int_array,max_size) 
-      endif
-    enddo
-  enddo
-#endif
 
   ! Determine if region definition in the input data is one of the following:
   !  1) Contains cell ids only : Only ONE entry per line

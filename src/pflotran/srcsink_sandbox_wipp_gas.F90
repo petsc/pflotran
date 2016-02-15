@@ -77,7 +77,7 @@ subroutine WIPPGasGenerationRead(this,input,option)
   implicit none
   
   class(srcsink_sandbox_wipp_gas_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
 
   PetscInt :: i

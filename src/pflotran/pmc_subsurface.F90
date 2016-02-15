@@ -1,7 +1,7 @@
 module PMC_Subsurface_class
 
   use PMC_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
 
   use PFLOTRAN_Constants_module
 
@@ -12,7 +12,7 @@ module PMC_Subsurface_class
   private
 
   type, public, extends(pmc_base_type) :: pmc_subsurface_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
   contains
     procedure, public :: Init => PMCSubsurfaceInit
     procedure, public :: SetupSolvers => PMCSubsurfaceSetupSolvers
@@ -88,6 +88,7 @@ subroutine PMCSubsurfaceSetupSolvers(this)
   use Timestepper_Base_class
   use Timestepper_BE_class
   use PM_Base_Pointer_module
+  use Option_module
 
   implicit none
 
@@ -102,7 +103,7 @@ subroutine PMCSubsurfaceSetupSolvers(this)
   select type(ts => this%timestepper)
     class is(timestepper_BE_type)
       call SNESSetFunction(ts%solver%snes, &
-                           this%pm_ptr%ptr%residual_vec, &
+                           this%pm_ptr%pm%residual_vec, &
                            PMResidual, &
                            this%pm_ptr, &
                            ierr);CHKERRQ(ierr)
@@ -167,7 +168,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
   use Option_module
   use Patch_module
 !  use Realization_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use String_module
   use EOS_Water_module
 
@@ -178,25 +179,25 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
 
   class(pmc_subsurface_type) :: this
   
-  class(realization_type), pointer     :: realization
-  type (patch_type),pointer            :: patch
-  type (grid_type),pointer             :: grid
-  type (coupler_list_type), pointer    :: coupler_list
-  type (coupler_type), pointer         :: coupler
-  type (option_type), pointer          :: option
-  type (field_type),pointer            :: field
-  type (connection_set_type), pointer  :: cur_connection_set
-  PetscBool                            :: coupler_found
-  PetscInt                             :: iconn
-  PetscReal                            :: den
-  PetscReal                            :: dt
-  PetscReal                            :: surfpress
-  PetscReal                            :: dum1
-  PetscReal, pointer                   :: mflux_p(:)
-  PetscReal, pointer                   :: hflux_p(:)
-  PetscReal, pointer                   :: head_p(:)
-  PetscReal, pointer                   :: temp_p(:)
-  PetscErrorCode                       :: ierr
+  class(realization_subsurface_type), pointer :: realization
+  type (patch_type),pointer :: patch
+  type (grid_type),pointer :: grid
+  type (coupler_list_type), pointer :: coupler_list
+  type (coupler_type), pointer :: coupler
+  type (option_type), pointer :: option
+  type (field_type),pointer :: field
+  type (connection_set_type), pointer :: cur_connection_set
+  PetscBool :: coupler_found
+  PetscInt :: iconn
+  PetscReal :: den
+  PetscReal :: dt
+  PetscReal :: surfpress
+  PetscReal :: dum1
+  PetscReal, pointer :: mflux_p(:)
+  PetscReal, pointer :: hflux_p(:)
+  PetscReal, pointer :: head_p(:)
+  PetscReal, pointer :: temp_p(:)
+  PetscErrorCode :: ierr
 
 #ifdef DEBUG
   print *, 'PMCSubsurfaceGetAuxData()'
@@ -420,7 +421,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 
   use Grid_module
   use String_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Coupler_module
@@ -436,26 +437,26 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
 
   class(pmc_subsurface_type) :: this
   
-  class(realization_type), pointer     :: realization
-  type (patch_type),pointer            :: patch
-  type (grid_type),pointer             :: grid
-  type (coupler_list_type), pointer    :: coupler_list
-  type (coupler_type), pointer         :: coupler
-  type (option_type), pointer          :: option
-  type (field_type),pointer            :: field
-  type (connection_set_type), pointer  :: cur_connection_set
-  PetscInt                             :: local_id
-  PetscInt                             :: ghosted_id
-  PetscInt                             :: iconn
-  PetscInt                             :: istart
-  PetscInt                             :: iend
-  PetscReal                            :: den
-  PetscReal                            :: dum1
-  PetscReal, pointer                   :: xx_loc_p(:)
-  PetscReal, pointer                   :: pres_top_bc_p(:)
-  PetscReal, pointer                   :: temp_top_bc_p(:)
-  PetscReal, pointer                   :: head_p(:)
-  PetscErrorCode                       :: ierr
+  class(realization_subsurface_type), pointer :: realization
+  type (patch_type),pointer :: patch
+  type (grid_type),pointer :: grid
+  type (coupler_list_type), pointer :: coupler_list
+  type (coupler_type), pointer :: coupler
+  type (option_type), pointer :: option
+  type (field_type),pointer :: field
+  type (connection_set_type), pointer :: cur_connection_set
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iconn
+  PetscInt :: istart
+  PetscInt :: iend
+  PetscReal :: den
+  PetscReal :: dum1
+  PetscReal, pointer :: xx_loc_p(:)
+  PetscReal, pointer :: pres_top_bc_p(:)
+  PetscReal, pointer :: temp_top_bc_p(:)
+  PetscReal, pointer :: head_p(:)
+  PetscErrorCode :: ierr
 
 #ifdef DEBUG
   print *, 'PMCSubsurfaceSetAuxData()'
@@ -545,7 +546,7 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
   use Field_module
   use Grid_module
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use PFLOTRAN_Constants_module
   use Material_Aux_class
   use Material_module
@@ -559,17 +560,17 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
 
   class (pmc_subsurface_type) :: this
 
-  type(grid_type), pointer    :: subsurf_grid
-  type(option_type), pointer  :: option
-  type(field_type), pointer   :: subsurf_field
+  type(grid_type), pointer :: subsurf_grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: subsurf_field
 
-  PetscScalar, pointer        :: sim_por_p(:)
+  PetscScalar, pointer :: sim_por_p(:)
   class(material_auxvar_type), pointer :: subsurf_material_auxvars(:)
 
-  PetscInt                    :: local_id
-  PetscInt                    :: ghosted_id
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
 
-  PetscErrorCode              :: ierr
+  PetscErrorCode :: ierr
   PetscViewer :: viewer
 
   if (associated(this%sim_aux)) then
@@ -634,7 +635,7 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
   ! Date: 01/04/14
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Material_Aux_class
@@ -647,24 +648,24 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
 
   class (pmc_subsurface_type) :: this
 
-  type(grid_type), pointer                     :: subsurf_grid
-  type(option_type), pointer                   :: option
-  type(field_type), pointer                    :: subsurf_field
+  type(grid_type), pointer :: subsurf_grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: subsurf_field
 
-  PetscScalar, pointer                         :: xx_loc_p(:)
-  PetscScalar, pointer                         :: pres_p(:)
-  PetscScalar, pointer                         :: temp_p(:)
-  PetscScalar, pointer                         :: sub_por_loc_p(:)
-  PetscScalar, pointer                         :: sim_por0_p(:)
+  PetscScalar, pointer :: xx_loc_p(:)
+  PetscScalar, pointer :: pres_p(:)
+  PetscScalar, pointer :: temp_p(:)
+  PetscScalar, pointer :: sub_por_loc_p(:)
+  PetscScalar, pointer :: sim_por0_p(:)
 
-  PetscInt                                     :: local_id
-  PetscInt                                     :: ghosted_id
-  PetscInt                                     :: pres_dof
-  PetscInt                                     :: temp_dof
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: pres_dof
+  PetscInt :: temp_dof
 
   class(material_auxvar_type), pointer :: material_auxvars(:)
 
-  PetscErrorCode                               :: ierr
+  PetscErrorCode :: ierr
 
   select case(this%option%iflowmode)
     case (TH_MODE)
@@ -782,6 +783,8 @@ recursive subroutine PMCSubsurfaceDestroy(this)
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
+
+  use Option_module
 
   implicit none
   

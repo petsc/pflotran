@@ -1,7 +1,7 @@
 module PM_Richards_class
 
   use PM_Base_class
-  use PM_Subsurface_class
+  use PM_Subsurface_Flow_class
   
   use PFLOTRAN_Constants_module
 
@@ -17,7 +17,7 @@ module PM_Richards_class
 #include "petsc/finclude/petscmat.h90"
 #include "petsc/finclude/petscsnes.h"
 
-  type, public, extends(pm_subsurface_type) :: pm_richards_type
+  type, public, extends(pm_subsurface_flow_type) :: pm_richards_type
   contains
     procedure, public :: Read => PMRichardsRead
     procedure, public :: InitializeTimestep => PMRichardsInitializeTimestep
@@ -57,7 +57,7 @@ function PMRichardsCreate()
   class(pm_richards_type), pointer :: richards_pm
   
   allocate(richards_pm)
-  call PMSubsurfaceCreate(richards_pm)
+  call PMSubsurfaceFlowCreate(richards_pm)
   richards_pm%name = 'PMRichards'
 
   PMRichardsCreate => richards_pm
@@ -82,11 +82,12 @@ subroutine PMRichardsRead(this,input)
   implicit none
   
   class(pm_richards_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   type(option_type), pointer :: option
+  PetscBool :: found
 
   option => this%option
   
@@ -102,6 +103,10 @@ subroutine PMRichardsRead(this,input)
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword',error_string)
     call StringToUpper(word)
+
+    found = PETSC_FALSE
+    call PMSubsurfaceFlowReadSelectCase(this,input,word,found,option)
+    if (found) cycle
     
     select case(trim(word))
       case('ITOL_SCALED_RESIDUAL')
@@ -135,14 +140,14 @@ subroutine PMRichardsInitializeTimestep(this)
   
   class(pm_richards_type) :: this
 
-  call PMSubsurfaceInitializeTimestepA(this)
+  call PMSubsurfaceFlowInitializeTimestepA(this)
 
   if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," RICHARDS FLOW ",63("="))')
   endif
   
   call RichardsInitializeTimestep(this%realization)
-  call PMSubsurfaceInitializeTimestepB(this)
+  call PMSubsurfaceFlowInitializeTimestepB(this)
   
 end subroutine PMRichardsInitializeTimestep
 
@@ -204,7 +209,7 @@ subroutine PMRichardsUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
       fac = 0.33d0
       ut = 0.d0
     else
-      up = this%option%dpmxe/(this%option%dpmax+0.1)
+      up = this%pressure_change_governor/(this%max_pressure_change+0.1)
       ut = up
     endif
     dtt = fac * dt * (1.d0 + ut)
@@ -213,7 +218,7 @@ subroutine PMRichardsUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     dt_tfac = tfac(ifac) * dt
 
     fac = 0.5d0
-    up = this%option%dpmxe/(this%option%dpmax+0.1)
+    up = this%pressure_change_governor/(this%max_pressure_change+0.1)
     dt_p = fac * dt * (1.d0 + up)
 
     dtt = min(dt_tfac,dt_p)
@@ -246,7 +251,7 @@ subroutine PMRichardsResidual(this,snes,xx,r,ierr)
   Vec :: r
   PetscErrorCode :: ierr
   
-  call PMSubsurfaceUpdatePropertiesNI(this)
+  call PMSubsurfaceFlowUpdatePropertiesNI(this)
   call RichardsResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMRichardsResidual
@@ -281,7 +286,7 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! Date: 03/14/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Option_module
@@ -290,7 +295,7 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   use Richards_Aux_module
   use Global_Aux_module
   use Patch_module
-
+  
   implicit none
   
   class(pm_richards_type) :: this
@@ -320,14 +325,14 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   rich_auxvars => patch%aux%Richards%auxvars
   global_auxvars => patch%aux%Global%auxvars
 
-  if (dabs(option%saturation_change_limit) > 0.d0) then
+  if (Initialized(this%saturation_change_limit)) then
 
     changed = PETSC_TRUE
 
     call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(X,X_p,ierr);CHKERRQ(ierr)
 
-    pert =dabs(option%saturation_change_limit)
+    pert = dabs(this%saturation_change_limit)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       sat = global_auxvars(ghosted_id)%sat(1)
@@ -353,11 +358,11 @@ subroutine PMRichardsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
 
   endif
 
-  if (dabs(option%pressure_dampening_factor) > 0.d0) then
+  if (Initialized(this%pressure_dampening_factor)) then
     changed = PETSC_TRUE
     ! P^p+1 = P^p - dP^p
     P_R = option%reference_pressure
-    scale = option%pressure_dampening_factor
+    scale = this%pressure_dampening_factor
 
     call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
     call VecGetArrayF90(X,X_p,ierr);CHKERRQ(ierr)
@@ -409,7 +414,7 @@ subroutine PMRichardsCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Option_module
@@ -503,7 +508,7 @@ subroutine PMRichardsTimeCut(this)
   
   class(pm_richards_type) :: this
   
-  call PMSubsurfaceTimeCut(this)
+  call PMSubsurfaceFlowTimeCut(this)
   call RichardsTimeCut(this%realization)
 
 end subroutine PMRichardsTimeCut
@@ -523,7 +528,7 @@ subroutine PMRichardsUpdateSolution(this)
   
   class(pm_richards_type) :: this
   
-  call PMSubsurfaceUpdateSolution(this)
+  call PMSubsurfaceFlowUpdateSolution(this)
   call RichardsUpdateSolution(this%realization)
   if (this%option%surf_flow_on) &
     call RichardsUpdateSurfacePress(this%realization)
@@ -563,13 +568,13 @@ subroutine PMRichardsMaxChange(this)
   
   class(pm_richards_type) :: this
   
-  call RichardsMaxChange(this%realization)
+  call RichardsMaxChange(this%realization,this%max_pressure_change)
   if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%option%dpmax
+    write(*,'("  --> max chng: dpmx= ",1pe12.4)') this%max_pressure_change
   endif
   if (this%option%print_file_flag) then
     write(this%option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') &
-      this%option%dpmax
+      this%max_pressure_change
   endif    
 
 end subroutine PMRichardsMaxChange
@@ -615,7 +620,7 @@ subroutine PMRichardsDestroy(this)
 
   ! preserve this ordering
   call RichardsDestroy(this%realization)
-  call PMSubsurfaceDestroy(this)
+  call PMSubsurfaceFlowDestroy(this)
   
 end subroutine PMRichardsDestroy
   

@@ -24,6 +24,7 @@ module Dataset_module
             DatasetIsTransient, &
             DatasetGetClass, &
             DatasetPrint, &
+            DatasetReadDoubleOrDataset, &
             DatasetDestroy
 
 contains
@@ -44,7 +45,7 @@ subroutine DatasetRead(input,dataset,option)
   
   implicit none
 
-  type(input_type) :: input
+  type(input_type), pointer :: input
   class(dataset_base_type), pointer :: dataset
   class(dataset_map_hdf5_type), pointer :: dataset_map_hdf5
   class(dataset_global_hdf5_type), pointer :: dataset_global_hdf5
@@ -447,6 +448,50 @@ function DatasetGetClass(dataset)
   end select
   
 end function DatasetGetClass
+
+! ************************************************************************** !
+
+subroutine DatasetReadDoubleOrDataset(input,double_value,dataset, &
+                                      error_variable,error_card,option)
+  ! 
+  ! Prints dataset info
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/22/13
+  ! 
+
+  use Option_module
+  use Input_Aux_module
+  use String_module
+
+  implicit none
+  
+  type(input_type), pointer :: input
+  PetscReal :: double_value
+  class(dataset_base_type), pointer :: dataset
+  character(len=*) :: error_variable
+  character(len=*) :: error_card
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: buffer_save
+
+  buffer_save = input%buf
+  call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
+  call InputErrorMsg(input,option,error_variable,error_card)
+  call StringToUpper(string)
+  if (StringCompare(string,'DATASET',SEVEN_INTEGER)) then
+    dataset => DatasetBaseCreate()
+    call InputReadWord(input,option,dataset%name,PETSC_TRUE)
+    string = trim(error_card) // ',' // trim(error_variable)
+    call InputErrorMsg(input,option,'DATASET,NAME',string)   
+  else
+    input%buf = buffer_save
+    call InputReadDouble(input,option,double_value)
+    call InputErrorMsg(input,option,error_variable,error_card)
+  endif
+  
+end subroutine DatasetReadDoubleOrDataset
 
 ! ************************************************************************** !
 

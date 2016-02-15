@@ -13,6 +13,7 @@ module Dataset_Gridded_HDF5_class
   type, public, extends(dataset_common_hdf5_type) :: dataset_gridded_hdf5_type
     PetscBool :: is_cell_centered
     PetscInt :: data_dim
+    PetscInt :: interpolation_method
     PetscReal, pointer :: origin(:)
     PetscReal, pointer :: extent(:)
     PetscReal, pointer :: discretization(:)
@@ -81,6 +82,7 @@ subroutine DatasetGriddedHDF5Init(this)
   
   call DatasetCommonHDF5Init(this)
   this%is_cell_centered = PETSC_FALSE
+  this%interpolation_method = INTERPOLATION_LINEAR
   this%data_dim = DIM_NULL
   nullify(this%origin)
   nullify(this%extent)
@@ -163,6 +165,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   use Units_module
   use Logging_module
   use HDF5_Aux_module
+  use String_module
   
   implicit none
   
@@ -286,6 +289,27 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
     if (attribute_exists) then
       this%is_cell_centered = PETSC_TRUE
+    endif
+    attribute_name = "Interpolation Method"
+    call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
+    if (attribute_exists) then
+      call h5tcopy_f(H5T_NATIVE_CHARACTER,atype_id,hdf5_err)
+      size_t_int = MAXWORDLENGTH
+      call h5tset_size_f(atype_id,size_t_int,hdf5_err)
+      call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
+      call h5aread_f(attribute_id,atype_id,word,attribute_dim,hdf5_err)
+      call h5aclose_f(attribute_id,hdf5_err)
+      call StringToUpper(word)
+      select case(trim(word))
+        case('STEP')
+          this%interpolation_method = INTERPOLATION_STEP
+        case('LINEAR')
+          this%interpolation_method = INTERPOLATION_LINEAR
+        case default
+          option%io_buffer = '"Interpolation Method" not recognized in ' // &
+            'Gridded HDF5 Dataset "' // trim(this%name) // '".'
+          call printErrMsg(option)
+      end select
     endif
     ! this%max_buffer_size is initially set to UNINITIALIZED_INTEGER to force initializaion
     ! either here, or in the reading of the dataset block.
@@ -632,7 +656,7 @@ end function DatasetGriddedHDF5GetNDimensions
 
 ! ************************************************************************** !
 
-subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,time,real_value,option)
+subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
   ! 
   ! Interpolates data from the dataset
   ! 
@@ -647,29 +671,174 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,time,real_value,optio
   
   class(dataset_gridded_hdf5_type) :: this
   PetscReal, intent(in) :: xx, yy, zz
-  PetscReal :: time
   PetscReal :: real_value
   type(option_type) :: option
   
   PetscInt :: spatial_interpolation_method
   PetscInt :: i, j, k
   PetscReal :: x, y, z
-  PetscReal :: x1, x2, y1, y2
+  PetscReal :: x1, x2, y1, y2, z1
   PetscReal :: v1, v2, v3, v4
   PetscInt :: index
-  PetscReal :: dx, dy
-  PetscInt :: nx
+  PetscInt :: ii, jj, kk
+  PetscInt :: i_upper, j_upper, k_upper
+  PetscReal :: dx, dy, dz
+  PetscInt :: nx, ny
+  PetscBool :: lerr
   character(len=MAXWORDLENGTH) :: word
   
   call DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
   
-  spatial_interpolation_method = INTERPOLATION_LINEAR
-  
   ! in the below, i,j,k,xx,yy,zz to not reflect the 
   ! coordinates of the problem domain in 3D.  They
   ! are transfored to the dimensions of the dataset
-  select case(spatial_interpolation_method)
+  lerr = PETSC_FALSE
+  select case(this%interpolation_method)
     case(INTERPOLATION_STEP)
+      select case(this%data_dim)
+        case(DIM_X,DIM_Y,DIM_Z)
+          if (this%is_cell_centered) then
+            i_upper = i
+          else
+            i_upper = i+1
+          endif
+          if (i < 1 .or. i_upper > this%dims(1)) then 
+            write(word,*) i
+            word = adjustl(word)
+            select case(this%data_dim)
+              case(DIM_X)
+                option%io_buffer = 'Out of x bounds, i = ' // trim(word)
+              case(DIM_Y)
+                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+              case(DIM_Z)
+                option%io_buffer = 'Out of z bounds, k = ' // trim(word)
+            end select
+            call printErrMsgByRank(option)
+          endif
+          index = i
+          if (.not.this%is_cell_centered) then
+            dx = this%discretization(1)
+            x1 = this%origin(1) + (i-1)*dx
+            if ((x-x1) / dx > 0.5) then
+              index = i+1
+            endif
+          endif
+        case(DIM_XY,DIM_XZ,DIM_YZ)
+          if (this%is_cell_centered) then
+            i_upper = i
+            j_upper = j
+          else
+            i_upper = i+1
+            j_upper = j+1
+          endif
+          if (i < 1 .or. i_upper > this%dims(1)) then
+            lerr = PETSC_TRUE
+            write(word,*) i
+            word = adjustl(word)
+            select case(this%data_dim)
+              case(DIM_XY,DIM_XZ)
+                option%io_buffer = 'Out of x bounds, i = ' // trim(word)
+              case(DIM_YZ)
+                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+            end select
+            call printMsgByRank(option)
+          endif
+          if (j < 1 .or. j_upper > this%dims(2)) then
+            lerr = PETSC_TRUE
+            write(word,*) j
+            word = adjustl(word)
+            select case(this%data_dim)
+              case(DIM_XY)
+                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+              case(DIM_YZ,DIM_XZ)
+                option%io_buffer = 'Out of z bounds, k = ' // trim(word)
+            end select
+            call printMsgByRank(option)
+          endif
+          if (lerr) then
+            word = this%name
+            option%io_buffer = 'Gridded dataset "' // trim(word) // &
+                               '" out of bounds.'
+            call printErrMsgByRank(option)
+          endif
+          ii = i
+          jj = j
+          nx = this%dims(1)
+          if (.not.this%is_cell_centered) then
+            dx = this%discretization(1)
+            dy = this%discretization(2)
+            x1 = this%origin(1) + (i-1)*dx
+            y1 = this%origin(2) + (j-1)*dy
+            if ((x-x1) / dx > 0.5d0) then
+              ii = i+1
+            endif
+            if ((y-y1) / dy > 0.5d0) then
+              jj = j+1
+            endif
+          endif
+          index = ii + (jj-1)*nx
+        case(DIM_XYZ)
+          if (this%is_cell_centered) then
+            i_upper = i
+            j_upper = j
+            k_upper = k
+          else
+            i_upper = i+1
+            j_upper = j+1
+            k_upper = k+1
+          endif          
+          if (i < 1 .or. i_upper > this%dims(1)) then
+            lerr = PETSC_TRUE
+            write(word,*) i
+            word = adjustl(word)
+            option%io_buffer = 'Out of x bounds, i = ' // trim(word)
+            call printMsgByRank(option)
+          endif
+          if (j < 1 .or. j_upper > this%dims(2)) then
+            lerr = PETSC_TRUE
+            write(word,*) j
+            word = adjustl(word)
+            option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+            call printMsgByRank(option)
+          endif
+          if (k < 1 .or. k_upper > this%dims(3)) then
+            lerr = PETSC_TRUE
+            write(word,*) k
+            word = adjustl(word)
+            option%io_buffer = 'Out of z bounds, k = ' // trim(word)
+            call printMsgByRank(option)
+          endif
+          if (lerr) then
+            word = this%name
+            option%io_buffer = 'Gridded dataset "' // trim(word) // &
+                               '" out of bounds.'
+            call printErrMsgByRank(option)
+          endif
+          ii = i
+          jj = j
+          kk = k
+          nx = this%dims(1)
+          ny = this%dims(2)
+          if (.not.this%is_cell_centered) then
+            dx = this%discretization(1)
+            dy = this%discretization(2)
+            dz = this%discretization(3)
+            x1 = this%origin(1) + (i-1)*dx
+            y1 = this%origin(2) + (j-1)*dy
+            z1 = this%origin(3) + (k-1)*dz
+            if ((x-x1) / dx > 0.5d0) then
+              ii = i+1
+            endif
+            if ((y-y1) / dy > 0.5d0) then
+              jj = j+1
+            endif
+            if ((z-z1) / dz > 0.5d0) then
+              kk = k+1
+            endif
+          endif
+          index = ii + (jj-1)*nx + (kk-1)*nx*ny
+      end select
+      real_value = this%rarray(index)
     case(INTERPOLATION_LINEAR)
       select case(this%data_dim)
         case(DIM_X,DIM_Y,DIM_Z)
@@ -758,10 +927,12 @@ subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
   implicit none
 
   class(dataset_gridded_hdf5_type) :: this
-  PetscReal, intent(in)  :: xx, yy, zz
+  PetscReal, intent(in) :: xx, yy, zz
   PetscInt :: i, j, k
   PetscReal :: x, y, z
   
+  PetscReal :: discretization_offset
+  PetscInt :: upper_index_offset
   PetscReal :: tol
   PetscReal, parameter :: tolerance_scale = 1.d-3
 
@@ -787,55 +958,69 @@ subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
       x = yy
       y = zz
   end select
-  
+
+  upper_index_offset = 1 
   if (this%is_cell_centered) then
+    select case(this%interpolation_method)
+      case(INTERPOLATION_STEP)
+        discretization_offset = 1.d0
+        upper_index_offset = 0
+      case(INTERPOLATION_LINEAR)
+        discretization_offset = 0.5d0
+    end select
     i = int((x - this%origin(1))/ &
-            this%discretization(1) + 0.5d0)
+            this%discretization(1) + discretization_offset)
 !    i = max(1,min(i,this%dims(1)-1))
     if (this%data_dim > DIM_Z) then ! at least 2D
       j = int((y - this%origin(2))/ &
-              this%discretization(2) + 0.5d0)
+              this%discretization(2) + discretization_offset)
 !      j = max(1,min(j,this%dims(2)-1))
     endif
     if (this%data_dim > DIM_YZ) then ! at least 3D
       k = int((z - this%origin(3))/ &
-              this%discretization(3) + 0.5d0)
+              this%discretization(3) + discretization_offset)
 !      k = max(1,min(k,this%dims(3)-1))
     endif
   else
+    select case(this%interpolation_method)
+      case(INTERPOLATION_STEP)
+        discretization_offset = 1.5d0
+      case(INTERPOLATION_LINEAR)
+        discretization_offset = 1.d0
+    end select
     i = int((x - this%origin(1))/ &
-            this%discretization(1) + 1.d0)
+            this%discretization(1) + discretization_offset)
     if (this%data_dim > DIM_Z) then ! at least 2D
       j = int((y - this%origin(2))/ &
-              this%discretization(2) + 1.d0)
+              this%discretization(2) + discretization_offset)
     endif
     if (this%data_dim > DIM_YZ) then ! at least 3D
       k = int((z - this%origin(3))/ &
-              this%discretization(3) + 1.d0)
+              this%discretization(3) + discretization_offset)
     endif
   endif
   
   ! if indices are out of bounds, check if on boundary and reset index
   !geh: the tolerance allows one to go outside the bounds 
-  if (i < 1 .or. i+1 > this%dims(1)) then
+  if (i < 1 .or. i+upper_index_offset > this%dims(1)) then
     tol = this%discretization(1) * tolerance_scale
     if (x >= this%origin(1)-tol .and. x <= this%extent(1)+tol) then
-      i = min(max(i,1),this%dims(1)-1)
+      i = min(max(i,1),this%dims(1)-upper_index_offset)
     endif
   endif
   if (this%data_dim > DIM_Z) then ! at least 2D
-    if (j < 1 .or. j+1 > this%dims(2)) then
+    if (j < 1 .or. j+upper_index_offset > this%dims(2)) then
       tol = this%discretization(2) * tolerance_scale
       if (y >= this%origin(2)-tol .and. y <= this%extent(2)+tol) then
-         j = min(max(j,1),this%dims(2)-1)
+        j = min(max(j,1),this%dims(2)-upper_index_offset)
       endif
     endif
   endif  
   if (this%data_dim > DIM_YZ) then ! at least 2D
-    if (k < 1 .or. k+1 > this%dims(3)) then
+    if (k < 1 .or. k+upper_index_offset > this%dims(3)) then
       tol = this%discretization(3) * tolerance_scale
       if (z >= this%origin(3)-tol .and. z <= this%extent(3)+tol) then
-        k = min(max(k,1),this%dims(3)-1)
+        k = min(max(k,1),this%dims(3)-upper_index_offset)
       endif
     endif
   endif  
@@ -891,7 +1076,7 @@ subroutine DatasetGriddedHDF5Strip(this)
 
   implicit none
   
-  class(dataset_gridded_hdf5_type)  :: this
+  class(dataset_gridded_hdf5_type) :: this
   
   call DatasetCommonHDF5Strip(this)
   

@@ -19,19 +19,21 @@ module Geomechanics_Patch_module
 #include "petsc/finclude/petscsys.h"
 
   type, public :: geomech_patch_type
-    PetscInt                                      :: id
-    PetscInt, pointer                             :: imat(:)
-    type(geomech_grid_type), pointer              :: geomech_grid
-    type(geomech_material_property_type), pointer :: geomech_material_properties
-    type(geomech_material_property_ptr_type),&
-       pointer :: geomech_material_property_array(:)
-    type(geomech_strata_list_type), pointer       :: geomech_strata_list
-    type(gm_region_list_type), pointer            :: geomech_region_list
-    type(geomech_coupler_list_type), pointer      :: geomech_boundary_condition_list
-    type(geomech_coupler_list_type), pointer      :: geomech_source_sink_list
-    type(geomech_field_type), pointer             :: geomech_field
-    class(dataset_base_type), pointer             :: geomech_datasets
-    type(geomech_auxiliary_type)                  :: geomech_aux
+    PetscInt :: id
+    PetscInt, pointer :: imat(:)
+    type(geomech_grid_type), pointer :: geomech_grid
+    type(geomech_material_property_type), &
+        pointer :: geomech_material_properties
+    type(geomech_material_property_ptr_type), &
+        pointer :: geomech_material_property_array(:)
+    type(geomech_strata_list_type), pointer :: geomech_strata_list
+    type(gm_region_list_type), pointer :: geomech_region_list
+    type(geomech_coupler_list_type), &
+        pointer :: geomech_boundary_condition_list
+    type(geomech_coupler_list_type), pointer :: geomech_source_sink_list
+    type(geomech_field_type), pointer :: geomech_field
+    class(dataset_base_type), pointer :: geomech_datasets
+    type(geomech_auxiliary_type) :: geomech_aux
   end type geomech_patch_type
 
 
@@ -104,12 +106,12 @@ subroutine GeomechPatchLocalizeRegions(geomech_patch,regions,option)
 
   implicit none
   
-  type(geomech_patch_type)           :: geomech_patch
-  type(gm_region_list_type)          :: regions
-  type(option_type)                  :: option
+  type(geomech_patch_type) :: geomech_patch
+  type(gm_region_list_type) :: regions
+  type(option_type) :: option
   
-  type(gm_region_type), pointer      :: cur_region
-  type(gm_region_type), pointer      :: patch_region
+  type(gm_region_type), pointer :: cur_region
+  type(gm_region_type), pointer :: patch_region
   
   cur_region => regions%first
   do
@@ -143,17 +145,17 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
   
   implicit none
   
-  type(geomech_patch_type)                         :: patch
-  type(geomech_condition_list_type)                :: conditions
-  type(option_type)                                :: option
+  type(geomech_patch_type) :: patch
+  type(geomech_condition_list_type) :: conditions
+  type(option_type) :: option
   
-  type(geomech_coupler_type), pointer              :: coupler
-  type(geomech_coupler_list_type), pointer         :: coupler_list 
-  type(geomech_strata_type), pointer               :: strata
- ! type(geomech_observation_type), pointer          :: observation, &
+  type(geomech_coupler_type), pointer :: coupler
+  type(geomech_coupler_list_type), pointer :: coupler_list 
+  type(geomech_strata_type), pointer :: strata
+ ! type(geomech_observation_type), pointer :: observation, &
  !                                                     next_observation
   
-  PetscInt                                         :: temp_int, isub
+  PetscInt :: temp_int, isub
   
   ! boundary conditions
   coupler => patch%geomech_boundary_condition_list%first
@@ -185,9 +187,10 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
           call printErrMsg(option)
         endif
       else
-        option%io_buffer = 'A GEOMECHANICS_CONDITION must be specified in ' // &
-                           'GEOMECHANICS_BOUNDARY_CONDITION: ' // &
-                            trim(coupler%name) // '.'
+        option%io_buffer = &
+          'A GEOMECHANICS_CONDITION must be specified in ' // &
+          'GEOMECHANICS_BOUNDARY_CONDITION: ' // &
+           trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
@@ -226,8 +229,9 @@ subroutine GeomechPatchProcessGeomechCouplers(patch,conditions,option)
           call printErrMsg(option)
         endif
       else
-        option%io_buffer = 'A GEOMECHANICS_CONDITION must be specified in ' // &
-                           'GEOMECHANICS_SOURCE_SINK: ' // trim(coupler%name) // '.'
+        option%io_buffer = &
+          'A GEOMECHANICS_CONDITION must be specified in ' // &
+          'GEOMECHANICS_SOURCE_SINK: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
@@ -340,7 +344,8 @@ subroutine GeomechPatchInitAllCouplerAuxVars(patch,option)
   
   PetscBool :: force_update_flag = PETSC_TRUE
   
-  call GeomechPatchInitCouplerAuxVars(patch%geomech_boundary_condition_list,patch, &
+  call GeomechPatchInitCouplerAuxVars(patch%geomech_boundary_condition_list, &
+                                      patch, &
                                       option)
   call GeomechPatchInitCouplerAuxVars(patch%geomech_source_sink_list,patch, &
                                       option)
@@ -433,8 +438,8 @@ subroutine GeomechPatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   !geh: no need to update initial conditions as they only need updating
   !     once as performed in PatchInitCouplerAuxVars()
   call GeomechPatchUpdateCouplerAuxVars(patch, &
-                                        patch%geomech_boundary_condition_list, &
-                                        force_update_flag,option)
+                                      patch%geomech_boundary_condition_list, &
+                                      force_update_flag,option)
   call GeomechPatchUpdateCouplerAuxVars(patch,patch%geomech_source_sink_list, &
                                         force_update_flag,option)
 
@@ -512,7 +517,7 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
         if (associated(geomech_condition%force_x)) then
           select case(geomech_condition%force_x%itype)
             case(DIRICHLET_BC)
-              coupler%geomech_aux_real_var(GEOMECH_DISP_Z_DOF, &
+              coupler%geomech_aux_real_var(GEOMECH_DISP_X_DOF, &
                                            1:num_verts) = &
               geomech_condition%force_x%dataset%rarray(1)
             end select
@@ -520,7 +525,7 @@ subroutine GeomechPatchUpdateCouplerAuxVars(patch,coupler_list, &
         if (associated(geomech_condition%force_y)) then
           select case(geomech_condition%force_y%itype)
             case(DIRICHLET_BC)
-              coupler%geomech_aux_real_var(GEOMECH_DISP_Z_DOF, &
+              coupler%geomech_aux_real_var(GEOMECH_DISP_Y_DOF, &
                                            1:num_verts) = &
               geomech_condition%force_y%dataset%rarray(1)
              end select
@@ -590,63 +595,93 @@ subroutine GeomechPatchGetDataset(patch,geomech_field,option,output_option, &
   select case(ivar)
     case(GEOMECH_DISP_X)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%disp_vector(1)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+          grid%nL2G(local_id))%disp_vector(1)
       enddo
     case(GEOMECH_DISP_Y)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%disp_vector(2)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%disp_vector(2)
       enddo
     case(GEOMECH_DISP_Z)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%disp_vector(3)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%disp_vector(3)
       enddo
     case(STRAIN_XX)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(1)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%strain(1)
       enddo
     case(STRAIN_YY)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(2)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%strain(2)
       enddo
     case(STRAIN_ZZ)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(3)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%strain(3)
       enddo
     case(STRAIN_XY)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(4)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%strain(4)
       enddo
     case(STRAIN_YZ)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(5)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%strain(5)
       enddo
     case(STRAIN_ZX)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%strain(6)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%strain(6)
       enddo
     case(STRESS_XX)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(1)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%stress(1)
       enddo
     case(STRESS_YY)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(2)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%stress(2)
       enddo
     case(STRESS_ZZ)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(3)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%stress(3)
       enddo
     case(STRESS_XY)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(4)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%stress(4)
       enddo
     case(STRESS_YZ)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(5)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%stress(5)
       enddo
     case(STRESS_ZX)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%stress(6)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%stress(6)
       enddo
     case(GEOMECH_MATERIAL_ID)
       do local_id=1,grid%nlmax_node
@@ -654,15 +689,21 @@ subroutine GeomechPatchGetDataset(patch,geomech_field,option,output_option, &
       enddo
     case(GEOMECH_REL_DISP_X)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%rel_disp_vector(1)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%rel_disp_vector(1)
       enddo
     case(GEOMECH_REL_DISP_Y)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%rel_disp_vector(2)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%rel_disp_vector(2)
       enddo
     case(GEOMECH_REL_DISP_Z)
       do local_id=1,grid%nlmax_node
-        vec_ptr(local_id) = patch%geomech_aux%GeomechGlobal%aux_vars(grid%nL2G(local_id))%rel_disp_vector(3)
+        vec_ptr(local_id) = &
+          patch%geomech_aux%GeomechGlobal%aux_vars(&
+            grid%nL2G(local_id))%rel_disp_vector(3)
       enddo
     case default
       write(option%io_buffer, &

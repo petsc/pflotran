@@ -11,6 +11,7 @@ module Realization_Base_class
   use Reaction_Aux_module
   use Data_Mediator_Base_class
   use Communicator_Base_module
+  use Waypoint_module
 
   use PFLOTRAN_Constants_module
 
@@ -75,7 +76,7 @@ subroutine RealizationBaseInit(realization_base,option)
   nullify(realization_base%comm1)  
   realization_base%field => FieldCreate()
   realization_base%debug => DebugCreate()
-  realization_base%output_option => OutputOptionCreate()
+  nullify(realization_base%output_option)
 
   realization_base%patch_list => PatchCreateList()
 
@@ -244,8 +245,7 @@ subroutine RealizationBaseStrip(this)
   
   call FieldDestroy(this%field)
 
-!  call OptionDestroy(realization%option) !geh it will be destroy externally
-  call OutputOptionDestroy(this%output_option)
+  nullify(this%output_option)
   
   call DiscretizationDestroy(this%discretization)
   

@@ -54,13 +54,13 @@ subroutine RichardsTimeCut(realization)
   ! Date: 12/13/07
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Field_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   call RichardsInitializeTimestep(realization)  
  
@@ -74,10 +74,10 @@ subroutine RichardsSetup(realization)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   call RichardsSetupPatch(realization)
   call RichardsSetPlotVariables(realization)
@@ -94,7 +94,7 @@ subroutine RichardsSetupPatch(realization)
   ! Date: 12/13/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Coupler_module
@@ -103,7 +103,7 @@ subroutine RichardsSetupPatch(realization)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
@@ -213,9 +213,9 @@ subroutine RichardsComputeMassBalance(realization,mass_balance)
   ! Date: 02/22/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
   
   mass_balance = 0.d0
@@ -234,7 +234,7 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Field_module
@@ -242,7 +242,7 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscReal :: mass_balance(realization%option%nphase)
 
   type(option_type), pointer :: option
@@ -288,14 +288,14 @@ subroutine RichardsZeroMassBalDeltaPatch(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -341,14 +341,14 @@ subroutine RichardsUpdateMassBalancePatch(realization)
   ! Date: 12/19/08
   ! 
  
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
  
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -403,7 +403,7 @@ subroutine RichardsUpdatePermPatch(realization)
   ! 
 
   use Grid_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Discretization_module
   use Patch_module
@@ -414,7 +414,7 @@ subroutine RichardsUpdatePermPatch(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -520,8 +520,8 @@ subroutine RichardsUpdateAuxVars(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
-  type(realization_type) :: realization
+  use Realization_Subsurface_class
+  type(realization_subsurface_type) :: realization
   
   call RichardsUpdateAuxVarsPatch(realization)
 
@@ -538,7 +538,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -550,7 +550,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -679,14 +679,14 @@ subroutine RichardsInitializeTimestep(realization)
   ! Date: 02/20/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module 
   
   implicit none
   
 
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscViewer :: viewer
   PetscErrorCode :: ierr
@@ -721,12 +721,12 @@ subroutine RichardsUpdateSolution(realization)
   ! Date: 02/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   call RichardsUpdateSolutionPatch(realization)
 
@@ -743,11 +743,11 @@ subroutine RichardsUpdateSolutionPatch(realization)
   ! Date: 02/13/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
     
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   if (realization%option%compute_mass_balance_new) then
     call RichardsUpdateMassBalancePatch(realization)
@@ -771,9 +771,9 @@ subroutine RichardsUpdateFixedAccum(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   call RichardsUpdateFixedAccumPatch(realization)
 
@@ -790,7 +790,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -799,7 +799,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -865,7 +865,7 @@ subroutine RichardsNumericalJacTest(xx,realization)
   ! Date: 12/13/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Grid_module
@@ -874,7 +874,7 @@ subroutine RichardsNumericalJacTest(xx,realization)
   implicit none
 
   Vec :: xx
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   Vec :: xx_pert
   Vec :: res
@@ -959,7 +959,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Discretization_module
   use Option_module
@@ -974,7 +974,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   SNES :: snes
   Vec :: xx
   Vec :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscViewer :: viewer
   PetscErrorCode :: ierr
 
@@ -1058,7 +1058,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1076,7 +1076,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscInt :: local_id, ghosted_id
@@ -1269,7 +1269,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1282,7 +1282,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
   PetscViewer :: viewer
@@ -1471,7 +1471,7 @@ subroutine RichardsJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -1483,7 +1483,7 @@ subroutine RichardsJacobian(snes,xx,A,B,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
   
   Mat :: J
@@ -1568,7 +1568,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -1582,7 +1582,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
 
@@ -1819,7 +1819,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   
 
   use Connection_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Patch_module
   use Grid_module
@@ -1832,7 +1832,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
 
@@ -2048,7 +2048,7 @@ subroutine RichardsCreateZeroArray(patch,option)
   ! Date: 12/13/07
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Grid_module
   use Option_module
@@ -2116,7 +2116,7 @@ end subroutine RichardsCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine RichardsMaxChange(realization)
+subroutine RichardsMaxChange(realization,dpmax)
   ! 
   ! Computes the maximum change in the solution vector
   ! 
@@ -2133,7 +2133,8 @@ subroutine RichardsMaxChange(realization)
   class(realization_base_type) :: realization
   
   type(option_type), pointer :: option
-  type(field_type), pointer :: field  
+  type(field_type), pointer :: field 
+  PetscReal :: dpmax
   
   PetscErrorCode :: ierr
   PetscViewer :: viewer
@@ -2141,10 +2142,11 @@ subroutine RichardsMaxChange(realization)
   option => realization%option
   field => realization%field
 
+  dpmax = 0.d0
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy, &
                 ierr);CHKERRQ(ierr)
   call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY, &
-                     option%dpmax,ierr);CHKERRQ(ierr)
+                     dpmax,ierr);CHKERRQ(ierr)
 
 end subroutine RichardsMaxChange
 
@@ -2158,13 +2160,13 @@ subroutine RichardsSetPlotVariables(realization)
   ! Date: 10/15/12
   ! 
   
-  use Realization_class
+  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
     
   implicit none
   
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
@@ -2229,7 +2231,7 @@ subroutine RichardsUpdateSurfacePress(realization)
   ! Date: 07/31/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -2243,7 +2245,7 @@ subroutine RichardsUpdateSurfacePress(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -2325,7 +2327,7 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
   ! Date: 05/21/14
   !
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Patch_module
   use Option_module
   use Field_module
@@ -2341,7 +2343,7 @@ subroutine RichardsComputeCoeffsForSurfFlux(realization)
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -2701,11 +2703,11 @@ subroutine RichardsDestroy(realization)
   ! Date: 02/14/08
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   call RichardsDestroyPatch(realization)
 
@@ -2721,11 +2723,11 @@ subroutine RichardsDestroyPatch(realization)
   ! Date: 02/03/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
 
   implicit none
 
-  type(realization_type) :: realization
+  type(realization_subsurface_type) :: realization
   
   ! taken care of in auxiliary.F90
 

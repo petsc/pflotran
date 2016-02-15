@@ -461,12 +461,12 @@ subroutine SecondaryRTTimeCut(realization)
   ! Date: 05/29/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Reaction_Aux_module
   
   implicit none
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   type(reaction_type), pointer :: reaction
   type(sec_transport_type), pointer :: rt_sec_transport_vars(:)
   type(grid_type), pointer :: grid
@@ -538,7 +538,8 @@ subroutine SecondaryRTAuxVarInit(ptr,rt_sec_transport_vars,reaction, &
   PetscInt :: i, cell
   PetscReal :: area_per_vol
   PetscReal :: dum1
-  PetscInt :: num_iterations, ierr
+  PetscInt :: num_iterations
+  PetscErrorCode :: ierr
   
   num_iterations = 0
 
@@ -1094,14 +1095,17 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
       enddo
       coeff_left(:,:,ngcells) = 0.d0
       call bl3dfac(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot)  
-      call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
+      call bl3dsolf(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot, &
+                    ONE_INTEGER,rhs)
     case(2)
-      call decbt(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,ier)
+      call decbt(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left, &
+                 pivot,ier)
       if (ier /= 0) then
         print *,'error in matrix decbt: ier = ',ier
         stop
       endif
-      call solbtf(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,rhs)
+      call solbtf(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left, &
+                  pivot,rhs)
     case(3)
       ! Thomas algorithm for tridiagonal system
       ! Forward elimination
@@ -1307,7 +1311,7 @@ subroutine SecondaryRTResJacMulti(sec_transport_vars,auxvar, &
         call bl3dfac(ngcells,ncomp,coeff_right_pert,coeff_diag_pert, &
                       coeff_left_pert,pivot)  
         call bl3dsolf(ngcells,ncomp,coeff_right_pert,coeff_diag_pert, &
-                       coeff_left_pert,pivot,1,rhs)
+                       coeff_left_pert,pivot,ONE_INTEGER,rhs)
       case(2)
         call decbt(ncomp,ngcells,ncomp,coeff_diag_pert,coeff_right_pert, &
                     coeff_left_pert,pivot,ier)
@@ -1394,7 +1398,7 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dX_changed, &
   ! Date: 02/22/13
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
   use Grid_module
   use Reaction_Aux_module
@@ -1407,7 +1411,7 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dX_changed, &
   Vec :: P0
   Vec :: dP
   Vec :: P1
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   ! ignore changed flag for now.
   PetscBool :: dX_changed
   PetscBool :: X1_changed
@@ -1421,7 +1425,7 @@ subroutine SecondaryRTUpdateIterate(line_search,P0,dP,P1,dX_changed, &
   PetscInt :: local_id, ghosted_id
   PetscReal :: sec_diffusion_coefficient
   PetscReal :: sec_porosity
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscReal :: inf_norm_sec
   PetscReal :: max_inf_norm_sec
   
@@ -1825,9 +1829,11 @@ subroutine SecondaryRTAuxVarComputeMulti(sec_transport_vars,reaction, &
     
   select case (option%secondary_continuum_solver)
     case(1) 
-      call bl3dsolb(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot,1,rhs)
+      call bl3dsolb(ngcells,ncomp,coeff_right,coeff_diag,coeff_left,pivot, &
+                    ONE_INTEGER,rhs)
     case(2)
-      call solbtb(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left,pivot,rhs)
+      call solbtb(ncomp,ngcells,ncomp,coeff_diag,coeff_right,coeff_left, &
+                  pivot,rhs)
     case(3)
       do i = ngcells-1, 1, -1
         rhs(i) = (rhs(i) - coeff_right(ncomp,ncomp,i)*rhs(i+1))/ &

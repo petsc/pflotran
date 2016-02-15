@@ -19,6 +19,7 @@ module PM_Surface_Flow_class
 
   type, public, extends(pm_surface_type) :: pm_surface_flow_type
   contains
+    procedure, public :: Read => PMSurfaceFlowRead
     procedure, public :: UpdateTimestep => PMSurfaceFlowUpdateTimestep
     procedure, public :: PreSolve => PMSurfaceFlowPreSolve
     procedure, public :: PostSolve => PMSurfaceFlowPostSolve
@@ -56,6 +57,57 @@ function PMSurfaceFlowCreate()
   PMSurfaceFlowCreate => surface_flow_pm
 
 end function PMSurfaceFlowCreate
+
+! ************************************************************************** !
+
+subroutine PMSurfaceFlowRead(this,input)
+  ! 
+  ! Reads input file parameters associated with the Surface process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/29/15
+  use Input_Aux_module
+  use String_module
+  use Utility_module
+  use EOS_Water_module
+  use Option_module
+
+  implicit none
+
+  class(pm_surface_flow_type) :: this
+  type(input_type), pointer :: input
+
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  type(option_type), pointer :: option
+  PetscBool :: found
+
+  option => this%option
+
+  error_string = 'Surface Flow Options'
+
+  input%ierr = 0
+  do
+
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+
+    found = PETSC_FALSE
+    call PMSurfaceReadSelectCase(this,input,word,found,option)
+    if (found) cycle
+
+    select case(trim(word))
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    end select
+  enddo
+
+end subroutine PMSurfaceFlowRead
 
 ! ************************************************************************** !
 
@@ -116,11 +168,11 @@ subroutine PMSurfaceFlowRHSFunction(this,ts,time,xx,ff,ierr)
   implicit none
 
   class(pm_surface_flow_type) :: this
-  TS                                     :: ts
-  PetscReal                              :: time
-  Vec                                    :: xx
-  Vec                                    :: ff
-  PetscErrorCode                         :: ierr
+  TS :: ts
+  PetscReal :: time
+  Vec :: xx
+  Vec :: ff
+  PetscErrorCode :: ierr
 
   call SurfaceFlowRHSFunction(ts,time,xx,ff,this%surf_realization,ierr)
 
@@ -210,7 +262,7 @@ subroutine PMSurfaceFlowPostSolve(this)
 
   PetscReal, pointer :: xx_p(:)
   PetscInt :: local_id
-  type(surface_field_type), pointer   :: surf_field 
+  type(surface_field_type), pointer :: surf_field 
   PetscErrorCode :: ierr
 
   surf_field => this%surf_realization%surf_field

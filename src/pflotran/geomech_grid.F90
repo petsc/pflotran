@@ -62,46 +62,46 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscviewer.h"  
   
-  type(unstructured_grid_type), pointer      :: ugrid
-  type(geomech_grid_type), pointer           :: geomech_grid
-  type(option_type), pointer                 :: option
-  PetscInt                                   :: local_id
-  PetscInt                                   :: ghosted_id
-  PetscInt                                   :: vertex_count
-  PetscInt                                   :: ivertex
-  PetscInt                                   :: vertex_id
-  PetscInt                                   :: count
-  PetscInt, allocatable                      :: int_array(:)
-  PetscInt, allocatable                      :: int_array2(:)
-  PetscInt, allocatable                      :: int_array3(:)
-  PetscInt, allocatable                      :: int_array4(:)
-  PetscErrorCode                             :: ierr
-  character(len=MAXSTRINGLENGTH)             :: string, string1
-  PetscInt                                   :: global_offset_old
-  PetscInt                                   :: global_offset
-  Mat                                        :: Rank_Mat
-  PetscReal                                  :: rank
-  PetscViewer                                :: viewer
-  PetscReal, pointer                         :: vec_ptr(:) 
-  PetscInt                                   :: istart,iend
-  PetscBool                                  :: vertex_found
-  PetscInt                                   :: int_rank
-  PetscInt                                   :: vertex_count2
-  IS                                         :: is_rank 
-  IS                                         :: is_rank_new
-  IS                                         :: is_natural
-  IS                                         :: is_ghost_petsc
-  PetscReal                                  :: max_val
-  PetscInt                                   :: row
-  PetscScalar, allocatable                   :: val(:)
-  PetscInt                                   :: ncols
-  PetscInt, allocatable                      :: cols(:) 
-  AO                                         :: ao_natural_to_petsc_nodes
-  PetscInt                                   :: nlmax_node
-  PetscInt, pointer                          :: int_ptr(:)
-  type(point_type), pointer                  :: vertices(:)
-  PetscInt, allocatable                      :: vertex_count_array(:)
-  PetscInt, allocatable                      :: vertex_count_array2(:)
+  type(grid_unstructured_type), pointer :: ugrid
+  type(geomech_grid_type), pointer :: geomech_grid
+  type(option_type), pointer :: option
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: vertex_count
+  PetscInt :: ivertex
+  PetscInt :: vertex_id
+  PetscInt :: count
+  PetscInt, allocatable :: int_array(:)
+  PetscInt, allocatable :: int_array2(:)
+  PetscInt, allocatable :: int_array3(:)
+  PetscInt, allocatable :: int_array4(:)
+  PetscErrorCode :: ierr
+  character(len=MAXSTRINGLENGTH) :: string, string1
+  PetscInt :: global_offset_old
+  PetscInt :: global_offset
+  Mat :: Rank_Mat
+  PetscReal :: rank
+  PetscViewer :: viewer
+  PetscReal, pointer :: vec_ptr(:) 
+  PetscInt :: istart,iend
+  PetscBool :: vertex_found
+  PetscInt :: int_rank
+  PetscInt :: vertex_count2
+  IS :: is_rank 
+  IS :: is_rank_new
+  IS :: is_natural
+  IS :: is_ghost_petsc
+  PetscReal :: max_val
+  PetscInt :: row
+  PetscScalar, allocatable :: val(:)
+  PetscInt :: ncols
+  PetscInt, allocatable :: cols(:) 
+  AO :: ao_natural_to_petsc_nodes
+  PetscInt :: nlmax_node
+  PetscInt, pointer :: int_ptr(:)
+  type(point_type), pointer :: vertices(:)
+  PetscInt, allocatable :: vertex_count_array(:)
+  PetscInt, allocatable :: vertex_count_array2(:)
 
  
 #ifdef GEOMECH_DEBUG
@@ -193,7 +193,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 
 #ifdef GEOMECH_DEBUG
   write(string,*) option%myrank
-  string = 'geomech_node_ids_ghosted_natural' // trim(adjustl(string)) // '.out'
+  string = 'geomech_node_ids_ghosted_natural' &
+    // trim(adjustl(string)) // '.out'
   open(unit=86,file=trim(string))
   do local_id = 1, vertex_count
     write(86,'(i5)') geomech_grid%node_ids_ghosted_natural(local_id)
@@ -232,7 +233,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     
   allocate(geomech_grid%nodes(vertex_count))
   do ivertex = 1, vertex_count
-    geomech_grid%nodes(ivertex)%id = geomech_grid%node_ids_ghosted_natural(ivertex)
+    geomech_grid%nodes(ivertex)%id = &
+      geomech_grid%node_ids_ghosted_natural(ivertex)
     geomech_grid%nodes(ivertex)%x = ugrid%vertices(int_array3(ivertex))%x
     geomech_grid%nodes(ivertex)%y = ugrid%vertices(int_array3(ivertex))%y
     geomech_grid%nodes(ivertex)%z = ugrid%vertices(int_array3(ivertex))%z    
@@ -265,7 +267,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   
   rank = option%myrank + 1
   do ivertex = 1, geomech_grid%ngmax_node
-    call MatSetValue(Rank_Mat,geomech_grid%node_ids_ghosted_natural(ivertex)-1, &
+    call MatSetValue(Rank_Mat, &
+                     geomech_grid%node_ids_ghosted_natural(ivertex)-1, &
                      option%myrank,rank,INSERT_VALUES,ierr);CHKERRQ(ierr)
   enddo
   call MatAssemblyBegin(Rank_Mat,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
@@ -321,7 +324,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
                      option%mycomm,ierr)
 
   do int_rank = 0, option%mycommsize
-    if (option%myrank == int_rank) geomech_grid%nlmax_node = vertex_count_array2(int_rank+1)
+    if (option%myrank == int_rank) geomech_grid%nlmax_node = &
+      vertex_count_array2(int_rank+1)
     if (geomech_grid%nlmax_node > geomech_grid%ngmax_node) then
       option%io_buffer = 'Error: nlmax_node cannot be greater than' // &
                          ' ngmax_node.'
@@ -405,7 +409,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call ISDestroy(is_natural,ierr);CHKERRQ(ierr)
 
 #if GEOMECH_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'geomech_ao_natural_to_petsc_nodes.out', &
+  call PetscViewerASCIIOpen(option%mycomm, &
+                            'geomech_ao_natural_to_petsc_nodes.out', &
                             viewer,ierr);CHKERRQ(ierr)
   call AOView(ao_natural_to_petsc_nodes,viewer,ierr);CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
@@ -432,7 +437,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call AOPetscToApplicationIS(ao_natural_to_petsc_nodes,is_natural, &
                               ierr);CHKERRQ(ierr)
 #if GEOMECH_DEBUG
-  call PetscViewerASCIIOpen(option%mycomm,'geomech_is_natural_after_ordering.out', &
+  call PetscViewerASCIIOpen(option%mycomm, &
+                            'geomech_is_natural_after_ordering.out', &
                             viewer,ierr);CHKERRQ(ierr)
   call ISView(is_natural,viewer,ierr);CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
@@ -465,7 +471,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
        enddo
        if (.not.vertex_found) then
          vertex_count = vertex_count + 1
-         int_array2(vertex_count) = geomech_grid%node_ids_ghosted_natural(ivertex)
+         int_array2(vertex_count) = &
+           geomech_grid%node_ids_ghosted_natural(ivertex)
        endif
     enddo
   else
@@ -605,7 +612,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 
 #ifdef GEOMECH_DEBUG
   write(string,*) option%myrank
-  string = 'geomech_node_coordinates_reordered' // trim(adjustl(string)) // '.out'
+  string = 'geomech_node_coordinates_reordered' &
+    // trim(adjustl(string)) // '.out'
   open(unit=86,file=trim(string))
   do ivertex = 1, vertex_count
     write(86,'(i5)') geomech_grid%nodes(ivertex)%id
@@ -630,7 +638,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   
 #ifdef GEOMECH_DEBUG
   write(string,*) option%myrank
-  string = 'geomech_node_ids_ghosted_natural_reordered' // trim(adjustl(string)) // '.out'
+  string = 'geomech_node_ids_ghosted_natural_reordered' &
+    // trim(adjustl(string)) // '.out'
   open(unit=86,file=trim(string))
   do ghosted_id = 1, geomech_grid%ngmax_node
     write(86,'(i5)') geomech_grid%node_ids_ghosted_natural(ghosted_id)
@@ -644,7 +653,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   allocate(geomech_grid%gauss_node(geomech_grid%nlmax_elem))
   do local_id = 1, geomech_grid%nlmax_elem
     call GaussInitialize(geomech_grid%gauss_node(local_id))  
-    geomech_grid%gauss_node(local_id)%Eletype = geomech_grid%Elem_type(local_id)
+    geomech_grid%gauss_node(local_id)%Eletype = &
+      geomech_grid%Elem_type(local_id)
     geomech_grid%gauss_node(local_id)%dim = THREE_DIM_GRID
     geomech_grid%gauss_node(local_id)%NGPTS = TWO_INTEGER
     if (geomech_grid%gauss_node(local_id)%Eletype == PYR_TYPE) &
@@ -657,7 +667,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     int_array(local_id) = local_id + geomech_grid%global_offset
   enddo  
   do ghosted_id = geomech_grid%nlmax_node+1, geomech_grid%ngmax_node
-    int_array(ghosted_id) = geomech_grid%ghosted_node_ids_petsc(ghosted_id - geomech_grid%nlmax_node)
+    int_array(ghosted_id) = &
+      geomech_grid%ghosted_node_ids_petsc(ghosted_id - geomech_grid%nlmax_node)
   enddo  
   allocate(geomech_grid%node_ids_ghosted_petsc(geomech_grid%ngmax_node))
   geomech_grid%node_ids_ghosted_petsc = int_array
@@ -676,7 +687,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   ! local vector
   call VecCreate(PETSC_COMM_SELF,geomech_grid%no_elems_sharing_node_loc, &
                  ierr);CHKERRQ(ierr)
-  call VecSetSizes(geomech_grid%no_elems_sharing_node_loc,geomech_grid%ngmax_node, &
+  call VecSetSizes(geomech_grid%no_elems_sharing_node_loc, &
+                   geomech_grid%ngmax_node, &
                    PETSC_DECIDE,ierr);CHKERRQ(ierr)
   call VecSetFromOptions(geomech_grid%no_elems_sharing_node_loc, &
                          ierr);CHKERRQ(ierr)
@@ -684,7 +696,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   ! global vector
   call VecCreate(option%mycomm,geomech_grid%no_elems_sharing_node, &
                  ierr);CHKERRQ(ierr)
-  call VecSetSizes(geomech_grid%no_elems_sharing_node,geomech_grid%nlmax_node, &
+  call VecSetSizes(geomech_grid%no_elems_sharing_node, &
+                   geomech_grid%nlmax_node, &
                    PETSC_DECIDE,ierr);CHKERRQ(ierr)
   call VecSetFromOptions(geomech_grid%no_elems_sharing_node, &
                          ierr);CHKERRQ(ierr)
@@ -711,12 +724,12 @@ subroutine GeomechGridLocalizeRegions(grid,region_list,option)
 
   implicit none
   
-  type(gm_region_list_type), pointer      :: region_list
-  type(geomech_grid_type), pointer        :: grid
-  type(option_type)                       :: option
+  type(gm_region_list_type), pointer :: region_list
+  type(geomech_grid_type), pointer :: grid
+  type(option_type) :: option
   
-  type(gm_region_type), pointer           :: region
-  character(len=MAXSTRINGLENGTH)          :: string
+  type(gm_region_type), pointer :: region
+  character(len=MAXSTRINGLENGTH) :: string
   
   
   
@@ -774,23 +787,23 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
 #include "petsc/finclude/petscmat.h"
 
 
-  type(geomech_grid_type)                 :: geomech_grid
-  type(gm_region_type)                    :: geomech_region
-  type(option_type)                       :: option
+  type(geomech_grid_type) :: geomech_grid
+  type(gm_region_type) :: geomech_region
+  type(option_type) :: option
  
-  Vec                                     :: vec_vertex_ids,vec_vertex_ids_loc
-  IS                                      :: is_from, is_to
-  VecScatter                              :: vec_scat
-  PetscErrorCode                          :: ierr
-  PetscViewer                             :: viewer
-  PetscInt                                :: ii,jj,kk,count
-  PetscInt                                :: istart,iend
-  PetscInt                                :: ghosted_id,local_id
-  PetscInt                                :: natural_id
-  PetscInt, pointer                       :: tmp_int_array(:)
-  PetscScalar, pointer                    :: v_loc_p(:)
-  PetscScalar, pointer                    :: tmp_scl_array(:)
-  character(len=MAXSTRINGLENGTH)          :: string,string1
+  Vec :: vec_vertex_ids,vec_vertex_ids_loc
+  IS :: is_from, is_to
+  VecScatter :: vec_scat
+  PetscErrorCode :: ierr
+  PetscViewer :: viewer
+  PetscInt :: ii,jj,kk,count
+  PetscInt :: istart,iend
+  PetscInt :: ghosted_id,local_id
+  PetscInt :: natural_id
+  PetscInt, pointer :: tmp_int_array(:)
+  PetscScalar, pointer :: v_loc_p(:)
+  PetscScalar, pointer :: tmp_scl_array(:)
+  character(len=MAXSTRINGLENGTH) :: string,string1
 
 
 
@@ -807,7 +820,8 @@ subroutine GeomechGridLocalizeRegFromVertIDs(geomech_grid,geomech_region, &
     count = 0
     do ii = 1, geomech_region%num_verts
       count = count + 1
-      tmp_int_array(count) = geomech_region%vertex_ids(ii) - 1 ! Change to zero-based numbering
+      ! Change to zero-based numbering
+      tmp_int_array(count) = geomech_region%vertex_ids(ii) - 1 
       tmp_scl_array(count) = 1.d0
     enddo
     
@@ -1054,10 +1068,10 @@ subroutine GeomechSubsurfMapFromFilename(grid,filename,option)
   
   implicit none
   
-  type(geomech_grid_type)            :: grid
-  type(option_type)                  :: option
-  type(input_type), pointer          :: input
-  character(len=MAXSTRINGLENGTH)     :: filename
+  type(geomech_grid_type) :: grid
+  type(option_type) :: option
+  type(input_type), pointer :: input
+  character(len=MAXSTRINGLENGTH) :: filename
   
   input => InputCreate(IUNIT_TEMP,filename,option)
   call GeomechSubsurfMapFromFileId(grid,input,option)          
@@ -1082,14 +1096,13 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
   
   implicit none
   
-  type(geomech_grid_type)           :: grid
-  type(option_type)                 :: option
-  type(input_type)                  :: input
+  type(geomech_grid_type) :: grid
+  type(option_type) :: option
+  type(input_type), pointer :: input
   
-  PetscBool                         :: continuation_flag
-  character(len=MAXWORDLENGTH)      :: word
-  character(len=1)                  :: backslash
-  character(len=MAXSTRINGLENGTH)    :: string, string1
+  character(len=MAXWORDLENGTH) :: word
+  character(len=1) :: backslash
+  character(len=MAXSTRINGLENGTH) :: string, string1
 
   PetscInt, pointer :: temp_int_array(:)
   PetscInt, pointer :: vertex_ids_geomech(:)
@@ -1162,7 +1175,8 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
                                      grid%mapping_num_cells + 1
     istart = 0
     iend   = 0
-    call MPI_Exscan(grid%mapping_num_cells,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
+    call MPI_Exscan(grid%mapping_num_cells,istart,ONE_INTEGER_MPI, &
+                    MPIU_INTEGER, &
                     MPI_SUM,option%mycomm,ierr)
     call MPI_Scan(grid%mapping_num_cells,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
                    MPI_SUM,option%mycomm,ierr)
@@ -1177,7 +1191,8 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
     deallocate(cell_ids_flow)
     deallocate(vertex_ids_geomech)  
   else
-    option%io_buffer = 'Provide a flow cell_id and a geomech vertex_id per ' // &
+    option%io_buffer = &
+      'Provide a flow cell_id and a geomech vertex_id per ' // &
       'line in GEOMECHANICS_SUBSURFACE_COUPLING mapping file.'
     call printErrMsg(option) 
   endif

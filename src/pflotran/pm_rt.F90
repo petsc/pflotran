@@ -4,7 +4,7 @@ module PM_RT_class
 !geh: using Reactive_Transport_module here fails with gfortran (internal 
 !     compiler error)
 !  use Reactive_Transport_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Communicator_Base_module  
   use Option_module
   
@@ -23,17 +23,22 @@ module PM_RT_class
 #include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_base_type) :: pm_rt_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
     class(communicator_type), pointer :: comm1
     class(communicator_type), pointer :: commN
     ! local variables
     PetscBool :: steady_flow
     PetscReal :: tran_weight_t0
     PetscReal :: tran_weight_t1
+    ! these govern the size of subsequent time steps
+    PetscReal :: max_concentration_change
+    PetscReal :: max_volfrac_change
+    PetscReal :: volfrac_change_governor
     ! for transport only
     PetscBool :: transient_porosity
   contains
     procedure, public :: Setup => PMRTSetup
+    procedure, public :: Read => PMRTRead
     procedure, public :: PMRTSetRealization
     procedure, public :: InitializeRun => PMRTInitializeRun
     procedure, public :: FinalizeRun => PMRTFinalizeRun
@@ -99,6 +104,9 @@ function PMRTCreate()
   rt_pm%steady_flow = PETSC_FALSE
   rt_pm%tran_weight_t0 = 0.d0
   rt_pm%tran_weight_t1 = 0.d0
+  rt_pm%max_concentration_change = 0.d0
+  rt_pm%max_volfrac_change = 0.d0
+  rt_pm%volfrac_change_governor = 1.d0
   ! these flags can only be true for transport only
   rt_pm%transient_porosity = PETSC_FALSE
 
@@ -108,6 +116,56 @@ function PMRTCreate()
   PMRTCreate => rt_pm
   
 end function PMRTCreate
+
+! ************************************************************************** !
+
+subroutine PMRTRead(this,input)
+  ! 
+  ! Reads input file parameters associated with the reactive transport 
+  ! process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/25/16
+  !
+  use Input_Aux_module
+  use String_module
+  use Option_module
+ 
+  implicit none
+  
+  class(pm_rt_type) :: this
+  type(input_type), pointer :: input
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  type(option_type), pointer :: option
+
+  option => this%option
+  
+  error_string = 'Reactive Transport Options'
+  
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+    
+    select case(trim(word))
+      case('GLOBAL_IMPLICIT','OPERATOR_SPLIT','OPERATOR_SPLITTING')
+      case('MAX_VOLUME_FRACTION_CHANGE')
+        call InputReadDouble(input,option,this%volfrac_change_governor)
+        call InputDefaultMsg(input,option,'maximum volume fraction change')
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    end select
+  enddo
+  
+end subroutine PMRTRead
 
 ! ************************************************************************** !
 
@@ -170,12 +228,12 @@ subroutine PMRTSetRealization(this,realization)
   ! Date: 03/14/13
   ! 
 
-  use Realization_class  
+  use Realization_Subsurface_class  
 
   implicit none
   
   class(pm_rt_type) :: this
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
 
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%SetRealization()')
@@ -450,16 +508,30 @@ subroutine PMRTFinalizeTimestep(this)
                                   this%realization%field%porosity_tpdt)
   endif
   
-  call RTMaxChange(this%realization)
+  call RTMaxChange(this%realization,this%max_concentration_change, &
+                   this%max_volfrac_change)
   if (this%option%print_screen_flag) then
-    write(*,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4, &
+    write(*,'("  --> max chng: dcmx= ",1pe12.4,"  dc/dt= ",1pe12.4, &
             &" [mol/s]")') &
-      this%option%dcmax,this%option%dcmax/this%option%tran_dt
+      this%max_concentration_change, &
+      this%max_concentration_change/this%option%tran_dt
+    if (this%realization%reaction%mineral%nkinmnrl > 0) then
+      write(*,'("               dvfmx= ",1pe12.4," dvf/dt= ",1pe12.4, &
+            &" [1/s]")') &
+        this%max_volfrac_change, this%max_volfrac_change/this%option%tran_dt
+    endif
   endif
   if (this%option%print_file_flag) then  
-    write(this%option%fid_out,'("  --> max chng: dcmx= ",1pe12.4, &
-                              &" dc/dt= ",1pe12.4," [mol/s]")') &
-      this%option%dcmax,this%option%dcmax/this%option%tran_dt
+    write(this%option%fid_out,&
+            '("  --> max chng: dcmx= ",1pe12.4,"  dc/dt= ",1pe12.4, &
+            &" [mol/s]")') &
+      this%max_concentration_change, &
+      this%max_concentration_change/this%option%tran_dt
+    if (this%realization%reaction%mineral%nkinmnrl > 0) then
+      write(this%option%fid_out, &
+        '("               dvfmx= ",1pe12.4," dvf/dt= ",1pe12.4," [1/s]")') &
+        this%max_volfrac_change, this%max_volfrac_change/this%option%tran_dt
+    endif
   endif
   
 end subroutine PMRTFinalizeTimestep
@@ -506,22 +578,47 @@ subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)
   
-  PetscReal :: dtt
+  PetscReal :: dtt, uvf, dt_vf, dt_tfac, fac
+  PetscInt :: ifac
+  PetscReal, parameter :: pert = 1.d-20
   
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%UpdateTimestep()')  
 #endif
   
-  dtt = dt
-  if (num_newton_iterations <= iacceleration) then
-    if (num_newton_iterations <= size(tfac)) then
-      dtt = tfac(num_newton_iterations) * dt
+  if (this%volfrac_change_governor < 1.d0) then
+    ! with volume fraction potentially scaling the time step.
+    if (iacceleration > 0) then
+      fac = 0.5d0
+      if (num_newton_iterations >= iacceleration) then
+        fac = 0.33d0
+        uvf = 0.d0
+      else
+        uvf = this%volfrac_change_governor/(this%max_volfrac_change+pert)
+      endif
+      dtt = fac * dt * (1.d0 + uvf)
+    else
+      ifac = max(min(num_newton_iterations,size(tfac)),1)
+      dt_tfac = tfac(ifac) * dt
+
+      fac = 0.5d0
+      uvf= this%volfrac_change_governor/(this%max_volfrac_change+pert)
+      dt_vf = fac * dt * (1.d0 + uvf)
+
+      dtt = min(dt_tfac,dt_vf)
+    endif
+  else
+    ! original implementation
+    dtt = dt
+    if (num_newton_iterations <= iacceleration) then
+      if (num_newton_iterations <= size(tfac)) then
+        dtt = tfac(num_newton_iterations) * dt
+      else
+        dtt = 0.5d0 * dt
+      endif
     else
       dtt = 0.5d0 * dt
     endif
-  else
-!       dtt = 2.d0 * dt
-    dtt = 0.5d0 * dt
   endif
 
   if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
@@ -529,7 +626,7 @@ subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   ! geh: see comment above under flow stepper
   dtt = max(dtt,dt_min)
   dt = dtt
-
+  
 end subroutine PMRTUpdateTimestep
 
 ! ************************************************************************** !
@@ -621,7 +718,7 @@ subroutine PMRTCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! Date: 03/16/09
   ! 
 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Option_module
   use Reaction_Aux_module
@@ -725,7 +822,7 @@ subroutine PMRTCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   ! Author: Glenn Hammond
   ! Date: 03/04/14
   ! 
-  use Realization_class
+  use Realization_Subsurface_class
   use Grid_module
   use Field_module
   use Patch_module
@@ -966,8 +1063,10 @@ subroutine PMRTMaxChange(this)
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%MaxChange()')
 #endif
-  
-  call RTMaxChange(this%realization)
+
+  print *, 'PMRTMaxChange not implemented'
+  stop
+!  call RTMaxChange(this%realization)
 
 end subroutine PMRTMaxChange
 
@@ -1038,7 +1137,7 @@ subroutine PMRTCheckpointBinary(this,viewer)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Field_module
   use Discretization_module
@@ -1074,7 +1173,7 @@ subroutine PMRTCheckpointBinary(this,viewer)
   class(pm_rt_type) :: this
   PetscErrorCode :: ierr
 
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization
@@ -1176,7 +1275,7 @@ subroutine PMRTRestartBinary(this,viewer)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Field_module
   use Discretization_module
@@ -1213,7 +1312,7 @@ subroutine PMRTRestartBinary(this,viewer)
   class(pm_rt_type) :: this
   PetscErrorCode :: ierr
 
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization
@@ -1336,7 +1435,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
 #else
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Field_module
   use Discretization_module
@@ -1378,7 +1477,7 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscInt, pointer :: int_array(:)
 
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization
@@ -1523,7 +1622,7 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
 #else
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Realization_Base_class
   use Field_module
   use Discretization_module
@@ -1566,7 +1665,7 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscInt, pointer :: int_array(:)
 
-  class(realization_type), pointer :: realization
+  class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization

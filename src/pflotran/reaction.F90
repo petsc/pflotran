@@ -86,7 +86,7 @@ subroutine ReactionInit(reaction,input,option)
   implicit none
   
   type(reaction_type), pointer :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   reaction => ReactionCreate()
@@ -128,7 +128,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   implicit none
   
   type(reaction_type) :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -323,12 +323,12 @@ subroutine ReactionReadPass1(reaction,input,option)
                                   'RADIOACTIVE_DECAY_RXN RATE_CONSTANT UNITS')
               else
                 radioactive_decay_rxn%rate_constant = &
-                  UnitsConvertToInternal(word,option) * &
+                  UnitsConvertToInternal(word,'unknown/time',option) * &
                   radioactive_decay_rxn%rate_constant
               endif
             case('HALF_LIFE')
               call InputReadDouble(input,option, &
-                                   radioactive_decay_rxn%rate_constant)
+                                   radioactive_decay_rxn%half_life)
               call InputErrorMsg(input,option,'half life', &
                                'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
               call InputReadWord(input,option,word,PETSC_TRUE)
@@ -336,13 +336,13 @@ subroutine ReactionReadPass1(reaction,input,option)
                 call InputDefaultMsg(input,option, &
                                      'RADIOACTIVE_DECAY_RXN HALF_LIFE UNITS')
               else
-                radioactive_decay_rxn%rate_constant = &
-                  UnitsConvertToInternal(word,option) * &
-                  radioactive_decay_rxn%rate_constant
+                radioactive_decay_rxn%half_life = &
+                  UnitsConvertToInternal(word,'time',option) * &
+                  radioactive_decay_rxn%half_life
               endif
               ! convert half life to rate constant
               radioactive_decay_rxn%rate_constant = &
-                -1.d0*log(0.5d0)/radioactive_decay_rxn%rate_constant
+                -1.d0*log(0.5d0)/radioactive_decay_rxn%half_life
             case default
               call InputKeywordUnrecognized(word, &
                                           'CHEMISTRY,IMMOBILE_DECAY_REACTION', &
@@ -608,20 +608,21 @@ subroutine ReactionReadPass1(reaction,input,option)
                       endif
                     case('DISTRIBUTION_COEFFICIENT','KD')
                       call InputReadDouble(input,option,kd_rxn%Kd)
-                      call InputErrorMsg(input,option,'DISTRIBUTION_COEFFICIENT', &
+                      call InputErrorMsg(input,option, &
+                                         'DISTRIBUTION_COEFFICIENT', &
                                          'CHEMISTRY,ISOTHERM_REACTIONS')
                     ! S.Karra, 02/20/2014
                     case('SEC_CONT_DISTRIBUTION_COEFFICIENT', &
                          'SEC_CONT_KD')
                          if (.not.option%use_mc) then
-                           option%io_buffer = 'Make sure MULTIPLE_CONTINUUM ' // &
-                             'keyword is set, SECONDARY_CONTINUUM_KD.'
+                           option%io_buffer = 'Make sure MULTIPLE_CONTINUUM ' &
+                                   // 'keyword is set, SECONDARY_CONTINUUM_KD.'
                            call printErrMsg(option)
                          else
                            call InputReadDouble(input,option,sec_cont_kd_rxn%Kd)
                            call InputErrorMsg(input,option, &
                              'SECONDARY_CONTINUUM_DISTRIBUTION_COEFFICIENT', &
-                             'CHEMISTRY,ISOTHERM_REACTIONS')                           
+                             'CHEMISTRY,ISOTHERM_REACTIONS')                    
                         endif
                     case('LANGMUIR_B')
                       call InputReadDouble(input,option,kd_rxn%Langmuir_B)
@@ -972,7 +973,7 @@ subroutine ReactionReadPass2(reaction,input,option)
   implicit none
 
   type(reaction_type) :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -1095,7 +1096,7 @@ subroutine ReactionReadRedoxSpecies(reaction,input,option)
   implicit none
   
   type(reaction_type) :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: name
@@ -3009,7 +3010,7 @@ subroutine ReactionReadOutput(reaction,input,option)
   implicit none
   
   type(reaction_type) :: reaction
-  type(input_type) :: input
+  type(input_type), pointer :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -5401,6 +5402,7 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
   PetscInt :: imnrl, iaqspec, ncomp, icomp
   PetscInt :: k, irate, irxn, icplx, ncplx, ikinrxn
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
+  PetscReal :: delta_volfrac
   PetscReal :: res(reaction%ncomp)
   PetscReal :: jac(reaction%ncomp,reaction%ncomp)
     
@@ -5415,11 +5417,11 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
       ! rate = mol/m^3/sec
       ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
       !                                mol_vol (m^3 mnrl/mol mnrl)
-      rt_auxvar%mnrl_volfrac(imnrl) = &
-        rt_auxvar%mnrl_volfrac(imnrl) + &
-        rt_auxvar%mnrl_rate(imnrl)* &
-        reaction%mineral%kinmnrl_molar_vol(imnrl)* &
-        option%tran_dt
+      delta_volfrac = rt_auxvar%mnrl_rate(imnrl)* &
+                      reaction%mineral%kinmnrl_molar_vol(imnrl)* &
+                      option%tran_dt
+      rt_auxvar%mnrl_volfrac(imnrl) = rt_auxvar%mnrl_volfrac(imnrl) + &
+                                      delta_volfrac
       if (rt_auxvar%mnrl_volfrac(imnrl) < 0.d0) &
         rt_auxvar%mnrl_volfrac(imnrl) = 0.d0
 

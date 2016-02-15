@@ -331,9 +331,9 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
 
   ! Liquid phase thermodynamic properties
   ! must use cell_pressure as the pressure, not %pres(lid)
-  call EOSWaterDensityEnthalpy(toil_auxvar%temp,cell_pressure, &
-                               toil_auxvar%den_kg(lid),toil_auxvar%den(lid), &
-                               toil_auxvar%H(lid),ierr)
+  call EOSWaterDensity(toil_auxvar%temp,cell_pressure, &
+                       toil_auxvar%den_kg(lid),toil_auxvar%den(lid),ierr)
+  call EOSWaterEnthalpy(toil_auxvar%temp,cell_pressure,toil_auxvar%H(lid),ierr)
   toil_auxvar%H(lid) = toil_auxvar%H(lid) * 1.d-6 ! J/kmol -> MJ/kmol
   ! MJ/kmol comp
   toil_auxvar%U(lid) = toil_auxvar%H(lid) - &

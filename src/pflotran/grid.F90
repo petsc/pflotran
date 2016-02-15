@@ -75,8 +75,8 @@ module Grid_module
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash_bins
 
-    type(structured_grid_type), pointer :: structured_grid
-    type(unstructured_grid_type), pointer :: unstructured_grid
+    type(grid_structured_type), pointer :: structured_grid
+    type(grid_unstructured_type), pointer :: unstructured_grid
     
     type(connection_set_list_type), pointer :: internal_connection_set_list
     type(connection_set_list_type), pointer :: boundary_connection_set_list
@@ -218,8 +218,8 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
         UGridPolyhedraComputeInternConnect(grid%unstructured_grid, &
                                            grid%x, grid%y, grid%z, &
                                            option)
-      call UGridPolyhedraComputeOutputInfo(grid%unstructured_grid, grid%nL2G, grid%nG2L, &
-                                            grid%nG2A, option)
+      call UGridPolyhedraComputeOutputInfo(grid%unstructured_grid, grid%nL2G, &
+                                           grid%nG2L, grid%nG2A, option)
   end select
   
   allocate(grid%internal_connection_set_list)
@@ -298,10 +298,9 @@ subroutine GridMapIndices(grid, dm_ptr, sgrid_stencil_type,option)
   
   type(grid_type) :: grid
   type(dm_ptr_type) :: dm_ptr
-  PetscInt :: sgrid_stencil_type
+  PetscEnum :: sgrid_stencil_type
   type(option_type) :: option
 
-  PetscInt :: ierr, icount
   PetscInt, allocatable :: int_tmp(:)
 ! PetscInt, pointer :: int_tmp(:)
   PetscInt :: n
@@ -324,7 +323,7 @@ end subroutine GridMapIndices
 
 ! ************************************************************************** !
 
-subroutine GridComputeSpacing(grid,option)
+subroutine GridComputeSpacing(grid,origin_global,option)
   ! 
   ! Computes grid spacing (only for structured grid
   ! 
@@ -337,11 +336,12 @@ subroutine GridComputeSpacing(grid,option)
   implicit none
   
   type(grid_type) :: grid
+  PetscReal :: origin_global(3)
   type(option_type) :: option
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
-      call StructGridComputeSpacing(grid%structured_grid,option)
+      call StructGridComputeSpacing(grid%structured_grid,origin_global,option)
     case(IMPLICIT_UNSTRUCTURED_GRID)
   end select
   
@@ -542,7 +542,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
   PetscReal, parameter :: pert = 1.d-8, tol = 1.d-20
   PetscReal :: x_shift, y_shift, z_shift
   PetscReal :: del_x, del_y, del_z
-  PetscInt :: iflag
+  PetscInt :: iflag, global_cell_count
   PetscBool :: same_point
   PetscErrorCode :: ierr
   
@@ -554,6 +554,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
     select case(region%def_type)
       case (DEFINED_BY_BLOCK)
         call GridLocalizeRegionFromBlock(grid,region,option)
+      case (DEFINED_BY_CARTESIAN_BOUNDARY)
+        call GridLocalizeRegionFromCartBound(grid,region,option)
       case (DEFINED_BY_COORD)
         call GridLocalizeRegionFromCoordinates(grid,region,option)
       case (DEFINED_BY_CELL_IDS)
@@ -618,6 +620,16 @@ subroutine GridLocalizeRegions(grid,region_list,option)
       deallocate(region%faces)
       nullify(region%faces)
     endif
+
+    ! check to ensure that there is at least one grid cell in each region
+    call MPI_Allreduce(region%num_cells,global_cell_count,ONE_INTEGER_MPI, &
+                       MPI_INTEGER, MPI_SUM, option%mycomm,ierr)
+    if (global_cell_count == 0) then
+      option%io_buffer = 'No cells assigned to REGION "' // &
+        trim(region%name) // '".'
+      call printErrMsg(option)
+    endif
+
     region => region%next
 
   enddo
@@ -746,37 +758,37 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscmat.h"
 
-  type(grid_type)                 :: grid
-  type(region_type)               :: region
-  type(option_type)               :: option
+  type(grid_type) :: grid
+  type(region_type) :: region
+  type(option_type) :: option
 
   ! local
-  type(unstructured_grid_type),pointer    :: ugrid
-  Vec                             :: vec_cell_ids,vec_cell_ids_loc
-  Vec                             :: vec_face_ids,vec_face_ids_loc
-  IS                              :: is_from, is_to
-  Mat                             :: adj, adj_t,adj_d, adj_o
-  VecScatter                      :: vec_scat
-  PetscErrorCode                  :: ierr
-  PetscViewer                     :: viewer
-  PetscInt                        :: ii,jj,kk,count
-  PetscInt                        :: istart, iend
-  PetscInt                        :: ghosted_id,local_id,natural_id
-  PetscInt,pointer                :: tmp_int_array(:),tmp_int_array2(:)
-  PetscScalar,pointer             :: v_loc_p(:),v_loc2_p(:)
-  PetscScalar,pointer             :: tmp_scl_array(:)
+  type(grid_unstructured_type),pointer :: ugrid
+  Vec :: vec_cell_ids,vec_cell_ids_loc
+  Vec :: vec_face_ids,vec_face_ids_loc
+  IS :: is_from, is_to
+  Mat :: adj, adj_t,adj_d, adj_o
+  VecScatter :: vec_scat
+  PetscErrorCode :: ierr
+  PetscViewer :: viewer
+  PetscInt :: ii,jj,kk,count
+  PetscInt :: istart, iend
+  PetscInt :: ghosted_id,local_id,natural_id
+  PetscInt,pointer :: tmp_int_array(:),tmp_int_array2(:)
+  PetscScalar,pointer :: v_loc_p(:),v_loc2_p(:)
+  PetscScalar,pointer :: tmp_scl_array(:)
 
 
-  PetscInt, pointer               :: ia_p(:), ja_p(:)
-  PetscInt                        :: n,rstart,rend,icol(1)
-  PetscInt                        :: index
-  PetscInt                        :: vertex_id
-  PetscOffset                     :: iia,jja,aaa,iicol
-  PetscBool                       :: done,found
-  PetscScalar                     :: aa(1)
-  PetscInt                        :: cell_id_max_local
-  PetscInt                        :: cell_id_max_global
-  ! PetscScalar, pointer            :: aa(:)
+  PetscInt, pointer :: ia_p(:), ja_p(:)
+  PetscInt :: n,rstart,rend,icol(1)
+  PetscInt :: index
+  PetscInt :: vertex_id
+  PetscOffset :: iia,jja,aaa,iicol
+  PetscBool :: done,found
+  PetscScalar :: aa(1)
+  PetscInt :: cell_id_max_local
+  PetscInt :: cell_id_max_global
+  ! PetscScalar, pointer :: aa(:)
   ! Would like to use the above, but I have to fix MatGetArrayF90() first. --RTM
   
   ugrid => grid%unstructured_grid
@@ -906,7 +918,7 @@ subroutine GridLocalizeExplicitFaceset(ugrid,region,option)
 
   implicit none
   
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(region_type) :: region
   type(option_type) :: option
   Vec :: volume
@@ -1384,7 +1396,7 @@ subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
   type(grid_type) :: grid
   type(option_type) :: option
   PetscInt :: ghosted_id
-  PetscInt :: stencil_type
+  PetscEnum :: stencil_type
   PetscInt :: stencil_width_i
   PetscInt :: stencil_width_j
   PetscInt :: stencil_width_k
@@ -1430,7 +1442,7 @@ subroutine GridGetGhostedNeighborsWithCorners(grid,ghosted_id,stencil_type, &
   type(grid_type) :: grid
   type(option_type) :: option
   PetscInt :: ghosted_id
-  PetscInt :: stencil_type
+  PetscEnum :: stencil_type
   PetscInt :: stencil_width_i
   PetscInt :: stencil_width_j
   PetscInt :: stencil_width_k
@@ -1553,8 +1565,8 @@ subroutine GridLocalizeRegionFromBlock(grid,region,option)
   implicit none
   
   type(region_type), pointer :: region
-  type(grid_type), pointer   :: grid
-  type(option_type)          :: option
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt, allocatable :: temp_int_array(:)
@@ -1631,6 +1643,70 @@ end subroutine GridLocalizeRegionFromBlock
 
 ! ************************************************************************** !
 
+subroutine GridLocalizeRegionFromCartBound(grid,region,option)
+  ! 
+  ! This routine resticts regions to cells local to processor when the region
+  ! was defined using a BLOCK from inputfile.
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 09/04/12
+  ! 
+
+  use Option_module
+  use Region_module
+
+  implicit none
+  
+  type(region_type), pointer :: region
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt, allocatable :: temp_int_array(:)
+  PetscInt :: i, j, k, count, local_count, ghosted_id, local_id
+  PetscInt :: i_min, i_max, j_min, j_max, k_min, k_max
+  PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
+  PetscReal, parameter :: pert = 1.d-8, tol = 1.d-20
+  PetscReal :: x_shift, y_shift, z_shift
+  PetscReal :: del_x, del_y, del_z
+  PetscInt :: iflag
+  PetscBool :: same_point
+  PetscErrorCode :: ierr
+
+  if (grid%itype /= STRUCTURED_GRID) then
+    option%io_buffer='Region definition using CARTESIAN_BOUNDARY is ' // &
+      'only supported for structured grids.'
+    call printErrMsg(option)
+  endif
+
+  region%i1 = 1
+  region%i2 = grid%structured_grid%nx
+  region%j1 = 1
+  region%j2 = grid%structured_grid%ny
+  region%k1 = 1
+  region%k2 = grid%structured_grid%nz
+  
+  select case(region%iface)
+    case(WEST_FACE)
+      region%i2 = region%i1
+    case(EAST_FACE)
+      region%i1 = region%i2
+    case(SOUTH_FACE)
+      region%j2 = region%j1
+    case(NORTH_FACE)
+      region%j1 = region%j2
+    case(BOTTOM_FACE)
+      region%k2 = region%k1
+    case(TOP_FACE)
+      region%k1 = region%k2
+  end select
+
+  call GridLocalizeRegionFromBlock(grid,region,option)
+
+end subroutine GridLocalizeRegionFromCartBound
+
+! ************************************************************************** !
+
 subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
   ! 
   ! This routine resticts regions to cells local to processor when the region
@@ -1646,8 +1722,8 @@ subroutine GridLocalizeRegionFromCoordinates(grid,region,option)
   implicit none
   
   type(region_type), pointer :: region
-  type(grid_type), pointer   :: grid
-  type(option_type)          :: option
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt, allocatable :: temp_int_array(:)

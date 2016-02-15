@@ -22,7 +22,6 @@ module Checkpoint_module
     PetscInt :: test_header_size
   end type checkpoint_header_type
 
-  ! for testing purposes only
   type :: base_test_header_type
     PetscInt :: int1
     PetscReal :: real1
@@ -50,11 +49,15 @@ module Checkpoint_module
     end subroutine
   end interface PetscBagGetData
 
-  public :: CheckpointOpenFileForWriteBinary, &
+  public :: CheckpointFilename, &
+            CheckpointAppendNameAtTime, &
+            CheckpointAppendNameAtTimestep, &
+            CheckpointOpenFileForWriteBinary, &
             CheckPointWriteCompatibilityBinary, &
             CheckPointReadCompatibilityBinary, &
             CheckpointFlowProcessModelBinary, &
             RestartFlowProcessModelBinary, &
+#if defined(PETSC_HAVE_HDF5)
             RestartFlowProcessModelHDF5, &
             CheckpointOpenFileForWriteHDF5, &
             CheckPointWriteCompatibilityHDF5, &
@@ -64,13 +67,16 @@ module Checkpoint_module
             CheckPointWriteRealDatasetHDF5, &
             CheckPointReadIntDatasetHDF5, &
             CheckpointOpenFileForReadHDF5, &
-            CheckPointReadCompatibilityHDF5
+            CheckPointReadCompatibilityHDF5, &
+#endif
+            CheckpointPeriodicTimeWaypoints, &
+            CheckpointRead
 
 contains
 
 ! ************************************************************************** !
 
-function CheckpointFilename(id, option, id_stamp)
+function CheckpointFilename(append_name, option)
   !
   ! This subroutine creates the filename of a checkpoint file without a suffix
   !
@@ -81,34 +87,83 @@ function CheckpointFilename(id, option, id_stamp)
   use Option_module
   use String_module, only : StringNull
 
-  PetscInt :: id
+  character(len=MAXSTRINGLENGTH) :: append_name
   type(option_type) :: option
-  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
+
   character(len=MAXSTRINGLENGTH) :: CheckpointFilename
 
-  character(len=MAXWORDLENGTH) :: id_string
-
-  write(id_string,'(i8)') id
-  if (present(id_stamp)) then
-     if (.not. StringNull(id_stamp)) then
-        id_string = id_stamp
-     end if
-  else if (id < 0) then
-     id_string = 'restart'
-  end if
-  !else if (id >= 0) then --> use default id
-
   CheckpointFilename = trim(option%global_prefix) // &
-       trim(option%group_prefix) // &
-       '-' // trim(adjustl(id_string))
+                       trim(option%group_prefix) // &
+                       trim(adjustl(append_name))
 
   CheckpointFilename = adjustl(CheckpointFilename)
 
-  end function CheckpointFilename
+end function CheckpointFilename
 
 ! ************************************************************************** !
 
-subroutine CheckpointOpenFileForWriteBinary(viewer,id,option,id_stamp)
+function CheckpointAppendNameAtTime(checkpoint_option,time,option)
+  !
+  ! This subroutine forms the appendage to the checkpoint filename.
+  !
+  ! Author: Jenn Frederick
+  ! Date: 1/29/2016
+  ! 
+
+  use Output_Aux_module
+  use Units_module
+  use Option_module
+
+  implicit none
+
+  type(checkpoint_option_type) :: checkpoint_option
+  PetscReal :: time
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: CheckpointAppendNameAtTime
+  character(len=MAXWORDLENGTH) :: word
+  PetscReal :: temp_time
+
+  ! time is actually option%time. do not overwrite it.
+  temp_time = time * checkpoint_option%tconv
+  !write(time_string,'(1pe12.4)') time
+  write(word,'(f15.4)') temp_time
+  CheckpointAppendNameAtTime = '-' // trim(adjustl(word)) // &
+                             trim(adjustl(checkpoint_option%tunit))
+    
+end function CheckpointAppendNameAtTime
+
+! ************************************************************************** !
+
+function CheckpointAppendNameAtTimestep(checkpoint_option,timestep,option)
+  !
+  ! This subroutine forms the appendage to the checkpoint filename.
+  !
+  ! Author: Jenn Frederick
+  ! Date: 1/29/2016
+  ! 
+
+  use Output_Aux_module
+  use Units_module
+  use Option_module
+
+  implicit none
+
+  type(checkpoint_option_type) :: checkpoint_option
+  PetscInt :: timestep
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: CheckpointAppendNameAtTimestep
+  character(len=MAXWORDLENGTH) :: word
+
+  write(word,'(i9)') timestep
+  CheckpointAppendNameAtTimestep = '-' // 'ts' // trim(adjustl(word))
+
+end function CheckpointAppendNameAtTimestep
+
+! ************************************************************************** !
+
+subroutine CheckpointOpenFileForWriteBinary(viewer,append_name,option)
   ! 
   ! Opens checkpoint file; sets format
   ! 
@@ -124,14 +179,13 @@ subroutine CheckpointOpenFileForWriteBinary(viewer,id,option,id_stamp)
 #include "petsc/finclude/petscbag.h"
 
   PetscViewer :: viewer
-  PetscInt :: id
+  character(len=MAXSTRINGLENGTH) :: append_name
   type(option_type) :: option
-  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
+
   PetscErrorCode :: ierr
-  
   character(len=MAXSTRINGLENGTH) :: filename
 
-  filename = CheckpointFilename(id,option,id_stamp)
+  filename = CheckpointFilename(append_name,option)
   filename = trim(filename) // '.chk'
 
   !geh: To skip .info file, need to split PetscViewerBinaryOpen() 
@@ -298,7 +352,7 @@ subroutine CheckpointFlowProcessModelBinary(viewer,realization)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Discretization_module
   use Grid_module
@@ -313,7 +367,7 @@ subroutine CheckpointFlowProcessModelBinary(viewer,realization)
 #include "petsc/finclude/petscvec.h90"
 
   PetscViewer :: viewer
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
 
   type(option_type), pointer :: option
@@ -392,7 +446,7 @@ subroutine RestartFlowProcessModelBinary(viewer,realization)
   ! 
 
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Discretization_module
   use Grid_module
@@ -408,7 +462,7 @@ subroutine RestartFlowProcessModelBinary(viewer,realization)
 #include "petsc/finclude/petscvec.h90"
 
   PetscViewer :: viewer
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
 
   type(option_type), pointer :: option
@@ -494,43 +548,23 @@ end subroutine RestartFlowProcessModelBinary
 
 ! ************************************************************************** !
 
-subroutine CheckpointOpenFileForWriteHDF5(file_id, grp_id, id, option, id_stamp)
+#if defined(PETSC_HAVE_HDF5)
+subroutine CheckpointOpenFileForWriteHDF5(file_id,grp_id,append_name,option, &
+                                          id_stamp)
   !
   ! Opens checkpoint file; sets format
   !
   ! Author: Gautam Bisht, LBNL
   ! Date: 07/30/15
   !
-
   use Option_module
-
-#if  !defined(PETSC_HAVE_HDF5)
-  implicit none
-
-  PetscInt :: id
-  integer, intent(out) :: file_id
-  integer:: prop_id
-  integer,intent(out):: grp_id
-  type(option_type) :: option
-  character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
-  PetscErrorCode :: ierr
-
-  call printMsg(option,'')
-  write(option%io_buffer, &
-        '("PFLOTRAN must be compiled with HDF5 to &
-        &write HDF5 formatted checkpoint file. Darn.")')
-  call printErrMsg(option)
-
-#else
-
   use hdf5
 
   implicit none
 
-  PetscInt :: id
   type(option_type) :: option
   character(len=MAXWORDLENGTH), optional, intent(in) :: id_stamp
-
+  character(len=MAXSTRINGLENGTH) :: append_name
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: filename
   PetscErrorCode :: ierr
@@ -538,15 +572,15 @@ subroutine CheckpointOpenFileForWriteHDF5(file_id, grp_id, id, option, id_stamp)
 
 #if defined(SCORPIO_WRITE)
   integer, intent(out) :: file_id
-  integer:: prop_id
-  integer,intent(out):: grp_id
+  integer :: prop_id
+  integer,intent(out) :: grp_id
 #else
   integer(HID_T), intent(out) :: file_id
   integer(HID_T) :: prop_id
   integer(HID_T), intent(out) :: grp_id
 #endif
 
-  filename = CheckpointFilename(id, option, id_stamp)
+  filename = CheckpointFilename(append_name, option)
   filename = trim(filename) // '.h5'
 
 #if defined(SCORPIO_WRITE)
@@ -574,7 +608,6 @@ subroutine CheckpointOpenFileForWriteHDF5(file_id, grp_id, id, option, id_stamp)
   write(option%io_buffer,'(" --> Dump checkpoint file: ", a64)') &
     trim(adjustl(filename))
   call printMsg(option)
-#endif
 
 end subroutine CheckpointOpenFileForWriteHDF5
 
@@ -587,25 +620,7 @@ subroutine CheckpointOpenFileForReadHDF5(filename, file_id, grp_id, option)
   ! Author: Gautam Bisht, LBNL
   ! Date: 08/09/15
   !
-
   use Option_module
-
-#if  !defined(PETSC_HAVE_HDF5)
-  implicit none
-
-  character(len=MAXSTRINGLENGTH),intent(in) :: filename
-  integer, intent(out) :: file_id
-  integer,intent(out):: grp_id
-  type(option_type) :: option
-
-  call printMsg(option,'')
-  write(option%io_buffer, &
-        '("PFLOTRAN must be compiled with HDF5 to &
-        &write HDF5 formatted checkpoint file. Darn.")')
-  call printErrMsg(option)
-
-#else
-
   use hdf5
 
   implicit none
@@ -619,8 +634,8 @@ subroutine CheckpointOpenFileForReadHDF5(filename, file_id, grp_id, option)
 
 #if defined(SCORPIO)
   integer, intent(out) :: file_id
-  integer:: prop_id
-  integer,intent(out):: grp_id
+  integer :: prop_id
+  integer,intent(out) :: grp_id
 #else
   integer(HID_T), intent(out) :: file_id
   integer(HID_T) :: prop_id
@@ -645,9 +660,6 @@ subroutine CheckpointOpenFileForReadHDF5(filename, file_id, grp_id, option)
 
   string = "Checkpoint"
   call h5gopen_f(file_id, string, grp_id, hdf5_err)
-
-#endif
-
 #endif
 
 end subroutine CheckpointOpenFileForReadHDF5
@@ -663,33 +675,11 @@ subroutine CheckPointWriteIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank,
   ! Author: Gautam Bisht
   ! Date: 07/30/15
   ! 
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  PetscMPIInt :: dataset_rank
-  integer, pointer :: dims(:)
-  integer, pointer :: start(:)
-  integer, pointer :: stride(:)
-  integer, pointer :: length(:)
-  PetscInt, pointer :: data_int_array(:)
-  type(option_type) :: option
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-
-#else
-
   use Option_module
   use hdf5
   use HDF5_module, only : trick_hdf5
   
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscbag.h"
 
 #if defined(SCORPIO_WRITE)
   integer :: chk_grp_id
@@ -760,7 +750,6 @@ subroutine CheckPointWriteIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank,
   call h5sclose_f(grp_space_id, hdf5_err)
   call h5pclose_f(prop_id, hdf5_err)
   call h5dclose_f(data_set_id, hdf5_err)
-#endif
 
 end subroutine CheckPointWriteIntDatasetHDF5
 
@@ -775,25 +764,6 @@ subroutine CheckPointWriteRealDatasetHDF5(chk_grp_id, dataset_name, dataset_rank
   ! Author: Gautam Bisht
   ! Date: 07/30/15
   ! 
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  PetscMPIInt :: dataset_rank
-  integer, pointer :: dims(:)
-  integer, pointer :: start(:)
-  integer, pointer :: stride(:)
-  integer, pointer :: length(:)
-  PetscReal, pointer :: data_real_array(:)
-  type(option_type) :: option
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-
-#else
-
   use Option_module
   use hdf5
   use HDF5_module, only : trick_hdf5
@@ -872,7 +842,6 @@ subroutine CheckPointWriteRealDatasetHDF5(chk_grp_id, dataset_name, dataset_rank
   call h5sclose_f(grp_space_id, hdf5_err)
   call h5pclose_f(prop_id, hdf5_err)
   call h5dclose_f(data_set_id, hdf5_err)
-#endif
 
 end subroutine CheckPointWriteRealDatasetHDF5
 
@@ -886,25 +855,6 @@ subroutine CheckPointReadIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, 
   ! Author: Gautam Bisht
   ! Date: 08/16/15
   ! 
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  PetscMPIInt :: dataset_rank
-  integer, pointer :: dims(:)
-  integer, pointer :: start(:)
-  integer, pointer :: stride(:)
-  integer, pointer :: length(:)
-  PetscInt, pointer :: data_int_array(:)
-  type(option_type) :: option
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-
-#else
-
   use Option_module
   use hdf5
   use HDF5_module, only : trick_hdf5
@@ -973,7 +923,6 @@ subroutine CheckPointReadIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, 
   call h5sclose_f(grp_space_id, hdf5_err)
   call h5pclose_f(prop_id, hdf5_err)
   call h5dclose_f(data_set_id, hdf5_err)
-#endif
 
 end subroutine CheckPointReadIntDatasetHDF5
 
@@ -987,25 +936,6 @@ subroutine CheckPointReadRealDatasetHDF5(chk_grp_id, dataset_name, dataset_rank,
   ! Author: Gautam Bisht
   ! Date: 08/16/15
   ! 
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  PetscMPIInt :: dataset_rank
-  integer, pointer :: dims(:)
-  integer, pointer :: start(:)
-  integer, pointer :: stride(:)
-  integer, pointer :: length(:)
-  PetscReal, pointer :: data_real_array(:)
-  type(option_type) :: option
-  character(len=MAXSTRINGLENGTH) :: dataset_name
-
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-
-#else
-
   use Option_module
   use hdf5
   use HDF5_module, only : trick_hdf5
@@ -1074,7 +1004,6 @@ subroutine CheckPointReadRealDatasetHDF5(chk_grp_id, dataset_name, dataset_rank,
   call h5sclose_f(grp_space_id, hdf5_err)
   call h5pclose_f(prop_id, hdf5_err)
   call h5dclose_f(data_set_id, hdf5_err)
-#endif
 
 end subroutine CheckPointReadRealDatasetHDF5
 
@@ -1088,22 +1017,10 @@ subroutine CheckPointWriteCompatibilityHDF5(chk_grp_id, option)
   ! Author: Gautam Bisht
   ! Date: 08/30/15
   !
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  type(option_type) :: option
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
   use Option_module
   use hdf5
 
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscbag.h"
 
 #if defined(SCORPIO_WRITE)
   integer :: chk_grp_id
@@ -1149,7 +1066,6 @@ subroutine CheckPointWriteCompatibilityHDF5(chk_grp_id, option)
   deallocate(length)
   deallocate(stride)
   deallocate(int_array)
-#endif
 
 end subroutine CheckPointWriteCompatibilityHDF5
 
@@ -1163,15 +1079,6 @@ subroutine CheckPointReadCompatibilityHDF5(chk_grp_id, option)
   ! Author: Gautam Bisht
   ! Date: 08/16/15
   !
-#if  !defined(PETSC_HAVE_HDF5)
-  use Option_module
-  implicit none
-  integer :: chk_grp_id
-  type(option_type) :: option
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
   use Option_module
   use hdf5
 
@@ -1229,7 +1136,6 @@ subroutine CheckPointReadCompatibilityHDF5(chk_grp_id, option)
   deallocate(length)
   deallocate(stride)
   deallocate(int_array)
-#endif
 
 end subroutine CheckPointReadCompatibilityHDF5
 
@@ -1242,19 +1148,8 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
   ! Author: Glenn Hammond
   ! Date: 07/26/13
   !
-
-#if  !defined(PETSC_HAVE_HDF5)
-  use Realization_class
-  implicit none
-  integer :: pm_grp_id
-  class(realization_type) :: realization
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
-
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Discretization_module
   use Grid_module
@@ -1273,7 +1168,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
 #else
   integer(HID_T) :: pm_grp_id
 #endif
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
 
   type(option_type), pointer :: option
@@ -1372,8 +1267,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
 
     call VecDestroy(global_vec, ierr);CHKERRQ(ierr)
     call VecDestroy(natural_vec, ierr);CHKERRQ(ierr)
- end if
-#endif
+  endif
 
 end subroutine CheckpointFlowProcessModelHDF5
 
@@ -1386,19 +1280,8 @@ subroutine RestartFlowProcessModelHDF5(pm_grp_id, realization)
   ! Author: Gautam Bisht, LBNL
   ! Date: 08/16/2015
   !
-
-#if  !defined(PETSC_HAVE_HDF5)
-  use Realization_class
-  implicit none
-  integer :: pm_grp_id
-  class(realization_type) :: realization
-  print *, 'PFLOTRAN must be compiled with HDF5 to ' // &
-        'write HDF5 formatted checkpoint file. Darn.'
-  stop
-#else
-
   use Option_module
-  use Realization_class
+  use Realization_Subsurface_class
   use Field_module
   use Discretization_module
   use Grid_module
@@ -1418,7 +1301,7 @@ subroutine RestartFlowProcessModelHDF5(pm_grp_id, realization)
 #else
   integer(HID_T) :: pm_grp_id
 #endif
-  class(realization_type) :: realization
+  class(realization_subsurface_type) :: realization
   PetscErrorCode :: ierr
 
   type(option_type), pointer :: option
@@ -1541,9 +1424,198 @@ subroutine RestartFlowProcessModelHDF5(pm_grp_id, realization)
 
     call VecDestroy(global_vec, ierr);CHKERRQ(ierr)
     call VecDestroy(natural_vec, ierr);CHKERRQ(ierr)
- end if
-#endif
+  endif
 
 end subroutine RestartFlowProcessModelHDF5
+#endif
+
+! ************************************************************************** !
+
+subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
+  ! 
+  ! Reads the CHECKPOINT card in an input file.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 01/29/2016
+  !  
+
+  use Option_module
+  use Input_Aux_module
+  use Output_Aux_module
+  use Waypoint_module
+  use String_module
+  use Units_module
+
+  implicit none
+
+  type(input_type),pointer :: input
+  type(option_type) :: option
+  type(checkpoint_option_type), pointer :: checkpoint_option
+  type(waypoint_list_type) :: waypoint_list
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: card
+  character(len=MAXSTRINGLENGTH) :: temp_string
+  character(len=MAXSTRINGLENGTH) :: units_category
+  type(waypoint_type), pointer :: waypoint
+  PetscReal :: units_conversion
+  PetscReal :: temp_real
+  PetscReal, pointer :: temp_real_array(:)
+  PetscInt :: i
+  PetscBool :: format_binary
+  PetscBool :: format_hdf5
+
+  if (.not.associated(checkpoint_option)) then
+    checkpoint_option => CheckpointOptionCreate()
+  endif
+  
+  format_binary = PETSC_FALSE
+  format_hdf5 = PETSC_FALSE
+  do
+    call InputReadPflotranString(input,option)
+    call InputReadStringErrorMsg(input,option,'CHECKPOINT')
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'checkpoint option or value', &
+                        'CHECKPOINT')
+    call StringToUpper(word)
+    select case(trim(word))
+      case ('PERIODIC')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'time increment', &
+                            'CHECKPOINT,PERIODIC')
+        select case(trim(word))
+          case('TIME')
+            call InputReadDouble(input,option,temp_real)
+            call InputErrorMsg(input,option,'time increment', &
+                                'CHECKPOINT,PERIODIC,TIME')
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'time increment units', &
+                                'CHECKPOINT,PERIODIC,TIME')
+            units_category = 'time'
+            units_conversion = UnitsConvertToInternal(word, &
+                                units_category,option)
+            checkpoint_option%tconv = 1/units_conversion
+            checkpoint_option%tunit = trim(word)
+            checkpoint_option%periodic_time_incr = temp_real*units_conversion
+          case('TIMESTEP')
+            call InputReadInt(input,option,checkpoint_option%periodic_ts_incr)
+            call InputErrorMsg(input,option,'timestep increment', &
+                                'CHECKPOINT,PERIODIC,TIMESTEP')
+          case default
+            call InputKeywordUnrecognized(word,'CHECKPOINT,PERIODIC', &
+                                          option)
+        end select
+      case ('TIMES')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'time units', &
+                            'CHECKPOINT,TIMES')
+        units_category = 'time'
+        units_conversion = UnitsConvertToInternal(word,units_category, &
+                                                  option)
+        checkpoint_option%tconv = 1/units_conversion
+        checkpoint_option%tunit = trim(word)
+!geh: this needs to be tested.
+#if 0
+        temp_string = 'CHECKPOINT,TIMES'
+        call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
+                              temp_string,input,option)
+        do i = 1, size(temp_real_array)
+          waypoint => WaypointCreate()
+          waypoint%time = temp_real_array(i)*units_conversion
+          waypoint%print_checkpoint = PETSC_TRUE
+          call WaypointInsertInList(waypoint,waypoint_list)
+        enddo
+        call DeallocateArray(temp_real_array)
+#else
+        do
+          call InputReadDouble(input,option,temp_real)
+          if (input%ierr /= 0) exit
+          call InputErrorMsg(input,option,'checkpoint time', &
+                              'CHECKPOINT,TIMES') 
+          waypoint => WaypointCreate()
+          waypoint%time = temp_real * units_conversion
+          waypoint%print_checkpoint = PETSC_TRUE
+          call WaypointInsertInList(waypoint,waypoint_list)     
+        enddo
+#endif
+      case ('FORMAT')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'format type', &
+                            'CHECKPOINT,FORMAT')
+        call StringToUpper(word)
+        select case(trim(word))
+          case('BINARY')
+            format_binary = PETSC_TRUE
+          case('HDF5')
+            format_hdf5 = PETSC_TRUE
+          case default
+            call InputKeywordUnrecognized(word,'CHECKPOINT,FORMAT', &
+                                          option)
+        end select
+      case default
+          call InputErrorMsg(input,option,'checkpoint option type', &
+                              'CHECKPOINT: Must specify PERIODIC TIME, &
+                              &PERIODIC TIMESTEP, TIMES, or FORMAT')
+    end select
+    if (format_binary .and. format_hdf5) then
+      checkpoint_option%format = CHECKPOINT_BOTH
+    else if (format_hdf5) then
+      checkpoint_option%format = CHECKPOINT_HDF5
+    else ! default
+      checkpoint_option%format = CHECKPOINT_BINARY
+    endif
+  enddo
+  
+end subroutine CheckpointRead
+
+! ************************************************************************** !
+
+subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
+  ! 
+  ! Inserts periodic time waypoints into list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/03/16
+  !  
+
+  use Option_module
+  use Waypoint_module
+  use Output_Aux_module
+
+  implicit none
+
+  type(option_type) :: option
+  type(checkpoint_option_type), pointer :: checkpoint_option
+  type(waypoint_list_type) :: waypoint_list
+  type(waypoint_type), pointer :: waypoint
+  PetscReal :: final_time
+  PetscReal :: temp_real
+  
+  final_time = WaypointListGetFinalTime(waypoint_list)
+
+  if (final_time < 1.d-40) then
+    option%io_buffer = 'No final time specified in waypoint list. &
+      &Send your input deck to pflotran-dev.'
+    call printMsg(option)
+  endif
+  
+  ! add waypoints for periodic checkpoint
+  if (associated(checkpoint_option)) then
+    if (Initialized(checkpoint_option%periodic_time_incr)) then
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + checkpoint_option%periodic_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_checkpoint = PETSC_TRUE
+        call WaypointInsertInList(waypoint,waypoint_list)
+      enddo
+    endif
+  endif
+
+end subroutine CheckpointPeriodicTimeWaypoints
+  
 
 end module Checkpoint_module

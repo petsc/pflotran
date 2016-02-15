@@ -53,8 +53,8 @@ module PM_Base_class
     procedure, public :: Destroy => PMBaseThisOnly
     procedure, public :: RHSFunction => PMBaseRHSFunction
     procedure, public :: CheckpointBinary => PMBaseCheckpointBinary
-    procedure, public :: CheckpointHDF5 => PMBaseCheckpointHDF5
     procedure, public :: RestartBinary => PMBaseCheckpointBinary
+    procedure, public :: CheckpointHDF5 => PMBaseCheckpointHDF5
     procedure, public :: RestartHDF5 => PMBaseCheckpointHDF5
   end type pm_base_type
   
@@ -96,7 +96,7 @@ subroutine PMBaseRead(this,input)
   use Input_Aux_module
   implicit none
   class(pm_base_type) :: this
-  type(input_type) :: input
+  type(input_type), pointer :: input
   print *, 'Must extend PMBaseRead.'
   stop
 end subroutine PMBaseRead
@@ -218,7 +218,7 @@ subroutine PMBaseThisTimeError(this,time,ierr)
   implicit none
   class(pm_base_type) :: this
   PetscReal :: time
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   print *, 'Must extend PMBaseThisTimeError.'
   stop
 end subroutine PMBaseThisTimeError

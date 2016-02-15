@@ -1,7 +1,7 @@
 module PMC_Third_Party_class
 
   use PMC_Base_class
-  use Realization_class
+  use Realization_Subsurface_class
   use Option_module
 
   use PFLOTRAN_Constants_module
@@ -15,7 +15,7 @@ module PMC_Third_Party_class
 #include "petsc/finclude/petscvec.h90"
   
   type, public, extends(pmc_base_type) :: pmc_third_party_type
-    class(realization_type), pointer :: realization
+    class(realization_subsurface_type), pointer :: realization
   contains
     procedure, public :: Init => PMCThirdPartyInit
 !    procedure, public :: InitializeRun => PMCThirdPartyInitializeRun
@@ -102,9 +102,9 @@ recursive subroutine PMCThirdPartyRunToTime(this,sync_time,stop_flag)
   
   local_stop_flag = TS_CONTINUE
 
-  call this%pms%InitializeTimestep()
-  call this%pms%Solve(sync_time,ierr)
-  call this%pms%FinalizeTimestep()
+  call this%pm_list%InitializeTimestep()
+  call this%pm_list%Solve(sync_time,ierr)
+  call this%pm_list%FinalizeTimestep()
   if (ierr /= 0) local_stop_flag = TS_STOP_FAILURE
 
   ! Run neighboring process model couplers
@@ -158,7 +158,7 @@ recursive subroutine PMCThirdPartyFinalizeRun(this)
   
   class(pmc_third_party_type) :: this
   
-  call printMsg(this%option,'PMCThirdParty%FinalizeRun()')
+!  call printMsg(this%option,'PMCThirdParty%FinalizeRun()')
   
 end subroutine PMCThirdPartyFinalizeRun
 
@@ -200,7 +200,7 @@ recursive subroutine PMCThirdPartyDestroy(this)
 
   PetscErrorCode :: ierr
   
-  call printMsg(this%option,'PMCThirdParty%Destroy()')
+!  call printMsg(this%option,'PMCThirdParty%Destroy()')
   
   call PMCThirdPartyStrip(this)
   

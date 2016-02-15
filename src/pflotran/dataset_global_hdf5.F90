@@ -441,7 +441,7 @@ subroutine DatasetGlobalHDF5Strip(this)
 
   implicit none
   
-  class(dataset_global_hdf5_type)  :: this
+  class(dataset_global_hdf5_type) :: this
   
   call DatasetCommonHDF5Strip(this)
   nullify(this%dm_wrapper) ! do not deallocate, as this is solely a pointer

@@ -19,7 +19,7 @@ module Grid_Unstructured_Aux_module
   include "scorpiof.h"
 #endif
   
-  type, public :: unstructured_grid_type
+  type, public :: grid_unstructured_type
     ! variables for all unstructured grids
     PetscInt :: num_ghost_cells   ! number of ghost cells (only) on processor
     PetscInt :: global_offset ! offset in petsc ordering for the first cell on a processor???
@@ -63,7 +63,7 @@ module Grid_Unstructured_Aux_module
     type(point_type), pointer :: vertices(:)
     type(point_type), pointer :: face_centroid(:)
     PetscReal, pointer :: face_area(:)
-  end type unstructured_grid_type
+  end type grid_unstructured_type
   
   type, public :: unstructured_explicit_type
     PetscInt, pointer :: cell_ids(:)
@@ -226,9 +226,9 @@ function UGridCreate()
 
   implicit none
   
-  type(unstructured_grid_type), pointer :: UGridCreate
+  type(grid_unstructured_type), pointer :: UGridCreate
 
-  type(unstructured_grid_type), pointer :: unstructured_grid
+  type(grid_unstructured_type), pointer :: unstructured_grid
 
   allocate(unstructured_grid)
 
@@ -390,7 +390,7 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscviewer.h"
   
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(ugdm_type), pointer :: ugdm
   PetscInt :: ndof
   type(option_type) :: option
@@ -738,7 +738,7 @@ subroutine UGridCreateUGDMShell(unstructured_grid,da,ugdm,ndof,option)
 #include "petsc/finclude/petscdm.h90"
 #include "petsc/finclude/petscdmda.h"
 
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   DM :: da
   type(ugdm_type), pointer :: ugdm
   PetscInt :: ndof
@@ -792,7 +792,7 @@ subroutine UGridDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
   
   implicit none
   
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(ugdm_type) :: ugdm
   MatType :: mat_type
   Mat :: J
@@ -874,7 +874,7 @@ subroutine UGridDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
 
   implicit none
   
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(ugdm_type) :: ugdm
   Vec :: vec
   PetscInt :: vec_type
@@ -930,7 +930,7 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nG2A,option)
 
   implicit none
   
-  type(unstructured_grid_type) :: unstructured_grid
+  type(grid_unstructured_type) :: unstructured_grid
   type(ugdm_type) :: ugdm
   PetscInt, pointer :: nG2L(:)
   PetscInt, pointer :: nL2G(:)
@@ -997,7 +997,7 @@ subroutine UGridPartition(ugrid,option,Dual_mat,is_new, &
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscviewer.h"
   
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(option_type) :: option
   Mat :: Dual_mat
   IS :: is_new
@@ -1074,7 +1074,7 @@ subroutine UGridCreateOldVec(ugrid,option,elements_old, &
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscviewer.h"
 
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(option_type) :: option
   Vec :: elements_old
   PetscInt :: num_cells_local_old
@@ -1148,7 +1148,7 @@ subroutine UGridNaturalToPetsc(ugrid,option,elements_old,elements_local, &
 #include "petsc/finclude/petscis.h90"
 #include "petsc/finclude/petscviewer.h"
 
-  type(unstructured_grid_type) :: ugrid
+  type(grid_unstructured_type) :: ugrid
   type(option_type) :: option
   Vec :: elements_old, elements_local
   PetscInt :: num_cells_local_new
@@ -1691,7 +1691,7 @@ subroutine UGridDestroy(unstructured_grid)
   
   implicit none
   
-  type(unstructured_grid_type), pointer :: unstructured_grid
+  type(grid_unstructured_type), pointer :: unstructured_grid
   
   PetscErrorCode :: ierr
     
