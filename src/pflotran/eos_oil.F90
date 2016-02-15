@@ -186,6 +186,11 @@ subroutine EOSOilInit()
   nullify(EOSOilDensityPtr)
   nullify(EOSOilEnthalpyPtr)
 
+  nullify(eos_dbase)
+  nullify(eos_den_dbase)
+  nullify(eos_ent_dbase)
+  nullify(eos_vis_dbase)
+
   ! could decide for a default model, but it only if there is one that
   ! does nto require input parameters
   !EOSOilViscosityPtr => EOSOilViscosityConstant
@@ -231,26 +236,26 @@ subroutine EOSOilVerify(ierr,error_string)
     return
   end if
 
-  if ( associated(EOSOilDensityPtr,EOSOilDensityEOSDBase).and. &
-      (.not.eos_dbase%EOSPropPresent(EOS_DENSITY)) &
-     ) then
-    error_string = trim(error_string) // &
-    ' Oil Density to be interpolated from database = ' // &
-    eos_dbase%file_name // &
-    ' which does not have data for density'   
-    ierr = 1
-    return
+  if ( associated(EOSOilDensityPtr,EOSOilDensityEOSDBase) ) then 
+    if ( .not.eos_dbase%EOSPropPresent(EOS_DENSITY) ) then
+      error_string = trim(error_string) // &
+      ' Oil Density to be interpolated from database = ' // &
+      eos_dbase%file_name // &
+      ' which does not have data for density'   
+      ierr = 1
+      return
+    end if 
   end if
 
-  if ( associated(EOSOilDensityPtr,EOSOilDensityDenDBase).and. &
-      (.not.eos_den_dbase%EOSPropPresent(EOS_DENSITY)) &
-     ) then
-    error_string = trim(error_string) // &
-    ' Oil Density to be interpoalted from database = ' // &
-    eos_dbase%file_name // &
-    ' which does not have data for density'   
-    ierr = 1
-    return
+  if ( associated(EOSOilDensityPtr,EOSOilDensityDenDBase) ) then 
+    if ( .not.eos_den_dbase%EOSPropPresent(EOS_DENSITY) ) then 
+      error_string = trim(error_string) // &
+      ' Oil Density to be interpoalted from database = ' // &
+      eos_dbase%file_name // &
+      ' which does not have data for density'   
+      ierr = 1
+      return
+    end if
   end if
 
   if ( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyConstant).and. &
@@ -262,26 +267,26 @@ subroutine EOSOilVerify(ierr,error_string)
     return
   end if
 
-  if ( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyEOSDBase).and. &
-      (.not.eos_dbase%EOSPropPresent(EOS_ENTHALPY)) &
-     ) then
-    error_string = trim(error_string) // &
-    ' Oil Enthalpy to be interpolated from database = ' // &
-    eos_dbase%file_name // &
-    ' which does not have data for Enthalpy'   
-    ierr = 1
-    return 
+  if ( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyEOSDBase) ) then 
+    if ( .not.eos_dbase%EOSPropPresent(EOS_ENTHALPY) ) then 
+      error_string = trim(error_string) // &
+      ' Oil Enthalpy to be interpolated from database = ' // &
+      eos_dbase%file_name // &
+      ' which does not have data for Enthalpy'   
+      ierr = 1
+      return 
+    end if
   end if
 
-  if ( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyEntDBase).and. &
-      (.not.eos_ent_dbase%EOSPropPresent(EOS_ENTHALPY)) &
-     ) then
-    error_string = trim(error_string) // &
-    ' Oil Density to be interpolated from database = ' // &
-    eos_dbase%file_name // &
-    ' which does not have data for enthalpy'   
-    ierr = 1
-    return
+  if ( associated(EOSOilEnthalpyPtr,EOSOilEnthalpyEntDBase) ) then 
+    if ( .not.eos_ent_dbase%EOSPropPresent(EOS_ENTHALPY) ) then
+      error_string = trim(error_string) // &
+      ' Oil Density to be interpolated from database = ' // &
+      eos_dbase%file_name // &
+      ' which does not have data for enthalpy'   
+      ierr = 1
+      return
+    end if
   end if
 
   if ( associated(EOSOilViscosityPtr,EOSOilViscosityConstant).and. &
@@ -293,26 +298,26 @@ subroutine EOSOilVerify(ierr,error_string)
     return
   end if
 
-  if ( associated(EOSOilViscosityPtr,EOSOilViscosityEOSDBase).and. &
-      (.not.eos_dbase%EOSPropPresent(EOS_VISCOSITY)) &
-     ) then
-    error_string = trim(error_string) // &
-    ' Oil Enthalpy to be interpolated from database = ' // &
-    eos_dbase%file_name // &
-    ' which does not have data for Viscosity'   
-    ierr = 1
-    return
+  if ( associated(EOSOilViscosityPtr,EOSOilViscosityEOSDBase) ) then 
+    if ( .not.eos_dbase%EOSPropPresent(EOS_VISCOSITY) ) then
+      error_string = trim(error_string) // &
+      ' Oil Enthalpy to be interpolated from database = ' // &
+      eos_dbase%file_name // &
+      ' which does not have data for Viscosity'   
+      ierr = 1
+      return
+    end if
   end if
 
-  if ( associated(EOSOilViscosityPtr,EOSOilViscosityVisDBase).and. &
-      (.not.eos_vis_dbase%EOSPropPresent(EOS_VISCOSITY)) &
-     ) then
-    error_string = trim(error_string) // &
-    ' Oil Density to be interpolated from database = ' // &
-    eos_dbase%file_name // &
-    ' which does not have data for visosity'   
-    ierr = 1
-    return
+  if ( associated(EOSOilViscosityPtr,EOSOilViscosityVisDBase) ) then 
+    if ( .not.eos_vis_dbase%EOSPropPresent(EOS_VISCOSITY) ) then
+      error_string = trim(error_string) // &
+      ' Oil Density to be interpolated from database = ' // &
+      eos_dbase%file_name // &
+      ' which does not have data for visosity'   
+      ierr = 1
+      return
+    end if
   end if
 
 end subroutine EOSOilVerify
