@@ -1,4 +1,5 @@
-#Description: 0D test problem for testing fuel matrix degradation model
+#Description: 1D test problem for testing the fuel dissolution model with the
+#canister degradaion model.
 
 SIMULATION
   SIMULATION_TYPE SUBSURFACE
@@ -26,11 +27,13 @@ END
 #=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
-    Tracer
+    Tracer1  ! Sr-90
+    Tracer2  ! I-129
   /
   OUTPUT
     TOTAL
-    Tracer
+    Tracer1
+    Tracer2
   /
 END
 
@@ -58,10 +61,10 @@ END
 #=========================== discretization ===================================
 GRID
   TYPE structured
-  NXYZ 1 1 1
+  NXYZ 1 1 2
   BOUNDS
     0.d0 0.d0 0.d0
-    1.d0 1.d0 1.d0
+    1.d0 1.d0 2.d0
   END
 END
 
@@ -105,16 +108,16 @@ END
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 100.d0 d
-  INITIAL_TIMESTEP_SIZE 1.d-6 d
-  MAXIMUM_TIMESTEP_SIZE 10.d0 d
+  FINAL_TIME 700.d0 day
+  INITIAL_TIMESTEP_SIZE 1.d-6 day
+  MAXIMUM_TIMESTEP_SIZE 10.d0 day
 END
 
 #=========================== regions ==========================================
 REGION all
   COORDINATES
-    -1.d20 -1.d20 -1.d20
-    1.d20 1.d20 1.d20
+    0.d20 0.d20 0.d20
+    2.d20 2.d20 4.d20
   /
 END
 
@@ -128,7 +131,7 @@ FLOW_CONDITION initial
   TYPE
     PRESSURE dirichlet
   /
-  PRESSURE 201325 ! Pa
+  PRESSURE 201325 Pa
 END
 
 #=========================== transport conditions =============================
@@ -142,7 +145,8 @@ END
 #=========================== transport constraints ============================
 CONSTRAINT groundwater
   CONCENTRATIONS
-    Tracer   1.e-7            F
+    Tracer1   1.e-7            F
+    Tracer2   1.e-7            F
   /
 END
 
@@ -167,15 +171,25 @@ END_SUBSURFACE
 
 GLASS
   SPECIES
-    Tracer 87.62d0  ! Sr-90
+    Tracer1 87.62d0  ! Sr-90, g/mol
+    Tracer2 129.0d0  ! I-129, g/mol
   /
-  SPECIFIC_SURFACE_AREA 2.78d-3
-#  MASS_FRACTION 9.262d-4  ! Sr-90
-#  MASS_FRACTION FILE glass_mass_fractions.txt
-  MASS_FRACTION FILE HLW_mass_fractions.txt
+  SPECIFIC_SURFACE_AREA 2.78d-3 m^2/m^3
+  MASS_FRACTION FILE glass_mass_fractions.txt
+  PRINT_MASS_BALANCE
   WASTE_FORM
-    COORDINATE 0.5d0 0.5d0 0.5d0
-    EXPOSURE_FACTOR 4.d0
-    VOLUME 1.14d0
+    COORDINATE 1.0d0 1.0d0 1.0d0
+    EXPOSURE_FACTOR 10.0d0
+    VOLUME 1.14d0 m^3
+  /
+  WASTE_FORM
+    COORDINATE 1.0d0 1.0d0 3.0d0
+    EXPOSURE_FACTOR 20.0d0
+    VOLUME 1.14d0 m^3
+  /
+  CANISTER_DEGRADATION_MODEL
+    VITALITY_LOG10_MEAN -0.1
+    VITALITY_LOG10_STDEV 0.5
+    VITALITY_UPPER_TRUNCATION 0
   /
 END_GLASS
