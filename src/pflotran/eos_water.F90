@@ -203,6 +203,9 @@ module EOS_Water_module
             EOSWaterSetViscosity, &
             EOSWaterSetSteamDensity, &
             EOSWaterSetSteamEnthalpy
+            
+            
+  public :: TestEOSWaterBatzleAndWang
  
   contains
 
@@ -326,7 +329,9 @@ subroutine EOSWaterSetDensity(keyword,aux)
     case('TGDPB01')
       EOSWaterDensityPtr => EOSWaterDensityTGDPB01
     case('PAINTER')
-      EOSWaterDensityPtr => EOSWaterDensityPainter      
+      EOSWaterDensityPtr => EOSWaterDensityPainter
+    case('BATZLE_AND_WANG')
+      EOSWaterDensityPtr => EOSWaterDensityBatzleAndWang
     case default
       print *, 'Unknown pointer type "' // trim(keyword) // &
         '" in EOSWaterSetDensity().'      
@@ -376,6 +381,8 @@ subroutine EOSWaterSetViscosity(keyword,aux)
       EOSWaterViscosityPtr => EOSWaterViscosityConstant
     case('DEFAULT')
       EOSWaterViscosityPtr => EOSWaterViscosity1
+    case('BATZLE_AND_WANG')
+      EOSWaterViscosityPtr => EOSWaterViscosityBatzleAndWang
     case default
       print *, 'Unknown pointer type "' // trim(keyword) // &
         '" in EOSWaterSetViscosity().'  
@@ -2211,7 +2218,7 @@ subroutine EOSWaterDensityBatzleAndWangExt(tin, pin, aux, &
   ! From Batlze M. and Z. Wang (1992) Seismic properties of fluids, Geophysics,
   ! Vol. 57, No. 11, Pg. 1396-1408.
   !
-  ! Equation 27a
+  ! Equation 27b
   !
   ! Author: Glenn Hammond
   ! Date: 02/08/16
@@ -2269,7 +2276,7 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
   ! From Batlze M. and Z. Wang (1992) Seismic properties of fluids, Geophysics,
   ! Vol. 57, No. 11, Pg. 1396-1408.
   !
-  ! Equation 32
+  ! Equation 28
   !
   ! Author: Glenn Hammond
   ! Date: 02/08/16
@@ -2339,7 +2346,7 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
 !        dVW_dP = dVW_dP + dble(i-1)*w(i,j)*T**(i-2)*P**(j-1)
         p_ = p_*p_MPa
       enddo
-      dVW_dP = dVW_dP + tempreal*sum*t_
+      dVW_dT = dVW_dT + tempreal*sum*t_
       t_ = t_*t_C
       tempreal = tempreal + 1.d0
     enddo
@@ -2350,7 +2357,6 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
 
 end subroutine EOSWaterViscosityBatzleAndWang
 
-
 ! ************************************************************************** !
 
 subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
@@ -2360,7 +2366,7 @@ subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
   ! From Batlze M. and Z. Wang (1992) Seismic properties of fluids, Geophysics,
   ! Vol. 57, No. 11, Pg. 1396-1408.
   !
-  ! Equation 32
+  ! Equation 29
   !
   ! Author: Glenn Hammond
   ! Date: 02/08/16
@@ -2406,5 +2412,59 @@ subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
   endif
 
 end subroutine EOSWaterViscosityBatzleAndWangExt
+
+! ************************************************************************** !
+
+subroutine TestEOSWaterBatzleAndWang()
+  ! 
+  ! From Batlze M. and Z. Wang (1992) Seismic properties of fluids, Geophysics,
+  ! Vol. 57, No. 11, Pg. 1396-1408.
+  !
+  ! Code for testing
+  !
+  ! Author: Glenn Hammond
+  ! Date: 02/15/16
+  ! 
+  PetscReal :: p, t, dw, dwmol, dwp, dwt, ps, dps_dt, vw, dvw_dt, dvw_dp, dvw_dps
+  PetscReal :: t2, dw2, p2
+  PetscErrorCode :: ierr
+  
+  p = 0.101325d6
+  t = 20.d0
+  ps = -999.d0
+  dps_dt = -999.d0
+  
+  call EOSWaterDensityBatzleAndWang(t,p, PETSC_TRUE, &
+                                    dw, dwmol, dwp, dwt, ierr)
+  print *, 'dw:    ', dw
+  print *, 'dwmol: ', dwmol
+  print *, 'dwp:   ', dwp
+  print *, 'dwt:   ', dwt
+
+  t2 = t + 1.d-6*t
+  call EOSWaterDensityBatzleAndWang(t2,p, PETSC_TRUE, &
+                                    dw2, dwmol, dwp, dwt, ierr)
+  print *
+  print *, 'dw2:   ', dw2
+  print *, 'dw(t): ', (dw2-dw)/(t2-t)
+  
+  p2 = p + 1.d-6*p
+  call EOSWaterDensityBatzleAndWang(t,p2, PETSC_TRUE, &
+                                    dw2, dwmol, dwp, dwt, ierr)
+  print *
+  print *, 'dw2:   ', dw2
+  print *, 'dw(p): ', (dw2-dw)/(p2-p)
+  
+  
+  call EOSWaterViscosityBatzleAndWang(t, p, PS, dPS_dT, &
+                                      PETSC_TRUE, vw, &
+                                      dvw_dt, dvw_dp, dvw_dps, ierr)  
+  print *
+  print *, 'vw:      ', vw
+  print *, 'dvw_dp:  ', dvw_dp
+  print *, 'dvw_dt:  ', dvw_dt
+  print *, 'dvw_dps: ', dvw_dps
+
+end subroutine TestEOSWaterBatzleAndWang
 
 end module EOS_Water_module

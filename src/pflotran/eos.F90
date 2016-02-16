@@ -90,8 +90,7 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,temparray(3))
                 call InputErrorMsg(input,option,'WATER_COMPRESSIBILITY', &
                                    'EOS,WATER,DENSITY,EXPONENTIAL')
-              case('IFC67','DEFAULT')
-              case('TGDPB01')
+              case('IFC67','DEFAULT','BATZLE_AND_WANG','TGDPB01')
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,DENSITY',option)
             end select
@@ -119,7 +118,7 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,temparray(1))
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,VISCOSITY,CONSTANT')
-              case('DEFAULT')
+              case('DEFAULT','BATZLE_AND_WANG')
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,VISCOSITY', &
                                               option)
