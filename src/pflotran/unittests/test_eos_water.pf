@@ -137,19 +137,79 @@ contains
 
     class (Test_EOS_Water), intent(inout) :: this
 
-    PetscReal :: dum1
     PetscErrorCode :: ierr
     character(len=MAXSTRINGLENGTH) :: error_string
 
-    PetscReal, parameter :: stp_density = 998.32340486329440d0
     PetscReal, parameter :: temperature = 20.0d0
     PetscReal, parameter :: pressure = 101325.0d0
     PetscReal :: density
+    PetscReal :: saturation_pressure
+    PetscReal :: viscosity
+    PetscReal :: dum1
+    PetscReal :: value
 
     call EOSWaterDensity(temperature, pressure, density, dum1, ierr)
-    @assertEqual(stp_density, density,  1.0d-16)
+    value = 998.32340486329440d0
+    @assertEqual(value, density,  1.0d-16)
+
+    call EOSWaterSaturationPressure(temperature, saturation_pressure, ierr)
+    value = 2330.6458955821176d0
+    @assertEqual(value, saturation_pressure,  1.0d-16)
+
+    call EOSWaterViscosity(temperature, pressure, saturation_pressure, &
+                           viscosity, ierr)
+    value = 1.0017364592757613d-003
+    @assertEqual(value, viscosity,  1.0d-16)
 
   end subroutine testEOSWater_DensitySTP
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testEOSWater_BatzleAndWang(this)
+    !
+    ! verify that the EOSWaterSetXXX('BATZLE_AND_WANG') followed by
+    ! EOSWaterXXX() correctly returns the correct values
+    !
+    use PFLOTRAN_Constants_module, only : MAXSTRINGLENGTH
+
+    implicit none
+
+    class (Test_EOS_Water), intent(inout) :: this
+
+    PetscErrorCode :: ierr
+    character(len=MAXSTRINGLENGTH) :: error_string
+
+    PetscReal :: temperature
+    PetscReal :: pressure
+    PetscReal :: saturation_pressure
+    PetscReal :: dsaturation_pressure
+    PetscReal :: aux(1)
+    PetscReal :: dw, dwmol, dwp, dwt, vw, dvw_dt, dvw_dp, dvw_dps
+    PetscReal :: value
+
+    aux(1) = 0.d0
+    call EOSWaterSetDensity('BATZLE_AND_WANG',aux)
+    call EOSWaterSetViscosity('BATZLE_AND_WANG',aux)
+
+    call EOSWaterVerify(ierr, error_string)
+    @assertEqual(0, ierr)
+
+    temperature = 20.d0
+    pressure = 101325.d0 
+    saturation_pressure = 0.d0
+    dsaturation_pressure = 0.d0
+    call EOSWaterDensity(temperature, pressure, dw, dwmol, &
+         dwp, dwt, ierr)
+
+    value = 0.99714012903770011d0
+    @assertEqual(value, dw, 1.0d-16)
+    value = 4.5522041154999997d-004
+    @assertEqual(value, dwp, 1.0d-16)
+    value = -2.1003940320351124d-004
+    @assertEqual(value, dwt, 1.0d-16)
+
+  end subroutine testEOSWater_BatzleAndWang
 
 end module Test_EOS_Water_module
 

@@ -2282,79 +2282,15 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
   ! Date: 02/08/16
   ! 
   implicit none
-  PetscReal, intent(in) :: T, P, PS, dPS_dT
+  PetscReal, intent(in) :: T       ! C
+  PetscReal, intent(in) :: P       ! Pa
+  PetscReal, intent(in) :: PS      ! Pa
+  PetscReal, intent(in) :: dPS_dT  ! Pa/C
   PetscBool, intent(in) :: calculate_derivatives
-  PetscReal, intent(out) :: VW
+  PetscReal, intent(out) :: VW     ! Pa-s
   PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
   PetscErrorCode, intent(out) :: ierr
   
-  PetscReal :: t_, t_C
-  PetscReal :: p_, p_MPa
-  PetscReal, parameter :: w(5,4) = &
-      reshape((/1402.85d0,4.871d0,-0.04783d0,1.487d-4,-2.197d-7, &
-               1.524d0,-0.0111d0,2.747d-4,-6.503d-7,7.987d-10, &
-               3.437d-3,1.739d-4,-2.135d-6,-1.455d-8,5.230d-11, &
-               -1.197d-5,-1.628d-6,1.237d-8,1.327d-10,-4.614d-13/),(/5,4/))
-  PetscReal :: tempreal, sum
-  PetscInt :: i, j
-                         
-  p_MPa = P*1.d-6
-  t_C = T
-  
-  ! Eq. 28
-  VW = 0.d0
-  t_ = 1.d0
-  do i=1,5
-    p_ = 1.d0
-    sum = 0.d0
-    do j=1,4
-      sum = sum + w(i,j)*p_
-!      VW = VW + w(i,j)*T**(i-1)*P**(j-1)
-      p_ = p_*p_MPa
-    enddo
-    VW = VW + sum*t_
-    t_ = t_*t_C
-  enddo
-  
-  dVW_dPS = 0.d0
-  if (calculate_derivatives) then
-    ! pressure
-    dVW_dP = 0.d0
-    t_ = 1.d0
-    do i=1,5
-      p_ = 1.d0
-      tempreal = 1.d0
-      sum = 0.d0
-      do j=2,4
-        sum = sum + tempreal*w(i,j)*p_
-!        dVW_dP = dVW_dP + dble(j-1)*w(i,j)*T**(i-1)*P**(j-2)
-        p_ = p_*p_MPa
-        tempreal = tempreal + 1.d0
-      enddo
-      dVW_dP = dVW_dP + sum*t_
-      t_ = t_*t_C
-    enddo
-    ! temperature
-    dVW_dT = 0.d0
-    t_ = 1.d0
-    tempreal = 1.d0
-    do i=2,5
-      p_ = 1.d0
-      sum = 0.d0
-      do j=1,4
-        sum = sum + w(i,j)*p_
-!        dVW_dP = dVW_dP + dble(i-1)*w(i,j)*T**(i-2)*P**(j-1)
-        p_ = p_*p_MPa
-      enddo
-      dVW_dT = dVW_dT + tempreal*sum*t_
-      t_ = t_*t_C
-      tempreal = tempreal + 1.d0
-    enddo
-  else
-    dVW_dP = 0.d0
-    dVW_dT = 0.d0
-  endif
-
 end subroutine EOSWaterViscosityBatzleAndWang
 
 ! ************************************************************************** !
@@ -2379,38 +2315,6 @@ subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
   PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
   PetscErrorCode, intent(out) :: ierr
   
-  PetscReal :: p_MPa, p_MPa_sq
-  PetscReal :: t_C, T_C_sq, T_C_cub
-  PetscReal :: s, s_1p5, s_sq
-
-  t_C = T
-  t_C_sq = t_C*t_C
-  t_C_cub = t_C_sq*t_C
-  p_MPa = P*1.d-6
-  p_MPa_sq = p_MPa*p_MPa
-  s = aux(1)
-  s_1p5 = s**1.5d0
-  s_sq = s*s
-  
-  call EOSWaterViscosityPtr(T, P, PS, dPS_dT, &
-                            calculate_derivatives, VW, &
-                            dVW_dT, dVW_dP, dVW_dPS, ierr)  
-  
-  ! Eq. 29
-  VW = VW + s*(1170.d0 - 9.6d0*t_C + 0.055d0*t_C_sq - 8.5d-5*t_C_cub + 2.6d0*p_MPa - &
-               2.9d-3*t_C*p_MPa - 0.0476d0*p_MPa_sq) + &
-            s_1p5*(780.d0 - 10.d0*p_MPa + 0.16d0*p_MPa_sq) - 820.d0*s_sq
-
-  if (calculate_derivatives) then
-    dVW_dP = dVW_dP + &
-      s*(2.6d0 - 2.9d-3*t_C - 0.0952d0*p_MPa) + s_1p5*(-10.d0 + 0.32d0*p_MPa)
-    dVW_dT = dVW_dT + &
-      s*(-9.6d0 + 0.11d0*t_C - 2.55d-4*t_C_sq - 2.9d-3*p_MPa) 
-  else
-    dVW_dP = 0.d0
-    dVW_dT = 0.d0
-  endif
-
 end subroutine EOSWaterViscosityBatzleAndWangExt
 
 ! ************************************************************************** !
