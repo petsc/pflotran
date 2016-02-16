@@ -332,6 +332,7 @@ subroutine EOSWaterSetDensity(keyword,aux)
       EOSWaterDensityPtr => EOSWaterDensityPainter
     case('BATZLE_AND_WANG')
       EOSWaterDensityPtr => EOSWaterDensityBatzleAndWang
+      EOSWaterDensityExtPtr => EOSWaterDensityBatzleAndWangExt
     case default
       print *, 'Unknown pointer type "' // trim(keyword) // &
         '" in EOSWaterSetDensity().'      
@@ -383,6 +384,7 @@ subroutine EOSWaterSetViscosity(keyword,aux)
       EOSWaterViscosityPtr => EOSWaterViscosity1
     case('BATZLE_AND_WANG')
       EOSWaterViscosityPtr => EOSWaterViscosityBatzleAndWang
+      EOSWaterViscosityExtPtr => EOSWaterViscosityBatzleAndWangExt
     case default
       print *, 'Unknown pointer type "' // trim(keyword) // &
         '" in EOSWaterSetViscosity().'  
@@ -2178,6 +2180,7 @@ subroutine EOSWaterDensityBatzleAndWang(tin, pin, calculate_derivatives, &
   PetscReal, intent(out) :: dwt ! kmol/m^3-C
   PetscErrorCode, intent(out) :: ierr
   
+  PetscReal, parameter :: g_cm3_to_kg_m3 = 1.d3
   PetscReal :: t ! temperature in Celcius
   PetscReal :: t_sq, t_cub
   PetscReal :: p_MPa, p_MPa_sq
@@ -2189,18 +2192,22 @@ subroutine EOSWaterDensityBatzleAndWang(tin, pin, calculate_derivatives, &
   p_MPa_sq = p_MPa*p_MPa
   
   ! temperature is in C and pressure in MPa
-  ! kg/m^3
+  ! g/cm^3
   ! Eq. 27a
   dw = 1.d0 + 1.d-6*(-80.d0*t - 3.3d0*t_sq + 1.75d-3*t_cub + &
                      489.d0*p_MPa - 2.d0*t*p_MPa + 1.6d-2*t_sq*p_MPa - &
                      1.3d-5*t_cub*p_MPa - 3.33d-1*p_MPa_sq - 2.d-3*t*p_MPa_sq)
+  ! convert from g/cm^3 to kg/m^3
+  dw = dw * g_cm3_to_kg_m3
   dwmol = dw/FMWH2O ! kmol/m^3 
   
   if (calculate_derivatives) then
     dwp = 1.d-6*(489.d0 - 2.d0*t + 1.6d-2*t_sq - 1.3d-5*t_cub - &
-                 6.66d-1*p_MPa - 4.d-3*t*p_MPa)
+                 6.66d-1*p_MPa - 4.d-3*t*p_MPa) *  &
+          g_cm3_to_kg_m3
     dwt = 1.d-6*(-80.d0 - 6.6d0*t + 5.25d-3*t_sq - 2.d0*p_MPa + &
-                 3.2d-2*t*p_MPa - 3.9d-5*t_sq*p_MPa - 2.d-3*p_MPa_sq)
+                 3.2d-2*t*p_MPa - 3.9d-5*t_sq*p_MPa - 2.d-3*p_MPa_sq) * &
+          g_cm3_to_kg_m3
   else
     dwp = 0.d0
     dwt = 0.d0
@@ -2235,6 +2242,7 @@ subroutine EOSWaterDensityBatzleAndWangExt(tin, pin, aux, &
   PetscReal, intent(out) :: dwt ! kmol/m^3-C
   PetscErrorCode, intent(out) :: ierr
   
+  PetscReal, parameter :: g_cm3_to_kg_m3 = 1.d3
   PetscReal :: t_C ! temperature in Celcius
   PetscReal :: p_MPa
   PetscReal :: s
@@ -2252,14 +2260,19 @@ subroutine EOSWaterDensityBatzleAndWangExt(tin, pin, aux, &
   dw = dw + &
        s*(0.668d0 + 0.44d0*s + &
           1.d-6*(300.d0*p_MPa - 2400.d0*p_MPa*s + &
-                 t_C*(80.d0 + 3.d0*t_C - 3300.d0*s - 13.d0*p_MPa + 47.d0*p_Mpa*s)))
+                 t_C*(80.d0 + 3.d0*t_C - 3300.d0*s - 13.d0*p_MPa + &
+                      47.d0*p_Mpa*s))) * &
+       g_cm3_to_kg_m3
   dwmol = dw/FMWH2O ! kmol/m^3 
   
   if (calculate_derivatives) then
     dwp = dwp + &
-          s*(1.d-6*(300.d0 - 2400.d0*s + t_C*(-13.d0 + 47.d0*s)))
+          s*(1.d-6*(300.d0 - 2400.d0*s + t_C*(-13.d0 + 47.d0*s))) * &
+          g_cm3_to_kg_m3
     dwt = dwt + &
-          s*(1.d-6*(80.d0 + 6.d0*t_C - 3300.d0*s - 13.d0*p_MPa + 47.d0*p_Mpa*s))
+          s*(1.d-6*(80.d0 + 6.d0*t_C - 3300.d0*s - 13.d0*p_MPa + &
+                    47.d0*p_Mpa*s)) * &
+          g_cm3_to_kg_m3
   else
     dwp = 0.d0
     dwt = 0.d0
@@ -2291,6 +2304,8 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
   PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
   PetscErrorCode, intent(out) :: ierr
   
+  ! convert from centipoise to Pa-s (1 cP = 1.d-3 Pa-s)
+  PetscReal, parameter :: centipoise_to_Pa_s = 1.d-3
   PetscReal :: t_C
   PetscReal :: exponential_term
   PetscReal :: temperature_term
@@ -2302,12 +2317,11 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
   exponential_term = -0.057138d0*t_C**0.8d0
   temperature_term = 1.65d0*exp(exponential_term)
   VW = 0.1d0 + temperature_term
-  ! convert from centipoise to Pa-s (1 cP = 1.d-3 Pa-s)
-  VW = VW * 1.d-3
+  VW = VW * centipoise_to_Pa_s
        
   if (calculate_derivatives) then
     dVW_dP = 0.d0
-    dVW_dT = 0.8d0*temperature_term*exponential_term/t_C*1.d-3
+    dVW_dT = 0.8d0*temperature_term*exponential_term/t_C*centipoise_to_Pa_s
   else
     dVW_dP = 0.d0
     dVW_dT = 0.d0
@@ -2337,6 +2351,8 @@ subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
   PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
   PetscErrorCode, intent(out) :: ierr
   
+  ! convert from centipoise to Pa-s (1 cP = 1.d-3 Pa-s)
+  PetscReal, parameter :: centipoise_to_Pa_s = 1.d-3
   PetscReal :: t_C
   PetscReal :: s
   PetscReal :: exponential_term
@@ -2349,12 +2365,11 @@ subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
                      t_C**0.8d0
   temperature_term = (1.65d0 + 91.9d0*s**3.d0)*exp(exponential_term)
   VW = 0.1d0 + 0.333d0*s + temperature_term
-  ! convert from centipoise to Pa-s (1 cP = 1.d-3 Pa-s)
-  VW = VW * 1.d-3
+  VW = VW * centipoise_to_Pa_s
        
   if (calculate_derivatives) then
     dVW_dP = 0.d0
-    dVW_dT = 0.8d0*temperature_term*exponential_term/t_C*1.d-3
+    dVW_dT = 0.8d0*temperature_term*exponential_term/t_C*centipoise_to_Pa_s
   else
     dVW_dP = 0.d0
     dVW_dT = 0.d0

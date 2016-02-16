@@ -208,17 +208,34 @@ contains
     call EOSWaterDensity(temperature, pressure, dw, dwmol, &
          dwp, dwt, ierr)
 
-    value = 0.99714012903770011d0
+    value = 0.99714012903770011d3
     @assertEqual(value, dw, 1.0d-16)
-    value = 4.5522041154999997d-004
+    value = 4.5522041154999997d-001
     @assertEqual(value, dwp, 1.0d-16)
-    value = -2.1003940320351124d-004
+    value = -2.1003940320351124d-001
     @assertEqual(value, dwt, 1.0d-16)
 
     saturation_pressure = 0.d0
     call EOSWaterViscosity(temperature, pressure, saturation_pressure, &
                            vw, ierr)
     value = 0.98080392683703244d-3
+    @assertEqual(value, vw,  1.0d-16)
+
+    aux(1) = 0.14d0
+    call EOSWaterDensityExt(temperature, pressure, aux, dw, dwmol, &
+         dwp, dwt, ierr)
+
+    value = 1.0983801969415001d3
+    @assertEqual(value, dw, 1.0d-16)
+    value = 4.3220441154999997d-001
+    @assertEqual(value, dwp, 1.0d-16)
+    value = -2.4681047411351123d-001
+    @assertEqual(value, dwt, 1.0d-16)
+
+    saturation_pressure = 0.d0
+    call EOSWaterViscosityExt(temperature, pressure, saturation_pressure, aux, &
+                           vw, ierr)
+    value = 1.2993992003751142d-003
     @assertEqual(value, vw,  1.0d-16)
 
   end subroutine testEOSWater_BatzleAndWang
