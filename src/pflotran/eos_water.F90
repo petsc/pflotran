@@ -2302,15 +2302,17 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
   exponential_term = -0.057138d0*t_C**0.8d0
   temperature_term = 1.65d0*exp(exponential_term)
   VW = 0.1d0 + temperature_term
+  ! convert from centipoise to Pa-s (1 cP = 1.d-3 Pa-s)
+  VW = VW * 1.d-3
        
   if (calculate_derivatives) then
     dVW_dP = 0.d0
-    dVW_dT = 0.8d0*temperature_term*exponential_term/t_C
+    dVW_dT = 0.8d0*temperature_term*exponential_term/t_C*1.d-3
   else
     dVW_dP = 0.d0
     dVW_dT = 0.d0
   endif
-  
+
 end subroutine EOSWaterViscosityBatzleAndWang
 
 ! ************************************************************************** !
@@ -2347,10 +2349,12 @@ subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
                      t_C**0.8d0
   temperature_term = (1.65d0 + 91.9d0*s**3.d0)*exp(exponential_term)
   VW = 0.1d0 + 0.333d0*s + temperature_term
+  ! convert from centipoise to Pa-s (1 cP = 1.d-3 Pa-s)
+  VW = VW * 1.d-3
        
   if (calculate_derivatives) then
     dVW_dP = 0.d0
-    dVW_dT = 0.8d0*temperature_term*exponential_term/t_C
+    dVW_dT = 0.8d0*temperature_term*exponential_term/t_C*1.d-3
   else
     dVW_dP = 0.d0
     dVW_dT = 0.d0
@@ -2379,7 +2383,7 @@ subroutine TestEOSWaterBatzleAndWang()
   t = 20.d0
   ps = -999.d0
   dps_dt = -999.d0
-  aux(1) = 0.d0
+  aux(1) = 0.14d0
   
   call EOSWaterDensityBatzleAndWang(t,p, PETSC_TRUE, &
                                     dw, dwmol, dwp, dwt, ierr)
@@ -2403,6 +2407,14 @@ subroutine TestEOSWaterBatzleAndWang()
   print *, 'dw(p): ', (dw2-dw)/(p2-p)
   
   
+  call EOSWaterDensityBatzleAndWangExt(t,p,aux, PETSC_TRUE, &
+                                    dw, dwmol, dwp, dwt, ierr)
+  print *, 'Density-Ext'
+  print *, 'dw:    ', dw
+  print *, 'dwmol: ', dwmol
+  print *, 'dwp:   ', dwp
+  print *, 'dwt:   ', dwt
+
   call EOSWaterViscosityBatzleAndWang(t, p, PS, dPS_dT, &
                                       PETSC_TRUE, vw, &
                                       dvw_dt, dvw_dp, dvw_dps, ierr)  
@@ -2429,6 +2441,15 @@ subroutine TestEOSWaterBatzleAndWang()
   print *, 'Ext-numerical'
   print *, 'vw:      ', vw2
   print *, 'dvw(t)t:  ', (vw2-vw)/(t2-t)
+  
+  call EOSWaterViscosityBatzleAndWangExt(t, p, PS, dPS_dT, aux, &
+                                         PETSC_TRUE, vw, &
+                                         dvw_dt, dvw_dp, dvw_dps, ierr) 
+  print *, 'Ext-S'
+  print *, 'vw:      ', vw
+  print *, 'dvw_dp:  ', dvw_dp
+  print *, 'dvw(t)t:  ', dvw_dt
+  print *, 'dvw_dps: ', dvw_dps
   
 end subroutine TestEOSWaterBatzleAndWang
 
