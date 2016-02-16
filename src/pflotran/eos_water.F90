@@ -2276,7 +2276,7 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
   ! From Batlze M. and Z. Wang (1992) Seismic properties of fluids, Geophysics,
   ! Vol. 57, No. 11, Pg. 1396-1408.
   !
-  ! Equation 28
+  ! Equation 32
   !
   ! Author: Glenn Hammond
   ! Date: 02/08/16
@@ -2291,6 +2291,26 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
   PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
   PetscErrorCode, intent(out) :: ierr
   
+  PetscReal :: t_C
+  PetscReal :: exponential_term
+  PetscReal :: temperature_term
+  
+  t_C = T
+  
+  ! this is Eq. 32 without all the salt terms.
+  ! -0.057138d0 = -1.d0*0.42d0*(-0.17d0)**2.d0+0.045d0  
+  exponential_term = -0.057138d0*t_C**0.8d0
+  temperature_term = 1.65d0*exp(exponential_term)
+  VW = 0.1d0 + temperature_term
+       
+  if (calculate_derivatives) then
+    dVW_dP = 0.d0
+    dVW_dT = 0.8d0*temperature_term*exponential_term/t_C
+  else
+    dVW_dP = 0.d0
+    dVW_dT = 0.d0
+  endif
+  
 end subroutine EOSWaterViscosityBatzleAndWang
 
 ! ************************************************************************** !
@@ -2302,7 +2322,7 @@ subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
   ! From Batlze M. and Z. Wang (1992) Seismic properties of fluids, Geophysics,
   ! Vol. 57, No. 11, Pg. 1396-1408.
   !
-  ! Equation 29
+  ! Equation 32
   !
   ! Author: Glenn Hammond
   ! Date: 02/08/16
@@ -2314,6 +2334,27 @@ subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
   PetscReal, intent(out) :: VW
   PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
   PetscErrorCode, intent(out) :: ierr
+  
+  PetscReal :: t_C
+  PetscReal :: s
+  PetscReal :: exponential_term
+  PetscReal :: temperature_term
+  
+  s = aux(1)
+  t_C = T
+  
+  exponential_term = -1.d0*(0.42d0*(s**0.8d0-0.17d0)**2.d0 + 0.045d0)* &
+                     t_C**0.8d0
+  temperature_term = (1.65d0 + 91.9d0*s**3.d0)*exp(exponential_term)
+  VW = 0.1d0 + 0.333d0*s + temperature_term
+       
+  if (calculate_derivatives) then
+    dVW_dP = 0.d0
+    dVW_dT = 0.8d0*temperature_term*exponential_term/t_C
+  else
+    dVW_dP = 0.d0
+    dVW_dT = 0.d0
+  endif
   
 end subroutine EOSWaterViscosityBatzleAndWangExt
 
@@ -2330,13 +2371,15 @@ subroutine TestEOSWaterBatzleAndWang()
   ! Date: 02/15/16
   ! 
   PetscReal :: p, t, dw, dwmol, dwp, dwt, ps, dps_dt, vw, dvw_dt, dvw_dp, dvw_dps
-  PetscReal :: t2, dw2, p2
+  PetscReal :: t2, dw2, p2, vw2
+  PetscReal :: aux(1)
   PetscErrorCode :: ierr
   
   p = 0.101325d6
   t = 20.d0
   ps = -999.d0
   dps_dt = -999.d0
+  aux(1) = 0.d0
   
   call EOSWaterDensityBatzleAndWang(t,p, PETSC_TRUE, &
                                     dw, dwmol, dwp, dwt, ierr)
@@ -2368,7 +2411,25 @@ subroutine TestEOSWaterBatzleAndWang()
   print *, 'dvw_dp:  ', dvw_dp
   print *, 'dvw_dt:  ', dvw_dt
   print *, 'dvw_dps: ', dvw_dps
-
+  
+  
+  call EOSWaterViscosityBatzleAndWangExt(t, p, PS, dPS_dT, aux, &
+                                         PETSC_TRUE, vw, &
+                                         dvw_dt, dvw_dp, dvw_dps, ierr) 
+  print *, 'Ext-'
+  print *, 'vw:      ', vw
+  print *, 'dvw_dp:  ', dvw_dp
+  print *, 'dvw(t)t:  ', dvw_dt
+  print *, 'dvw_dps: ', dvw_dps
+  
+  call EOSWaterViscosityBatzleAndWangExt(t2, p, PS, dPS_dT, aux, &
+                                         PETSC_TRUE, vw2, &
+                                         dvw_dt, dvw_dp, dvw_dps, ierr) 
+  
+  print *, 'Ext-numerical'
+  print *, 'vw:      ', vw2
+  print *, 'dvw(t)t:  ', (vw2-vw)/(t2-t)
+  
 end subroutine TestEOSWaterBatzleAndWang
 
 end module EOS_Water_module

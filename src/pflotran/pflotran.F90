@@ -49,6 +49,7 @@ program pflotran
   use PFLOTRAN_Constants_module
   use Output_Aux_module, only : INSTANTANEOUS_VARS
   use PFLOTRAN_Provenance_module, only : PrintProvenanceToScreen
+  use EOS_Water_module
   
   !TODO(geh): remove
   use PM_Base_class
@@ -64,6 +65,9 @@ program pflotran
   type(multi_simulation_type), pointer :: multisimulation
   class(pm_base_type), pointer :: dummy_list
   type(option_type), pointer :: option
+  
+  call TestEOSWaterBatzleAndWang()
+  stop
   
   nullify(simulation)
   nullify(multisimulation)
