@@ -2400,6 +2400,9 @@ subroutine TestEOSWaterBatzleAndWang()
   dps_dt = -999.d0
   aux(1) = 0.14d0
   
+  call EOSWaterSetDensity('BATZLE_AND_WANG')
+  call EOSWaterSetViscosity('BATZLE_AND_WANG')
+  
   call EOSWaterDensityBatzleAndWang(t,p, PETSC_TRUE, &
                                     dw, dwmol, dwp, dwt, ierr)
   print *, 'dw:    ', dw
