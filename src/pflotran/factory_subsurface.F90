@@ -1838,8 +1838,8 @@ subroutine SubsurfaceReadInput(simulation)
 !......................
 
       case ('CHECKPOINT')
-        option%io_buffer = 'The CHECKPOINT card within SUBSURFACE block has &
-                           &been deprecated.'
+        option%io_buffer = 'The CHECKPOINT card within SUBSURFACE block must &
+                           &be moved to the SIMULATION block.'
         call printErrMsg(option)
 !        call CheckpointRead(input,option,realization%checkpoint_option, &
 !                            realization%waypoint_list)
