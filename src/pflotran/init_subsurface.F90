@@ -629,6 +629,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   type(input_type), pointer :: input
   type(discretization_type), pointer :: discretization
   character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: hdf5_dataset_name
   PetscInt :: local_id
   PetscInt :: idirection, temp_int
   PetscReal :: ratio, scale
@@ -681,6 +682,11 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
     enddo
     call VecRestoreArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
   else
+    ! this name will get stripped later; so we need to save it here and reuse.
+    select type(dataset => material_property%permeability_dataset)
+      class is(dataset_common_hdf5_type)
+        hdf5_dataset_name = dataset%hdf5_dataset_name
+    end select
     temp_int = Z_DIRECTION
     do idirection = X_DIRECTION,temp_int
       select case(idirection)
@@ -693,7 +699,8 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
       end select
       select type(dataset => material_property%permeability_dataset)
         class is(dataset_common_hdf5_type)
-          dataset%hdf5_dataset_name = trim(dataset%hdf5_dataset_name) // &
+                                         ! hdf5_dataset_name was set above
+          dataset%hdf5_dataset_name = trim(hdf5_dataset_name) // &
                                       trim(word)
       end select
       !geh: Pass in -1 so that entire dataset is read. The mask is applied 
@@ -813,6 +820,8 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
         dataset_name = dataset%name
         call DatasetGriddedHDF5Strip(dataset)
         call DatasetGriddedHDF5Init(dataset)
+        dataset%filename = filename
+        dataset%name = dataset_name
       class is(dataset_common_hdf5_type)
         dataset_name = dataset%hdf5_dataset_name
         call HDF5ReadCellIndexedRealArray(realization,field%work, &
