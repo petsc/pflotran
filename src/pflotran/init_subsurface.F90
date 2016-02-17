@@ -629,7 +629,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   type(input_type), pointer :: input
   type(discretization_type), pointer :: discretization
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: hdf5_dataset_name
+  class(dataset_common_hdf5_type), pointer :: dataset_common_hdf5_ptr
   PetscInt :: local_id
   PetscInt :: idirection, temp_int
   PetscReal :: ratio, scale
@@ -655,7 +655,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
                                   option)
   if (material_property%isotropic_permeability .or. &
       (.not.material_property%isotropic_permeability .and. &
-        material_property%vertical_anisotropy_ratio > 0.d0)) then
+       Initialized(material_property%vertical_anisotropy_ratio))) then
 !    material_property%permeability_dataset%name = 'Permeability'
     !geh: Pass in -1 so that entire dataset is read. The mask is applied below.
     call SubsurfReadDatasetToVecWithMask(realization, &
@@ -666,7 +666,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
     scale = 1.d0
     !TODO(geh): fix so that ratio and scale work for perms outside
     ! of dataset
-    if (material_property%vertical_anisotropy_ratio > 0.d0) then
+    if (Initialized(material_property%vertical_anisotropy_ratio)) then
       ratio = material_property%vertical_anisotropy_ratio
     endif
     if (material_property%permeability_scaling_factor > 0.d0) then
@@ -682,32 +682,24 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
     enddo
     call VecRestoreArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
   else
-    ! this name will get stripped later; so we need to save it here and reuse.
-    select type(dataset => material_property%permeability_dataset)
-      class is(dataset_common_hdf5_type)
-        hdf5_dataset_name = dataset%hdf5_dataset_name
-    end select
     temp_int = Z_DIRECTION
     do idirection = X_DIRECTION,temp_int
       select case(idirection)
         case(X_DIRECTION)
-          word = 'X'
+          dataset_common_hdf5_ptr => &
+             DatasetCommonHDF5Cast(material_property%permeability_dataset)
         case(Y_DIRECTION)
-          word = 'Y'
+          dataset_common_hdf5_ptr => &
+             DatasetCommonHDF5Cast(material_property%permeability_dataset_y)
         case(Z_DIRECTION)
-          word = 'Z'
-      end select
-      select type(dataset => material_property%permeability_dataset)
-        class is(dataset_common_hdf5_type)
-                                         ! hdf5_dataset_name was set above
-          dataset%hdf5_dataset_name = trim(hdf5_dataset_name) // &
-                                      trim(word)
+          dataset_common_hdf5_ptr => &
+             DatasetCommonHDF5Cast(material_property%permeability_dataset_z)
       end select
       !geh: Pass in -1 so that entire dataset is read. The mask is applied 
       !     below.
       call SubsurfReadDatasetToVecWithMask(realization, &
-                                      material_property%permeability_dataset, &
-                                      -1,global_vec)
+                                           dataset_common_hdf5_ptr,&
+                                           -1,global_vec)
       call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
       select case(idirection)
         case(X_DIRECTION)
@@ -815,7 +807,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
           endif
         enddo
         ! now we strip the dataset to save storage, saving only the name
-        ! and filename
+        ! and filename incase it must be read later
         filename = dataset%filename
         dataset_name = dataset%name
         call DatasetGriddedHDF5Strip(dataset)

@@ -69,18 +69,21 @@ END
 
 #=========================== data sets ========================================
 DATASET perm_fieldX
-  FILENAME ./gridded_dataset_xyz.h5
+  FILENAME ./perm_fields_10x5x4.h5
   HDF5_DATASET_NAME Permeability
+  REALIZATION_DEPENDENT
 /
 
 DATASET perm_fieldY
-  FILENAME ./gridded_dataset_xyz.h5
-  HDF5_DATASET_NAME some_random_name
+  FILENAME ./perm_fields_10x5x4.h5
+  HDF5_DATASET_NAME Permeability
+  REALIZATION_DEPENDENT
 /
 
 DATASET perm_fieldZ
-  FILENAME ./gridded_dataset_xyz.h5
-  HDF5_DATASET_NAME another_random_name
+  FILENAME ./perm_fields_10x5x4.h5
+  HDF5_DATASET_NAME Permeability
+  REALIZATION_DEPENDENT
 /
 
 #=========================== material properties ==============================
@@ -102,8 +105,8 @@ MATERIAL_PROPERTY soil2
   TORTUOSITY 0.5d0
   CHARACTERISTIC_CURVES cc1
   PERMEABILITY
-    DATASET perm_field
     ANISOTROPIC
+    DATASET perm_field
   /
 END
 
@@ -428,11 +431,6 @@ SOURCE_SINK extraction_well
 END
 
 #=========================== stratigraphy couplers ============================
-STRATA
-  REGION all
-  MATERIAL soil2
-END
-
 STRATA
   REGION layer1
   MATERIAL soil1

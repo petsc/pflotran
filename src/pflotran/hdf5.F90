@@ -230,6 +230,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   type(grid_type) :: grid
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: dataset_size
   integer(HID_T) :: file_id
   PetscInt, pointer :: indices(:)
@@ -246,6 +247,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   PetscInt :: index_count
   PetscInt :: cell_count
   integer(HSIZE_T) :: num_cells_in_file
+  integer(HSIZE_T) :: string_size
   PetscInt :: temp_int, i
   PetscMPIInt :: int_mpi
   
@@ -261,6 +263,13 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
 
   read_block_size = HDF5_READ_BUFFER_SIZE
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
+  if (hdf5_err /= 0) then
+    string_size = MAXSTRINGLENGTH
+    call h5fget_name_f(file_id,string,string_size,hdf5_err)
+    option%io_buffer = 'HDF5 dataset "' // trim(dataset_name) // '" not found &
+      in file "' // trim(string) // '".'
+    call printErrMsg(option)
+  endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
   ! should be a rank=1 data space
   call h5sget_simple_extent_npoints_f(file_space_id,num_cells_in_file,hdf5_err)
@@ -412,6 +421,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: dataset_size
   integer(HID_T) :: file_id
   PetscInt :: indices(:)
@@ -434,6 +444,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
   integer(HSIZE_T) :: num_reals_in_file
+  integer(HSIZE_T) :: string_size
 #endif
 
   PetscMPIInt :: rank_mpi
@@ -529,6 +540,13 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
 
   read_block_size = HDF5_READ_BUFFER_SIZE
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
+  if (hdf5_err /= 0) then
+    string_size = MAXSTRINGLENGTH
+    call h5fget_name_f(file_id,string,string_size,hdf5_err)
+    option%io_buffer = 'HDF5 dataset "' // trim(dataset_name) // '" not found &
+      in file "' // trim(string) // '".'
+    call printErrMsg(option)
+  endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
   ! should be a rank=1 data space
   call h5sget_simple_extent_npoints_f(file_space_id,num_reals_in_file,hdf5_err)
@@ -804,6 +822,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: dataset_size
   integer(HID_T) :: file_id
   PetscInt :: indices(:)
@@ -820,6 +839,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   PetscInt :: index_count
   PetscInt :: integer_count, prev_integer_count
   integer(HSIZE_T) :: num_integers_in_file
+  integer(HSIZE_T) :: string_size
   PetscInt :: temp_int, i, index
   PetscMPIInt :: int_mpi
   
@@ -834,6 +854,13 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 
   read_block_size = HDF5_READ_BUFFER_SIZE
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
+  if (hdf5_err /= 0) then
+    string_size = MAXSTRINGLENGTH
+    call h5fget_name_f(file_id,string,string_size,hdf5_err)
+    option%io_buffer = 'HDF5 dataset "' // trim(dataset_name) // '" not found &
+      in file "' // trim(string) // '".'
+    call printErrMsg(option)
+  endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
   ! should be a rank=1 data space
   call h5sget_simple_extent_npoints_f(file_space_id,num_integers_in_file, &
@@ -1356,6 +1383,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   type(grid_type) :: grid
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: dataset_size
   integer(HID_T) :: file_id
   PetscInt, pointer :: indices(:)
@@ -1371,6 +1399,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   ! seeting to MPIInt to ensure i4
   integer, allocatable :: indices_i4(:)
   integer(HSIZE_T) :: num_data_in_file
+  integer(HSIZE_T) :: string_size
   
   PetscInt :: istart, iend
 
@@ -1385,6 +1414,13 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   istart = iend - grid%nlmax
   
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
+  if (hdf5_err /= 0) then
+    string_size = MAXSTRINGLENGTH
+    call h5fget_name_f(file_id,string,string_size,hdf5_err)
+    option%io_buffer = 'HDF5 dataset "' // trim(dataset_name) // '" not found &
+      in file "' // trim(string) // '".'
+    call printErrMsg(option)
+  endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
   ! should be a rank=1 data space
   call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
@@ -1591,6 +1627,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   type(grid_type) :: grid
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: dataset_size
   integer(HID_T) :: file_id
   PetscInt, pointer :: indices(:)
@@ -1606,6 +1643,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi
   integer(HSIZE_T) :: num_data_in_file
+  integer(HSIZE_T) :: string_size
   Vec :: natural_vec
   PetscInt :: i, istart, iend
   PetscReal, allocatable :: real_buffer(:)
@@ -1618,6 +1656,13 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   iend = 0
   
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
+  if (hdf5_err /= 0) then
+    string_size = MAXSTRINGLENGTH
+    call h5fget_name_f(file_id,string,string_size,hdf5_err)
+    option%io_buffer = 'HDF5 dataset "' // trim(dataset_name) // '" not found &
+      in file "' // trim(string) // '".'
+    call printErrMsg(option)
+  endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
   ! should be a rank=1 data space
   call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
@@ -2084,6 +2129,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   PetscInt, pointer :: int_buffer_1d(:)
   PetscInt, pointer :: int_buffer_2d(:,:)
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string2
 
 #if defined(PETSC_HAVE_HDF5)
   integer(HID_T) :: ndims
@@ -2094,6 +2140,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   integer(HID_T) :: memory_space_id
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
   integer(HSIZE_T) :: length(2), offset(2)
+  integer(HSIZE_T) :: string_size
 #endif
 
   !option => realization%option
@@ -2121,6 +2168,13 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   ! Open dataset
   string = 'Regions/'//trim(region%name)
   call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  if (hdf5_err /= 0) then
+    string_size = MAXSTRINGLENGTH
+    call h5fget_name_f(file_id,string2,string_size,hdf5_err)
+    option%io_buffer = 'HDF5 dataset "' // trim(string) // '" not found &
+      in file "' // trim(string2) // '".'
+    call printErrMsg(option)
+  endif
 
   ! Get dataset's dataspace
   call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
@@ -2343,6 +2397,7 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
   PetscInt, pointer :: int_buffer_1d(:)
   PetscInt, pointer :: int_buffer_2d(:,:)
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string2
 
 #if defined(PETSC_HAVE_HDF5)
   integer(HID_T) :: ndims
@@ -2353,6 +2408,7 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
   integer(HID_T) :: memory_space_id
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
   integer(HSIZE_T) :: length(2), offset(2)
+  integer(HSIZE_T) :: string_size
 #endif
 
 
@@ -2379,6 +2435,13 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
   ! Open dataset
   string = 'Regions/' // trim(region%name) // '/Vertex Ids'
   call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  if (hdf5_err /= 0) then
+    string_size = MAXSTRINGLENGTH
+    call h5fget_name_f(file_id,string2,string_size,hdf5_err)
+    option%io_buffer = 'HDF5 dataset "' // trim(string) // '" not found &
+      in file "' // trim(string2) // '".'
+    call printErrMsg(option)
+  endif
 
   ! Get dataset's dataspace
   call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
