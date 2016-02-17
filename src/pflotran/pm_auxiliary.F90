@@ -15,6 +15,7 @@ module PM_Auxiliary_class
   type, public, extends(pm_base_type) :: pm_auxiliary_type
     class(realization_subsurface_type), pointer :: realization
     class(communicator_type), pointer :: comm1
+    character(len=MAXWORDLENGTH) :: ctype
     procedure(PMAuxliaryEvaluate), pointer :: Evaluate => null()
   contains
     procedure, public :: InitializeRun => PMAuxiliaryInitializeRun
@@ -32,11 +33,36 @@ module PM_Auxiliary_class
     end subroutine PMAuxliaryEvaluate
   end interface
   
-  public :: PMAuxiliaryInit, &
+  public :: PMAuxiliaryCreate, &
+            PMAuxiliaryInit, &
+            PMAuxiliaryCast, &
             PMAuxiliarySetFunctionPointer
   
 contains
 
+! ************************************************************************** !
+
+function PMAuxiliaryCreate()
+  ! 
+  ! Creates reactive transport process models shell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
+
+  implicit none
+  
+  class(pm_auxiliary_type), pointer :: PMAuxiliaryCreate
+
+  class(pm_auxiliary_type), pointer :: pm
+
+  allocate(pm)
+  call PMAuxiliaryInit(pm)
+  
+  PMAuxiliaryCreate => pm
+
+end function PMAuxiliaryCreate
+  
 ! ************************************************************************** !
 
 subroutine PMAuxiliaryInit(this)
@@ -52,10 +78,38 @@ subroutine PMAuxiliaryInit(this)
 
   nullify(this%realization)
   nullify(this%comm1)
+  this%ctype = ''
   
   call PMBaseInit(this)
   
 end subroutine PMAuxiliaryInit
+
+ 
+! ************************************************************************** !
+
+function PMAuxiliaryCast(this)
+  ! 
+  ! Initializes auxiliary process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/10/16
+
+  implicit none
+  
+  class(pm_base_type), pointer :: this  
+
+  class(pm_auxiliary_type), pointer :: PMAuxiliaryCast  
+  
+  nullify(PMAuxiliaryCast)
+  if (.not.associated(this)) return
+  select type (this)
+    class is (pm_auxiliary_type)
+      PMAuxiliaryCast => this
+    class default
+      !geh: have default here to pass a null pointer if not of type ascii
+  end select
+  
+end function PMAuxiliaryCast
 
 ! ************************************************************************** !
 
@@ -73,6 +127,7 @@ subroutine PMAuxiliarySetFunctionPointer(this,string)
   class(pm_auxiliary_type) :: this
   character(len=MAXSTRINGLENGTH) :: string
 
+  this%ctype = trim(string)
   select case(string)
     case('EVOLVING_STRATA')
       this%Evaluate => PMAuxiliaryEvolvingStrata
@@ -98,6 +153,16 @@ recursive subroutine PMAuxiliaryInitializeRun(this)
   implicit none
 
   class(pm_auxiliary_type) :: this
+  
+  PetscReal :: time
+  PetscErrorCode :: ierr
+  
+  time = 0.d0
+  select case(this%ctype)
+    case('EVOLVING_STRATA')
+    case('SALINITY')
+      call this%Evaluate(time,ierr)
+  end select  
 
 end subroutine PMAuxiliaryInitializeRun
 
@@ -131,13 +196,42 @@ subroutine PMAuxiliarySalinity(this,time,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 02/10/16
-
+  !
+  use Reactive_Transport_Aux_module
+  use Global_Aux_module
+  
   implicit none
   
   class(pm_auxiliary_type) :: this
   PetscReal :: time
   PetscErrorCode :: ierr
   
+  PetscReal, parameter :: FMWNA = 22.989769d0
+  PetscReal, parameter :: FMWCL = 35.4527d0
+  PetscInt i, j, na_id, cl_id
+  PetscReal :: M_na, M_cl, M_h2o, xmass
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  PetscInt, parameter :: iphase = 1
+    
+  na_id = this%realization%reaction%species_idx%na_ion_id
+  cl_id = this%realization%reaction%species_idx%cl_ion_id
+  do j = 1, 2
+    if (i == 1) then
+      rt_auxvars => this%realization%patch%aux%RT%auxvars
+      global_auxvars => this%realization%patch%aux%Global%auxvars
+    else
+      rt_auxvars => this%realization%patch%aux%RT%auxvars_bc
+      global_auxvars => this%realization%patch%aux%Global%auxvars_bc
+    endif
+    do i = 1, size(rt_auxvars)
+      M_na = rt_auxvars(i)%total(na_id,iphase)*FMWNA ! mol/L * g/mol = g/L and
+      M_cl = rt_auxvars(i)%total(cl_id,iphase)*FMWCL !   g/L => kg/m^3
+      M_h2o = global_auxvars(i)%den_kg(iphase)  ! kg/m^3
+      xmass = (M_na + M_cl) / (M_na + M_cl + M_h2o)
+      global_auxvars(i)%xmass(iphase) = xmass
+    enddo
+  enddo
   
 end subroutine PMAuxiliarySalinity
 
