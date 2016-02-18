@@ -68,7 +68,7 @@ subroutine MassRateRead(this,input,option)
   type(option_type) :: option
 
   PetscInt :: i
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   PetscBool :: found
   
   do 
@@ -94,10 +94,13 @@ subroutine MassRateRead(this,input,option)
           select case(i)
             case(ONE_INTEGER)
               word = 'Liquid Component Rate'
+              internal_units = 'kg/sec'
             case(TWO_INTEGER)
               word = 'Gas Component Rate'
+              internal_units = 'kg/sec'
             case(THREE_INTEGER)
               word = 'Energy Rate'
+              internal_units = 'MW|MJ/sec'
             case default
               write(word,*) i
               option%io_buffer = 'Unknown dof #' // trim(adjustl(word)) // &
@@ -106,6 +109,11 @@ subroutine MassRateRead(this,input,option)
           end select
           call InputReadDouble(input,option,this%rate(i))
           call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,MASS_RATE')
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          if (input%ierr == 0) then            
+            this%rate(i) = this%rate(i) * &
+              UnitsConvertToInternal(word,internal_units,option)
+          endif
         enddo
       case default
         call InputKeywordUnrecognized(word,'SRCSINK_SANDBOX,MASS_RATE',option)

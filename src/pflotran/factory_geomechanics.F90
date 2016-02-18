@@ -506,7 +506,7 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
   type(waypoint_list_type), pointer :: waypoint_list
   PetscReal :: units_conversion
 
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   character(len=MAXWORDLENGTH) :: card
   character(len=MAXSTRINGLENGTH) :: string
   character(len=1) :: backslash
@@ -629,6 +629,7 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
           call InputErrorMsg(input,option,'word','GEOMECHANICS_TIME')
           select case(trim(word))
             case('COUPLING_TIMESTEP_SIZE')
+              internal_units = 'sec'
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option, &
                                  'Coupling Timestep Size','GEOMECHANICS_TIME') 
@@ -636,7 +637,8 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
               call InputErrorMsg(input,option, &
                         'Coupling Timestep Size Time Units','GEOMECHANICS_TIME')
               geomech_realization%dt_coupling = &
-                            temp_real*UnitsConvertToInternal(word,'time',option)
+                            temp_real*UnitsConvertToInternal(word, &
+                            internal_units,option)
             case default
               call InputKeywordUnrecognized(word,'GEOMECHANICS_TIME',option)
             end select
@@ -701,9 +703,11 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
             case('PRINT_COLUMN_IDS')
               output_option%print_column_ids = PETSC_TRUE
             case('TIMES')
+              internal_units = 'sec'
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'units','GEOMECHANICS_OUTPUT')
-              units_conversion = UnitsConvertToInternal(word,'time',option)
+              units_conversion = UnitsConvertToInternal(word, &
+                                                        internal_units,option)
               string = 'GEOMECHANICS_OUTPUT,TIMES'
               call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
                                     string,input,option)
@@ -752,26 +756,29 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
               call StringToUpper(word)
               select case(trim(word))
                 case('TIME')
+                  internal_units = 'sec'
                   call InputReadDouble(input,option,temp_real)
                   call InputErrorMsg(input,option,'time increment', &
                                      'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
                                      'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
-                  units_conversion = UnitsConvertToInternal(word,'time',option)
+                  units_conversion = UnitsConvertToInternal(word, &
+                                       internal_units,option)
                   output_option%periodic_output_time_incr = temp_real* &
                                                             units_conversion
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   if (input%ierr == 0) then
                     if (StringCompareIgnoreCase(word,'between')) then
-
+                      internal_units = 'sec'
                       call InputReadDouble(input,option,temp_real)
                       call InputErrorMsg(input,option,'start time', &
                                          'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       call InputErrorMsg(input,option,'start time units', &
                                          'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
-                      units_conversion = UnitsConvertToInternal(word,'time',option)
+                      units_conversion = UnitsConvertToInternal(word, &
+                                           internal_units,option)
                       temp_real = temp_real * units_conversion
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       if (.not.StringCompareIgnoreCase(word,'and')) then
@@ -819,34 +826,41 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
               call StringToUpper(word)
               select case(trim(word))
                 case('TIME')
+                  internal_units = 'sec'
                   call InputReadDouble(input,option,temp_real)
                   call InputErrorMsg(input,option,'time increment', &
-                                     'GEOMECHANICS_OUTPUT,PERIODIC_OBSERVATION,TIME')
+                                     'GEOMECHANICS_OUTPUT,&
+                                      &PERIODIC_OBSERVATION,TIME')
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
-                                     'GEOMECHANICS_OUTPUT,PERIODIC_OBSERVATION,TIME')
-                  units_conversion = UnitsConvertToInternal(word,'time',option) 
+                                     'GEOMECHANICS_OUTPUT,&
+                                      &PERIODIC_OBSERVATION,TIME')
+                  units_conversion = UnitsConvertToInternal(word, &
+                                       internal_units,option) 
                   output_option%periodic_tr_output_time_incr = temp_real* &
                                                                units_conversion
                 case('TIMESTEP')
                   call InputReadInt(input,option, &
                                     output_option%periodic_tr_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
-                                     'GEOMECHANICS_OUTPUT,PERIODIC_OBSERVATION,TIMESTEP')
+                                     'GEOMECHANICS_OUTPUT,&
+                                      &PERIODIC_OBSERVATION,TIMESTEP')
                 case default
                   call InputKeywordUnrecognized(word, &
                          'GEOMECHANICS_OUTPUT,PERIODIC_OBSERVATION',option)
               end select
             case('FORMAT')
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'keyword','GEOMECHANICS_OUTPUT,FORMAT') 
+              call InputErrorMsg(input,option,'keyword','GEOMECHANICS_OUTPUT,&
+                                                         &FORMAT') 
               call StringToUpper(word)
               select case(trim(word))
                 case ('HDF5')
                   output_option%print_hdf5 = PETSC_TRUE
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputDefaultMsg(input,option, &
-                                       'GEOMECHANICS_OUTPUT,FORMAT,HDF5,# FILES')
+                                       'GEOMECHANICS_OUTPUT,FORMAT,HDF5,&
+                                        &# FILES')
                   if (len_trim(word) > 1) then 
                     call StringToUpper(word)
                     select case(trim(word))

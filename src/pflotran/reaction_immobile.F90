@@ -88,7 +88,7 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
   type(input_type), pointer :: input
   type(option_type) :: option
   
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   type(immobile_decay_rxn_type), pointer :: immobile_decay_rxn
   type(immobile_decay_rxn_type), pointer :: cur_immobile_decay_rxn
   
@@ -112,6 +112,7 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
                            'CHEMISTRY,IMMOBILE_DECAY_REACTION')
         immobile_decay_rxn%species_name = word
       case('RATE_CONSTANT')
+        internal_units = 'unitless/sec'
         call InputReadDouble(input,option,immobile_decay_rxn%rate_constant)  
         call InputErrorMsg(input,option,'rate cosntant', &
                              'CHEMISTRY,IMMOBILE_DECAY_REACTION') 
@@ -121,10 +122,11 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
                         'CHEMISTRY,IMMOBILE_DECAY_REACTION RATE_CONSTANT UNITS')
         else
           immobile_decay_rxn%rate_constant = &
-            UnitsConvertToInternal(word,'concentration/time',option) * &
+            UnitsConvertToInternal(word,internal_units,option) * &
             immobile_decay_rxn%rate_constant
         endif
       case('HALF_LIFE')
+        internal_units = 'sec'
         call InputReadDouble(input,option, &
                              immobile_decay_rxn%half_life)
         call InputErrorMsg(input,option,'half life', &
@@ -132,10 +134,10 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (InputError(input)) then
           call InputDefaultMsg(input,option, &
-                            'CHEMISTRY,IMMOBILE_DECAY_REACTION HALF_LIFE UNITS')
+            'CHEMISTRY,IMMOBILE_DECAY_REACTION HALF_LIFE UNITS')
         else
           immobile_decay_rxn%half_life = &
-            UnitsConvertToInternal(word,'time',option) * &
+            UnitsConvertToInternal(word,internal_units,option) * &
             immobile_decay_rxn%half_life
         endif
         ! convert half life to rate constant

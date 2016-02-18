@@ -196,7 +196,7 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: word, units
-  character(len=MAXSTRINGLENGTH) :: temp_buf, string, units_category
+  character(len=MAXSTRINGLENGTH) :: temp_buf, string, internal_units
   character(len=MAXSTRINGLENGTH) :: species_name_buf
   character(len=MAXSTRINGLENGTH) :: species_formula_wt_buf
   class(dataset_ascii_type), pointer :: dataset_ascii
@@ -267,9 +267,10 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
       dataset_ascii => DatasetAsciiCreate()
       this%mass_fraction_dataset => dataset_ascii
       dataset_ascii%data_type = DATASET_REAL
-      units_category = 'unitless'
+      units = 'unitless'
+      internal_units = 'unitless'
       call ConditionReadValues(input,option,word,this%mass_fraction_dataset, &
-                               units,units_category)
+                               units,internal_units)
       if (associated(dataset_ascii%time_storage)) then
         ! default time interpolation is linear
         if (dataset_ascii%time_storage%time_interpolation_method == &
@@ -1058,7 +1059,7 @@ subroutine PMGlassRead(this,input)
   
   type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXSTRINGLENGTH) :: error_string
+  character(len=MAXSTRINGLENGTH) :: error_string, internal_units
   class(waste_form_glass_type), pointer :: new_waste_form, prev_waste_form
   PetscBool :: found
 
@@ -1103,7 +1104,9 @@ subroutine PMGlassRead(this,input)
               call InputErrorMsg(input,option,'volume',error_string)
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
-                new_waste_form%volume = UnitsConvertToInternal(word,'volume', &
+                internal_units = 'm^3'
+                new_waste_form%volume = UnitsConvertToInternal(word, &
+                                        internal_units, &
                                         option) * new_waste_form%volume
               endif
             case('COORDINATE')
@@ -1147,8 +1150,9 @@ subroutine PMGlassRead(this,input)
         call InputErrorMsg(input,option,'specific surface area',error_string)
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
+          internal_units = 'm^2/m^3'
           this%specific_surface_area = UnitsConvertToInternal(word, &
-                            'area/volume',option) * this%specific_surface_area
+                            internal_units,option) * this%specific_surface_area
         endif
     !-------------------------------------
       case('GLASS_DENSITY')
@@ -1631,7 +1635,7 @@ subroutine PMFMDMRead(this,input)
   
   type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXSTRINGLENGTH) :: error_string
+  character(len=MAXSTRINGLENGTH) :: error_string, internal_units
   class(waste_form_fmdm_type), pointer :: new_waste_form, prev_waste_form
   PetscBool :: found
 
@@ -1685,16 +1689,19 @@ subroutine PMFMDMRead(this,input)
                                  error_string)
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
+                internal_units = 'm^2/m^3' 
                 new_waste_form%specific_surface_area = &
-                           UnitsConvertToInternal(word,'area/volume',option) * &
-                           new_waste_form%specific_surface_area
+                           UnitsConvertToInternal(word,internal_units, &
+                           option) * new_waste_form%specific_surface_area
               endif
             case('VOLUME')
               call InputReadDouble(input,option,new_waste_form%volume)
               call InputErrorMsg(input,option,'volume',error_string)
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
-                new_waste_form%volume = UnitsConvertToInternal(word,'volume', &
+                internal_units = 'm^3'
+                new_waste_form%volume = UnitsConvertToInternal(word, &
+                                        internal_units, &
                                         option) * new_waste_form%volume
               endif
             case('BURNUP')

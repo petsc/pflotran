@@ -1390,7 +1390,7 @@ subroutine SubsurfaceReadInput(simulation)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: card
   character(len=MAXSTRINGLENGTH) :: string, temp_string
-  character(len=MAXSTRINGLENGTH) :: units_category
+  character(len=MAXWORDLENGTH) :: internal_units
     
   character(len=1) :: backslash
   PetscReal :: temp_real, temp_real2
@@ -1444,7 +1444,7 @@ subroutine SubsurfaceReadInput(simulation)
   class(timestepper_BE_type), pointer :: flow_timestepper
   class(timestepper_BE_type), pointer :: tran_timestepper
   
-  units_category = 'not_assigned'
+  internal_units = 'not_assigned'
 
   realization => simulation%realization
   output_option => simulation%output_option
@@ -1517,8 +1517,8 @@ subroutine SubsurfaceReadInput(simulation)
         ! read units, if present
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
-          units_category = 'length/time'
-          units_conversion = UnitsConvertToInternal(word,units_category,option) 
+          internal_units = 'meter/sec'
+          units_conversion = UnitsConvertToInternal(word,internal_units,option) 
           uniform_velocity_dataset%values(:,1) = &
             uniform_velocity_dataset%values(:,1) * units_conversion
         endif
@@ -1827,9 +1827,9 @@ subroutine SubsurfaceReadInput(simulation)
         !if (input%ierr == 0) then
         !  call InputReadWord(input,option,word,PETSC_TRUE)
         !  if (input%ierr == 0) then
-        !    units_category = 'time'
+        !    internal_units = 'sec'
         !    option%restart_time = option%restart_time* &
-        !                          UnitsConvertToInternal(word,units_category,option)
+        !      UnitsConvertToInternal(word,internal_units,option)
         !  else
         !    call InputDefaultMsg(input,option,'RESTART, time units')
         !  endif
@@ -2058,8 +2058,8 @@ subroutine SubsurfaceReadInput(simulation)
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr /= 0) word = 'h'
         call InputDefaultMsg(input,option,'WALLCLOCK_STOP time units')
-        units_category = 'time'
-        units_conversion = UnitsConvertToInternal(word,units_category,option) 
+        internal_units = 'sec'
+        units_conversion = UnitsConvertToInternal(word,internal_units,option) 
         ! convert from hrs to seconds and add to start_time
         option%wallclock_stop_time = option%start_time + &
                                      option%wallclock_stop_time* &
@@ -2086,31 +2086,36 @@ subroutine SubsurfaceReadInput(simulation)
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Output Time Units','OUTPUT')
               output_option%tunit = trim(word)
-              units_category = 'time'
+              internal_units = 'sec'
               output_option%tconv = &
-                UnitsConvertToInternal(word,units_category,option)
+                UnitsConvertToInternal(word,internal_units,option)
             case('NO_FINAL','NO_PRINT_FINAL')
               output_option%print_final = PETSC_FALSE
             case('NO_INITIAL','NO_PRINT_INITIAL')
               output_option%print_initial = PETSC_FALSE
             case('PROCESSOR_ID')
-              option%io_buffer = 'PROCESSOR_ID output must now be entered under OUTPUT/VARIABLES card as PROCESS_ID.'
+              option%io_buffer = 'PROCESSOR_ID output must now be entered &
+                                 &under OUTPUT/VARIABLES card as PROCESS_ID.'
               call printErrMsg(option)
 !              output_option%print_iproc = PETSC_TRUE
             case('PERMEABILITY')
-              option%io_buffer = 'PERMEABILITY output must now be entered under OUTPUT/VARIABLES card.'
+              option%io_buffer = 'PERMEABILITY output must now be entered &
+                                 &under OUTPUT/VARIABLES card.'
               call printErrMsg(option)
 !              output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
-              option%io_buffer = 'POROSITY output must now be entered under OUTPUT/VARIABLES card.'
+              option%io_buffer = 'POROSITY output must now be entered under &
+                                 &OUTPUT/VARIABLES card.'
               call printErrMsg(option)
 !              output_option%print_porosity = PETSC_TRUE
             case('TORTUOSITY')
-              option%io_buffer = 'TORTUOSITY output must now be entered under OUTPUT/VARIABLES card.'
+              option%io_buffer = 'TORTUOSITY output must now be entered under &
+                                 &OUTPUT/VARIABLES card.'
               call printErrMsg(option)
 !              output_option%print_tortuosity = PETSC_TRUE
             case('VOLUME')
-              option%io_buffer = 'VOLUME output must now be entered under OUTPUT/VARIABLES card.'
+              option%io_buffer = 'VOLUME output must now be entered under &
+                                 &OUTPUT/VARIABLES card.'
               call printErrMsg(option)
 !              output_option%print_volume = PETSC_TRUE
             case('MASS_BALANCE')
@@ -2133,9 +2138,9 @@ subroutine SubsurfaceReadInput(simulation)
             case('TIMES')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'units','OUTPUT,TIMES')
-              units_category = 'time'
+              internal_units = 'sec'
               units_conversion = &
-                UnitsConvertToInternal(word,units_category,option) 
+                UnitsConvertToInternal(word,internal_units,option) 
               string = 'OUTPUT,TIMES'
               call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
                                     string,input,option)
@@ -2190,8 +2195,9 @@ subroutine SubsurfaceReadInput(simulation)
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
                                      'OUTPUT,PERIODIC,TIME')
-                  units_category = 'time'
-                  units_conversion = UnitsConvertToInternal(word,units_category,option) 
+                  internal_units = 'sec'
+                  units_conversion = UnitsConvertToInternal(word, &
+                                     internal_units,option) 
                   output_option%periodic_output_time_incr = temp_real* &
                                                             units_conversion
                   call InputReadWord(input,option,word,PETSC_TRUE)
@@ -2204,8 +2210,9 @@ subroutine SubsurfaceReadInput(simulation)
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       call InputErrorMsg(input,option,'start time units', &
                                          'OUTPUT,PERIODIC,TIME')
-                      units_category = 'time'
-                      units_conversion = UnitsConvertToInternal(word,units_category,option) 
+                      internal_units = 'sec'
+                      units_conversion = UnitsConvertToInternal(word, &
+                                         internal_units,option) 
                       temp_real = temp_real * units_conversion
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       if (.not.StringCompareIgnoreCase(word,'and')) then
@@ -2258,8 +2265,9 @@ subroutine SubsurfaceReadInput(simulation)
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
                                      'OUTPUT,PERIODIC_OBSERVATION,TIME')
-                  units_category = 'time'
-                  units_conversion = UnitsConvertToInternal(word,units_category,option) 
+                  internal_units = 'sec'
+                  units_conversion = UnitsConvertToInternal(word, &
+                                     internal_units,option) 
                   output_option%periodic_tr_output_time_incr = temp_real* &
                                                                units_conversion
                 case('TIMESTEP')
@@ -2445,8 +2453,8 @@ subroutine SubsurfaceReadInput(simulation)
               call InputErrorMsg(input,option,'Final Time','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Final Time Units','TIME')
-              units_category = 'time'
-              temp_real2 = UnitsConvertToInternal(word,units_category,option)
+              internal_units = 'sec'
+              temp_real2 = UnitsConvertToInternal(word,internal_units,option)
               if (len_trim(output_option%tunit) == 0) then
                 output_option%tunit = trim(word)
                 output_option%tconv = temp_real2
@@ -2460,38 +2468,47 @@ subroutine SubsurfaceReadInput(simulation)
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Initial Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'Initial Timestep Size Time Units','TIME')
-              ! convert to internal units
-              units_category = 'time'
-              dt_init = temp_real*UnitsConvertToInternal(word,units_category,option)
+              call InputErrorMsg(input,option,'Initial Timestep Size Time &
+                                              &Units','TIME')
+              internal_units = 'sec'
+              dt_init = temp_real*UnitsConvertToInternal(word, &
+                                                         internal_units,option)
             case('MINIMUM_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Minimum Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'Minimum Timestep Size Time Units','TIME')
-              units_category = 'time'
-              dt_min = temp_real*UnitsConvertToInternal(word,units_category,option)
+              call InputErrorMsg(input,option,'Minimum Timestep Size Time &
+                                              &Units','TIME')
+              internal_units = 'sec'
+              dt_min = temp_real*UnitsConvertToInternal(word, &
+                                                        internal_units,option)
             case('MAXIMUM_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Maximum Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'Maximum Timestep Size Time Units','TIME')
+              call InputErrorMsg(input,option,'Maximum Timestep Size Time &
+                                              &Units','TIME')
               waypoint => WaypointCreate()
-              units_category = 'time'
-              waypoint%dt_max = temp_real*UnitsConvertToInternal(word,units_category,option)
+              internal_units = 'sec'
+              waypoint%dt_max = temp_real*UnitsConvertToInternal(word, &
+                                          internal_units,option)
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToUpper(word)
                 if (StringCompare(word,'AT',TWO_INTEGER)) then
                   call InputReadDouble(input,option,temp_real)
-                  call InputErrorMsg(input,option,'Maximum Timestep Size Update Time','TIME') 
+                  call InputErrorMsg(input,option,'Maximum Timestep Size & 
+                                                  &Update Time','TIME') 
                   call InputReadWord(input,option,word,PETSC_TRUE)
-                  call InputErrorMsg(input,option,'Maximum Timestep Size Update Time Units','TIME')
-                  units_category = 'time'
-                  waypoint%time = temp_real*UnitsConvertToInternal(word,units_category,option)
+                  call InputErrorMsg(input,option,'Maximum Timestep Size &
+                                                  &Update Time Units','TIME')
+                  internal_units = 'sec'
+                  waypoint%time = temp_real*UnitsConvertToInternal(word, &
+                                            internal_units,option)
                 else
-                  option%io_buffer = 'Keyword under "MAXIMUM_TIMESTEP_SIZE" after ' // &
-                                     'maximum timestep size should be "at".'
+                  option%io_buffer = 'Keyword under "MAXIMUM_TIMESTEP_SIZE" &
+                                     &after maximum timestep size should &
+                                     &be "at".'
                   call printErrMsg(option)
                 endif
               else
