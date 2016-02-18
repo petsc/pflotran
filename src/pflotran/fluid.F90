@@ -76,6 +76,7 @@ subroutine FluidPropertyRead(fluid_property,input,option)
   use Option_module
   use Input_Aux_module
   use String_module
+  use Units_module
 
   implicit none
   
@@ -106,7 +107,7 @@ subroutine FluidPropertyRead(fluid_property,input,option)
         call InputReadDouble(input,option,fluid_property%diffusion_coefficient)
         call InputErrorMsg(input,option,'diffusion coefficient', &
                            'FLUID_PROPERTY')
-        call InputReadWord(input,option,word)
+        call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
           internal_units = 'm^2/sec'
           fluid_property%diffusion_coefficient = &
