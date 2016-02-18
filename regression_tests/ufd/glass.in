@@ -171,8 +171,8 @@ END_SUBSURFACE
 
 GLASS
   SPECIES
-    Tracer1 87.62d0  ! Sr-90, g/mol
-    Tracer2 129.0d0  ! I-129, g/mol
+    Tracer1 87.62d0 g/mol  ! Sr-90
+    Tracer2 129.0d0 g/mol  ! I-129
   /
   SPECIFIC_SURFACE_AREA 2.78d-3 m^2/m^3
   MASS_FRACTION FILE glass_mass_fractions.txt
