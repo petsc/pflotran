@@ -16,6 +16,7 @@ module Option_Flow_module
     PetscBool :: store_fluxes
     PetscBool :: transient_porosity
     PetscBool :: only_vertical_flow
+    PetscBool :: density_depends_on_salinity
   
   end type flow_option_type
   
@@ -96,6 +97,7 @@ subroutine OptionFlowInitRealization(option)
   option%store_fluxes = PETSC_FALSE
   option%transient_porosity = PETSC_FALSE
   option%only_vertical_flow = PETSC_FALSE
+  option%density_depends_on_salinity = PETSC_FALSE
   
 end subroutine OptionFlowInitRealization
 

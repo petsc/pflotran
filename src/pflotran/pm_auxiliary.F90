@@ -75,9 +75,9 @@ subroutine PMAuxiliarySetFunctionPointer(this,string)
 
   select case(string)
     case('EVOLVING_STRATA')
-      this%Evaluate => PMAuxiliaryEvaluateA
-    case('B')
-      this%Evaluate => PMAuxiliaryEvaluateB
+      this%Evaluate => PMAuxiliaryEvolvingStrata
+    case('SALINITY')
+      this%Evaluate => PMAuxiliarySalinity
     case default
       this%option%io_buffer = 'Function pointer "' // trim(string) // '" not &
         &found among available functions in PMAuxiliarySetFunctionPointer.'
@@ -103,7 +103,7 @@ end subroutine PMAuxiliaryInitializeRun
 
 ! ************************************************************************** !
 
-subroutine PMAuxiliaryEvaluateA(this,time,ierr)
+subroutine PMAuxiliaryEvolvingStrata(this,time,ierr)
   ! 
   ! Initializes auxiliary process model
   ! 
@@ -121,11 +121,11 @@ subroutine PMAuxiliaryEvaluateA(this,time,ierr)
   call InitSubsurfAssignMatIDsToRegns(this%realization)
   call InitSubsurfAssignMatProperties(this%realization)
   
-end subroutine PMAuxiliaryEvaluateA
+end subroutine PMAuxiliaryEvolvingStrata
 
 ! ************************************************************************** !
 
-subroutine PMAuxiliaryEvaluateB(this,time,ierr)
+subroutine PMAuxiliarySalinity(this,time,ierr)
   ! 
   ! Initializes auxiliary process model
   ! 
@@ -137,10 +137,9 @@ subroutine PMAuxiliaryEvaluateB(this,time,ierr)
   class(pm_auxiliary_type) :: this
   PetscReal :: time
   PetscErrorCode :: ierr
-
   
   
-end subroutine PMAuxiliaryEvaluateB
+end subroutine PMAuxiliarySalinity
 
 ! ************************************************************************** !
 
