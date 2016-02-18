@@ -187,7 +187,6 @@ module EOS_Water_module
             EOSWaterEnthalpy, &
             EOSWaterSteamDensityEnthalpy, &
             EOSWaterDuanMixture, &
-            EOSWaterDensityNaCl, &
             EOSWaterViscosityNaCl, &
             EOSWaterInternalEnergyIce, &
             EOSWaterDensityIcePainter, &
@@ -1688,10 +1687,12 @@ subroutine EOSWaterDuanMixture(t,p,xmol,y_nacl,avgmw,dw_kg,denmix)
   PetscReal :: fmwh2o = 18.01534d0
   PetscReal :: fmwco2 = 44.0098d0
   PetscReal :: fmwnacl = 58.44277d0
+  PetscReal :: dummy
+  PetscErrorCode :: ierr
 
   !duan mixing **************************
   tk = t + 273.15D0; xco2 = xmol;
-  call EOSWaterDensityNaCl(t, p, 0.D0, pw_kg)
+  call EOSWaterDensity(t,p,pw_kg,dummy,ierr)
   x1 = 1.D0-xco2;
   vphi_a1 = (0.3838402D-3*tk - 0.5595385D0)*tk + 0.30429268D3 + &
             (-0.72044305D5 + 0.63003388D7/tk)/tk;  
@@ -1703,45 +1704,6 @@ subroutine EOSWaterDuanMixture(t,p,xmol,y_nacl,avgmw,dw_kg,denmix)
   denmix = denmix/avgmw
   
 end subroutine EOSWaterDuanMixture
-
-! ************************************************************************** !
-
-#if 1
-subroutine EOSWaterDensityNaCl(t,p_Pa,xnacl,dnacl_kg_m3)
-
-  ! density: Batzle & Wang (1992)
-
-  implicit none
-
-  PetscReal, intent(in) :: t            ! [C]
-  PetscReal, intent(in) :: p_Pa         ! [Pa]
-  PetscReal, intent(in) :: xnacl        ! [-]
-  PetscReal, intent(out) :: dnacl_kg_m3 ! [kg/m^3]
-  
-  
-  PetscReal :: rw0_kg_m3
-  PetscReal :: rw_mol, hw
-  PetscReal :: dum1,dum2
-  PetscReal :: aux(2)
-  PetscReal :: p_MPa, rw0_g_cm3, dnacl_g_cm3
-  PetscErrorCode :: ierr
-  !units: t [C], p [Pa], xnacl [mass fraction NaCl], dnacl [kg/m^3]
-
-  !rw0 = 1.d0 + 1.d-6*(-80.d0*t - 3.3d0*t**2 + 0.00175d0*t**3 &
-  !      + 489.d0*p - 2.d0*t*p + 0.016d0*t**2*p - 1.3d-5*t**3*p &
-  !      - 0.333d0*p**2 - 0.002d0*t*p**2)
-  aux = 0.d0
-  call EOSWaterDensity(t,p_Pa,rw0_kg_m3,rw_mol,ierr)
-  ! For Eq. 27b, Batzle and Wang use MPa units for pressure
-  p_MPa = p_Pa * 1.d-6
-  rw0_g_cm3 = rw0_kg_m3 * 1.d-3
-  dnacl_g_cm3 = rw0_g_cm3 + xnacl*(0.668d0 + 0.44d0*xnacl &
-                + 1.d-6*(300.d0*p_MPa - 2400.d0*p_MPa*xnacl + t*(80.d0 &
-                + 3.d0*t - 3300.d0*xnacl - 13.d0*p_MPa + 47.d0*p_MPa*xnacl)))
-  dnacl_kg_m3 = dnacl_g_cm3 * 1.d3
-  
-end subroutine EOSWaterDensityNaCl
-#endif
 
 ! ************************************************************************** !
 

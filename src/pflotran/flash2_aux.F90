@@ -272,6 +272,7 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
   PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
   PetscReal :: Qkco2, mco2,xco2eq
   PetscReal :: tmp 
+  PetscReal :: aux(1)
   PetscInt :: iflag  
   
   auxvar%sat = 0.d0
@@ -421,7 +422,8 @@ subroutine Flash2AuxVarCompute_NINC(x,auxvar,global_auxvar, &
   
     xm_nacl = m_nacl * FMWNACL
     xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-    call EOSWaterDensityNaCl(t, p, xm_nacl, dw_kg) 
+    aux(1) = xm_nacl
+    call EOSWaterDensityExt(t,p,aux,dw_kg,dw_mol,ierr)
     call EOSWaterViscosityNaCl(t,p,xm_nacl,visl)
     
     y_nacl = m_nacl/( m_nacl + 1D3/FMWH2O)
