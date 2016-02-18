@@ -247,7 +247,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   PetscInt :: index_count
   PetscInt :: cell_count
   integer(HSIZE_T) :: num_cells_in_file
-  integer(HSIZE_T) :: string_size
+  integer(SIZE_T) :: string_size
   PetscInt :: temp_int, i
   PetscMPIInt :: int_mpi
   
@@ -444,7 +444,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
   integer(HSIZE_T) :: num_reals_in_file
-  integer(HSIZE_T) :: string_size
+  integer(SIZE_T) :: string_size
 #endif
 
   PetscMPIInt :: rank_mpi
@@ -839,7 +839,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   PetscInt :: index_count
   PetscInt :: integer_count, prev_integer_count
   integer(HSIZE_T) :: num_integers_in_file
-  integer(HSIZE_T) :: string_size
+  integer(SIZE_T) :: string_size
   PetscInt :: temp_int, i, index
   PetscMPIInt :: int_mpi
   
@@ -1399,7 +1399,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   ! seeting to MPIInt to ensure i4
   integer, allocatable :: indices_i4(:)
   integer(HSIZE_T) :: num_data_in_file
-  integer(HSIZE_T) :: string_size
+  integer(SIZE_T) :: string_size
   
   PetscInt :: istart, iend
 
@@ -1643,7 +1643,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi
   integer(HSIZE_T) :: num_data_in_file
-  integer(HSIZE_T) :: string_size
+  integer(SIZE_T) :: string_size
   Vec :: natural_vec
   PetscInt :: i, istart, iend
   PetscReal, allocatable :: real_buffer(:)
@@ -2140,7 +2140,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
   integer(HID_T) :: memory_space_id
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
   integer(HSIZE_T) :: length(2), offset(2)
-  integer(HSIZE_T) :: string_size
+  integer(SIZE_T) :: string_size
 #endif
 
   !option => realization%option
@@ -2408,7 +2408,7 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
   integer(HID_T) :: memory_space_id
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
   integer(HSIZE_T) :: length(2), offset(2)
-  integer(HSIZE_T) :: string_size
+  integer(SIZE_T) :: string_size
 #endif
 
 
