@@ -662,7 +662,7 @@ recursive subroutine PMCBaseCheckpointBinary(this,viewer,append_name)
   endif
   
   if (associated(this%peer)) then
-    call this%child%CheckpointBinary(viewer,append_name)
+    call this%peer%CheckpointBinary(viewer,append_name)
   endif
   
   if (this%is_master) then

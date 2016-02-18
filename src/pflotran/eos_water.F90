@@ -233,7 +233,8 @@ subroutine EOSWaterInit()
   EOSWaterDensityIcePtr => EOSWaterDensityIcePainter
   
   ! extended versions
-!  EOSWaterViscosityExt => 
+  EOSWaterViscosityExtPtr => EOSWaterViscosityKestinExt
+  EOSWaterDensityExtPtr => EOSWaterDensityBatzleAndWangExt
   
 end subroutine EOSWaterInit
 
@@ -321,6 +322,7 @@ subroutine EOSWaterSetDensity(keyword,aux)
       EOSWaterDensityPtr => EOSWaterDensityConstant
     case('DEFAULT','IFC67')
       EOSWaterDensityPtr => EOSWaterDensityIFC67
+      EOSWaterDensityExtPtr => EOSWaterDensityBatzleAndWangExt
     case('EXPONENTIAL')
       exponent_reference_density = aux(1)
       exponent_reference_pressure = aux(2)
@@ -382,6 +384,7 @@ subroutine EOSWaterSetViscosity(keyword,aux)
       EOSWaterViscosityPtr => EOSWaterViscosityConstant
     case('DEFAULT')
       EOSWaterViscosityPtr => EOSWaterViscosity1
+      EOSWaterViscosityExtPtr => EOSWaterViscosityKestinExt
     case('BATZLE_AND_WANG')
       EOSWaterViscosityPtr => EOSWaterViscosityBatzleAndWang
       EOSWaterViscosityExtPtr => EOSWaterViscosityBatzleAndWangExt
@@ -1703,6 +1706,7 @@ end subroutine EOSWaterDuanMixture
 
 ! ************************************************************************** !
 
+#if 1
 subroutine EOSWaterDensityNaCl(t,p_Pa,xnacl,dnacl_kg_m3)
 
   ! density: Batzle & Wang (1992)
@@ -1737,6 +1741,7 @@ subroutine EOSWaterDensityNaCl(t,p_Pa,xnacl,dnacl_kg_m3)
   dnacl_kg_m3 = dnacl_g_cm3 * 1.d3
   
 end subroutine EOSWaterDensityNaCl
+#endif
 
 ! ************************************************************************** !
 
@@ -1750,8 +1755,8 @@ subroutine EOSWaterViscosityNaCl (t,p_Pa,xnacl,visnacl)
   PetscReal, intent(in) :: p_Pa     ! [Pa]
   PetscReal, intent(in) :: xnacl    ! [-]
   PetscReal, intent(out) :: visnacl ! [Pa-s]
-  
-  
+
+
   PetscReal, save :: a1,a2,a3,b1,b2,b3,c1,c2,c3,c4,wnacl
   PetscReal :: ak,bk,ck
   PetscReal :: beta,betap,betas,betaw
@@ -1786,6 +1791,68 @@ subroutine EOSWaterViscosityNaCl (t,p_Pa,xnacl,visnacl)
   visnacl = mu0*(1.d0 + beta*p_GPa)
 
 end subroutine EOSWaterViscosityNaCl
+
+! ************************************************************************** !
+
+subroutine EOSWaterViscosityKestinExt(T, P, PS, dPS_dT, aux, &
+                                      calculate_derivatives, VW, &
+                                      dVW_dT, dVW_dP, dVW_dPS, ierr)
+
+  !viscosity: Kestin et al. (1981)
+
+  implicit none
+
+  PetscReal, intent(in) :: T   ! C
+  PetscReal, intent(in) :: P   ! Pa
+  PetscReal, intent(in) :: PS  ! Pa
+  PetscReal, intent(in) :: dPS_dT
+  PetscReal, intent(in) :: aux(*)
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: VW ! Pa-s
+  PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
+  PetscErrorCode, intent(out) :: ierr
+
+  PetscReal, save :: a1,a2,a3,b1,b2,b3,c1,c2,c3,c4,wnacl
+  PetscReal :: xnacl    ! [-]
+  PetscReal :: ak,bk,ck
+  PetscReal :: beta,betap,betas,betaw
+  PetscReal :: tt,mnacl,fac,mu0,ms
+  PetscReal :: p_GPa
+
+  data a1,a2,a3 / 3.324d-2, 3.624d-3, -1.879d-4 /
+  data b1,b2,b3 / -3.96d-2, 1.02d-2, -7.02d-4 /
+  data c1,c2,c3,c4 / 1.2378d0, -1.303d-3, 3.06d-6, 2.55d-8 /
+
+  data wnacl / 58.44277d-3 / ! (kg/mol NaCl)
+
+  if (calculate_derivatives) then
+    print *, 'Derivatives not set up in EOSWaterViscosityKestinExt().'
+    stop
+  endif
+
+  !convert pressure to GPa
+  p_GPa = P*1.d-9
+  xnacl = aux(1)
+
+  mnacl = xnacl/(1.d0-xnacl)/wnacl
+
+  tt = 20.d0-t
+  ck = (c1 + (c2 + (c3+c4*tt)*tt)*tt)*tt/(96.d0+t)
+  ak = (a1 + (a2 + a3*mnacl)*mnacl)*mnacl
+  bk = (b1 + (b2 + b3*mnacl)*mnacl)*mnacl
+
+  ms = 6.044d0 + (2.8d-3 + 3.6d-5*t)*t
+  fac = mnacl/ms
+  betaw = -1.297d0 + (5.74d-2 + (-6.97d-4 + (4.47d-6 - 1.05d-8*t)*t)*t)*t
+  betas = 0.545d0 + 2.8d-3 * t - betaw
+  betap = (2.5d0 + (-2.d0 + 0.5d0*fac)*fac)*fac
+  beta = betas*betap + betaw
+
+  mu0 = 1001.74d-6 * 10.d0**(ak + ck*(bk + 1.d0))
+
+  VW = mu0*(1.d0 + beta*p_GPa)
+
+end subroutine EOSWaterViscosityKestinExt
 
 ! ************************************************************************** !
 
@@ -2344,6 +2411,7 @@ subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
   ! Date: 02/08/16
   ! 
   implicit none
+
   PetscReal, intent(in) :: T, P, PS, dPS_dT
   PetscReal, intent(in) :: aux(*)
   PetscBool, intent(in) :: calculate_derivatives

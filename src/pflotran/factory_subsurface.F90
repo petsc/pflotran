@@ -104,6 +104,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   nullify(pm_rt)
   nullify(pm_waste_form)
   nullify(pm_ufd_decay)
+  nullify(pm_auxiliary)
   cur_pm => simulation%process_model_list
   do
     if (.not.associated(cur_pm)) exit
@@ -247,7 +248,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   endif 
   
   if (associated(pm_auxiliary)) then
-    if (StringCompare(pm_auxiliary%ctype,'SALINITY')) then
+    string = 'salinity'
+    if (StringCompare(pm_auxiliary%ctype,string)) then
       if (associated(simulation%rt_process_model_coupler)) then
         auxiliary_process_model_coupler => PMCAuxiliaryCreate()
         simulation%rt_process_model_coupler%peer => auxiliary_process_model_coupler

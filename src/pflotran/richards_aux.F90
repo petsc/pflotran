@@ -281,7 +281,7 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
     pw = global_auxvar%pres(1)
   endif
 
-  if (option%flow%density_depends_on_salinity) then
+  if (.not.option%flow%density_depends_on_salinity) then
     call EOSWaterDensity(global_auxvar%temp,pw,dw_kg,dw_mol, &
                          dw_dp,dw_dt,ierr)
     ! may need to compute dpsat_dt to pass to VISW
@@ -291,7 +291,7 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
                            visl,dvis_dt,dvis_dp,dvis_dpsat,ierr) 
     !geh  dvis_dpsat = -dvis_dp   ! already handled in EOSWaterViscosity
   else
-    aux(1) = global_auxvar%xmass(1)
+    aux(1) = global_auxvar%m_nacl(1)
     call EOSWaterDensityExt(global_auxvar%temp,pw,aux, &
                             dw_kg,dw_mol,dw_dp,dw_dt,ierr)
     call EOSWaterViscosityExt(global_auxvar%temp,pw,sat_pressure,0.d0,aux, &

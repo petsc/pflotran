@@ -205,10 +205,10 @@ subroutine PFLOTRANReadSimulation(simulation,option)
             case('GEOMECHANICS_SUBSURFACE')
               option%geomech_on = PETSC_TRUE
               new_pm => PMGeomechForceCreate()
-            case('SALINITY')
+            case('AUXILIARY')
               option%flow%density_depends_on_salinity = PETSC_TRUE
               new_pm => PMAuxiliaryCreate()
-              string = 'SALINITY'
+              string = name
               call PMAuxiliarySetFunctionPointer(PMAuxiliaryCast(new_pm), &
                                                  string)
             case default
