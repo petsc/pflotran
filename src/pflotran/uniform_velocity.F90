@@ -89,7 +89,7 @@ subroutine UniformVelocityDatasetRead(dataset,input,option)
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word, units
+  character(len=MAXWORDLENGTH) :: word, units, internal_units
   PetscReal :: units_conversion
 
   PetscErrorCode :: ierr
@@ -141,10 +141,12 @@ subroutine UniformVelocityDatasetRead(dataset,input,option)
   enddo
 
   if (len_trim(units) > 1) then
-    units_conversion = UnitsConvertToInternal(units,'length/time',option)
+    internal_units = 'meter/sec'
+    units_conversion = UnitsConvertToInternal(units,internal_units,option)
     dataset%values = dataset%values * units_conversion
-    word = units(index(units,'/')+1:) 
-    units_conversion = UnitsConvertToInternal(word,'time',option)
+    word = units(index(units,'/')+1:)
+    internal_units = 'sec'
+    units_conversion = UnitsConvertToInternal(word,internal_units,option)
     dataset%times = dataset%times * units_conversion
   endif
   

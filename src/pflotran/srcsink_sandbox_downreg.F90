@@ -96,8 +96,8 @@ subroutine DownregRead(this,input,option)
 
   PetscInt :: i
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXSTRINGLENGTH) :: string, units_category
-  character(len=MAXWORDLENGTH) :: units
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: units, internal_units
   type(time_storage_type), pointer :: null_time_storage
   PetscBool :: found
 
@@ -127,21 +127,39 @@ subroutine DownregRead(this,input,option)
     select case(trim(word))
 
       case('RATE')
-        units_category = 'concentration/time'
+        internal_units = 'unitless/sec'
         call ConditionReadValues(input,option,word,this%dataset, &
-                                 units,units_category)
+                                 units,internal_units)
       case('POSITIVE_REG_PRESSURE')
         call InputReadDouble(input,option,this%pressure_max)
-        call InputErrorMsg(input,option,'maximum pressure (Pa)', &
+        call InputErrorMsg(input,option,'maximum pressure', &
           'SOURCE_SINK_SANDBOX,DOWNREG')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'Pa'
+          this%pressure_max = this%pressure_max * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('NEGATIVE_REG_PRESSURE')
         call InputReadDouble(input,option,this%pressure_min)
-        call InputErrorMsg(input,option,'minimum pressure (Pa)', &
+        call InputErrorMsg(input,option,'minimum pressure', &
           'SOURCE_SINK_SANDBOX,DOWNREG')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'Pa'
+          this%pressure_min = this%pressure_min * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('DELTA_REG_PRESSURE')
         call InputReadDouble(input,option,this%pressure_delta)
-        call InputErrorMsg(input,option,'delta pressure (Pa)', &
+        call InputErrorMsg(input,option,'delta pressure', &
           'SOURCE_SINK_SANDBOX,DOWNREG')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'Pa'
+          this%pressure_delta = this%pressure_delta * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
         if (this%pressure_delta <= 1.0d-10) then
           option%io_buffer = 'SRCSINK_SANDBOX,DOWNREG,DELTA_REG_PRESSURE' // &
             ': the pressure delta is too close to 0 Pa.'

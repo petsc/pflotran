@@ -99,6 +99,7 @@ subroutine MineralReadKinetics(mineral,input,option)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: card
+  character(len=MAXWORDLENGTH) :: internal_units
   
   type(mineral_rxn_type), pointer :: cur_mineral
   type(transition_state_rxn_type), pointer :: tstrxn, cur_tstrxn
@@ -155,14 +156,14 @@ subroutine MineralReadKinetics(mineral,input,option)
               endif
               call InputErrorMsg(input,option,'rate',error_string)
               ! read units if they exist
+              internal_units = 'mol/m^2-sec'
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (InputError(input)) then
                 input%err_buf = trim(cur_mineral%name) // ' RATE UNITS'
                 call InputDefaultMsg(input,option)
               else
                 tstrxn%rate = tstrxn%rate * &
-                              UnitsConvertToInternal(word, &
-                              'mass/area-time',option)
+                  UnitsConvertToInternal(word,internal_units,option)
               endif
             case('ACTIVATION_ENERGY')
 !             read activation energy for Arrhenius law
@@ -236,6 +237,7 @@ subroutine MineralReadKinetics(mineral,input,option)
                       prefactor%rate = 10.d0**prefactor%rate
                     endif
                     ! read units if they exist
+                    internal_units = 'mol/m^2-sec'
                     call InputReadWord(input,option,word,PETSC_TRUE)
                     if (InputError(input)) then
                       input%err_buf = trim(cur_mineral%name) // &
@@ -243,17 +245,19 @@ subroutine MineralReadKinetics(mineral,input,option)
                       call InputDefaultMsg(input,option)
                     else
                       prefactor%rate = prefactor%rate * &
-                                       UnitsConvertToInternal(word, &
-                                       'mass/area-time',option)
+                        UnitsConvertToInternal(word,internal_units,option)
                     endif
                   case('ACTIVATION_ENERGY')
                     ! read activation energy for Arrhenius law
-                    call InputReadDouble(input,option,prefactor%activation_energy)
+                    call InputReadDouble(input,option, &
+                                         prefactor%activation_energy)
                     call InputErrorMsg(input,option,'activation',error_string)
                   case('PREFACTOR_SPECIES')
-                    error_string = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR,SPECIES'
+                    error_string = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR,&
+                                   &SPECIES'
                     prefactor_species => TSPrefactorSpeciesCreate()
-                    call InputReadWord(input,option,prefactor_species%name,PETSC_TRUE)
+                    call InputReadWord(input,option,prefactor_species%name, &
+                                       PETSC_TRUE)
                     call InputErrorMsg(input,option,'name',error_string)
                     do
                       call InputReadPflotranString(input,option)

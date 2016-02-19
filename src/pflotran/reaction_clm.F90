@@ -1,7 +1,7 @@
 module CLM_Rxn_Base_class
   
-  ! extended from reaction_sandbox_base to implement demand based down regulation
-  ! for use in CLM_Rxn t6g 10/06/2014 
+  ! extended from reaction_sandbox_base to implement demand based 
+  ! down regulation for use in CLM_Rxn t6g 10/06/2014 
 
   use PFLOTRAN_Constants_module
 
@@ -527,7 +527,7 @@ subroutine CLMDec_Read(this,input,option)
   type(input_type), pointer :: input
   type(option_type) :: option
   
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   
   type(pool_type), pointer :: new_pool, prev_pool
   type(pool_type), pointer :: new_pool_rxn, prev_pool_rxn
@@ -726,6 +726,7 @@ subroutine CLMDec_Read(this,input,option)
               nullify(new_pool_rxn)
 
             case('RATE_CONSTANT')
+              internal_units = 'mol/L-s|1/s|L/mol-s'
               call InputReadDouble(input,option,rate_constant)
               call InputErrorMsg(input,option,'rate constant', &
                      'CHEMISTRY,CLM_RXN,CLMDec,')
@@ -735,10 +736,10 @@ subroutine CLMDec_Read(this,input,option)
                 call InputDefaultMsg(input,option)
               else              
                 rate_constant = rate_constant * &
-                  UnitsConvertToInternal(word, &
-                  'mass/volume-time|unitless/time|volume/mass-time',option)
+                  UnitsConvertToInternal(word,internal_units,option)
               endif
             case('TURNOVER_TIME')
+              internal_units = 'sec'
               call InputReadDouble(input,option,turnover_time)
               call InputErrorMsg(input,option,'turnover time', &
                      'CHEMISTRY,CLM_RXN,CLMDec')
@@ -748,7 +749,7 @@ subroutine CLMDec_Read(this,input,option)
                 call InputDefaultMsg(input,option)
               else              
                 turnover_time = turnover_time * &
-                  UnitsConvertToInternal(word,'time',option)
+                  UnitsConvertToInternal(word,internal_units,option)
               endif
             case default
               call InputKeywordUnrecognized(word, &
@@ -3230,7 +3231,7 @@ subroutine PlantNRead(this,input,option)
   type(option_type) :: option
 
   PetscInt :: i
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   
   do 
     call InputReadPflotranString(input,option)
@@ -3825,7 +3826,7 @@ subroutine NitrRead(this,input,option)
   type(option_type) :: option
 
   PetscInt :: i
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   
   do 
     call InputReadPflotranString(input,option)
@@ -4524,7 +4525,7 @@ subroutine DeniRead(this,input,option)
   type(option_type) :: option
 
   PetscInt :: i
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   
   do 
     call InputReadPflotranString(input,option)

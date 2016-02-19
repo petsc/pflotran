@@ -1456,7 +1456,7 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: card
   character(len=MAXSTRINGLENGTH) :: temp_string
-  character(len=MAXSTRINGLENGTH) :: units_category
+  character(len=MAXWORDLENGTH) :: internal_units
   type(waypoint_type), pointer :: waypoint
   PetscReal :: units_conversion
   PetscReal :: temp_real
@@ -1492,9 +1492,9 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
             call InputReadWord(input,option,word,PETSC_TRUE)
             call InputErrorMsg(input,option,'time increment units', &
                                 'CHECKPOINT,PERIODIC,TIME')
-            units_category = 'time'
+            internal_units = 'sec'
             units_conversion = UnitsConvertToInternal(word, &
-                                units_category,option)
+                                internal_units,option)
             checkpoint_option%tconv = 1/units_conversion
             checkpoint_option%tunit = trim(word)
             checkpoint_option%periodic_time_incr = temp_real*units_conversion
@@ -1510,8 +1510,8 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'time units', &
                             'CHECKPOINT,TIMES')
-        units_category = 'time'
-        units_conversion = UnitsConvertToInternal(word,units_category, &
+        internal_units = 'sec'
+        units_conversion = UnitsConvertToInternal(word,internal_units, &
                                                   option)
         checkpoint_option%tconv = 1/units_conversion
         checkpoint_option%tunit = trim(word)

@@ -41,6 +41,8 @@ for line in mf:
 				filename = '\\' + filename + '.F90'
 				po.write('    <File RelativePath="')
 				po.write(source_path)
+				if filename == '\\pflotran_provenance.F90':
+					filename = '\\pflotran_no_provenance.F90'
 				po.write(filename)
 				po.write('"/>\n')
 			elif line.strip().startswith('# End Source Block'):

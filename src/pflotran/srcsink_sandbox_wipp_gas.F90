@@ -81,7 +81,7 @@ subroutine WIPPGasGenerationRead(this,input,option)
   type(option_type) :: option
 
   PetscInt :: i
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   PetscBool :: found
   
   do 
@@ -100,9 +100,11 @@ subroutine WIPPGasGenerationRead(this,input,option)
     
     select case(trim(word))
       case('INUNDATED_CORROSION_RATE')
+        internal_units = 'unitless/sec'
         call InputReadDouble(input,option,this%inundated_corrosion_rate)
         call InputDefaultMsg(input,option,'inundated_corrosion_rate')
       case('INUNDATED_DEGRADATION_RATE')
+        internal_units = 'unitless/sec'
         call InputReadDouble(input,option,this%inundated_degradation_rate)
         call InputDefaultMsg(input,option,'inundated_degradation_rate')
       case('HUMID_CORROSION_FACTOR')

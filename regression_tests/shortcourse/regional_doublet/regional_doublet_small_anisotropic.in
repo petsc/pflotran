@@ -1,0 +1,454 @@
+#Description: 3D groundwater flow and solute transport
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 10
+END
+
+#=========================== flow mode ========================================
+#CHECKPOINT 1000000
+#RESTART restart.chk
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Tracer
+    Tracer2
+  /
+  OUTPUT
+    TOTAL
+  /
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+END
+
+NEWTON_SOLVER FLOW
+  ITOL_UPDATE 1.d0     ! Convergences with max change in pressure is 1 Pa.
+END
+
+LINEAR_SOLVER FLOW
+END
+
+NEWTON_SOLVER TRANSPORT
+END
+
+LINEAR_SOLVER TRANSPORT
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE STRUCTURED
+  NXYZ 10 5 4
+  BOUNDS
+    0.d0 0.d0 0.d0
+    5000.d0 2500.d0 100.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+
+#=========================== data sets ========================================
+DATASET perm_fieldX
+  FILENAME ./perm_fields_10x5x4.h5
+  HDF5_DATASET_NAME Permeability
+  REALIZATION_DEPENDENT
+/
+
+DATASET perm_fieldY
+  FILENAME ./perm_fields_10x5x4.h5
+  HDF5_DATASET_NAME Permeability
+  REALIZATION_DEPENDENT
+/
+
+DATASET perm_fieldZ
+  FILENAME ./perm_fields_10x5x4.h5
+  HDF5_DATASET_NAME Permeability
+  REALIZATION_DEPENDENT
+/
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 0.5d0
+  CHARACTERISTIC_CURVES cc1
+  PERMEABILITY
+    PERM_X 1.d-10
+    PERM_Y 1.d-10
+    PERM_Z 1.d-11
+  /
+END
+
+MATERIAL_PROPERTY soil2
+  ID 2
+  POROSITY 0.35d0
+  TORTUOSITY 0.5d0
+  CHARACTERISTIC_CURVES cc1
+  PERMEABILITY
+    ANISOTROPIC
+    DATASET perm_field
+  /
+END
+
+MATERIAL_PROPERTY soil3
+  ID 3
+  POROSITY 0.25d0
+  TORTUOSITY 0.5d0
+  CHARACTERISTIC_CURVES cc1
+  PERMEABILITY
+    PERM_X 5.d-11
+    PERM_Y 5.d-11
+    PERM_Z 5.d-12
+  /
+END
+
+MATERIAL_PROPERTY soil4
+  ID 4
+  POROSITY 0.2d0
+  TORTUOSITY 0.5d0
+  CHARACTERISTIC_CURVES cc1
+  PERMEABILITY
+    PERM_X 1.d-10
+    PERM_Y 1.d-10
+    PERM_Z 1.d-11
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA  1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    MAX_CAPILLARY_PRESSURE 1.d8
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+skip
+  TIMES y 1.25 1.5 1.75
+  PERIODIC TIME 1. y
+  PERIODIC_OBSERVATION TIMESTEP 1
+  FORMAT TECPLOT BLOCK
+  FORMAT HDF5
+  PRINT_COLUMN_IDS
+  VELOCITY_AT_CENTER
+noskip
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 2.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d-2 d
+  MAXIMUM_TIMESTEP_SIZE 0.1 y        ! produces CFL ~<= 1.
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    5000.d0 2500.d0 100.d0
+  /
+END
+
+REGION layer1
+  COORDINATES
+    0.d0 0.d0 0.d0
+    5000.d0 2500.d0 25.d0
+  /
+END
+
+REGION layer2
+  COORDINATES
+    0.d0 0.d0 25.d0
+    5000.d0 2500.d0 50.d0
+  /
+END
+
+REGION layer3
+  COORDINATES
+    0.d0 0.d0 50.d0
+    5000.d0 2500.d0 75.d0
+  /
+END
+
+REGION layer4
+  COORDINATES
+    0.d0 0.d0 75.d0
+    5000.d0 2500.d0 100.d0
+  /
+END
+
+REGION west
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 2500.d0 100.d0
+  /
+  FACE WEST
+END
+
+REGION east
+  COORDINATES
+    5000.d0 0.d0 0.d0
+    5000.d0 2500.d0 100.d0
+  /
+  FACE EAST
+END
+
+REGION top
+  COORDINATES
+    0.d0 0.d0 100.d0
+    5000.d0 2500.d0 100.d0
+  /
+  FACE TOP
+END
+
+REGION injection_well
+  COORDINATES
+    1250.d0 1250.d0 20.d0
+    1250.d0 1250.d0 65.d0
+  /
+END
+
+REGION extraction_well
+  COORDINATES
+    3750.d0 1250.d0 20.d0
+    3750.d0 1250.d0 55.d0
+  /
+END
+
+REGION Obs_pt_center
+  COORDINATE 2500.d0 1250.d0 60.d0
+END
+
+REGION Obs_pt_center_lower
+  COORDINATE 2500.d0 1250.d0 40.d0
+END
+
+REGION Obs_pt_west
+  COORDINATE 1875.d0 1250.d0 60.d0
+END
+
+REGION Obs_pt_east
+  COORDINATE 3125.d0 1250.d0 60.d0
+END
+
+REGION Obs_pt_north
+  COORDINATE 2500.d0 1875.d0 60.d0
+END
+
+REGION Obs_pt_south
+  COORDINATE 2500.d0 625.d0 60.d0
+END
+
+#=========================== observation points ===============================
+OBSERVATION
+  REGION Obs_pt_center
+  AT_CELL_CENTER
+  VELOCITY
+END
+
+OBSERVATION
+  REGION Obs_pt_center_lower
+  AT_CELL_CENTER
+  VELOCITY
+END
+
+OBSERVATION
+  REGION Obs_pt_west
+  AT_CELL_CENTER
+  VELOCITY
+END
+
+OBSERVATION
+  REGION Obs_pt_east
+  AT_CELL_CENTER
+  VELOCITY
+END
+
+OBSERVATION
+  REGION Obs_pt_south
+  AT_CELL_CENTER
+  VELOCITY
+END
+
+OBSERVATION
+  REGION Obs_pt_north
+  AT_CELL_CENTER
+  VELOCITY
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE HYDROSTATIC
+  /
+  INTERPOLATION LINEAR
+  DATUM 0.d0 0.d0 90.d0
+  GRADIENT
+    PRESSURE -0.002 0. 0.
+  /
+  PRESSURE 101325.d0
+END
+
+FLOW_CONDITION river
+  TYPE
+    PRESSURE SEEPAGE
+  /
+  INTERPOLATION LINEAR
+  CYCLIC
+  DATUM FILE ./river_stage.txt
+  PRESSURE 101325.d0
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    FLUX NEUMANN
+  /
+  FLUX LIST
+    TIME_UNITS yr
+    DATA_UNITS cm/yr
+    0.d0 25.d0
+    1.d0 23.d0
+    2.d0 27.d0
+    3.d0 22.d0
+    4.d0 24.d0
+    5.d0 29.d0
+  /
+END
+
+FLOW_CONDITION injection
+  TYPE
+    RATE SCALED_VOLUMETRIC_RATE NEIGHBOR_PERM
+  /
+  RATE 1.d5 m^3/day
+END
+
+FLOW_CONDITION extraction
+  TYPE
+    RATE SCALED_VOLUMETRIC_RATE NEIGHBOR_PERM
+  /
+  RATE -1.d5 m^3/day
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE DIRICHLET_ZERO_GRADIENT
+  CONSTRAINT initial
+    CONCENTRATIONS
+      Tracer  1.d-10 T
+      Tracer2 1.d-10 T
+    /
+  /
+END
+
+TRANSPORT_CONDITION west
+  TYPE DIRICHLET_ZERO_GRADIENT
+  CONSTRAINT west
+    CONCENTRATIONS
+      Tracer  1.d-10 T
+      Tracer2 1.d0   T
+    /
+  /
+END
+
+TRANSPORT_CONDITION injection
+  TYPE DIRICHLET_ZERO_GRADIENT
+  CONSTRAINT injection
+    CONCENTRATIONS
+      Tracer  1.d0   T
+      Tracer2 1.d-10 T
+    /
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+# west boundary condition
+BOUNDARY_CONDITION west
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION west
+  REGION west
+END
+
+# east boundary condition
+BOUNDARY_CONDITION east
+  FLOW_CONDITION river
+  TRANSPORT_CONDITION initial
+  REGION east
+END
+
+# top boundary condition
+BOUNDARY_CONDITION top
+  FLOW_CONDITION recharge
+  TRANSPORT_CONDITION initial
+  REGION top
+END
+
+# source
+SOURCE_SINK injection_well
+  FLOW_CONDITION injection
+  TRANSPORT_CONDITION injection
+  REGION injection_well
+END
+
+# sink
+SOURCE_SINK extraction_well
+  FLOW_CONDITION extraction
+  TRANSPORT_CONDITION initial
+  REGION extraction_well
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION layer1
+  MATERIAL soil1
+END
+
+STRATA
+  REGION layer2
+  MATERIAL soil2
+END
+
+STRATA
+  REGION layer3
+  MATERIAL soil3
+END
+
+STRATA
+  REGION layer4
+  MATERIAL soil4
+END
+
+END_SUBSURFACE

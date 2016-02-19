@@ -82,7 +82,7 @@ subroutine WastePackageRead(this,input,option)
   type(option_type) :: option
 
   PetscInt :: i
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   
   do 
     call InputReadPflotranString(input,option)
@@ -133,8 +133,9 @@ subroutine WastePackageRead(this,input,option)
           call InputDefaultMsg(input,option)
         else              
           ! If units exist, convert to internal units of 1/s
+          internal_units = 'unitless/sec'
           this%rate_constant = this%rate_constant * &
-            UnitsConvertToInternal(word,'unitless/time',option)
+            UnitsConvertToInternal(word,internal_units,option)
         endif
       case default
         call InputKeywordUnrecognized(word, &

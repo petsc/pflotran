@@ -141,7 +141,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: simulation_type
-  character(len=MAXSTRINGLENGTH) :: units_category  
+  character(len=MAXWORDLENGTH) :: internal_units  
   
   class(pm_base_type), pointer :: pm_master
   class(pm_base_type), pointer :: cur_pm
@@ -241,16 +241,16 @@ subroutine PFLOTRANReadSimulation(simulation,option)
         option%io_buffer = 'The RESTART card within SUBSURFACE block has &
                            &been deprecated.'
         option%restart_flag = PETSC_TRUE
-        call InputReadNChars(input,option,option%restart_filename,MAXSTRINGLENGTH, &
-                             PETSC_TRUE)
+        call InputReadNChars(input,option,option%restart_filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'RESTART','Restart file name') 
         call InputReadDouble(input,option,option%restart_time)
         if (input%ierr == 0) then
           call InputReadWord(input,option,word,PETSC_TRUE)
           if (input%ierr == 0) then
-            units_category = 'time'
+            internal_units = 'sec'
             option%restart_time = option%restart_time* &
-                                  UnitsConvertToInternal(word,units_category,option)
+              UnitsConvertToInternal(word,internal_units,option)
           else
             call InputDefaultMsg(input,option,'RESTART, time units')
           endif

@@ -135,15 +135,17 @@ subroutine ReactionReadPass1(reaction,input,option)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: card
+  character(len=MAXWORDLENGTH) :: internal_units
   type(aq_species_type), pointer :: species, prev_species
   type(gas_species_type), pointer :: gas, prev_gas
-  type(immobile_species_type), pointer :: immobile_species, prev_immobile_species
+  type(immobile_species_type), pointer :: immobile_species
+  type(immobile_species_type), pointer :: prev_immobile_species
   type(colloid_type), pointer :: colloid, prev_colloid
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
   type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
-  type(radioactive_decay_rxn_type), pointer :: radioactive_decay_rxn, &
-                                               prev_radioactive_decay_rxn
+  type(radioactive_decay_rxn_type), pointer :: radioactive_decay_rxn
+  type(radioactive_decay_rxn_type), pointer :: prev_radioactive_decay_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
   type(kd_rxn_type), pointer :: sec_cont_kd_rxn, sec_cont_prev_kd_rxn
   PetscInt :: i, temp_int
@@ -196,7 +198,8 @@ subroutine ReactionReadPass1(reaction,input,option)
           
           species => AqueousSpeciesCreate()
           call InputReadWord(input,option,species%name,PETSC_TRUE)  
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,PRIMARY_SPECIES')    
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,&
+                             &PRIMARY_SPECIES')    
           if (.not.associated(reaction%primary_species_list)) then
             reaction%primary_species_list => species
             species%id = 1
@@ -219,7 +222,8 @@ subroutine ReactionReadPass1(reaction,input,option)
           
           species => AqueousSpeciesCreate()
           call InputReadWord(input,option,species%name,PETSC_TRUE)  
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,SECONDARY_SPECIES')
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,&
+                             &SECONDARY_SPECIES')
           if (.not.associated(reaction%secondary_species_list)) then
             reaction%secondary_species_list => species
             species%id = 1
@@ -313,31 +317,33 @@ subroutine ReactionReadPass1(reaction,input,option)
               call InputErrorMsg(input,option,'reaction', &
                                'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
             case('RATE_CONSTANT')
+              internal_units = 'unitless/sec'
               call InputReadDouble(input,option, &
                                    radioactive_decay_rxn%rate_constant)
               call InputErrorMsg(input,option,'rate constant', &
-                               'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
+                'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,RATE_CONSTANT') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (InputError(input)) then
                 call InputDefaultMsg(input,option, &
-                                  'RADIOACTIVE_DECAY_RXN RATE_CONSTANT UNITS')
+                  'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,RATE_CONSTANT UNITS')
               else
                 radioactive_decay_rxn%rate_constant = &
-                  UnitsConvertToInternal(word,'unknown/time',option) * &
+                  UnitsConvertToInternal(word,internal_units,option) * &
                   radioactive_decay_rxn%rate_constant
               endif
             case('HALF_LIFE')
+              internal_units = 'sec'
               call InputReadDouble(input,option, &
                                    radioactive_decay_rxn%half_life)
               call InputErrorMsg(input,option,'half life', &
-                               'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
+                'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,HALF_LIFE') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (InputError(input)) then
                 call InputDefaultMsg(input,option, &
-                                     'RADIOACTIVE_DECAY_RXN HALF_LIFE UNITS')
+                  'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,HALF_LIFE UNITS')
               else
                 radioactive_decay_rxn%half_life = &
-                  UnitsConvertToInternal(word,'time',option) * &
+                  UnitsConvertToInternal(word,internal_units,option) * &
                   radioactive_decay_rxn%half_life
               endif
               ! convert half life to rate constant
@@ -345,8 +351,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                 -1.d0*log(0.5d0)/radioactive_decay_rxn%half_life
             case default
               call InputKeywordUnrecognized(word, &
-                                          'CHEMISTRY,IMMOBILE_DECAY_REACTION', &
-                                            option)
+                'CHEMISTRY,IMMOBILE_DECAY_REACTION',option)
           end select
         enddo   
         if (Uninitialized(radioactive_decay_rxn%rate_constant)) then

@@ -184,6 +184,7 @@ subroutine StrataRead(strata,input,option)
   character(len=MAXWORDLENGTH) :: keyword
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: internal_units
 
   input%ierr = 0
 
@@ -212,19 +213,21 @@ subroutine StrataRead(strata,input,option)
         call InputReadDouble(input,option,strata%start_time)
         call InputErrorMsg(input,option,'start time','STRATA')
         ! read units, if present
+        internal_units = 'sec'
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
           strata%start_time = strata%start_time * &
-                              UnitsConvertToInternal(word,'time',option)
+                              UnitsConvertToInternal(word,internal_units,option)
         endif
       case('FINAL_TIME')
         call InputReadDouble(input,option,strata%final_time)
         call InputErrorMsg(input,option,'final time','STRATA')
         ! read units, if present
+        internal_units = 'sec'
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
           strata%final_time = strata%final_time * &
-                              UnitsConvertToInternal(word,'time',option)
+                              UnitsConvertToInternal(word,internal_units,option)
         endif
       case('INACTIVE')
         strata%active = PETSC_FALSE
