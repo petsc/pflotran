@@ -172,6 +172,8 @@ module EOS_Water_module
   interface EOSWaterDensityExt
     procedure EOSWaterDensityExtNoDerive
     procedure EOSWaterDensityExtDerive
+!geh: very useful for debuggin
+!    procedure EOSWaterDensityExtNumericalDerive
   end interface
   interface EOSWaterEnthalpyExt
     procedure EOSWaterEnthalpyExtNoDerive
@@ -529,6 +531,7 @@ end subroutine EOSWaterDensityNoDerive
 ! ************************************************************************** !
 
 subroutine EOSWaterDensityDerive(t,p,dw,dwmol,dwp,dwt,ierr)
+
   implicit none
 
   PetscReal, intent(in) :: t
@@ -2210,6 +2213,7 @@ subroutine EOSWaterDensityBatzleAndWang(tin, pin, calculate_derivatives, &
   PetscErrorCode, intent(out) :: ierr
   
   PetscReal, parameter :: g_cm3_to_kg_m3 = 1.d3
+  PetscReal, parameter :: Pa_to_MPa = 1.d-6
   PetscReal :: t ! temperature in Celcius
   PetscReal :: t_sq, t_cub
   PetscReal :: p_MPa, p_MPa_sq
@@ -2217,7 +2221,7 @@ subroutine EOSWaterDensityBatzleAndWang(tin, pin, calculate_derivatives, &
   t = tin
   t_sq = t*t
   t_cub = t*t_sq
-  p_MPa = pin*1.d-6
+  p_MPa = pin*Pa_to_MPa
   p_MPa_sq = p_MPa*p_MPa
   
   ! temperature is in C and pressure in MPa
@@ -2233,10 +2237,12 @@ subroutine EOSWaterDensityBatzleAndWang(tin, pin, calculate_derivatives, &
   if (calculate_derivatives) then
     dwp = 1.d-6*(489.d0 - 2.d0*t + 1.6d-2*t_sq - 1.3d-5*t_cub - &
                  6.66d-1*p_MPa - 4.d-3*t*p_MPa) *  &
-          g_cm3_to_kg_m3
+          g_cm3_to_kg_m3/FMWH2O
+    ! convert from kmol/m^3-MPa to kmol/m^3-Pa
+    dwp = dwp*Pa_to_MPa
     dwt = 1.d-6*(-80.d0 - 6.6d0*t + 5.25d-3*t_sq - 2.d0*p_MPa + &
                  3.2d-2*t*p_MPa - 3.9d-5*t_sq*p_MPa - 2.d-3*p_MPa_sq) * &
-          g_cm3_to_kg_m3
+          g_cm3_to_kg_m3/FMWH2O
   else
     dwp = 0.d0
     dwt = 0.d0
@@ -2272,12 +2278,13 @@ subroutine EOSWaterDensityBatzleAndWangExt(tin, pin, aux, &
   PetscErrorCode, intent(out) :: ierr
   
   PetscReal, parameter :: g_cm3_to_kg_m3 = 1.d3
+  PetscReal, parameter :: Pa_to_MPa = 1.d-6
   PetscReal :: t_C ! temperature in Celcius
   PetscReal :: p_MPa
   PetscReal :: s
   
   t_C = tin
-  p_MPa = pin*1.d-6
+  p_MPa = pin*Pa_to_MPa
   s = aux(1)
   
   call EOSWaterDensityPtr(tin, pin, calculate_derivatives, &
@@ -2295,13 +2302,15 @@ subroutine EOSWaterDensityBatzleAndWangExt(tin, pin, aux, &
   dwmol = dw/FMWH2O ! kmol/m^3 
   
   if (calculate_derivatives) then
+        ! v - this dwp is in the correct units of kmol/m^3-Pa
     dwp = dwp + &
           s*(1.d-6*(300.d0 - 2400.d0*s + t_C*(-13.d0 + 47.d0*s))) * &
-          g_cm3_to_kg_m3
+                                 ! v - convert from kmol/m^3-MPa to kmol/m^3-Pa
+          g_cm3_to_kg_m3/FMWH2O*Pa_to_MPa
     dwt = dwt + &
           s*(1.d-6*(80.d0 + 6.d0*t_C - 3300.d0*s - 13.d0*p_MPa + &
                     47.d0*p_Mpa*s)) * &
-          g_cm3_to_kg_m3
+          g_cm3_to_kg_m3/FMWH2O
   else
     dwp = 0.d0
     dwt = 0.d0
@@ -2501,4 +2510,69 @@ subroutine TestEOSWaterBatzleAndWang()
   
 end subroutine TestEOSWaterBatzleAndWang
 
+! ************************************************************************** !
+
+subroutine EOSWaterDensityExtNumericalDerive(t,p,aux,dw,dwmol,dwp,dwt,ierr)
+
+  implicit none
+
+  PetscReal, intent(in) :: t     ! Temperature in centigrade
+  PetscReal, intent(in) :: p     ! Pressure in Pascal
+  PetscReal, intent(in) :: aux(*)
+  PetscReal, intent(out) :: dw ! kg/m^3
+  PetscReal, intent(out) :: dwmol ! kmol/m^3
+  PetscReal, intent(out) :: dwp ! kmol/m^3-Pa
+  PetscReal, intent(out) :: dwt ! kmol/m^3-C
+  PetscErrorCode, intent(out) :: ierr
+
+  PetscReal :: dwp_analytical, dwt_analytical
+  PetscReal :: dwp_numerical, dwt_numerical
+  PetscReal :: dw_no_salt, dwp_no_salt, dwt_no_salt
+  PetscReal :: dum1, dum2, dum3
+  PetscReal :: dwmol_tpert, dwmol_ppert
+  PetscReal :: tpert, ppert, t_plus_tpert, p_plus_ppert
+  PetscReal :: salinity(1)
+  PetscReal :: pert_tol = 1.d-6
+  
+  tpert = t*pert_tol
+  ppert = p*pert_tol
+  t_plus_tpert = t + tpert
+  p_plus_ppert = p + ppert
+  salinity(1) = aux(1)
+
+#if 0 
+  ! test against non-extended version
+  call EOSWaterDensityPtr(t,p,PETSC_TRUE,dw,dwmol,dwp_analytical, &
+                          dwt_analytical,ierr)
+  dwp = dwp_analytical
+  dwt = dwt_analytical
+#else
+  call EOSWaterDensityExtPtr(t,p,salinity,PETSC_TRUE, &
+                             dw,dwmol,dwp_analytical,dwt_analytical,ierr)
+  dwp = dwp_analytical
+  dwt = dwt_analytical
+  call EOSWaterDensityExtPtr(t_plus_tpert,p,salinity,PETSC_FALSE, &
+                             dum1,dwmol_tpert,dum2,dum3,ierr)
+  call EOSWaterDensityExtPtr(t,p_plus_ppert,salinity,PETSC_FALSE, &
+                             dum1,dwmol_ppert,dum2,dum3,ierr)
+
+  dwp_numerical = (dwmol_ppert-dwmol)/ppert
+  dwt_numerical = (dwmol_tpert-dwmol)/tpert
+
+  if (.not.PETSC_TRUE) then
+    dwp = dwp_numerical
+    dwt = dwt_numerical
+  else
+    dwp = dwp_analytical
+    dwt = dwt_analytical
+  endif
+
+  if (dabs((dwp_numerical-dwp_analytical)/dwp_numerical) > 1.d-4) then
+    print *, p, t, salinity(1), dw, dwmol, dwp, dwp_analytical, dwp_numerical
+  endif
+#endif
+  
+end subroutine EOSWaterDensityExtNumericalDerive
+
+! ************************************************************************** !
 end module EOS_Water_module

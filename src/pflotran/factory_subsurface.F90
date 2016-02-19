@@ -249,7 +249,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   
   if (associated(pm_auxiliary)) then
     string = 'salinity'
-    if (StringCompare(pm_auxiliary%ctype,string)) then
+    if (StringCompareIgnoreCase(pm_auxiliary%ctype,string)) then
       if (associated(simulation%rt_process_model_coupler)) then
         auxiliary_process_model_coupler => PMCAuxiliaryCreate()
         simulation%rt_process_model_coupler%peer => auxiliary_process_model_coupler
