@@ -141,6 +141,7 @@ subroutine PMAuxiliaryRead(input, option, this)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscInt :: i
+  PetscReal :: tempreal
 
   error_string = 'SIMULATION,PROCESS_MODELS,AUXILIARY'
   call InputReadWord(input,option,word,PETSC_FALSE)
@@ -176,9 +177,14 @@ subroutine PMAuxiliaryRead(input, option, this)
             call InputReadWord(input,option,this%salinity% &
                                  species_names(i),PETSC_TRUE)
             call InputErrorMsg(input,option,'species_name',error_string)
-            call InputReadDouble(input,option,this%salinity% &
-                                   molecular_weights(i))
-            call InputErrorMsg(input,option,'molecular weight',error_string)
+            call InputReadDouble(input,option,tempreal)
+            if (input%ierr == 0) then
+              this%salinity%molecular_weights(i) = tempreal
+            else
+              ! for now let's print an error message.  Decide on whether to
+              ! read from database later.
+              call InputErrorMsg(input,option,'molecular weight',error_string)
+            endif
           case default
             error_string = trim(error_string) // 'SALINITY'
             call InputKeywordUnrecognized(word,error_string,option)
