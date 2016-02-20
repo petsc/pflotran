@@ -16,11 +16,19 @@ module PM_Auxiliary_class
     class(realization_subsurface_type), pointer :: realization
     class(communicator_type), pointer :: comm1
     character(len=MAXWORDLENGTH) :: ctype
+    type(pm_auxiliary_salinity_type), pointer :: salinity
     procedure(PMAuxliaryEvaluate), pointer :: Evaluate => null()
   contains
     procedure, public :: InitializeRun => PMAuxiliaryInitializeRun
     procedure, public :: Destroy => PMAuxiliaryDestroy
   end type pm_auxiliary_type
+
+  type :: pm_auxiliary_salinity_type
+    PetscInt :: nspecies
+    character(len=MAXWORDLENGTH) :: species_names(6)
+    PetscInt :: ispecies(6)
+    PetscReal :: molecular_weights(6)
+  end type pm_auxiliary_salinity_type
   
   ! interface blocks
   interface
@@ -36,6 +44,7 @@ module PM_Auxiliary_class
   public :: PMAuxiliaryCreate, &
             PMAuxiliaryInit, &
             PMAuxiliaryCast, &
+            PMAuxiliaryRead, &
             PMAuxiliarySetFunctionPointer
   
 contains
@@ -78,6 +87,7 @@ subroutine PMAuxiliaryInit(this)
 
   nullify(this%realization)
   nullify(this%comm1)
+  nullify(this%salinity)
   this%ctype = ''
   
   call PMBaseInit(this)
@@ -113,6 +123,78 @@ end function PMAuxiliaryCast
 
 ! ************************************************************************** !
 
+subroutine PMAuxiliaryRead(input, option, this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 06/11/13
+  !
+  use Input_Aux_module
+  use Option_module
+  use String_module
+
+  implicit none
+
+  type(input_type), pointer :: input
+  type(option_type), pointer :: option
+  class(pm_auxiliary_type), pointer :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  PetscInt :: i
+
+  error_string = 'SIMULATION,PROCESS_MODELS,AUXILIARY'
+  call InputReadWord(input,option,word,PETSC_FALSE)
+  call InputErrorMsg(input,option,'type',error_string)
+  call StringToUpper(word)
+  error_string = trim(error_string) // ',' // trim(word)
+
+  this%ctype = word
+  select case(word)
+    case('SALINITY')
+      option%flow%density_depends_on_salinity = PETSC_TRUE
+      allocate(this%salinity)
+      this%salinity%nspecies = 0
+      this%salinity%species_names = ''
+      this%salinity%ispecies = UNINITIALIZED_INTEGER
+      this%salinity%molecular_weights = UNINITIALIZED_DOUBLE
+      i = 0
+      word = ''
+      do
+        call InputReadPflotranString(input,option)
+        if (InputCheckExit(input,option)) exit
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword',error_string)
+        call StringToUpper(word)
+        select case(word)
+          case('SPECIES')
+            i = i + 1
+            if (i > 6) then
+              option%io_buffer = 'Email pflotran-dev@googlegroups.com and ask &
+                &for the maximum number of salinity species to be increased.'
+              call printErrMsg(option)
+            endif
+            call InputReadWord(input,option,this%salinity% &
+                                 species_names(i),PETSC_TRUE)
+            call InputErrorMsg(input,option,'species_name',error_string)
+            call InputReadDouble(input,option,this%salinity% &
+                                   molecular_weights(i))
+            call InputErrorMsg(input,option,'molecular weight',error_string)
+          case default
+            error_string = trim(error_string) // 'SALINITY'
+            call InputKeywordUnrecognized(word,error_string,option)
+        end select
+      enddo
+      this%salinity%nspecies = i
+    case default
+      call InputKeywordUnrecognized(word,error_string,option)
+  end select
+
+  call PMAuxiliarySetFunctionPointer(this,this%ctype)
+
+end subroutine PMAuxiliaryRead
+
+! ************************************************************************** !
+
 subroutine PMAuxiliarySetFunctionPointer(this,string)
   ! 
   ! Initializes auxiliary process model
@@ -125,7 +207,7 @@ subroutine PMAuxiliarySetFunctionPointer(this,string)
   implicit none
   
   class(pm_auxiliary_type) :: this
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=*) :: string
 
   this%ctype = trim(string)
   select case(string)
@@ -150,18 +232,31 @@ recursive subroutine PMAuxiliaryInitializeRun(this)
   ! Author: Glenn Hammond
   ! Date: 02/10/16 
 
+  use Reaction_Aux_module
+
   implicit none
 
   class(pm_auxiliary_type) :: this
   
   PetscReal :: time
+  PetscInt :: i
   PetscErrorCode :: ierr
   
   time = 0.d0
   select case(this%ctype)
     case('EVOLVING_STRATA')
     case('SALINITY')
-      
+      ! set up species names
+      do i =1, this%salinity%nspecies
+        this%salinity%ispecies(i) = &
+          GetPrimarySpeciesIDFromName(this%salinity%species_names(i), &
+                                      this%realization%patch%reaction, &
+                                      this%option) 
+        if (Uninitialized(this%salinity%molecular_weights(i))) then
+          this%salinity%molecular_weights(i) = this%realization%patch% &
+            reaction%primary_spec_molar_wt(this%salinity%ispecies(i))
+        endif
+      enddo
       call this%Evaluate(time,ierr)
   end select  
 
@@ -207,26 +302,12 @@ subroutine PMAuxiliarySalinity(this,time,ierr)
   PetscReal :: time
   PetscErrorCode :: ierr
   
-  PetscReal, parameter :: FMWNA = 22.989769d0
-  PetscReal, parameter :: FMWCL = 35.4527d0
-  PetscReal, parameter :: FMWNACL = FMWNA + FMWCL
-  PetscInt i, j, nacl_id, na_id, cl_id
-  PetscReal :: M_na, M_cl, M_h2o, xnacl
+  PetscInt :: ghosted_id, i, j, ispecies
+  PetscReal :: sum_mass_species, xnacl, mass_h2o
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
   PetscInt, parameter :: iphase = 1
     
-  na_id = 0
-  cl_id = 0
-  nacl_id = 0
-  M_na = 0.d0
-  M_cl = 0.d0
-  if (associated(this%realization%reaction%species_idx)) then
-    na_id = this%realization%reaction%species_idx%na_ion_id
-    cl_id = this%realization%reaction%species_idx%cl_ion_id
-  else
-    nacl_id = 1
-  endif
   do j = 1, 2
     if (j == 1) then
       rt_auxvars => this%realization%patch%aux%RT%auxvars
@@ -235,17 +316,18 @@ subroutine PMAuxiliarySalinity(this,time,ierr)
       rt_auxvars => this%realization%patch%aux%RT%auxvars_bc
       global_auxvars => this%realization%patch%aux%Global%auxvars_bc
     endif
-    do i = 1, size(rt_auxvars)
-                                                   ! mol/L * g/mol = g/L and
-      if (nacl_id > 0) then                        !   g/L => kg/m^3
-        M_na = rt_auxvars(i)%total(nacl_id,iphase)*FMWNACL 
-      else
-        M_na = rt_auxvars(i)%total(na_id,iphase)*FMWNA
-        M_cl = rt_auxvars(i)%total(cl_id,iphase)*FMWCL
-      endif
-      M_h2o = global_auxvars(i)%den_kg(iphase)  ! kg/m^3
-      xnacl = (M_na + M_cl) / (M_na + M_cl + M_h2o)
-      global_auxvars(i)%m_nacl(iphase) = xnacl
+    do ghosted_id = 1, size(rt_auxvars)
+      sum_mass_species = 0.d0
+      do i = 1, this%salinity%nspecies
+        ispecies = this%salinity%ispecies(i)
+        sum_mass_species = sum_mass_species + &
+          rt_auxvars(ghosted_id)%total(ispecies,iphase)* &
+          this%salinity%molecular_weights(i) ! mol/L * g/mol = g/L and
+                                             !   g/L => kg/m^3
+      enddo
+      mass_h2o = global_auxvars(ghosted_id)%den_kg(iphase)  ! kg/m^3
+      xnacl = sum_mass_species / (sum_mass_species + mass_h2o)
+      global_auxvars(ghosted_id)%m_nacl(iphase) = xnacl
     enddo
   enddo
   
@@ -267,6 +349,11 @@ subroutine PMAuxiliaryDestroy(this)
   ! destroyed in realization
   nullify(this%realization)
   nullify(this%comm1)
+
+  if (associated(this%salinity)) then
+    deallocate(this%salinity)
+    nullify(this%salinity)
+  endif
   
 end subroutine PMAuxiliaryDestroy
 

@@ -206,11 +206,9 @@ subroutine PFLOTRANReadSimulation(simulation,option)
               option%geomech_on = PETSC_TRUE
               new_pm => PMGeomechForceCreate()
             case('AUXILIARY')
-              option%flow%density_depends_on_salinity = PETSC_TRUE
               new_pm => PMAuxiliaryCreate()
-              string = name
-              call PMAuxiliarySetFunctionPointer(PMAuxiliaryCast(new_pm), &
-                                                 string)
+              input%buf = name
+              call PMAuxiliaryRead(input,option,PMAuxiliaryCast(new_pm))
             case default
               call InputKeywordUnrecognized(word, &
                      'SIMULATION,PROCESS_MODELS',option)            
