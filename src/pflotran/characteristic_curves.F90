@@ -1096,9 +1096,6 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
           case('OIL_RESIDUAL_SATURATION') 
             call InputReadDouble(input,option,rpf%Sro)
             call InputErrorMsg(input,option,'Sro',error_string)
-          case('LIQUID_RESIDUAL_SATURATION','WATER_RESIDUAL_SATURATION') 
-            call InputReadDouble(input,option,rpf%Sr)
-            call InputErrorMsg(input,option,'Sr',error_string)
           case('GAS_RESIDUAL_SATURATION') 
             call InputReadDouble(input,option,rpf%Srg)
             call InputErrorMsg(input,option,'Srg',error_string)
@@ -1118,9 +1115,6 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
           case('OIL_RESIDUAL_SATURATION') 
             call InputReadDouble(input,option,rpf%Sro)
             call InputErrorMsg(input,option,'Sro',error_string)
-          case('LIQUID_RESIDUAL_SATURATION','WATER_RESIDUAL_SATURATION') 
-            call InputReadDouble(input,option,rpf%Sr)
-            call InputErrorMsg(input,option,'Sr',error_string)
           case('GAS_RESIDUAL_SATURATION') 
             call InputReadDouble(input,option,rpf%Srg)
             call InputErrorMsg(input,option,'Srg',error_string)
@@ -5566,6 +5560,7 @@ recursive subroutine CharacteristicCurvesDestroy(cc)
   call CharacteristicCurvesDestroy(cc%next)
   
   call SaturationFunctionDestroy(cc%saturation_function)
+
   ! the liquid and gas relative permeability pointers may pointer to the
   ! same address. if so, destroy one and nullify the other.
   if (associated(cc%liq_rel_perm_function,cc%gas_rel_perm_function)) then
@@ -5581,7 +5576,7 @@ recursive subroutine CharacteristicCurvesDestroy(cc)
     call PermeabilityFunctionDestroy(cc%gas_rel_perm_function)
     !call PermeabilityFunctionDestroy(cc%oil_rel_perm_function)
   endif
-  
+
   deallocate(cc)
   nullify(cc)
   
