@@ -122,6 +122,10 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
           case (EXPLICIT_UNSTRUCTURED_GRID)
             if (option%print_explicit_primal_grid) then
               call OutputHDF5UGridXDMFExplicit(realization_base,INSTANTANEOUS_VARS)
+            else
+              call printErrMsg(option,'HDF5 output requested for an ' // &
+                   'explicit unstructured grid, but primal grid information is ' // &
+                   'unavailable in input mesh')
             endif
           case (IMPLICIT_UNSTRUCTURED_GRID)
             call OutputHDF5UGridXDMF(realization_base,INSTANTANEOUS_VARS)
