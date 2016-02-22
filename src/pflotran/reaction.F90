@@ -174,6 +174,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   reaction_sandbox_read = PETSC_FALSE
   reaction_clm_read = PETSC_FALSE
   
+  kd_units = ''
   srfcplx_count = 0
   input%ierr = 0
   do
@@ -677,7 +678,18 @@ subroutine ReactionReadPass1(reaction,input,option)
                   sec_cont_prev_kd_rxn => sec_cont_kd_rxn
                   nullify(sec_cont_kd_rxn)
                 endif
-                
+
+                if (len_trim(kd_units) > 0) then
+                  if (len_trim(kd_rxn%kd_mineral_name) > 0) then
+                    internal_units = 'L/kg'
+                    kd_rxn%Kd = kd_rxn%Kd * &
+                      UnitsConvertToInternal(kd_units,internal_units,option)
+                  else
+                    internal_units = 'kg/m^3'
+                    kd_rxn%Kd = kd_rxn%Kd * &
+                      UnitsConvertToInternal(kd_units,internal_units,option)
+                  endif
+                endif                
               enddo
             
             case('SURFACE_COMPLEXATION_RXN')
