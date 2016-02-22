@@ -210,8 +210,9 @@ contains
     value = 0.99714012903770011d3
     @assertEqual(value, dw, 1.0d-16)
     value = 4.5522041154999997d-001
+!    value = 2.5268488496470232d-008
     @assertEqual(value, dwp, 1.0d-16)
-    value = -2.1003940320351124d-001
+    value = -1.1658919743036282d-002
     @assertEqual(value, dwt, 1.0d-16)
 
     saturation_pressure = 0.d0
@@ -266,9 +267,9 @@ contains
 
     value = 1.0983801969415001d3
     @assertEqual(value, dw, 1.0d-16)
-    value = 4.3220441154999997d-001
+    value = 2.3990910610068976d-008
     @assertEqual(value, dwp, 1.0d-16)
-    value = -2.4681047411351123d-001
+    value = -1.3700017546907872d-002
     @assertEqual(value, dwt, 1.0d-16)
 
     saturation_pressure = 0.d0

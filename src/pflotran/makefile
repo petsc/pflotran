@@ -1278,7 +1278,8 @@ wrapper_hydrogeophysics.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \
                             pflotran_constants.o
 
 # developer level regression testing
-test : utest rtest
+#test : utest rtest
+test : utest
 
 utest : pflotran
 	@if [ -d $(unit_test_dir) ]; then \
