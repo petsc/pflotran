@@ -131,7 +131,7 @@ end subroutine DatasetAsciiOpenandLoad
 
 ! ************************************************************************** !
 
-subroutine DatasetAsciiLoad(this,input,data_units_category,option)
+subroutine DatasetAsciiLoad(this,input,data_internal_units,option)
   ! 
   ! Reads a text-based dataset from an ASCII file.
   ! 
@@ -150,13 +150,13 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
   
   class(dataset_ascii_type) :: this
   type(input_type), pointer :: input
-  character(len=*) :: data_units_category
+  character(len=*) :: data_internal_units
   type(option_type) :: option
 
   character(len=MAXWORDLENGTH) :: time_units
   character(len=MAXSTRINGLENGTH) :: string, data_units
-  character(len=MAXSTRINGLENGTH), pointer :: unit_cat_strings(:) 
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH), pointer :: internal_unit_strings(:) 
+  character(len=MAXWORDLENGTH) :: word, internal_units
   PetscReal, pointer :: temp_array(:,:)
   PetscReal :: temp_time
   PetscReal :: conversion
@@ -170,7 +170,7 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
   data_units = ''
   max_size = 1000
   
-  unit_cat_strings => StringSplit(data_units_category,',')
+  internal_unit_strings => StringSplit(data_internal_units,',')
 
   row_count = 0
   ierr = 0
@@ -276,7 +276,8 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
   
   ! time units conversion
   if (len_trim(time_units) > 0) then
-    conversion = UnitsConvertToInternal(time_units,'time',option)
+    internal_units = 'sec'
+    conversion = UnitsConvertToInternal(time_units,internal_units,option)
     this%time_storage%times(:) = conversion * &
                                  this%time_storage%times(:)
   endif
@@ -297,12 +298,13 @@ subroutine DatasetAsciiLoad(this,input,data_units_category,option)
         call InputReadWord(data_units,word,PETSC_TRUE,ierr)
         input%ierr = ierr
         call InputErrorMsg(input,option,'DATA_UNITS','CONDITION FILE')
-        conversion = UnitsConvertToInternal(word,unit_cat_strings(i),option)
+        conversion = UnitsConvertToInternal(word,internal_unit_strings(i), &
+                                            option)
       endif
       temp_array(i+1,:) = conversion * temp_array(i+1,:)
     enddo
-    deallocate(unit_cat_strings)
-    nullify(unit_cat_strings)
+    deallocate(internal_unit_strings)
+    nullify(internal_unit_strings)
   else
     call InputCheckMandatoryUnits(input,option)
   endif

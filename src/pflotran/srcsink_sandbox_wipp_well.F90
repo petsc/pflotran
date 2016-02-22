@@ -79,7 +79,7 @@ subroutine WIPPWellRead(this,input,option)
   type(option_type) :: option
 
   PetscInt :: i
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   PetscBool :: found
   
   do 
@@ -100,6 +100,12 @@ subroutine WIPPWellRead(this,input,option)
       case('WELL_PRESSURE')
         call InputReadDouble(input,option,this%well_pressure)
         call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,WIPP,WELL')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'Pa'
+          this%well_pressure = this%well_pressure * &
+               UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('WELL_PRODUCTIVITY_INDEX')
         call InputReadDouble(input,option,this%productivity_index)
         call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,WIPP,WELL')

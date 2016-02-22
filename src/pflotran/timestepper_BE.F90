@@ -282,7 +282,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   PetscInt :: num_linear_iterations
   PetscInt :: sum_newton_iterations
   PetscInt :: sum_linear_iterations
-  character(len=2) :: tunit
+  character(len=MAXWORDLENGTH) :: tunit
   PetscReal :: tconv
   PetscReal :: fnorm, inorm, scaled_fnorm
   PetscBool :: plot_flag, transient_plot_flag
@@ -346,7 +346,8 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
 
       if (icut > this%max_time_step_cuts .or. this%dt < this%dt_min) then
 
-        write(option%io_buffer,'(" Stopping: Time step cut criteria exceeded!")')
+        write(option%io_buffer,'(" Stopping: Time step cut criteria &
+                                   &exceeded!")')
         call printMsg(option)
         write(option%io_buffer,'("    icut =",i3,", max_time_step_cuts=",i3)') &
              icut,this%max_time_step_cuts
@@ -358,7 +359,8 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
         process_model%output_option%plot_name = 'flow_cut_to_failure'
         plot_flag = PETSC_TRUE
         transient_plot_flag = PETSC_FALSE
-        call Output(process_model%realization_base,plot_flag,transient_plot_flag)
+        call Output(process_model%realization_base,plot_flag, &
+                    transient_plot_flag)
         stop_flag = TS_STOP_FAILURE
         return
       endif
@@ -401,16 +403,19 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   call VecNorm(residual_vec,NORM_2,fnorm,ierr);CHKERRQ(ierr)
   call VecNorm(residual_vec,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
-    write(*, '(/," Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
-      & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
-      & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
-      this%steps, &
-      this%target_time/tconv, &
-      this%dt/tconv, &
-      tunit,snes_reason,sum_newton_iterations, &
-      this%cumulative_newton_iterations,sum_linear_iterations, &
-      this%cumulative_linear_iterations,icut, &
-      this%cumulative_time_step_cuts
+    ! jmf: write to stepper_string or solver_string
+      write(*, '(/," Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
+           & " [",a,"]", " snes_conv_reason: ",i4,/,"  newton = ",i3, &
+           & " [",i8,"]", " linear = ",i5," [",i10,"]"," cuts = ",i2, &
+           & " [",i4,"]")') &
+           this%steps, &
+           this%target_time/tconv, &
+           this%dt/tconv, &
+           trim(tunit),snes_reason,sum_newton_iterations, &
+           this%cumulative_newton_iterations,sum_linear_iterations, &
+           this%cumulative_linear_iterations,icut, &
+           this%cumulative_time_step_cuts
+
 
     if (associated(process_model%realization_base%discretization%grid)) then
        scaled_fnorm = fnorm/process_model%realization_base% &
@@ -425,13 +430,12 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   endif
   if (option%print_file_flag) then
     write(option%fid_out, '(" Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
-      & " [",a1, &
-      & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
-      & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
+      & " [",a,"]"," snes_conv_reason: ",i4,/,"  newton = ",i3, &
+      & " [",i8,"]", " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       this%steps, &
       this%target_time/tconv, &
       this%dt/tconv, &
-      tunit,snes_reason,sum_newton_iterations, &
+      trim(tunit),snes_reason,sum_newton_iterations, &
       this%cumulative_newton_iterations,sum_linear_iterations, &
       this%cumulative_linear_iterations,icut, &
       this%cumulative_time_step_cuts
@@ -441,9 +445,9 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   call process_model%FinalizeTimestep()
   
   if (this%print_ekg .and. OptionPrintToFile(option)) then
-100 format(a32," TIMESTEP ",i10,2es16.8,a3,i3,i5,i3,i5,i5,i10)
+100 format(a32," TIMESTEP ",i10,2es16.8,a,i3,i5,i3,i5,i5,i10)
     write(IUNIT_EKG,100) trim(this%name), this%steps, this%target_time/tconv, &
-      this%dt/tconv, tunit, &
+      this%dt/tconv, trim(tunit), &
       icut, this%cumulative_time_step_cuts, &
       sum_newton_iterations, this%cumulative_newton_iterations, &
       sum_linear_iterations, this%cumulative_linear_iterations

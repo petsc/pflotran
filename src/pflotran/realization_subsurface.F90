@@ -753,7 +753,6 @@ subroutine RealProcessMatPropAndSatFunc(realization)
     
     ! if named, link dataset to property
     if (associated(cur_material_property%porosity_dataset)) then
-!    if (.not.StringNull(cur_material_property%porosity_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),POROSITY'
       dataset => &
@@ -770,9 +769,8 @@ subroutine RealProcessMatPropAndSatFunc(realization)
       end select
     endif
     if (associated(cur_material_property%permeability_dataset)) then
-!    if (.not.StringNull(cur_material_property%permeability_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
-               '),PERMEABILITY'
+               '),PERMEABILITY or PERMEABILITY X'
       dataset => &
         DatasetBaseGetPointer(realization%datasets, &
                             cur_material_property%permeability_dataset%name, &
@@ -782,12 +780,44 @@ subroutine RealProcessMatPropAndSatFunc(realization)
         class is (dataset_common_hdf5_type)
           cur_material_property%permeability_dataset => dataset
         class default
-          option%io_buffer = 'Incorrect dataset type for permeability.'
+          option%io_buffer = 'Incorrect dataset type for permeability or &
+                             &permeability X.'
+          call printErrMsg(option)
+      end select      
+    endif
+    if (associated(cur_material_property%permeability_dataset_y)) then
+      string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
+               '),PERMEABILITY Y'
+      dataset => &
+        DatasetBaseGetPointer(realization%datasets, &
+                            cur_material_property%permeability_dataset_y%name, &
+                            string,option)
+      call DatasetDestroy(cur_material_property%permeability_dataset_y)
+      select type(dataset)
+        class is (dataset_common_hdf5_type)
+          cur_material_property%permeability_dataset_y => dataset
+        class default
+          option%io_buffer = 'Incorrect dataset type for permeability Y.'
+          call printErrMsg(option)
+      end select      
+    endif
+    if (associated(cur_material_property%permeability_dataset_z)) then
+      string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
+               '),PERMEABILITY Z'
+      dataset => &
+        DatasetBaseGetPointer(realization%datasets, &
+                            cur_material_property%permeability_dataset_z%name, &
+                            string,option)
+      call DatasetDestroy(cur_material_property%permeability_dataset_z)
+      select type(dataset)
+        class is (dataset_common_hdf5_type)
+          cur_material_property%permeability_dataset_z => dataset
+        class default
+          option%io_buffer = 'Incorrect dataset type for permeability Z.'
           call printErrMsg(option)
       end select      
     endif
     if (associated(cur_material_property%compressibility_dataset)) then
-!    if (.not.StringNull(cur_material_property%compressibility_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),SOIL_COMPRESSIBILITY'
       dataset => &

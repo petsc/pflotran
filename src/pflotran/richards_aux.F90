@@ -224,6 +224,7 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
   PetscReal :: pert, pw_pert, dw_kg_pert
   PetscReal :: fs, ani_A, ani_B, ani_C, ani_n, ani_coef
   PetscReal :: dkr_Se
+  PetscReal :: aux(1)
   PetscReal, parameter :: tol = 1.d-3
   
   global_auxvar%sat = 0.d0
@@ -280,14 +281,22 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
     pw = global_auxvar%pres(1)
   endif
 
-  call EOSWaterDensity(global_auxvar%temp,pw,dw_kg,dw_mol, &
-                       dw_dp,dw_dt,ierr)
-! may need to compute dpsat_dt to pass to VISW
-  call EOSWaterSaturationPressure(global_auxvar%temp,sat_pressure,ierr)
-  !geh: 0.d0 passed in for derivative of pressure w/respect to temp
-  call EOSWaterViscosity(global_auxvar%temp,pw,sat_pressure,0.d0, &
-                         visl,dvis_dt,dvis_dp,dvis_dpsat,ierr) 
-!geh  dvis_dpsat = -dvis_dp   ! already handled in EOSWaterViscosity
+  if (.not.option%flow%density_depends_on_salinity) then
+    call EOSWaterDensity(global_auxvar%temp,pw,dw_kg,dw_mol, &
+                         dw_dp,dw_dt,ierr)
+    ! may need to compute dpsat_dt to pass to VISW
+    call EOSWaterSaturationPressure(global_auxvar%temp,sat_pressure,ierr)
+    !geh: 0.d0 passed in for derivative of pressure w/respect to temp
+    call EOSWaterViscosity(global_auxvar%temp,pw,sat_pressure,0.d0, &
+                           visl,dvis_dt,dvis_dp,dvis_dpsat,ierr) 
+    !geh  dvis_dpsat = -dvis_dp   ! already handled in EOSWaterViscosity
+  else
+    aux(1) = global_auxvar%m_nacl(1)
+    call EOSWaterDensityExt(global_auxvar%temp,pw,aux, &
+                            dw_kg,dw_mol,dw_dp,dw_dt,ierr)
+    call EOSWaterViscosityExt(global_auxvar%temp,pw,sat_pressure,0.d0,aux, &
+                              visl,dvis_dt,dvis_dp,dvis_dpsat,ierr) 
+  endif
   if (.not.saturated) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
     dvis_dpsat = 0.d0
