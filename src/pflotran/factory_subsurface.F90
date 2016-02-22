@@ -2295,20 +2295,20 @@ subroutine SubsurfaceReadInput(simulation)
                 call WaypointInsertInList(waypoint,waypoint_list)
               enddo
               call DeallocateArray(temp_real_array)
-            case('OBSERVATION_PERIODIC')
+            case('PERIODIC_OBSERVATION')
               output_option%print_observation = PETSC_TRUE
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'time increment', &
-                'OUTPUT, OBSERVATION_PERIODIC')
+                'OUTPUT, PERIODIC_OBSERVATION')
               call StringToUpper(word)
               select case(trim(word))
                 case('TIME')
                   call InputReadDouble(input,option,temp_real)
                   call InputErrorMsg(input,option,'time increment', &
-                                     'OUTPUT,OBSERVATION_PERIODIC,TIME')
+                                     'OUTPUT,PERIODIC_OBSERVATION,TIME')
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
-                                     'OUTPUT,OBSERVATION_PERIODIC,TIME')
+                                     'OUTPUT,PERIODIC_OBSERVATION,TIME')
                   internal_units = 'sec'
                   units_conversion = UnitsConvertToInternal(word, &
                                      internal_units,option) 
@@ -2318,10 +2318,10 @@ subroutine SubsurfaceReadInput(simulation)
                   call InputReadInt(input,option, &
                                     output_option%periodic_tr_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
-                                     'OUTPUT,OBSERVATION_PERIODIC,TIMESTEP')
+                                     'OUTPUT,PERIODIC_OBSERVATION,TIMESTEP')
                 case default
                   call InputKeywordUnrecognized(word, &
-                         'OUTPUT,OBSERVATION_PERIODIC',option)
+                         'OUTPUT,PERIODIC_OBSERVATION',option)
               end select
             case('FORMAT')
               call InputReadWord(input,option,word,PETSC_TRUE)

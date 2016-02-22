@@ -196,7 +196,7 @@ END
 
 #=========================== output options ===================================
 OUTPUT
-  OBSERVATION_PERIODIC TIMESTEP 1
+  PERIODIC_OBSERVATION TIMESTEP 1
   FORMAT TECPLOT BLOCK
   VELOCITY_AT_CENTER
   PRINT_COLUMN_IDS

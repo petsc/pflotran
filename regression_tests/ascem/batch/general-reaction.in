@@ -93,7 +93,7 @@ MATERIAL_PROPERTY  Hanford
 
 # == output ===================================================================
 OUTPUT
-  OBSERVATION_PERIODIC TIMESTEP 5
+  PERIODIC_OBSERVATION TIMESTEP 5
 #  FORMAT TECPLOT POINT
 #  FORMAT TECPLOT BLOCK
 #  FORMAT HDF5

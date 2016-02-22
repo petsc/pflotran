@@ -80,7 +80,7 @@ END
 OUTPUT
 #  TIMES y 5. 10. 15. 20.
 #  FORMAT TECPLOT POINT
-   OBSERVATION_PERIODIC TIMESTEP 1
+   PERIODIC_OBSERVATION TIMESTEP 1
 END
 
 #=========================== times ============================================

@@ -136,6 +136,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: card
   character(len=MAXWORDLENGTH) :: internal_units
+  character(len=MAXWORDLENGTH) :: kd_units
   type(aq_species_type), pointer :: species, prev_species
   type(gas_species_type), pointer :: gas, prev_gas
   type(immobile_species_type), pointer :: immobile_species
@@ -616,6 +617,8 @@ subroutine ReactionReadPass1(reaction,input,option)
                       call InputErrorMsg(input,option, &
                                          'DISTRIBUTION_COEFFICIENT', &
                                          'CHEMISTRY,ISOTHERM_REACTIONS')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      if (input%ierr == 0) kd_units = trim(word)
                     ! S.Karra, 02/20/2014
                     case('SEC_CONT_DISTRIBUTION_COEFFICIENT', &
                          'SEC_CONT_KD')
