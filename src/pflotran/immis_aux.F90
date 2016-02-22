@@ -269,6 +269,7 @@ subroutine ImmisAuxVarCompute_NINC(x,auxvar,saturation_function, &
   PetscReal :: visg, dvdp, dvdt
   PetscReal :: h(option%nphase),u(option%nphase),kr(option%nphase)
   PetscReal :: xm_nacl, x_nacl, vphi             
+  PetscReal :: aux(1)
   PetscInt :: iflag
    
   
@@ -388,7 +389,8 @@ subroutine ImmisAuxVarCompute_NINC(x,auxvar,saturation_function, &
 
   xm_nacl = option%m_nacl*FMWNACL
   xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-  call EOSWaterDensityNaCl(t,p,xm_nacl,dw_kg) 
+  aux(1) = xm_nacl
+  call EOSWaterDensityExt(t,p,aux,dw_kg,dw_mol,ierr)
   call EOSWaterViscosityNaCl(t,p,xm_nacl,visl)
 
 !FEHM mixing ****************************

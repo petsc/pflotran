@@ -118,6 +118,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   use PM_Surface_Flow_class
   use PM_Surface_TH_class
   use PM_Geomechanics_Force_class
+  use PM_Auxiliary_class
   use PMC_Base_class
   use Checkpoint_module
   use Output_Aux_module
@@ -204,6 +205,10 @@ subroutine PFLOTRANReadSimulation(simulation,option)
             case('GEOMECHANICS_SUBSURFACE')
               option%geomech_on = PETSC_TRUE
               new_pm => PMGeomechForceCreate()
+            case('AUXILIARY')
+              new_pm => PMAuxiliaryCreate()
+              input%buf = name
+              call PMAuxiliaryRead(input,option,PMAuxiliaryCast(new_pm))
             case default
               call InputKeywordUnrecognized(word, &
                      'SIMULATION,PROCESS_MODELS',option)            

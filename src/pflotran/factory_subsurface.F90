@@ -64,7 +64,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   use PM_RT_class
   use PM_Waste_Form_class
   use PM_UFD_Decay_class
+  use PM_Auxiliary_class
   use PMC_Subsurface_class
+  use PMC_Auxiliary_class
   use PMC_Third_Party_class
   use Timestepper_BE_class
   use Realization_Subsurface_class
@@ -75,6 +77,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   use Init_Common_module
   use Init_Subsurface_module
   use Input_Aux_module
+  use String_module
   
   implicit none
   
@@ -82,11 +85,13 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   
   type(option_type), pointer :: option
   class(pmc_subsurface_type), pointer :: pmc_subsurface
+  class(pmc_auxiliary_type), pointer :: auxiliary_process_model_coupler
   class(pmc_third_party_type), pointer :: pmc_third_party
   class(pm_subsurface_flow_type), pointer :: pm_flow
   class(pm_rt_type), pointer :: pm_rt
   class(pm_waste_form_type), pointer :: pm_waste_form
   class(pm_ufd_decay_type), pointer :: pm_ufd_decay
+  class(pm_auxiliary_type), pointer :: pm_auxiliary
   class(pm_base_type), pointer :: cur_pm, prev_pm
   class(realization_subsurface_type), pointer :: realization
   class(timestepper_BE_type), pointer :: timestepper
@@ -99,6 +104,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   nullify(pm_rt)
   nullify(pm_waste_form)
   nullify(pm_ufd_decay)
+  nullify(pm_auxiliary)
   cur_pm => simulation%process_model_list
   do
     if (.not.associated(cur_pm)) exit
@@ -111,6 +117,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
         pm_waste_form => cur_pm
       class is(pm_ufd_decay_type)
         pm_ufd_decay => cur_pm
+      class is(pm_auxiliary_type)
+        pm_auxiliary => cur_pm
       class default
         option%io_buffer = &
          'PM Class unrecognized in SubsurfaceInitializePostPetsc.'
@@ -237,7 +245,25 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     !     is the lead?  I would say pm_ufd_decay.
     simulation%rt_process_model_coupler%child => pmc_third_party
     nullify(pmc_third_party)
-  endif  
+  endif 
+  
+  if (associated(pm_auxiliary)) then
+    string = 'salinity'
+    if (StringCompareIgnoreCase(pm_auxiliary%ctype,string)) then
+      if (associated(simulation%rt_process_model_coupler)) then
+        auxiliary_process_model_coupler => PMCAuxiliaryCreate()
+        simulation%rt_process_model_coupler%peer => auxiliary_process_model_coupler
+        pm_auxiliary%realization => realization
+        auxiliary_process_model_coupler%pm_list => pm_auxiliary
+        auxiliary_process_model_coupler%pm_aux => pm_auxiliary
+        auxiliary_process_model_coupler%option => option
+      else
+        option%io_buffer = 'Reactive transport must be included in the &
+          &SIMULATION block in order to use the SALINITY process model.'
+        call printErrMsg(option)
+      endif
+    endif
+  endif
   
   ! SubsurfaceInitSimulation() must be called after pmc linkages are set above.
   call SubsurfaceInitSimulation(simulation)
