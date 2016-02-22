@@ -84,7 +84,7 @@ OBSERVATION
 
 #=========================== output options ===================================
 OUTPUT
-  PERIODIC_OBSERVATION TIMESTEP 1
+  OBSERVATION_PERIODIC TIMESTEP 1
 /
 
 #=========================== times ============================================

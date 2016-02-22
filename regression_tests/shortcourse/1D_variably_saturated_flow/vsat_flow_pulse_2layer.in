@@ -84,7 +84,7 @@ END
 #=========================== output options ===================================
 OUTPUT
   PERIODIC TIME 0.1 y
-  PERIODIC_OBSERVATION TIMESTEP 1
+  OBSERVATION_PERIODIC TIMESTEP 1
   FORMAT TECPLOT POINT
 END
 

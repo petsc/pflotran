@@ -2251,20 +2251,38 @@ subroutine SubsurfaceReadInput(simulation)
                   call InputKeywordUnrecognized(word, &
                          'OUTPUT,PERIODIC',option)
               end select
-            case('PERIODIC_OBSERVATION')
+            case('OBSERVATION_TIMES')
+              output_option%print_observation = PETSC_TRUE
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time units', &
+                   'OUTPUT,OBSERVATION_TIMES')
+              internal_units = 'sec'
+              units_conversion = &
+                UnitsConvertToInternal(word,internal_units,option) 
+              string = 'OBSERVATION_TIMES,TIMES'
+              call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
+                                    string,input,option)
+              do temp_int = 1, size(temp_real_array)
+                waypoint => WaypointCreate()
+                waypoint%time = temp_real_array(temp_int)*units_conversion
+                waypoint%print_tr_output = PETSC_TRUE    
+                call WaypointInsertInList(waypoint,waypoint_list)
+              enddo
+              call DeallocateArray(temp_real_array)
+            case('OBSERVATION_PERIODIC')
               output_option%print_observation = PETSC_TRUE
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'time increment', &
-                'OUTPUT, PERIODIC_OBSERVATION')
+                'OUTPUT, OBSERVATION_PERIODIC')
               call StringToUpper(word)
               select case(trim(word))
                 case('TIME')
                   call InputReadDouble(input,option,temp_real)
                   call InputErrorMsg(input,option,'time increment', &
-                                     'OUTPUT,PERIODIC_OBSERVATION,TIME')
+                                     'OUTPUT,OBSERVATION_PERIODIC,TIME')
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
-                                     'OUTPUT,PERIODIC_OBSERVATION,TIME')
+                                     'OUTPUT,OBSERVATION_PERIODIC,TIME')
                   internal_units = 'sec'
                   units_conversion = UnitsConvertToInternal(word, &
                                      internal_units,option) 
@@ -2274,10 +2292,10 @@ subroutine SubsurfaceReadInput(simulation)
                   call InputReadInt(input,option, &
                                     output_option%periodic_tr_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
-                                     'OUTPUT,PERIODIC_OBSERVATION,TIMESTEP')
+                                     'OUTPUT,OBSERVATION_PERIODIC,TIMESTEP')
                 case default
                   call InputKeywordUnrecognized(word, &
-                         'OUTPUT,PERIODIC_OBSERVATION',option)
+                         'OUTPUT,OBSERVATION_PERIODIC',option)
               end select
             case('FORMAT')
               call InputReadWord(input,option,word,PETSC_TRUE)
