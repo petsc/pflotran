@@ -588,7 +588,7 @@ subroutine PMSubsurfaceFlowUpdateSolution(this)
                            this%realization%option, &
                            this%realization%option%time)
   call SSSandboxUpdate(ss_sandbox_list,this%realization%option%time, &
-                       this%realization%option)
+                       this%realization%option,this%realization%output_option)
   ! right now, RealizUpdateAllCouplerAuxVars only updates flow
   call RealizUpdateAllCouplerAuxVars(this%realization,force_update_flag)
   if (associated(this%realization%uniform_velocity_dataset)) then
