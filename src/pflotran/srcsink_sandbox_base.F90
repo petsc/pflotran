@@ -71,6 +71,8 @@ subroutine SSSandboxBaseSetup(this,region_list,grid,option)
   type(option_type) :: option
   
   PetscInt :: local_id
+  PetscInt :: i, iflag
+  PetscErrorCode :: ierr
 
   if (len_trim(this%region_name) > 0) then
     this%region => &
@@ -83,14 +85,27 @@ subroutine SSSandboxBaseSetup(this,region_list,grid,option)
     endif
   else if (Initialized(this%coordinate%x)) then
     call GridGetLocalIDFromCoordinate(grid,this%coordinate,option,local_id)
+    iflag = 0
     if (local_id > 0) then
       this%local_cell_id = local_id
+      iflag = 1
+    endif
+    call MPI_Allreduce(iflag,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
+                       option%mycomm,ierr)
+    iflag = i
+    if (iflag > 1) then
+      option%io_buffer = 'More than one grid cell mapped in SSSandboxBaseSetup.'
+      call printErrMsg(option)
+    else if (iflag == 0) then
+      option%io_buffer = 'No grid cells mapped in SSSandboxBaseSetup.'
+      call printErrMsg(option)
     endif
   else
     option%io_buffer = 'Source/sink in SSSandbox not associate with the &
       &domain thorugh either a REGION or COORDINATE.'
     call printErrMsg(option)
   endif  
+
 
   ! perhaps we need a global reduction here to catch the lack of a connection.
   
@@ -134,6 +149,10 @@ subroutine SSSandboxBaseSelectCase(this,input,option,keyword,found)
   found = PETSC_TRUE
   select case(trim(keyword))
     case('REGION')
+      option%io_buffer = 'The REGION card is being phased out of the &
+        &Source/Sink Sandbox.  Please switch to using a COORDINATE and &
+        &defining one Src/Sink block for each coordinate.'
+      call printErrMsg(option)
       call InputReadWord(input,option,this%region_name,PETSC_TRUE)
       call InputErrorMsg(input,option,'REGION',error_string)
     case('COORDINATE')

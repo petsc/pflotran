@@ -78,6 +78,7 @@ subroutine SSSandboxSetup(region_list,grid,option)
   class(srcsink_sandbox_base_type), pointer :: cur_sandbox  
   class(srcsink_sandbox_base_type), pointer :: prev_sandbox  
   class(srcsink_sandbox_base_type), pointer :: next_sandbox  
+  PetscBool :: exists
 
   ! sandbox source/sinks
   cur_sandbox => ss_sandbox_list
@@ -87,7 +88,15 @@ subroutine SSSandboxSetup(region_list,grid,option)
     next_sandbox => cur_sandbox%next
     call cur_sandbox%Setup(region_list,grid,option)
     ! destory if not on process
-    if (.not.associated(cur_sandbox%region%cell_ids)) then
+    exists = PETSC_FALSE
+    if (associated(cur_sandbox%region)) then
+      if (associated(cur_sandbox%region%cell_ids)) then
+        exists = PETSC_TRUE
+      endif
+    else if (Initialized(cur_sandbox%local_cell_id)) then
+      exists = PETSC_TRUE
+    endif
+    if (.not.exists) then
       if (associated(prev_sandbox)) then
         prev_sandbox%next => next_sandbox
       else
@@ -234,8 +243,27 @@ subroutine SSSandbox(residual,Jacobian,compute_derivative, &
   cur_srcsink => ss_sandbox_list
   do
     if (.not.associated(cur_srcsink)) exit
-      do i = 1, cur_srcsink%region%num_cells
-        local_id = cur_srcsink%region%cell_ids(i)
+      if (associated(cur_srcsink%region)) then
+        do i = 1, cur_srcsink%region%num_cells
+          local_id = cur_srcsink%region%cell_ids(i)
+          ghosted_id = grid%nL2G(local_id)
+          res = 0.d0
+          Jac = 0.d0
+          call cur_srcsink%Evaluate(res,Jac,compute_derivative, &
+                                    material_auxvars(ghosted_id), &
+                                    aux_real,option)
+          if (compute_derivative) then
+            call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
+                                          ghosted_id-1,Jac,ADD_VALUES, &
+                                          ierr);CHKERRQ(ierr)
+          else
+            iend = local_id*option%nflowdof
+            istart = iend - option%nflowdof + 1
+            r_p(istart:iend) = r_p(istart:iend) + res
+          endif
+        enddo
+      else
+        local_id = cur_srcsink%local_cell_id
         ghosted_id = grid%nL2G(local_id)
         res = 0.d0
         Jac = 0.d0
@@ -251,7 +279,7 @@ subroutine SSSandbox(residual,Jacobian,compute_derivative, &
           istart = iend - option%nflowdof + 1
           r_p(istart:iend) = r_p(istart:iend) + res
         endif
-      enddo
+      endif
     cur_srcsink => cur_srcsink%next
   enddo
   
@@ -338,12 +366,12 @@ subroutine SSSandboxOutputHeader(sandbox_list,grid,option,output_option)
 
   class(srcsink_sandbox_base_type), pointer :: cur_srcsink
   character(len=MAXSTRINGLENGTH) :: cell_string
-!  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
+  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
   character(len=MAXWORDLENGTH) :: units_string, variable_string
   character(len=MAXSTRINGLENGTH) :: filename
   PetscInt :: fid
   PetscInt :: icolumn, i
-  PetscInt :: local_id
+  PetscInt :: local_id, ghosted_id
   
   filename = SSSandboxOutputFilename(option)
   open(unit=IUNIT_TEMP,file=filename,action="write",status="replace")  
@@ -360,32 +388,30 @@ subroutine SSSandboxOutputHeader(sandbox_list,grid,option,output_option)
   cur_srcsink => sandbox_list
   do
     if (.not.associated(cur_srcsink)) exit
-      do i = 1, cur_srcsink%region%num_cells
-        local_id = cur_srcsink%region%cell_ids(i)
+    local_id = cur_srcsink%local_cell_id
+    ghosted_id = grid%nL2G(local_id)
 
-        ! cell natural id
-        write(cell_string,*) grid%nG2A(grid%nL2G(local_id))
-        cell_string = ' (' // trim(cur_srcsink%region%name) // ' ' // &
-                      trim(adjustl(cell_string)) // ')'
-        ! coordinate of cell
-!        x_string = BestFloat(cur_waste_form%coordinate%x,1.d4,1.d-2)
-!        y_string = BestFloat(cur_waste_form%coordinate%y,1.d4,1.d-2)
-!        z_string = BestFloat(cur_waste_form%coordinate%z,1.d4,1.d-2)
-!        cell_string = trim(cell_string) // &
-!                 ' (' // trim(adjustl(x_string)) // &
-!                 ' ' // trim(adjustl(y_string)) // &
-!                 ' ' // trim(adjustl(z_string)) // ')'
-        variable_string = ' Mass Flux'
-        ! cumulative
-        units_string = 'mol'
-        call OutputWriteToHeader(IUNIT_TEMP,variable_string,units_string, &
-                                  cell_string,icolumn)
-        ! instantaneous
-        units_string = 'mol/' // trim(adjustl(output_option%tunit))
-        call OutputWriteToHeader(IUNIT_TEMP,variable_string,units_string, &
-                                  cell_string,icolumn)
-                                  
-      enddo
+    ! cell natural id
+    write(cell_string,*) grid%nG2A(ghosted_id)
+    cell_string = ' (' // trim(cur_srcsink%region%name) // ' ' // &
+                  trim(adjustl(cell_string)) // ')'
+    ! coordinate of cell
+    x_string = BestFloat(grid%x(ghosted_id),1.d4,1.d-2)
+    y_string = BestFloat(grid%y(ghosted_id),1.d4,1.d-2)
+    z_string = BestFloat(grid%z(ghosted_id),1.d4,1.d-2)
+    cell_string = trim(cell_string) // &
+             ' (' // trim(adjustl(x_string)) // &
+             ' ' // trim(adjustl(y_string)) // &
+             ' ' // trim(adjustl(z_string)) // ')'
+    variable_string = ' Mass Flux'
+    ! cumulative
+    units_string = 'mol'
+    call OutputWriteToHeader(IUNIT_TEMP,variable_string,units_string, &
+                             cell_string,icolumn)
+    ! instantaneous
+    units_string = 'mol/' // trim(adjustl(output_option%tunit))
+    call OutputWriteToHeader(IUNIT_TEMP,variable_string,units_string, &
+                             cell_string,icolumn)
     cur_srcsink => cur_srcsink%next
   enddo
   

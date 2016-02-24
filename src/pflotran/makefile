@@ -558,9 +558,9 @@ factory_pflotran.o : checkpoint.o eos.o factory_geomechanics.o \
                      factory_hydrogeophysics.o factory_subsurface.o \
                      factory_surfsubsurface.o input_aux.o logging.o \
                      multisimulation.o option.o output_aux.o output_ekg.o \
-                     pflotran_constants.o pm_base.o pm_geomechanics_force.o \
-                     pm_rt.o pm_subsurface_flow.o pm_surface.o \
-                     pm_surface_flow.o pm_surface_th.o pmc_base.o \
+                     pflotran_constants.o pm_auxiliary.o pm_base.o \
+                     pm_geomechanics_force.o pm_rt.o pm_subsurface_flow.o \
+                     pm_surface.o pm_surface_flow.o pm_surface_th.o pmc_base.o \
                      simulation_base.o simulation_geomechanics.o \
                      simulation_hydrogeophysics.o simulation_subsurface.o \
                      simulation_surfsubsurface.o string.o units.o waypoint.o
@@ -623,7 +623,7 @@ flash2_aux.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
                eos_water.o fluid.o gas_eos_mod.o global_aux.o \
                mphase_pckr_mod.o option.o pflotran_constants.o \
                saturation_function.o
-fluid.o : input_aux.o option.o pflotran_constants.o string.o
+fluid.o : input_aux.o option.o pflotran_constants.o string.o units.o
 gas_eos_mod.o : pflotran_constants.o
 gauss.o : grid_unstructured_cell.o pflotran_constants.o utility.o
 general.o : connection.o coupler.o debug.o discretization.o eos_gas.o \
@@ -874,8 +874,10 @@ pflotran.o : factory_geomechanics.o factory_hydrogeophysics.o \
              simulation_base.o
 pflotran_constants.o :
 pflotran_provenance.o :
-pm_auxiliary.o : communicator_base.o init_subsurface.o option.o \
-                 pflotran_constants.o pm_base.o realization_subsurface.o
+pm_auxiliary.o : communicator_base.o global_aux.o init_subsurface.o \
+                 input_aux.o option.o pflotran_constants.o pm_base.o \
+                 reaction_aux.o reactive_transport_aux.o \
+                 realization_subsurface.o string.o
 pm_base.o : input_aux.o option.o output_aux.o pflotran_constants.o \
             realization_base.o solver.o
 pm_base_pointer.o : option.o pflotran_constants.o pm_base.o \
@@ -957,7 +959,8 @@ pm_waste_form.o : condition.o data_mediator_vec.o dataset.o dataset_ascii.o \
                   grid_structured.o grid_unstructured.o input_aux.o option.o \
                   output_aux.o pflotran_constants.o pm_base.o reaction_aux.o \
                   reactive_transport_aux.o realization_base.o \
-                  realization_subsurface.o string.o time_storage.o utility.o
+                  realization_subsurface.o string.o time_storage.o units.o \
+                  utility.o
 pmc_auxiliary.o : option.o pflotran_constants.o pm_auxiliary.o pmc_base.o \
                   realization_subsurface.o timestepper_base.o
 pmc_base.o : checkpoint.o logging.o option.o output.o output_aux.o \
@@ -1186,25 +1189,25 @@ simulation_surfsubsurface.o : checkpoint.o logging.o option.o output.o \
                               timestepper_base.o waypoint.o
 solver.o : input_aux.o option.o pflotran_constants.o string.o
 spline.o : pflotran_constants.o
-srcsink_sandbox.o : grid.o input_aux.o material_aux.o option.o \
+srcsink_sandbox.o : grid.o input_aux.o material_aux.o option.o output_aux.o \
                     pflotran_constants.o region.o srcsink_sandbox_base.o \
                     srcsink_sandbox_downreg.o srcsink_sandbox_mass_rate.o \
                     srcsink_sandbox_wipp_gas.o srcsink_sandbox_wipp_well.o \
                     string.o utility.o
-srcsink_sandbox_base.o : input_aux.o material_aux.o option.o \
-                         pflotran_constants.o region.o
+srcsink_sandbox_base.o : geometry.o grid.o input_aux.o material_aux.o option.o \
+                         pflotran_constants.o region.o utility.o
 srcsink_sandbox_downreg.o : condition.o dataset.o dataset_ascii.o \
-                            dataset_base.o general_aux.o input_aux.o \
+                            dataset_base.o general_aux.o grid.o input_aux.o \
                             material_aux.o option.o pflotran_constants.o \
                             reaction_aux.o region.o srcsink_sandbox_base.o \
                             string.o time_storage.o units.o
-srcsink_sandbox_mass_rate.o : general_aux.o input_aux.o material_aux.o \
+srcsink_sandbox_mass_rate.o : general_aux.o grid.o input_aux.o material_aux.o \
                               option.o pflotran_constants.o reaction_aux.o \
                               region.o srcsink_sandbox_base.o string.o units.o
-srcsink_sandbox_wipp_gas.o : eos_gas.o input_aux.o material_aux.o option.o \
-                             pflotran_constants.o reaction_aux.o region.o \
-                             srcsink_sandbox_base.o string.o units.o
-srcsink_sandbox_wipp_well.o : input_aux.o material_aux.o option.o \
+srcsink_sandbox_wipp_gas.o : eos_gas.o grid.o input_aux.o material_aux.o \
+                             option.o pflotran_constants.o reaction_aux.o \
+                             region.o srcsink_sandbox_base.o string.o units.o
+srcsink_sandbox_wipp_well.o : grid.o input_aux.o material_aux.o option.o \
                               pflotran_constants.o reaction_aux.o region.o \
                               srcsink_sandbox_base.o string.o units.o
 strata.o : input_aux.o material.o option.o pflotran_constants.o region.o \

@@ -2633,9 +2633,34 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
   do
     if (.not.associated(cur_srcsink)) exit
       aux_real = 0.d0
-
-      do i = 1, cur_srcsink%region%num_cells
-        local_id = cur_srcsink%region%cell_ids(i)
+      if (associated(cur_srcsink%region)) then
+        do i = 1, cur_srcsink%region%num_cells
+          local_id = cur_srcsink%region%cell_ids(i)
+          ghosted_id = grid%nL2G(local_id)
+          res = 0.d0
+          Jac = 0.d0
+          call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
+                            global_auxvars(ghosted_id),option)
+          call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
+                                    material_auxvars(ghosted_id), &
+                                    aux_real,option)
+          if (compute_derivative) then
+            call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
+                                              global_auxvars(ghosted_id),option)
+            call cur_srcsink%Evaluate(res,Jac,PETSC_TRUE, &
+                                      material_auxvars(ghosted_id), &
+                                      aux_real,option)
+            call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
+                                          ghosted_id-1,Jac,ADD_VALUES, &
+                                          ierr);CHKERRQ(ierr)
+          else
+            iend = local_id*option%nflowdof
+            istart = iend - option%nflowdof + 1
+            r_p(istart:iend) = r_p(istart:iend) - res
+          endif
+        enddo
+      else
+        local_id = cur_srcsink%local_cell_id
         ghosted_id = grid%nL2G(local_id)
         res = 0.d0
         Jac = 0.d0
@@ -2658,7 +2683,7 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
           istart = iend - option%nflowdof + 1
           r_p(istart:iend) = r_p(istart:iend) - res
         endif
-      enddo
+      endif
     cur_srcsink => cur_srcsink%next
   enddo
   
