@@ -56,7 +56,7 @@ end subroutine SSSandboxInit
 
 ! ************************************************************************** !
 
-subroutine SSSandboxSetup(region_list,option)
+subroutine SSSandboxSetup(region_list,grid,option)
   ! 
   ! Calls all the initialization routines for all source/sinks in
   ! the sandbox list
@@ -67,11 +67,13 @@ subroutine SSSandboxSetup(region_list,option)
 
   use Option_module
   use Region_module
+  use Grid_module
   
   implicit none
   
-  type(option_type) :: option
   type(region_list_type) :: region_list
+  type(grid_type) :: grid
+  type(option_type) :: option
   
   class(srcsink_sandbox_base_type), pointer :: cur_sandbox  
   class(srcsink_sandbox_base_type), pointer :: prev_sandbox  
@@ -83,7 +85,7 @@ subroutine SSSandboxSetup(region_list,option)
   do
     if (.not.associated(cur_sandbox)) exit
     next_sandbox => cur_sandbox%next
-    call cur_sandbox%Setup(region_list,option)
+    call cur_sandbox%Setup(region_list,grid,option)
     ! destory if not on process
     if (.not.associated(cur_sandbox%region%cell_ids)) then
       if (associated(prev_sandbox)) then
@@ -261,7 +263,7 @@ end subroutine SSSandbox
 
 ! ************************************************************************** !
 
-subroutine SSSandboxUpdate(sandbox_list,time,option)
+subroutine SSSandboxUpdate(sandbox_list,time,option,output_option)
   ! 
   ! Updates datasets associated with a sandbox, if they exist
   ! 
@@ -269,12 +271,14 @@ subroutine SSSandboxUpdate(sandbox_list,time,option)
   ! Date: 06/22/15
   ! 
   use Option_module
+  use Output_Aux_module
 
   implicit none
 
   class(srcsink_sandbox_base_type), pointer :: sandbox_list
   PetscReal :: time
   type(option_type) :: option
+  type(output_option_type) :: output_option
 
   class(srcsink_sandbox_base_type), pointer :: cur_sandbox
   
@@ -286,6 +290,155 @@ subroutine SSSandboxUpdate(sandbox_list,time,option)
   enddo  
 
 end subroutine SSSandboxUpdate
+
+! ************************************************************************** !
+
+function SSSandboxOutputFilename(option)
+  ! 
+  ! Generates filename for source/sink sandbox output
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/23/16
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: SSSandboxOutputFilename
+  character(len=MAXWORDLENGTH) :: word
+
+  write(word,'(i6)') option%myrank
+  SSSandboxOutputFilename = trim(option%global_prefix) // &
+                            trim(option%group_prefix) // &
+                            '-ss_mass-' // trim(adjustl(word)) // '.dat'
+  
+end function SSSandboxOutputFilename  
+
+! ************************************************************************** !
+
+subroutine SSSandboxOutputHeader(sandbox_list,grid,option,output_option)
+  ! 
+  ! Writes header for source/sink sandbox output
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/23/16
+
+  use Option_module
+  use Output_Aux_module
+  use Grid_module
+  use Utility_module, only : BestFloat
+  
+  implicit none
+  
+  class(srcsink_sandbox_base_type), pointer :: sandbox_list
+  type(grid_type) :: grid
+  type(option_type) :: option
+  type(output_option_type) :: output_option
+
+  class(srcsink_sandbox_base_type), pointer :: cur_srcsink
+  character(len=MAXSTRINGLENGTH) :: cell_string
+!  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
+  character(len=MAXWORDLENGTH) :: units_string, variable_string
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscInt :: fid
+  PetscInt :: icolumn, i
+  PetscInt :: local_id
+  
+  filename = SSSandboxOutputFilename(option)
+  open(unit=IUNIT_TEMP,file=filename,action="write",status="replace")  
+  
+  if (output_option%print_column_ids) then
+    icolumn = 1
+  else
+    icolumn = -1
+  endif 
+  
+  write(IUNIT_TEMP,'(a)',advance="no") ' "Time [' // &
+    trim(output_option%tunit) // ']"'
+
+  cur_srcsink => sandbox_list
+  do
+    if (.not.associated(cur_srcsink)) exit
+      do i = 1, cur_srcsink%region%num_cells
+        local_id = cur_srcsink%region%cell_ids(i)
+
+        ! cell natural id
+        write(cell_string,*) grid%nG2A(grid%nL2G(local_id))
+        cell_string = ' (' // trim(cur_srcsink%region%name) // ' ' // &
+                      trim(adjustl(cell_string)) // ')'
+        ! coordinate of cell
+!        x_string = BestFloat(cur_waste_form%coordinate%x,1.d4,1.d-2)
+!        y_string = BestFloat(cur_waste_form%coordinate%y,1.d4,1.d-2)
+!        z_string = BestFloat(cur_waste_form%coordinate%z,1.d4,1.d-2)
+!        cell_string = trim(cell_string) // &
+!                 ' (' // trim(adjustl(x_string)) // &
+!                 ' ' // trim(adjustl(y_string)) // &
+!                 ' ' // trim(adjustl(z_string)) // ')'
+        variable_string = ' Mass Flux'
+        ! cumulative
+        units_string = 'mol'
+        call OutputWriteToHeader(IUNIT_TEMP,variable_string,units_string, &
+                                  cell_string,icolumn)
+        ! instantaneous
+        units_string = 'mol/' // trim(adjustl(output_option%tunit))
+        call OutputWriteToHeader(IUNIT_TEMP,variable_string,units_string, &
+                                  cell_string,icolumn)
+                                  
+      enddo
+    cur_srcsink => cur_srcsink%next
+  enddo
+  
+  close(IUNIT_TEMP)
+  
+end subroutine SSSandboxOutputHeader
+
+! ************************************************************************** !
+
+subroutine SSSandboxOutput(sandbox_list,option,output_option)
+  ! 
+  ! Writes output for for source/sink sandbox
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/23/16
+
+  use Option_module
+  use Output_Aux_module
+
+  implicit none
+  
+  class(srcsink_sandbox_base_type), pointer :: sandbox_list
+  type(option_type) :: option
+  type(output_option_type) :: output_option
+  
+  class(srcsink_sandbox_base_type), pointer :: cur_srcsink
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscInt :: i
+  
+  if (.not.associated(sandbox_list)) return
+  
+100 format(100es16.8)
+
+  filename = SSSandboxOutputFilename(option)
+  open(unit=IUNIT_TEMP,file=filename,action="write",status="old", &
+       position="append")
+
+  ! this time is set at the end of the reactive transport step
+  write(IUNIT_TEMP,100,advance="no") option%time / output_option%tconv
+  
+  cur_srcsink => sandbox_list
+  do
+    if (.not.associated(cur_srcsink)) exit
+    do i = 1, cur_srcsink%region%num_cells
+      write(IUNIT_TEMP,100,advance="no") cur_srcsink%cumulative_mass(i), &
+                                  cur_srcsink%instantaneous_mass_rate(i) * &
+                                  output_option%tconv
+    enddo
+    cur_srcsink => cur_srcsink%next
+  enddo
+  close(IUNIT_TEMP)
+  
+end subroutine SSSandboxOutput
 
 ! ************************************************************************** !
 
