@@ -337,7 +337,7 @@ subroutine UnitsCategory(unit,unit_category,error,error_msg)
 
   do while (k < 4)
     select case(trim(unit(k)))
-      case('cm^3','l','L','dm^3','m^3','gal','gallon')
+      case('cm^3','l','L','ml','mL','dm^3','m^3','gal','gallon')
         unit_category(k) = 'volume'
       case('cm^2','dm^2','m^2','km^2')
         unit_category(k) = 'area'
@@ -401,7 +401,7 @@ subroutine UnitsConvertToSI(unit,conversion_factor,error,error_msg)
 
   select case(trim(unit))
   !---> VOLUME ---> (meter^3)
-    case('cm^3')
+    case('cm^3','ml','mL')
       conversion_factor = 1.d-6
     case('l','L','dm^3')
       conversion_factor = 1.d-3
