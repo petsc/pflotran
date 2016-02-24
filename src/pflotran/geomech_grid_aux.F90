@@ -74,7 +74,6 @@ module Geomechanics_Grid_Aux_module
     VecScatter :: scatter_ltol               ! scatter context for local to local updates
     VecScatter :: scatter_gton               ! scatter context for global to natural updates
     VecScatter :: scatter_gton_elem          ! scatter context for global to natural updates for elements(cells)
-    VecScatter :: scatter_ntog               ! scatter context for natural to global updates
     ISLocalToGlobalMapping :: mapping_ltog   ! petsc vec local to global mapping
 !geh: deprecated in PETSc in spring 2014 
 !    ISLocalToGlobalMapping :: mapping_ltogb  ! block form of mapping_ltog
@@ -139,7 +138,6 @@ function GMDMCreate()
   gmdm%scatter_ltol  = 0
   gmdm%scatter_gton = 0
   gmdm%scatter_gton_elem = 0
-  gmdm%scatter_ntog = 0
   gmdm%mapping_ltog = 0
   gmdm%mapping_ltog_elem = 0
   gmdm%global_vec = 0
@@ -521,9 +519,6 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   call VecScatterCreate(gmdm%global_vec,gmdm%is_local_petsc,vec_tmp, &
                         gmdm%is_local_natural,gmdm%scatter_gton, &
                         ierr);CHKERRQ(ierr)
-  call VecScatterCreate(gmdm%global_vec,gmdm%is_local_natural,vec_tmp, &
-                        gmdm%is_local_petsc,gmdm%scatter_ntog, &
-                        ierr);CHKERRQ(ierr)
   call VecDestroy(vec_tmp,ierr);CHKERRQ(ierr)
 
 #if GEOMECH_DEBUG
@@ -533,11 +528,6 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   call VecScatterView(gmdm%scatter_gton,viewer,ierr);CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 
-  string = 'geomech_scatter_ntog' // trim(ndof_word) // '.out'
-  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer, &
-                            ierr);CHKERRQ(ierr)
-  call VecScatterView(gmdm%scatter_ntog,viewer,ierr);CHKERRQ(ierr)
-  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
   ! Now for elements. Need this for writing tecplot output
@@ -916,7 +906,6 @@ subroutine GMDMDestroy(gmdm)
   call VecScatterDestroy(gmdm%scatter_gtol,ierr);CHKERRQ(ierr)
   call VecScatterDestroy(gmdm%scatter_ltol,ierr);CHKERRQ(ierr)
   call VecScatterDestroy(gmdm%scatter_gton,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(gmdm%scatter_ntog,ierr);CHKERRQ(ierr)
   call VecScatterDestroy(gmdm%scatter_gton_elem,ierr);CHKERRQ(ierr)
   call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltog,ierr);CHKERRQ(ierr)
   call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltog_elem, &

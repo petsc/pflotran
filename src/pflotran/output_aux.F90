@@ -231,6 +231,8 @@ function CheckpointOptionCreate()
   checkpoint_option%periodic_time_incr = UNINITIALIZED_DOUBLE
   checkpoint_option%periodic_ts_incr = huge(checkpoint_option%periodic_ts_incr)
   checkpoint_option%format = CHECKPOINT_BINARY
+
+  CheckpointOptionCreate => checkpoint_option
   
 end function CheckpointOptionCreate 
   
