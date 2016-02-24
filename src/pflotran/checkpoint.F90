@@ -1495,7 +1495,7 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
             internal_units = 'sec'
             units_conversion = UnitsConvertToInternal(word, &
                                 internal_units,option)
-            checkpoint_option%tconv = 1/units_conversion
+            checkpoint_option%tconv = 1.d0/units_conversion
             checkpoint_option%tunit = trim(word)
             checkpoint_option%periodic_time_incr = temp_real*units_conversion
           case('TIMESTEP')
@@ -1513,7 +1513,7 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
         internal_units = 'sec'
         units_conversion = UnitsConvertToInternal(word,internal_units, &
                                                   option)
-        checkpoint_option%tconv = 1/units_conversion
+        checkpoint_option%tconv = 1.d0/units_conversion
         checkpoint_option%tunit = trim(word)
 !geh: this needs to be tested.
 #if 0
