@@ -134,7 +134,6 @@ module Grid_Unstructured_Aux_module
     VecScatter :: scatter_gtol ! scatter context for global to local updates
     VecScatter :: scatter_ltol ! scatter context for local to local updates
     VecScatter :: scatter_gton ! scatter context for global to natural updates
-    VecScatter :: scatter_ntog ! scatter context for natural to global updates
     ISLocalToGlobalMapping :: mapping_ltog  ! petsc vec local to global mapping
 !geh: deprecated in PETSc in spring 2014
 !    ISLocalToGlobalMapping :: mapping_ltogb ! block form of mapping_ltog
@@ -202,7 +201,6 @@ function UGDMCreate()
   ugdm%scatter_gtol = 0
   ugdm%scatter_ltol  = 0
   ugdm%scatter_gton = 0
-  ugdm%scatter_ntog = 0
   ugdm%mapping_ltog = 0
   ugdm%global_vec = 0
   ugdm%local_vec = 0
@@ -695,9 +693,6 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecScatterCreate(ugdm%global_vec,ugdm%is_local_petsc,vec_tmp, &
                         ugdm%is_local_natural,ugdm%scatter_gton, &
                         ierr);CHKERRQ(ierr)
-  call VecScatterCreate(ugdm%global_vec,ugdm%is_local_natural,vec_tmp, &
-                        ugdm%is_local_petsc,ugdm%scatter_ntog, &
-                        ierr);CHKERRQ(ierr)
   call VecDestroy(vec_tmp,ierr);CHKERRQ(ierr)
 
 #if UGRID_DEBUG
@@ -707,11 +702,6 @@ subroutine UGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecScatterView(ugdm%scatter_gton,viewer,ierr);CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 
-  string = 'scatter_ntog' // trim(ndof_word) // '.out'
-  call PetscViewerASCIIOpen(option%mycomm,trim(string),viewer, &
-                            ierr);CHKERRQ(ierr)
-  call VecScatterView(ugdm%scatter_ntog,viewer,ierr);CHKERRQ(ierr)
-  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
   ! set the ao_natural_to_petsc pointer
@@ -1760,7 +1750,6 @@ subroutine UGridDMDestroy(ugdm)
   call VecScatterDestroy(ugdm%scatter_gtol,ierr);CHKERRQ(ierr)
   call VecScatterDestroy(ugdm%scatter_ltol,ierr);CHKERRQ(ierr)
   call VecScatterDestroy(ugdm%scatter_gton,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(ugdm%scatter_ntog,ierr);CHKERRQ(ierr)
   call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltog,ierr);CHKERRQ(ierr)
   call VecDestroy(ugdm%global_vec,ierr);CHKERRQ(ierr)
   call VecDestroy(ugdm%local_vec,ierr);CHKERRQ(ierr)
