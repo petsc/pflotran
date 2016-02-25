@@ -77,9 +77,7 @@ module PM_Subsurface_Flow_class
             PMSubsurfaceFlowUpdatePropertiesNI, &
             PMSubsurfaceFlowTimeCut, &
             PMSubsurfaceFlowCheckpointBinary, &
-            PMSubsurfaceFlowCheckpointHDF5, &
             PMSubsurfaceFlowRestartBinary, &
-            PMSubsurfaceFlowRestartHDF5, &
             PMSubsurfaceFlowReadSelectCase, &
             PMSubsurfaceFlowDestroy
   
