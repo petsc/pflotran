@@ -2278,6 +2278,24 @@ subroutine SubsurfaceReadInput(simulation)
                   call InputKeywordUnrecognized(word, &
                          'OUTPUT,PERIODIC',option)
               end select
+            case('OBSERVATION_TIMES')
+              output_option%print_observation = PETSC_TRUE
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time units', &
+                   'OUTPUT,OBSERVATION_TIMES')
+              internal_units = 'sec'
+              units_conversion = &
+                UnitsConvertToInternal(word,internal_units,option) 
+              string = 'OBSERVATION_TIMES,TIMES'
+              call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
+                                    string,input,option)
+              do temp_int = 1, size(temp_real_array)
+                waypoint => WaypointCreate()
+                waypoint%time = temp_real_array(temp_int)*units_conversion
+                waypoint%print_tr_output = PETSC_TRUE    
+                call WaypointInsertInList(waypoint,waypoint_list)
+              enddo
+              call DeallocateArray(temp_real_array)
             case('PERIODIC_OBSERVATION')
               output_option%print_observation = PETSC_TRUE
               call InputReadWord(input,option,word,PETSC_TRUE)

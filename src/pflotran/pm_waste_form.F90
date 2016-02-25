@@ -185,6 +185,7 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   use Condition_module, only : ConditionReadValues
   use Dataset_Ascii_class 
   use String_module
+  use Units_module
   
   implicit none
   
@@ -195,21 +196,24 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   character(len=MAXSTRINGLENGTH) :: error_string
   type(option_type) :: option
 
-  character(len=MAXWORDLENGTH) :: word, units
-  character(len=MAXSTRINGLENGTH) :: temp_buf, string, internal_units
+  character(len=MAXWORDLENGTH) :: word, units, internal_units
+  character(len=MAXSTRINGLENGTH) :: temp_buf, string
   character(len=MAXSTRINGLENGTH) :: species_name_buf
   character(len=MAXSTRINGLENGTH) :: species_formula_wt_buf
+  character(len=MAXSTRINGLENGTH) :: species_formula_wt_units_buf
   class(dataset_ascii_type), pointer :: dataset_ascii
   PetscInt :: k, icol
 
   found = PETSC_TRUE
   species_name_buf = ''
   species_formula_wt_buf = ''
+  species_formula_wt_units_buf = ''
   k = 0
 
   select case(trim(keyword))
 !-------------------------------------
     case('SPECIES')
+      internal_units = 'g/mol'
       do
         call InputReadPflotranString(input,option)
         if (InputCheckExit(input,option)) exit
@@ -219,6 +223,14 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
         call InputReadWord(input,option,word,PETSC_TRUE)
         species_formula_wt_buf = trim(species_formula_wt_buf) // ' ' &
                                  // trim(word)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          species_formula_wt_units_buf = trim(species_formula_wt_units_buf) & 
+                                         // ' ' // trim(word)
+        else
+          species_formula_wt_units_buf = trim(species_formula_wt_units_buf) & 
+                                         // ' ' // internal_units
+        endif
         this%wf_species%num_species = k
       enddo
       if (k == 0) then
@@ -238,12 +250,20 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
         call InputReadWord(input,option,this%wf_species%name(k),PETSC_TRUE)
         call InputErrorMsg(input,option,'species name',error_string)
       enddo
-      input%buf = species_formula_wt_buf
       k = 0
       do while (k < this%wf_species%num_species)
         k = k + 1
+        input%buf = species_formula_wt_buf
         call InputReadDouble(input,option,this%wf_species%formula_weight(k))
         call InputErrorMsg(input,option,'species formula weight',error_string)
+        species_formula_wt_buf = input%buf
+        input%buf = species_formula_wt_units_buf
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'species formula weight units', &
+                           error_string)
+        this%wf_species%formula_weight(k) = this%wf_species%formula_weight(k) &
+                           * UnitsConvertToInternal(word,internal_units,option)
+        species_formula_wt_units_buf = input%buf
         this%wf_species%column_id(k) = UNINITIALIZED_INTEGER
         this%wf_species%ispecies(k) = UNINITIALIZED_INTEGER
       enddo

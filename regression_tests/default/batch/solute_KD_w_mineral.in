@@ -1,0 +1,172 @@
+#Description: 0D simple linear sorption isotherm with mineral.
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS
+    1
+  /
+END
+
+#=========================== flow mode ========================================
+# Uniform velocity (see below). No flow mode specified.
+
+#=========================== useful tranport parameters ==================
+UNIFORM_VELOCITY 0.d0 0.d0 0.d0 m/yr
+
+REFERENCE_DENSITY 1000.d0
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    A(aq)
+  /
+  MINERALS
+    A(s)
+  /
+  MINERAL_KINETICS
+    A(s)
+      RATE_CONSTANT 0.d0
+    /
+  /
+  SORPTION
+    ISOTHERM_REACTIONS
+      A(aq)
+        TYPE LINEAR
+        ! Calculating distribution coefficient (Kd) from retardation (R)#
+
+        !   Kd = porosity*saturation*water_density*(R-1)
+
+        ! Assume#
+        !   Kd units = kg water/m^3 bulk volume
+        !   water_density = 1000. (set above under REFERENCE_DENSITY) [kg/m^3]
+        !   saturation = 1.  [m^3 water/m^3 pore space]
+        !   porosity = 0.25 (from below)  [m^3 pore space/m^3 bulk volume]
+
+        ! R = 2, Kd = 250.
+        DISTRIBUTION_COEFFICIENT 0.125786163522d0 mL/g
+	KD_MINERAL_NAME A(s)
+      /
+    /
+  /
+  DATABASE ../../../database/hanford.dat
+  OUTPUT
+    all
+    TOTAL
+  /
+END
+
+#=========================== solver options ===================================
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 1 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2650.d0
+END
+
+#=========================== output options ===================================
+OUTPUT
+  TIMES hr 1
+  FORMAT TECPLOT POINT
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 2 hr      ! A(aq) at 50m midpoint
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE west
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+REGION east
+  FACE east
+  COORDINATES
+    1.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
+  /
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+#=========================== constraints ======================================
+CONSTRAINT initial
+  CONCENTRATIONS
+    A(aq) 1.d-7  T
+  /
+  MINERALS
+    A(s) 1.d0 1.d0
+  /
+END
+
+CONSTRAINT inlet
+  CONCENTRATIONS
+    A(aq) 1.d-3  T
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+
+END_SUBSURFACE
