@@ -1189,26 +1189,26 @@ simulation_surfsubsurface.o : checkpoint.o logging.o option.o output.o \
                               timestepper_base.o waypoint.o
 solver.o : input_aux.o option.o pflotran_constants.o string.o
 spline.o : pflotran_constants.o
-srcsink_sandbox.o : grid.o input_aux.o material_aux.o option.o output_aux.o \
-                    pflotran_constants.o region.o srcsink_sandbox_base.o \
+srcsink_sandbox.o : general_aux.o grid.o input_aux.o material_aux.o option.o \
+                    output_aux.o pflotran_constants.o srcsink_sandbox_base.o \
                     srcsink_sandbox_downreg.o srcsink_sandbox_mass_rate.o \
                     srcsink_sandbox_wipp_gas.o srcsink_sandbox_wipp_well.o \
                     string.o utility.o
 srcsink_sandbox_base.o : geometry.o grid.o input_aux.o material_aux.o option.o \
-                         pflotran_constants.o region.o utility.o
+                         pflotran_constants.o utility.o
 srcsink_sandbox_downreg.o : condition.o dataset.o dataset_ascii.o \
                             dataset_base.o general_aux.o grid.o input_aux.o \
                             material_aux.o option.o pflotran_constants.o \
-                            reaction_aux.o region.o srcsink_sandbox_base.o \
-                            string.o time_storage.o units.o
+                            reaction_aux.o srcsink_sandbox_base.o string.o \
+                            time_storage.o units.o
 srcsink_sandbox_mass_rate.o : general_aux.o grid.o input_aux.o material_aux.o \
                               option.o pflotran_constants.o reaction_aux.o \
-                              region.o srcsink_sandbox_base.o string.o units.o
+                              srcsink_sandbox_base.o string.o units.o
 srcsink_sandbox_wipp_gas.o : eos_gas.o grid.o input_aux.o material_aux.o \
                              option.o pflotran_constants.o reaction_aux.o \
-                             region.o srcsink_sandbox_base.o string.o units.o
+                             srcsink_sandbox_base.o string.o units.o
 srcsink_sandbox_wipp_well.o : grid.o input_aux.o material_aux.o option.o \
-                              pflotran_constants.o reaction_aux.o region.o \
+                              pflotran_constants.o reaction_aux.o \
                               srcsink_sandbox_base.o string.o units.o
 strata.o : input_aux.o material.o option.o pflotran_constants.o region.o \
            string.o surface_material.o units.o
