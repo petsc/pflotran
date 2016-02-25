@@ -3526,7 +3526,7 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
   PetscReal :: res(option%nflowdof)
   PetscReal :: Jac(option%nflowdof,option%nflowdof)
   class(srcsink_sandbox_base_type), pointer :: cur_srcsink
-  PetscInt :: i, local_id, ghosted_id, istart, iend, idof, irow
+  PetscInt :: local_id, ghosted_id, istart, iend, irow, idof
   PetscReal :: res_pert(option%nflowdof)
   PetscReal :: aux_real(10)
   PetscErrorCode :: ierr
@@ -3539,87 +3539,43 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
   do
     if (.not.associated(cur_srcsink)) exit
     aux_real = 0.d0
-
-    if (associated(cur_srcsink%region)) then
-      do i = 1, size(cur_srcsink%region%cell_ids)
-        local_id = cur_srcsink%region%cell_ids(i)
-        ghosted_id = grid%nL2G(local_id)
-        res = 0.d0
-        Jac = 0.d0
+    local_id = cur_srcsink%local_cell_id
+    ghosted_id = grid%nL2G(local_id)
+    res = 0.d0
+    Jac = 0.d0
+    call GeneralSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
+                      general_auxvars(ZERO_INTEGER,ghosted_id),option)
+    call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
+                              material_auxvars(ghosted_id), &
+                              aux_real,option)
+    if (compute_derivative) then
+      do idof = 1, option%nflowdof
+        res_pert = 0.d0
         call GeneralSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                          general_auxvars(ZERO_INTEGER,ghosted_id),option)
-        call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
+                                    general_auxvars(idof,ghosted_id),option)
+        call cur_srcsink%Evaluate(res_pert,Jac,PETSC_FALSE, &
                                   material_auxvars(ghosted_id), &
                                   aux_real,option)
-        if (compute_derivative) then
-          do idof = 1, option%nflowdof
-            res_pert = 0.d0
-            call GeneralSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                                     general_auxvars(idof,ghosted_id),option)
-            call cur_srcsink%Evaluate(res_pert,Jac,PETSC_FALSE, &
-                                      material_auxvars(ghosted_id), &
-                                      aux_real,option)
-            do irow = 1, option%nflowdof
-              Jac(irow,idof) = (res_pert(irow)-res(irow)) / &
-                               general_auxvars(idof,ghosted_id)%pert
-            enddo
-          enddo
-          if (general_isothermal) then
-            Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
-            Jac(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
-          endif         
-          if (general_no_air) then
-            Jac(GENERAL_GAS_EQUATION_INDEX,:) = 0.d0
-            Jac(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
-          endif          
-          call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
-                                        ghosted_id-1,Jac,ADD_VALUES, &
-                                        ierr);CHKERRQ(ierr)
-        else
-          iend = local_id*option%nflowdof
-          istart = iend - option%nflowdof + 1
-          r_p(istart:iend) = r_p(istart:iend) - res
-        endif
-      enddo
-    else
-      local_id = cur_srcsink%local_cell_id
-      ghosted_id = grid%nL2G(local_id)
-      res = 0.d0
-      Jac = 0.d0
-      call GeneralSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                        general_auxvars(ZERO_INTEGER,ghosted_id),option)
-      call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
-                                material_auxvars(ghosted_id), &
-                                aux_real,option)
-      if (compute_derivative) then
-        do idof = 1, option%nflowdof
-          res_pert = 0.d0
-          call GeneralSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                                     general_auxvars(idof,ghosted_id),option)
-          call cur_srcsink%Evaluate(res_pert,Jac,PETSC_FALSE, &
-                                    material_auxvars(ghosted_id), &
-                                    aux_real,option)
-          do irow = 1, option%nflowdof
-            Jac(irow,idof) = (res_pert(irow)-res(irow)) / &
-                             general_auxvars(idof,ghosted_id)%pert
-          enddo
+        do irow = 1, option%nflowdof
+          Jac(irow,idof) = (res_pert(irow)-res(irow)) / &
+                            general_auxvars(idof,ghosted_id)%pert
         enddo
-        if (general_isothermal) then
-          Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
-          Jac(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
-        endif         
-        if (general_no_air) then
-          Jac(GENERAL_GAS_EQUATION_INDEX,:) = 0.d0
-          Jac(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
-        endif          
-        call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
-                                      ghosted_id-1,Jac,ADD_VALUES, &
-                                      ierr);CHKERRQ(ierr)
-      else
-        iend = local_id*option%nflowdof
-        istart = iend - option%nflowdof + 1
-        r_p(istart:iend) = r_p(istart:iend) - res
-      endif
+      enddo
+      if (general_isothermal) then
+        Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+        Jac(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+      endif         
+      if (general_no_air) then
+        Jac(GENERAL_GAS_EQUATION_INDEX,:) = 0.d0
+        Jac(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
+      endif          
+      call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
+                                    ghosted_id-1,Jac,ADD_VALUES, &
+                                    ierr);CHKERRQ(ierr)
+    else
+      iend = local_id*option%nflowdof
+      istart = iend - option%nflowdof + 1
+      r_p(istart:iend) = r_p(istart:iend) - res
     endif
     cur_srcsink => cur_srcsink%next
   enddo

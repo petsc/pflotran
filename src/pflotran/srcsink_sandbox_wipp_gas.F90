@@ -128,25 +128,22 @@ end subroutine WIPPGasGenerationRead
 
 ! ************************************************************************** !
 
-subroutine WIPPGasGenerationSetup(this,region_list,grid,option)
+subroutine WIPPGasGenerationSetup(this,grid,option)
   ! 
   ! Sets up the WIPP gas generation src/sink
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/11/14
   use Option_module
-  use Region_module
   use Grid_module
-  use Region_module
   
   implicit none
   
   class(srcsink_sandbox_wipp_gas_type) :: this
-  type(region_list_type) :: region_list
   type(grid_type) :: grid
   type(option_type) :: option
   
-  call SSSandboxBaseSetup(this,region_list,grid,option)
+  call SSSandboxBaseSetup(this,grid,option)
 
 end subroutine WIPPGasGenerationSetup 
 

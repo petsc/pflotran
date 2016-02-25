@@ -116,28 +116,18 @@ end subroutine WIPPWellRead
 
 ! ************************************************************************** !
 
-subroutine WIPPWellSetup(this,region_list,grid,option)
+subroutine WIPPWellSetup(this,grid,option)
     
   use Option_module
   use Grid_module
-  use Region_module
   
   implicit none
   
   class(srcsink_sandbox_wipp_well_type) :: this
-  type(region_list_type) :: region_list
   type(grid_type) :: grid
   type(option_type) :: option
     
-  call SSSandboxBaseSetup(this,region_list,grid,option)
-  
-  if (this%mass_balance) then
-    allocate(this%instantaneous_mass_rate(option%nflowdof* &
-                                          this%region%num_cells))
-    this%instantaneous_mass_rate = 0.d0
-    allocate(this%cumulative_mass(option%nflowdof*this%region%num_cells))
-    this%cumulative_mass = 0.d0
-  endif
+  call SSSandboxBaseSetup(this,grid,option)
 
 end subroutine WIPPWellSetup 
 

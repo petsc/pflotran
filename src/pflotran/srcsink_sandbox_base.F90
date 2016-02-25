@@ -1,7 +1,6 @@
 module SrcSink_Sandbox_Base_class
   
   use PFLOTRAN_Constants_module
-  use Region_module
   use Geometry_module
 
   implicit none
@@ -11,11 +10,8 @@ module SrcSink_Sandbox_Base_class
 #include "petsc/finclude/petscsys.h"
 
   type, abstract, public :: srcsink_sandbox_base_type
-    character(len=MAXWORDLENGTH) :: region_name
-    type(region_type), pointer :: region
     PetscInt :: local_cell_id
     type(point3d_type) :: coordinate    
-    PetscBool :: mass_balance
     PetscReal, pointer :: instantaneous_mass_rate(:)
     PetscReal, pointer :: cumulative_mass(:)
     class(srcsink_sandbox_base_type), pointer :: next
@@ -43,13 +39,10 @@ subroutine SSSandboxBaseInit(this)
   
   class(srcsink_sandbox_base_type) :: this
     
-  this%region_name = ''
   this%coordinate%x = UNINITIALIZED_DOUBLE
   this%coordinate%y = UNINITIALIZED_DOUBLE
   this%coordinate%z = UNINITIALIZED_DOUBLE
   this%local_cell_id = UNINITIALIZED_INTEGER
-  this%mass_balance = PETSC_FALSE
-  nullify(this%region)
   nullify(this%instantaneous_mass_rate)
   nullify(this%cumulative_mass)
   nullify(this%next)
@@ -58,7 +51,7 @@ end subroutine SSSandboxBaseInit
 
 ! ************************************************************************** !
 
-subroutine SSSandboxBaseSetup(this,region_list,grid,option)
+subroutine SSSandboxBaseSetup(this,grid,option)
     
   use Option_module
   use Grid_module
@@ -66,7 +59,6 @@ subroutine SSSandboxBaseSetup(this,region_list,grid,option)
   implicit none
   
   class(srcsink_sandbox_base_type) :: this
-  type(region_list_type) :: region_list
   type(grid_type) :: grid
   type(option_type) :: option
   
@@ -74,16 +66,7 @@ subroutine SSSandboxBaseSetup(this,region_list,grid,option)
   PetscInt :: i, iflag
   PetscErrorCode :: ierr
 
-  if (len_trim(this%region_name) > 0) then
-    this%region => &
-      RegionGetPtrFromList(this%region_name,region_list)
-    if (.not.associated(this%region)) then
-      option%io_buffer = 'Source/Sink Sandbox region "' // &
-                         trim(this%region_name) // &
-                           '" not found in list of regions.'
-      call printErrMsg(option)
-    endif
-  else if (Initialized(this%coordinate%x)) then
+  if (Initialized(this%coordinate%x)) then
     call GridGetLocalIDFromCoordinate(grid,this%coordinate,option,local_id)
     iflag = 0
     if (local_id > 0) then
@@ -105,9 +88,6 @@ subroutine SSSandboxBaseSetup(this,region_list,grid,option)
       &domain thorugh either a REGION or COORDINATE.'
     call printErrMsg(option)
   endif  
-
-
-  ! perhaps we need a global reduction here to catch the lack of a connection.
   
 end subroutine SSSandboxBaseSetup 
 
@@ -149,16 +129,12 @@ subroutine SSSandboxBaseSelectCase(this,input,option,keyword,found)
   found = PETSC_TRUE
   select case(trim(keyword))
     case('REGION')
-      option%io_buffer = 'The REGION card is being phased out of the &
+      option%io_buffer = 'The REGION card has been deprecated in &
         &Source/Sink Sandbox.  Please switch to using a COORDINATE and &
         &defining one Src/Sink block for each coordinate.'
       call printErrMsg(option)
-      call InputReadWord(input,option,this%region_name,PETSC_TRUE)
-      call InputErrorMsg(input,option,'REGION',error_string)
     case('COORDINATE')
       call GeometryReadCoordinate(input,option,this%coordinate,error_string)
-    case('MASS_BALANCE')
-      this%mass_balance = PETSC_TRUE
     case default
       found = PETSC_FALSE
   end select   
@@ -214,7 +190,6 @@ subroutine SSSandboxBaseDestroy(this)
   
   class(srcsink_sandbox_base_type) :: this
   
-  nullify(this%region)
   call DeallocateArray(this%instantaneous_mass_rate)
   call DeallocateArray(this%cumulative_mass)
 

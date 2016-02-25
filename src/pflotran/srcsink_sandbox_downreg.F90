@@ -179,7 +179,7 @@ end subroutine DownregRead
 
 ! ************************************************************************** !
 
-subroutine DownregSetup(this,region_list,grid,option)
+subroutine DownregSetup(this,grid,option)
   ! 
   ! Sets up the mass rate src/sink
   ! 
@@ -187,18 +187,16 @@ subroutine DownregSetup(this,region_list,grid,option)
   ! Date: 06/03/14
 
   use Option_module
-  use Region_module
   use Grid_module
   use General_Aux_module, only : general_fmw_com => fmw_comp
 
   implicit none
   
   class(srcsink_sandbox_downreg_type) :: this
-  type(region_list_type) :: region_list
   type(grid_type) :: grid
   type(option_type) :: option
   
-  call SSSandboxBaseSetup(this,region_list,grid,option)
+  call SSSandboxBaseSetup(this,grid,option)
 
 end subroutine DownregSetup 
 

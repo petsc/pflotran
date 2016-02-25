@@ -2621,7 +2621,7 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
   PetscReal :: res(option%nflowdof)
   PetscReal :: Jac(option%nflowdof,option%nflowdof)
   class(srcsink_sandbox_base_type), pointer :: cur_srcsink
-  PetscInt :: i, local_id, ghosted_id, istart, iend, idof, irow
+  PetscInt :: local_id, ghosted_id, istart, iend
   PetscReal :: aux_real(10)
   PetscErrorCode :: ierr
   
@@ -2632,58 +2632,30 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
   cur_srcsink => ss_sandbox_list
   do
     if (.not.associated(cur_srcsink)) exit
-      aux_real = 0.d0
-      if (associated(cur_srcsink%region)) then
-        do i = 1, cur_srcsink%region%num_cells
-          local_id = cur_srcsink%region%cell_ids(i)
-          ghosted_id = grid%nL2G(local_id)
-          res = 0.d0
-          Jac = 0.d0
-          call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                            global_auxvars(ghosted_id),option)
-          call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
-                                    material_auxvars(ghosted_id), &
-                                    aux_real,option)
-          if (compute_derivative) then
-            call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                                              global_auxvars(ghosted_id),option)
-            call cur_srcsink%Evaluate(res,Jac,PETSC_TRUE, &
-                                      material_auxvars(ghosted_id), &
-                                      aux_real,option)
-            call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
-                                          ghosted_id-1,Jac,ADD_VALUES, &
-                                          ierr);CHKERRQ(ierr)
-          else
-            iend = local_id*option%nflowdof
-            istart = iend - option%nflowdof + 1
-            r_p(istart:iend) = r_p(istart:iend) - res
-          endif
-        enddo
-      else
-        local_id = cur_srcsink%local_cell_id
-        ghosted_id = grid%nL2G(local_id)
-        res = 0.d0
-        Jac = 0.d0
-        call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                          global_auxvars(ghosted_id),option)
-        call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
-                                  material_auxvars(ghosted_id), &
-                                  aux_real,option)
-        if (compute_derivative) then
-          call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                                            global_auxvars(ghosted_id),option)
-          call cur_srcsink%Evaluate(res,Jac,PETSC_TRUE, &
-                                    material_auxvars(ghosted_id), &
-                                    aux_real,option)
-          call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
-                                        ghosted_id-1,Jac,ADD_VALUES, &
-                                        ierr);CHKERRQ(ierr)
-        else
-          iend = local_id*option%nflowdof
-          istart = iend - option%nflowdof + 1
-          r_p(istart:iend) = r_p(istart:iend) - res
-        endif
-      endif
+    aux_real = 0.d0
+    local_id = cur_srcsink%local_cell_id
+    ghosted_id = grid%nL2G(local_id)
+    res = 0.d0
+    Jac = 0.d0
+    call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
+                      global_auxvars(ghosted_id),option)
+    call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
+                              material_auxvars(ghosted_id), &
+                              aux_real,option)
+    if (compute_derivative) then
+      call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
+                                        global_auxvars(ghosted_id),option)
+      call cur_srcsink%Evaluate(res,Jac,PETSC_TRUE, &
+                                material_auxvars(ghosted_id), &
+                                aux_real,option)
+      call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
+                                    ghosted_id-1,Jac,ADD_VALUES, &
+                                    ierr);CHKERRQ(ierr)
+    else
+      iend = local_id*option%nflowdof
+      istart = iend - option%nflowdof + 1
+      r_p(istart:iend) = r_p(istart:iend) - res
+    endif
     cur_srcsink => cur_srcsink%next
   enddo
   
