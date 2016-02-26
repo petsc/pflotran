@@ -2132,6 +2132,14 @@ subroutine SubsurfaceReadInput(simulation)
               internal_units = 'sec'
               output_option%tconv = &
                 UnitsConvertToInternal(word,internal_units,option)
+            case('VARIABLES')
+              call OutputVariableRead(input,option, &
+                                      output_option%output_variable_list)
+            case('AVERAGE_VARIABLES')
+              call OutputVariableRead(input,option, &
+                                      output_option%aveg_output_variable_list)
+            case('UNFILTER_NON_STATE_VARIABLES')
+              output_option%filter_non_state_variables = PETSC_FALSE
             
         !----------------------------------------------------------------------
         !----- SUPPORT FOR OLD INPUT FORMAT: ----------------------------------
@@ -2444,15 +2452,10 @@ subroutine SubsurfaceReadInput(simulation)
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
-            case('VARIABLES')
-              call OutputVariableRead(input,option,output_option%output_variable_list)
-            case('AVERAGE_VARIABLES')
-              call OutputVariableRead(input,option,output_option%aveg_output_variable_list)
-            case('UNFILTER_NON_STATE_VARIABLES')
-              output_option%filter_non_state_variables = PETSC_FALSE
             case default
               call InputKeywordUnrecognized(word,'OUTPUT',option)
           end select
+
         enddo
         if (vel_cent) then
           if (output_option%print_tecplot) &

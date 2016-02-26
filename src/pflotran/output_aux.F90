@@ -75,11 +75,6 @@ module Output_Aux_module
     PetscBool :: filter_non_state_variables
 
     PetscInt :: xmf_vert_len
-
-    PetscBool :: snap_has_variable_list
-    PetscBool :: obs_has_variable_list
-    PetscBool :: msbl_has_variable_list
-    PetscBool :: master_variable_list
     
     type(output_variable_list_type), pointer :: output_variable_list
     type(output_variable_list_type), pointer :: aveg_output_variable_list
@@ -104,6 +99,7 @@ module Output_Aux_module
   type, public :: output_variable_type
     character(len=MAXWORDLENGTH) :: name   ! string that appears in hdf5 file
     character(len=MAXWORDLENGTH) :: units
+    ! jmf: change to snapshot_plot_only?
     PetscBool :: plot_only
     PetscInt :: iformat   ! 0 = for REAL values; 1 = for INTEGER values
     PetscInt :: icategory ! category for variable-specific regression testing
@@ -208,10 +204,6 @@ function OutputOptionCreate()
   output_option%plot_name = ""
   output_option%aveg_var_time = 0.d0
   output_option%aveg_var_dtime = 0.d0
-  output_option%snap_has_variable_list = PETSC_FALSE
-  output_option%obs_has_variable_list = PETSC_FALSE
-  output_option%msbl_has_variable_list = PETSC_FALSE
-  output_option%master_variable_list = PETSC_FALSE
   output_option%xmf_vert_len = 0
   output_option%filter_non_state_variables = PETSC_TRUE
 

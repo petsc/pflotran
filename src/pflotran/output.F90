@@ -401,19 +401,6 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
             call InputKeywordUnrecognized(word,string,option)
         end select
 
-!......................
-      case('VARIABLES')
-        call OutputVariableRead(input,option,output_option%output_variable_list)
-
-!..............................
-      case('AVERAGE_VARIABLES')
-        call OutputVariableRead(input,option, &
-                                output_option%aveg_output_variable_list)
-
-!.........................................
-      case('UNFILTER_NON_STATE_VARIABLES')
-        output_option%filter_non_state_variables = PETSC_FALSE
-
 !...................................
       case ('HDF5_WRITE_GROUP_SIZE')
         string = 'OUTPUT,' // trim(block_name) // ',HDF5_WRITE_GROUP_SIZE'
@@ -517,7 +504,7 @@ end subroutine OutputFileRead
 
 subroutine OutputVariableRead(input,option,output_variable_list)
   ! 
-  ! This routine reads variable from input file.
+  ! This routine reads a variable from the input file.
   ! 
   ! Author: Gautam Bisht, LBNL; Glenn Hammond PNNL/SNL
   ! Date: 12/21/12
