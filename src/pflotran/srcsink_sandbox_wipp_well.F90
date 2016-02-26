@@ -78,7 +78,6 @@ subroutine WIPPWellRead(this,input,option)
   type(input_type), pointer :: input
   type(option_type) :: option
 
-  PetscInt :: i
   character(len=MAXWORDLENGTH) :: word, internal_units
   PetscBool :: found
   
@@ -92,8 +91,7 @@ subroutine WIPPWellRead(this,input,option)
                        'SRCSINK_SANDBOX,WIPP')
     call StringToUpper(word)   
 
-    ! reads the REGION
-    call SSSandboxBaseRead(this,input,option,word,found)
+    call SSSandboxBaseSelectCase(this,input,option,word,found)
     if (found) cycle
     
     select case(trim(word))
@@ -118,23 +116,18 @@ end subroutine WIPPWellRead
 
 ! ************************************************************************** !
 
-subroutine WIPPWellSetup(this,region_list,option)
-  ! 
-  ! Sets up the WIPP well src/sink
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 04/11/14
-
+subroutine WIPPWellSetup(this,grid,option)
+    
   use Option_module
-  use Region_module
-
+  use Grid_module
+  
   implicit none
   
   class(srcsink_sandbox_wipp_well_type) :: this
-  type(region_list_type) :: region_list  
+  type(grid_type) :: grid
   type(option_type) :: option
-  
-  call SSSandboxBaseSetup(this,region_list,option)
+    
+  call SSSandboxBaseSetup(this,grid,option)
 
 end subroutine WIPPWellSetup 
 
@@ -194,6 +187,10 @@ subroutine WIPPWellSrcSink(this,Residual,Jacobian,compute_derivative, &
                             q_gas * aux_real(WIPP_WELL_GAS_DENSITY) * &
                             aux_real(WIPP_WELL_GAS_ENTHALPY)
   
+  if (associated(this%instantaneous_mass_rate)) then
+    this%instantaneous_mass_rate(:) = -1.d0*Residual(:)
+  endif
+                            
   if (compute_derivative) then
     
     ! jacobian something

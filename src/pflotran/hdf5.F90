@@ -267,7 +267,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     string_size = MAXSTRINGLENGTH
     call h5fget_name_f(file_id,string,string_size,hdf5_err)
     option%io_buffer = 'HDF5 dataset "' // trim(dataset_name) // '" not found &
-                       &in file "' // trim(string) // '".'
+      &in file "' // trim(string) // '".'
     call printErrMsg(option)
   endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
@@ -544,7 +544,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
     string_size = MAXSTRINGLENGTH
     call h5fget_name_f(file_id,string,string_size,hdf5_err)
     option%io_buffer = 'HDF5 dataset "' // trim(dataset_name) // '" not found &
-                       &in file "' // trim(string) // '".'
+      &in file "' // trim(string) // '".'
     call printErrMsg(option)
   endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
@@ -858,7 +858,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
     string_size = MAXSTRINGLENGTH
     call h5fget_name_f(file_id,string,string_size,hdf5_err)
     option%io_buffer = 'HDF5 dataset "' // trim(dataset_name) // '" not found &
-                       &in file "' // trim(string) // '".'
+      &in file "' // trim(string) // '".'
     call printErrMsg(option)
   endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
@@ -1418,7 +1418,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
     string_size = MAXSTRINGLENGTH
     call h5fget_name_f(file_id,string,string_size,hdf5_err)
     option%io_buffer = 'HDF5 dataset "' // trim(dataset_name) // '" not found &
-                       &in file "' // trim(string) // '".'
+      &in file "' // trim(string) // '".'
     call printErrMsg(option)
   endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
@@ -1660,7 +1660,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
     string_size = MAXSTRINGLENGTH
     call h5fget_name_f(file_id,string,string_size,hdf5_err)
     option%io_buffer = 'HDF5 dataset "' // trim(dataset_name) // '" not found &
-                       &in file "' // trim(string) // '".'
+      &in file "' // trim(string) // '".'
     call printErrMsg(option)
   endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
@@ -2172,7 +2172,7 @@ subroutine HDF5ReadUnstructuredGridRegionFromFile(option,region,filename)
     string_size = MAXSTRINGLENGTH
     call h5fget_name_f(file_id,string2,string_size,hdf5_err)
     option%io_buffer = 'HDF5 dataset "' // trim(string) // '" not found &
-                       &in file "' // trim(string2) // '".'
+      &in file "' // trim(string2) // '".'
     call printErrMsg(option)
   endif
 
@@ -2439,7 +2439,7 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
     string_size = MAXSTRINGLENGTH
     call h5fget_name_f(file_id,string2,string_size,hdf5_err)
     option%io_buffer = 'HDF5 dataset "' // trim(string) // '" not found &
-                       &in file "' // trim(string2) // '".'
+      &in file "' // trim(string2) // '".'
     call printErrMsg(option)
   endif
 

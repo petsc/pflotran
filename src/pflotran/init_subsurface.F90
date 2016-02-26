@@ -918,7 +918,8 @@ subroutine SubsurfSandboxesSetup(realization)
   
   class(realization_subsurface_type) :: realization
   
-   call SSSandboxSetup(realization%patch%region_list,realization%option)
+  call SSSandboxSetup(realization%patch%grid,realization%option, &
+                      realization%output_option)
   
 end subroutine SubsurfSandboxesSetup
 

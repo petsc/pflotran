@@ -596,9 +596,10 @@ recursive subroutine PMCBaseCheckpoint(this,filename_append)
 #if !defined(PETSC_HAVE_HDF5)
     this%option%io_buffer = 'HDF5 formatted checkpointing not supported &
       &unless PFLOTRAN is compiled with HDF5 libraries enabled.'
-    call printErrMsg(option)
-#endif
+    call printErrMsg(this%option)
+#else
     call this%CheckpointHDF5(chk_grp_id,filename_append)
+#endif
   endif
 
 end subroutine PMCBaseCheckpoint

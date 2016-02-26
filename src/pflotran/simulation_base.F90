@@ -137,7 +137,13 @@ subroutine SimulationBaseInitializeRun(this)
       if (index(this%option%restart_filename,'.chk') > 0) then
         call this%process_model_coupler_list%RestartBinary(viewer)
       elseif (index(this%option%restart_filename,'.h5') > 0) then
+#if !defined(PETSC_HAVE_HDF5)
+         this%option%io_buffer = 'HDF5 formatted restart not supported &
+              &unless PFLOTRAN is compiled with HDF5 libraries enabled.'
+         call printErrMsg(this%option)
+#else
         call this%process_model_coupler_list%RestartHDF5(chk_grp_id)
+#endif
       else
         this%option%io_buffer = 'Unknown restart filename format. ' // &
         'Only *.chk and *.h5 supported.'
