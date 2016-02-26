@@ -213,6 +213,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   use String_module
   use Fracture_module
   use Dataset_module
+  use Units_module
   
   implicit none
   
@@ -220,7 +221,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   type(input_type), pointer :: input
   type(option_type) :: option
   
-  character(len=MAXWORDLENGTH) :: keyword, word
+  character(len=MAXWORDLENGTH) :: keyword, word, internal_units
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: buffer_save
 
@@ -260,6 +261,12 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('ROCK_DENSITY') 
         call InputReadDouble(input,option,material_property%rock_density)
         call InputErrorMsg(input,option,'rock density','MATERIAL_PROPERTY')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'kg/m^3'
+          material_property%rock_density = material_property%rock_density * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('SPECIFIC_HEAT','HEAT_CAPACITY') 
         call InputReadDouble(input,option,material_property%specific_heat)
         call InputErrorMsg(input,option,'specific heat','MATERIAL_PROPERTY')

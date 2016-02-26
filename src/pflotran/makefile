@@ -558,9 +558,9 @@ factory_pflotran.o : checkpoint.o eos.o factory_geomechanics.o \
                      factory_hydrogeophysics.o factory_subsurface.o \
                      factory_surfsubsurface.o input_aux.o logging.o \
                      multisimulation.o option.o output_aux.o output_ekg.o \
-                     pflotran_constants.o pm_base.o pm_geomechanics_force.o \
-                     pm_rt.o pm_subsurface_flow.o pm_surface.o \
-                     pm_surface_flow.o pm_surface_th.o pmc_base.o \
+                     pflotran_constants.o pm_auxiliary.o pm_base.o \
+                     pm_geomechanics_force.o pm_rt.o pm_subsurface_flow.o \
+                     pm_surface.o pm_surface_flow.o pm_surface_th.o pmc_base.o \
                      simulation_base.o simulation_geomechanics.o \
                      simulation_hydrogeophysics.o simulation_subsurface.o \
                      simulation_surfsubsurface.o string.o units.o waypoint.o
@@ -623,7 +623,7 @@ flash2_aux.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
                eos_water.o fluid.o gas_eos_mod.o global_aux.o \
                mphase_pckr_mod.o option.o pflotran_constants.o \
                saturation_function.o
-fluid.o : input_aux.o option.o pflotran_constants.o string.o
+fluid.o : input_aux.o option.o pflotran_constants.o string.o units.o
 gas_eos_mod.o : pflotran_constants.o
 gauss.o : grid_unstructured_cell.o pflotran_constants.o utility.o
 general.o : connection.o coupler.o debug.o discretization.o eos_gas.o \
@@ -775,7 +775,7 @@ logging.o : pflotran_constants.o
 lookup_table.o : pflotran_constants.o utility.o
 material.o : characteristic_curves.o communicator_base.o dataset.o \
              dataset_base.o field.o global_aux.o input_aux.o material_aux.o \
-             option.o pflotran_constants.o string.o variables.o wipp.o
+             option.o pflotran_constants.o string.o units.o variables.o wipp.o
 material_aux.o : option.o pflotran_constants.o utility.o variables.o
 matrix_block_aux.o : option.o pflotran_constants.o utility.o
 matrix_buffer.o : grid.o grid_structured.o pflotran_constants.o
@@ -807,8 +807,9 @@ output.o : connection.o coupler.o debug.o discretization.o field.o \
            general_aux.o grid.o hdf5.o input_aux.o logging.o option.o \
            output_aux.o output_common.o output_ekg.o output_hdf5.o \
            output_observation.o output_tecplot.o output_vtk.o patch.o \
-           pflotran_constants.o reaction_aux.o realization_base.o variables.o
-output_aux.o : input_aux.o option.o pflotran_constants.o string.o variables.o
+           pflotran_constants.o reaction_aux.o realization_base.o \
+           realization_subsurface.o string.o units.o variables.o waypoint.o
+output_aux.o : option.o pflotran_constants.o variables.o
 output_common.o : connection.o coupler.o field.o global_aux.o grid.o \
                   grid_unstructured_aux.o grid_unstructured_cell.o hdf5.o \
                   hdf5_aux.o logging.o material_aux.o option.o output_aux.o \
@@ -874,8 +875,10 @@ pflotran.o : factory_geomechanics.o factory_hydrogeophysics.o \
              simulation_base.o
 pflotran_constants.o :
 pflotran_provenance.o :
-pm_auxiliary.o : communicator_base.o init_subsurface.o option.o \
-                 pflotran_constants.o pm_base.o realization_subsurface.o
+pm_auxiliary.o : communicator_base.o global_aux.o init_subsurface.o \
+                 input_aux.o option.o pflotran_constants.o pm_base.o \
+                 reaction_aux.o reactive_transport_aux.o \
+                 realization_subsurface.o string.o
 pm_base.o : input_aux.o option.o output_aux.o pflotran_constants.o \
             realization_base.o solver.o
 pm_base_pointer.o : option.o pflotran_constants.o pm_base.o \
@@ -957,7 +960,8 @@ pm_waste_form.o : condition.o data_mediator_vec.o dataset.o dataset_ascii.o \
                   grid_structured.o grid_unstructured.o input_aux.o option.o \
                   output_aux.o pflotran_constants.o pm_base.o reaction_aux.o \
                   reactive_transport_aux.o realization_base.o \
-                  realization_subsurface.o string.o time_storage.o utility.o
+                  realization_subsurface.o string.o time_storage.o units.o \
+                  utility.o
 pmc_auxiliary.o : option.o pflotran_constants.o pm_auxiliary.o pmc_base.o \
                   realization_subsurface.o timestepper_base.o
 pmc_base.o : checkpoint.o logging.o option.o output.o output_aux.o \

@@ -285,7 +285,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   character(len=MAXWORDLENGTH) :: tunit
   PetscReal :: tconv
   PetscReal :: fnorm, inorm, scaled_fnorm
-  PetscBool :: plot_flag, transient_plot_flag
+  PetscBool :: snapshot_plot_flag, observation_plot_flag, massbal_plot_flag
   Vec :: residual_vec
   PetscErrorCode :: ierr
   
@@ -357,10 +357,11 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
         call printMsg(option)
         
         process_model%output_option%plot_name = 'flow_cut_to_failure'
-        plot_flag = PETSC_TRUE
-        transient_plot_flag = PETSC_FALSE
-        call Output(process_model%realization_base,plot_flag, &
-                    transient_plot_flag)
+        snapshot_plot_flag = PETSC_TRUE
+        observation_plot_flag = PETSC_FALSE
+        massbal_plot_flag = PETSC_FALSE
+        call Output(process_model%realization_base,snapshot_plot_flag, &
+                    observation_plot_flag,massbal_plot_flag)
         stop_flag = TS_STOP_FAILURE
         return
       endif
@@ -403,7 +404,6 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   call VecNorm(residual_vec,NORM_2,fnorm,ierr);CHKERRQ(ierr)
   call VecNorm(residual_vec,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
-    ! jmf: write to stepper_string or solver_string
       write(*, '(/," Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
            & " [",a,"]", " snes_conv_reason: ",i4,/,"  newton = ",i3, &
            & " [",i8,"]", " linear = ",i5," [",i10,"]"," cuts = ",i2, &

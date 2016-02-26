@@ -42,7 +42,9 @@ module Output_module
 
   public :: OutputInit, &
             Output, &
-            OutputPrintCouplers
+            OutputPrintCouplers, &
+            OutputVariableRead, &
+            OutputFileRead
 
 contains
 
@@ -73,12 +75,865 @@ end subroutine OutputInit
 
 ! ************************************************************************** !
 
-subroutine Output(realization_base,plot_flag,transient_plot_flag)
+subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
+  ! 
+  ! Reads the *_FILE block within the OUTPUT block.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 02/23/2016
+  ! 
+
+  use Option_module
+  use Input_Aux_module
+  use String_module
+  use Realization_Subsurface_class
+  use Waypoint_module
+  use Units_module
+  use Utility_module
+  use Grid_module
+  use Patch_module
+
+  implicit none
+
+  class(realization_subsurface_type), pointer :: realization
+  type(output_option_type), pointer :: output_option
+  type(waypoint_list_type), pointer :: waypoint_list
+  character(len=*) :: block_name
+  
+  type(input_type), pointer :: input
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(waypoint_type), pointer :: waypoint
+  PetscReal, pointer :: temp_real_array(:)
+
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: units, internal_units
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal :: temp_real,temp_real2
+  PetscReal :: units_conversion
+  PetscInt :: k
+  PetscBool :: vel_cent, vel_face
+  PetscBool :: fluxes
+  PetscBool :: mass_flowrate, energy_flowrate
+  PetscBool :: aveg_mass_flowrate, aveg_energy_flowrate
+
+  option => realization%option
+  input => realization%input
+  patch => realization%patch
+  if (associated(patch)) grid => patch%grid
+
+  vel_cent = PETSC_FALSE
+  vel_face = PETSC_FALSE
+  fluxes = PETSC_FALSE
+  mass_flowrate = PETSC_FALSE
+  energy_flowrate = PETSC_FALSE
+  aveg_mass_flowrate = PETSC_FALSE
+  aveg_energy_flowrate = PETSC_FALSE
+  k = 0
+
+  select case(trim(block_name))
+    case('SNAPSHOT_FILE')
+    case('OBSERVATION_FILE')
+      output_option%print_observation = PETSC_TRUE
+    case('MASS_BALANCE_FILE')
+      option%compute_mass_balance_new = PETSC_TRUE
+  end select
+
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    string = 'OUTPUT,' // trim(block_name)
+    call InputErrorMsg(input,option,'keyword',string)
+    call StringToUpper(word)
+    
+    select case(trim(word))
+!......................................
+      case('NO_FINAL','NO_PRINT_FINAL')
+        select case(trim(block_name))
+          case('OBSERVATION_FILE')
+            output_option%print_final_obs = PETSC_FALSE
+          case('SNAPSHOT_FILE')
+            output_option%print_final_snap = PETSC_FALSE
+          case('MASS_BALANCE_FILE')
+            output_option%print_final_massbal = PETSC_FALSE
+        end select
+
+!..........................................
+      case('NO_INITIAL','NO_PRINT_INITIAL')
+        select case(trim(block_name))
+          case('OBSERVATION_FILE')
+            output_option%print_initial_obs = PETSC_FALSE
+          case('SNAPSHOT_FILE')
+            output_option%print_initial_snap = PETSC_FALSE
+          case('MASS_BALANCE_FILE')
+            output_option%print_initial_massbal = PETSC_FALSE
+        end select
+
+!..................
+      case('TIMES')
+        string = 'OUTPUT,' // trim(block_name) // ',TIMES'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'units',string)
+        internal_units = 'sec'
+        units_conversion = &
+             UnitsConvertToInternal(word,internal_units,option)
+        call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
+             string,input,option)
+        do k = 1, size(temp_real_array)
+          waypoint => WaypointCreate()
+          waypoint%time = temp_real_array(k)*units_conversion
+          select case(trim(block_name))
+            case('SNAPSHOT_FILE')
+              waypoint%print_snap_output = PETSC_TRUE
+            case('OBSERVATION_FILE')
+              waypoint%print_obs_output = PETSC_TRUE
+            case('MASS_BALANCE_FILE')
+              waypoint%print_msbl_output = PETSC_TRUE
+          end select    
+          call WaypointInsertInList(waypoint,waypoint_list)
+        enddo
+        call DeallocateArray(temp_real_array)
+
+!.....................
+      case('PERIODIC')
+        string = 'OUTPUT,' // trim(block_name) // ',PERIODIC'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'periodic time increment type',string)
+        call StringToUpper(word)
+        select case(trim(word))
+        !.............
+          case('TIME')
+            string = 'OUTPUT,' // trim(block_name) // ',PERIODIC,TIME'
+            call InputReadDouble(input,option,temp_real)
+            call InputErrorMsg(input,option,'time increment',string)
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'time increment units',string)
+            internal_units = 'sec'
+            units_conversion = UnitsConvertToInternal(word, &
+                 internal_units,option) 
+            select case(trim(block_name))
+              case('SNAPSHOT_FILE')
+                output_option%periodic_snap_output_time_incr = temp_real* &
+                     units_conversion
+              case('OBSERVATION_FILE')
+                output_option%periodic_obs_output_time_incr = temp_real* &
+                     units_conversion
+              case('MASS_BALANCE_FILE')
+                output_option%periodic_msbl_output_time_incr = temp_real* &
+                     units_conversion
+            end select
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (input%ierr == 0) then
+              if (StringCompareIgnoreCase(word,'between')) then
+                call InputReadDouble(input,option,temp_real)
+                call InputErrorMsg(input,option,'start time',string)
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'start time units',string)
+                internal_units = 'sec'
+                units_conversion = UnitsConvertToInternal(word, &
+                     internal_units,option) 
+                temp_real = temp_real * units_conversion
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                if (.not.StringCompareIgnoreCase(word,'and')) then
+                  input%ierr = 1
+                endif
+                call InputErrorMsg(input,option,'and',string)
+                call InputReadDouble(input,option,temp_real2)
+                call InputErrorMsg(input,option,'end time',string)
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'end time units',string)
+                temp_real2 = temp_real2 * units_conversion
+                select case(trim(block_name))
+                  case('SNAPSHOT_FILE')
+                    do
+                      waypoint => WaypointCreate()
+                      waypoint%time = temp_real
+                      waypoint%print_snap_output = PETSC_TRUE
+                      call WaypointInsertInList(waypoint,waypoint_list)
+                      temp_real = temp_real + &
+                           output_option%periodic_snap_output_time_incr
+                      if (temp_real > temp_real2) exit
+                    enddo
+                    output_option%periodic_snap_output_time_incr = 0.d0
+                  case('OBSERVATION_FILE')
+                    do
+                      waypoint => WaypointCreate()
+                      waypoint%time = temp_real
+                      waypoint%print_obs_output = PETSC_TRUE
+                      call WaypointInsertInList(waypoint,waypoint_list)
+                      temp_real = temp_real + &
+                           output_option%periodic_obs_output_time_incr
+                      if (temp_real > temp_real2) exit
+                    enddo
+                    output_option%periodic_obs_output_time_incr = 0.d0
+                  case('MASS_BALANCE_FILE')
+                    do
+                      waypoint => WaypointCreate()
+                      waypoint%time = temp_real
+                      waypoint%print_msbl_output = PETSC_TRUE
+                      call WaypointInsertInList(waypoint,waypoint_list)
+                      temp_real = temp_real + &
+                           output_option%periodic_msbl_output_time_incr
+                      if (temp_real > temp_real2) exit
+                    enddo
+                    output_option%periodic_msbl_output_time_incr = 0.d0
+                end select
+              else
+                input%ierr = 1
+                call InputErrorMsg(input,option,'between',string)
+              endif
+            endif
+        !.................
+          case('TIMESTEP')
+            string = 'OUTPUT,' // trim(block_name) // ',TIMESTEP'
+            select case(trim(block_name))
+              case('SNAPSHOT_FILE')
+                call InputReadInt(input,option, &
+                     output_option%periodic_snap_output_ts_imod)
+              case('OBSERVATION_FILE')
+                call InputReadInt(input,option, &
+                     output_option%periodic_obs_output_ts_imod)
+              case('MASS_BALANCE_FILE')
+                call InputReadInt(input,option, &
+                     output_option%periodic_msbl_output_ts_imod)
+            end select
+            call InputErrorMsg(input,option,'timestep increment',string)
+        !.............
+          case default
+            call InputKeywordUnrecognized(word,'OUTPUT,PERIODIC',option)
+        end select
+
+!...................
+      case('SCREEN')
+        string = 'OUTPUT,' // trim(block_name) // ',SCREEN'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'time increment',string)
+        call StringToUpper(word)
+        select case(trim(word))
+          case('OFF')
+            option%print_to_screen = PETSC_FALSE
+          case('PERIODIC')
+            string = trim(string) // ',PERIODIC'
+            call InputReadInt(input,option,output_option%screen_imod)
+            call InputErrorMsg(input,option,'timestep increment',string)
+          case default
+            call InputKeywordUnrecognized(word,string,option)
+        end select
+
+!...................
+      case('FORMAT')
+        string = 'OUTPUT,' // trim(block_name) // ',FORMAT'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword',string) 
+        call StringToUpper(word)
+        select case(trim(word))
+        !..............
+          case ('HDF5')
+            string = trim(string) // ',HDF5'
+            output_option%print_hdf5 = PETSC_TRUE
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputDefaultMsg(input,option,string)
+            if (input%ierr == 0) then
+              call StringToUpper(word)
+              select case(trim(word))
+              !....................
+                case('SINGLE_FILE')
+                  output_option%print_single_h5_file = PETSC_TRUE
+              !.......................
+                case('MULTIPLE_FILES')
+                  string = trim(string) // ',MULTIPLE_FILES'
+                  output_option%print_single_h5_file = PETSC_FALSE
+                  output_option%times_per_h5_file = 1
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  if (input%ierr == 0) then
+                    select case(trim(word))
+                      case('TIMES_PER_FILE')
+                        string = trim(string) // ',TIMES_PER_FILE'
+                        call InputReadInt(input,option, &
+                             output_option%times_per_h5_file)
+                        call InputErrorMsg(input,option,'timestep increment', &
+                                           string)
+                      case default
+                        call InputKeywordUnrecognized(word,string,option)
+                    end select
+                  endif
+              !.............
+                case default
+                  call InputKeywordUnrecognized(word,string,option)
+              end select
+            endif
+        !.............
+          case ('MAD')
+            output_option%print_mad = PETSC_TRUE
+        !.................
+          case ('TECPLOT')
+            string = trim(string) // ',TECPLOT'
+            output_option%print_tecplot = PETSC_TRUE
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'TECPLOT format',string) 
+            call StringToUpper(word)
+            select case(trim(word))
+              case('POINT')
+                output_option%tecplot_format = TECPLOT_POINT_FORMAT
+              case('BLOCK')
+                output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
+              case('FEBRICK')
+                output_option%tecplot_format = TECPLOT_FEBRICK_FORMAT
+              case default
+                call InputKeywordUnrecognized(word,string,option)
+            end select
+            if (output_option%tecplot_format == TECPLOT_POINT_FORMAT &
+                 .and. option%mycommsize > 1) then
+              output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
+            endif
+            if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
+              output_option%tecplot_format = TECPLOT_FEBRICK_FORMAT
+            endif
+        !.............
+          case ('VTK')
+            output_option%print_vtk = PETSC_TRUE
+        !.............
+          case default
+            call InputKeywordUnrecognized(word,string,option)
+        end select
+
+!......................
+      case('VARIABLES')
+        call OutputVariableRead(input,option,output_option%output_variable_list)
+
+!..............................
+      case('AVERAGE_VARIABLES')
+        call OutputVariableRead(input,option, &
+                                output_option%aveg_output_variable_list)
+
+!.........................................
+      case('UNFILTER_NON_STATE_VARIABLES')
+        output_option%filter_non_state_variables = PETSC_FALSE
+
+!...................................
+      case ('HDF5_WRITE_GROUP_SIZE')
+        string = 'OUTPUT,' // trim(block_name) // ',HDF5_WRITE_GROUP_SIZE'
+        call InputReadInt(input,option,option%hdf5_write_group_size)
+        call InputErrorMsg(input,option,'group size',string)
+
+!.............................
+      case('PRINT_COLUMN_IDS')
+        output_option%print_column_ids = PETSC_TRUE
+
+!...............................
+      case('VELOCITY_AT_CENTER')
+        vel_cent = PETSC_TRUE
+      case('VELOCITY_AT_FACE')
+        vel_face = PETSC_TRUE
+
+!...................
+      case('FLUXES')
+        fluxes = PETSC_TRUE
+      case('FLOWRATES','FLOWRATE')
+        mass_flowrate = PETSC_TRUE
+        energy_flowrate = PETSC_TRUE
+      case('MASS_FLOWRATE')
+        mass_flowrate = PETSC_TRUE
+      case('ENERGY_FLOWRATE')
+        energy_flowrate = PETSC_TRUE
+      case('AVERAGE_FLOWRATES','AVERAGE_FLOWRATE')
+        aveg_mass_flowrate = PETSC_TRUE
+        aveg_energy_flowrate = PETSC_TRUE
+      case('AVERAGE_MASS_FLOWRATE')
+        aveg_mass_flowrate = PETSC_TRUE
+      case('AVERAGE_ENERGY_FLOWRATE')
+        aveg_energy_flowrate = PETSC_TRUE
+
+!.................
+      case default
+        string = 'OUTPUT,' // trim(block_name)
+        call InputKeywordUnrecognized(word,string,option)
+    end select
+  enddo
+
+  if (vel_cent) then
+    if (output_option%print_tecplot) &
+         output_option%print_tecplot_vel_cent = PETSC_TRUE
+    if (output_option%print_hdf5) &
+         output_option%print_hdf5_vel_cent = PETSC_TRUE
+    if (output_option%print_vtk) &
+         output_option%print_vtk_vel_cent = PETSC_TRUE
+  endif
+
+  if (vel_face) then
+    if (output_option%print_tecplot) &
+         output_option%print_tecplot_vel_face = PETSC_TRUE
+    if (output_option%print_hdf5) &
+         output_option%print_hdf5_vel_face = PETSC_TRUE
+  endif
+
+  if (fluxes) then
+    output_option%print_fluxes = PETSC_TRUE
+  endif
+
+  if(output_option%aveg_output_variable_list%nvars>0) then
+    if(output_option%periodic_snap_output_time_incr==0.d0) then
+      option%io_buffer = 'Keyword: AVERAGE_VARIABLES defined without &
+                         &PERIODIC TIME being set.'
+      call printErrMsg(option)
+    endif
+    if(.not.output_option%print_hdf5) then
+      option%io_buffer = 'Keyword: AVERAGE_VARIABLES only defined for &
+                         &FORMAT HDF5'
+      call printErrMsg(option)
+    endif
+  endif
+
+  if (mass_flowrate.or.energy_flowrate.or.aveg_mass_flowrate &
+       .or.aveg_energy_flowrate) then
+    if (output_option%print_hdf5) then
+      output_option%print_hdf5_mass_flowrate = mass_flowrate
+      output_option%print_hdf5_energy_flowrate = energy_flowrate
+      output_option%print_hdf5_aveg_mass_flowrate = aveg_mass_flowrate
+      output_option%print_hdf5_aveg_energy_flowrate = aveg_energy_flowrate
+      if(aveg_mass_flowrate.or.aveg_energy_flowrate) then
+        if(output_option%periodic_snap_output_time_incr==0.d0) then
+          option%io_buffer = 'Keyword: AVEGRAGE_FLOWRATES/&
+                             &AVEGRAGE_MASS_FLOWRATE/ENERGY_FLOWRATE &
+                             &defined without PERIODIC TIME being set.'
+          call printErrMsg(option)
+        endif
+      endif
+      option%flow%store_fluxes = PETSC_TRUE
+    endif
+    if (associated(grid%unstructured_grid%explicit_grid)) then
+      option%flow%store_fluxes = PETSC_TRUE
+      output_option%print_explicit_flowrate = mass_flowrate
+    endif
+  endif
+  
+end subroutine OutputFileRead
+
+! ************************************************************************** !
+
+subroutine OutputVariableRead(input,option,output_variable_list)
+  ! 
+  ! This routine reads variable from input file.
+  ! 
+  ! Author: Gautam Bisht, LBNL; Glenn Hammond PNNL/SNL
+  ! Date: 12/21/12
+  ! 
+
+  use Option_module
+  use Input_Aux_module
+  use String_module
+  use Variables_module
+
+  implicit none
+
+  type(option_type), pointer :: option
+  type(input_type), pointer :: input
+  type(output_variable_list_type), pointer :: output_variable_list
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: name, units
+  type(output_variable_type), pointer :: output_variable
+  PetscInt :: temp_int
+
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','VARIABLES')
+    call StringToUpper(word)
+    
+    select case(trim(word))
+      case ('MAXIMUM_PRESSURE')
+        name = 'Maximum Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     MAXIMUM_PRESSURE)
+      case ('LIQUID_PRESSURE')
+        name = 'Liquid Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     LIQUID_PRESSURE)
+      case ('LIQUID_SATURATION')
+        name = 'Liquid Saturation'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_SATURATION,units, &
+                                     LIQUID_SATURATION)
+      case ('LIQUID_HEAD')
+        name = 'Liquid Head'
+        units = 'm'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_HEAD)
+        
+      case ('LIQUID_DENSITY')
+        name = 'Liquid Density'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          if (StringCompareIgnoreCase(word,'MOLAR')) then
+            units = 'kmol/m^3'
+            temp_int = LIQUID_DENSITY_MOL
+          else
+            call InputErrorMsg(input,option,'optional keyword', &
+                               'VARIABLES,LIQUID_DENSITY')
+          endif
+        else
+          units = 'kg/m^3'
+          temp_int = LIQUID_DENSITY
+        endif
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     temp_int)
+      case ('LIQUID_MOBILITY')
+        name = 'Liquid Mobility'
+        units = '1/Pa-s'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_MOBILITY)
+      case ('LIQUID_ENERGY')
+        name = 'Liquid Energy'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          if (StringCompareIgnoreCase(word,'PER_VOLUME')) then
+            units = 'MJ/m^3'
+            temp_int = ONE_INTEGER
+          else
+            call InputErrorMsg(input,option,'optional keyword', &
+                               'VARIABLES,LIQUID_ENERGY')
+          endif
+        else
+          units = 'MJ/kmol'
+          temp_int = ZERO_INTEGER
+        endif
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_ENERGY,temp_int)
+    
+      case ('GAS_PRESSURE')
+        name = 'Gas Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     GAS_PRESSURE)
+      case ('GAS_SATURATION')
+        name = 'Gas Saturation'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_SATURATION,units, &
+                                     GAS_SATURATION)
+      case ('GAS_DENSITY')
+        name = 'Gas Density'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          if (StringCompareIgnoreCase(word,'MOLAR')) then
+            units = 'kmol/m^3'
+            temp_int = GAS_DENSITY_MOL
+          else
+            call InputErrorMsg(input,option,'optional keyword', &
+                               'VARIABLES,GAS_DENSITY')
+          endif
+        else
+          units = 'kg/m^3'
+          temp_int = GAS_DENSITY
+        endif
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     temp_int)
+      case ('GAS_MOBILITY')
+        name = 'Gas Mobility'
+        units = '1/Pa-s'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_MOBILITY)
+      case ('GAS_ENERGY')
+        name = 'Gas Energy'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          if (StringCompareIgnoreCase(word,'PER_VOLUME')) then
+            units = 'MJ/m^3'
+            temp_int = ONE_INTEGER
+          else
+            input%ierr = 1
+            call InputErrorMsg(input,option,'optional keyword', &
+                               'VARIABLES,GAS_ENERGY')
+          endif
+        else
+          units = 'MJ/kmol'
+          temp_int = ZERO_INTEGER
+        endif
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_ENERGY,temp_int)
+      case ('OIL_PRESSURE')
+        name = 'Oil Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     OIL_PRESSURE)
+      case ('OIL_SATURATION')
+        name = 'Oil Saturation'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_SATURATION,units, &
+                                     OIL_SATURATION)
+      case ('OIL_DENSITY')
+        name = 'Oil Density'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          if (StringCompareIgnoreCase(word,'MOLAR')) then
+            units = 'kmol/m^3'
+            temp_int = OIL_DENSITY_MOL
+          else
+            call InputErrorMsg(input,option,'optional keyword', &
+                               'VARIABLES,OIL_DENSITY')
+          endif
+        else
+          units = 'kg/m^3'
+          temp_int = OIL_DENSITY
+        endif
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     temp_int)
+      case ('OIL_MOBILITY')
+        name = 'Oil Mobility'
+        units = '1/Pa-s'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     OIL_MOBILITY)
+      case ('OIL_ENERGY')
+        name = 'Oil Energy'
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          if (StringCompareIgnoreCase(word,'PER_VOLUME')) then
+            units = 'MJ/m^3'
+            temp_int = ONE_INTEGER
+          else
+            input%ierr = 1
+            call InputErrorMsg(input,option,'optional keyword', &
+                               'VARIABLES,OIL_ENERGY')
+          endif
+        else
+          units = 'MJ/kmol'
+          temp_int = ZERO_INTEGER
+        endif
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     OIL_ENERGY,temp_int)
+      case ('LIQUID_MOLE_FRACTIONS')
+        name = 'X_g^l'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_MOLE_FRACTION, &
+                                     option%air_id)
+        name = 'X_l^l'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_MOLE_FRACTION, &
+                                     option%water_id)
+      case ('GAS_MOLE_FRACTIONS')
+        name = 'X_g^g'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_MOLE_FRACTION, &
+                                     option%air_id)
+        name = 'X_l^g'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_MOLE_FRACTION, &
+                                     option%water_id)
+      case ('LIQUID_MASS_FRACTIONS')
+        name = 'w_g^l'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_MASS_FRACTION, &
+                                     option%air_id)
+        name = 'w_l^l'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_MASS_FRACTION, &
+                                     option%water_id)
+      case ('GAS_MASS_FRACTIONS')
+        name = 'w_g^g'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_MASS_FRACTION, &
+                                     option%air_id)
+        name = 'w_l^g'
+        units = ''
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     GAS_MASS_FRACTION, &
+                                     option%water_id)
+      case ('AIR_PRESSURE')
+        name = 'Air Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     AIR_PRESSURE)
+      case ('CAPILLARY_PRESSURE')
+        name = 'Capillary Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     CAPILLARY_PRESSURE)
+      case ('VAPOR_PRESSURE')
+        name = 'Vapor Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     VAPOR_PRESSURE)
+      case ('SATURATION_PRESSURE')
+        name = 'Saturation Pressure'
+        units = 'Pa'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_PRESSURE,units, &
+                                     SATURATION_PRESSURE)
+      case('THERMODYNAMIC_STATE')
+        name = 'Thermodynamic State'
+         units = ''
+         output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                 units,STATE)
+         ! toggle output off for observation
+!geh: nope, this can change over time.
+!geh         output_variable%plot_only = PETSC_TRUE 
+
+         output_variable%iformat = 1 ! integer
+         call OutputVariableAddToList(output_variable_list,output_variable)
+         nullify(output_variable)
+      case ('TEMPERATURE')
+        name = 'Temperature'
+        units = 'C'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     TEMPERATURE)
+      case ('RESIDUAL')
+        units = ''
+        do temp_int = 1, option%nflowdof
+          write(word,*) temp_int
+          name = 'Residual_' // trim(adjustl(word))
+          call OutputVariableAddToList(output_variable_list,name, &
+                                       OUTPUT_GENERIC,units, &
+                                       RESIDUAL,temp_int)
+        enddo
+      case ('POROSITY')
+        units = ''
+        name = 'Porosity'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     POROSITY)
+      case ('MINERAL_POROSITY')
+        units = ''
+        name = 'Mineral Porosity'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     MINERAL_POROSITY)
+      case ('EFFECTIVE_POROSITY')
+        units = ''
+        name = 'Effective Porosity'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     EFFECTIVE_POROSITY)
+      case ('TORTUOSITY')
+        units = ''
+        name = 'Tortuosity'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     TORTUOSITY)
+      case ('PERMEABILITY','PERMEABILITY_X')
+        units = 'm^2'
+        name = 'Permeability X'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     PERMEABILITY)
+      case ('PERMEABILITY_Y')
+        units = 'm^2'
+        name = 'Permeability Y'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     PERMEABILITY_Y)
+      case ('PERMEABILITY_Z')
+        units = 'm^2'
+        name = 'Permeability Z'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     PERMEABILITY_Z)
+      case ('SOIL_COMPRESSIBILITY')
+        units = ''
+        name = 'Compressibility'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     SOIL_COMPRESSIBILITY)
+      case ('SOIL_REFERENCE_PRESSURE')
+        units = 'Pa'
+        name = 'Soil Reference Pressure'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     SOIL_REFERENCE_PRESSURE)
+      case ('PROCESS_ID')
+        units = ''
+        name = 'Process ID'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,PROCESS_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
+      case ('VOLUME')
+        units = ''
+        name = 'Volume'
+        output_variable => OutputVariableCreate(name,OUTPUT_GENERIC, &
+                                                units,VOLUME)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 0 ! double
+        call OutputVariableAddToList(output_variable_list,output_variable)
+      case ('MATERIAL_ID')
+        units = ''
+        name = 'Material ID'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,MATERIAL_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
+      case ('MATERIAL_ID_KLUDGE_FOR_VISIT')
+        units = ''
+        name = 'Kludged material ids for VisIt'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,MATERIAL_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
+      case default
+        call InputKeywordUnrecognized(word,'VARIABLES',option)
+    end select
+
+  enddo
+
+end subroutine OutputVariableRead
+
+! ************************************************************************** !
+
+subroutine Output(realization_base,snapshot_plot_flag,observation_plot_flag, &
+                  massbal_plot_flag)
   ! 
   ! Main driver for all output subroutines
   ! 
   ! Author: Glenn Hammond
   ! Date: 10/25/07
+  ! Notes: Modified by Jenn Frederick, 2/23/2016
   ! 
 
   use Realization_Base_class, only : realization_base_type
@@ -87,8 +942,9 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
   implicit none
   
   class(realization_base_type) :: realization_base
-  PetscBool :: plot_flag
-  PetscBool :: transient_plot_flag
+  PetscBool :: snapshot_plot_flag
+  PetscBool :: observation_plot_flag
+  PetscBool :: massbal_plot_flag
 
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
@@ -100,19 +956,20 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr);CHKERRQ(ierr)
 
   ! check for plot request from active directory
-  if (.not.plot_flag) then
+  if (.not.snapshot_plot_flag) then
 
     if (option%use_touch_options) then
       string = 'plot'
       if (OptionCheckTouch(option,string)) then
         realization_base%output_option%plot_name = 'plot'
-        plot_flag = PETSC_TRUE
+        snapshot_plot_flag = PETSC_TRUE
       endif
     endif
 
   endif
 
-  if (plot_flag) then
+!.................................
+  if (snapshot_plot_flag) then
 
     if (realization_base%output_option%print_hdf5) then
       call PetscTime(tstart,ierr);CHKERRQ(ierr)
@@ -121,16 +978,18 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
         select case (realization_base%discretization%grid%itype)
           case (EXPLICIT_UNSTRUCTURED_GRID)
             if (option%print_explicit_primal_grid) then
-              call OutputHDF5UGridXDMFExplicit(realization_base,INSTANTANEOUS_VARS)
+              call OutputHDF5UGridXDMFExplicit(realization_base, &
+                   INSTANTANEOUS_VARS)
             else
-              call printErrMsg(option,'HDF5 output requested for an ' // &
-                   'explicit unstructured grid, but primal grid information is ' // &
-                   'unavailable in input mesh')
+              call printErrMsg(option,'HDF5 output requested for an &
+                   &explicit unstructured grid, but primal grid information &
+                   &is unavailable in input mesh')
             endif
           case (IMPLICIT_UNSTRUCTURED_GRID)
             call OutputHDF5UGridXDMF(realization_base,INSTANTANEOUS_VARS)
           case (POLYHEDRA_UNSTRUCTURED_GRID)
-            call printErrMsg(option,'Add code for HDF5 output for Polyhedra mesh')
+            call printErrMsg(option,'Add code for HDF5 output for &
+                                    &Polyhedra mesh')
         end select
       else
         call OutputHDF5(realization_base,INSTANTANEOUS_VARS)
@@ -138,11 +997,12 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
       call PetscLogEventEnd(logging%event_output_hdf5,ierr);CHKERRQ(ierr)
       call PetscTime(tend,ierr);CHKERRQ(ierr)
 #ifdef SCORPIO_WRITE
-      if (option%myrank == 0) write (*,'(" Parallel IO Write method is used in & 
-                               &writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') &
-                               option%hdf5_write_group_size
+      if (option%myrank == 0) write (*,'(" Parallel IO Write method is used in &
+        &writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') &
+        option%hdf5_write_group_size
 #endif
-      write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') tend-tstart
+      write(option%io_buffer,'(f10.2," Seconds to write HDF5 file.")') &
+            tend-tstart
       call printMsg(option)
     endif
    
@@ -192,8 +1052,8 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
 
       call PetscLogEventEnd(logging%event_output_mad,ierr);CHKERRQ(ierr)
       call PetscTime(tend,ierr);CHKERRQ(ierr)
-      write(option%io_buffer,'(f10.2," Seconds to write to MAD HDF5 file(s)")') &
-            tend-tstart
+      write(option%io_buffer,'(f10.2," Seconds to write to MAD HDF5 &
+                             &file(s)")') tend-tstart
       call printMsg(option) 
     endif
     
@@ -221,26 +1081,30 @@ subroutine Output(realization_base,plot_flag,transient_plot_flag)
 
   endif
   
-  if (transient_plot_flag) then
-    if (option%compute_mass_balance_new) then
-      call OutputMassBalance(realization_base)
-    endif
+!.................................
+  if (observation_plot_flag) then
     call OutputObservation(realization_base)
+  endif
+
+!.................................
+  if (massbal_plot_flag) then
+    call OutputMassBalance(realization_base)
   endif
 
   ! Output temporally average variables 
   call OutputAvegVars(realization_base)
 
-  if (plot_flag) then
-    realization_base%output_option%plot_number = realization_base%output_option%plot_number + 1
+  if (snapshot_plot_flag) then
+    realization_base%output_option%plot_number = &
+      realization_base%output_option%plot_number + 1
   endif
 
-  plot_flag = PETSC_FALSE
-  transient_plot_flag = PETSC_FALSE
+  snapshot_plot_flag = PETSC_FALSE
+  observation_plot_flag = PETSC_FALSE
+  massbal_plot_flag = PETSC_FALSE
   realization_base%output_option%plot_name = ''
 
   call PetscLogStagePop(ierr);CHKERRQ(ierr)
-
 
 end subroutine Output
 
@@ -840,7 +1704,8 @@ subroutine OutputAvegVars(realization_base)
   output_option%aveg_var_dtime = output_option%aveg_var_dtime + dtime
   output_option%aveg_var_time = output_option%aveg_var_time + dtime
   
-  if (abs(output_option%aveg_var_dtime-output_option%periodic_output_time_incr)<1.d0) then
+  if (abs(output_option%aveg_var_dtime - &
+          output_option%periodic_snap_output_time_incr)<1.d0) then
     aveg_plot_flag=PETSC_TRUE
   else
     aveg_plot_flag=PETSC_FALSE
@@ -884,7 +1749,7 @@ subroutine OutputAvegVars(realization_base)
 
       ! Divide vector values by 'time'
       call VecGetArrayF90(field%avg_vars_vec(ivar),aval_p,ierr);CHKERRQ(ierr)
-      aval_p = aval_p/output_option%periodic_output_time_incr
+      aval_p = aval_p/output_option%periodic_snap_output_time_incr
       call VecRestoreArrayF90(field%avg_vars_vec(ivar),aval_p, &
                               ierr);CHKERRQ(ierr)
 
