@@ -775,7 +775,7 @@ logging.o : pflotran_constants.o
 lookup_table.o : pflotran_constants.o utility.o
 material.o : characteristic_curves.o communicator_base.o dataset.o \
              dataset_base.o field.o global_aux.o input_aux.o material_aux.o \
-             option.o pflotran_constants.o string.o variables.o wipp.o
+             option.o pflotran_constants.o string.o units.o variables.o wipp.o
 material_aux.o : option.o pflotran_constants.o utility.o variables.o
 matrix_block_aux.o : option.o pflotran_constants.o utility.o
 matrix_buffer.o : grid.o grid_structured.o pflotran_constants.o
@@ -807,8 +807,9 @@ output.o : connection.o coupler.o debug.o discretization.o field.o \
            general_aux.o grid.o hdf5.o input_aux.o logging.o option.o \
            output_aux.o output_common.o output_ekg.o output_hdf5.o \
            output_observation.o output_tecplot.o output_vtk.o patch.o \
-           pflotran_constants.o reaction_aux.o realization_base.o variables.o
-output_aux.o : input_aux.o option.o pflotran_constants.o string.o variables.o
+           pflotran_constants.o reaction_aux.o realization_base.o \
+           realization_subsurface.o string.o units.o variables.o waypoint.o
+output_aux.o : option.o pflotran_constants.o variables.o
 output_common.o : connection.o coupler.o field.o global_aux.o grid.o \
                   grid_unstructured_aux.o grid_unstructured_cell.o hdf5.o \
                   hdf5_aux.o logging.o material_aux.o option.o output_aux.o \

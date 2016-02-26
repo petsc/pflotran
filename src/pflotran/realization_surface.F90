@@ -1420,7 +1420,8 @@ subroutine RealizSurfAddWaypointsToList(surf_realization,waypoint_list)
   do
     if (.not.associated(cur_waypoint)) exit
     if (cur_waypoint%final) then
-      cur_waypoint%print_output = surf_realization%output_option%print_final
+      cur_waypoint%print_snap_output = &
+        surf_realization%output_option%print_final_snap
       exit
     endif
     cur_waypoint => cur_waypoint%next

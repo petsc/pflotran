@@ -282,8 +282,9 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   
   PetscInt :: local_stop_flag
   PetscBool :: failure
-  PetscBool :: plot_flag
-  PetscBool :: transient_plot_flag
+  PetscBool :: snapshot_plot_flag
+  PetscBool :: observation_plot_flag
+  PetscBool :: massbal_plot_flag
   PetscBool :: checkpoint_at_this_time_flag
   PetscBool :: checkpoint_at_this_timestep_flag
   class(pm_base_type), pointer :: cur_pm
@@ -304,14 +305,16 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
     if (this%timestepper%target_time >= sync_time) exit
     
     call SetOutputFlags(this)
-    plot_flag = PETSC_FALSE
-    transient_plot_flag = PETSC_FALSE
+    snapshot_plot_flag = PETSC_FALSE
+    observation_plot_flag = PETSC_FALSE
+    massbal_plot_flag = PETSC_FALSE
     checkpoint_at_this_time_flag = PETSC_FALSE
     checkpoint_at_this_timestep_flag = PETSC_FALSE
     
     call this%timestepper%SetTargetTime(sync_time,this%option, &
-                                        local_stop_flag,plot_flag, &
-                                        transient_plot_flag, &
+                                        local_stop_flag,snapshot_plot_flag, &
+                                        observation_plot_flag, &
+                                        massbal_plot_flag, &
                                         checkpoint_at_this_time_flag)
     call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
@@ -345,28 +348,30 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
     ! the specified time since it will be met in a later time step.
     if (this%timestepper%time_step_cut_flag) then
       checkpoint_at_this_time_flag = PETSC_FALSE
-      plot_flag = PETSC_FALSE
+      snapshot_plot_flag = PETSC_FALSE
     endif
 
     ! only print output for process models of depth 0
     if (associated(this%Output)) then
       ! however, if we are using the modulus of the output_option%imod, we may
       ! still print
-      if (mod(this%timestepper%steps, &
-              this%pm_list% &
-                output_option%periodic_output_ts_imod) == 0) then
-        plot_flag = PETSC_TRUE
+      if (mod(this%timestepper%steps,this%pm_list% &
+              output_option%periodic_snap_output_ts_imod) == 0) then
+        snapshot_plot_flag = PETSC_TRUE
       endif
-      if (plot_flag .or. mod(this%timestepper%steps, &
-                             this%pm_list%output_option% &
-                               periodic_tr_output_ts_imod) == 0) then
-        transient_plot_flag = PETSC_TRUE
+      if (mod(this%timestepper%steps,this%pm_list%output_option% &
+              periodic_obs_output_ts_imod) == 0) then
+        observation_plot_flag = PETSC_TRUE
+      endif
+      if (mod(this%timestepper%steps,this%pm_list%output_option% &
+              periodic_msbl_output_ts_imod) == 0) then
+        massbal_plot_flag = PETSC_TRUE
       endif
       
-      if (this%option%steady_state) plot_flag = PETSC_TRUE
+      if (this%option%steady_state) snapshot_plot_flag = PETSC_TRUE
       
-      call this%Output(this%pm_list%realization_base,plot_flag, &
-                       transient_plot_flag)
+      call this%Output(this%pm_list%realization_base,snapshot_plot_flag, &
+                       observation_plot_flag,massbal_plot_flag)
     endif
     
     if (this%is_master .and. associated(this%checkpoint_option)) then
@@ -554,7 +559,8 @@ recursive subroutine OutputLocal(this)
   cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
-!    call Output(cur_pm%realization,plot_flag,transient_plot_flag)
+!    call Output(cur_pm%realization,snapshot_plot_flag,observation_plot_flag, &
+!                massbal_plot_flag)
     cur_pm => cur_pm%next
   enddo
     

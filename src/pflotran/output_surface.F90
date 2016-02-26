@@ -68,8 +68,8 @@ end subroutine OutputSurfaceInit
 
 ! ************************************************************************** !
 
-subroutine OutputSurface(surf_realization,realization,plot_flag, &
-                         transient_plot_flag)
+subroutine OutputSurface(surf_realization,realization,snapshot_plot_flag, &
+                         observation_plot_flag,massbal_plot_flag)
   ! 
   ! This subroutine is main driver for all output subroutines related to
   ! surface flows.
@@ -88,8 +88,9 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
 
   class(realization_surface_type) :: surf_realization
   class(realization_subsurface_type) :: realization
-  PetscBool :: plot_flag
-  PetscBool :: transient_plot_flag
+  PetscBool :: snapshot_plot_flag
+  PetscBool :: observation_plot_flag
+  PetscBool :: massbal_plot_flag
 
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
@@ -101,20 +102,22 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr);CHKERRQ(ierr)
 
   ! check for plot request from active directory
-  if (.not.plot_flag) then
+  if (.not.snapshot_plot_flag) then
 
     if (option%use_touch_options) then
       string = 'plot'
       if (OptionCheckTouch(option,string)) then
         surf_realization%output_option%plot_name = 'plot'
-        plot_flag = PETSC_TRUE
+        snapshot_plot_flag = PETSC_TRUE
       endif
     endif
   endif
 
-  if (plot_flag) then
+!......................................
+  if (snapshot_plot_flag) then
     if (surf_realization%output_option%print_hdf5) then
-      call OutputSurfaceHDF5UGridXDMF(surf_realization,realization,INSTANTANEOUS_VARS)
+      call OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
+                                      INSTANTANEOUS_VARS)
     endif
   
     if (surf_realization%output_option%print_tecplot) then
@@ -140,11 +143,19 @@ subroutine OutputSurface(surf_realization,realization,plot_flag, &
 
   endif
 
+!......................................
+  if (observation_plot_flag) then
+  endif
+
+!......................................
+  if (massbal_plot_flag) then
+  endif
+
   ! Output temporally average variables
   call OutputSurfaceAvegVars(surf_realization,realization)
 
   ! Increment the plot number
-  if (plot_flag) then
+  if (snapshot_plot_flag) then
     surf_realization%output_option%plot_number = &
       surf_realization%output_option%plot_number + 1
   endif
@@ -792,7 +803,8 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
       xmf_filename = OutputFilename(output_option,option,'xmf','surf')
     case (AVERAGED_VARS)
       string2='-aveg'
-      write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
+      write(string3,'(i4)') &
+        int(option%time/output_option%periodic_snap_output_time_incr)
       xmf_filename = OutputFilename(output_option,option,'xmf','surf_aveg')
   end select
 
@@ -814,8 +826,8 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
           first = PETSC_FALSE
         endif
       case (AVERAGED_VARS)
-        if (mod((option%time-output_option%periodic_output_time_incr)/ &
-                output_option%periodic_output_time_incr, &
+        if (mod((option%time-output_option%periodic_snap_output_time_incr)/ &
+                output_option%periodic_snap_output_time_incr, &
                 dble(output_option%times_per_h5_file))==0) then
           first = PETSC_TRUE
         else
@@ -1603,7 +1615,8 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
   output_option%aveg_var_dtime = output_option%aveg_var_dtime + dtime
   output_option%aveg_var_time = output_option%aveg_var_time + dtime
   
-  if (abs(output_option%aveg_var_dtime-output_option%periodic_output_time_incr)<1.d0) then
+  if (abs(output_option%aveg_var_dtime - &
+          output_option%periodic_snap_output_time_incr)<1.d0) then
     aveg_plot_flag=PETSC_TRUE
   else
     aveg_plot_flag=PETSC_FALSE
@@ -1649,7 +1662,7 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
       ! Divide vector values by 'time'
       call VecGetArrayF90(surf_field%avg_vars_vec(ivar),aval_p, &
                           ierr);CHKERRQ(ierr)
-      aval_p = aval_p/output_option%periodic_output_time_incr
+      aval_p = aval_p/output_option%periodic_snap_output_time_incr
       call VecRestoreArrayF90(surf_field%avg_vars_vec(ivar),aval_p, &
                               ierr);CHKERRQ(ierr)
 
@@ -1775,8 +1788,8 @@ function OutputSurfaceHDF5FilenameID(output_option,option,var_list_type)
                                output_option%times_per_h5_file)
     case (AVERAGED_VARS)
       file_number = floor((option%time - &
-                           output_option%periodic_output_time_incr)/ &
-                          output_option%periodic_output_time_incr/ &
+                           output_option%periodic_snap_output_time_incr)/ &
+                          output_option%periodic_snap_output_time_incr/ &
                           output_option%times_per_h5_file)
   end select
 
@@ -2258,8 +2271,9 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
           ! Divide the flowrate values by integration 'time'
           do iface = 1,MAX_FACE_PER_CELL_SURF
             double_array((i-1)*(MAX_FACE_PER_CELL_SURF+1)+iface+1) = &
-            vec_ptr2((i-1)*offset + (dof-1)*MAX_FACE_PER_CELL_SURF + iface + 1)/ &
-            output_option%periodic_output_time_incr
+            vec_ptr2((i-1)*offset + &
+            (dof-1)*MAX_FACE_PER_CELL_SURF + iface + 1)/ &
+            output_option%periodic_snap_output_time_incr
           enddo
         enddo
     end select

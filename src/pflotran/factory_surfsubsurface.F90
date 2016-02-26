@@ -199,7 +199,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
     waypoint => WaypointCreate()
     waypoint%final = PETSC_TRUE
     waypoint%time = simulation%waypoint_list_subsurface%last%time
-    waypoint%print_output = PETSC_TRUE
+    waypoint%print_snap_output = PETSC_TRUE
     call WaypointInsertInList(waypoint,simulation%waypoint_list_surfsubsurface)   
     ! merge in outer waypoints (e.g. checkpoint times)
     call WaypointListCopyAndMerge(simulation%waypoint_list_surfsubsurface, &

@@ -450,7 +450,8 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
       write(string3,'(i4)') output_option%plot_number
     case (AVERAGED_VARS)
       string2='-aveg'
-      write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
+      write(string3,'(i4)') &
+        int(option%time/output_option%periodic_snap_output_time_incr)
   end select
 
   if (output_option%print_single_h5_file) then
@@ -467,8 +468,8 @@ subroutine OutputHDF5OpenFile(option, output_option, var_list_type, file_id, &
           first = PETSC_FALSE
         endif
       case (AVERAGED_VARS)
-        if (mod((option%time-output_option%periodic_output_time_incr)/ &
-                output_option%periodic_output_time_incr, &
+        if (mod((option%time-output_option%periodic_snap_output_time_incr)/ &
+                output_option%periodic_snap_output_time_incr, &
                 dble(output_option%times_per_h5_file))==0) then
           first = PETSC_TRUE
         else
@@ -695,7 +696,8 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
       xmf_filename = OutputFilename(output_option,option,'xmf','')
     case (AVERAGED_VARS)
       string2='-aveg'
-      write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
+      write(string3,'(i4)') &
+        int(option%time/output_option%periodic_snap_output_time_incr)
       xmf_filename = OutputFilename(output_option,option,'xmf','aveg')
   end select
 
@@ -712,8 +714,8 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
           first = PETSC_FALSE
         endif
       case (AVERAGED_VARS)
-        if (mod((option%time-output_option%periodic_output_time_incr)/ &
-                output_option%periodic_output_time_incr, &
+        if (mod((option%time-output_option%periodic_snap_output_time_incr)/ &
+                output_option%periodic_snap_output_time_incr, &
                 dble(output_option%times_per_h5_file))==0) then
           first = PETSC_TRUE
         else
@@ -1117,7 +1119,8 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
       xmf_filename = OutputFilename(output_option,option,'xmf','')
     case (AVERAGED_VARS)
       string2='-aveg'
-      write(string3,'(i4)') int(option%time/output_option%periodic_output_time_incr)
+      write(string3,'(i4)') &
+        int(option%time/output_option%periodic_snap_output_time_incr)
       xmf_filename = OutputFilename(output_option,option,'xmf','aveg')
   end select
 
@@ -1134,8 +1137,8 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
           first = PETSC_FALSE
         endif
       case (AVERAGED_VARS)
-        if (mod((option%time-output_option%periodic_output_time_incr)/ &
-                output_option%periodic_output_time_incr, &
+        if (mod((option%time-output_option%periodic_snap_output_time_incr)/ &
+                output_option%periodic_snap_output_time_incr, &
                 dble(output_option%times_per_h5_file))==0) then
           first = PETSC_TRUE
         else
@@ -1339,9 +1342,9 @@ function OutputHDF5FilenameID(output_option,option,var_list_type)
                                output_option%times_per_h5_file)
     case (AVERAGED_VARS)
       file_number = floor((option%time - &
-                           output_option%periodic_output_time_incr)/ &
-                          output_option%periodic_output_time_incr/ &
-                          output_option%times_per_h5_file)
+                           output_option%periodic_snap_output_time_incr)/ &
+                           output_option%periodic_snap_output_time_incr/ &
+                           output_option%times_per_h5_file)
   end select
 
   if (file_number < 10) then
@@ -3009,7 +3012,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
           do iface = 1,MAX_FACE_PER_CELL
             double_array((i-1)*(MAX_FACE_PER_CELL+1)+iface+1) = &
             vec_ptr2((i-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface + 1)/ &
-            output_option%periodic_output_time_incr
+            output_option%periodic_snap_output_time_incr
           enddo
         enddo
     end select

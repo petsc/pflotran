@@ -53,8 +53,8 @@ end subroutine OutputGeomechInit
 
 ! ************************************************************************** !
 
-subroutine OutputGeomechanics(geomech_realization,plot_flag, &
-                              transient_plot_flag)
+subroutine OutputGeomechanics(geomech_realization,snapshot_plot_flag, &
+                              observation_plot_flag,massbal_plot_flag)
   ! 
   ! Main driver for all geomechanics output
   ! 
@@ -69,8 +69,9 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
   implicit none
 
   type(realization_geomech_type) :: geomech_realization
-  PetscBool :: plot_flag
-  PetscBool :: transient_plot_flag
+  PetscBool :: snapshot_plot_flag
+  PetscBool :: observation_plot_flag
+  PetscBool :: massbal_plot_flag
 
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
@@ -82,18 +83,19 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr);CHKERRQ(ierr)
 
   ! check for plot request from active directory
-  if (.not.plot_flag) then
+  if (.not.snapshot_plot_flag) then
 
     if (option%use_touch_options) then
       string = 'plot'
       if (OptionCheckTouch(option,string)) then
         geomech_realization%output_option%plot_name = 'plot'
-        plot_flag = PETSC_TRUE
+        snapshot_plot_flag = PETSC_TRUE
       endif
     endif
   endif
 
-  if (plot_flag) then
+!.....................................
+  if (snapshot_plot_flag) then
   
     if (geomech_realization%output_option%print_hdf5) then
        call OutputHDF5UGridXDMFGeomech(geomech_realization, &
@@ -110,8 +112,16 @@ subroutine OutputGeomechanics(geomech_realization,plot_flag, &
 
   endif
 
+!......................................
+  if (observation_plot_flag) then
+  endif
+
+!......................................
+  if (massbal_plot_flag) then
+  endif
+
   ! Increment the plot number
-  if (plot_flag) then
+  if (snapshot_plot_flag) then
     geomech_realization%output_option%plot_number = &
       geomech_realization%output_option%plot_number + 1
   endif
@@ -1312,7 +1322,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
     case (AVERAGED_VARS)
       string2='-aveg'
       write(string3,'(i4)') &
-          int(option%time/output_option%periodic_output_time_incr)
+          int(option%time/output_option%periodic_snap_output_time_incr)
       xmf_filename = OutputFilename(output_option,option,'xmf','geomech_aveg')
   end select
   if (output_option%print_single_h5_file) then
@@ -1330,8 +1340,8 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
           first = PETSC_FALSE
         endif
       case (AVERAGED_VARS)
-        if (mod((option%time-output_option%periodic_output_time_incr)/ &
-                output_option%periodic_output_time_incr, &
+        if (mod((option%time-output_option%periodic_snap_output_time_incr)/ &
+                output_option%periodic_snap_output_time_incr, &
                 dble(output_option%times_per_h5_file))==0) then
           first = PETSC_TRUE
         else

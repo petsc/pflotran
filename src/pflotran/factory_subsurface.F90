@@ -1104,7 +1104,8 @@ subroutine SubsurfaceJumpStart(simulation)
   type(output_option_type), pointer :: output_option
 
   character(len=MAXSTRINGLENGTH) :: string
-  PetscBool :: plot_flag, transient_plot_flag
+  PetscBool :: snapshot_plot_flag, observation_plot_flag
+  PetscBool :: massbal_plot_flag
   PetscBool :: activity_coefs_read
   PetscBool :: flow_read
   PetscBool :: transport_read
@@ -1138,7 +1139,8 @@ subroutine SubsurfaceJumpStart(simulation)
 
 #if 0
   if (option%steady_state) then
-    option%io_buffer = 'Running in steady-state not yet supported in refactored code.'
+    option%io_buffer = 'Running in steady-state not yet supported in &
+                       &refactored code.'
     call printErrMsg(option)
 #if 0    
     call StepperRunSteadyState(realization,flow_timestepper,tran_timestepper)
@@ -1155,8 +1157,9 @@ subroutine SubsurfaceJumpStart(simulation)
     master_timestepper => tran_timestepper
   endif
 
-  plot_flag = PETSC_FALSE
-  transient_plot_flag = PETSC_FALSE
+  snapshot_plot_flag = PETSC_FALSE
+  observation_plot_flag = PETSC_FALSE
+  massbal_plot_flag = PETSC_FALSE
   activity_coefs_read = PETSC_FALSE
   flow_read = PETSC_FALSE
   transport_read = PETSC_FALSE
@@ -1317,9 +1320,9 @@ subroutine SubsurfaceReadRequiredCards(simulation)
           if (option%mycommsize /= grid%structured_grid%npx * &
                                  grid%structured_grid%npy * &
                                  grid%structured_grid%npz) then
-            write(option%io_buffer,*) 'Incorrect number of processors specified: ', &
-                           grid%structured_grid%npx*grid%structured_grid%npy* &
-                           grid%structured_grid%npz,' commsize = ',option%mycommsize
+            write(option%io_buffer,*) 'Incorrect number of processors &
+              &specified: ',grid%structured_grid%npx*grid%structured_grid%npy* &
+              grid%structured_grid%npz,' commsize = ',option%mycommsize
             call printErrMsg(option)
           endif
         endif
@@ -1389,6 +1392,7 @@ subroutine SubsurfaceReadInput(simulation)
   use Reaction_Mineral_module
   use Regression_module
   use Output_Aux_module
+  use Output_module
   use Output_Tecplot_module
   use Data_Mediator_Dataset_class
   use EOS_module
@@ -2023,7 +2027,8 @@ subroutine SubsurfaceReadInput(simulation)
         call InputReadWord(input,option,material_property%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','MATERIAL_PROPERTY')        
         call MaterialPropertyRead(material_property,input,option)
-        call MaterialPropertyAddToList(material_property,realization%material_properties)
+        call MaterialPropertyAddToList(material_property, &
+             realization%material_properties)
         nullify(material_property)
 
 !....................
@@ -2107,7 +2112,19 @@ subroutine SubsurfaceReadInput(simulation)
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword','OUTPUT') 
           call StringToUpper(word)
+        !----------------------------------------------------------------------
+        !----- NEW INPUT FORMAT: ----------------------------------------------
+        !----------------------------------------------------------------------
           select case(trim(word))
+            case('OBSERVATION_FILE')
+              call OutputFileRead(realization,output_option, &
+                                  waypoint_list,trim(word))
+            case('SNAPSHOT_FILE')
+              call OutputFileRead(realization,output_option, &
+                                  waypoint_list,trim(word))
+            case('MASS_BALANCE_FILE')
+              call OutputFileRead(realization,output_option, &
+                                  waypoint_list,trim(word))
             case('TIME_UNITS')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Output Time Units','OUTPUT')
@@ -2115,10 +2132,26 @@ subroutine SubsurfaceReadInput(simulation)
               internal_units = 'sec'
               output_option%tconv = &
                 UnitsConvertToInternal(word,internal_units,option)
+            case('VARIABLES')
+              call OutputVariableRead(input,option, &
+                                      output_option%output_variable_list)
+            case('AVERAGE_VARIABLES')
+              call OutputVariableRead(input,option, &
+                                      output_option%aveg_output_variable_list)
+            case('UNFILTER_NON_STATE_VARIABLES')
+              output_option%filter_non_state_variables = PETSC_FALSE
+            
+        !----------------------------------------------------------------------
+        !----- SUPPORT FOR OLD INPUT FORMAT: ----------------------------------
+        !----------------------------------------------------------------------
             case('NO_FINAL','NO_PRINT_FINAL')
-              output_option%print_final = PETSC_FALSE
+              output_option%print_final_obs = PETSC_FALSE
+              output_option%print_final_snap = PETSC_FALSE
+              output_option%print_final_massbal = PETSC_FALSE
             case('NO_INITIAL','NO_PRINT_INITIAL')
-              output_option%print_initial = PETSC_FALSE
+              output_option%print_initial_obs = PETSC_FALSE
+              output_option%print_initial_snap = PETSC_FALSE
+              output_option%print_initial_massbal = PETSC_FALSE
             case('PROCESSOR_ID')
               option%io_buffer = 'PROCESSOR_ID output must now be entered &
                                  &under OUTPUT/VARIABLES card as PROCESS_ID.'
@@ -2174,7 +2207,7 @@ subroutine SubsurfaceReadInput(simulation)
               do temp_int = 1, size(temp_real_array)
                 waypoint => WaypointCreate()
                 waypoint%time = temp_real_array(temp_int)*units_conversion
-                waypoint%print_output = PETSC_TRUE    
+                waypoint%print_snap_output = PETSC_TRUE    
                 call WaypointInsertInList(waypoint,waypoint_list)
               enddo
               call DeallocateArray(temp_real_array)
@@ -2225,7 +2258,7 @@ subroutine SubsurfaceReadInput(simulation)
                   internal_units = 'sec'
                   units_conversion = UnitsConvertToInternal(word, &
                                      internal_units,option) 
-                  output_option%periodic_output_time_incr = temp_real* &
+                  output_option%periodic_snap_output_time_incr = temp_real* &
                                                             units_conversion
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   if (input%ierr == 0) then
@@ -2257,12 +2290,13 @@ subroutine SubsurfaceReadInput(simulation)
                       do
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
-                        waypoint%print_output = PETSC_TRUE    
+                        waypoint%print_snap_output = PETSC_TRUE    
                         call WaypointInsertInList(waypoint,waypoint_list)
-                        temp_real = temp_real + output_option%periodic_output_time_incr
+                        temp_real = temp_real + &
+                          output_option%periodic_snap_output_time_incr
                         if (temp_real > temp_real2) exit
                       enddo
-                      output_option%periodic_output_time_incr = 0.d0
+                      output_option%periodic_snap_output_time_incr = 0.d0
                     else
                       input%ierr = 1
                       call InputErrorMsg(input,option,'between', &
@@ -2271,7 +2305,7 @@ subroutine SubsurfaceReadInput(simulation)
                   endif                  
                 case('TIMESTEP')
                   call InputReadInt(input,option, &
-                                    output_option%periodic_output_ts_imod)
+                                    output_option%periodic_snap_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'OUTPUT,PERIODIC,TIMESTEP')
                 case default
@@ -2292,7 +2326,11 @@ subroutine SubsurfaceReadInput(simulation)
               do temp_int = 1, size(temp_real_array)
                 waypoint => WaypointCreate()
                 waypoint%time = temp_real_array(temp_int)*units_conversion
-                waypoint%print_tr_output = PETSC_TRUE    
+                waypoint%print_obs_output = PETSC_TRUE    
+                call WaypointInsertInList(waypoint,waypoint_list)
+                waypoint => WaypointCreate()
+                waypoint%time = temp_real_array(temp_int)*units_conversion
+                waypoint%print_msbl_output = PETSC_TRUE    
                 call WaypointInsertInList(waypoint,waypoint_list)
               enddo
               call DeallocateArray(temp_real_array)
@@ -2313,11 +2351,11 @@ subroutine SubsurfaceReadInput(simulation)
                   internal_units = 'sec'
                   units_conversion = UnitsConvertToInternal(word, &
                                      internal_units,option) 
-                  output_option%periodic_tr_output_time_incr = temp_real* &
+                  output_option%periodic_obs_output_time_incr = temp_real* &
                                                                units_conversion
                 case('TIMESTEP')
                   call InputReadInt(input,option, &
-                                    output_option%periodic_tr_output_ts_imod)
+                                    output_option%periodic_obs_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'OUTPUT,PERIODIC_OBSERVATION,TIMESTEP')
                 case default
@@ -2414,15 +2452,10 @@ subroutine SubsurfaceReadInput(simulation)
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
               call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
-            case('VARIABLES')
-              call OutputVariableRead(input,option,output_option%output_variable_list)
-            case('AVERAGE_VARIABLES')
-              call OutputVariableRead(input,option,output_option%aveg_output_variable_list)
-            case('UNFILTER_NON_STATE_VARIABLES')
-              output_option%filter_non_state_variables = PETSC_FALSE
             case default
               call InputKeywordUnrecognized(word,'OUTPUT',option)
           end select
+
         enddo
         if (vel_cent) then
           if (output_option%print_tecplot) &
@@ -2442,7 +2475,7 @@ subroutine SubsurfaceReadInput(simulation)
           output_option%print_fluxes = PETSC_TRUE
         endif
         if(output_option%aveg_output_variable_list%nvars>0) then
-          if(output_option%periodic_output_time_incr==0.d0) then
+          if(output_option%periodic_snap_output_time_incr==0.d0) then
             option%io_buffer = 'Keyword: AVERAGE_VARIABLES defined without' // &
                                ' PERIODIC TIME being set.'
             call printErrMsg(option)
@@ -2452,14 +2485,15 @@ subroutine SubsurfaceReadInput(simulation)
             call printErrMsg(option)
           endif
         endif
-        if (mass_flowrate.or.energy_flowrate.or.aveg_mass_flowrate.or.aveg_energy_flowrate) then
+        if (mass_flowrate.or.energy_flowrate.or.aveg_mass_flowrate &
+            .or.aveg_energy_flowrate) then
           if (output_option%print_hdf5) then
             output_option%print_hdf5_mass_flowrate = mass_flowrate
             output_option%print_hdf5_energy_flowrate = energy_flowrate
             output_option%print_hdf5_aveg_mass_flowrate = aveg_mass_flowrate
             output_option%print_hdf5_aveg_energy_flowrate = aveg_energy_flowrate
             if(aveg_mass_flowrate.or.aveg_energy_flowrate) then
-              if(output_option%periodic_output_time_incr==0.d0) then
+              if(output_option%periodic_snap_output_time_incr==0.d0) then
                 option%io_buffer = 'Keyword: AVEGRAGE_FLOWRATES/ ' // &
                   'AVEGRAGE_MASS_FLOWRATE/ENERGY_FLOWRATE defined without' // &
                   ' PERIODIC TIME being set.'
@@ -2472,7 +2506,6 @@ subroutine SubsurfaceReadInput(simulation)
            option%flow%store_fluxes = PETSC_TRUE
             output_option%print_explicit_flowrate = mass_flowrate
           endif
-        
         endif
 
 !.....................
@@ -2507,7 +2540,7 @@ subroutine SubsurfaceReadInput(simulation)
               waypoint => WaypointCreate()
               waypoint%final = PETSC_TRUE
               waypoint%time = temp_real*temp_real2
-              waypoint%print_output = PETSC_TRUE              
+              waypoint%print_snap_output = PETSC_TRUE              
               call WaypointInsertInList(waypoint,waypoint_list)
             case('INITIAL_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)

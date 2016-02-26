@@ -61,7 +61,7 @@ CHEMISTRY
         !   porosity = 0.25 (from below)  [m^3 pore space/m^3 bulk volume]
 
         ! R = 2, Kd = 250.
-        DISTRIBUTION_COEFFICIENT 0.25d3 ! kg water/m^3 bulk
+        DISTRIBUTION_COEFFICIENT 0.25d3 kg/m^3 ! kg water/m^3 bulk
       /
     /
   /

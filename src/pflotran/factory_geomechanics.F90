@@ -145,7 +145,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     waypoint => WaypointCreate()
     waypoint%final = PETSC_TRUE
     waypoint%time = simulation%waypoint_list_geomechanics%last%time
-    waypoint%print_output = PETSC_TRUE
+    waypoint%print_snap_output = PETSC_TRUE
     call WaypointInsertInList(waypoint,simulation%waypoint_list_geomechanics)   
 
     if (associated(simulation%geomech_process_model_coupler)) then
@@ -272,7 +272,7 @@ subroutine GeomechanicsJumpStart(simulation)
   type(output_option_type), pointer :: output_option
 
   character(len=MAXSTRINGLENGTH) :: string
-  PetscBool :: plot_flag, transient_plot_flag
+  PetscBool :: snapshot_plot_flag,observation_plot_flag,massbal_plot_flag
   PetscBool :: geomech_read
   PetscBool :: failure
   PetscErrorCode :: ierr
@@ -291,15 +291,17 @@ subroutine GeomechanicsJumpStart(simulation)
                            failure, ierr);CHKERRQ(ierr)
                              
   if (option%steady_state) then
-    option%io_buffer = 'Running in steady-state not yet supported for surface-flow.'
+    option%io_buffer = 'Running in steady-state not yet supported for &
+                       &surface-flow.'
     call printErrMsg(option)
     return
   endif
   
   master_timestepper => geomech_timestepper
 
-  plot_flag = PETSC_FALSE
-  transient_plot_flag = PETSC_FALSE
+  snapshot_plot_flag = PETSC_FALSE
+  observation_plot_flag = PETSC_FALSE
+  massbal_plot_flag = PETSC_FALSE
   geomech_read = PETSC_FALSE
   failure = PETSC_FALSE
   
@@ -687,9 +689,13 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
           call StringToUpper(word)
           select case(trim(word))
             case('NO_FINAL','NO_PRINT_FINAL')
-              output_option%print_final = PETSC_FALSE
+              output_option%print_final_snap = PETSC_FALSE
+              output_option%print_final_obs = PETSC_FALSE
+              output_option%print_final_massbal = PETSC_FALSE
             case('NO_INITIAL','NO_PRINT_INITIAL')
-              output_option%print_initial = PETSC_FALSE
+              output_option%print_initial_snap = PETSC_FALSE
+              output_option%print_initial_obs = PETSC_FALSE
+              output_option%print_initial_massbal = PETSC_FALSE
             case('PERMEABILITY')
               option%io_buffer = 'PERMEABILITY output must now be entered &
                                  &under OUTPUT/VARIABLES card.'
@@ -714,7 +720,7 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
               do i = 1, size(temp_real_array)
                 waypoint => WaypointCreate()
                 waypoint%time = temp_real_array(i)*units_conversion
-                waypoint%print_output = PETSC_TRUE
+                waypoint%print_snap_output = PETSC_TRUE
                 call WaypointInsertInList(waypoint,waypoint_list)
               enddo
               call DeallocateArray(temp_real_array)
@@ -765,7 +771,7 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
                                      'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
                   units_conversion = UnitsConvertToInternal(word, &
                                        internal_units,option)
-                  output_option%periodic_output_time_incr = temp_real* &
+                  output_option%periodic_snap_output_time_incr = temp_real* &
                                                             units_conversion
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   if (input%ierr == 0) then
@@ -796,13 +802,15 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
                       do
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
-                        waypoint%print_output = PETSC_TRUE
-                        write(*,*) 'Inserting waypoint in geomech_realization: >>>>>>>> ',waypoint%time
+                        waypoint%print_snap_output = PETSC_TRUE
+                        write(*,*) 'Inserting waypoint in geomech_realization: &
+                                   &>>>>>>>> ',waypoint%time
                         call WaypointInsertInList(waypoint,waypoint_list)
-                        temp_real = temp_real + output_option%periodic_output_time_incr
+                        temp_real = temp_real + &
+                                    output_option%periodic_snap_output_time_incr
                         if (temp_real > temp_real2) exit
                       enddo
-                      output_option%periodic_output_time_incr = 0.d0
+                      output_option%periodic_snap_output_time_incr = 0.d0
                     else
                       input%ierr = 1
                       call InputErrorMsg(input,option,'between', &
@@ -811,7 +819,7 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
                   endif
                 case('TIMESTEP')
                   call InputReadInt(input,option, &
-                                    output_option%periodic_output_ts_imod)
+                                    output_option%periodic_snap_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'GEOMECHANICS_OUTPUT,PERIODIC,TIMESTEP')
                 case default
@@ -837,11 +845,11 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
                                       &PERIODIC_OBSERVATION,TIME')
                   units_conversion = UnitsConvertToInternal(word, &
                                        internal_units,option) 
-                  output_option%periodic_tr_output_time_incr = temp_real* &
+                  output_option%periodic_obs_output_time_incr = temp_real* &
                                                                units_conversion
                 case('TIMESTEP')
                   call InputReadInt(input,option, &
-                                    output_option%periodic_tr_output_ts_imod)
+                                    output_option%periodic_obs_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'GEOMECHANICS_OUTPUT,&
                                       &PERIODIC_OBSERVATION,TIMESTEP')

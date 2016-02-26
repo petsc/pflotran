@@ -120,7 +120,7 @@ subroutine SubsurfaceSimulationJumpStart(this)
   class(timestepper_base_type), pointer :: tran_timestepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
-  PetscBool :: plot_flag, transient_plot_flag
+  PetscBool :: snapshot_plot_flag, observation_plot_flag, massbal_plot_flag
   
 #ifdef DEBUG
   call printMsg(this%option,'SubsurfaceSimulationJumpStart()')
@@ -129,6 +129,9 @@ subroutine SubsurfaceSimulationJumpStart(this)
   nullify(master_timestepper)
   nullify(flow_timestepper)
   nullify(tran_timestepper)
+  snapshot_plot_flag = PETSC_FALSE
+  observation_plot_flag = PETSC_FALSE
+  massbal_plot_flag = PETSC_FALSE
 
   option => this%option
   output_option => this%output_option
@@ -159,11 +162,12 @@ subroutine SubsurfaceSimulationJumpStart(this)
   ! print initial condition output if not a restarted sim
   call OutputInit(option,master_timestepper%steps)
   if (output_option%plot_number == 0 .and. &
-      master_timestepper%max_time_step >= 0 .and. &
-      output_option%print_initial) then
-    plot_flag = PETSC_TRUE
-    transient_plot_flag = PETSC_TRUE
-    call Output(this%realization,plot_flag,transient_plot_flag)
+      master_timestepper%max_time_step >= 0) then
+    if (output_option%print_initial_snap) snapshot_plot_flag = PETSC_TRUE
+    if (output_option%print_initial_obs) observation_plot_flag = PETSC_TRUE
+    if (output_option%print_initial_massbal) massbal_plot_flag = PETSC_FALSE
+    call Output(this%realization,snapshot_plot_flag,observation_plot_flag, &
+                massbal_plot_flag)
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
