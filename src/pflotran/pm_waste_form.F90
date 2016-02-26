@@ -862,6 +862,8 @@ subroutine PMWFOutputHeader(this)
   PetscInt :: fid
   PetscInt :: icolumn, i
   
+  if (.not.associated(this%waste_form_list)) return
+  
   output_option => this%realization%output_option
   grid => this%realization%patch%grid
   
