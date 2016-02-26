@@ -355,6 +355,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: Uair_J_kg, Hair_J_kg
   PetscReal :: Uvapor_J_kg, Hvapor_J_kg
   PetscReal :: Hg_mixture_fractioned  
+  PetscReal :: aux(1)
   character(len=8) :: state_char
   PetscErrorCode :: ierr
 
@@ -608,8 +609,14 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
 
   ! Liquid phase thermodynamic properties
   ! must use cell_pressure as the pressure, not %pres(lid)
-  call EOSWaterDensity(gen_auxvar%temp,cell_pressure, &
-                       gen_auxvar%den_kg(lid),gen_auxvar%den(lid),ierr)
+  if (.not.option%flow%density_depends_on_salinity) then
+    call EOSWaterDensity(gen_auxvar%temp,cell_pressure, &
+                         gen_auxvar%den_kg(lid),gen_auxvar%den(lid),ierr)
+  else
+    aux(1) = global_auxvar%m_nacl(1)
+    call EOSWaterDensityExt(gen_auxvar%temp,celL_pressure,aux, &
+                            gen_auxvar%den_kg(lid),gen_auxvar%den(lid),ierr)
+  endif
   call EOSWaterEnthalpy(gen_auxvar%temp,cell_pressure,gen_auxvar%H(lid),ierr)
   gen_auxvar%H(lid) = gen_auxvar%H(lid) * 1.d-6 ! J/kmol -> MJ/kmol
   ! MJ/kmol comp
@@ -684,8 +691,14 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
            RelativePermeability(gen_auxvar%sat(lid),krl,dkrl_Se,option)                            
                                
     ! use cell_pressure; cell_pressure - psat calculated internally
-    call EOSWaterViscosity(gen_auxvar%temp,cell_pressure, &
-                           gen_auxvar%pres(spid),visl,ierr)
+    if (.not.option%flow%density_depends_on_salinity) then
+      call EOSWaterViscosity(gen_auxvar%temp,cell_pressure, &
+                             gen_auxvar%pres(spid),visl,ierr)
+    else
+      aux(1) = global_auxvar%m_nacl(1)
+      call EOSWaterViscosityExt(gen_auxvar%temp,cell_pressure, &
+                                gen_auxvar%pres(spid),aux,visl,ierr)
+    endif
     gen_auxvar%mobility(lid) = krl/visl
   endif
 
