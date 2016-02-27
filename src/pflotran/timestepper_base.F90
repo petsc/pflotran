@@ -389,22 +389,25 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option,stop_flag, &
   ! need previous waypoint for reverting back on time step cut
   this%prev_waypoint => this%cur_waypoint
   ! dt_max must be set from current waypoint and not updated below
-  dt_max = cur_waypoint%dt_max
   cumulative_time_steps = this%steps
   max_time_step = this%max_time_step
   tolerance = this%time_step_tolerance
-  target_time = this%target_time + dt
+!  target_time = this%target_time + dt
 
-  ! If a waypoint calls for a plot or change in src/sinks, adjust time step
-  ! to match waypoint.
-  force_to_match_waypoint = WaypointForceMatchToTime(cur_waypoint)
-  equal_to_or_exceeds_waypoint = target_time + tolerance*dt >= cur_waypoint%time
-  equal_to_or_exceeds_sync_time = target_time + tolerance*dt >= sync_time
-  if (equal_to_or_exceeds_sync_time .and. sync_time < cur_waypoint%time) then
-    ! flip back if the sync time arrives before the waypoint time.
-    equal_to_or_exceeds_waypoint = PETSC_FALSE
-  endif
   do ! we cycle just in case the next waypoint is beyond the target_time
+    dt_max = cur_waypoint%dt_max
+    dt = min(dt,dt_max)
+    target_time = this%target_time + dt
+    ! If a waypoint calls for a plot or change in src/sinks, adjust time step
+    ! to match waypoint.
+    force_to_match_waypoint = WaypointForceMatchToTime(cur_waypoint)
+    equal_to_or_exceeds_waypoint = target_time + tolerance*dt >= &
+                                   cur_waypoint%time
+    equal_to_or_exceeds_sync_time = target_time + tolerance*dt >= sync_time
+    if (equal_to_or_exceeds_sync_time .and. sync_time < cur_waypoint%time) then
+      ! flip back if the sync time arrives before the waypoint time.
+      equal_to_or_exceeds_waypoint = PETSC_FALSE
+    endif
     if (equal_to_or_exceeds_sync_time .or. &
         (equal_to_or_exceeds_waypoint .and. force_to_match_waypoint)) then
       if (force_to_match_waypoint) then
