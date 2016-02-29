@@ -16,7 +16,6 @@ END
 SUBSURFACE
 
 #=========================== regression =======================================
-skip
 REGRESSION
   CELLS
     1
@@ -24,7 +23,6 @@ REGRESSION
     11
   /
 END
-noskip
 
 #=========================== flow mode ========================================
 
@@ -78,11 +76,11 @@ CHARACTERISTIC_CURVES sf1
 END
 
 #=========================== output options ===================================
-OUTPUT
-  FORMAT TECPLOT BLOCK
+#OUTPUT
+#  FORMAT TECPLOT BLOCK
 #  FORMAT HDF5
 #  VELOCITIES
-END
+#END
 
 #=========================== times ============================================
 TIME
