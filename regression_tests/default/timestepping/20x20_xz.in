@@ -100,7 +100,7 @@ END
 
 #=========================== output options ===================================
 OUTPUT
-  TIMES d 1200.d0 1400.d0
+  TIMES d 1200.d0 1500.d0
   FORMAT HDF5
   VARIABLES
     LIQUID_PRESSURE
@@ -114,8 +114,11 @@ TIME
   INITIAL_TIMESTEP_SIZE 1.d0 d
   MAXIMUM_TIMESTEP_SIZE 100.d0 d at 100.0 d
   MAXIMUM_TIMESTEP_SIZE 0.1d0 d at 1300.0 d
-  MAXIMUM_TIMESTEP_SIZE 0.02d0 d at 1300.06d0 d
-  MAXIMUM_TIMESTEP_SIZE 100.d0 d at 1300.1d0 d
+  MAXIMUM_TIMESTEP_SIZE 0.02d0 d at 1300.105d0 d
+  MAXIMUM_TIMESTEP_SIZE 100.d0 d at 1300.2d0 d
+  MAXIMUM_TIMESTEP_SIZE 0.1d0 d at 1400.0 d
+  MAXIMUM_TIMESTEP_SIZE 0.02d0 d at 1400.06d0 d
+  MAXIMUM_TIMESTEP_SIZE 100.d0 d at 1400.1d0 d
 END
 
 #=========================== regions ==========================================

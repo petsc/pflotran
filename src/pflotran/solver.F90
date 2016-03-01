@@ -890,6 +890,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
 
   PetscInt :: fid
 
+#if !defined(PETSC_HAVE_MUMPS)
   if (option%mycommsize > 1) then
     if (solver%ksp_type == KSPPREONLY .and. solver%pc_type == PCLU) then
       option%io_buffer = 'Direct solver (KSPPREONLY + PCLU) not ' // &
@@ -897,6 +898,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
       call printErrMsg(option)
     endif
   endif
+#endif
   
   if (OptionPrintToScreen(option)) then
     write(*,*) 

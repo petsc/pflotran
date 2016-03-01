@@ -352,7 +352,9 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option,stop_flag, &
   PetscBool :: equal_to_or_exceeds_sync_time
   PetscBool :: revert_due_to_waypoint
   PetscBool :: revert_due_to_sync_time
-  type(waypoint_type), pointer :: cur_waypoint
+  PetscBool :: truncated_due_to_next_dt_max
+  PetscReal :: temp_time
+  type(waypoint_type), pointer :: cur_waypoint, next_waypoint, prev_waypoint
 
 !geh: for debugging
 #ifdef DEBUG
@@ -388,7 +390,7 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option,stop_flag, &
   cur_waypoint => this%cur_waypoint
   ! need previous waypoint for reverting back on time step cut
   this%prev_waypoint => this%cur_waypoint
-  ! dt_max must be set from current waypoint and not updated below
+  ! dt_max must be lagged.  it can be updated below, but it must lag a waypoint.
   cumulative_time_steps = this%steps
   max_time_step = this%max_time_step
   tolerance = this%time_step_tolerance
@@ -397,10 +399,31 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option,stop_flag, &
   do ! we cycle just in case the next waypoint is beyond the target_time
     dt_max = cur_waypoint%dt_max
     dt = min(dt,dt_max)
+    ! ensure that the time step does not overstep the next waypoint time + 
+    ! dtmax combination.
     target_time = this%target_time + dt
+
+!---! This section of code ensures that no time step over steps the next 
+    ! maximum time step (dt_max) if a waypoint is surpassed.
+    force_to_match_waypoint = PETSC_FALSE
+    if (associated(cur_waypoint%next)) then
+      if (dt_max > cur_waypoint%next%dt_max .and. &
+          dt > cur_waypoint%next%dt_max .and. &
+          target_time > cur_waypoint%time) then
+        if (this%target_time + cur_waypoint%next%dt_max < &
+            cur_waypoint%time) then
+          force_to_match_waypoint = PETSC_TRUE 
+        else
+          dt = cur_waypoint%next%dt_max
+          target_time = this%target_time + dt
+        endif
+      endif
+    endif
+!---
     ! If a waypoint calls for a plot or change in src/sinks, adjust time step
     ! to match waypoint.
-    force_to_match_waypoint = WaypointForceMatchToTime(cur_waypoint)
+    force_to_match_waypoint = WaypointForceMatchToTime(cur_waypoint) .or. &
+                              force_to_match_waypoint
     equal_to_or_exceeds_waypoint = target_time + tolerance*dt >= &
                                    cur_waypoint%time
     equal_to_or_exceeds_sync_time = target_time + tolerance*dt >= sync_time
@@ -420,8 +443,9 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option,stop_flag, &
       ! set new time step size based on max time
       dt = max_time - target_time
       if (dt > dt_max .and. &
-          dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
-        dt = dt_max                    ! error from waypoint%time - time
+                                   ! 1 sec tolerance to avoid cancellation
+          dabs(dt-dt_max) > 1.d0) then 
+        dt = dt_max         ! error from waypoint%time - time
         target_time = target_time + dt
       else
         target_time = max_time
