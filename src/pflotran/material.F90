@@ -252,6 +252,12 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('ID') 
         call InputReadInt(input,option,material_property%external_id)
         call InputErrorMsg(input,option,'id','MATERIAL_PROPERTY')
+        if (material_property%external_id == UNINITIALIZED_INTEGER) then
+          write(string,*) UNINITIALIZED_INTEGER
+          option%io_buffer = 'Material ID "' // trim(adjustl(string)) // &
+            '" is reserved for uninitialized materials.  Please choose a &
+            &different value.'
+        endif
       case('SATURATION_FUNCTION','CHARACTERISTIC_CURVES') 
         call InputReadWord(input,option, &
                            material_property%saturation_function_name, &
