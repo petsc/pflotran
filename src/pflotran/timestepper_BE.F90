@@ -18,6 +18,7 @@ module Timestepper_BE_class
     PetscInt :: num_linear_iterations ! number of linear solver iterations in a time step
     PetscInt :: cumulative_newton_iterations       ! Total number of Newton iterations
     PetscInt :: cumulative_linear_iterations     ! Total number of linear iterations
+    PetscInt :: cumulative_wasted_linear_iterations
 
     PetscInt :: iaccel        ! Accelerator index
     ! An array of multiplicative factors that specify how to increase time step.
@@ -117,6 +118,7 @@ subroutine TimestepperBEInit(this)
 
   this%cumulative_newton_iterations = 0
   this%cumulative_linear_iterations = 0
+  this%cumulative_wasted_linear_iterations = 0
 
   this%iaccel = 5
   this%ntfac = 13
@@ -271,6 +273,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   PetscInt :: stop_flag
   
   SNESConvergedReason :: snes_reason
+  KSPConvergedReason :: ksp_reason
   PetscInt :: icut
   
   type(solver_type), pointer :: solver
@@ -280,8 +283,10 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   PetscLogDouble :: log_end_time
   PetscInt :: num_newton_iterations
   PetscInt :: num_linear_iterations
+  PetscInt :: num_linear_iterations2
   PetscInt :: sum_newton_iterations
   PetscInt :: sum_linear_iterations
+  PetscInt :: sum_wasted_linear_iterations
   character(len=MAXWORDLENGTH) :: tunit
   PetscReal :: tconv
   PetscReal :: fnorm, inorm, scaled_fnorm
@@ -303,6 +308,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   tconv = process_model%output_option%tconv
   tunit = process_model%output_option%tunit
   sum_linear_iterations = 0
+  sum_wasted_linear_iterations = 0
   sum_newton_iterations = 0
   icut = 0
   
@@ -336,6 +342,8 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
     sum_linear_iterations = sum_linear_iterations + num_linear_iterations
   
     if (snes_reason <= 0 .or. .not. process_model%AcceptSolution()) then
+      sum_wasted_linear_iterations = sum_wasted_linear_iterations + &
+        num_linear_iterations
       ! The Newton solver diverged, so try reducing the time step.
       icut = icut + 1
       this%time_step_cut_flag = PETSC_TRUE
@@ -376,6 +384,38 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
            option%time/tconv, &
            this%dt/tconv
       call printMsg(option)
+      if (snes_reason == -3) then
+        call KSPGetIterationNumber(solver%ksp,num_linear_iterations2, &
+                                   ierr);CHKERRQ(ierr)
+        sum_wasted_linear_iterations = sum_wasted_linear_iterations + &
+          num_linear_iterations2
+        sum_linear_iterations = sum_linear_iterations + num_linear_iterations2
+        call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr);CHKERRQ(ierr)
+        select case(ksp_reason)
+          case(-3)
+            option%io_buffer = ' -> KSPReason Diverged due to iterations'
+          case(-4)
+            option%io_buffer = ' -> KSPReason Diverged due to dtol'
+          case(-5)
+            option%io_buffer = ' -> KSPReason Diverged due to breakdown'
+          case(-6)
+            option%io_buffer = ' -> KSPReason Diverged due to breakdown bicg'
+          case(-7)
+            option%io_buffer = ' -> KSPReason Diverged due to nonsymmetric'
+          case(-8)
+            option%io_buffer = ' -> KSPReason Diverged due to indefinite PC'
+          case(-9)
+            option%io_buffer = ' -> KSPReason Diverged due to NaN or Inf PC'
+          case(-10)
+            option%io_buffer = ' -> KSPReason Diverged due to indefinite matix'
+          case(-11)
+            option%io_buffer = ' -> KSPReason Diverged due to PC setup failed'
+          case default
+            write(option%io_buffer,'('' -> KSPReason Unknown: '',i2)') &
+              ksp_reason
+        end select
+        call printMsg(option)
+      endif
 
       this%target_time = this%target_time + this%dt
       option%dt = this%dt
@@ -392,6 +432,8 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
     this%cumulative_newton_iterations + sum_newton_iterations
   this%cumulative_linear_iterations = &
     this%cumulative_linear_iterations + sum_linear_iterations
+  this%cumulative_wasted_linear_iterations = &
+    this%cumulative_wasted_linear_iterations + sum_wasted_linear_iterations
   this%cumulative_time_step_cuts = &
     this%cumulative_time_step_cuts + icut
 
@@ -526,6 +568,7 @@ subroutine TimestepperBERegisterHeader(this,bag,header)
   call PetscBagRegisterInt(bag,header%cumulative_linear_iterations,0, &
                            "cumulative_linear_iterations","", &
                            ierr);CHKERRQ(ierr)
+! need to add cumulative wasted linear iterations
   call PetscBagRegisterInt(bag,header%num_newton_iterations,0, &
                            "num_newton_iterations","",ierr);CHKERRQ(ierr)
 
@@ -963,6 +1006,9 @@ recursive subroutine TimestepperBEFinalizeRun(this,option)
             this%cumulative_newton_iterations, &
             this%cumulative_linear_iterations, &
             this%cumulative_time_step_cuts
+    write(string,'(i12)') this%cumulative_wasted_linear_iterations
+    write(*,'(a)') trim(this%name) // ' TS BE Wasted Linear Iterations = ' // &
+      trim(adjustl(string))
     write(string,'(f12.1)') this%cumulative_solver_time
     write(*,'(a)') trim(this%name) // ' TS BE SNES time = ' // &
       trim(adjustl(string)) // ' seconds'
