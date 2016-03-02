@@ -308,7 +308,7 @@ subroutine PMAuxiliarySalinity(this,time,ierr)
   PetscReal :: time
   PetscErrorCode :: ierr
   
-  PetscInt :: ghosted_id, i, j, ispecies
+  PetscInt :: ghosted_id, i, j, ispecies, num_auxvars
   PetscReal :: sum_mass_species, xnacl, mass_h2o
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
@@ -318,11 +318,13 @@ subroutine PMAuxiliarySalinity(this,time,ierr)
     if (j == 1) then
       rt_auxvars => this%realization%patch%aux%RT%auxvars
       global_auxvars => this%realization%patch%aux%Global%auxvars
+      num_auxvars = this%realization%patch%aux%RT%num_aux
     else
       rt_auxvars => this%realization%patch%aux%RT%auxvars_bc
       global_auxvars => this%realization%patch%aux%Global%auxvars_bc
+      num_auxvars = this%realization%patch%aux%RT%num_aux_bc
     endif
-    do ghosted_id = 1, size(rt_auxvars)
+    do ghosted_id = 1, num_auxvars
       sum_mass_species = 0.d0
       do i = 1, this%salinity%nspecies
         ispecies = this%salinity%ispecies(i)
