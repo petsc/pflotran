@@ -273,7 +273,6 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   PetscInt :: stop_flag
   
   SNESConvergedReason :: snes_reason
-  KSPConvergedReason :: ksp_reason
   PetscInt :: icut
   
   type(solver_type), pointer :: solver
@@ -384,37 +383,13 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
            option%time/tconv, &
            this%dt/tconv
       call printMsg(option)
-      if (snes_reason == -3) then
+      if (snes_reason == SNES_DIVERGED_LINEAR_SOLVE) then
         call KSPGetIterationNumber(solver%ksp,num_linear_iterations2, &
                                    ierr);CHKERRQ(ierr)
         sum_wasted_linear_iterations = sum_wasted_linear_iterations + &
           num_linear_iterations2
         sum_linear_iterations = sum_linear_iterations + num_linear_iterations2
-        call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr);CHKERRQ(ierr)
-        select case(ksp_reason)
-          case(-3)
-            option%io_buffer = ' -> KSPReason Diverged due to iterations'
-          case(-4)
-            option%io_buffer = ' -> KSPReason Diverged due to dtol'
-          case(-5)
-            option%io_buffer = ' -> KSPReason Diverged due to breakdown'
-          case(-6)
-            option%io_buffer = ' -> KSPReason Diverged due to breakdown bicg'
-          case(-7)
-            option%io_buffer = ' -> KSPReason Diverged due to nonsymmetric'
-          case(-8)
-            option%io_buffer = ' -> KSPReason Diverged due to indefinite PC'
-          case(-9)
-            option%io_buffer = ' -> KSPReason Diverged due to NaN or Inf PC'
-          case(-10)
-            option%io_buffer = ' -> KSPReason Diverged due to indefinite matix'
-          case(-11)
-            option%io_buffer = ' -> KSPReason Diverged due to PC setup failed'
-          case default
-            write(option%io_buffer,'('' -> KSPReason Unknown: '',i2)') &
-              ksp_reason
-        end select
-        call printMsg(option)
+        call SolverLinearPrintFailedReason(solver,option)
       endif
 
       this%target_time = this%target_time + this%dt
