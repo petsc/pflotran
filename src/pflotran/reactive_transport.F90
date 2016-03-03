@@ -191,9 +191,7 @@ subroutine RTSetup(realization)
     ghosted_id = grid%nL2G(local_id)
 
     ! Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif    
+    if (patch%imat(ghosted_id) <= 0) cycle
     
     if (material_auxvars(ghosted_id)%volume < 0.d0 .and. flag(1) == 0) then
       flag(1) = 1
@@ -299,7 +297,8 @@ subroutine RTSetup(realization)
 
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  call RTCreateZeroArray(patch,reaction,option)
+!geh: remove after 3/31/16
+!  call RTCreateZeroArray(patch,reaction,option)
   
   ! initialize parameters
   cur_fluid_property => realization%fluid_properties
@@ -2541,9 +2540,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   ! only one secondary continuum for now for each primary continuum node
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
       
       offset = (local_id-1)*reaction%ncomp
       istartall = offset + 1

@@ -29,7 +29,7 @@ module PM_Base_class
     class(realization_base_type), pointer :: realization_base
     class(pm_base_type), pointer :: next
   contains
-    procedure, public :: Setup => PMBaseInit
+    procedure, public :: Setup => PMBaseSetup
     procedure, public :: Read => PMBaseRead
     procedure, public :: SetupSolvers => PMBaseSetupSolvers
     procedure, public :: InitializeRun => PMBaseThisOnly
@@ -106,7 +106,7 @@ end subroutine PMBaseRead
 subroutine PMBaseSetup(this)
   implicit none
   class(pm_base_type) :: this
-  print *, 'Must extend c.'
+  print *, 'Must extend PMBaseSetup.'
   stop
 end subroutine PMBaseSetup
 

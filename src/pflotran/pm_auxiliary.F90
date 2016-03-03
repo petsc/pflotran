@@ -19,6 +19,7 @@ module PM_Auxiliary_class
     type(pm_auxiliary_salinity_type), pointer :: salinity
     procedure(PMAuxliaryEvaluate), pointer :: Evaluate => null()
   contains
+    procedure, public :: Setup => PMAuxiliarySetup
     procedure, public :: InitializeRun => PMAuxiliaryInitializeRun
     procedure, public :: Destroy => PMAuxiliaryDestroy
   end type pm_auxiliary_type
@@ -94,7 +95,21 @@ subroutine PMAuxiliaryInit(this)
   
 end subroutine PMAuxiliaryInit
 
- 
+! ************************************************************************** !
+
+subroutine PMAuxiliarySetup(this)
+  ! 
+  ! Sets up auxiliary process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/16
+
+  implicit none
+  
+  class(pm_auxiliary_type) :: this  
+
+end subroutine PMAuxiliarySetup
+
 ! ************************************************************************** !
 
 function PMAuxiliaryCast(this)
@@ -285,8 +300,35 @@ subroutine PMAuxiliaryEvolvingStrata(this,time,ierr)
   PetscReal :: time
   PetscErrorCode :: ierr
 
+  PetscInt :: ndof
+
   call InitSubsurfAssignMatIDsToRegns(this%realization)
   call InitSubsurfAssignMatProperties(this%realization)
+  select case(this%option%iflowmode)
+    case(RICHARDS_MODE)
+      call InitSubsurfaceCreateZeroArray(this%realization%patch, &
+                this%option%nflowdof, &
+                this%realization%patch%aux%Richards%zero_rows_local, &
+                this%realization%patch%aux%Richards%zero_rows_local_ghosted, &
+                this%realization%patch%aux%Richards%n_zero_rows, &
+                this%realization%patch%aux%Richards%inactive_cells_exist, &
+                this%option)
+  end select
+  if (this%option%ntrandof > 0) then
+    ! remove ndof above if this is moved
+    if (this%option%transport%reactive_transport_coupling == &
+        GLOBAL_IMPLICIT) then
+      ndof = this%realization%reaction%ncomp
+    else
+      ndof = 1
+    endif
+    call InitSubsurfaceCreateZeroArray(this%realization%patch,ndof, &
+                  this%realization%patch%aux%RT%zero_rows_local, &
+                  this%realization%patch%aux%RT%zero_rows_local_ghosted, &
+                  this%realization%patch%aux%RT%n_zero_rows, &
+                  this%realization%patch%aux%RT%inactive_cells_exist, &
+                  this%option)
+  endif
   
 end subroutine PMAuxiliaryEvolvingStrata
 
@@ -357,6 +399,8 @@ subroutine PMAuxiliaryDestroy(this)
   ! destroyed in realization
   nullify(this%realization)
   nullify(this%comm1)
+  nullify(this%option)
+  nullify(this%output_option)
 
   if (associated(this%salinity)) then
     deallocate(this%salinity)

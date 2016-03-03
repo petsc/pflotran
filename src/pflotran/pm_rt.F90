@@ -1826,6 +1826,8 @@ subroutine PMRTDestroy(this)
   call RTDestroy(this%realization)
   ! destroyed in realization
   nullify(this%comm1)
+  nullify(this%option)
+  nullify(this%output_option)
   call this%commN%Destroy()
   if (associated(this%commN)) deallocate(this%commN)
   nullify(this%commN)  

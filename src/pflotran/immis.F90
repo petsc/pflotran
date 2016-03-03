@@ -170,16 +170,16 @@ subroutine ImmisSetupPatch(realization)
 ! dencpr  
   allocate(patch%aux%Immis%Immis_parameter%dencpr(size(patch%material_property_array)))
   do ipara = 1, size(patch%material_property_array)
-    patch%aux%Immis%Immis_parameter%dencpr(patch% &
-        material_property_array(ipara)%ptr%internal_id) = &
+    patch%aux%Immis%Immis_parameter%dencpr(iabs(patch% &
+        material_property_array(ipara)%ptr%internal_id)) = &
       patch%material_property_array(ipara)%ptr%rock_density*option%scale*&
       patch%material_property_array(ipara)%ptr%specific_heat
   enddo
 ! ckwet
   allocate(patch%aux%Immis%Immis_parameter%ckwet(size(patch%material_property_array)))
   do ipara = 1, size(patch%material_property_array)
-    patch%aux%Immis%Immis_parameter%ckwet(patch% &
-        material_property_array(ipara)%ptr%internal_id) = &
+    patch%aux%Immis%Immis_parameter%ckwet(iabs(patch% &
+        material_property_array(ipara)%ptr%internal_id)) = &
       patch%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
 ! immis_parameters create_end *****************************************

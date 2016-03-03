@@ -1,13 +1,11 @@
-#Description: 3D test problem for variably saturated flow and tracer transport
+#Description: 3D test problem for testing chemical reactions
+#             based on chemistry from Hammond and Lichtner, WRR, 2010
 
 SIMULATION
   SIMULATION_TYPE SUBSURFACE
   PROCESS_MODELS
     SUBSURFACE_FLOW flow
       MODE RICHARDS
-    /
-    SUBSURFACE_TRANSPORT transport
-      GLOBAL_IMPLICIT
     /
   /
 END
@@ -16,44 +14,26 @@ SUBSURFACE
 
 #=========================== regression =======================================
 REGRESSION
-  CELLS_PER_PROCESS 2
+  CELLS_PER_PROCESS 10
   CELLS
-    28
+    29
   /
 END
 
 #=========================== flow mode ========================================
 
-#=========================== chemistry ========================================
-CHEMISTRY
-  PRIMARY_SPECIES
-    Tracer
-  /
-  OUTPUT
-    TOTAL
-  /
-/
-
 #=========================== solver options ===================================
 TIMESTEPPER FLOW
   TS_ACCELERATION 8
-/
+END
 
 NEWTON_SOLVER FLOW
-/
+END
 
 LINEAR_SOLVER FLOW
   KSP_TYPE PREONLY
   PC_TYPE LU
-/
-
-NEWTON_SOLVER TRANSPORT
-/
-
-LINEAR_SOLVER TRANSPORT
-  KSP_TYPE PREONLY
-  PC_TYPE LU
-/
+END
 
 #=========================== discretization ===================================
 GRID
@@ -70,12 +50,21 @@ END
 #=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
-/
+END
+
+#=========================== datasets =========================================
+DATASET Porosity
+  FILENAME ../543/parameters-543.h5
+END
+
+DATASET Permeability
+  FILENAME ../543/parameters-543.h5
+END
 
 #=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
   ID 1
-  POROSITY 0.25d0
+  POROSITY DATASET Porosity
   TORTUOSITY 1.d0
   CHARACTERISTIC_CURVES sf1
   PERMEABILITY
@@ -83,19 +72,17 @@ MATERIAL_PROPERTY soil1
     PERM_Y 1.d-12
     PERM_Z 1.d-13
   /
-/
+END
 
 MATERIAL_PROPERTY soil2
-  ID 10
+  ID 2
   POROSITY 0.25d0
   TORTUOSITY 1.d0
   CHARACTERISTIC_CURVES sf2
   PERMEABILITY
-    PERM_X 1.d-11
-    PERM_Y 1.d-11
-    PERM_Z 1.d-12
+    DATASET Permeability
   /
-/
+END
 
 MATERIAL_PROPERTY soil3
   ID 3
@@ -107,7 +94,7 @@ MATERIAL_PROPERTY soil3
     PERM_Y 1.d-10
     PERM_Z 1.d-11
   /
-/
+END
 
 MATERIAL_PROPERTY soil4
   ID 4
@@ -119,9 +106,23 @@ MATERIAL_PROPERTY soil4
     PERM_Y 1.d-9
     PERM_Z 1.d-10
   /
-/
+END
 
-#=========================== characteristic curves =============================
+! this material property is never used, but introduces a gap in material
+! ids (notice no material id of 5 in file) for testing purposes.
+MATERIAL_PROPERTY soil6
+  ID 6
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf4
+  PERMEABILITY
+    PERM_X 1.d-9
+    PERM_Y 1.d-9
+    PERM_Z 1.d-10
+  /
+END
+
+#=========================== characteristic curves ============================
 CHARACTERISTIC_CURVES sf1
   SATURATION_FUNCTION VAN_GENUCHTEN
     M 0.286
@@ -173,18 +174,25 @@ END
 #=========================== output options ===================================
 OUTPUT
 #  TIMES d 0.001 0.01 0.1 1. 10.
+#  PERIODIC TIME 1 d
+  TIME_UNITS y
 #  FORMAT TECPLOT BLOCK
-  !VELOCITY_AT_CENTER
-#  FLUXES
-  !FLOWRATES
-/
+  VELOCITY_AT_CENTER
+  VARIABLES
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+    POROSITY
+    PERMEABILITY
+    MATERIAL_ID
+  /
+END
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 100.d0 d
-  INITIAL_TIMESTEP_SIZE 1.d-6 d
+  FINAL_TIME 1.d0 d
+  INITIAL_TIMESTEP_SIZE 1.d-3 d
   MAXIMUM_TIMESTEP_SIZE 10.d0 d
-/
+END
 
 #=========================== regions ==========================================
 REGION all
@@ -242,6 +250,10 @@ REGION south
   /
 END
 
+REGION plume
+  BLOCK 2 3 2 3 2 3
+END
+
 REGION well
   BLOCK 4 4 2 3 3 3
 END
@@ -252,8 +264,11 @@ FLOW_CONDITION initial
     PRESSURE hydrostatic
   /
   DATUM 0.d0 0.d0 35.d0
+  GRADIENT
+    PRESSURE -1.6666667d-2 0.d0 0.d0
+  /
   PRESSURE 101325 ! Pa
-/
+END
 
 FLOW_CONDITION east
   TYPE
@@ -262,95 +277,67 @@ FLOW_CONDITION east
   INTERPOLATION LINEAR
   DATUM LIST
     TIME_UNITS d
-    0.d0 0.d0 0.d0 25.d0
-    10.d0 0.d0 0.d0 26.d0
-    50.d0 0.d0 0.d0 24.d0
-    90.d0 0.d0 0.d0 26.d0
+    0.d0 0.d0 0.d0 34.d0
+    10.d0 0.d0 0.d0 39.d0
+    50.d0 0.d0 0.d0 33.d0
+    100.d0 0.d0 0.d0 34.d0
   /
   PRESSURE 101325 ! Pa
-/
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    FLUX neumann
+  /
+  FLUX 5.d0 cm/yr
+END
 
 FLOW_CONDITION injection_well
   TYPE
-    RATE volumetric_rate
+    RATE scaled_volumetric_rate neighbor_perm
   /
-  RATE 2.77777778d-4  ! 1 m^3/hr
-/
-
-#=========================== transport conditions =============================
-TRANSPORT_CONDITION initial
-  TYPE dirichlet_zero_gradient
-  CONSTRAINT_LIST
-    0.d0 initial
-  /
-END
-
-TRANSPORT_CONDITION well_concentration
-  TYPE dirichlet
-  CONSTRAINT_LIST
-    0.d0 source
-  /
-/
-
-#=========================== constraints ======================================
-CONSTRAINT source
-  CONCENTRATIONS
-    Tracer 1.d0 T
-  /
-END
-
-CONSTRAINT initial
-  CONCENTRATIONS
-    Tracer 1.d-40 T
-  /
+  RATE 1 m^3/hr
 END
 
 #=========================== condition couplers ===============================
 # initial condition
 INITIAL_CONDITION
   FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
   REGION all
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION plume
 END
 
 # west boundary condition
 BOUNDARY_CONDITION west
   FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
   REGION west
 END
 
 # east boundary condition
 BOUNDARY_CONDITION east
-  FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
+  FLOW_CONDITION east
   REGION east
 END
 
-# north boundary condition
-BOUNDARY_CONDITION north
-  FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
-  REGION north
-END
-
-# south boundary condition
-BOUNDARY_CONDITION south
-  FLOW_CONDITION initial
-  TRANSPORT_CONDITION initial
-  REGION south
+# top boundary condition
+BOUNDARY_CONDITION top
+  FLOW_CONDITION recharge
+  REGION top
 END
 
 # well source/sink
 SOURCE_SINK well
   FLOW_CONDITION injection_well
-  TRANSPORT_CONDITION well_concentration
   REGION well
 END
 
 #=========================== stratigraphy couplers ============================
 STRATA
-  MATERIAL ./543_non_contig.h5
+  MATERIAL ./543_inactive.h5
 END
 
 END_SUBSURFACE

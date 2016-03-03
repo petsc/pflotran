@@ -753,6 +753,7 @@ subroutine SubsurfaceInitSimulation(simulation)
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string
   SNESLineSearch :: linesearch
+  PetscInt :: ndof
   PetscErrorCode :: ierr
   
   realization => simulation%realization
@@ -784,7 +785,30 @@ subroutine SubsurfaceInitSimulation(simulation)
   ! always call the flow side since a velocity field still has to be
   ! set if no flow exists
   call InitSubsurfFlowSetupRealization(realization)
-  if (option%ntrandof > 0) call InitSubsurfTranSetupRealization(realization)
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+      call InitSubsurfaceCreateZeroArray(realization%patch,option%nflowdof, &
+                    realization%patch%aux%Richards%zero_rows_local, &
+                    realization%patch%aux%Richards%zero_rows_local_ghosted, &
+                    realization%patch%aux%Richards%n_zero_rows, &
+                    realization%patch%aux%Richards%inactive_cells_exist, &
+                    option)
+  end select
+  if (option%ntrandof > 0) then
+    call InitSubsurfTranSetupRealization(realization)
+    ! remove ndof above if this is moved
+    if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      ndof = realization%reaction%ncomp
+    else
+      ndof = 1
+    endif
+    call InitSubsurfaceCreateZeroArray(realization%patch,ndof, &
+                  realization%patch%aux%RT%zero_rows_local, &
+                  realization%patch%aux%RT%zero_rows_local_ghosted, &
+                  realization%patch%aux%RT%n_zero_rows, &
+                  realization%patch%aux%RT%inactive_cells_exist, &
+                  option)
+  endif
   call OutputVariableAppendDefaults(realization%output_option% &
                                       output_variable_list,option)
     ! check for non-initialized data sets, e.g. porosity, permeability
@@ -824,6 +848,7 @@ subroutine SubsurfaceInitSimulation(simulation)
     string = 'EVOLVING_STRATA'
     call PMAuxiliarySetFunctionPointer(pm_aux,string)
     pm_aux%realization => realization
+    pm_aux%option => option
     auxiliary_process_model_coupler%pm_list => pm_aux
     auxiliary_process_model_coupler%pm_aux => pm_aux
     auxiliary_process_model_coupler%option => option

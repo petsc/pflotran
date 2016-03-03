@@ -13,7 +13,8 @@ module Init_Subsurface_module
             InitSubsurfAssignMatProperties, &
             SubsurfInitMaterialProperties, &
             SubsurfAssignVolsToMatAuxVars, &
-            SubsurfSandboxesSetup
+            SubsurfSandboxesSetup, &
+            InitSubsurfaceCreateZeroArray
   
 contains
 
@@ -319,30 +320,24 @@ subroutine InitSubsurfAssignMatProperties(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     material_id = patch%imat(ghosted_id)
-    if (material_id == 0) then ! accommodate inactive cells
+    if (material_id == 0) then
       material_property => null_material_property
-    else if (material_id > 0 .and. &
-              material_id <= &
-              size(patch%material_property_array)) then
-      material_property => &
-        patch%material_property_array(material_id)%ptr
-      if (.not.associated(material_property)) then
-        write(string,*) &
-          patch%imat_internal_to_external(material_id)
-        option%io_buffer = 'No material property for material id ' // &
-                            trim(adjustl(string)) &
-                            //  ' defined in input file.'
-        call printErrMsgByRank(option)
+    else if (iabs(material_id) <= &
+             size(patch%material_property_array)) then
+      if (material_id < 0) then
+        material_property => null_material_property
+      else
+        material_property => &
+          patch%material_property_array(material_id)%ptr
+        if (.not.associated(material_property)) then
+          write(string,*) &
+            patch%imat_internal_to_external(material_id)
+          option%io_buffer = 'No material property for material id ' // &
+                              trim(adjustl(string)) &
+                              //  ' defined in input file.'
+          call printErrMsgByRank(option)
+        endif
       endif
-    else if (material_id < 0 .and. Initialized(material_id)) then 
-      ! highjacking dataset_name and group_name for error processing
-      write(string,*) grid%nG2A(ghosted_id)
-      write(string2,*) -1*material_id
-      option%io_buffer = 'Undefined material id ' // &
-                          trim(adjustl(string2)) // &
-                          ' at cell ' // &
-                          trim(adjustl(string)) // '.'
-      call printErrMsgByRank(option)
     else if (Uninitialized(material_id)) then 
       write(string,*) grid%nG2A(ghosted_id)
       option%io_buffer = 'Uninitialized material id in patch at cell ' // &
@@ -363,7 +358,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
       patch%sat_func_id(ghosted_id) = &
         material_property%saturation_function_id
       icap_loc_p(ghosted_id) = material_property%saturation_function_id
-      ithrm_loc_p(ghosted_id) = material_property%internal_id
+      ithrm_loc_p(ghosted_id) = iabs(material_property%internal_id)
       perm_xx_p(local_id) = material_property%permeability(1,1)
       perm_yy_p(local_id) = material_property%permeability(2,2)
       perm_zz_p(local_id) = material_property%permeability(3,3)
@@ -398,7 +393,8 @@ subroutine InitSubsurfAssignMatProperties(realization)
   do material_id = 1, size(patch%material_property_array)
     material_property => &
             patch%material_property_array(material_id)%ptr
-    if (associated(material_property)) then
+    if (.not.associated(material_property)) cycle
+    if (material_property%active) then
       if (associated(material_property%permeability_dataset)) then
         call SubsurfReadPermsFromFile(realization,material_property)
       endif
@@ -406,12 +402,12 @@ subroutine InitSubsurfAssignMatProperties(realization)
 !        call SubsurfReadCompressFromFile(realization,material_property)
         call SubsurfReadDatasetToVecWithMask(realization, &
                material_property%compressibility_dataset, &
-               material_property%internal_id,field%compressibility0)
+               material_property%internal_id,PETSC_FALSE,field%compressibility0)
       endif
       if (associated(material_property%porosity_dataset)) then
         call SubsurfReadDatasetToVecWithMask(realization, &
                material_property%porosity_dataset, &
-               material_property%internal_id,field%porosity0)
+               material_property%internal_id,PETSC_FALSE,field%porosity0)
       endif
     endif
   enddo
@@ -660,7 +656,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
     !geh: Pass in -1 so that entire dataset is read. The mask is applied below.
     call SubsurfReadDatasetToVecWithMask(realization, &
                                     material_property%permeability_dataset, &
-                                    -1,global_vec)
+                                    UNINITIALIZED_INTEGER,PETSC_TRUE,global_vec)
     call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
     ratio = 1.d0
     scale = 1.d0
@@ -699,7 +695,8 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
       !     below.
       call SubsurfReadDatasetToVecWithMask(realization, &
                                            dataset_common_hdf5_ptr,&
-                                           -1,global_vec)
+                                           UNINITIALIZED_INTEGER,PETSC_TRUE, &
+                                           global_vec)
       call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
       select case(idirection)
         case(X_DIRECTION)
@@ -737,8 +734,8 @@ end subroutine SubsurfReadPermsFromFile
 
 ! ************************************************************************** !
 
-subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
-                                           vec)
+subroutine SubsurfReadDatasetToVecWithMask(realization,dataset, &
+                                           material_id,read_all_values,vec)
   ! 
   ! Reads a dataset into a PETSc Vec using the material id as a mask
   ! 
@@ -767,6 +764,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
   class(realization_subsurface_type) :: realization
   class(dataset_base_type) :: dataset
   PetscInt :: material_id
+  PetscBool :: read_all_values
   Vec :: vec
 
   type(field_type), pointer :: field
@@ -799,7 +797,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
         call DatasetGriddedHDF5Load(dataset,option)
         do local_id = 1, grid%nlmax
           ghosted_id = grid%nL2G(local_id)
-          if (material_id < 0 .or. &
+          if (read_all_values .or. &
               patch%imat(ghosted_id) == material_id) then
             call DatasetGriddedHDF5InterpolateReal(dataset, &
                    grid%x(ghosted_id),grid%y(ghosted_id),grid%z(ghosted_id), &
@@ -821,7 +819,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
                                           group_name,dataset_name, &
                                           dataset%realization_dependent)
         call VecGetArrayF90(field%work,work_p,ierr);CHKERRQ(ierr)
-        if (material_id < 0) then
+        if (read_all_values) then
           vec_p(:) = work_p(:)
         else
           do local_id = 1, grid%nlmax
@@ -848,7 +846,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
                          'SubsurfReadDatasetToVecWithMask')
       ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
       if (ghosted_id > 0) then
-        if (material_id < 0 .or. &
+        if (read_all_values .or. &
             patch%imat(ghosted_id) == material_id) then
           local_id = grid%nG2L(ghosted_id)
           if (local_id > 0) then
@@ -922,5 +920,87 @@ subroutine SubsurfSandboxesSetup(realization)
                       realization%output_option)
   
 end subroutine SubsurfSandboxesSetup
+
+! ************************************************************************** !
+
+subroutine InitSubsurfaceCreateZeroArray(patch,ndof,inactive_rows_local, &
+                                         inactive_rows_local_ghosted, &
+                                         n_inactive_rows,inactive_cells_exist, &
+                                         option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07, 03/02/16
+  ! 
+  use Realization_Subsurface_class
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Utility_module, only : DeallocateArray
+  
+  implicit none
+
+  type(patch_type) :: patch
+  PetscInt :: ndof
+  PetscInt, pointer :: inactive_rows_local(:)
+  PetscInt, pointer :: inactive_rows_local_ghosted(:)
+  PetscInt :: n_inactive_rows
+  PetscBool :: inactive_cells_exist
+  type(option_type) :: option
+  
+  PetscInt :: ncount, idof
+  PetscInt :: local_id, ghosted_id
+
+  type(grid_type), pointer :: grid
+  PetscInt :: flag
+  PetscErrorCode :: ierr
+    
+  flag = 0
+  grid => patch%grid
+  
+  n_inactive_rows = 0
+  inactive_cells_exist = PETSC_FALSE
+  call DeallocateArray(inactive_rows_local)
+  call DeallocateArray(inactive_rows_local_ghosted)
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) then
+      n_inactive_rows = n_inactive_rows + ndof
+    endif
+  enddo
+
+  allocate(inactive_rows_local(n_inactive_rows))
+  allocate(inactive_rows_local_ghosted(n_inactive_rows))
+
+  inactive_rows_local = 0
+  inactive_rows_local_ghosted = 0
+  ncount = 0
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) then
+      do idof = 1, ndof
+        ncount = ncount + 1
+        inactive_rows_local(ncount) = (local_id-1)*ndof+idof
+        inactive_rows_local_ghosted(ncount) = (ghosted_id-1)*ndof+idof-1
+      enddo
+    endif
+  enddo
+
+  call MPI_Allreduce(n_inactive_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                     MPI_MAX,option%mycomm,ierr)
+  if (flag > 0) then
+    inactive_cells_exist = PETSC_TRUE
+  endif
+     
+  if (ncount /= n_inactive_rows) then
+    print *, 'Error:  Mismatch in non-zero row count!', ncount, n_inactive_rows
+    stop
+  endif
+
+end subroutine InitSubsurfaceCreateZeroArray
 
 end module Init_Subsurface_module

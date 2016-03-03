@@ -158,8 +158,8 @@ subroutine MiscibleSetupPatch(realization)
 ! dencpr  
   allocate(patch%aux%Miscible%Miscible_parameter%dencpr(size(patch%material_property_array)))
   do ipara = 1, size(patch%material_property_array)
-    patch%aux%Miscible%Miscible_parameter%dencpr(patch% &
-        material_property_array(ipara)%ptr%internal_id) = &
+    patch%aux%Miscible%Miscible_parameter%dencpr(iabs(patch% &
+        material_property_array(ipara)%ptr%internal_id)) = &
       patch%material_property_array(ipara)%ptr%rock_density*option%scale*&
       patch%material_property_array(ipara)%ptr%specific_heat
   enddo
@@ -167,8 +167,8 @@ subroutine MiscibleSetupPatch(realization)
 ! ckwet
   allocate(patch%aux%Miscible%Miscible_parameter%ckwet(size(patch%material_property_array)))
   do ipara = 1, size(patch%material_property_array)
-    patch%aux%Miscible%Miscible_parameter%ckwet(patch% &
-        material_property_array(ipara)%ptr%internal_id) = &
+    patch%aux%Miscible%Miscible_parameter%ckwet(iabs(patch% &
+        material_property_array(ipara)%ptr%internal_id)) = &
       patch%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
 ! Miscible_parameters create_end *****************************************
