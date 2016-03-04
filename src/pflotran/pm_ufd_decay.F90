@@ -21,6 +21,7 @@ module PM_UFD_Decay_class
     PetscInt, pointer :: isotope_to_mineral(:)
     PetscReal, pointer :: isotope_decay_rate(:)
     PetscInt, pointer :: isotope_daughters(:,:)
+    PetscInt, pointer :: isotope_parents(:,:)
     PetscReal, pointer :: element_solubility(:)
     PetscReal, pointer :: element_Kd(:)
     PetscInt :: num_elements
@@ -110,6 +111,7 @@ function PMUFDDecayCreate()
   nullify(PMUFDDecayCreate%isotope_to_mineral)
   nullify(PMUFDDecayCreate%isotope_decay_rate)
   nullify(PMUFDDecayCreate%isotope_daughters)
+  nullify(PMUFDDecayCreate%isotope_parents)
   nullify(PMUFDDecayCreate%element_solubility)
   nullify(PMUFDDecayCreate%element_Kd)
   nullify(PMUFDDecayCreate%num_isotopes_per_element)
@@ -343,7 +345,9 @@ subroutine PMUFDDecayInit(this)
   PetscInt :: icount
   PetscInt :: ghosted_id
   PetscInt :: max_daughters_per_isotope
+  PetscInt :: max_parents_per_isotope
   PetscBool :: found
+  PetscInt :: iisotope
   
   option => this%realization%option
   grid => this%realization%patch%grid
@@ -356,6 +360,7 @@ subroutine PMUFDDecayInit(this)
   enddo
   
   max_daughters_per_isotope = 0
+  max_parents_per_isotope = 0
 
   ! sum the number of isotopes, elements, max number of isotopes per element
   
@@ -472,7 +477,29 @@ subroutine PMUFDDecayInit(this)
       daughter => daughter%next
     enddo
     isotope => isotope%next
-  enddo  
+  enddo
+  
+  allocate(this%isotope_parents(1,this%num_isotopes))
+  this%isotope_parents = 0
+  do iisotope = 1, this%num_isotopes
+    do icount = 1, this%isotope_daughters(0,iisotope)
+      this%isotope_parents(1,this%isotope_daughters(icount,iisotope)) = &
+        this%isotope_parents(1,this%isotope_daughters(icount,iisotope)) + 1
+    enddo
+  enddo
+  max_parents_per_isotope = maxval(this%isotope_parents)
+  deallocate(this%isotope_parents)
+  allocate(this%isotope_parents(0:max_parents_per_isotope,this%num_isotopes))
+  this%isotope_parents = 0
+  do iisotope = 1, this%num_isotopes
+    do icount = 1, this%isotope_daughters(0,iisotope)
+      this%isotope_parents(0,this%isotope_daughters(icount,iisotope)) = &
+        this%isotope_parents(0,this%isotope_daughters(icount,iisotope)) + 1
+      this%isotope_parents(this%isotope_parents(0, &
+                                    this%isotope_daughters(icount,iisotope)), &
+                           this%isotope_daughters(icount,iisotope)) = iisotope
+    enddo
+  enddo
   
 #if 0  
   this%num_elements = 3
@@ -645,14 +672,14 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: local_id
   PetscInt :: ghosted_id
-  PetscInt :: iele, i, ii, iiso, idaughter, ipri, imnrl
+  PetscInt :: iele, i, ii, iiso, idaughter, ipri, imnrl, iparent
   PetscReal :: dt
   PetscReal :: vol, por, sat, den_w_kg, vps
   PetscReal :: conc_iso_aq0, conc_iso_sorb0, conc_iso_ppt0
   PetscReal :: conc_ele_aq1, conc_ele_sorb1, conc_ele_ppt1
   PetscReal :: mass_iso_aq0, mass_iso_sorb0, mass_iso_ppt0
   PetscReal :: mass_ele_aq1, mass_ele_sorb1, mass_ele_ppt1, mass_cmp_tot1
-  PetscReal :: mass_iso_tot0
+  PetscReal :: mass_iso_tot0(this%num_isotopes), mass_iso_tot_star(this%num_isotopes)
   PetscReal :: mass_iso_tot1(this%num_isotopes), delta_mass_iso_tot(this%num_isotopes)
   PetscReal :: mass_ele_tot1
   PetscReal :: mol_fraction_iso(this%num_isotopes)
@@ -697,6 +724,10 @@ subroutine PMUFDDecaySolve(this,time,ierr)
         mass_iso_sorb0 = conc_iso_sorb0 * vol ! mol/m^3 bulk * m^3 bulk = mol
         mass_iso_ppt0 = conc_iso_ppt0 * vol / &  ! m^3 mnrl/m^3 bulk * m^3 bulk / (m^3 mnrl/mol mnrl) = mol
                         reaction%mineral%kinmnrl_molar_vol(imnrl)
+        mass_iso_tot0(iiso) = mass_iso_aq0 + mass_iso_sorb0 + mass_iso_ppt0
+      enddo
+    enddo 
+#if 0                        
         mass_iso_tot0 = mass_iso_aq0 + mass_iso_sorb0 + mass_iso_ppt0
         ! should this be implicit in time?
         mass_iso_tot1(iiso) = mass_iso_tot0 * exp(-1.d0*this%isotope_decay_rate(iiso)*dt)
@@ -715,7 +746,28 @@ subroutine PMUFDDecaySolve(this,time,ierr)
         enddo
       enddo
     enddo
-    
+#endif
+    mass_iso_tot1 = 0.d0
+!    do iiso = 1, this%num_isotopes
+!      mass_iso_tot_star(iiso) = mass_iso_tot0(iiso) * &
+!                                exp(-1.d0*this%isotope_decay_rate(iiso)*dt)
+!      mass_iso_tot1(iiso) = mass_iso_tot_star(iiso)
+!    enddo
+    mass_iso_tot_star(:) = mass_iso_tot0(:) * &
+                                exp(-1.d0*this%isotope_decay_rate(:)*dt)
+    mass_iso_tot1(:) = mass_iso_tot_star(:)
+    do iiso = 1, this%num_isotopes
+      do iparent = 1, this%isotope_parents(0,iiso)
+        mass_iso_tot1(iiso) = mass_iso_tot1(iiso) + &
+          this%isotope_decay_rate(iparent)*mass_iso_tot0(iparent) / &
+            (this%isotope_decay_rate(iiso) - &
+             this%isotope_decay_rate(iparent)) * &
+            (exp(-1.d0*this%isotope_decay_rate(iparent)*dt) - &
+             exp(-1.d0*this%isotope_decay_rate(iiso)*dt))
+      enddo
+    enddo
+    mass_iso_tot1 = max(mass_iso_tot1,1.d-90)
+
     do iele = 1, this%num_elements
       ! calculate mole fractions
       mass_ele_tot1 = 0.d0
@@ -961,6 +1013,7 @@ subroutine PMUFDDecayDestroy(this)
   call DeallocateArray(this%isotope_to_mineral)
   call DeallocateArray(this%isotope_decay_rate)
   call DeallocateArray(this%isotope_daughters)
+  call DeallocateArray(this%isotope_parents)
   call DeallocateArray(this%element_solubility)
   call DeallocateArray(this%element_Kd)
   call DeallocateArray(this%num_isotopes_per_element)
