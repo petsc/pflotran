@@ -2473,8 +2473,6 @@ subroutine SubsurfaceReadInput(simulation)
             output_option%output_obs_variable_list => &
                 output_option%output_variable_list
           endif
-  ! jmf: not sure if this should be done here already or later
-          !nullify(output_option%output_variable_list)
 
         if (vel_cent) then
           if (output_option%print_tecplot) &
