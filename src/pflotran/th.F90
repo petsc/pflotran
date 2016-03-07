@@ -78,10 +78,12 @@ subroutine THSetup(realization)
 
   use Realization_Subsurface_class
   use Patch_module
+  use Output_Aux_module
 
   type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
+  type(output_variable_list_type), pointer :: list
   
   cur_patch => realization%patch_list%first
   do
@@ -91,7 +93,10 @@ subroutine THSetup(realization)
     cur_patch => cur_patch%next
   enddo
 
-  call THSetPlotVariables(realization)
+  list => realization%output_option%output_snap_variable_list
+  call THSetPlotVariables(realization,list)
+  list => realization%output_option%output_obs_variable_list
+  call THSetPlotVariables(realization,list)
 
 end subroutine THSetup
 
@@ -4825,7 +4830,7 @@ end function THGetTecplotHeader
 
 ! ************************************************************************** !
 
-subroutine THSetPlotVariables(realization)
+subroutine THSetPlotVariables(realization,list)
   ! 
   ! Adds variables to be printed to list
   ! 
@@ -4842,12 +4847,10 @@ subroutine THSetPlotVariables(realization)
   implicit none
 
   type(realization_subsurface_type) :: realization
-  type(output_variable_type) :: output_variable
-  
-  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
-  
-  list => realization%output_option%output_variable_list
+
+  type(output_variable_type) :: output_variable
+  character(len=MAXWORDLENGTH) :: name, units
   
   if (associated(list%first)) then
     return

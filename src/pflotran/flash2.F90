@@ -93,6 +93,7 @@ subroutine Flash2Setup(realization)
 
   use Realization_Subsurface_class
   use Patch_module
+  use Output_Aux_module
 !  use span_wagner_module
 !  use co2_sw_module
 !  use span_wagner_spline_module 
@@ -100,6 +101,7 @@ subroutine Flash2Setup(realization)
   type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
+  type(output_variable_list_type), pointer :: list
  
   cur_patch => realization%patch_list%first
   do
@@ -109,7 +111,10 @@ subroutine Flash2Setup(realization)
     cur_patch => cur_patch%next
   enddo
 
-  call Flash2SetPlotVariables(realization)
+  list => realization%output_option%output_snap_variable_list
+  call Flash2SetPlotVariables(list)
+  list => realization%output_option%output_obs_variable_list
+  call Flash2SetPlotVariables(list)
 
 end subroutine Flash2Setup
 
@@ -4967,27 +4972,23 @@ end function Flash2GetTecplotHeader
 
 ! ************************************************************************** !
 
-subroutine Flash2SetPlotVariables(realization)
+subroutine Flash2SetPlotVariables(list)
   ! 
   ! Adds variables to be printed to list
   ! 
   ! Author: Glenn Hammond
   ! Date: 10/15/12
   ! 
-  
-  use Realization_Subsurface_class
+
   use Output_Aux_module
   use Variables_module
   
   implicit none
 
-  type(realization_subsurface_type) :: realization
-  type(output_variable_type) :: output_variable
-  
-  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
-  
-  list => realization%output_option%output_variable_list
+
+  type(output_variable_type) :: output_variable
+  character(len=MAXWORDLENGTH) :: name, units
   
   if (associated(list%first)) then
     return

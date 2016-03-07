@@ -786,7 +786,7 @@ subroutine SubsurfaceInitSimulation(simulation)
   call InitSubsurfFlowSetupRealization(realization)
   if (option%ntrandof > 0) call InitSubsurfTranSetupRealization(realization)
   call OutputVariableAppendDefaults(realization%output_option% &
-                                      output_variable_list,option)
+                                      output_snap_variable_list,option)
     ! check for non-initialized data sets, e.g. porosity, permeability
   call RealizationNonInitializedData(realization)
 
@@ -2140,6 +2140,7 @@ subroutine SubsurfaceReadInput(simulation)
                                       output_option%aveg_output_variable_list)
             case('UNFILTER_NON_STATE_VARIABLES')
               output_option%filter_non_state_variables = PETSC_FALSE
+
             
         !----------------------------------------------------------------------
         !----- SUPPORT FOR OLD INPUT FORMAT: ----------------------------------
@@ -2457,6 +2458,24 @@ subroutine SubsurfaceReadInput(simulation)
           end select
 
         enddo
+
+  ! If VARIABLES were not specified within the *_FILE blocks, point their
+  ! variable lists to the master variable list, which can be specified within
+  ! the OUTPUT block. If no VARIABLES are specified for the master list, the
+  ! defaults will be populated.
+          if (.not.associated(output_option%output_snap_variable_list%first)) &
+               then
+            output_option%output_snap_variable_list => &
+                 output_option%output_variable_list
+          endif
+          if (.not.associated(output_option%output_obs_variable_list%first)) &
+               then
+            output_option%output_obs_variable_list => &
+                output_option%output_variable_list
+          endif
+  ! jmf: not sure if this should be done here already or later
+          !nullify(output_option%output_variable_list)
+
         if (vel_cent) then
           if (output_option%print_tecplot) &
             output_option%print_tecplot_vel_cent = PETSC_TRUE

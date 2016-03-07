@@ -50,11 +50,17 @@ subroutine GeomechForceSetup(geomech_realization)
   ! 
 
   use Geomechanics_Realization_class
+  use Output_Aux_module
 
   class(realization_geomech_type) :: geomech_realization
+  type(output_variable_list_type), pointer :: list
 
   call GeomechForceSetupPatch(geomech_realization)
-  call GeomechForceSetPlotVariables(geomech_realization)
+
+  list => geomech_realization%output_option%output_snap_variable_list
+  call GeomechForceSetPlotVariables(list)
+  list => geomech_realization%output_option%output_obs_variable_list
+  call GeomechForceSetPlotVariables(list)
    
 end subroutine GeomechForceSetup
 
@@ -116,7 +122,7 @@ end subroutine GeomechForceSetupPatch
 
 ! ************************************************************************** !
 
-subroutine GeomechForceSetPlotVariables(geomech_realization)
+subroutine GeomechForceSetPlotVariables(list)
   ! 
   ! Set up of geomechanics plot variables
   ! 
@@ -124,18 +130,14 @@ subroutine GeomechForceSetPlotVariables(geomech_realization)
   ! Date: 06/17/13
   ! 
   
-  use Geomechanics_Realization_class
   use Output_Aux_module
   use Variables_module
     
   implicit none
-  
-  class(realization_geomech_type) :: geomech_realization
-  
-  character(len=MAXWORDLENGTH) :: name, units
+
   type(output_variable_list_type), pointer :: list
   
-  list => geomech_realization%output_option%output_variable_list
+  character(len=MAXWORDLENGTH) :: name, units
   
   if (associated(list%first)) then
     return

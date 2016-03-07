@@ -242,8 +242,8 @@ subroutine OutputTecplotFEQUAD(surf_realization,realization)
   call WriteTecplotUGridVertices(OUTPUT_UNIT,surf_realization)
   !call WriteTecplotUGridVertices(OUTPUT_UNIT,realization)
 
-  ! loop over variables and write to file
-  cur_variable => output_option%output_variable_list%first
+  ! loop over snapshot variables and write to file
+  cur_variable => output_option%output_snap_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
     call OutputSurfaceGetVarFromArray(surf_realization,global_vec,cur_variable%ivar, &
@@ -316,7 +316,8 @@ subroutine OutputTecplotHeader(fid,surf_realization,icolumn)
            '"Z [m]"'
   write(fid,'(a)',advance='no') trim(string)
 
-  call OutputWriteVariableListToHeader(fid,output_option%output_variable_list, &
+  call OutputWriteVariableListToHeader(fid, &
+                                      output_option%output_snap_variable_list, &
                                        '',icolumn,PETSC_TRUE,variable_count)
   ! need to terminate line
   write(fid,'(a)') ''
@@ -913,8 +914,8 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
 
   select case (var_list_type)
     case (INSTANTANEOUS_VARS)
-      ! loop over variables and write to file
-      cur_variable => output_option%output_variable_list%first
+      ! loop over snapshot variables and write to file
+      cur_variable => output_option%output_snap_variable_list%first
       do
         if (.not.associated(cur_variable)) exit
         call OutputSurfaceGetVarFromArray(surf_realization,global_vec,cur_variable%ivar, &
@@ -1736,14 +1737,14 @@ subroutine OutputSurfaceVariableRead(input,option,output_variable_list)
       case ('SURFACE_LIQUID_HEAD')
         name = 'H'
         units = 'm'
-        call OutputVariableAddToList(output_variable_list,name,OUTPUT_GENERIC,units, &
-                                     SURFACE_LIQUID_HEAD)
+        call OutputVariableAddToList(output_variable_list,name,OUTPUT_GENERIC, &
+                                     units,SURFACE_LIQUID_HEAD)
 
       case ('TEMPERATURE')
         name = 'Temperature'
         units = 'C'
-        call OutputVariableAddToList(output_variable_list,name,OUTPUT_GENERIC,units, &
-                                  TEMPERATURE)
+        call OutputVariableAddToList(output_variable_list,name,OUTPUT_GENERIC, &
+                                     units,TEMPERATURE)
       case ('PROCESS_ID')
         units = ''
         name = 'Process ID'

@@ -75,6 +75,7 @@ subroutine GeneralSetup(realization)
   use Grid_module
   use Fluid_module
   use Material_Aux_class
+  use Output_Aux_module
  
   implicit none
   
@@ -83,6 +84,7 @@ subroutine GeneralSetup(realization)
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
+  type(output_variable_list_type), pointer :: list
   type(coupler_type), pointer :: boundary_condition
   type(material_parameter_type), pointer :: material_parameter
 
@@ -229,7 +231,10 @@ subroutine GeneralSetup(realization)
     call printErrMsg(option)
   endif
 
-  call GeneralSetPlotVariables(realization) 
+  list => realization%output_option%output_snap_variable_list
+  call GeneralSetPlotVariables(realization,list)
+  list => realization%output_option%output_obs_variable_list
+  call GeneralSetPlotVariables(realization,list)
   
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   debug_flag = 0
@@ -3345,7 +3350,7 @@ end function GeneralGetTecplotHeader
 
 ! ************************************************************************** !
 
-subroutine GeneralSetPlotVariables(realization)
+subroutine GeneralSetPlotVariables(realization,list)
   ! 
   ! Adds variables to be printed to list
   ! 
@@ -3360,12 +3365,10 @@ subroutine GeneralSetPlotVariables(realization)
   implicit none
   
   type(realization_subsurface_type) :: realization
-  
-  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
+
+  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_type), pointer :: output_variable
-  
-  list => realization%output_option%output_variable_list
 
   if (associated(list%first)) then
     return
@@ -3445,8 +3448,7 @@ subroutine GeneralSetPlotVariables(realization)
   output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE,units,STATE)
   output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
   output_variable%iformat = 1 ! integer
-  call OutputVariableAddToList( &
-         realization%output_option%output_variable_list,output_variable)   
+  call OutputVariableAddToList(list,output_variable)   
   
 end subroutine GeneralSetPlotVariables
 

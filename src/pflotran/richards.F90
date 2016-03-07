@@ -76,11 +76,18 @@ subroutine RichardsSetup(realization)
 
   use Realization_Subsurface_class
   use Patch_module
+  use Output_Aux_module
 
   type(realization_subsurface_type) :: realization
+
+  type(output_variable_list_type), pointer :: list
   
   call RichardsSetupPatch(realization)
-  call RichardsSetPlotVariables(realization)
+
+  list => realization%output_option%output_snap_variable_list
+  call RichardsSetPlotVariables(list)
+  list => realization%output_option%output_obs_variable_list
+  call RichardsSetPlotVariables(list)
 
 end subroutine RichardsSetup
 
@@ -2152,7 +2159,7 @@ end subroutine RichardsMaxChange
 
 ! ************************************************************************** !
 
-subroutine RichardsSetPlotVariables(realization)
+subroutine RichardsSetPlotVariables(list)
   ! 
   ! Adds variables to be printed to list
   ! 
@@ -2160,18 +2167,14 @@ subroutine RichardsSetPlotVariables(realization)
   ! Date: 10/15/12
   ! 
   
-  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
     
   implicit none
   
-  type(realization_subsurface_type) :: realization
-  
-  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
-  
-  list => realization%output_option%output_variable_list
+
+  character(len=MAXWORDLENGTH) :: name, units
 
   if (associated(list%first)) then
     return

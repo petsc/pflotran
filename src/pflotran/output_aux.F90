@@ -76,7 +76,9 @@ module Output_Aux_module
 
     PetscInt :: xmf_vert_len
     
-    type(output_variable_list_type), pointer :: output_variable_list
+    type(output_variable_list_type), pointer :: output_variable_list ! (master)
+    type(output_variable_list_type), pointer :: output_snap_variable_list
+    type(output_variable_list_type), pointer :: output_obs_variable_list
     type(output_variable_list_type), pointer :: aveg_output_variable_list
 
     PetscReal :: aveg_var_time
@@ -207,8 +209,12 @@ function OutputOptionCreate()
   output_option%xmf_vert_len = 0
   output_option%filter_non_state_variables = PETSC_TRUE
 
-  nullify(output_option%output_variable_list)
-  output_option%output_variable_list => OutputVariableListCreate()
+  nullify(output_option%output_variable_list) ! master
+  output_option%output_variable_list => OutputVariableListCreate() ! master
+  nullify(output_option%output_snap_variable_list)
+  output_option%output_snap_variable_list => OutputVariableListCreate()
+  nullify(output_option%output_obs_variable_list)
+  output_option%output_obs_variable_list => OutputVariableListCreate()
   nullify(output_option%aveg_output_variable_list)
   output_option%aveg_output_variable_list => OutputVariableListCreate()
   
@@ -671,6 +677,8 @@ subroutine OutputVariableListDestroy(output_variable_list)
   
   type(output_variable_list_type), pointer :: output_variable_list
   
+  if (.not.associated(output_variable_list)) return
+
   nullify(output_variable_list%last)
   call OutputVariableDestroy(output_variable_list%first)
   
@@ -738,8 +746,20 @@ subroutine OutputOptionDestroy(output_option)
   type(output_option_type), pointer :: output_option
   
   if (.not.associated(output_option)) return
+
+  if (associated(output_option%output_variable_list, &
+                 output_option%output_snap_variable_list)) then
+    nullify(output_option%output_snap_variable_list)
+  endif
+
+  if (associated(output_option%output_variable_list, &
+                 output_option%output_obs_variable_list)) then
+    nullify(output_option%output_obs_variable_list)
+  endif
   
   call OutputVariableListDestroy(output_option%output_variable_list)
+  call OutputVariableListDestroy(output_option%output_snap_variable_list)
+  call OutputVariableListDestroy(output_option%output_obs_variable_list)
   call OutputVariableListDestroy(output_option%aveg_output_variable_list)
   
   deallocate(output_option)
