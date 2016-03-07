@@ -18,18 +18,18 @@ module PM_Waste_Form_class
   PetscBool, public :: bypass_warning_message = PETSC_FALSE
 
   type, public :: wf_species_type
-   PetscReal, allocatable :: formula_weight(:)
-   PetscInt, allocatable :: column_id(:)
-   PetscInt, allocatable :: ispecies(:)
+   PetscReal, pointer :: formula_weight(:)
+   PetscInt, pointer :: column_id(:)
+   PetscInt, pointer :: ispecies(:)
    PetscInt :: num_species
-   character(len=MAXWORDLENGTH), allocatable :: name(:)
+   character(len=MAXWORDLENGTH), pointer :: name(:)
   end type wf_species_type
 
   type, public :: fmdm_species_type
-   PetscReal, allocatable :: formula_weight(:)
-   PetscInt, allocatable :: column_id(:)
+   PetscReal, pointer :: formula_weight(:)
+   PetscInt, pointer :: column_id(:)
    PetscInt :: num_species
-   character(len=MAXWORDLENGTH), allocatable :: name(:)
+   character(len=MAXWORDLENGTH), pointer :: name(:)
   end type fmdm_species_type
 
   type :: waste_form_base_type
@@ -223,14 +223,19 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
         call InputReadWord(input,option,word,PETSC_TRUE)
         species_formula_wt_buf = trim(species_formula_wt_buf) // ' ' &
                                  // trim(word)
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          species_formula_wt_units_buf = trim(species_formula_wt_units_buf) & 
-                                         // ' ' // trim(word)
-        else
-          species_formula_wt_units_buf = trim(species_formula_wt_units_buf) & 
-                                         // ' ' // internal_units
-        endif
+        select type(this)
+          class is(pm_waste_form_glass_type)
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (input%ierr == 0) then
+              species_formula_wt_units_buf = &
+                trim(species_formula_wt_units_buf) & 
+                // ' ' // trim(word)
+            else
+              species_formula_wt_units_buf = &
+                trim(species_formula_wt_units_buf) & 
+                // ' ' // internal_units
+            endif
+        end select
         this%wf_species%num_species = k
       enddo
       if (k == 0) then
@@ -243,32 +248,41 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
       allocate(this%wf_species%formula_weight(k))
       allocate(this%wf_species%column_id(k))
       allocate(this%wf_species%ispecies(k))
-      input%buf = species_name_buf
+      this%wf_species%formula_weight = UNINITIALIZED_DOUBLE
+      this%wf_species%column_id = UNINITIALIZED_INTEGER
+      this%wf_species%ispecies = UNINITIALIZED_INTEGER
       k = 0
       do while (k < this%wf_species%num_species)
         k = k + 1
-        call InputReadWord(input,option,this%wf_species%name(k),PETSC_TRUE)
+        call InputReadWord(species_name_buf,this%wf_species%name(k), &
+                           PETSC_TRUE,input%ierr)
         call InputErrorMsg(input,option,'species name',error_string)
       enddo
-      k = 0
-      do while (k < this%wf_species%num_species)
-        k = k + 1
-        input%buf = species_formula_wt_buf
-        call InputReadDouble(input,option,this%wf_species%formula_weight(k))
-        call InputErrorMsg(input,option,'species formula weight',error_string)
-        species_formula_wt_buf = input%buf
-        input%buf = species_formula_wt_units_buf
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'species formula weight units', &
-                           error_string)
-        this%wf_species%formula_weight(k) = this%wf_species%formula_weight(k) &
-                           * UnitsConvertToInternal(word,internal_units,option)
-        species_formula_wt_units_buf = input%buf
-        this%wf_species%column_id(k) = UNINITIALIZED_INTEGER
-        this%wf_species%ispecies(k) = UNINITIALIZED_INTEGER
-      enddo
+      select type(this)
+        class is(pm_waste_form_glass_type)
+          k = 0
+          do while (k < this%wf_species%num_species)
+            k = k + 1
+            call InputReadDouble(species_formula_wt_buf,option, &
+                                 this%wf_species%formula_weight(k),input%ierr)
+            call InputErrorMsg(input,option,'species formula weight', &
+                               error_string)
+            call InputReadWord(species_formula_wt_units_buf,word,PETSC_TRUE, &
+                               input%ierr)
+            call InputErrorMsg(input,option,'species formula weight units', &
+                               error_string)
+            this%wf_species%formula_weight(k) = &
+              this%wf_species%formula_weight(k) &
+              * UnitsConvertToInternal(word,internal_units,option)
+          enddo
+      end select
 !-------------------------------------
     case('MASS_FRACTION')
+      select type(this)
+        class is(pm_waste_form_fmdm_type)
+          option%io_buffer = 'MASS_FRACTION is not supported for FMDM.'
+          call printErrMsg(option)
+      end select
       temp_buf = input%buf
       call InputReadWord(input,option,word,PETSC_TRUE)
       call InputErrorMsg(input,option,'mass fraction file/list',error_string)
@@ -365,16 +379,19 @@ subroutine PMWFReadError(this,input,option,error_string)
   character(len=MAXSTRINGLENGTH) :: error_string
 
   if (.not.associated(this%mass_fraction_dataset)) then
-    option%io_buffer = 'MASS_FRACTION must be specified in the ' // &
-                       trim(error_string) // ' block.'
-    call printErrMsg(option)
+    select type(this)
+      class is(pm_waste_form_glass_type)
+        option%io_buffer = 'MASS_FRACTION must be specified in the ' // &
+                           trim(error_string) // ' block.'
+        call printErrMsg(option)
+    end select
   endif
   if (.not.associated(this%waste_form_list)) then
     option%io_buffer = 'At least one WASTE_FORM must be specified in the ' // &
                        trim(error_string) // ' block.'
     call printErrMsg(option)
   endif
-  if (.not.allocated(this%wf_species%name)) then
+  if (.not.associated(this%wf_species%name)) then
     option%io_buffer = 'At least one SPECIES NAME and FORMULA_WEIGHT must be &
                        &specified in the ' // trim(error_string) // ' block.'
     call printErrMsg(option)
@@ -426,6 +443,8 @@ subroutine PMWFAssignColIdsFromHeader(this,input,option,error_string)
 
   PetscInt :: icol, k
   character(len=MAXWORDLENGTH) :: word
+
+  if (.not.associated(this%mass_fraction_dataset)) return
 
   input%buf = this%mass_fraction_dataset%header
   input%ierr = 0
@@ -630,17 +649,18 @@ subroutine PMWasteFormStrip(this)
   ! Author: Glenn Hammond
   ! Date: 08/26/15
 
+  use Utility_module, only : DeallocateArray
+
   implicit none
   
   class(pm_waste_form_type) :: this
 
   nullify(this%realization)
   nullify(this%data_mediator)
-  deallocate(this%wf_species%name)  
-  deallocate(this%wf_species%formula_weight)
-  deallocate(this%wf_species%column_id)
-  deallocate(this%wf_species%ispecies)
-  
+  call DeallocateArray(this%wf_species%name)  
+  call DeallocateArray(this%wf_species%formula_weight)
+  call DeallocateArray(this%wf_species%column_id)
+  call DeallocateArray(this%wf_species%ispecies)
   
 end subroutine PMWasteFormStrip
 
@@ -1188,7 +1208,10 @@ subroutine PMGlassRead(this,input)
   enddo
 
   call PMWFReadError(this,input,option,error_string)
-  call PMWFAssignColIdsFromHeader(this,input,option,error_string)
+  select type(this)
+    class is(pm_waste_form_glass_type)
+      call PMWFAssignColIdsFromHeader(this,input,option,error_string)
+  end select
 
   if (Uninitialized(this%specific_surface_area)) then
     option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' // &
