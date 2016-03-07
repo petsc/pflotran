@@ -796,7 +796,7 @@ subroutine PMRTCheckUpdatePre(this,line_search,X,dX,changed,ierr)
             'LOG_FORMULATION for chemistry or truncate concentrations ' // &
             '(TRUNCATE_CONCENTRATION <float> in CHEMISTRY block). ' // &
             'If that does not work, please send your input deck to ' // &
-            'pflotran-dev@googlegroups.com and ask for help.'
+            'pflotran-dev@googlegroups.com.'
           this%realization%option%io_buffer = string
           call printErrMsg(this%realization%option)
         endif
