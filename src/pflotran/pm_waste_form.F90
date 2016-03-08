@@ -68,6 +68,7 @@ module PM_Waste_Form_class
     PetscReal :: vitality_rate_mean
     PetscReal :: vitality_rate_stdev
     PetscReal :: vitality_rate_trunc
+    PetscReal :: canister_material_constant
   contains
     procedure, public :: PMWasteFormSetRealization
   end type pm_waste_form_type
@@ -154,17 +155,17 @@ subroutine PMWasteFormInit(this)
   nullify(this%data_mediator)
   nullify(this%mass_fraction_dataset)
   this%wf_species%num_species = 0
- !------- canister degradation model --------------
+  nullify(this%wf_species%name)
+  nullify(this%wf_species%formula_weight)
+  nullify(this%wf_species%column_id)
+  nullify(this%wf_species%ispecies)
+ !------- canister degradation model -------------------
   this%canister_degradation_model = PETSC_FALSE
   this%vitality_rate_mean = UNINITIALIZED_DOUBLE
   this%vitality_rate_stdev = UNINITIALIZED_DOUBLE
   this%vitality_rate_trunc = UNINITIALIZED_DOUBLE
- !-------------------------------------------------
-!geh: only initialize if a pointer, instead of allocatable
-!  nullify(this%wf_species%name)
-!  nullify(this%wf_species%formula_weight)
-!  nullify(this%wf_species%column_id)
-!  nullify(this%wf_species%ispecies)
+  this%canister_material_constant = UNINITIALIZED_DOUBLE
+ !------------------------------------------------------
 
 end subroutine PMWasteFormInit
 
@@ -341,6 +342,10 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
             call InputReadDouble(input,option,this%vitality_rate_trunc)
             call InputErrorMsg(input,option,'canister vitality log-10 &
                                &upper truncation value',error_string)
+          case('CANISTER_MATERIAL_CONSTANT')
+            call InputReadDouble(input,option,this%canister_material_constant)
+            call InputErrorMsg(input,option,'canister material constant', &
+                               error_string)
           case default
             option%io_buffer = 'Keyword ' // trim(word) // ' not recognized &
                                &in the ' // trim(error_string) // &
@@ -412,6 +417,12 @@ subroutine PMWFReadError(this,input,option,error_string)
     endif
     if (uninitialized(this%vitality_rate_trunc)) then
       option%io_buffer = 'VITALITY_UPPER_TRUNCATION must be given in the '&
+                         // trim(error_string) // &
+                         ', CANISTER_DEGRADATION_MODEL block.'
+      call printErrMsg(option)
+    endif
+    if (uninitialized(this%canister_material_constant)) then
+      option%io_buffer = 'CANISTER_MATERIAL_CONSTANT must be given in the '&
                          // trim(error_string) // &
                          ', CANISTER_DEGRADATION_MODEL block.'
       call printErrMsg(option)
@@ -781,6 +792,8 @@ subroutine PMWFOutput(this)
 
   use Option_module
   use Output_Aux_module
+  use Global_Aux_module
+  use Grid_module
 
   implicit none
   
@@ -789,7 +802,10 @@ subroutine PMWFOutput(this)
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
   class(waste_form_base_type), pointer :: cur_waste_form
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   character(len=MAXSTRINGLENGTH) :: filename
+  PetscReal :: eff_canister_vit_rate
   PetscInt :: fid
   PetscInt :: i
   
@@ -799,6 +815,8 @@ subroutine PMWFOutput(this)
 
   option => this%realization%option
   output_option => this%realization%output_option
+  grid => this%realization%patch%grid
+  global_auxvars => this%realization%patch%aux%Global%auxvars
   
   fid = 86
   filename = PMWFOutputFilename(option)
@@ -816,14 +834,20 @@ subroutine PMWFOutput(this)
                                   cur_waste_form%instantaneous_mass_rate(i) * &
                                   output_option%tconv
     enddo
+    eff_canister_vit_rate = cur_waste_form%canister_vitality_rate * &
+           exp( this%canister_material_constant * ( (1.d0/333.15d0) - &
+           (1.d0/(global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))% &
+            temp+273.15d0))) )
     select type(cur_waste_form)
       class is (waste_form_glass_type)
         write(fid,100,advance="no") cur_waste_form%volume, &
                                     cur_waste_form%glass_dissolution_rate * &
                                     output_option%tconv, &
+                                    eff_canister_vit_rate, &
                                     cur_waste_form%canister_vitality*100.0
       class is (waste_form_fmdm_type)
-        write(fid,100,advance="no") cur_waste_form%canister_vitality*100.0
+        write(fid,100,advance="no") & !eff_canister_vit_rate, &
+                                    cur_waste_form%canister_vitality*100.0
     end select
     cur_waste_form => cur_waste_form%next
   enddo
@@ -935,11 +959,19 @@ subroutine PMWFOutputHeader(this)
         units_string = 'kg/' // trim(adjustl(output_option%tunit))
         call OutputWriteToHeader(fid,variable_string,units_string, &
                                  cell_string,icolumn)
+        variable_string = 'WF Vitality Degradation Rate'
+        units_string = '1/yr'
+        call OutputWriteToHeader(fid,variable_string,units_string, &
+                                 cell_string,icolumn)
         variable_string = 'WF Canister Vitality'
         units_string = '%' 
         call OutputWriteToHeader(fid,variable_string,units_string, &
                                  cell_string,icolumn)
       class is (waste_form_fmdm_type)
+        !variable_string = 'WF Vitality Degradation Rate'
+        !units_string = '1/yr'
+        !call OutputWriteToHeader(fid,variable_string,units_string, &
+        !                         cell_string,icolumn)
         variable_string = 'WF Canister Vitality'
         units_string = '%' 
         call OutputWriteToHeader(fid,variable_string,units_string, &
@@ -1355,6 +1387,7 @@ subroutine PMGlassSolve(this,time,ierr)
   PetscReal, pointer :: vec_p(:)            ! 1/day -> 1/sec
   PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
   PetscReal :: fuel_dissolution_rate
+  PetscReal :: eff_canister_vit_rate
 
   grid => this%realization%patch%grid
   global_auxvars => this%realization%patch%aux%Global%auxvars
@@ -1366,10 +1399,14 @@ subroutine PMGlassSolve(this,time,ierr)
     if (.not.associated(cur_waste_form)) exit
     if (cur_waste_form%canister_degradation_flag) then
 !     ---------------- Vitality degradation function --------------------------
+      eff_canister_vit_rate = cur_waste_form%canister_vitality_rate * &
+           exp( this%canister_material_constant * ( (1.d0/333.15d0) - &
+           (1.d0/(global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))% &
+            temp+273.15d0))) )
       cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
-                        - ( cur_waste_form%canister_vitality_rate * & ! [1/yr]
-                            this%option%tran_dt * &                   ! [sec]
-                            (1.0/(365.0*24.0*3600.0)) )               ! [yr/sec]
+                        - ( eff_canister_vit_rate * &        ! [1/yr]
+                            this%option%tran_dt * &          ! [sec]
+                            (1.0/(365.0*24.0*3600.0)) )      ! [yr/sec]
       if (cur_waste_form%canister_vitality < 1.d-3) then
         cur_waste_form%canister_vitality = 0.d0
       endif
@@ -2042,9 +2079,9 @@ subroutine PMFMDMSolve(this,time,ierr)
     i = i + 1
 #ifdef FMDM_MODEL  
     call AMP_step(cur_waste_form%burnup, time, &
-                  global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))%temp, &
-                  cur_waste_form%concentration, initialRun, &
-                  fuel_dissolution_rate, success)
+                 global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))%temp, &
+                 cur_waste_form%concentration, initialRun, &
+                 fuel_dissolution_rate, success)
 #else
     success = 1
     fuel_dissolution_rate = cur_waste_form%burnup
