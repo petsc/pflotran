@@ -2465,11 +2465,15 @@ subroutine SubsurfaceReadInput(simulation)
   ! defaults will be populated.
           if (.not.associated(output_option%output_snap_variable_list%first)) &
                then
+            call OutputVariableListDestroy( &
+                 output_option%output_snap_variable_list)
             output_option%output_snap_variable_list => &
                  output_option%output_variable_list
           endif
           if (.not.associated(output_option%output_obs_variable_list%first)) &
                then
+            call OutputVariableListDestroy( &
+                 output_option%output_obs_variable_list)
             output_option%output_obs_variable_list => &
                 output_option%output_variable_list
           endif
