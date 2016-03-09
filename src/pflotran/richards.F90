@@ -706,6 +706,8 @@ subroutine RichardsInitializeTimestep(realization)
 
   call RichardsUpdateFixedAccum(realization)
 
+  if (realization%option%flow%quasi_3d) call RichardsComputeLateralMassFlux(realization)
+
 !   call PetscViewerASCIIOpen(realization%option%mycomm,'flow_yy.out', &
 !                              viewer,ierr)
 !    call VecView(field%flow_xx_faces, viewer, ierr)
@@ -2692,6 +2694,160 @@ subroutine RichardsSSSandboxLoadAuxReal(srcsink,aux_real,global_auxvar,option)
   end select
   
 end subroutine RichardsSSSandboxLoadAuxReal
+
+! ************************************************************************** !
+
+subroutine RichardsComputeLateralMassFlux(realization)
+  !
+  ! Computes lateral flux source/sink term when QUASI_3D is true
+  !
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/09/2016
+  !
+
+  use Connection_module
+  use Discretization_module
+  use Realization_Subsurface_class
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Coupler_module
+  use Field_module
+  use Debug_module
+  use Variables_module
+  use Material_module
+  use Material_Aux_class
+
+  implicit none
+
+  type(realization_subsurface_type) :: realization
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(coupler_type), pointer :: boundary_condition
+  type(material_parameter_type), pointer :: material_parameter
+  type(richards_auxvar_type), pointer :: rich_auxvars(:), rich_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+
+  PetscInt :: iconn
+  PetscInt :: sum_connection
+  PetscInt :: local_id_up
+  PetscInt :: local_id_dn
+  PetscInt :: ghosted_id_up
+  PetscInt :: ghosted_id_dn
+  PetscInt :: icap_up
+  PetscInt :: icap_dn
+  PetscInt :: istart
+
+  PetscReal, pointer :: mass_trans_p(:)
+  PetscReal :: Res(realization%option%nflowdof)
+  PetscReal :: v_darcy
+  PetscErrorCode :: ierr
+
+  discretization => realization%discretization
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  material_parameter => patch%aux%Material%material_parameter
+  rich_auxvars => patch%aux%Richards%auxvars
+  rich_auxvars_bc => patch%aux%Richards%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  material_auxvars => patch%aux%Material%auxvars
+
+  rich_auxvars => patch%aux%Richards%auxvars
+  global_auxvars => patch%aux%Global%auxvars
+  material_auxvars => patch%aux%Material%auxvars
+
+  call DiscretizationGlobalToLocal(discretization,field%flow_xx,field%flow_xx_loc,NFLOWDOF)
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                  field%iphas_loc,ONEDOF)
+
+  call MaterialGetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_X,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_X,ZERO_INTEGER)
+  call MaterialGetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Y,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Y,ZERO_INTEGER)
+  call MaterialGetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Z,ZERO_INTEGER)
+  call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                  field%work_loc,ONEDOF)
+  call MaterialSetAuxVarVecLoc(realization%patch%aux%Material,field%work_loc, &
+                               PERMEABILITY_Z,ZERO_INTEGER)
+
+  call RichardsUpdateAuxVarsPatch(realization)
+
+  call VecGetArrayF90(field%flow_mass_transfer, mass_trans_p, ierr);CHKERRQ(ierr)
+
+  mass_trans_p(:) = 0.d0
+
+  ! Interior Flux Terms -----------------------------------
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0
+  do
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
+
+      if (patch%imat(ghosted_id_up) <= 0 .or.  &
+          patch%imat(ghosted_id_dn) <= 0) cycle
+
+      if (.not.((abs(dot_product(cur_connection_set%dist(1:3,iconn),unit_z)) < &
+          0.99d0))) cycle
+
+      icap_up = patch%sat_func_id(ghosted_id_up)
+      icap_dn = patch%sat_func_id(ghosted_id_dn)
+
+      call RichardsFlux(rich_auxvars(ghosted_id_up), &
+                        global_auxvars(ghosted_id_up), &
+                        material_auxvars(ghosted_id_up), &
+                        material_parameter%soil_residual_saturation(1,icap_up), &
+                        rich_auxvars(ghosted_id_dn), &
+                        global_auxvars(ghosted_id_dn), &
+                        material_auxvars(ghosted_id_dn), &
+                        material_parameter%soil_residual_saturation(1,icap_dn), &
+                        cur_connection_set%area(iconn), &
+                        cur_connection_set%dist(:,iconn), &
+                        option,v_darcy,Res)
+
+      if (local_id_up>0) then
+        istart = (local_id_up-1)*option%nflowdof + 1
+        mass_trans_p(istart) = mass_trans_p(istart) - Res(1)
+      endif
+
+      if (local_id_dn>0) then
+        istart = (local_id_dn-1)*option%nflowdof + 1
+        mass_trans_p(istart) = mass_trans_p(istart) + Res(1)
+      endif
+
+    enddo
+
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  call VecRestoreArrayF90(field%flow_mass_transfer, mass_trans_p, ierr);CHKERRQ(ierr)
+
+end subroutine RichardsComputeLateralMassFlux
 
 ! ************************************************************************** !
 

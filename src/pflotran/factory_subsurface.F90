@@ -2669,6 +2669,15 @@ subroutine SubsurfaceReadInput(simulation)
         endif
 
 !....................
+      case ('QUASI_3D')
+        option%flow%quasi_3d = PETSC_TRUE
+        option%flow%only_vertical_flow = PETSC_TRUE
+        if (option%iflowmode /= RICHARDS_MODE) then
+          option%io_buffer = 'QUASI_3D implemented in RICHARDS mode.'
+          call printErrMsg(option)
+        endif
+
+!....................
       case ('RELATIVE_PERMEABILITY_AVERAGE')
         call InputReadWord(input,option,word,PETSC_FALSE)
         call StringToUpper(word)

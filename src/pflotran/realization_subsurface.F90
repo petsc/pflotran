@@ -433,6 +433,10 @@ subroutine RealizationCreateDiscretization(realization)
   end select
   call realization%comm1%SetDM(discretization%dm_1dof)
 
+  if (option%flow%quasi_3d) then
+    call RealizCreateFlowMassTransferVec(realization)
+  endif
+
 end subroutine RealizationCreateDiscretization
 
 ! ************************************************************************** !
