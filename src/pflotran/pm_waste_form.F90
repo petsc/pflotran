@@ -17,13 +17,14 @@ module PM_Waste_Form_class
 
   PetscBool, public :: bypass_warning_message = PETSC_FALSE
 
-  type, public :: wf_species_type
-   PetscReal, pointer :: formula_weight(:)
-   PetscInt, pointer :: column_id(:)
-   PetscInt, pointer :: ispecies(:)
-   PetscInt :: num_species
-   character(len=MAXWORDLENGTH), pointer :: name(:)
-  end type wf_species_type
+  type, public :: rad_species_type
+   PetscReal :: formula_weight
+   PetscReal :: mass_fraction
+   PetscInt, pointer :: parents(:)
+   PetscInt :: column_id
+   PetscInt :: ispecies
+   character(len=MAXWORDLENGTH) :: name
+  end type rad_species_type
 
   type, public :: fmdm_species_type
    PetscReal, pointer :: formula_weight(:)
@@ -61,8 +62,9 @@ module PM_Waste_Form_class
     character(len=MAXWORDLENGTH) :: data_mediator_species
     class(data_mediator_vec_type), pointer :: data_mediator
     class(waste_form_base_type), pointer :: waste_form_list
-    type(wf_species_type) :: wf_species
+    type(rad_species_type), pointer :: rad_species_list(:)
     class(dataset_base_type), pointer ::  mass_fraction_dataset
+    PetscInt :: num_species
     PetscBool :: print_mass_balance
     PetscBool :: canister_degradation_model
     PetscReal :: vitality_rate_mean
@@ -133,7 +135,8 @@ module PM_Waste_Form_class
   public :: PMFMDMCreate, &
             PMFMDMSetup, &
             PMGlassCreate, &
-            PMGlassSetup
+            PMGlassSetup, &
+            PMWFRadSpeciesCreate
   
 contains
 
@@ -154,11 +157,8 @@ subroutine PMWasteFormInit(this)
   nullify(this%realization)
   nullify(this%data_mediator)
   nullify(this%mass_fraction_dataset)
-  this%wf_species%num_species = 0
-  nullify(this%wf_species%name)
-  nullify(this%wf_species%formula_weight)
-  nullify(this%wf_species%column_id)
-  nullify(this%wf_species%ispecies)
+  this%num_species = 0
+  nullify(this%rad_species_list)
  !------- canister degradation model -------------------
   this%canister_degradation_model = PETSC_FALSE
   this%vitality_rate_mean = UNINITIALIZED_DOUBLE
@@ -204,6 +204,7 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   character(len=MAXSTRINGLENGTH) :: species_formula_wt_units_buf
   class(dataset_ascii_type), pointer :: dataset_ascii
   PetscInt :: k, icol
+  PetscReal :: double
 
   found = PETSC_TRUE
   species_name_buf = ''
@@ -237,7 +238,7 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
                 // ' ' // internal_units
             endif
         end select
-        this%wf_species%num_species = k
+        this%num_species = k
       enddo
       if (k == 0) then
         option%io_buffer = 'At least one species name and formula weight &
@@ -245,35 +246,31 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
                            // ' block.'
         call printErrMsg(option)
       endif
-      allocate(this%wf_species%name(k))  
-      allocate(this%wf_species%formula_weight(k))
-      allocate(this%wf_species%column_id(k))
-      allocate(this%wf_species%ispecies(k))
-      this%wf_species%formula_weight = UNINITIALIZED_DOUBLE
-      this%wf_species%column_id = UNINITIALIZED_INTEGER
-      this%wf_species%ispecies = UNINITIALIZED_INTEGER
+      allocate(this%rad_species_list(k))
       k = 0
-      do while (k < this%wf_species%num_species)
+      do while (k < this%num_species)
         k = k + 1
-        call InputReadWord(species_name_buf,this%wf_species%name(k), &
-                           PETSC_TRUE,input%ierr)
+        call InputReadWord(species_name_buf,word,PETSC_TRUE,input%ierr)
         call InputErrorMsg(input,option,'species name',error_string)
+        this%rad_species_list(k) = PMWFRadSpeciesCreate() 
+        this%rad_species_list(k)%name = trim(word)
       enddo
       select type(this)
         class is(pm_waste_form_glass_type)
           k = 0
-          do while (k < this%wf_species%num_species)
+          do while (k < this%num_species)
             k = k + 1
-            call InputReadDouble(species_formula_wt_buf,option, &
-                                 this%wf_species%formula_weight(k),input%ierr)
+            call InputReadDouble(species_formula_wt_buf,option,double, &
+                                 input%ierr)
             call InputErrorMsg(input,option,'species formula weight', &
                                error_string)
+            this%rad_species_list(k)%formula_weight = double
             call InputReadWord(species_formula_wt_units_buf,word,PETSC_TRUE, &
                                input%ierr)
             call InputErrorMsg(input,option,'species formula weight units', &
                                error_string)
-            this%wf_species%formula_weight(k) = &
-              this%wf_species%formula_weight(k) &
+            this%rad_species_list(k)%formula_weight = &
+              this%rad_species_list(k)%formula_weight &
               * UnitsConvertToInternal(word,internal_units,option)
           enddo
       end select
@@ -396,7 +393,7 @@ subroutine PMWFReadError(this,input,option,error_string)
                        trim(error_string) // ' block.'
     call printErrMsg(option)
   endif
-  if (.not.associated(this%wf_species%name)) then
+  if (.not.associated(this%rad_species_list)) then
     option%io_buffer = 'At least one SPECIES NAME and FORMULA_WEIGHT must be &
                        &specified in the ' // trim(error_string) // ' block.'
     call printErrMsg(option)
@@ -474,10 +471,10 @@ subroutine PMWFAssignColIdsFromHeader(this,input,option,error_string)
         if (input%ierr == 0) then
           icol = icol + 1
               
-          do while (k < this%wf_species%num_species)
+          do while (k < this%num_species)
             k = k + 1
-            if (trim(word) == trim(this%wf_species%name(k))) then
-              this%wf_species%column_id(k) = icol
+            if (trim(word) == trim(this%rad_species_list(k)%name)) then
+              this%rad_species_list(k)%column_id = icol
               exit
             endif
           enddo ! k loop
@@ -487,9 +484,9 @@ subroutine PMWFAssignColIdsFromHeader(this,input,option,error_string)
         endif
       enddo ! icol loop
       k = 0
-      do while (k < this%wf_species%num_species)
+      do while (k < this%num_species)
         k = k + 1
-        if (Uninitialized(this%wf_species%column_id(k))) then
+        if (Uninitialized(this%rad_species_list(k)%column_id)) then
           option%io_buffer = 'Mismatch between species in the ' &
                               // trim(error_string) // ' mass fraction file/&
                               &list header and those listed in the ' &
@@ -561,10 +558,8 @@ end subroutine PMWasteFormSetRealization
   cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit
-    allocate(cur_waste_form%instantaneous_mass_rate&
-                                  (this%wf_species%num_species))
-    allocate(cur_waste_form%cumulative_mass&
-                                  (this%wf_species%num_species))
+    allocate(cur_waste_form%instantaneous_mass_rate(this%num_species))
+    allocate(cur_waste_form%cumulative_mass(this%num_species))
     cur_waste_form%instantaneous_mass_rate = UNINITIALIZED_DOUBLE
     cur_waste_form%cumulative_mass = UNINITIALIZED_DOUBLE
     if (this%canister_degradation_model) then
@@ -593,9 +588,9 @@ end subroutine PMWasteFormSetRealization
     call PMWFOutput(this)
   endif
 
-  do j = 1, this%wf_species%num_species
-    this%wf_species%ispecies(j) = &
-      GetPrimarySpeciesIDFromName(this%wf_species%name(j), &
+  do j = 1, this%num_species
+    this%rad_species_list(j)%ispecies = &
+      GetPrimarySpeciesIDFromName(this%rad_species_list(j)%name, &
                                   this%realization%reaction,this%option)
   enddo
   ! set up mass transfer
@@ -613,23 +608,22 @@ end subroutine PMWasteFormSetRealization
     cur_waste_form => cur_waste_form%next
   enddo
   call VecCreateSeq(PETSC_COMM_SELF,num_waste_form_cells* &
-                                    this%wf_species%num_species, &
+                                    this%num_species, &
                     this%data_mediator%vec,ierr);CHKERRQ(ierr)
   call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
 
   if (num_waste_form_cells > 0) then
-    allocate(species_indices_in_residual(num_waste_form_cells* &
-                                         this%wf_species%num_species))
+    allocate(species_indices_in_residual(num_waste_form_cells*this%num_species))
     species_indices_in_residual = 0
     cur_waste_form => this%waste_form_list
     i = 0
     do
       if (.not.associated(cur_waste_form)) exit
-      do j = 1, this%wf_species%num_species
+      do j = 1, this%num_species
         i = i + 1
         species_indices_in_residual(i) = &
           (cur_waste_form%local_cell_id-1)*this%option%ntrandof + &
-          this%wf_species%ispecies(j)
+          this%rad_species_list(j)%ispecies
       enddo
       cur_waste_form => cur_waste_form%next
     enddo                             ! zero-based indexing
@@ -639,7 +633,7 @@ end subroutine PMWasteFormSetRealization
       this%realization%patch%grid%global_offset*this%option%ntrandof
   endif
   call ISCreateGeneral(this%option%mycomm,num_waste_form_cells* &
-                                          this%wf_species%num_species, &
+                                          this%num_species, &
                        species_indices_in_residual,PETSC_COPY_VALUES,is, &
                        ierr);CHKERRQ(ierr)
   if (allocated(species_indices_in_residual)) &
@@ -665,13 +659,19 @@ subroutine PMWasteFormStrip(this)
   implicit none
   
   class(pm_waste_form_type) :: this
+  PetscInt :: k
+
+  k = 0
 
   nullify(this%realization)
   nullify(this%data_mediator)
-  call DeallocateArray(this%wf_species%name)  
-  call DeallocateArray(this%wf_species%formula_weight)
-  call DeallocateArray(this%wf_species%column_id)
-  call DeallocateArray(this%wf_species%ispecies)
+  
+  do while (k < this%num_species)
+    k = k + 1
+    call PMWFRadSpeciesDestroy(this%rad_species_list(k))
+  enddo
+  deallocate(this%rad_species_list)
+  nullify(this%rad_species_list)
   
 end subroutine PMWasteFormStrip
 
@@ -783,6 +783,47 @@ end subroutine PMWFBaseSetup
 
 ! ************************************************************************** !
 
+function PMWFRadSpeciesCreate()
+  ! 
+  ! Creates a radioactive species in the waste form process model
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/09/16
+
+  implicit none
+  
+  type(rad_species_type) :: PMWFRadSpeciesCreate
+
+  nullify(PMWFRadSpeciesCreate%parents)
+  PMWFRadSpeciesCreate%name = ''
+  PMWFRadSpeciesCreate%formula_weight = UNINITIALIZED_DOUBLE
+  PMWFRadSpeciesCreate%mass_fraction = UNINITIALIZED_DOUBLE
+  PMWFRadSpeciesCreate%column_id = UNINITIALIZED_INTEGER
+  PMWFRadSpeciesCreate%ispecies = UNINITIALIZED_INTEGER
+
+end function PMWFRadSpeciesCreate
+  
+! ************************************************************************** !
+
+subroutine PMWFRadSpeciesDestroy(this)
+  ! 
+  ! Destroys the radioactive species objects.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/09/16
+
+  implicit none
+  
+  type(rad_species_type) :: this
+
+  if (.not.associated(this%parents)) return
+  deallocate(this%parents)
+  nullify(this%parents)
+  
+end subroutine PMWFRadSpeciesDestroy
+
+! ************************************************************************** !
+
 subroutine PMWFOutput(this)
   ! 
   ! Maps waste forms to grid cells
@@ -829,7 +870,7 @@ subroutine PMWFOutput(this)
   cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit
-    do i = 1, this%wf_species%num_species
+    do i = 1, this%num_species
       write(fid,100,advance="no") cur_waste_form%cumulative_mass(i), &
                                   cur_waste_form%instantaneous_mass_rate(i) * &
                                   output_option%tconv
@@ -937,8 +978,8 @@ subroutine PMWFOutputHeader(this)
              ' (' // trim(adjustl(x_string)) // &
              ' ' // trim(adjustl(y_string)) // &
              ' ' // trim(adjustl(z_string)) // ')'
-    do i = 1, this%wf_species%num_species
-      variable_string = trim(this%wf_species%name(i)) // &
+    do i = 1, this%num_species
+      variable_string = trim(this%rad_species_list(i)%name) // &
         ' Mass Flux'
       ! cumulative
       units_string = 'mol'
@@ -1426,14 +1467,17 @@ subroutine PMGlassSolve(this,time,ierr)
         this%glass_density * &             ! kg glass/m^3 glass
         time_conversion                    ! 1/day -> 1/sec
       ! mol/sec
-      do j = 1, this%wf_species%num_species
+      do j = 1, this%num_species
         i = i + 1
+        !if () then
+        this%rad_species_list(j)%mass_fraction = this%mass_fraction_dataset% &
+          rarray(this%rad_species_list(j)%column_id)   ! kg-rad/kg-glass
+        !endif
         cur_waste_form%instantaneous_mass_rate(j) = &
-          cur_waste_form%glass_dissolution_rate * & ! kg glass / sec
-          this%wf_species%formula_weight(j) * &  ! kmol radnuclide/kg radnuclide
-          this%mass_fraction_dataset% &
-          rarray(this%wf_species%column_id(j)) * &  ! kg radionuclide/kg glass
-          1.d3                                      ! kmol -> mol
+          cur_waste_form%glass_dissolution_rate * &    ! kg-glass/sec
+          this%rad_species_list(j)%formula_weight * &  ! kmol-rad/kg-rad
+          this%rad_species_list(j)%mass_fraction * &   ! kg-rad/kg-glass
+          1.d3                                         ! kmol -> mol
         vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)    ! mol/sec
       enddo
     else
