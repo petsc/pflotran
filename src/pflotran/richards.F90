@@ -1162,8 +1162,8 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       if (option%flow%only_vertical_flow) then
         !geh: place second conditional within first to avoid excessive 
         !     dot products when .not. option%flow%only_vertical_flow
-        if (dot_product(cur_connection_set%dist(1:3,iconn),unit_z) < &
-            1.d-10) cycle
+        if (abs(dot_product(cur_connection_set%dist(1:3,iconn),unit_z)) < &
+            0.99d0) cycle
       endif
 
       icap_up = patch%sat_func_id(ghosted_id_up)
@@ -1662,8 +1662,8 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
       if (option%flow%only_vertical_flow) then
         !geh: place second conditional within first to avoid excessive 
         !     dot products when .not. option%flow%only_vertical_flow
-        if (dot_product(cur_connection_set%dist(1:3,iconn),unit_z) < &
-            1.d-10) cycle
+        if (abs(dot_product(cur_connection_set%dist(1:3,iconn),unit_z)) < &
+            0.99d0) cycle
       endif
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
