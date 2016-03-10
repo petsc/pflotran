@@ -266,6 +266,10 @@ recursive subroutine PMAuxiliaryInitializeRun(this)
   time = 0.d0
   select case(this%ctype)
     case('EVOLVING_STRATA')
+!      call MatSetOption(Jacobian,MAT_NEW_NONZERO_LOCATION_ERR,PETSC_FALSE, &
+!                        ierr);CHKERRQ(ierr)
+!      call MatSetOption(Jacobian,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE, &
+!                        ierr);CHKERRQ(ierr)
     case('SALINITY')
       ! set up species names
       do i =1, this%salinity%nspecies
