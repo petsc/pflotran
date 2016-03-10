@@ -2969,11 +2969,11 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
         ! need to swap so that distance is negative (point lies below plane)
         if (cell_type == TRI_TYPE .or. cell_type == QUAD_TYPE) then
           ! Error message for 2D cell type
-          option%io_buffer = 'Cell: '
+          option%io_buffer = 'Cell:'
           write(string,'(i13)') nG2A(nL2G(local_id))
-          option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // &
-            ' of type "' // trim(UCellTypeToWord(cell_type,option)) // &
-            '" with vertices:'
+          option%io_buffer = trim(option%io_buffer) // ' ' // &
+            trim(adjustl(string)) // ' of type "' // &
+            trim(UCellTypeToWord(cell_type,option)) // '" with vertices:'
           do i = 1, num_vertices
             write(string,'(i13)') &
               unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i))
@@ -3006,11 +3006,11 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
           error_found = PETSC_TRUE
         else
           ! Error message for 3D cell type
-          option%io_buffer = 'Cell: '
+          option%io_buffer = 'Cell:'
           write(string,'(i13)') nG2A(nL2G(local_id))
-          option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // &
-            'of type "' // trim(UCellTypeToWord(cell_type,option)) // &
-            '" with vertices:'
+          option%io_buffer = trim(option%io_buffer) // ' ' // &
+            trim(adjustl(string)) // ' of type "' // &
+            trim(UCellTypeToWord(cell_type,option)) // '" with vertices:'
           do i = 1, num_vertices
             write(string,'(i13)') &
               unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i))
