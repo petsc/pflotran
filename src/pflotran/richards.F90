@@ -1145,7 +1145,6 @@ subroutine RichardsResidualInternalConn(r,realization,ierr)
   use Grid_module
   use Option_module
   use Coupler_module  
-  use Field_module
   use Debug_module
   
   implicit none
@@ -1153,44 +1152,38 @@ subroutine RichardsResidualInternalConn(r,realization,ierr)
   Vec :: r
   type(realization_subsurface_type) :: realization
 
-  PetscErrorCode :: ierr
-  PetscInt :: local_id, ghosted_id
-  PetscInt :: istart
-  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
-
-  PetscReal, pointer :: face_fluxes_p(:)
-  PetscInt :: icap_up, icap_dn
-  PetscReal :: Res(realization%option%nflowdof), v_darcy
-
-
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(coupler_type), pointer :: boundary_condition
   type(material_parameter_type), pointer :: material_parameter
-  type(richards_auxvar_type), pointer :: rich_auxvars(:), rich_auxvars_bc(:)
-  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
+  type(richards_auxvar_type), pointer :: rich_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  PetscReal, pointer :: r_p(:)
+
+  PetscInt :: istart
+  PetscInt :: local_id_up
+  PetscInt :: local_id_dn
+  PetscInt :: ghosted_id_up
+  PetscInt :: ghosted_id_dn
+  PetscInt :: icap_up
+  PetscInt :: icap_dn
   PetscInt :: iconn
   PetscInt :: sum_connection
-  PetscReal :: distance, fraction_upwind
-  PetscReal :: distance_gravity
-  PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
-  PetscInt :: direction, max_x_conn, max_y_conn
+
+  PetscReal :: Res(realization%option%nflowdof)
+  PetscReal :: v_darcy
+  PetscReal, pointer :: r_p(:)
+
+  PetscErrorCode :: ierr
 
   patch => realization%patch
   grid => patch%grid
   option => realization%option
-  field => realization%field
   material_parameter => patch%aux%Material%material_parameter
   rich_auxvars => patch%aux%Richards%auxvars
-  rich_auxvars_bc => patch%aux%Richards%auxvars_bc
   global_auxvars => patch%aux%Global%auxvars
-  global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_auxvars => patch%aux%Material%auxvars
 
   call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
@@ -1274,7 +1267,6 @@ subroutine RichardsResidualBoundaryConn(r,realization,ierr)
   use Grid_module
   use Option_module
   use Coupler_module
-  use Field_module
   use Debug_module
 
   implicit none
@@ -1282,21 +1274,9 @@ subroutine RichardsResidualBoundaryConn(r,realization,ierr)
   Vec :: r
   type(realization_subsurface_type) :: realization
 
-  PetscErrorCode :: ierr
-  PetscInt :: local_id, ghosted_id
-  PetscInt :: istart
-  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
-
-  PetscReal, pointer :: r_p(:)
-
-  PetscReal, pointer :: face_fluxes_p(:)
-  PetscInt :: icap_up, icap_dn
-  PetscReal :: Res(realization%option%nflowdof), v_darcy
-
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
-  type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(material_parameter_type), pointer :: material_parameter
   type(richards_auxvar_type), pointer :: rich_auxvars(:), rich_auxvars_bc(:)
@@ -1304,18 +1284,23 @@ subroutine RichardsResidualBoundaryConn(r,realization,ierr)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: istart
+  PetscInt :: icap_up
+  PetscInt :: icap_dn
   PetscInt :: iconn
   PetscInt :: sum_connection
-  PetscReal :: distance, fraction_upwind
-  PetscReal :: distance_gravity
-  PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
-  PetscInt :: direction, max_x_conn, max_y_conn
-  PetscViewer :: viewer
-  
+
+  PetscReal :: Res(realization%option%nflowdof), v_darcy
+  PetscReal, pointer :: r_p(:)
+
+  PetscErrorCode :: ierr
+
   patch => realization%patch
   grid => patch%grid
   option => realization%option
-  field => realization%field
   material_parameter => patch%aux%Material%material_parameter
   rich_auxvars => patch%aux%Richards%auxvars
   rich_auxvars_bc => patch%aux%Richards%auxvars_bc
@@ -1407,16 +1392,6 @@ subroutine RichardsResidualSourceSink(r,realization,ierr)
   Vec :: r
   type(realization_subsurface_type) :: realization
 
-  PetscErrorCode :: ierr
-  PetscViewer :: viewer
-  PetscInt :: i
-  PetscInt :: local_id, ghosted_id
-  PetscInt :: istart
-
-  PetscReal, pointer :: r_p(:), accum_p(:)
-  PetscReal :: qsrc, qsrc_mol
-  PetscReal :: Res(realization%option%nflowdof)
-
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -1426,8 +1401,16 @@ subroutine RichardsResidualSourceSink(r,realization,ierr)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
+
+  PetscInt :: i
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: istart
   PetscInt :: iconn
   PetscInt :: sum_connection
+
+  PetscReal :: qsrc, qsrc_mol
+  PetscReal :: Res(realization%option%nflowdof)
+  PetscReal, pointer :: r_p(:), accum_p(:)
   PetscReal, pointer :: mmsrc(:)
   PetscReal, allocatable :: msrc(:)
   PetscReal :: well_status
@@ -1437,7 +1420,10 @@ subroutine RichardsResidualSourceSink(r,realization,ierr)
   PetscReal :: pressure_min
   PetscReal :: well_inj_water
   PetscReal :: Dq, dphi, v_darcy, ukvr
+
   Mat, parameter :: null_mat = 0
+
+  PetscErrorCode :: ierr
 
   patch => realization%patch
   grid => patch%grid
@@ -1593,35 +1579,28 @@ subroutine RichardsResidualAccumulation(r,realization,ierr)
   Vec :: r
   type(realization_subsurface_type) :: realization
 
-  PetscErrorCode :: ierr
-  PetscInt :: i
-  PetscInt :: local_id, ghosted_id
-  PetscInt :: istart
-
-  PetscReal, pointer :: r_p(:), accum_p(:)
-  PetscReal :: qsrc, qsrc_mol
-  PetscReal :: Res(realization%option%nflowdof)
-
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(richards_auxvar_type), pointer :: rich_auxvars(:), rich_auxvars_ss(:)
-  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_ss(:)
+  type(richards_auxvar_type), pointer :: rich_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
-  type(coupler_type), pointer :: source_sink
-  type(connection_set_type), pointer :: cur_connection_set
-  PetscInt :: iconn
-  PetscInt :: sum_connection
+
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: istart
+
+  PetscReal, pointer :: r_p(:), accum_p(:)
+  PetscReal :: Res(realization%option%nflowdof)
+
+  PetscErrorCode :: ierr
 
   patch => realization%patch
   grid => patch%grid
   option => realization%option
   field => realization%field
   rich_auxvars => patch%aux%Richards%auxvars
-  rich_auxvars_ss => patch%aux%Richards%auxvars_ss
   global_auxvars => patch%aux%Global%auxvars
-  global_auxvars_ss => patch%aux%Global%auxvars_ss
   material_auxvars => patch%aux%Material%auxvars
 
   ! now assign access pointer to local variables
@@ -2927,6 +2906,7 @@ subroutine RichardsComputeLateralMassFlux(realization)
   PetscReal, pointer :: mass_trans_p(:)
   PetscReal :: Res(realization%option%nflowdof)
   PetscReal :: v_darcy
+
   PetscErrorCode :: ierr
 
   discretization => realization%discretization
