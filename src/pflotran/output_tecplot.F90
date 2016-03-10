@@ -84,7 +84,8 @@ subroutine OutputTecplotHeader(fid,realization_base,icolumn)
            '"Z [m]"'
   write(fid,'(a)',advance="no") trim(string)
 
-  call OutputWriteVariableListToHeader(fid,output_option%output_variable_list, &
+  call OutputWriteVariableListToHeader(fid, &
+                                      output_option%output_snap_variable_list, &
                                        '',icolumn,PETSC_TRUE,variable_count)
   ! need to terminate line
   write(fid,'(a)') ''
@@ -284,8 +285,8 @@ subroutine OutputTecplotBlock(realization_base)
     call WriteTecplotUGridVertices(OUTPUT_UNIT,realization_base)
   endif
 
-  ! loop over variables and write to file
-  cur_variable => output_option%output_variable_list%first
+  ! loop over snapshot variables and write to file
+  cur_variable => output_option%output_snap_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
     call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
@@ -995,8 +996,8 @@ subroutine OutputTecplotPoint(realization_base)
     write(OUTPUT_UNIT,1000,advance='no') grid%y(ghosted_id)
     write(OUTPUT_UNIT,1000,advance='no') grid%z(ghosted_id)
 
-    ! loop over variables and write to file
-    cur_variable => output_option%output_variable_list%first
+    ! loop over snapshot variables and write to file
+    cur_variable => output_option%output_snap_variable_list%first
     do
       if (.not.associated(cur_variable)) exit
       value = RealizGetVariableValueAtCell(realization_base,cur_variable%ivar, &

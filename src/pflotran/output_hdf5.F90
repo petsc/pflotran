@@ -258,8 +258,8 @@ subroutine OutputHDF5(realization_base,var_list_type)
   select case (var_list_type)
 
     case (INSTANTANEOUS_VARS)
-      ! loop over variables and write to file
-      cur_variable => output_option%output_variable_list%first
+      ! loop over snapshot variables and write to file
+      cur_variable => output_option%output_snap_variable_list%first
       do
         if (.not.associated(cur_variable)) exit
         call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
@@ -809,8 +809,8 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   select case (var_list_type)
 
     case (INSTANTANEOUS_VARS)
-      ! loop over variables and write to file
-      cur_variable => output_option%output_variable_list%first
+      ! loop over snapshot variables and write to file
+      cur_variable => output_option%output_snap_variable_list%first
       do
         if (.not.associated(cur_variable)) exit
         call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
@@ -1240,8 +1240,8 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   select case (var_list_type)
 
     case (INSTANTANEOUS_VARS)
-      ! loop over variables and write to file
-      cur_variable => output_option%output_variable_list%first
+      ! loop over snapshot variables and write to file
+      cur_variable => output_option%output_snap_variable_list%first
       do
         if (.not.associated(cur_variable)) exit
         call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &

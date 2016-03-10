@@ -9,22 +9,32 @@
      Mean:   1.0000000000000E+00
         1:   1.0000000000000E+00
 -- CONCENTRATION: Total Tracer1 --
-      Max:   5.6260427167493E-07
-      Min:   1.0485048501837E-07
-     Mean:   3.3372737834665E-07
-        1:   5.6260427167493E-07
+      Max:   1.0000019532485E-07
+      Min:   9.9999804675150E-08
+     Mean:   1.0000000000000E-07
+        1:   1.0000019532485E-07
 -- CONCENTRATION: Total Tracer2 --
-      Max:   7.9469743676154E-07
-      Min:   1.0728412542680E-07
-     Mean:   4.5099078109417E-07
-        1:   7.9469743676154E-07
+      Max:   1.0000019532485E-07
+      Min:   9.9999804675150E-08
+     Mean:   1.0000000000000E-07
+        1:   1.0000019532485E-07
+-- CONCENTRATION: Total Tracer1 --
+      Max:   1.0000019532485E-07
+      Min:   9.9999804675150E-08
+     Mean:   1.0000000000000E-07
+        1:   1.0000019532485E-07
+-- CONCENTRATION: Total Tracer2 --
+      Max:   1.0000019532485E-07
+      Min:   9.9999804675150E-08
+     Mean:   1.0000000000000E-07
+        1:   1.0000019532485E-07
 -- DISCRETE: Material ID --
       Max:         1
       Min:         1
      Mean:   1.0000000000000E+00
         1:         1
 -- SOLUTION: Flow --
-   Time (seconds):   3.9812564849854E-02
+   Time (seconds):   3.9484500885010E-02
    Time Steps:           93
    Newton Iterations:           98
    Solver Iterations:           95
@@ -32,10 +42,10 @@
    Solution 2-Norm:   2.8480054595764E+05
    Residual 2-Norm:   2.3957709635678E-18
 -- SOLUTION: Transport --
-   Time (seconds):   3.3880472183228E-02
+   Time (seconds):   3.3103704452515E-02
    Time Steps:           93
    Newton Iterations:           93
    Solver Iterations:           93
    Time Step Cuts:            0
-   Solution 2-Norm:   9.8793451217547E-07
-   Residual 2-Norm:   6.3070005578658E-26
+   Solution 2-Norm:   2.0056049376513E-07
+   Residual 2-Norm:   0.0000000000000E+00

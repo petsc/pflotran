@@ -757,7 +757,8 @@ subroutine PMUFDDecaySolve(this,time,ierr)
                                 exp(-1.d0*this%isotope_decay_rate(:)*dt)
     mass_iso_tot1(:) = mass_iso_tot_star(:)
     do iiso = 1, this%num_isotopes
-      do iparent = 1, this%isotope_parents(0,iiso)
+      do ii = 1, this%isotope_parents(0,iiso)
+        iparent = this%isotope_parents(ii,iiso)
         mass_iso_tot1(iiso) = mass_iso_tot1(iiso) + &
           this%isotope_decay_rate(iparent)*mass_iso_tot0(iparent) / &
             (this%isotope_decay_rate(iiso) - &

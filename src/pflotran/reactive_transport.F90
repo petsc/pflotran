@@ -132,6 +132,7 @@ subroutine RTSetup(realization)
   use Secondary_Continuum_Aux_module, only : sec_transport_type, &
                                              SecondaryAuxRTCreate
   use Secondary_Continuum_module, only : SecondaryRTAuxVarInit
+  use Output_Aux_module
  
   implicit none
 
@@ -140,6 +141,7 @@ subroutine RTSetup(realization)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(output_variable_list_type), pointer :: list
   type(reaction_type), pointer :: reaction
   type(coupler_type), pointer :: boundary_condition
   type(coupler_type), pointer :: source_sink
@@ -311,8 +313,11 @@ subroutine RTSetup(realization)
       cur_fluid_property%diffusion_activation_energy
     cur_fluid_property => cur_fluid_property%next
   enddo
-  
-  call RTSetPlotVariables(realization)
+ 
+  list => realization%output_option%output_snap_variable_list
+  call RTSetPlotVariables(realization,list)
+  list => realization%output_option%output_obs_variable_list
+  call RTSetPlotVariables(realization,list)
   
 end subroutine RTSetup
 
@@ -4121,7 +4126,7 @@ end subroutine RTMaxChange
 
 ! ************************************************************************** !
 
-subroutine RTSetPlotVariables(realization)
+subroutine RTSetPlotVariables(realization,list)
   ! 
   ! Adds variables to be printed to list
   ! 
@@ -4137,10 +4142,9 @@ subroutine RTSetPlotVariables(realization)
   implicit none
   
   type(realization_subsurface_type) :: realization
-  
-  character(len=MAXWORDLENGTH) :: name,  units
   type(output_variable_list_type), pointer :: list
   
+  character(len=MAXWORDLENGTH) :: name,  units
   character(len=MAXSTRINGLENGTH) string
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   type(option_type), pointer :: option
@@ -4149,7 +4153,6 @@ subroutine RTSetPlotVariables(realization)
   
   option => realization%option
   reaction => realization%reaction
-  list => realization%output_option%output_variable_list
   
   if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
     free_mol_char = 'm'

@@ -196,6 +196,9 @@ clean-tests :
 	-find . -type f -name 'tmp-restart-*' -print0 | xargs -0 rm
 	-find . -type f -name '*.chk' -print0 | xargs -0 rm
 	-find . -type f -name '*.pyc' -print0 | xargs -0 rm
+	-find . -type f -name 'sigma*.txt' -print0 | xargs -0 rm 
+	-find . -type f -name '*.dpd' -print0 | xargs -0 rm
+	-find . -type f -name 'e4d*.log' -print0 | xargs -0 rm
 	-find . -type d -name '__pycache__' -print0 | xargs -0 rm -r
 	-rm -f default/anisothermal/thc_1d.h5
 	-rm -f default/anisothermal/th_1d.h5
