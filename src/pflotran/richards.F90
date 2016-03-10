@@ -1008,8 +1008,8 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 
   call RichardsResidualInternalConn(r,realization,skip_conn_type,ierr)
   call RichardsResidualBoundaryConn(r,realization,ierr)
-  call RichardsResidualSourceSink(r,realization,ierr)
   call RichardsResidualAccumulation(r,realization,ierr)
+  call RichardsResidualSourceSink(r,realization,ierr)
 
   if (realization%debug%vecview_residual) then
     string = 'Rresidual'
