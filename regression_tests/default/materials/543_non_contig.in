@@ -173,9 +173,9 @@ END
 #=========================== output options ===================================
 OUTPUT
 #  TIMES d 0.001 0.01 0.1 1. 10.
-  FORMAT TECPLOT BLOCK
+#  FORMAT TECPLOT BLOCK
   !VELOCITY_AT_CENTER
-  FLUXES
+#  FLUXES
   !FLOWRATES
 /
 

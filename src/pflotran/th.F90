@@ -161,7 +161,7 @@ subroutine THSetupPatch(realization)
 
   !Copy the values in the TH_parameter from the global realization 
   do i = 1, size(patch%material_property_array)
-    material_id = patch%material_property_array(i)%ptr%internal_id
+    material_id = iabs(patch%material_property_array(i)%ptr%internal_id)
     ! kg rock/m^3 rock * J/kg rock-K * 1.e-6 MJ/J = MJ/m^3-K
     patch%aux%TH%TH_parameter%dencpr(material_id) = &
       patch%material_property_array(i)%ptr%rock_density*option%scale* &

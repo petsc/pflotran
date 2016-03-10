@@ -200,7 +200,8 @@ subroutine RichardsSetupPatch(realization)
 
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  call RichardsCreateZeroArray(patch,option)
+!geh: remove after 3/31/16
+!  call RichardsCreateZeroArray(patch,option)
 
 
 end subroutine RichardsSetupPatch
@@ -453,6 +454,7 @@ subroutine RichardsUpdatePermPatch(realization)
   
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
     p_min = material_property_array(patch%imat(ghosted_id))%ptr%min_pressure
     p_max = material_property_array(patch%imat(ghosted_id))%ptr%max_pressure
     permfactor_max = material_property_array(patch%imat(ghosted_id))%ptr% &
@@ -2040,6 +2042,7 @@ end subroutine RichardsJacobianPatch2
 
 ! ************************************************************************** !
 
+!geh: remove after 3/31/16
 subroutine RichardsCreateZeroArray(patch,option)
   ! 
   ! Computes the zeroed rows for inactive grid cells

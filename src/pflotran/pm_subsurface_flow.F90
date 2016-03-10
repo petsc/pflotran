@@ -751,6 +751,8 @@ subroutine PMSubsurfaceFlowDestroy(this)
   
   ! destroyed in realization
   nullify(this%comm1)
+  nullify(this%option)
+  nullify(this%output_option)
   
 end subroutine PMSubsurfaceFlowDestroy
   

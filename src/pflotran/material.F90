@@ -15,6 +15,7 @@ module Material_module
   type, public :: material_property_type
     PetscInt :: external_id
     PetscInt :: internal_id
+    PetscBool :: active
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: permeability(3,3)
     PetscBool :: isotropic_permeability
@@ -131,6 +132,7 @@ function MaterialPropertyCreate()
   allocate(material_property)
   material_property%external_id = 0
   material_property%internal_id = 0
+  material_property%active = PETSC_TRUE
   material_property%name = ''
   ! initialize to UNINITIALIZED_DOUBLE to catch bugs
   material_property%permeability = UNINITIALIZED_DOUBLE
@@ -252,6 +254,16 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('ID') 
         call InputReadInt(input,option,material_property%external_id)
         call InputErrorMsg(input,option,'id','MATERIAL_PROPERTY')
+        if (material_property%external_id == UNINITIALIZED_INTEGER) then
+          write(string,*) UNINITIALIZED_INTEGER
+          option%io_buffer = 'Material ID "' // trim(adjustl(string)) // &
+            '" is reserved for uninitialized materials.  Please choose a &
+            &different value.'
+        endif
+      case('ACTIVE')
+        material_property%active = PETSC_TRUE
+      case('INACTIVE')
+        material_property%active = PETSC_FALSE
       case('SATURATION_FUNCTION','CHARACTERISTIC_CURVES') 
         call InputReadWord(input,option, &
                            material_property%saturation_function_name, &
@@ -735,10 +747,13 @@ subroutine MaterialPropertyAddToList(material_property,list)
       cur_material_property => cur_material_property%next
     enddo
     cur_material_property%next => material_property
-    material_property%internal_id = cur_material_property%internal_id + 1
+    material_property%internal_id = iabs(cur_material_property%internal_id) + 1
   else
     list => material_property
     material_property%internal_id = 1
+  endif
+  if (.not.material_property%active) then
+    material_property%internal_id = -1*material_property%internal_id
   endif
   
 end subroutine MaterialPropertyAddToList
@@ -809,7 +824,7 @@ subroutine MaterialPropConvertListToArray(list,array,option)
     if (.not.associated(cur_material_property)) exit
     max_internal_id = max_internal_id + 1
     max_external_id = max(max_external_id,cur_material_property%external_id)
-    if (max_internal_id /= cur_material_property%internal_id) then
+    if (max_internal_id /= iabs(cur_material_property%internal_id)) then
       write(string,*) cur_material_property%external_id
       option%io_buffer = 'Non-contiguous internal material id for ' // &
         'material named "' // trim(cur_material_property%name) // &
@@ -837,7 +852,7 @@ subroutine MaterialPropConvertListToArray(list,array,option)
     if (.not.associated(cur_material_property)) exit
     id_count(cur_material_property%external_id) = &
       id_count(cur_material_property%external_id) + 1
-    array(cur_material_property%internal_id)%ptr => cur_material_property
+    array(iabs(cur_material_property%internal_id))%ptr => cur_material_property
     cur_material_property => cur_material_property%next
   enddo
   
@@ -934,7 +949,7 @@ subroutine MaterialCreateIntToExtMapping(material_property_array,mapping)
   mapping(0) = 0
   
   do i = 1, size(material_property_array)
-    mapping(material_property_array(i)%ptr%internal_id) = &
+    mapping(iabs(material_property_array(i)%ptr%internal_id)) = &
       material_property_array(i)%ptr%external_id
   enddo
 
@@ -992,9 +1007,6 @@ subroutine MaterialApplyMapping(mapping,array)
       mapped_id = mapping(array(i))
     else
       mapped_id = -888 ! indicates corresponding mapped value does not exist.
-    endif
-    if (mapped_id == -888) then ! negate material id to indicate not found
-      mapped_id = -1*array(i)
     endif
     array(i) = mapped_id
   enddo
