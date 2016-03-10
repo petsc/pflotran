@@ -1677,11 +1677,10 @@ subroutine RichardsJacobian(snes,xx,A,B,realization,ierr)
 
   call MatZeroEntries(J,ierr);CHKERRQ(ierr)
 
-  ! pass #1 for internal and boundary flux terms
-  call RichardsJacobianPatch1(snes,xx,J,J,realization,ierr)
-
-  ! pass #2 for everything else
-  call RichardsJacobianPatch2(snes,xx,J,J,realization,ierr)
+  call RichardsJacobianInternalConn(J,realization,ierr)
+  call RichardsJacobianBoundaryConn(J,realization,ierr)
+  call RichardsJacobianAccumulation(J,realization,ierr)
+  call RichardsJacobianSourceSink(J,realization,ierr)
 
   if (realization%debug%matview_Jacobian) then
     string = 'Rjacobian'
@@ -1724,17 +1723,14 @@ end subroutine RichardsJacobian
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
+subroutine RichardsJacobianInternalConn(A,realization,ierr)
   ! 
-  ! Computes the interior flux and boundary flux
-  ! terms of the Jacobian
+  ! Computes the interior flux terms of the Jacobian
   ! 
   ! Author: Glenn Hammond
   ! Date: 12/13/07
   ! 
        
-  
-
   use Connection_module
   use Realization_Subsurface_class
   use Option_module
@@ -1747,38 +1743,33 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   
   implicit none
 
-  SNES, intent(in) :: snes
-  Vec, intent(in) :: xx
-  Mat, intent(out) :: A, B
+  Mat, intent(out) :: A
   type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
 
   PetscInt :: icap_up,icap_dn
-  PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
   PetscInt :: istart_up, istart_dn, istart
-  
+
   PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
                Jdn(realization%option%nflowdof,realization%option%nflowdof)
-  
+
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
-  PetscInt :: sum_connection  
-  PetscReal :: distance, fraction_upwind
-  PetscReal :: distance_gravity 
+  PetscInt :: sum_connection
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
-  type(option_type), pointer :: option 
-  type(field_type), pointer :: field 
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(material_parameter_type), pointer :: material_parameter
-  type(richards_auxvar_type), pointer :: rich_auxvars(:), rich_auxvars_bc(:) 
-  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
+  type(richards_auxvar_type), pointer :: rich_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
-  
+
   character(len=MAXSTRINGLENGTH) :: string
 
   PetscViewer :: viewer
@@ -1789,11 +1780,9 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   field => realization%field
   material_parameter => patch%aux%Material%material_parameter
   rich_auxvars => patch%aux%Richards%auxvars
-  rich_auxvars_bc => patch%aux%Richards%auxvars_bc
   global_auxvars => patch%aux%Global%auxvars
-  global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_auxvars => patch%aux%Material%auxvars
-  
+
 #ifdef BUFFER_MATRIX
   if (option%use_matrix_buffer) then
     if (associated(patch%aux%Richards%matrix_buffer)) then
@@ -1808,12 +1797,12 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
-  sum_connection = 0    
-  do 
+  sum_connection = 0
+  do
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
-    
+
       ghosted_id_up = cur_connection_set%id_up(iconn)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
 
@@ -1821,19 +1810,18 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
           patch%imat(ghosted_id_dn) <= 0) cycle
 
       if (option%flow%only_vertical_flow) then
-        !geh: place second conditional within first to avoid excessive 
+        !geh: place second conditional within first to avoid excessive
         !     dot products when .not. option%flow%only_vertical_flow
         if (abs(dot_product(cur_connection_set%dist(1:3,iconn),unit_z)) < &
             0.99d0) cycle
       endif
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
-   
-   
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
+
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
-                              
+
       call RichardsFluxDerivative(rich_auxvars(ghosted_id_up), &
                                   global_auxvars(ghosted_id_up), &
                                   material_auxvars(ghosted_id_up), &
@@ -1845,8 +1833,8 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
                                   cur_connection_set%area(iconn), &
                                   cur_connection_set%dist(-1:3,iconn),&
                                   option,&
-                               patch%characteristic_curves_array(icap_up)%ptr, &
-                               patch%characteristic_curves_array(icap_dn)%ptr, &
+                                  patch%characteristic_curves_array(icap_up)%ptr, &
+                                  patch%characteristic_curves_array(icap_dn)%ptr, &
                                   Jup,Jdn)
 
       if (local_id_up > 0) then
@@ -1906,6 +1894,73 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
+end subroutine RichardsJacobianInternalConn
+
+! ************************************************************************** !
+
+subroutine RichardsJacobianBoundaryConn(A,realization,ierr)
+  ! 
+  ! Computes the boundary flux terms of the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
+
+  use Connection_module
+  use Realization_Subsurface_class
+  use Option_module
+  use Patch_module
+  use Grid_module
+  use Coupler_module
+  use Field_module
+  use Debug_module
+  use Material_Aux_class
+  
+  implicit none
+
+  Mat, intent(out) :: A
+  type(realization_subsurface_type) :: realization
+
+  PetscErrorCode :: ierr
+
+  PetscInt :: icap_up,icap_dn
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt :: istart_up, istart_dn, istart
+  
+  PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
+               Jdn(realization%option%nflowdof,realization%option%nflowdof)
+  
+  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: iconn
+  PetscInt :: sum_connection  
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option 
+  type(field_type), pointer :: field 
+  type(material_parameter_type), pointer :: material_parameter
+  type(richards_auxvar_type), pointer :: rich_auxvars(:), rich_auxvars_bc(:) 
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  
+  character(len=MAXSTRINGLENGTH) :: string
+
+  PetscViewer :: viewer
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  material_parameter => patch%aux%Material%material_parameter
+  rich_auxvars => patch%aux%Richards%auxvars
+  rich_auxvars_bc => patch%aux%Richards%auxvars_bc
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  material_auxvars => patch%aux%Material%auxvars
+  
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_condition_list%first
   sum_connection = 0    
@@ -1971,11 +2026,100 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,realization,ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
   
-end subroutine RichardsJacobianPatch1
+end subroutine RichardsJacobianBoundaryConn
 
 ! ************************************************************************** !
 
-subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
+subroutine RichardsJacobianAccumulation(A,realization,ierr)
+  ! 
+  ! Computes the accumulation terms of the Jacobian
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07
+  ! 
+
+  use Connection_module
+  use Realization_Subsurface_class
+  use Option_module
+  use Patch_module
+  use Grid_module
+  use Coupler_module
+  use Debug_module
+
+  implicit none
+
+  Mat, intent(out) :: A
+  type(realization_subsurface_type) :: realization
+
+  PetscErrorCode :: ierr
+
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: istart
+
+  PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof)
+
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(richards_auxvar_type), pointer :: rich_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  PetscViewer :: viewer
+  character(len=MAXSTRINGLENGTH) :: string
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  rich_auxvars => patch%aux%Richards%auxvars
+  global_auxvars => patch%aux%Global%auxvars
+  material_auxvars => patch%aux%Material%auxvars
+
+  if (.not.option%steady_state) then
+
+    ! Accumulation terms ------------------------------------
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (patch%imat(ghosted_id) <= 0) cycle
+      call RichardsAccumDerivative(rich_auxvars(ghosted_id), &
+                                global_auxvars(ghosted_id), &
+                                material_auxvars(ghosted_id), &
+                                option, &
+                                patch%characteristic_curves_array( &
+                                patch%sat_func_id(ghosted_id))%ptr, &
+                                Jup)
+
+#ifdef BUFFER_MATRIX
+      if (option%use_matrix_buffer) then
+        call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
+                             ghosted_id,Jup(1,1))
+      else
+#endif
+        istart = (ghosted_id-1)*option%nflowdof + 1
+
+        call MatSetValuesLocal(A,1,istart-1,1,istart-1,Jup, &
+                               ADD_VALUES,ierr);CHKERRQ(ierr)
+#ifdef BUFFER_MATRIX
+      endif
+#endif
+    enddo
+
+  endif
+
+  if (realization%debug%matview_Jacobian_detailed) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    string = 'jacobian_accum'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+  endif
+
+end subroutine RichardsJacobianAccumulation
+
+! ************************************************************************** !
+
+subroutine RichardsJacobianSourceSink(A,realization,ierr)
   ! 
   ! Computes the accumulation and source/sink terms of
   ! the Jacobian
@@ -1983,8 +2127,6 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   ! Author: Glenn Hammond
   ! Date: 12/13/07
   ! 
-       
-  
 
   use Connection_module
   use Realization_Subsurface_class
@@ -1997,9 +2139,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
     
   implicit none
 
-  SNES, intent(in) :: snes
-  Vec, intent(in) :: xx
-  Mat, intent(out) :: A, B
+  Mat, intent(out) :: A
   type(realization_subsurface_type) :: realization
 
   PetscErrorCode :: ierr
@@ -2039,46 +2179,6 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   rich_auxvars => patch%aux%Richards%auxvars
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
-  
-  if (.not.option%steady_state) then
-
-  ! Accumulation terms ------------------------------------
-  do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    if (patch%imat(ghosted_id) <= 0) cycle
-    call RichardsAccumDerivative(rich_auxvars(ghosted_id), &
-                              global_auxvars(ghosted_id), &
-                              material_auxvars(ghosted_id), &
-                              option, &
-                              patch%characteristic_curves_array( &
-                                patch%sat_func_id(ghosted_id))%ptr, &
-                              Jup) 
-
-#ifdef BUFFER_MATRIX
-    if (option%use_matrix_buffer) then
-      call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
-                           ghosted_id,Jup(1,1))
-    else
-#endif
-      istart = (ghosted_id-1)*option%nflowdof + 1
-
-      call MatSetValuesLocal(A,1,istart-1,1,istart-1,Jup, &
-                             ADD_VALUES,ierr);CHKERRQ(ierr)
-#ifdef BUFFER_MATRIX
-    endif
-#endif
-  enddo
-
-  endif
-  if (realization%debug%matview_Jacobian_detailed) then
-    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
-    string = 'jacobian_accum'
-    call DebugCreateViewer(realization%debug,string,option,viewer)
-    call MatView(A,viewer,ierr);CHKERRQ(ierr)
-    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
-  endif
 
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sink_list%first 
@@ -2204,7 +2304,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,realization,ierr)
   endif
 #endif
 
-end subroutine RichardsJacobianPatch2
+end subroutine RichardsJacobianSourceSink
 
 ! ************************************************************************** !
 
