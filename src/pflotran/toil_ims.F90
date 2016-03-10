@@ -60,6 +60,7 @@ subroutine TOilImsSetup(realization)
   use Grid_module
   !use Fluid_module
   use Material_Aux_class
+  use Output_Aux_module
  
   implicit none
   
@@ -70,6 +71,7 @@ subroutine TOilImsSetup(realization)
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
   type(material_parameter_type), pointer :: material_parameter
+  type(output_variable_list_type), pointer :: list
 
   PetscInt :: ghosted_id, iconn, sum_connection, local_id
   PetscInt :: i, idof, count
@@ -194,7 +196,10 @@ subroutine TOilImsSetup(realization)
   allocate(patch%aux%TOil_ims%row_zeroing_array(grid%nlmax))
   patch%aux%TOil_ims%row_zeroing_array = 0
 
-  call TOilImsSetPlotVariables(realization)
+  list => realization%output_option%output_snap_variable_list
+  call TOilImsSetPlotVariables(list)
+  list => realization%output_option%output_obs_variable_list
+  call TOilImsSetPlotVariables(list)
  
   ! covergence creteria to be chosen (can use TOUGH or general type) 
   !if (general_tough2_conv_criteria .and. &
@@ -609,7 +614,7 @@ end subroutine TOilImsCreateZeroArray
 
 ! ************************************************************************** !
 
-subroutine TOilImsSetPlotVariables(realization)
+subroutine TOilImsSetPlotVariables(list)
   ! 
   ! Adds variables to be printed to list
   ! 
@@ -617,19 +622,15 @@ subroutine TOilImsSetPlotVariables(realization)
   ! Date: 10/20/15
   ! 
   
-  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
     
   implicit none
   
-  type(realization_subsurface_type) :: realization
+  type(output_variable_list_type), pointer :: list
   
   character(len=MAXWORDLENGTH) :: name, units
-  type(output_variable_list_type), pointer :: list
   type(output_variable_type), pointer :: output_variable
-  
-  list => realization%output_option%output_variable_list
 
   if (associated(list%first)) then
     return
@@ -670,7 +671,6 @@ subroutine TOilImsSetPlotVariables(realization)
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                OIL_DENSITY)
   
-  
   name = 'Liquid Energy'
   units = 'MJ/kmol'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
@@ -686,8 +686,7 @@ subroutine TOilImsSetPlotVariables(realization)
  ! output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE,units,STATE)
  ! output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
  ! output_variable%iformat = 1 ! integer
- ! call OutputVariableAddToList( &
- !        realization%output_option%output_variable_list,output_variable)   
+ ! call OutputVariableAddToList(list,output_variable)   
   
 end subroutine TOilImsSetPlotVariables
 

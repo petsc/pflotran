@@ -810,7 +810,7 @@ subroutine SubsurfaceInitSimulation(simulation)
                   option)
   endif
   call OutputVariableAppendDefaults(realization%output_option% &
-                                      output_variable_list,option)
+                                      output_snap_variable_list,option)
     ! check for non-initialized data sets, e.g. porosity, permeability
   call RealizationNonInitializedData(realization)
 
@@ -2165,6 +2165,7 @@ subroutine SubsurfaceReadInput(simulation)
                                       output_option%aveg_output_variable_list)
             case('UNFILTER_NON_STATE_VARIABLES')
               output_option%filter_non_state_variables = PETSC_FALSE
+
             
         !----------------------------------------------------------------------
         !----- SUPPORT FOR OLD INPUT FORMAT: ----------------------------------
@@ -2482,6 +2483,26 @@ subroutine SubsurfaceReadInput(simulation)
           end select
 
         enddo
+
+  ! If VARIABLES were not specified within the *_FILE blocks, point their
+  ! variable lists to the master variable list, which can be specified within
+  ! the OUTPUT block. If no VARIABLES are specified for the master list, the
+  ! defaults will be populated.
+          if (.not.associated(output_option%output_snap_variable_list%first)) &
+               then
+            call OutputVariableListDestroy( &
+                 output_option%output_snap_variable_list)
+            output_option%output_snap_variable_list => &
+                 output_option%output_variable_list
+          endif
+          if (.not.associated(output_option%output_obs_variable_list%first)) &
+               then
+            call OutputVariableListDestroy( &
+                 output_option%output_obs_variable_list)
+            output_option%output_obs_variable_list => &
+                output_option%output_variable_list
+          endif
+
         if (vel_cent) then
           if (output_option%print_tecplot) &
             output_option%print_tecplot_vel_cent = PETSC_TRUE
@@ -2669,6 +2690,15 @@ subroutine SubsurfaceReadInput(simulation)
         if (option%iflowmode /= TH_MODE .and. &
             option%iflowmode /= RICHARDS_MODE) then
           option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in RICHARDS and TH mode.'
+          call printErrMsg(option)
+        endif
+
+!....................
+      case ('QUASI_3D')
+        option%flow%quasi_3d = PETSC_TRUE
+        option%flow%only_vertical_flow = PETSC_TRUE
+        if (option%iflowmode /= RICHARDS_MODE) then
+          option%io_buffer = 'QUASI_3D implemented in RICHARDS mode.'
           call printErrMsg(option)
         endif
 

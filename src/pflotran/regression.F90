@@ -518,7 +518,7 @@ subroutine RegressionOutput(regression,realization,flow_timestepper, &
   call DiscretizationDuplicateVector(realization%discretization,global_vec,global_vec_vy)
   call DiscretizationDuplicateVector(realization%discretization,global_vec,global_vec_vz)
 
-  cur_variable => realization%output_option%output_variable_list%first
+  cur_variable => realization%output_option%output_snap_variable_list%first
   do 
     if (.not.associated(cur_variable)) exit
     

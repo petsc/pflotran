@@ -327,6 +327,18 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
 !...................
       case('FORMAT')
         string = 'OUTPUT,' // trim(block_name) // ',FORMAT'
+        select case(trim(block_name))
+          case('OBSERVATION_FILE')
+            option%io_buffer = 'FORMAT cannot be specified within &
+                 &the OUTPUT,OBSERVATION_FILE block. Observation output is &
+                 &written in TECPLOT format only.'
+            call printErrMsg(option)
+          case('MASS_BALANCE_FILE')
+            option%io_buffer = 'FORMAT cannot be specified within &
+                 &the OUTPUT,MASS_BALANCE_FILE block. Mass balance output is &
+                 &written in TECPLOT format only.'
+            call printErrMsg(option)
+        end select
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'keyword',string) 
         call StringToUpper(word)
@@ -407,6 +419,22 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
         call InputReadInt(input,option,option%hdf5_write_group_size)
         call InputErrorMsg(input,option,'group size',string)
 
+!......................
+      case('VARIABLES')
+        select case(trim(block_name))
+          case('SNAPSHOT_FILE')           
+            call OutputVariableRead(input,option, &
+                 output_option%output_snap_variable_list)
+          case('OBSERVATION_FILE')           
+            call OutputVariableRead(input,option, &
+                 output_option%output_obs_variable_list)
+          case('MASS_BALANCE_FILE')
+            option%io_buffer = 'A variable list cannot be specified within &
+                 &the MASS_BALANCE_FILE block. Mass balance variables are &
+                 &determined internally.'
+            call printErrMsg(option)
+        end select
+        
 !.............................
       case('PRINT_COLUMN_IDS')
         output_option%print_column_ids = PETSC_TRUE
@@ -441,6 +469,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
         call InputKeywordUnrecognized(word,string,option)
     end select
   enddo
+  
 
   if (vel_cent) then
     if (output_option%print_tecplot) &

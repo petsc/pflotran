@@ -95,10 +95,12 @@ subroutine MphaseSetup(realization)
 
   use Realization_Subsurface_class
   use Patch_module
+  use Output_Aux_module
    
   type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
+  type(output_variable_list_type), pointer :: list
   
   cur_patch => realization%patch_list%first
   do
@@ -108,7 +110,10 @@ subroutine MphaseSetup(realization)
     cur_patch => cur_patch%next
   enddo
 
-  call MphaseSetPlotVariables(realization)
+  list => realization%output_option%output_snap_variable_list
+  call MPhaseSetPlotVariables(list)
+  list => realization%output_option%output_obs_variable_list
+  call MPhaseSetPlotVariables(list)
 
 end subroutine MphaseSetup
 
@@ -4200,7 +4205,7 @@ end function MphaseGetTecplotHeader
 
 ! ************************************************************************** !
 
-subroutine MphaseSetPlotVariables(realization)
+subroutine MphaseSetPlotVariables(list)
   ! 
   ! Adds variables to be printed to list
   ! 
@@ -4208,19 +4213,15 @@ subroutine MphaseSetPlotVariables(realization)
   ! Date: 10/15/12
   ! 
   
-  use Realization_Subsurface_class
   use Output_Aux_module
   use Variables_module
 
   implicit none
 
-  type(realization_subsurface_type) :: realization
-  type(output_variable_type) :: output_variable
-  
-  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
   
-  list => realization%output_option%output_variable_list
+  character(len=MAXWORDLENGTH) :: name, units
+  type(output_variable_type) :: output_variable
   
   if (associated(list%first)) then
     return
