@@ -190,8 +190,7 @@ subroutine TOilImsSetup(realization)
 
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  !geh: remove after 3/31/16
- ! call TOilImsCreateZeroArray(patch,option)
+  call TOilImsCreateZeroArray(patch,option)
 
   ! create array for zeroing Jacobian entries if isothermal
   allocate(patch%aux%TOil_ims%row_zeroing_array(grid%nlmax))
@@ -233,7 +232,7 @@ subroutine TOilImsInitializeTimestep(realization)
 end subroutine TOilImsInitializeTimestep
 
 ! ************************************************************************** !
-!geh: remove after 3/31/16
+
 subroutine TOilImsCreateZeroArray(patch,option)
   ! 
   ! Computes the zeroed rows for inactive grid cells

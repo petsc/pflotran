@@ -208,12 +208,6 @@ subroutine RichardsSetupPatch(realization)
   endif
   patch%aux%Richards%num_aux_ss = sum_connection
 
-  ! create zero array for zeroing residual and Jacobian (1 on diagonal)
-  ! for inactive cells (and isothermal)
-!geh: remove after 3/31/16
-!  call RichardsCreateZeroArray(patch,option)
-
-
 end subroutine RichardsSetupPatch
 
 ! ************************************************************************** !
@@ -2311,83 +2305,6 @@ subroutine RichardsJacobianSourceSink(A,realization,ierr)
 #endif
 
 end subroutine RichardsJacobianSourceSink
-
-! ************************************************************************** !
-
-!geh: remove after 3/31/16
-subroutine RichardsCreateZeroArray(patch,option)
-  ! 
-  ! Computes the zeroed rows for inactive grid cells
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 12/13/07
-  ! 
-
-  use Realization_Subsurface_class
-  use Patch_module
-  use Grid_module
-  use Option_module
-  use Field_module
-  
-  implicit none
-
-  type(patch_type) :: patch
-  type(option_type) :: option
-  
-  PetscInt :: ncount, idof
-  PetscInt :: local_id, ghosted_id
-
-  type(grid_type), pointer :: grid
-  PetscInt :: flag
-  PetscInt :: n_zero_rows
-  PetscInt, pointer :: zero_rows_local(:)
-  PetscInt, pointer :: zero_rows_local_ghosted(:)
-  PetscErrorCode :: ierr
-    
-  flag = 0
-  grid => patch%grid
-  
-  n_zero_rows = 0
-
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) then
-      n_zero_rows = n_zero_rows + option%nflowdof
-    endif
-  enddo
-
-  allocate(zero_rows_local(n_zero_rows))
-  allocate(zero_rows_local_ghosted(n_zero_rows))
-
-  zero_rows_local = 0
-  zero_rows_local_ghosted = 0
-  ncount = 0
-
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) then
-      do idof = 1, option%nflowdof
-        ncount = ncount + 1
-        zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
-        zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
-      enddo
-    endif
-  enddo
-
-  patch%aux%Richards%zero_rows_local => zero_rows_local
-  patch%aux%Richards%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%aux%Richards%n_zero_rows = n_zero_rows
-  
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                    MPI_MAX,option%mycomm,ierr)
-  if (flag > 0) patch%aux%Richards%inactive_cells_exist = PETSC_TRUE
-     
-  if (ncount /= n_zero_rows) then
-    print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
-    stop
-  endif
-
-end subroutine RichardsCreateZeroArray
 
 ! ************************************************************************** !
 

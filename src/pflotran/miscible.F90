@@ -213,8 +213,7 @@ subroutine MiscibleSetupPatch(realization)
   
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-!geh: remove after 3/31/16
- ! call MiscibleCreateZeroArray(patch,option)
+  call MiscibleCreateZeroArray(patch,option)
 
 end subroutine MiscibleSetupPatch
 
@@ -2951,7 +2950,7 @@ subroutine MiscibleJacobianPatch2(snes,xx,A,B,realization,ierr)
 end subroutine MiscibleJacobianPatch2
 
 ! ************************************************************************** !
-!geh: remove after 3/31/16
+
 subroutine MiscibleCreateZeroArray(patch,option)
   ! 
   ! Computes the zeroed rows for inactive grid cells

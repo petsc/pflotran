@@ -231,8 +231,7 @@ subroutine Flash2SetupPatch(realization)
   !print *,' Flash2 setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  !geh: remove after 3/31/16
-  !call Flash2CreateZeroArray(patch,option)
+  call Flash2CreateZeroArray(patch,option)
 
 end subroutine Flash2SetupPatch
 
@@ -4669,7 +4668,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
 end subroutine Flash2JacobianPatch2
 
 ! ************************************************************************** !
-!geh: remove after 3/31/16
+
 subroutine Flash2CreateZeroArray(patch,option)
   ! 
   ! Computes the zeroed rows for inactive grid cells

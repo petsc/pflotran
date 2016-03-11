@@ -793,55 +793,6 @@ subroutine SubsurfaceInitSimulation(simulation)
                     realization%patch%aux%Richards%n_zero_rows, &
                     realization%patch%aux%Richards%inactive_cells_exist, &
                     option)
-    case(TH_MODE)
-      call InitSubsurfaceCreateZeroArray(realization%patch,option%nflowdof, &
-                    realization%patch%aux%TH%zero_rows_local, &
-                    realization%patch%aux%TH%zero_rows_local_ghosted, &
-                    realization%patch%aux%TH%n_zero_rows, &
-                    realization%patch%aux%TH%inactive_cells_exist, &
-                    option)
-    case(MPH_MODE)
-      call InitSubsurfaceCreateZeroArray(realization%patch,option%nflowdof, &
-                    realization%patch%aux%Mphase%zero_rows_local, &
-                    realization%patch%aux%Mphase%zero_rows_local_ghosted, &
-                    realization%patch%aux%Mphase%n_zero_rows, &
-                    realization%patch%aux%Mphase%inactive_cells_exist, &
-                    option)
-    case(G_MODE)
-      call InitSubsurfaceCreateZeroArray(realization%patch,option%nflowdof, &
-                    realization%patch%aux%General%inactive_rows_local, &
-                    realization%patch%aux%General%inactive_rows_local_ghosted, &
-                    realization%patch%aux%General%n_inactive_rows, &
-                    realization%patch%aux%General%inactive_cells_exist, &
-                    option)
-    case(TOIL_IMS_MODE)
-      call InitSubsurfaceCreateZeroArray(realization%patch,option%nflowdof, &
-                    realization%patch%aux%TOil_ims%inactive_rows_local, &
-                    realization%patch%aux%TOil_ims%inactive_rows_local_ghosted, &
-                    realization%patch%aux%TOil_ims%n_inactive_rows, &
-                    realization%patch%aux%TOil_ims%inactive_cells_exist, &
-                    option)
-    case(IMS_MODE)
-      call InitSubsurfaceCreateZeroArray(realization%patch,option%nflowdof, &
-                    realization%patch%aux%Immis%zero_rows_local, &
-                    realization%patch%aux%Immis%zero_rows_local_ghosted, &
-                    realization%patch%aux%Immis%n_zero_rows, &
-                    realization%patch%aux%Immis%inactive_cells_exist, &
-                    option)
-    case(MIS_MODE)
-      call InitSubsurfaceCreateZeroArray(realization%patch,option%nflowdof, &
-                    realization%patch%aux%Miscible%zero_rows_local, &
-                    realization%patch%aux%Miscible%zero_rows_local_ghosted, &
-                    realization%patch%aux%Miscible%n_zero_rows, &
-                    realization%patch%aux%Miscible%inactive_cells_exist, &
-                    option)
-    case(FLASH2_MODE)
-      call InitSubsurfaceCreateZeroArray(realization%patch,option%nflowdof, &
-                    realization%patch%aux%Flash2%zero_rows_local, &
-                    realization%patch%aux%Flash2%zero_rows_local_ghosted, &
-                    realization%patch%aux%Flash2%n_zero_rows, &
-                    realization%patch%aux%Flash2%inactive_cells_exist, &
-                    option)
   end select
   if (option%ntrandof > 0) then
     call InitSubsurfTranSetupRealization(realization)
