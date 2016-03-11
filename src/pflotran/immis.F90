@@ -243,7 +243,8 @@ subroutine ImmisSetupPatch(realization)
   ! print *,' ims setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  call ImmisCreateZeroArray(patch,option)
+!geh: remove after 3/31/16
+!  call ImmisCreateZeroArray(patch,option)
 
 end subroutine ImmisSetupPatch
 
@@ -2819,7 +2820,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
 end subroutine ImmisJacobianPatch
 
 ! ************************************************************************** !
-
+!geh: remove after 3/31/16
 subroutine ImmisCreateZeroArray(patch,option)
   ! 
   ! Computes the zeroed rows for inactive grid cells

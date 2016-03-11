@@ -309,7 +309,8 @@ subroutine THSetupPatch(realization)
 
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  call THCreateZeroArray(patch,option)
+  !geh: remove after 3/31/16
+  !call THCreateZeroArray(patch,option)
   
   ! initialize parameters
   cur_fluid_property => realization%fluid_properties
@@ -4497,7 +4498,7 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
 end subroutine THJacobianPatch
 
 ! ************************************************************************** !
-
+!geh: remove after 3/31/16
 subroutine THCreateZeroArray(patch,option)
   ! 
   ! Computes the zeroed rows for inactive grid cells

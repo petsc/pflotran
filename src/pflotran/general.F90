@@ -202,7 +202,8 @@ subroutine GeneralSetup(realization)
     
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  call GeneralCreateZeroArray(patch,option)
+!geh: remove after 3/31/16
+!  call GeneralCreateZeroArray(patch,option)
 
   ! create array for zeroing Jacobian entries if isothermal and/or no air
   allocate(patch%aux%General%row_zeroing_array(grid%nlmax))
@@ -3143,7 +3144,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
 end subroutine GeneralJacobian
 
 ! ************************************************************************** !
-
+!geh: remove after 3/31/16
 subroutine GeneralCreateZeroArray(patch,option)
   ! 
   ! Computes the zeroed rows for inactive grid cells
