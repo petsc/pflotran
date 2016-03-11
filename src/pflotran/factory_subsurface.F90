@@ -754,6 +754,7 @@ subroutine SubsurfaceInitSimulation(simulation)
   character(len=MAXSTRINGLENGTH) :: string
   SNESLineSearch :: linesearch
   PetscInt :: ndof
+  PetscBool, allocatable :: dof_is_active(:)
   PetscErrorCode :: ierr
   
   realization => simulation%realization
@@ -785,30 +786,11 @@ subroutine SubsurfaceInitSimulation(simulation)
   ! always call the flow side since a velocity field still has to be
   ! set if no flow exists
   call InitSubsurfFlowSetupRealization(realization)
-  select case(option%iflowmode)
-    case(RICHARDS_MODE)
-      call InitSubsurfaceCreateZeroArray(realization%patch,option%nflowdof, &
-                    realization%patch%aux%Richards%zero_rows_local, &
-                    realization%patch%aux%Richards%zero_rows_local_ghosted, &
-                    realization%patch%aux%Richards%n_zero_rows, &
-                    realization%patch%aux%Richards%inactive_cells_exist, &
-                    option)
-  end select
   if (option%ntrandof > 0) then
     call InitSubsurfTranSetupRealization(realization)
-    ! remove ndof above if this is moved
-    if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
-      ndof = realization%reaction%ncomp
-    else
-      ndof = 1
-    endif
-    call InitSubsurfaceCreateZeroArray(realization%patch,ndof, &
-                  realization%patch%aux%RT%zero_rows_local, &
-                  realization%patch%aux%RT%zero_rows_local_ghosted, &
-                  realization%patch%aux%RT%n_zero_rows, &
-                  realization%patch%aux%RT%inactive_cells_exist, &
-                  option)
   endif
+  ! InitSubsurfaceSetupZeroArray must come after InitSubsurfaceXXXRealization
+  call InitSubsurfaceSetupZeroArrays(realization)
   call OutputVariableAppendDefaults(realization%output_option% &
                                       output_snap_variable_list,option)
     ! check for non-initialized data sets, e.g. porosity, permeability

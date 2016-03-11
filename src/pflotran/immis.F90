@@ -240,11 +240,6 @@ subroutine ImmisSetupPatch(realization)
   
   option%numerical_derivatives_flow = PETSC_TRUE
 
-  ! print *,' ims setup get AuxBc point'
-  ! create zero array for zeroing residual and Jacobian (1 on diagonal)
-  ! for inactive cells (and isothermal)
-  call ImmisCreateZeroArray(patch,option)
-
 end subroutine ImmisSetupPatch
 
 ! ************************************************************************** !
@@ -2817,108 +2812,6 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,realization,ierr)
 !    call VecDestroy(debug_vec,ierr)
   endif
 end subroutine ImmisJacobianPatch
-
-! ************************************************************************** !
-
-subroutine ImmisCreateZeroArray(patch,option)
-  ! 
-  ! Computes the zeroed rows for inactive grid cells
-  ! 
-  ! Author: Chuan Lu
-  ! Date: 10/13/08
-  ! 
-
-  use Patch_module
-  use Grid_module
-  use Option_module
-  
-  implicit none
-
-  type(patch_type) :: patch
-  type(option_type) :: option
-  
-  PetscInt :: ncount, idof
-  PetscInt :: local_id, ghosted_id
-
-  type(grid_type), pointer :: grid
-  PetscInt :: flag = 0
-  PetscInt :: n_zero_rows
-  PetscInt, pointer :: zero_rows_local(:)
-  PetscInt, pointer :: zero_rows_local_ghosted(:)
-  PetscErrorCode :: ierr
-    
-  grid => patch%grid
-  
-  n_zero_rows = 0
-
-  if (associated(patch%imat)) then
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) then
-        n_zero_rows = n_zero_rows + option%nflowdof
-      else
-#ifdef ISOTHERMAL
-        n_zero_rows = n_zero_rows + 1
-#endif
-      endif
-    enddo
-  else
-#ifdef ISOTHERMAL
-    n_zero_rows = n_zero_rows + grid%nlmax
-#endif
-  endif
-! print *,'zero rows=', n_zero_rows
-  allocate(zero_rows_local(n_zero_rows))
-  allocate(zero_rows_local_ghosted(n_zero_rows))
-! print *,'zero rows allocated' 
-  zero_rows_local = 0
-  zero_rows_local_ghosted = 0
-  ncount = 0
-
-  if (associated(patch%imat)) then
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) then
-        do idof = 1, option%nflowdof
-          ncount = ncount + 1
-          zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
-          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
-        enddo
-      else
-#ifdef ISOTHERMAL
-        ncount = ncount + 1
-        zero_rows_local(ncount) = local_id*option%nflowdof
-        zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-#endif
-      endif
-    enddo
-  else
-#ifdef ISOTHERMAL
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      ncount = ncount + 1
-      zero_rows_local(ncount) = local_id*option%nflowdof
-      zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-    enddo
-#endif
-  endif
-!print *,'zero rows point 1'
-  patch%aux%Immis%n_zero_rows = n_zero_rows
-!print *,'zero rows point 2'
-  patch%aux%Immis%zero_rows_local => zero_rows_local
-!print *,'zero rows point 3'  
-  patch%aux%Immis%zero_rows_local_ghosted => zero_rows_local_ghosted
-!print *,'zero rows point 4'
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
-                     option%mycomm,ierr)
-  if (flag > 0) patch%aux%Immis%inactive_cells_exist = PETSC_TRUE
-
-  if (ncount /= n_zero_rows) then
-    print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
-    stop
-  endif
-! print *,'zero rows', flag
-end subroutine ImmisCreateZeroArray
 
 ! ************************************************************************** !
 

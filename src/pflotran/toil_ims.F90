@@ -188,10 +188,6 @@ subroutine TOilImsSetup(realization)
   endif
   patch%aux%TOil_ims%num_aux_ss = sum_connection
 
-  ! create zero array for zeroing residual and Jacobian (1 on diagonal)
-  ! for inactive cells (and isothermal)
-  call TOilImsCreateZeroArray(patch,option)
-
   ! create array for zeroing Jacobian entries if isothermal
   allocate(patch%aux%TOil_ims%row_zeroing_array(grid%nlmax))
   patch%aux%TOil_ims%row_zeroing_array = 0
@@ -230,85 +226,6 @@ subroutine TOilImsInitializeTimestep(realization)
   
 
 end subroutine TOilImsInitializeTimestep
-
-! ************************************************************************** !
-
-subroutine TOilImsCreateZeroArray(patch,option)
-  ! 
-  ! Computes the zeroed rows for inactive grid cells
-  ! 
-  ! Author: Paolo Orsini (OGS)
-  ! Date: 10/20/15
-  ! 
-
-  use Realization_Subsurface_class
-  use Patch_module
-  use Grid_module
-  use Option_module
-  !use Field_module
-  
-  implicit none
-
-  type(patch_type) :: patch
-  type(option_type) :: option
-  
-  PetscInt :: ncount, idof
-  PetscInt :: local_id, ghosted_id
-
-  type(grid_type), pointer :: grid
-  PetscInt :: flag
-  PetscInt :: n_inactive_rows
-  PetscInt, pointer :: inactive_rows_local(:)
-  PetscInt, pointer :: inactive_rows_local_ghosted(:)
-  PetscErrorCode :: ierr
-    
-  flag = 0
-  grid => patch%grid
-  
-  n_inactive_rows = 0
-
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) then
-      n_inactive_rows = n_inactive_rows + option%nflowdof
-    endif
-  enddo
-
-  allocate(inactive_rows_local(n_inactive_rows))
-  allocate(inactive_rows_local_ghosted(n_inactive_rows))
-
-  inactive_rows_local = 0
-  inactive_rows_local_ghosted = 0
-  ncount = 0
-
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) then
-      do idof = 1, option%nflowdof
-        ncount = ncount + 1
-        inactive_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
-        inactive_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof + &
-                                              idof-1
-      enddo
-    endif
-  enddo
-
-  patch%aux%TOil_ims%inactive_rows_local => inactive_rows_local
-  patch%aux%TOil_ims%inactive_rows_local_ghosted => inactive_rows_local_ghosted
-  patch%aux%TOil_ims%n_inactive_rows = n_inactive_rows
-  
-  call MPI_Allreduce(n_inactive_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                     MPI_MAX,option%mycomm,ierr)
-  if (flag > 0) patch%aux%TOil_ims%inactive_cells_exist = PETSC_TRUE
-  if (ncount /= n_inactive_rows) then
-    if (option%myrank == option%io_rank) then
-      print *, 'Error:  Mismatch in non-zero row count!', ncount, &
-        n_inactive_rows
-    endif
-    stop
-  endif
-
-end subroutine TOilImsCreateZeroArray
 
 ! ************************************************************************** !
 ! this is now defined in pm_toil_ims 

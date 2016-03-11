@@ -305,11 +305,6 @@ subroutine THSetupPatch(realization)
     patch%aux%TH%auxvars_ss => TH_auxvars_ss
   endif
   patch%aux%TH%num_aux_ss = sum_connection
-
-
-  ! create zero array for zeroing residual and Jacobian (1 on diagonal)
-  ! for inactive cells (and isothermal)
-  call THCreateZeroArray(patch,option)
   
   ! initialize parameters
   cur_fluid_property => realization%fluid_properties
@@ -4495,107 +4490,6 @@ subroutine THJacobianPatch(snes,xx,A,B,realization,ierr)
 #endif
 
 end subroutine THJacobianPatch
-
-! ************************************************************************** !
-
-subroutine THCreateZeroArray(patch,option)
-  ! 
-  ! Computes the zeroed rows for inactive grid cells
-  ! 
-  ! Author: ???
-  ! Date: 12/13/07
-  ! 
-
-  use Patch_module
-  use Grid_module
-  use Option_module
-  
-  implicit none
-
-  type(patch_type) :: patch
-  type(option_type) :: option
-  
-  PetscInt :: ncount, idof
-  PetscInt :: local_id, ghosted_id
-
-  type(grid_type), pointer :: grid
-  PetscInt :: flag
-  PetscInt :: n_zero_rows
-  PetscInt, pointer :: zero_rows_local(:)
-  PetscInt, pointer :: zero_rows_local_ghosted(:)
-  PetscErrorCode :: ierr
-  
-  flag = 0
-  grid => patch%grid
-  
-  n_zero_rows = 0
-
-  if (associated(patch%imat)) then
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) then
-        n_zero_rows = n_zero_rows + option%nflowdof
-      else
-#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
-        n_zero_rows = n_zero_rows + 1
-#endif
-      endif
-    enddo
-  else
-#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
-    n_zero_rows = n_zero_rows + grid%nlmax
-#endif
-  endif
-
-  allocate(zero_rows_local(n_zero_rows))
-  allocate(zero_rows_local_ghosted(n_zero_rows))
-
-  zero_rows_local = 0
-  zero_rows_local_ghosted = 0
-  ncount = 0
-
-  if (associated(patch%imat)) then
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) then
-        do idof = 1, option%nflowdof
-          ncount = ncount + 1
-          zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
-          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
-        enddo
-      else
-#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
-        ncount = ncount + 1
-        zero_rows_local(ncount) = local_id*option%nflowdof
-        zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-#endif
-      endif
-    enddo
-  else
-#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      ncount = ncount + 1
-      zero_rows_local(ncount) = local_id*option%nflowdof
-      zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-    enddo
-#endif
-  endif
-
-  patch%aux%TH%zero_rows_local => zero_rows_local
-  patch%aux%TH%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%aux%TH%n_zero_rows = n_zero_rows
-
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                     MPI_MAX,option%mycomm,ierr)
-  if (flag > 0) patch%aux%TH%inactive_cells_exist = PETSC_TRUE
-
-  if (ncount /= n_zero_rows) then
-    print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
-    stop
-  endif
-
-end subroutine THCreateZeroArray
 
 ! ************************************************************************** !
 

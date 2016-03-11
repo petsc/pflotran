@@ -308,31 +308,7 @@ subroutine PMAuxiliaryEvolvingStrata(this,time,ierr)
 
   call InitSubsurfAssignMatIDsToRegns(this%realization)
   call InitSubsurfAssignMatProperties(this%realization)
-  select case(this%option%iflowmode)
-    case(RICHARDS_MODE)
-      call InitSubsurfaceCreateZeroArray(this%realization%patch, &
-                this%option%nflowdof, &
-                this%realization%patch%aux%Richards%zero_rows_local, &
-                this%realization%patch%aux%Richards%zero_rows_local_ghosted, &
-                this%realization%patch%aux%Richards%n_zero_rows, &
-                this%realization%patch%aux%Richards%inactive_cells_exist, &
-                this%option)
-  end select
-  if (this%option%ntrandof > 0) then
-    ! remove ndof above if this is moved
-    if (this%option%transport%reactive_transport_coupling == &
-        GLOBAL_IMPLICIT) then
-      ndof = this%realization%reaction%ncomp
-    else
-      ndof = 1
-    endif
-    call InitSubsurfaceCreateZeroArray(this%realization%patch,ndof, &
-                  this%realization%patch%aux%RT%zero_rows_local, &
-                  this%realization%patch%aux%RT%zero_rows_local_ghosted, &
-                  this%realization%patch%aux%RT%n_zero_rows, &
-                  this%realization%patch%aux%RT%inactive_cells_exist, &
-                  this%option)
-  endif
+  call InitSubsurfaceSetupZeroArrays(this%realization)
   
 end subroutine PMAuxiliaryEvolvingStrata
 
