@@ -2523,9 +2523,11 @@ subroutine SubsurfaceReadInput(simulation)
             endif
            option%flow%store_fluxes = PETSC_TRUE
           endif
-          if (associated(grid%unstructured_grid%explicit_grid)) then
-           option%flow%store_fluxes = PETSC_TRUE
-            output_option%print_explicit_flowrate = mass_flowrate
+          if (associated(grid%unstructured_grid)) then
+            if (associated(grid%unstructured_grid%explicit_grid)) then
+              option%flow%store_fluxes = PETSC_TRUE
+              output_option%print_explicit_flowrate = mass_flowrate
+            endif
           endif
         endif
 
