@@ -90,7 +90,7 @@ subroutine MiscibleSetup(realization)
 
   use Realization_Subsurface_class
   use Patch_module
-  use Output_aux_module
+  use Output_Aux_module
    
   type(realization_subsurface_type) :: realization
 
