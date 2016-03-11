@@ -21,6 +21,10 @@ module PM_Auxiliary_class
   contains
     procedure, public :: Setup => PMAuxiliarySetup
     procedure, public :: InitializeRun => PMAuxiliaryInitializeRun
+    procedure, public :: CheckpointBinary => PMAuxiliaryCheckpointBinary
+    procedure, public :: RestartBinary => PMAuxiliaryCheckpointBinary
+    procedure, public :: CheckpointHDF5 => PMAuxiliaryCheckpointHDF5
+    procedure, public :: RestartHDF5 => PMAuxiliaryCheckpointHDF5
     procedure, public :: Destroy => PMAuxiliaryDestroy
   end type pm_auxiliary_type
 
@@ -362,6 +366,37 @@ subroutine PMAuxiliarySalinity(this,time,ierr)
   enddo
   
 end subroutine PMAuxiliarySalinity
+
+! ************************************************************************** !
+
+subroutine PMAuxiliaryCheckpointBinary(this,viewer)
+  implicit none
+#include "petsc/finclude/petscviewer.h"
+  class(pm_auxiliary_type) :: this
+  PetscViewer :: viewer
+end subroutine PMAuxiliaryCheckpointBinary
+
+! ************************************************************************** !
+
+subroutine PMAuxiliaryCheckpointHDF5(this, pm_grp_id)
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  class(pm_auxiliary_type) :: this
+  integer :: pm_grp_id
+  print *, 'PFLOTRAN must be compiled with HDF5 to write HDF5 formatted &
+           &checkpoint file. Darn.'
+  stop
+#else
+  use hdf5
+  implicit none
+  class(pm_auxiliary_type) :: this
+#if defined(SCORPIO_WRITE)
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: pm_grp_id
+#endif
+#endif
+end subroutine PMAuxiliaryCheckpointHDF5
 
 ! ************************************************************************** !
 

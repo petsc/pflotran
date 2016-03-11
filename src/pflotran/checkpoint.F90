@@ -1558,14 +1558,14 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
                               'CHECKPOINT: Must specify PERIODIC TIME, &
                               &PERIODIC TIMESTEP, TIMES, or FORMAT')
     end select
-    if (format_binary .and. format_hdf5) then
-      checkpoint_option%format = CHECKPOINT_BOTH
-    else if (format_hdf5) then
-      checkpoint_option%format = CHECKPOINT_HDF5
-    else ! default
-      checkpoint_option%format = CHECKPOINT_BINARY
-    endif
   enddo
+  if (format_binary .and. format_hdf5) then
+    checkpoint_option%format = CHECKPOINT_BOTH
+  else if (format_hdf5) then
+    checkpoint_option%format = CHECKPOINT_HDF5
+  else ! default
+    checkpoint_option%format = CHECKPOINT_BINARY
+  endif
   
 end subroutine CheckpointRead
 
