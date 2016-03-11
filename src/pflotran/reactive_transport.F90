@@ -311,8 +311,11 @@ subroutine RTSetup(realization)
  
   list => realization%output_option%output_snap_variable_list
   call RTSetPlotVariables(realization,list)
-  list => realization%output_option%output_obs_variable_list
-  call RTSetPlotVariables(realization,list)
+  if (.not.associated(realization%output_option%output_snap_variable_list, &
+                 realization%output_option%output_obs_variable_list)) then
+    list => realization%output_option%output_obs_variable_list
+    call RTSetPlotVariables(realization,list)
+  endif
   
 end subroutine RTSetup
 
