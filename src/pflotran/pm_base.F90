@@ -62,11 +62,10 @@ module PM_Base_class
     PetscInt :: ndof
   end type pm_base_header_type
     
-  public :: PMBaseInit
-  
-  public :: PMBaseResidual
-  public :: PMBaseJacobian
-  public :: PMBaseRHSFunction
+  public :: PMBaseInit, &
+            PMBaseResidual, &
+            PMBaseJacobian, &
+            PMBaseRHSFunction
   
 contains
 

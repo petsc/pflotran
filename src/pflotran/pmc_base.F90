@@ -384,15 +384,19 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
 
     if (checkpoint_at_this_time_flag .or. &
         checkpoint_at_this_timestep_flag) then
-      ! if checkpointing, need to sync all other PMCs.  Those "below" are
-      ! already in sync, but not those "next".
-      ! Set data needed by process-model
-      call this%SetAuxData()
-      ! Run neighboring process model couplers
-      if (associated(this%peer)) then
-        call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
+      ! if we have not reached an outer synchronization point, we need to
+      ! sync PMCs prior to checkpointing
+      if (this%timestepper%target_time < sync_time) then
+        ! if checkpointing, need to sync all other PMCs.  Those "below" are
+        ! already in sync, but not those "next".
+        ! Set data needed by process-model
+        call this%SetAuxData()
+        ! Run neighboring process model couplers
+        if (associated(this%peer)) then
+          call this%peer%RunToTime(this%timestepper%target_time,local_stop_flag)
+        endif
+        call this%GetAuxData()
       endif
-      call this%GetAuxData()
       ! it is possible that two identical checkpoint files will be created,
       ! one at the time and another at the time step, but this is fine.
       if (checkpoint_at_this_time_flag) then
