@@ -382,8 +382,9 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
       endif
     endif
 
-    if (checkpoint_at_this_time_flag .or. &
-        checkpoint_at_this_timestep_flag) then
+    if (this%is_master .and. &
+        (checkpoint_at_this_time_flag .or. &
+         checkpoint_at_this_timestep_flag)) then
       ! if checkpointing, need to sync all other PMCs.  Those "below" are
       ! already in sync, but not those "next".
       ! Set data needed by process-model
