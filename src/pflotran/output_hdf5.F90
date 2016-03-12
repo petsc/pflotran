@@ -2020,6 +2020,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 
   PetscInt :: local_size,vert_count,nverts
   PetscInt :: i,j
+  PetscInt :: temp_int
   PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
   PetscReal, pointer :: double_array(:)
   Vec :: global_x_vertex_vec,global_y_vertex_vec,global_z_vertex_vec
@@ -2175,7 +2176,9 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   dims(1) = vert_count
   call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
-  call MPI_Allreduce(vert_count,dims(1),ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  !geh: cannot use dims(1) in MPI_Allreduce as it causes errors on Juqueen
+  call MPI_Allreduce(vert_count,temp_int,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  dims(1) = temp_int
   realization_base%output_option%xmf_vert_len=int(dims(1))
 
   ! file space which is a 2D block
