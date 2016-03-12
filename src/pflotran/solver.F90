@@ -1145,27 +1145,27 @@ subroutine SolverLinearPrintFailedReason(solver,option)
   call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr);CHKERRQ(ierr)
   select case(ksp_reason)
     case(KSP_DIVERGED_ITS)
-      option%io_buffer = ' -> KSPReason Diverged due to iterations'
+      option%io_buffer = ' -> KSPReason: Diverged due to iterations'
     case(KSP_DIVERGED_DTOL)
-      option%io_buffer = ' -> KSPReason Diverged due to dtol'
+      option%io_buffer = ' -> KSPReason: Diverged due to dtol'
     case(KSP_DIVERGED_BREAKDOWN)
-      option%io_buffer = ' -> KSPReason Diverged due to breakdown'
+      option%io_buffer = ' -> KSPReason: Diverged due to breakdown'
     case(KSP_DIVERGED_BREAKDOWN_BICG)
-      option%io_buffer = ' -> KSPReason Diverged due to breakdown bicg'
+      option%io_buffer = ' -> KSPReason: Diverged due to breakdown bicg'
     case(KSP_DIVERGED_NONSYMMETRIC)
-      option%io_buffer = ' -> KSPReason Diverged due to nonsymmetric'
+      option%io_buffer = ' -> KSPReason: Diverged due to nonsymmetric'
     case(KSP_DIVERGED_INDEFINITE_PC)
-      option%io_buffer = ' -> KSPReason Diverged due to indefinite PC'
+      option%io_buffer = ' -> KSPReason: Diverged due to indefinite PC'
     case(KSP_DIVERGED_NANORINF)
-      option%io_buffer = ' -> KSPReason Diverged due to NaN or Inf PC'
+      option%io_buffer = ' -> KSPReason: Diverged due to NaN or Inf PC'
     case(KSP_DIVERGED_INDEFINITE_MAT)
-      option%io_buffer = ' -> KSPReason Diverged due to indefinite matix'
+      option%io_buffer = ' -> KSPReason: Diverged due to indefinite matix'
 !geh: this value is defined in the PETSc master, but not maint.
 !    case(KSP_DIVERGED_PCSETUP_FAILED)
     case(-11)
-      option%io_buffer = ' -> KSPReason Diverged due to PC setup failed'
+      option%io_buffer = ' -> KSPReason: Diverged due to PC setup failed'
     case default
-      write(option%io_buffer,'('' -> KSPReason Unknown: '',i2)') &
+      write(option%io_buffer,'('' -> KSPReason: Unknown: '',i2)') &
         ksp_reason
   end select
   call printMsg(option)
