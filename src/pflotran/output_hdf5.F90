@@ -751,6 +751,8 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   if (first) then
     call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
                      H5P_DEFAULT_F,prop_id)
+  else if (realization_base%output_option%xmf_vert_len == UNINITIALIZED_INTEGER) then
+    call DetermineNumVertices(realization_base,option)
   endif
   call h5pclose_f(prop_id,hdf5_err)
 
@@ -2490,6 +2492,72 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 !if defined(SCORPIO_WRITE)
 
 end subroutine WriteHDF5CoordinatesUGridXDMF
+
+! ************************************************************************** !
+
+subroutine DetermineNumVertices(realization_base,option)
+  ! 
+  ! Determine the number of vertices written out in the output HDF5 file
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 03/13/2015
+  ! 
+  use Realization_Base_class, only : realization_base_type
+  use Grid_module
+  use Option_module
+  use Grid_Unstructured_Aux_module
+  use Variables_module
+
+  implicit none
+
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petsclog.h"
+
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+
+  type(grid_type), pointer :: grid
+  PetscInt :: local_size,vert_count
+  PetscInt :: i
+  PetscInt :: temp_int
+
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vec, natural_vec
+  type(ugdm_type),pointer :: ugdm_element
+  PetscErrorCode :: ierr
+
+  grid => realization_base%patch%grid
+
+  call UGridCreateUGDM(grid%unstructured_grid,ugdm_element,EIGHT_INTEGER,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,global_vec, &
+                           GLOBAL,option)
+  call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
+                           NATURAL,option)
+  call GetCellConnections(grid,global_vec)
+  call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
+                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+
+  local_size = grid%unstructured_grid%nlmax
+
+  call VecGetArrayF90(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)
+  vert_count=0
+  do i=1,local_size*EIGHT_INTEGER
+    if (int(vec_ptr(i)) >0 ) vert_count=vert_count+1
+  enddo
+  vert_count=vert_count+grid%nlmax
+  call VecRestoreArrayF90(natural_vec,vec_ptr,ierr);CHKERRQ(ierr)
+
+  call MPI_Allreduce(vert_count,temp_int,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  realization_base%output_option%xmf_vert_len=temp_int
+
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
+  call UGridDMDestroy(ugdm_element)
+
+end subroutine DetermineNumVertices
 
 ! ************************************************************************** !
 

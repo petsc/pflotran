@@ -206,7 +206,7 @@ function OutputOptionCreate()
   output_option%plot_name = ""
   output_option%aveg_var_time = 0.d0
   output_option%aveg_var_dtime = 0.d0
-  output_option%xmf_vert_len = 0
+  output_option%xmf_vert_len = UNINITIALIZED_INTEGER
   output_option%filter_non_state_variables = PETSC_TRUE
 
   nullify(output_option%output_variable_list) ! master
