@@ -748,7 +748,7 @@ init_subsurface.o : dataset_base.o dataset_common_hdf5.o \
                     hdf5.o input_aux.o logging.o material.o material_aux.o \
                     option.o patch.o pflotran_constants.o \
                     realization_subsurface.o region.o srcsink_sandbox.o \
-                    strata.o variables.o wipp.o
+                    strata.o utility.o variables.o wipp.o
 init_subsurface_flow.o : co2_sw.o condition_control.o convergence.o \
                          discretization.o field.o flash2.o general.o grid.o \
                          hdf5.o immis.o init_common.o material.o miscible.o \

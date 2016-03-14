@@ -17,7 +17,8 @@ module Option_Flow_module
     PetscBool :: transient_porosity
     PetscBool :: only_vertical_flow
     PetscBool :: density_depends_on_salinity
-  
+    PetscBool :: quasi_3d
+
   end type flow_option_type
   
   public :: OptionFlowCreate, &
@@ -98,7 +99,8 @@ subroutine OptionFlowInitRealization(option)
   option%transient_porosity = PETSC_FALSE
   option%only_vertical_flow = PETSC_FALSE
   option%density_depends_on_salinity = PETSC_FALSE
-  
+  option%quasi_3d = PETSC_FALSE
+
 end subroutine OptionFlowInitRealization
 
 ! ************************************************************************** !

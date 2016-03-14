@@ -95,6 +95,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   class(pm_base_type), pointer :: cur_pm, prev_pm
   class(realization_subsurface_type), pointer :: realization
   class(timestepper_BE_type), pointer :: timestepper
+  type(waypoint_list_type), pointer :: sync_waypoint_list
   character(len=MAXSTRINGLENGTH) :: string
   
   option => simulation%option
@@ -270,9 +271,15 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
 
   ! clean up waypoints
   if (.not.option%steady_state) then
+    ! create sync waypoint list to be used a few lines below
+    sync_waypoint_list => &
+      WaypointCreateSyncWaypointList(simulation%waypoint_list_subsurface)
     ! merge in outer waypoints (e.g. checkpoint times)
     call WaypointListCopyAndMerge(simulation%waypoint_list_subsurface, &
                                   simulation%waypoint_list_outer,option)
+    ! add sync waypoints into outer list
+    call WaypointListMerge(simulation%waypoint_list_outer,sync_waypoint_list, &
+                           option)
     ! fill in holes in waypoint data
     call WaypointListFillIn(simulation%waypoint_list_subsurface,option)
     call WaypointListRemoveExtraWaypnts(simulation%waypoint_list_subsurface, &
@@ -753,6 +760,8 @@ subroutine SubsurfaceInitSimulation(simulation)
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string
   SNESLineSearch :: linesearch
+  PetscInt :: ndof
+  PetscBool, allocatable :: dof_is_active(:)
   PetscErrorCode :: ierr
   
   realization => simulation%realization
@@ -784,7 +793,11 @@ subroutine SubsurfaceInitSimulation(simulation)
   ! always call the flow side since a velocity field still has to be
   ! set if no flow exists
   call InitSubsurfFlowSetupRealization(realization)
-  if (option%ntrandof > 0) call InitSubsurfTranSetupRealization(realization)
+  if (option%ntrandof > 0) then
+    call InitSubsurfTranSetupRealization(realization)
+  endif
+  ! InitSubsurfaceSetupZeroArray must come after InitSubsurfaceXXXRealization
+  call InitSubsurfaceSetupZeroArrays(realization)
   call OutputVariableAppendDefaults(realization%output_option% &
                                       output_snap_variable_list,option)
     ! check for non-initialized data sets, e.g. porosity, permeability
@@ -810,9 +823,6 @@ subroutine SubsurfaceInitSimulation(simulation)
   call DiscretizationPrintInfo(realization%discretization, &
                                realization%patch%grid,option)
   
-  simulation%waypoint_list_outer => &
-    WaypointCreateSyncWaypointList(simulation%waypoint_list_subsurface)
-
   !----------------------------------------------------------------------------!
   ! This section for setting up new process model approach
   !----------------------------------------------------------------------------!
@@ -824,6 +834,7 @@ subroutine SubsurfaceInitSimulation(simulation)
     string = 'EVOLVING_STRATA'
     call PMAuxiliarySetFunctionPointer(pm_aux,string)
     pm_aux%realization => realization
+    pm_aux%option => option
     auxiliary_process_model_coupler%pm_list => pm_aux
     auxiliary_process_model_coupler%pm_aux => pm_aux
     auxiliary_process_model_coupler%option => option
@@ -2523,9 +2534,11 @@ subroutine SubsurfaceReadInput(simulation)
             endif
            option%flow%store_fluxes = PETSC_TRUE
           endif
-          if (associated(grid%unstructured_grid%explicit_grid)) then
-           option%flow%store_fluxes = PETSC_TRUE
-            output_option%print_explicit_flowrate = mass_flowrate
+          if (associated(grid%unstructured_grid)) then
+            if (associated(grid%unstructured_grid%explicit_grid)) then
+              option%flow%store_fluxes = PETSC_TRUE
+              output_option%print_explicit_flowrate = mass_flowrate
+            endif
           endif
         endif
 
@@ -2665,6 +2678,15 @@ subroutine SubsurfaceReadInput(simulation)
         if (option%iflowmode /= TH_MODE .and. &
             option%iflowmode /= RICHARDS_MODE) then
           option%io_buffer = 'ONLY_VERTICAL_FLOW implemented in RICHARDS and TH mode.'
+          call printErrMsg(option)
+        endif
+
+!....................
+      case ('QUASI_3D')
+        option%flow%quasi_3d = PETSC_TRUE
+        option%flow%only_vertical_flow = PETSC_TRUE
+        if (option%iflowmode /= RICHARDS_MODE) then
+          option%io_buffer = 'QUASI_3D implemented in RICHARDS mode.'
           call printErrMsg(option)
         endif
 

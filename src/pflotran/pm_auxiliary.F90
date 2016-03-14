@@ -19,7 +19,12 @@ module PM_Auxiliary_class
     type(pm_auxiliary_salinity_type), pointer :: salinity
     procedure(PMAuxliaryEvaluate), pointer :: Evaluate => null()
   contains
+    procedure, public :: Setup => PMAuxiliarySetup
     procedure, public :: InitializeRun => PMAuxiliaryInitializeRun
+    procedure, public :: CheckpointBinary => PMAuxiliaryCheckpointBinary
+    procedure, public :: RestartBinary => PMAuxiliaryCheckpointBinary
+    procedure, public :: CheckpointHDF5 => PMAuxiliaryCheckpointHDF5
+    procedure, public :: RestartHDF5 => PMAuxiliaryCheckpointHDF5
     procedure, public :: Destroy => PMAuxiliaryDestroy
   end type pm_auxiliary_type
 
@@ -94,7 +99,21 @@ subroutine PMAuxiliaryInit(this)
   
 end subroutine PMAuxiliaryInit
 
- 
+! ************************************************************************** !
+
+subroutine PMAuxiliarySetup(this)
+  ! 
+  ! Sets up auxiliary process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/16
+
+  implicit none
+  
+  class(pm_auxiliary_type) :: this  
+
+end subroutine PMAuxiliarySetup
+
 ! ************************************************************************** !
 
 function PMAuxiliaryCast(this)
@@ -251,6 +270,10 @@ recursive subroutine PMAuxiliaryInitializeRun(this)
   time = 0.d0
   select case(this%ctype)
     case('EVOLVING_STRATA')
+!      call MatSetOption(Jacobian,MAT_NEW_NONZERO_LOCATION_ERR,PETSC_FALSE, &
+!                        ierr);CHKERRQ(ierr)
+!      call MatSetOption(Jacobian,MAT_NEW_NONZERO_ALLOCATION_ERR,PETSC_FALSE, &
+!                        ierr);CHKERRQ(ierr)
     case('SALINITY')
       ! set up species names
       do i =1, this%salinity%nspecies
@@ -285,8 +308,11 @@ subroutine PMAuxiliaryEvolvingStrata(this,time,ierr)
   PetscReal :: time
   PetscErrorCode :: ierr
 
+  PetscInt :: ndof
+
   call InitSubsurfAssignMatIDsToRegns(this%realization)
   call InitSubsurfAssignMatProperties(this%realization)
+  call InitSubsurfaceSetupZeroArrays(this%realization)
   
 end subroutine PMAuxiliaryEvolvingStrata
 
@@ -343,6 +369,37 @@ end subroutine PMAuxiliarySalinity
 
 ! ************************************************************************** !
 
+subroutine PMAuxiliaryCheckpointBinary(this,viewer)
+  implicit none
+#include "petsc/finclude/petscviewer.h"
+  class(pm_auxiliary_type) :: this
+  PetscViewer :: viewer
+end subroutine PMAuxiliaryCheckpointBinary
+
+! ************************************************************************** !
+
+subroutine PMAuxiliaryCheckpointHDF5(this, pm_grp_id)
+#if  !defined(PETSC_HAVE_HDF5)
+  implicit none
+  class(pm_auxiliary_type) :: this
+  integer :: pm_grp_id
+  print *, 'PFLOTRAN must be compiled with HDF5 to write HDF5 formatted &
+           &checkpoint file. Darn.'
+  stop
+#else
+  use hdf5
+  implicit none
+  class(pm_auxiliary_type) :: this
+#if defined(SCORPIO_WRITE)
+  integer :: pm_grp_id
+#else
+  integer(HID_T) :: pm_grp_id
+#endif
+#endif
+end subroutine PMAuxiliaryCheckpointHDF5
+
+! ************************************************************************** !
+
 subroutine PMAuxiliaryDestroy(this)
   ! 
   ! Destroys auxiliary process model
@@ -357,6 +414,8 @@ subroutine PMAuxiliaryDestroy(this)
   ! destroyed in realization
   nullify(this%realization)
   nullify(this%comm1)
+  nullify(this%option)
+  nullify(this%output_option)
 
   if (associated(this%salinity)) then
     deallocate(this%salinity)

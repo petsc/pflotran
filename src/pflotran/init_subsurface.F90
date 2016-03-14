@@ -13,7 +13,8 @@ module Init_Subsurface_module
             InitSubsurfAssignMatProperties, &
             SubsurfInitMaterialProperties, &
             SubsurfAssignVolsToMatAuxVars, &
-            SubsurfSandboxesSetup
+            SubsurfSandboxesSetup, &
+            InitSubsurfaceSetupZeroArrays
   
 contains
 
@@ -319,30 +320,24 @@ subroutine InitSubsurfAssignMatProperties(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     material_id = patch%imat(ghosted_id)
-    if (material_id == 0) then ! accommodate inactive cells
+    if (material_id == 0) then
       material_property => null_material_property
-    else if (material_id > 0 .and. &
-              material_id <= &
-              size(patch%material_property_array)) then
-      material_property => &
-        patch%material_property_array(material_id)%ptr
-      if (.not.associated(material_property)) then
-        write(string,*) &
-          patch%imat_internal_to_external(material_id)
-        option%io_buffer = 'No material property for material id ' // &
-                            trim(adjustl(string)) &
-                            //  ' defined in input file.'
-        call printErrMsgByRank(option)
+    else if (iabs(material_id) <= &
+             size(patch%material_property_array)) then
+      if (material_id < 0) then
+        material_property => null_material_property
+      else
+        material_property => &
+          patch%material_property_array(material_id)%ptr
+        if (.not.associated(material_property)) then
+          write(string,*) &
+            patch%imat_internal_to_external(material_id)
+          option%io_buffer = 'No material property for material id ' // &
+                              trim(adjustl(string)) &
+                              //  ' defined in input file.'
+          call printErrMsgByRank(option)
+        endif
       endif
-    else if (material_id < 0 .and. Initialized(material_id)) then 
-      ! highjacking dataset_name and group_name for error processing
-      write(string,*) grid%nG2A(ghosted_id)
-      write(string2,*) -1*material_id
-      option%io_buffer = 'Undefined material id ' // &
-                          trim(adjustl(string2)) // &
-                          ' at cell ' // &
-                          trim(adjustl(string)) // '.'
-      call printErrMsgByRank(option)
     else if (Uninitialized(material_id)) then 
       write(string,*) grid%nG2A(ghosted_id)
       option%io_buffer = 'Uninitialized material id in patch at cell ' // &
@@ -363,7 +358,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
       patch%sat_func_id(ghosted_id) = &
         material_property%saturation_function_id
       icap_loc_p(ghosted_id) = material_property%saturation_function_id
-      ithrm_loc_p(ghosted_id) = material_property%internal_id
+      ithrm_loc_p(ghosted_id) = iabs(material_property%internal_id)
       perm_xx_p(local_id) = material_property%permeability(1,1)
       perm_yy_p(local_id) = material_property%permeability(2,2)
       perm_zz_p(local_id) = material_property%permeability(3,3)
@@ -398,7 +393,8 @@ subroutine InitSubsurfAssignMatProperties(realization)
   do material_id = 1, size(patch%material_property_array)
     material_property => &
             patch%material_property_array(material_id)%ptr
-    if (associated(material_property)) then
+    if (.not.associated(material_property)) cycle
+    if (material_property%active) then
       if (associated(material_property%permeability_dataset)) then
         call SubsurfReadPermsFromFile(realization,material_property)
       endif
@@ -406,12 +402,12 @@ subroutine InitSubsurfAssignMatProperties(realization)
 !        call SubsurfReadCompressFromFile(realization,material_property)
         call SubsurfReadDatasetToVecWithMask(realization, &
                material_property%compressibility_dataset, &
-               material_property%internal_id,field%compressibility0)
+               material_property%internal_id,PETSC_FALSE,field%compressibility0)
       endif
       if (associated(material_property%porosity_dataset)) then
         call SubsurfReadDatasetToVecWithMask(realization, &
                material_property%porosity_dataset, &
-               material_property%internal_id,field%porosity0)
+               material_property%internal_id,PETSC_FALSE,field%porosity0)
       endif
     endif
   enddo
@@ -660,7 +656,7 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
     !geh: Pass in -1 so that entire dataset is read. The mask is applied below.
     call SubsurfReadDatasetToVecWithMask(realization, &
                                     material_property%permeability_dataset, &
-                                    -1,global_vec)
+                                    UNINITIALIZED_INTEGER,PETSC_TRUE,global_vec)
     call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
     ratio = 1.d0
     scale = 1.d0
@@ -699,7 +695,8 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
       !     below.
       call SubsurfReadDatasetToVecWithMask(realization, &
                                            dataset_common_hdf5_ptr,&
-                                           -1,global_vec)
+                                           UNINITIALIZED_INTEGER,PETSC_TRUE, &
+                                           global_vec)
       call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
       select case(idirection)
         case(X_DIRECTION)
@@ -737,8 +734,8 @@ end subroutine SubsurfReadPermsFromFile
 
 ! ************************************************************************** !
 
-subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
-                                           vec)
+subroutine SubsurfReadDatasetToVecWithMask(realization,dataset, &
+                                           material_id,read_all_values,vec)
   ! 
   ! Reads a dataset into a PETSc Vec using the material id as a mask
   ! 
@@ -767,6 +764,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
   class(realization_subsurface_type) :: realization
   class(dataset_base_type) :: dataset
   PetscInt :: material_id
+  PetscBool :: read_all_values
   Vec :: vec
 
   type(field_type), pointer :: field
@@ -799,7 +797,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
         call DatasetGriddedHDF5Load(dataset,option)
         do local_id = 1, grid%nlmax
           ghosted_id = grid%nL2G(local_id)
-          if (material_id < 0 .or. &
+          if (read_all_values .or. &
               patch%imat(ghosted_id) == material_id) then
             call DatasetGriddedHDF5InterpolateReal(dataset, &
                    grid%x(ghosted_id),grid%y(ghosted_id),grid%z(ghosted_id), &
@@ -821,7 +819,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
                                           group_name,dataset_name, &
                                           dataset%realization_dependent)
         call VecGetArrayF90(field%work,work_p,ierr);CHKERRQ(ierr)
-        if (material_id < 0) then
+        if (read_all_values) then
           vec_p(:) = work_p(:)
         else
           do local_id = 1, grid%nlmax
@@ -848,7 +846,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset,material_id, &
                          'SubsurfReadDatasetToVecWithMask')
       ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
       if (ghosted_id > 0) then
-        if (material_id < 0 .or. &
+        if (read_all_values .or. &
             patch%imat(ghosted_id) == material_id) then
           local_id = grid%nG2L(ghosted_id)
           if (local_id > 0) then
@@ -922,5 +920,222 @@ subroutine SubsurfSandboxesSetup(realization)
                       realization%output_option)
   
 end subroutine SubsurfSandboxesSetup
+
+! ************************************************************************** !
+
+subroutine InitSubsurfaceSetupZeroArrays(realization)
+  ! 
+  ! Initializes sandbox objects.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/11/16
+
+  use Realization_Subsurface_class
+  use Option_module
+
+  class(realization_subsurface_type) :: realization
+  
+  type(option_type), pointer :: option
+  PetscBool, allocatable :: dof_is_active(:)
+  PetscInt :: ndof
+  
+  option => realization%option
+  
+  if (option%nflowdof > 0) then
+    allocate(dof_is_active(option%nflowdof))
+    dof_is_active = PETSC_TRUE
+#if defined(ISOTHERMAL)
+    select case(option%iflowmode)
+      case(TH_MODE)
+        ! second equation is energy
+        dof_is_active(TWO_INTEGER) = PETSC_FALSE
+      case(MPH_MODE,IMS_MODE,MIS_MODE,FLASH2_MODE)
+        ! third equation is energy
+        dof_is_active(THREE_INTEGER) = PETSC_FALSE
+    end select
+#endif
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
+                      realization%patch%aux%Richards%zero_rows_local, &
+                      realization%patch%aux%Richards%zero_rows_local_ghosted, &
+                      realization%patch%aux%Richards%n_zero_rows, &
+                      realization%patch%aux%Richards%inactive_cells_exist, &
+                      option)
+      case(TH_MODE)
+        call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
+                      realization%patch%aux%TH%zero_rows_local, &
+                      realization%patch%aux%TH%zero_rows_local_ghosted, &
+                      realization%patch%aux%TH%n_zero_rows, &
+                      realization%patch%aux%TH%inactive_cells_exist, &
+                      option)
+      case(MPH_MODE)
+        call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
+                      realization%patch%aux%Mphase%zero_rows_local, &
+                      realization%patch%aux%Mphase%zero_rows_local_ghosted, &
+                      realization%patch%aux%Mphase%n_zero_rows, &
+                      realization%patch%aux%Mphase%inactive_cells_exist, &
+                      option)
+      case(G_MODE)
+        call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
+                      realization%patch%aux%General%inactive_rows_local, &
+                      realization%patch%aux%General%inactive_rows_local_ghosted, &
+                      realization%patch%aux%General%n_inactive_rows, &
+                      realization%patch%aux%General%inactive_cells_exist, &
+                      option)
+      case(TOIL_IMS_MODE)
+        call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
+                      realization%patch%aux%TOil_ims%inactive_rows_local, &
+                      realization%patch%aux%TOil_ims%inactive_rows_local_ghosted, &
+                      realization%patch%aux%TOil_ims%n_inactive_rows, &
+                      realization%patch%aux%TOil_ims%inactive_cells_exist, &
+                      option)
+      case(IMS_MODE)
+        call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
+                      realization%patch%aux%Immis%zero_rows_local, &
+                      realization%patch%aux%Immis%zero_rows_local_ghosted, &
+                      realization%patch%aux%Immis%n_zero_rows, &
+                      realization%patch%aux%Immis%inactive_cells_exist, &
+                      option)
+      case(MIS_MODE)
+        call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
+                      realization%patch%aux%Miscible%zero_rows_local, &
+                      realization%patch%aux%Miscible%zero_rows_local_ghosted, &
+                      realization%patch%aux%Miscible%n_zero_rows, &
+                      realization%patch%aux%Miscible%inactive_cells_exist, &
+                      option)
+      case(FLASH2_MODE)
+        call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
+                      realization%patch%aux%Flash2%zero_rows_local, &
+                      realization%patch%aux%Flash2%zero_rows_local_ghosted, &
+                      realization%patch%aux%Flash2%n_zero_rows, &
+                      realization%patch%aux%Flash2%inactive_cells_exist, &
+                      option)
+    end select
+    deallocate(dof_is_active)
+  endif
+
+  if (option%ntrandof > 0) then
+    ! remove ndof above if this is moved
+    if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      ndof = realization%reaction%ncomp
+    else
+      ndof = 1
+    endif
+    allocate(dof_is_active(ndof))
+    dof_is_active = PETSC_TRUE  
+    call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
+                  realization%patch%aux%RT%zero_rows_local, &
+                  realization%patch%aux%RT%zero_rows_local_ghosted, &
+                  realization%patch%aux%RT%n_zero_rows, &
+                  realization%patch%aux%RT%inactive_cells_exist, &
+                  option)
+    deallocate(dof_is_active)
+  endif  
+
+end subroutine InitSubsurfaceSetupZeroArrays
+
+! ************************************************************************** !
+
+subroutine InitSubsurfaceCreateZeroArray(patch,dof_is_active, &
+                                         inactive_rows_local, &
+                                         inactive_rows_local_ghosted, &
+                                         n_inactive_rows, &
+                                         inactive_cells_exist, &
+                                         option)
+  ! 
+  ! Computes the zeroed rows for inactive grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 12/13/07, 03/02/16
+  ! 
+  use Realization_Subsurface_class
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Utility_module, only : DeallocateArray
+  
+  implicit none
+
+  type(patch_type) :: patch
+  PetscBool :: dof_is_active(:)
+  PetscInt, pointer :: inactive_rows_local(:)
+  PetscInt, pointer :: inactive_rows_local_ghosted(:)
+  PetscInt :: n_inactive_rows
+  PetscBool :: inactive_cells_exist
+  type(option_type) :: option
+  
+  PetscInt :: ncount, idof
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: ndof, n_active_dof
+
+  type(grid_type), pointer :: grid
+  PetscInt :: flag
+  PetscErrorCode :: ierr
+    
+  flag = 0
+  grid => patch%grid
+  ndof = size(dof_is_active)
+  n_active_dof = 0
+  do idof = 1, ndof
+    if (dof_is_active(idof)) n_active_dof = n_active_dof + 1
+  enddo
+  
+  n_inactive_rows = 0
+  inactive_cells_exist = PETSC_FALSE
+  call DeallocateArray(inactive_rows_local)
+  call DeallocateArray(inactive_rows_local_ghosted)
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) then
+      n_inactive_rows = n_inactive_rows + ndof
+    else if (n_active_dof < ndof) then
+      n_inactive_rows = n_inactive_rows + (ndof-n_active_dof)
+    endif
+  enddo
+
+  allocate(inactive_rows_local(n_inactive_rows))
+  allocate(inactive_rows_local_ghosted(n_inactive_rows))
+
+  inactive_rows_local = 0
+  inactive_rows_local_ghosted = 0
+  ncount = 0
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) then
+      do idof = 1, ndof
+        ncount = ncount + 1
+        ! 1-based indexing
+        inactive_rows_local(ncount) = (local_id-1)*ndof+idof
+        ! 0-based indexing
+        inactive_rows_local_ghosted(ncount) = (ghosted_id-1)*ndof+idof-1
+      enddo
+    else if (n_active_dof < ndof) then
+      do idof = 1, ndof
+        if (dof_is_active(idof)) cycle
+        ncount = ncount + 1
+        ! 1-based indexing
+        inactive_rows_local(ncount) = (local_id-1)*ndof+idof
+        ! 0-based indexing
+        inactive_rows_local_ghosted(ncount) = (ghosted_id-1)*ndof+idof-1
+      enddo
+    endif
+  enddo
+
+  call MPI_Allreduce(n_inactive_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                     MPI_MAX,option%mycomm,ierr)
+  if (flag > 0) then
+    inactive_cells_exist = PETSC_TRUE
+  endif
+     
+  if (ncount /= n_inactive_rows) then
+    print *, 'Error:  Mismatch in non-zero row count!', ncount, n_inactive_rows
+    stop
+  endif
+
+end subroutine InitSubsurfaceCreateZeroArray
 
 end module Init_Subsurface_module
