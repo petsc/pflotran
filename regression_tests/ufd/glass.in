@@ -27,13 +27,19 @@ END
 #=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
-    Tracer1  ! Sr-90
-    Tracer2  ! I-129
+    I-129
+    Am-241        
+    Np-237
+    U-233  
+    Th-229 
   /
   OUTPUT
     TOTAL
-    Tracer1
-    Tracer2
+    I-129
+    Am-241        
+    Np-237
+    U-233  
+    Th-229
   /
 END
 
@@ -145,8 +151,11 @@ END
 #=========================== transport constraints ============================
 CONSTRAINT groundwater
   CONCENTRATIONS
-    Tracer1   1.e-7            F
-    Tracer2   1.e-7            F
+    I-129     1.e-7            F
+    Am-241    1.e-7            F    
+    Np-237    1.e-7            F
+    U-233     1.e-7            F
+    Th-229    1.e-7            F
   /
 END
 
@@ -170,12 +179,15 @@ END
 END_SUBSURFACE
 
 GLASS
-  SPECIES
-    Tracer1 87.62d0 g/mol  ! Sr-90
-    Tracer2 129.0d0 g/mol  ! I-129
-  /
+  SPECIES 
+#   name    MW       units  dcy[1/s]  initMF   inst_rel_frac parents
+    I-129   128.90d0 g/mol  1.29d-15  1.69d-6  0.7d0
+    Am-241  241.06d0 g/mol  5.08d-11  3.61d-6  0.0d0         
+    Np-237  237.05d0 g/mol  1.03d-14  3.62d-6  0.7d0         Am-241
+    U-233   233.04d0 g/mol  1.38d-13  4.16d-11 0.0d0         Np-237   
+    Th-229  229.03d0 g/mol  2.78d-12  1.93e-14 0.0d0         U-233
+  / 
   SPECIFIC_SURFACE_AREA 2.78d-3 m^2/m^3
-  MASS_FRACTION FILE glass_mass_fractions.txt
   PRINT_MASS_BALANCE
   WASTE_FORM
     COORDINATE 1.0d0 1.0d0 1.0d0

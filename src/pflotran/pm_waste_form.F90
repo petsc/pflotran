@@ -230,11 +230,12 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'species name',error_string)
         temp_species_array(k)%name = trim(word)
-        call InputReadDouble(input,option,double)
-        call InputErrorMsg(input,option,'species formula weight',error_string)
-        temp_species_array(k)%formula_weight = double
         select type(this)
           class is(pm_waste_form_glass_type)
+            call InputReadDouble(input,option,double)
+            call InputErrorMsg(input,option,'species formula weight', &
+                               error_string)
+            temp_species_array(k)%formula_weight = double
             call InputReadWord(input,option,word,PETSC_TRUE)
             call InputErrorMsg(input,option,'species formula weight units', &
                                error_string)
