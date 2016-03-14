@@ -1419,7 +1419,7 @@ subroutine PMWFGlassInitializeTimestep(this)
   PetscReal :: dt
   PetscInt :: k, p
   PetscErrorCode :: ierr
-  PetscInt :: cell_id, auxvar_id, liquid
+  PetscInt :: cell_id, auxvar_id
   PetscReal :: parent_concentration_old
   PetscReal :: inst_release_molality
   PetscReal :: eff_canister_vit_rate
@@ -1431,10 +1431,9 @@ subroutine PMWFGlassInitializeTimestep(this)
   field => this%realization%field
   option => this%option
   grid => this%realization%patch%grid
-  liquid = option%liquid_phase
   dt = option%tran_dt
   
-  if (this%option%print_screen_flag) then
+  if (option%print_screen_flag) then
     write(*,'(/,2("=")," GLASS MODEL ",65("="))')
   endif
   
@@ -1504,10 +1503,10 @@ subroutine PMWFGlassInitializeTimestep(this)
            this%glass_density * &                      ! [kg-glass/m^3-glass]
            1.d3) / &                                   ! [kg-glass] -> [g-glass]
            ! [kg-water]
-          (material_auxvars(auxvar_id)%porosity * &      ! [-]
-           global_auxvars(auxvar_id)%sat(liquid) * &     ! [-]
-           material_auxvars(auxvar_id)%volume * &        ! [m^3]
-           global_auxvars(auxvar_id)%den_kg(liquid))     ! [kg/m^3-water]
+          (material_auxvars(auxvar_id)%porosity * &         ! [-]
+           global_auxvars(auxvar_id)%sat(LIQUID_PHASE) * &  ! [-]
+           material_auxvars(auxvar_id)%volume * &           ! [m^3]
+           global_auxvars(auxvar_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
         xx_p(cell_id) = xx_p(cell_id) + inst_release_molality
       enddo
       cur_waste_form%breached = PETSC_TRUE 
