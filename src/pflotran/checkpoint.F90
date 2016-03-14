@@ -1564,7 +1564,7 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
                               &PERIODIC TIMESTEP, TIMES, or FORMAT')
     end select
   enddo
-  if (len_trim(default_time_units > 0)) then
+  if (len_trim(default_time_units) > 0) then
     internal_units = 'sec'
     units_conversion = UnitsConvertToInternal(default_time_units, &
                                               internal_units,option)
