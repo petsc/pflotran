@@ -1392,32 +1392,58 @@ subroutine PMWFGlassInitializeTimestep(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
+  ! Notes: Modified by Jenn Frederick 03/14/2016
+
   use Dataset_module
+  use Global_Aux_module
+  use Material_Aux_class
+  use Field_module
+  use Option_module
+  use Grid_module
   
   implicit none
+
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   class(pm_waste_form_glass_type) :: this
   
   class(waste_form_glass_type), pointer :: cur_waste_form
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(field_type), pointer :: field
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
   PetscReal :: rate
   PetscReal :: dV
   PetscReal :: dt
   PetscInt :: k, p
+  PetscErrorCode :: ierr
+  PetscInt :: cell_id, idof
   PetscReal :: parent_concentration_old
+  PetscReal :: inst_release_molality
+  PetscReal :: eff_canister_vit_rate
   PetscReal, parameter :: conversion = 1.d0/(24.d0*3600.d0)
+  PetscReal, pointer :: xx_p(:)
+
+  global_auxvars => this%realization%patch%aux%Global%auxvars
+  material_auxvars => this%realization%patch%aux%Material%auxvars
+  field => this%realization%field
+  option => this%option
+  grid => this%realization%patch%grid
+  dt = option%tran_dt
   
-  if (this%option%print_screen_flag) then
+  if (option%print_screen_flag) then
     write(*,'(/,2("=")," GLASS MODEL ",65("="))')
   endif
   
   ! due to output witin, must be called prior to update
-  call PMWFInitializeTimestep(this)
+  call PMWFInitializeTimestep(this) 
 
-  dt = this%option%tran_dt 
-  ! update mass balances after transport step
   cur_waste_form => WFGlassCast(this%waste_form_list)
   do 
     if (.not.associated(cur_waste_form)) exit
+    ! ------ update mass balances after transport step ---------------------
     ! m^3 glass
     dV = cur_waste_form%glass_dissolution_rate / & ! kg glass/sec
          this%glass_density * &                    ! kg glass/m^3 glass
@@ -1425,7 +1451,7 @@ subroutine PMWFGlassInitializeTimestep(this)
     cur_waste_form%volume = cur_waste_form%volume - dV
 
     k = 0
-    ! Get species concentrations from mass fractions
+    ! ------ get species concentrations from mass fractions ----------------
     do while (k < this%num_species)
       k = k + 1
       cur_waste_form%rad_concentration(k) = &
@@ -1433,10 +1459,26 @@ subroutine PMWFGlassInitializeTimestep(this)
         this%rad_species_list(k)%formula_weight
     enddo
 
+    !---------------- vitality degradation function ------------------------
+    if (cur_waste_form%canister_degradation_flag) then
+      eff_canister_vit_rate = cur_waste_form%canister_vitality_rate * &
+           exp( this%canister_material_constant * ( (1.d0/333.15d0) - &
+           (1.d0/(global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))% &
+            temp+273.15d0))) )
+      cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
+                        - ( eff_canister_vit_rate * &     ! [1/yr]
+                            dt * &                        ! [sec]
+                            (1.0/(365.0*24.0*3600.0)) )   ! [yr/sec]
+      if (cur_waste_form%canister_vitality < 1.d-3) then
+        cur_waste_form%canister_vitality = 0.d0
+      endif
+    endif
+
     k = 0
-    ! Instantaneous release if breach has just occured
+    !------- instantaneous release ----------------------------------------- 
     if (.not.cur_waste_form%breached .and. &
            cur_waste_form%canister_vitality == 0.d0) then
+      call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
       do while (k < this%num_species)
         k = k + 1
         cur_waste_form%inst_release_amount(k) = &
@@ -1449,14 +1491,33 @@ subroutine PMWFGlassInitializeTimestep(this)
         cur_waste_form%rad_mass_fraction(k) = &
              cur_waste_form%rad_concentration(k) * &
              this%rad_species_list(k)%formula_weight
+        ! update transport solution vector with mass injection molality
+        ! as an alternative to a source term (issue with tran_dt changing)
+        idof = this%rad_species_list(k)%ispecies + &
+               ((cur_waste_form%local_cell_id - 1) * option%ntrandof) 
+        cell_id = cur_waste_form%local_cell_id
+        inst_release_molality = &                      ! [mol-rad/kg-water]
+           ! [mol-rad]
+          (cur_waste_form%inst_release_amount(k) * &   ! [mol-rad/g-glass]
+           cur_waste_form%volume * &                   ! [m^3-glass]
+           this%glass_density * &                      ! [kg-glass/m^3-glass]
+           1.d3) / &                                   ! [kg-glass] -> [g-glass]
+           ! [kg-water]
+          (material_auxvars(cell_id)%porosity * &         ! [-]
+           global_auxvars(cell_id)%sat(LIQUID_PHASE) * &  ! [-]
+           material_auxvars(cell_id)%volume * &           ! [m^3]
+           global_auxvars(cell_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
+        xx_p(idof) = xx_p(idof) + inst_release_molality
       enddo
       cur_waste_form%breached = PETSC_TRUE 
+      call VecRestoreArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
     endif
 
     k = 0
-    ! If species has a parent, save the parent's initial concentration
+    !------- decay the radionuclide species --------------------------------
     do while (k < this%num_species)
       k = k + 1
+      ! If species has a parent, save the parent's initial concentration
       if (this%rad_species_list(k)%parent_id /= 0) then
         p = this%rad_species_list(k)%parent_id
         parent_concentration_old = cur_waste_form%rad_concentration(p)
@@ -1480,7 +1541,7 @@ subroutine PMWFGlassInitializeTimestep(this)
     enddo
       
     k = 0
-    ! Get species mass fractions from concentrations
+    ! ------ update species mass fractions ---------------------------------
     do while (k < this%num_species)
       k = k + 1
       cur_waste_form%rad_mass_fraction(k) = &
@@ -1534,7 +1595,6 @@ subroutine PMGlassSolve(this,time,ierr)
   PetscReal, pointer :: vec_p(:)            ! 1/day -> 1/sec
   PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
   PetscReal :: fuel_dissolution_rate
-  PetscReal :: eff_canister_vit_rate
 
   grid => this%realization%patch%grid
   global_auxvars => this%realization%patch%aux%Global%auxvars
@@ -1544,26 +1604,11 @@ subroutine PMGlassSolve(this,time,ierr)
   i = 0
   do 
     if (.not.associated(cur_waste_form)) exit
-    if (cur_waste_form%canister_degradation_flag) then
-     !---------------- vitality degradation function --------------------------
-      eff_canister_vit_rate = cur_waste_form%canister_vitality_rate * &
-           exp( this%canister_material_constant * ( (1.d0/333.15d0) - &
-           (1.d0/(global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))% &
-            temp+273.15d0))) )
-      cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
-                        - ( eff_canister_vit_rate * &        ! [1/yr]
-                            this%option%tran_dt * &          ! [sec]
-                            (1.0/(365.0*24.0*3600.0)) )      ! [yr/sec]
-      if (cur_waste_form%canister_vitality < 1.d-3) then
-        cur_waste_form%canister_vitality = 0.d0
-      endif
-     !-------------------------------------------------------------------------
-    endif
     if ((cur_waste_form%volume > 0.d0) .and. &
         (cur_waste_form%canister_vitality == 0.d0)) then
       fuel_dissolution_rate = & ! kg glass/m^2/day
         560.d0*exp(-7397.d0/ &
-            (global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))%temp+273.15d0))
+        (global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))%temp+273.15d0))
       ! kg glass / sec
       cur_waste_form%glass_dissolution_rate = &
         fuel_dissolution_rate * &          ! kg glass (dissolving)/m^2/day
@@ -1583,13 +1628,7 @@ subroutine PMGlassSolve(this,time,ierr)
           (cur_waste_form%glass_dissolution_rate * &    ! kg-glass/sec
            this%rad_species_list(j)%formula_weight * &  ! kmol-rad/kg-rad
            cur_waste_form%rad_mass_fraction(j) * &      ! kg-rad/kg-glass
-           1.d3) + &                                    ! kmol -> mol
-          ! add instantaneous release
-          (cur_waste_form%inst_release_amount(j) * &    ! g-rad/g-glass
-           cur_waste_form%volume * &                    ! m^3 glass
-           this%glass_density * &                       ! kg-glass/m^3-glass
-           1.d3 / &                                     ! kg-glass -> g-glass 
-           this%option%tran_dt)                         ! sec
+           1.d3)                                        ! kmol -> mol
         vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)    ! mol/sec
         cur_waste_form%inst_release_amount(j) = 0.d0
       enddo
