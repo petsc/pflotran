@@ -1419,7 +1419,7 @@ subroutine PMWFGlassInitializeTimestep(this)
   PetscReal :: dt
   PetscInt :: k, p
   PetscErrorCode :: ierr
-  PetscInt :: cell_id, auxvar_id
+  PetscInt :: cell_id, idof
   PetscReal :: parent_concentration_old
   PetscReal :: inst_release_molality
   PetscReal :: eff_canister_vit_rate
@@ -1493,9 +1493,9 @@ subroutine PMWFGlassInitializeTimestep(this)
              this%rad_species_list(k)%formula_weight
         ! update transport solution vector with mass injection molality
         ! as an alternative to a source term (issue with tran_dt changing)
-        cell_id = this%rad_species_list(k)%ispecies + &
-                  ((cur_waste_form%local_cell_id - 1) * option%ntrandof) 
-        auxvar_id = cur_waste_form%local_cell_id
+        idof = this%rad_species_list(k)%ispecies + &
+               ((cur_waste_form%local_cell_id - 1) * option%ntrandof) 
+        cell_id = cur_waste_form%local_cell_id
         inst_release_molality = &                      ! [mol-rad/kg-water]
            ! [mol-rad]
           (cur_waste_form%inst_release_amount(k) * &   ! [mol-rad/g-glass]
@@ -1503,11 +1503,11 @@ subroutine PMWFGlassInitializeTimestep(this)
            this%glass_density * &                      ! [kg-glass/m^3-glass]
            1.d3) / &                                   ! [kg-glass] -> [g-glass]
            ! [kg-water]
-          (material_auxvars(auxvar_id)%porosity * &         ! [-]
-           global_auxvars(auxvar_id)%sat(LIQUID_PHASE) * &  ! [-]
-           material_auxvars(auxvar_id)%volume * &           ! [m^3]
-           global_auxvars(auxvar_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
-        xx_p(cell_id) = xx_p(cell_id) + inst_release_molality
+          (material_auxvars(cell_id)%porosity * &         ! [-]
+           global_auxvars(cell_id)%sat(LIQUID_PHASE) * &  ! [-]
+           material_auxvars(cell_id)%volume * &           ! [m^3]
+           global_auxvars(cell_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
+        xx_p(idof) = xx_p(idof) + inst_release_molality
       enddo
       cur_waste_form%breached = PETSC_TRUE 
       call VecRestoreArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
