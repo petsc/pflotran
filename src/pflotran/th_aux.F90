@@ -744,8 +744,8 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   ! Derivative of Kersten number
   auxvar%dKe_dp = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dp
   auxvar%dKe_dt = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dt
-  auxvar%dKe_fr_dt = alpha_fr*(global_auxvar%sat(1) + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_dt
-  auxvar%dKe_fr_dp = alpha_fr*(global_auxvar%sat(1) + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_dp
+  auxvar%dKe_fr_dt = alpha_fr*(auxvar%sat_ice + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_ice_dt
+  auxvar%dKe_fr_dp = alpha_fr*(auxvar%sat_ice + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_ice_dp
 
   if (option%ice_model == DALL_AMICO) then
     auxvar%den_ice = dw_mol
