@@ -78,6 +78,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   use Init_Subsurface_module
   use Input_Aux_module
   use String_module
+  use Checkpoint_module
   
   implicit none
   
@@ -280,6 +281,10 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     ! add sync waypoints into outer list
     call WaypointListMerge(simulation%waypoint_list_outer,sync_waypoint_list, &
                            option)
+    ! add in periodic time waypoints for checkpointing. these will not appear
+    ! in the outer list
+    call CheckpointPeriodicTimeWaypoints(simulation%checkpoint_option, &
+                                         simulation%waypoint_list_subsurface)
     ! fill in holes in waypoint data
     call WaypointListFillIn(simulation%waypoint_list_subsurface,option)
     call WaypointListRemoveExtraWaypnts(simulation%waypoint_list_subsurface, &
