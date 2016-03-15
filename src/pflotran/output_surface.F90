@@ -737,7 +737,7 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
   PetscMPIInt :: rank
   integer :: rank_mpi,file_space_rank_mpi
   integer :: dims(3)
-  integer :: start(3), length(3), stride(3),istart
+  integer :: start(3), length(3), stride(3)
 #else
   integer(HID_T) :: file_id
   integer(HID_T) :: data_type
@@ -750,7 +750,7 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
   PetscMPIInt :: rank
   PetscMPIInt :: rank_mpi,file_space_rank_mpi
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
 #endif
 
   type(grid_type), pointer :: subsurf_grid
@@ -774,7 +774,7 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
   character(len=MAXWORDLENGTH) :: word
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   PetscReal, pointer :: array(:)
-  PetscInt :: i
+  PetscInt :: i, istart
   PetscInt :: nviz_flow, nviz_tran, nviz_dof
   PetscInt :: current_component
   PetscMPIInt, parameter :: ON=1, OFF=0
@@ -1044,7 +1044,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   integer :: realization_set_id
   integer :: prop_id
   integer :: dims(3)
-  integer :: start(3), length(3), stride(3),istart
+  integer :: start(3), length(3), stride(3)
   integer :: rank_mpi,file_space_rank_mpi
   integer :: hdf5_flag
   integer, parameter :: ON=1, OFF=0
@@ -1058,12 +1058,13 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi,file_space_rank_mpi
   PetscMPIInt :: hdf5_flag
   PetscMPIInt, parameter :: ON=1, OFF=0
 #endif
 
+  PetscInt :: istart
   PetscMPIInt :: hdf5_err
   type(grid_type), pointer :: surf_grid
   type(grid_type), pointer :: subsurf_grid
@@ -2069,7 +2070,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
   integer :: realization_set_id
   integer :: prop_id
   integer :: dims(3)
-  integer :: start(3), length(3), stride(3),istart
+  integer :: start(3), length(3), stride(3)
   integer :: rank_mpi,file_space_rank_mpi
   integer :: hdf5_flag
   integer, parameter :: ON=1, OFF=0
@@ -2083,7 +2084,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi,file_space_rank_mpi
   PetscMPIInt :: hdf5_flag
   PetscMPIInt, parameter :: ON=1, OFF=0
@@ -2106,6 +2107,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
   PetscInt :: face_id
   PetscInt :: local_id_up,local_id_dn
   PetscInt :: ghosted_id_up,ghosted_id_dn
+  PetscInt :: istart
   PetscInt :: iface_up,iface_dn
   PetscInt :: dof
   PetscInt :: sum_connection
@@ -2231,7 +2233,7 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
 
     istart = 0
     call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
-                  MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
+                    MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
 
     start(2) = istart
     start(1) = 0

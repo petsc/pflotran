@@ -996,10 +996,12 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   
   implicit none
   
-  type(option_type) :: option
-
   character(len=*) :: name
   PetscReal :: array(:)
+  type(option_type) :: option
+  PetscInt :: nx_local, ny_local, nz_local
+  PetscInt :: nx_global, ny_global, nz_global
+  PetscInt :: istart_local, jstart_local, kstart_local
 
 #if defined(SCORPIO_WRITE)    
   integer :: file_id
@@ -1010,9 +1012,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   integer :: prop_id
   integer :: dims(3),mem_dims(3)
   integer :: start(3), length(3), stride(3)
-  integer :: nx_local, ny_local, nz_local, nlmax ! Sarat added nlmax 
-  integer :: nx_global, ny_global, nz_global
-  integer :: istart_local, jstart_local, kstart_local
+  integer :: nlmax ! Sarat added nlmax 
   integer :: rank_mpi,file_space_rank_mpi
   integer :: i, j, k, count, id
   integer :: ny_local_X_nz_local
@@ -1025,16 +1025,12 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3),mem_dims(3)
-  PetscInt :: nx_local, ny_local, nz_local
-  PetscInt :: nx_global, ny_global, nz_global
-  PetscInt :: istart_local, jstart_local, kstart_local
   PetscMPIInt :: rank_mpi,file_space_rank_mpi  
   PetscInt :: i, j, k, count, id
   integer(HSIZE_T) :: start(3), length(3), stride(3)
   PetscInt :: ny_local_X_nz_local
   PetscMPIInt :: num_to_write_mpi
 #endif
-
   PetscMPIInt, parameter :: ON=1, OFF=0
   PetscMPIInt :: hdf5_flag
 
@@ -2473,9 +2469,9 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
   istart = 0
   iend   = 0
   call MPI_Exscan(sideset%nfaces,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
-       MPI_SUM,option%mycomm,ierr)
+                  MPI_SUM,option%mycomm,ierr)
   call MPI_Scan(sideset%nfaces,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
-       MPI_SUM,option%mycomm,ierr)
+                MPI_SUM,option%mycomm,ierr)
 
   ! Determine the length and offset of data to be read by each processor
   length(1) = dims_h5(1)
@@ -3071,7 +3067,8 @@ subroutine HDF5WriteDataSetFromVec(name,option,vec,file_id,data_type)
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
+  PetscInt :: istart
   PetscInt :: local_size,global_size,i
   PetscInt, pointer :: int_array(:)
   PetscReal, pointer :: double_array(:)
@@ -3207,7 +3204,8 @@ subroutine HDF5ReadDataSetInVec(name, option, vec, file_id, data_type)
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
+  PetscInt :: istart
   PetscInt :: local_size,global_size,i
   PetscInt, pointer :: int_array(:)
   PetscReal, pointer :: double_array(:)
