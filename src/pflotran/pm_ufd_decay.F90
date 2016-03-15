@@ -698,7 +698,7 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
   
-  dt = option%dt
+  dt = option%tran_dt
   call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
 
   do local_id = 1, grid%nlmax
