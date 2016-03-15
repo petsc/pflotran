@@ -637,7 +637,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   PetscMPIInt :: rank
   integer :: rank_mpi,file_space_rank_mpi
   integer :: dims(3)
-  integer :: start(3), length(3), stride(3),istart
+  integer :: start(3), length(3), stride(3)
 #else
   integer(HID_T) :: file_id
   integer(HID_T) :: data_type
@@ -650,7 +650,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
   PetscMPIInt :: rank
   PetscMPIInt :: rank_mpi,file_space_rank_mpi
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
 #endif
 
   type(grid_type), pointer :: grid
@@ -1060,7 +1060,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   PetscMPIInt :: rank
   integer :: rank_mpi,file_space_rank_mpi
   integer :: dims(3)
-  integer :: start(3), length(3), stride(3),istart
+  integer :: start(3), length(3), stride(3)
 #else
   integer(HID_T) :: file_id, new_file_id
   integer(HID_T) :: data_type
@@ -1073,7 +1073,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   PetscMPIInt :: rank
   PetscMPIInt :: rank_mpi,file_space_rank_mpi
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
 #endif
 
   type(grid_type), pointer :: grid
@@ -1103,6 +1103,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   PetscMPIInt :: hdf5_err  
   PetscBool :: first
   PetscInt :: ivar, isubvar, var_type
+  PetscInt :: istart
   PetscInt :: vert_count
   PetscErrorCode :: ierr
 
@@ -1684,7 +1685,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   integer :: realization_set_id
   integer :: prop_id
   integer :: dims(3)
-  integer :: start(3), length(3), stride(3),istart
+  integer :: start(3), length(3), stride(3)
   integer :: rank_mpi,file_space_rank_mpi
   integer :: hdf5_flag
   integer, parameter :: ON=1, OFF=0
@@ -1698,7 +1699,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi,file_space_rank_mpi
   PetscMPIInt :: hdf5_flag
   PetscMPIInt, parameter :: ON=1, OFF=0
@@ -1708,6 +1709,7 @@ subroutine WriteHDF5CoordinatesUGrid(grid,option,file_id)
   PetscMPIInt :: hdf5_err  
 
   PetscInt :: local_size
+  PetscInt :: istart
   PetscInt :: i,j
   PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
   PetscReal, pointer :: double_array(:)
@@ -1994,7 +1996,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   integer :: realization_set_id
   integer :: prop_id
   integer :: dims(3)
-  integer :: start(3), length(3), stride(3),istart
+  integer :: start(3), length(3), stride(3)
   integer :: rank_mpi,file_space_rank_mpi
   integer :: hdf5_flag
   integer, parameter :: ON=1, OFF=0
@@ -2008,7 +2010,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi,file_space_rank_mpi
   PetscMPIInt :: hdf5_flag
   PetscMPIInt, parameter :: ON=1, OFF=0
@@ -2020,7 +2022,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
 
   PetscInt :: local_size,vert_count,nverts
   PetscInt :: i,j
-  PetscInt :: temp_int
+  PetscInt :: temp_int, istart
   PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
   PetscReal, pointer :: double_array(:)
   Vec :: global_x_vertex_vec,global_y_vertex_vec,global_z_vertex_vec
@@ -2102,6 +2104,8 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   call h5pclose_f(prop_id,hdf5_err)
 
   istart = 0
+  !geh: cannot use dims(1) in MPI_Allreduce as it causes errors on 
+  !     Juqueen
   call MPI_Exscan(local_size, istart, ONE_INTEGER_MPI, &
                   MPIU_INTEGER, MPI_SUM, option%mycomm, ierr)
 
@@ -2176,7 +2180,8 @@ subroutine WriteHDF5CoordinatesUGridXDMF(realization_base,option,file_id)
   dims(1) = vert_count
   call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
-  !geh: cannot use dims(1) in MPI_Allreduce as it causes errors on Juqueen
+  !geh: cannot use dims(1) in MPI_Allreduce as it causes errors on 
+  !     Juqueen
   call MPI_Allreduce(vert_count,temp_int,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
   dims(1) = temp_int
   realization_base%output_option%xmf_vert_len=int(dims(1))
@@ -2528,7 +2533,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   integer :: realization_set_id
   integer :: prop_id
   integer :: dims(3)
-  integer :: start(3), length(3), stride(3),istart
+  integer :: start(3), length(3), stride(3)
   integer :: rank_mpi,file_space_rank_mpi
   integer :: hdf5_flag
   integer, parameter :: ON=1, OFF=0
@@ -2542,7 +2547,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi,file_space_rank_mpi
   PetscMPIInt :: hdf5_flag
   PetscMPIInt, parameter :: ON=1, OFF=0
@@ -2554,6 +2559,7 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option,file_id
 
   PetscInt :: local_size,vert_count,nverts
   PetscInt :: i,j
+  PetscInt :: istart
   PetscReal, pointer :: vec_x_ptr(:),vec_y_ptr(:),vec_z_ptr(:)
   PetscReal, pointer :: double_array(:)
 
@@ -2815,7 +2821,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
   integer :: realization_set_id
   integer :: prop_id
   integer :: dims(3)
-  integer :: start(3), length(3), stride(3),istart
+  integer :: start(3), length(3), stride(3)
   integer :: rank_mpi,file_space_rank_mpi
   integer :: hdf5_flag
   integer, parameter :: ON=1, OFF=0
@@ -2829,7 +2835,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi,file_space_rank_mpi
   PetscMPIInt :: hdf5_flag
   PetscMPIInt, parameter :: ON=1, OFF=0
@@ -2867,6 +2873,7 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id,var_list_type
   PetscReal, pointer :: vec_ptr2(:)
   PetscReal, pointer :: double_array(:)
   PetscReal :: dtime
+  PetscInt :: istart
 
   PetscBool :: mass_flowrate
   PetscBool :: energy_flowrate
@@ -3084,7 +3091,7 @@ subroutine WriteHDF5FaceVelUGrid(realization_base,option,file_id,var_list_type)
   integer :: realization_set_id
   integer :: prop_id
   integer :: dims(3)
-  integer :: start(3), length(3), stride(3),istart
+  integer :: start(3), length(3), stride(3)
   integer :: rank_mpi,file_space_rank_mpi
   integer :: hdf5_flag
   integer, parameter :: ON=1, OFF=0
@@ -3098,7 +3105,7 @@ subroutine WriteHDF5FaceVelUGrid(realization_base,option,file_id,var_list_type)
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: start(3), length(3), stride(3),istart
+  integer(HSIZE_T) :: start(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi,file_space_rank_mpi
   PetscMPIInt :: hdf5_flag
   PetscMPIInt, parameter :: ON=1, OFF=0
@@ -3129,6 +3136,7 @@ subroutine WriteHDF5FaceVelUGrid(realization_base,option,file_id,var_list_type)
   PetscInt :: local_size
   PetscInt :: i
   PetscInt :: idir
+  PetscInt :: istart
   PetscInt :: iface
 
   PetscReal, pointer :: flowrates(:,:,:)
