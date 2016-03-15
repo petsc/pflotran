@@ -409,7 +409,7 @@ subroutine PMUFDDecayInit(this)
     if (.not.found) then
       option%io_buffer = 'Element "' // trim(isotope%element) // &
         '" of isotope "' // trim(isotope%name) // &
-        '" not found among list of element.'
+        '" not found among list of elements.'
       call printErrMsg(option)
     endif
     daughter => isotope%daughter_list
@@ -471,7 +471,7 @@ subroutine PMUFDDecayInit(this)
       enddo
       if (.not.found) then
         option%io_buffer = 'Daughter "' // trim(daughter%name) // &
-                           '" not found among isotope list'
+                           '" not found among isotope list.'
         call printErrMsg(option)
       endif
       daughter => daughter%next

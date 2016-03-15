@@ -1457,6 +1457,7 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
   character(len=MAXWORDLENGTH) :: card
   character(len=MAXSTRINGLENGTH) :: temp_string
   character(len=MAXWORDLENGTH) :: internal_units
+  character(len=MAXWORDLENGTH) :: default_time_units
   type(waypoint_type), pointer :: waypoint
   PetscReal :: units_conversion
   PetscReal :: temp_real
@@ -1471,6 +1472,7 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
   
   format_binary = PETSC_FALSE
   format_hdf5 = PETSC_FALSE
+  default_time_units = ''
   do
     call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'CHECKPOINT')
@@ -1553,12 +1555,22 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
             call InputKeywordUnrecognized(word,'CHECKPOINT,FORMAT', &
                                           option)
         end select
+      case ('TIME_UNITS')
+        call InputReadWord(input,option,default_time_units,PETSC_TRUE)
+        call InputErrorMsg(input,option,'time units','CHECKPOINT')
       case default
           call InputErrorMsg(input,option,'checkpoint option type', &
                               'CHECKPOINT: Must specify PERIODIC TIME, &
                               &PERIODIC TIMESTEP, TIMES, or FORMAT')
     end select
   enddo
+  if (len_trim(default_time_units) > 0) then
+    internal_units = 'sec'
+    units_conversion = UnitsConvertToInternal(default_time_units, &
+                                              internal_units,option)
+    checkpoint_option%tconv = 1.d0/units_conversion
+    checkpoint_option%tunit = trim(default_time_units)
+  endif
   if (format_binary .and. format_hdf5) then
     checkpoint_option%format = CHECKPOINT_BOTH
   else if (format_hdf5) then
