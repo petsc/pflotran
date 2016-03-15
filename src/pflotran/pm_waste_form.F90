@@ -602,8 +602,16 @@ end function PMWFRadSpeciesCreate
     allocate(cur_waste_form%cumulative_mass(this%num_species))
     cur_waste_form%instantaneous_mass_rate = UNINITIALIZED_DOUBLE
     cur_waste_form%cumulative_mass = 0.d0
-    ! should this really have been uninitialized_double?
-    !cur_waste_form%cumulative_mass = UNINITIALIZED_DOUBLE
+    select type(cur_waste_form)
+      class is(waste_form_glass_type)
+        allocate(cur_waste_form%rad_mass_fraction(this%num_species))
+        allocate(cur_waste_form%rad_concentration(this%num_species))
+        allocate(cur_waste_form%inst_release_amount(this%num_species))
+        cur_waste_form%rad_mass_fraction = &
+             this%rad_species_list%mass_fraction
+        cur_waste_form%rad_concentration = 0.d0
+        cur_waste_form%inst_release_amount = 0.d0
+    end select
    !--------- canister degradation model --------------------
     if (this%canister_degradation_model) then
       cur_waste_form%canister_degradation_flag = PETSC_TRUE
@@ -876,7 +884,7 @@ subroutine PMWFOutput(this)
                                   output_option%tconv
       select type(cur_waste_form)
         class is (waste_form_glass_type)
-           write(fid,100,advance="no") cur_waste_form%rad_mass_fraction(i)
+            write(fid,100,advance="no") cur_waste_form%rad_mass_fraction(i)
       end select
     enddo
     eff_canister_vit_rate = cur_waste_form%canister_vitality_rate * &
@@ -1357,22 +1365,22 @@ recursive subroutine PMWFGlassInitializeRun(this)
   
   call PMWFInitializeRun(this)
 
-  cur_waste_form => WFGlassCast(this%waste_form_list)
-  do 
-    if (.not.associated(cur_waste_form)) exit
-    allocate(cur_waste_form%rad_mass_fraction(this%num_species))
-    allocate(cur_waste_form%rad_concentration(this%num_species))
-    allocate(cur_waste_form%inst_release_amount(this%num_species))
-    k = 0
-    do while (k < this%num_species)
-      k = k + 1
-      cur_waste_form%rad_mass_fraction(k) = &
-           this%rad_species_list(k)%mass_fraction
-      cur_waste_form%rad_concentration(k) = 0.d0
-      cur_waste_form%inst_release_amount(k) = 0.d0
-    enddo
-    cur_waste_form => WFGlassCast(cur_waste_form%next)
-  enddo
+  !cur_waste_form => WFGlassCast(this%waste_form_list)
+  !do 
+  !  if (.not.associated(cur_waste_form)) exit
+  !  allocate(cur_waste_form%rad_mass_fraction(this%num_species))
+  !  allocate(cur_waste_form%rad_concentration(this%num_species))
+  !  allocate(cur_waste_form%inst_release_amount(this%num_species))
+  !  k = 0
+  !  do while (k < this%num_species)
+  !    k = k + 1
+  !    cur_waste_form%rad_mass_fraction(k) = &
+  !         this%rad_species_list(k)%mass_fraction
+  !    cur_waste_form%rad_concentration(k) = 0.d0
+  !    cur_waste_form%inst_release_amount(k) = 0.d0
+  !  enddo
+  !  cur_waste_form => WFGlassCast(cur_waste_form%next)
+  !enddo
   
   ! restart
   if (this%option%restart_flag .and. &
