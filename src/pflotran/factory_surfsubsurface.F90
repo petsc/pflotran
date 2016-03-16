@@ -208,7 +208,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
                                   simulation%waypoint_list_outer,option)
     call InitSurfaceSetupRealization(surf_realization,subsurf_realization, &
                                      simulation%waypoint_list_surfsubsurface)
-    call InitCommonAddOutputWaypoints(simulation%output_option, &
+    call InitCommonAddOutputWaypoints(option,simulation%output_option, &
                                       simulation%waypoint_list_surfsubsurface)
     ! fill in holes in waypoint data
     call WaypointListFillIn(simulation%waypoint_list_surfsubsurface,option)
