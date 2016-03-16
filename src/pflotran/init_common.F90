@@ -701,12 +701,19 @@ subroutine InitCommonAddOutputWaypoints(output_option,waypoint_list)
   type(waypoint_type), pointer :: waypoint
   PetscReal :: temp_real
   PetscReal :: final_time
+  PetscReal :: num_waypoints, warning_num_waypoints
   
   final_time = WaypointListGetFinalTime(waypoint_list)
+  warning_num_waypoints = 15000.0
   
   ! Add waypoints for periodic snapshot output
   if (output_option%periodic_snap_output_time_incr > 0.d0) then
     temp_real = 0.d0
+    num_waypoints = final_time / output_option%periodic_snap_output_time_incr
+    if (num_waypoints > warning_num_waypoints) then
+      write(*,*) 'WARNING: Large number of periodic snapshot output requested.'
+      write(*,*) '         Creating periodic output waypoints . . .'
+    endif
     do
       temp_real = temp_real + output_option%periodic_snap_output_time_incr
       if (temp_real > final_time) exit
@@ -720,6 +727,12 @@ subroutine InitCommonAddOutputWaypoints(output_option,waypoint_list)
   ! Add waypoints for periodic observation output
   if (output_option%periodic_obs_output_time_incr > 0.d0) then
     temp_real = 0.d0
+    num_waypoints = final_time / output_option%periodic_obs_output_time_incr
+    if (num_waypoints > warning_num_waypoints) then
+      write(*,*) 'WARNING: Large number of periodic observation output &
+                 &requested.'
+      write(*,*) '         Creating periodic output waypoints . . .'
+    endif
     do
       temp_real = temp_real + output_option%periodic_obs_output_time_incr
       if (temp_real > final_time) exit
@@ -733,6 +746,12 @@ subroutine InitCommonAddOutputWaypoints(output_option,waypoint_list)
   ! Add waypoints for periodic mass balance output
   if (output_option%periodic_msbl_output_time_incr > 0.d0) then
     temp_real = 0.d0
+    num_waypoints = final_time / output_option%periodic_msbl_output_time_incr
+    if (num_waypoints > warning_num_waypoints) then
+      write(*,*) 'WARNING: Large number of periodic mass balance output &
+                 &requested.'
+      write(*,*) '         Creating periodic output waypoints . . .'
+    endif
     do
       temp_real = temp_real + output_option%periodic_msbl_output_time_incr
       if (temp_real > final_time) exit

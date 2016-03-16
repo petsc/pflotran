@@ -1603,8 +1603,10 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
   type(waypoint_type), pointer :: waypoint
   PetscReal :: final_time
   PetscReal :: temp_real
+  PetscReal :: num_waypoints, warning_num_waypoints
   
   final_time = WaypointListGetFinalTime(waypoint_list)
+  warning_num_waypoints = 15000.0
 
   if (final_time < 1.d-40) then
     option%io_buffer = 'No final time specified in waypoint list. &
@@ -1616,6 +1618,11 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
   if (associated(checkpoint_option)) then
     if (Initialized(checkpoint_option%periodic_time_incr)) then
       temp_real = 0.d0
+      num_waypoints = final_time / checkpoint_option%periodic_time_incr
+      if (num_waypoints > warning_num_waypoints) then
+        write(*,*) 'WARNGING: Large number of checkpoints requested.'
+        write(*,*) '          Creating periodic checkpoint waypoints . . .'
+      endif
       do
         temp_real = temp_real + checkpoint_option%periodic_time_incr
         if (temp_real > final_time) exit
