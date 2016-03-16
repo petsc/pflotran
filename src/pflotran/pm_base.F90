@@ -264,8 +264,8 @@ subroutine PMBaseCheckpointBinary(this,viewer)
 #include "petsc/finclude/petscviewer.h"      
   class(pm_base_type) :: this
   PetscViewer :: viewer
-  print *, 'Must extend PMBaseCheckpointBinary/RestartBinary.'
-  stop
+!  print *, 'Must extend PMBaseCheckpointBinary/RestartBinary.'
+!  stop
 end subroutine PMBaseCheckpointBinary
 
 ! ************************************************************************** !
@@ -290,8 +290,8 @@ subroutine PMBaseCheckpointHDF5(this, pm_grp_id)
 #else
   integer(HID_T) :: pm_grp_id
 #endif
-  print *, 'Must extend PMBaseCheckpointHDF5/RestartHDF5.'
-  stop
+!  print *, 'Must extend PMBaseCheckpointHDF5/RestartHDF5.'
+!  stop
 #endif
 
 end subroutine PMBaseCheckpointHDF5
