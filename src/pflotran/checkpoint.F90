@@ -1604,9 +1604,11 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
   PetscReal :: final_time
   PetscReal :: temp_real
   PetscReal :: num_waypoints, warning_num_waypoints
+  PetscInt :: k, progress
   
   final_time = WaypointListGetFinalTime(waypoint_list)
   warning_num_waypoints = 15000.0
+  progress = 0
 
   if (final_time < 1.d-40) then
     option%io_buffer = 'No final time specified in waypoint list. &
@@ -1620,17 +1622,30 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
       temp_real = 0.d0
       num_waypoints = final_time / checkpoint_option%periodic_time_incr
       if (num_waypoints > warning_num_waypoints) then
-        write(*,*) 'WARNGING: Large number of checkpoints requested.'
-        write(*,*) '          Creating periodic checkpoint waypoints . . .'
+        write(*,'(a23,i7,a47)') 'WARNING: Large number (', &
+                                floor(num_waypoints), ') of periodic &
+                                &snapshot output requested.'
+        write(*,'(a59)',advance='no') '         Creating periodic output &
+                                      &waypoints . . . Progress: '
+        progress = floor(num_waypoints/10.0)
       endif
+      k = 0
       do
         temp_real = temp_real + checkpoint_option%periodic_time_incr
         if (temp_real > final_time) exit
+        if (num_waypoints > warning_num_waypoints) then
+          k = k + 1
+          if (k == progress*2) write(*,'(a4)',advance='no') '20%-'
+          if (k == progress*4) write(*,'(a4)',advance='no') '40%-'
+          if (k == progress*6) write(*,'(a4)',advance='no') '60%-'
+          if (k == progress*8) write(*,'(a4)',advance='no') '80%-'
+        endif
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_checkpoint = PETSC_TRUE
         call WaypointInsertInList(waypoint,waypoint_list)
       enddo
+      if (num_waypoints > warning_num_waypoints) write(*,'(a4)') '100%'
     endif
   endif
 
