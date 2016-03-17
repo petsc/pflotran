@@ -4086,7 +4086,7 @@ subroutine RTSetPlotVariables(realization,list)
   endif
   
   if (reaction%print_pH .and. associated(reaction%species_idx)) then
-    if (reaction%species_idx%h_ion_id > 0) then
+    if (reaction%species_idx%h_ion_id /= 0) then
       name = 'pH'
       units = ''
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &
