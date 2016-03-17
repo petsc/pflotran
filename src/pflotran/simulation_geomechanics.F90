@@ -28,12 +28,14 @@ module Simulation_Geomechanics_class
   contains
     procedure, public :: Init => GeomechanicsSimulationInit
     procedure, public :: InitializeRun => GeomechanicsSimulationInitializeRun
+    procedure, public :: InputRecord => GeomechanicsSimInputRecord
     procedure, public :: ExecuteRun => GeomechanicsSimulationExecuteRun
     procedure, public :: FinalizeRun => GeomechanicsSimulationFinalizeRun
     procedure, public :: Strip => GeomechanicsSimulationStrip
   end type simulation_geomechanics_type
   
   public :: GeomechanicsSimulationCreate, &
+            GeomechanicsSimInputRecord, &
             GeomechanicsSimulationDestroy
   
 contains
@@ -111,6 +113,39 @@ subroutine GeomechanicsSimulationInitializeRun(this)
   endif
 
 end subroutine GeomechanicsSimulationInitializeRun
+
+! ************************************************************************** !
+
+subroutine GeomechanicsSimInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  class(simulation_geomechanics_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = this%option%fid_inputrecord
+  if (OptionPrintToFile(this%option)) then
+    write(id,'(a)') ' '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') ' SIMULATION '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+  
+    write(id,'(a20)',advance='no') 'simulation type: '
+    write(id,'(a)') 'geomechanics'
+  endif
+
+end subroutine GeomechanicsSimInputRecord
 
 ! ************************************************************************** !
 

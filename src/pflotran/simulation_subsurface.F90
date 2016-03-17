@@ -29,6 +29,7 @@ module Simulation_Subsurface_class
   contains
     procedure, public :: Init => SubsurfaceSimulationInit
     procedure, public :: JumpStart => SubsurfaceSimulationJumpStart
+    procedure, public :: InputRecord => SubsurfaceSimInputRecord
 !    procedure, public :: ExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => SubsurfaceFinalizeRun
@@ -37,6 +38,7 @@ module Simulation_Subsurface_class
   
   public :: SubsurfaceSimulationCreate, &
             SubsurfaceSimulationInit, &
+            SubsurfaceSimInputRecord, &
             SubsurfaceFinalizeRun, &
             SubsurfaceSimulationStrip, &
             SubsurfaceSimulationDestroy
@@ -95,6 +97,39 @@ subroutine SubsurfaceSimulationInit(this,option)
   this%waypoint_list_subsurface => WaypointListCreate()
   
 end subroutine SubsurfaceSimulationInit
+
+! ************************************************************************** !
+
+subroutine SubsurfaceSimInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  class(simulation_subsurface_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = this%option%fid_inputrecord
+  if (OptionPrintToFile(this%option)) then
+    write(id,'(a)') ' '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') ' SIMULATION '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+  
+    write(id,'(a20)',advance='no') 'simulation type: '
+    write(id,'(a)') 'subsurface'
+  endif
+
+end subroutine SubsurfaceSimInputRecord
 
 ! ************************************************************************** !
 

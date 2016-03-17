@@ -40,6 +40,7 @@ module Simulation_Hydrogeophysics_class
     PetscMPIInt :: mygroup_id_save
   contains
     procedure, public :: Init => HydrogeophysicsInit
+    procedure, public :: InputRecord => HydrogeophysInputRecord
     procedure, public :: ExecuteRun => HydrogeophysicsExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => HydrogeophysicsFinalizeRun
@@ -47,6 +48,7 @@ module Simulation_Hydrogeophysics_class
   end type simulation_hydrogeophysics_type
   
   public :: HydrogeophysicsCreate, &
+            HydrogeophysInputRecord, &
             HydrogeophysicsDestroy
   
 contains
@@ -114,6 +116,39 @@ subroutine HydrogeophysicsInit(this,option)
   this%mygroup_id_save = 0
    
 end subroutine HydrogeophysicsInit
+
+! ************************************************************************** !
+
+subroutine HydrogeophysInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  class(simulation_hydrogeophysics_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = this%option%fid_inputrecord
+  if (OptionPrintToFile(this%option)) then
+    write(id,'(a)') ' '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') ' SIMULATION '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+  
+    write(id,'(a20)',advance='no') 'simulation type: '
+    write(id,'(a)') 'hydrogeophysics'
+  endif
+
+end subroutine HydrogeophysInputRecord
 
 ! ************************************************************************** !
 

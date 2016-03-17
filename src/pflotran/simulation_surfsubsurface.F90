@@ -27,6 +27,7 @@ module Simulation_Surf_Subsurf_class
   contains
     procedure, public :: Init => SurfSubsurfaceSimulationInit
     procedure, public :: InitializeRun => SurfSubsurfaceInitializeRun
+    procedure, public :: InputRecord => SurfSubsurfaceInputRecord
     procedure, public :: FinalizeRun => SurfSubsurfaceFinalizeRun
     procedure, public :: Strip => SurfSubsurfaceSimulationStrip
     procedure, public :: ExecuteRun => SurfSubsurfaceExecuteRun
@@ -35,6 +36,7 @@ module Simulation_Surf_Subsurf_class
 
   public :: SurfSubsurfaceSimulationCreate, &
             SurfSubsurfaceSimulationInit, &
+            SurfSubsurfaceInputRecord, &
             SurfSubsurfaceFinalizeRun, &
             SurfSubsurfaceSimulationStrip, &
             SurfSubsurfaceSimulationDestroy
@@ -139,6 +141,39 @@ subroutine SurfSubsurfaceInitializeRun(this)
   endif
 
 end subroutine SurfSubsurfaceInitializeRun
+
+! ************************************************************************** !
+
+subroutine SurfSubsurfaceInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  class(simulation_surfsubsurface_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = this%option%fid_inputrecord
+  if (OptionPrintToFile(this%option)) then
+    write(id,'(a)') ' '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') ' SIMULATION '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+  
+    write(id,'(a20)',advance='no') 'simulation type: '
+    write(id,'(a)') 'surface-subsurface'
+  endif
+
+end subroutine SurfSubsurfaceInputRecord
 
 ! ************************************************************************** !
 

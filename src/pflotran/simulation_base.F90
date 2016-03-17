@@ -28,6 +28,7 @@ module Simulation_Base_class
   contains
     procedure, public :: Init => SimulationBaseInit
     procedure, public :: InitializeRun => SimulationBaseInitializeRun
+    procedure, public :: InputRecord => SimulationInputRecord
     procedure, public :: JumpStart => SimulationBaseJumpStart
     procedure, public :: ExecuteRun
     procedure, public :: RunToTime
@@ -38,6 +39,7 @@ module Simulation_Base_class
   public :: SimulationBaseCreate, &
             SimulationBaseInit, &
             SimulationBaseInitializeRun, &
+            SimulationInputRecord, &
             SimulationGetFinalWaypointTime, &
             SimulationBaseFinalizeRun, &
             SimulationBaseStrip, &
@@ -156,6 +158,7 @@ subroutine SimulationBaseInitializeRun(this)
     call this%JumpStart()
   endif
   
+  call this%InputRecord()
   call printMsg(this%option," ")
   call printMsg(this%option,"  Finished Initialization")
   call PetscLogEventEnd(logging%event_init,ierr);CHKERRQ(ierr)
@@ -166,6 +169,31 @@ subroutine SimulationBaseInitializeRun(this)
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
   
 end subroutine SimulationBaseInitializeRun
+
+! ************************************************************************** !
+
+subroutine SimulationInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! This subroutine must be extended in the extended simulation objects.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+
+  implicit none
+  
+  class(simulation_base_type) :: this
+
+#ifdef DEBUG
+  call printMsg(this%option,'SimulationInputRecord()')
+#endif
+
+  this%option%io_buffer = 'SimulationInputRecord must be extended for ' // &
+    'each simulation mode.'
+  call printErrMsg(this%option)
+
+end subroutine SimulationInputRecord
 
 ! ************************************************************************** !
 

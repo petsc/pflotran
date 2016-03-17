@@ -47,6 +47,7 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: io_buffer
   
     PetscInt :: fid_out
+    PetscInt :: fid_inputrecord
     
     ! defines the mode (e.g. mph, richards, vadose, etc.
     character(len=MAXWORDLENGTH) :: flowmode
@@ -393,6 +394,7 @@ subroutine OptionInitRealization(option)
   
   
   option%fid_out = OUT_UNIT
+  option%fid_inputrecord = INPUT_RECORD_UNIT
 
   option%iflag = 0
   option%io_buffer = ''
