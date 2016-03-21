@@ -923,8 +923,9 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                 end select
               case default
                 string = GetSubConditionName(coupler%flow_condition%rate%itype)
-                option%io_buffer='Unknown source/sink of rate%itype = "' // &
-                  trim(adjustl(string))
+                option%io_buffer = &
+                  FlowConditionUnknownItype(coupler%flow_condition,'rate', &
+                                            string)
                 call printErrMsg(option)
             end select
           ! handles source/sinks in general mode
@@ -1150,8 +1151,11 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           dof1 = PETSC_TRUE
           coupler%flow_bc_type(GENERAL_LIQUID_EQUATION_INDEX) = DIRICHLET_BC
         case default
-          option%io_buffer = 'Unknown case (general%gas_pressure%itype,' // &
-            'TWO_PHASE_STATE)'
+          string = &
+            GetSubConditionName(general%gas_pressure%itype)
+          option%io_buffer = &
+            FlowConditionUnknownItype(coupler%flow_condition, &
+              'general two phase state gas pressure',string)
           call printErrMsg(option)
       end select
       ! in two-phase flow, air pressure is second dof
@@ -1171,8 +1175,11 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           dof3 = PETSC_TRUE
           coupler%flow_bc_type(GENERAL_ENERGY_EQUATION_INDEX) = DIRICHLET_BC
         case default
-          option%io_buffer = 'Unknown case (general%temperature%itype,' // &
-            'TWO_PHASE_STATE)'
+          string = &
+            GetSubConditionName(general%temperature%itype)
+          option%io_buffer = &
+            FlowConditionUnknownItype(coupler%flow_condition, &
+              'general two phase state temperature',string)
           call printErrMsg(option)
       end select
       ! in two-phase flow, gas saturation is third dof
@@ -1185,8 +1192,11 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           dof2 = PETSC_TRUE
           coupler%flow_bc_type(GENERAL_GAS_EQUATION_INDEX) = DIRICHLET_BC
         case default
-          option%io_buffer = 'Unknown case (general%gas_saturation%itype,' // &
-            'TWO_PHASE_STATE)'
+          string = &
+            GetSubConditionName(general%gas_saturation%itype)
+          option%io_buffer = &
+            FlowConditionUnknownItype(coupler%flow_condition, &
+              'general two phase state gas saturation',string)
           call printErrMsg(option)
       end select
     case(LIQUID_STATE)
@@ -1283,8 +1293,11 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
             end select
             coupler%flow_bc_type(GENERAL_LIQUID_EQUATION_INDEX) = DIRICHLET_BC
           case default
-            option%io_buffer = 'Unknown case (general%liquid_pressure%itype,' // &
-              'LIQUID_STATE)'
+            string = &
+              GetSubConditionName(general%liquid_pressure%itype)
+            option%io_buffer = &
+              FlowConditionUnknownItype(coupler%flow_condition, &
+                'general liquid state liquid pressure',string)
             call printErrMsg(option)
         end select
         real_count = real_count + 1
@@ -1296,8 +1309,11 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
             dof2 = PETSC_TRUE
             coupler%flow_bc_type(GENERAL_GAS_EQUATION_INDEX) = DIRICHLET_BC
           case default
-            option%io_buffer = 'Unknown case (general%mole_fraction%itype,' // &
-              'LIQUID_STATE)'
+            string = &
+              GetSubConditionName(general%mole_fraction%itype)
+            option%io_buffer = &
+              FlowConditionUnknownItype(coupler%flow_condition, &
+                'general liquid state mole fraction',string)
             call printErrMsg(option)
         end select
         real_count = real_count + 1
@@ -1321,8 +1337,11 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
             end select
             coupler%flow_bc_type(GENERAL_ENERGY_EQUATION_INDEX) = DIRICHLET_BC
           case default
-            option%io_buffer = 'Unknown case (general%temperature%itype,' // &
-              'LIQUID_STATE)'
+            string = &
+              GetSubConditionName(general%temperature%itype)
+            option%io_buffer = &
+              FlowConditionUnknownItype(coupler%flow_condition, &
+                'general liquid state temperature',string)
             call printErrMsg(option)
         end select
       endif
@@ -1339,8 +1358,11 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           dof1 = PETSC_TRUE
           coupler%flow_bc_type(GENERAL_GAS_EQUATION_INDEX) = DIRICHLET_BC
         case default
-          option%io_buffer = 'Unknown case (general%gas_pressure%itype,' // &
-            'GAS_STATE)'
+          string = &
+            GetSubConditionName(general%gas_pressure%itype)
+          option%io_buffer = &
+            FlowConditionUnknownItype(coupler%flow_condition, &
+              'general gas state gas pressure',string)
           call printErrMsg(option)
       end select
       real_count = real_count + 1
@@ -1353,8 +1375,11 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           dof3 = PETSC_TRUE
           coupler%flow_bc_type(GENERAL_ENERGY_EQUATION_INDEX) = DIRICHLET_BC
         case default
-          option%io_buffer = 'Unknown case (general%temperature%itype,' // &
-            'GAS_STATE)'
+          string = &
+            GetSubConditionName(general%temperature%itype)
+          option%io_buffer = &
+            FlowConditionUnknownItype(coupler%flow_condition, &
+              'general gas state temperature',string)
           call printErrMsg(option)
       end select
       real_count = real_count + 1
@@ -1381,8 +1406,11 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           dof2 = PETSC_TRUE
           coupler%flow_bc_type(GENERAL_LIQUID_EQUATION_INDEX) = DIRICHLET_BC
         case default
-          option%io_buffer = 'Unknown case (general%mole_fraction%itype,' // &
-            'GAS_STATE)'
+          string = &
+            GetSubConditionName(general%mole_fraction%itype)
+          option%io_buffer = &
+            FlowConditionUnknownItype(coupler%flow_condition, &
+              'general gas state mole fraction',string)
           call printErrMsg(option)
       end select                
     case(ANY_STATE)
@@ -1412,8 +1440,11 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
             end select
             coupler%flow_bc_type(GENERAL_ENERGY_EQUATION_INDEX) = DIRICHLET_BC
           case default
-            option%io_buffer = 'Unknown case (general%temperature%itype,' // &
-              'ANY_STATE)'
+            string = &
+              GetSubConditionName(general%temperature%itype)
+            option%io_buffer = &
+              FlowConditionUnknownItype(coupler%flow_condition, &
+                'general gas state temperature',string)
             call printErrMsg(option)
         end select
       endif
@@ -1490,6 +1521,7 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
   type(option_type) :: option
   
   type(flow_condition_type), pointer :: flow_condition
+  character(len=MAXSTRINGLENGTH) :: string
   !type(tran_condition_type), pointer :: tran_condition
 
   type(flow_toil_ims_condition_type), pointer :: toil_ims
@@ -1570,7 +1602,11 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
       !case(CONDUCTANCE_BC) !not implemented yet
       !case(SEEPAGE_BC) !not implemented yet
       case default
-        option%io_buffer = 'Unknown case (toil_ims%pressure%itype)' 
+        string = &
+          GetSubConditionName(toil_ims%pressure%itype)
+        option%io_buffer = &
+          FlowConditionUnknownItype(coupler%flow_condition, &
+            'toi_ims pressure',string)
         call printErrMsg(option)
     end select
 
@@ -1598,7 +1634,11 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
             call printErrMsg(option)
         end select
       case default
-        option%io_buffer = 'Unknown case (toil_ims%saturation%itype)' 
+        string = &
+          GetSubConditionName(toil_ims%saturation%itype)
+        option%io_buffer = &
+          FlowConditionUnknownItype(coupler%flow_condition, &
+            'toi_ims saturation',string)
         call printErrMsg(option)
     end select
  
@@ -1628,7 +1668,11 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
         end select
       ! to add here therma gradient option
       case default
-        option%io_buffer = 'Unknown case (toil_ims%temperature%itype)' 
+        string = &
+          GetSubConditionName(toil_ims%temperature%itype)
+        option%io_buffer = &
+          FlowConditionUnknownItype(coupler%flow_condition, &
+            'toi_ims temperature',string)      
         call printErrMsg(option)
     end select
 
@@ -2062,10 +2106,10 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
         ! Do nothing, since this BC type is only used for coupling of
         ! surface-subsurface model
       case default
-        string = GetSubConditionName(flow_condition%pressure%itype)
-        option%io_buffer='For TH mode: flow_condition%pressure%itype = "' // &
-          trim(adjustl(string)) // '", not implemented.'
-          write(*,*)  trim(string)
+        string = &
+          GetSubConditionName(flow_condition%pressure%itype)
+        option%io_buffer = &
+          FlowConditionUnknownItype(flow_condition,'TH pressure',string)
         call printErrMsg(option)
     end select
     if (associated(flow_condition%temperature)) then
@@ -2094,9 +2138,10 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                   flow_condition%temperature%dataset, &
                   num_connections,TH_TEMPERATURE_DOF,option)
         case default
-          string = GetSubConditionName(flow_condition%temperature%itype)
-          option%io_buffer='For TH mode: flow_condition%temperature%itype = "' // &
-            trim(adjustl(string)) // '", not implemented.'
+          string = &
+            GetSubConditionName(flow_condition%temperature%itype)
+          option%io_buffer = &
+            FlowConditionUnknownItype(flow_condition,'TH temperature',string)
           call printErrMsg(option)
       end select
     endif
@@ -2141,10 +2186,10 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                 flow_condition%temperature%dataset, &
                 num_connections,TH_TEMPERATURE_DOF,option)
       case default
-        write(string,*) flow_condition%temperature%itype
-        string = GetSubConditionName(flow_condition%temperature%itype)
-        option%io_buffer='For TH mode: flow_condition%temperature%itype = "' // &
-          trim(adjustl(string)) // '", not implemented.'
+        string = &
+          GetSubConditionName(flow_condition%temperature%itype)
+        option%io_buffer = &
+          FlowConditionUnknownItype(flow_condition,'TH temperature',string)      
         call printErrMsg(option)
     end select
   endif
@@ -2167,10 +2212,10 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
             call printErrMsg(option)
         end select
       case default
-        write(string,*) flow_condition%energy_flux%itype
-        string = GetSubConditionName(flow_condition%energy_flux%itype)
-        option%io_buffer='For TH mode: flow_condition%energy_flux%itype = "' // &
-          trim(adjustl(string)) // '", not implemented.'
+        string = &
+          GetSubConditionName(flow_condition%energy_flux%itype)
+        option%io_buffer = &
+          FlowConditionUnknownItype(flow_condition,'TH energy flux',string)      
         call printErrMsg(option)
     end select
   endif
@@ -2191,10 +2236,10 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
       case(MASS_RATE_SS,VOLUMETRIC_RATE_SS)
       ! do nothing here
       case default
-        write(string,*) flow_condition%rate%itype
-        string = GetSubConditionName(flow_condition%rate%itype)
-        option%io_buffer='For TH mode: flow_condition%rate%itype = "' // &
-          trim(adjustl(string)) // '", not implemented.'
+        string = &
+          GetSubConditionName(flow_condition%rate%itype)
+        option%io_buffer = &
+          FlowConditionUnknownItype(flow_condition,'TH rate',string)      
         call printErrMsg(option)
     end select
   endif
@@ -2222,10 +2267,10 @@ subroutine PatchUpdateCouplerAuxVarsTH(patch,coupler,option)
                 flow_condition%energy_rate%dataset, &
                 num_connections,TH_TEMPERATURE_DOF,option)
       case default
-        string = GetSubConditionName(flow_condition%energy_rate%itype)
-        option%io_buffer='For TH mode: flow_condition%energy_rate%itype = "' // &
-          trim(adjustl(string)) // '", not implemented.'
-          write(*,*)  trim(string)
+        string = &
+          GetSubConditionName(flow_condition%energy_rate%itype)
+        option%io_buffer = &
+          FlowConditionUnknownItype(flow_condition,'TH energy rate',string)      
         call printErrMsg(option)
     end select
   endif
