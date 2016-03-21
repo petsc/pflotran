@@ -186,9 +186,7 @@ subroutine PMCBaseInputRecord(this)
   cur_pm => this%pm_list
   do ! loop through this pmc's process models
     if (.not.associated(cur_pm)) exit
-    !call cur_pm%inputrecord
-    write(id,'(a29)',advance='no') 'pm: '
-    write(id,'(a)') cur_pm%name
+    call cur_pm%inputrecord
     cur_pm => cur_pm%next
   enddo
 

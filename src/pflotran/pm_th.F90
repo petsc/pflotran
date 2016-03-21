@@ -40,6 +40,7 @@ module PM_TH_class
     procedure, public :: UpdateAuxVars => PMTHUpdateAuxVars
     procedure, public :: MaxChange => PMTHMaxChange
     procedure, public :: ComputeMassBalance => PMTHComputeMassBalance
+    procedure, public :: InputRecord => PMTHInputRecord
     procedure, public :: Destroy => PMTHDestroy
   end type pm_th_type
   
@@ -740,6 +741,30 @@ subroutine PMTHComputeMassBalance(this,mass_balance_array)
   call THComputeMassBalance(this%realization,mass_balance_array)
 
 end subroutine PMTHComputeMassBalance
+
+! ************************************************************************** !
+
+subroutine PMTHInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_th_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMTHInputRecord
 
 ! ************************************************************************** !
 

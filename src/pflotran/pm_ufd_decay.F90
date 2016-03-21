@@ -48,6 +48,7 @@ module PM_UFD_Decay_class
 !    procedure, public :: UpdateAuxvars => PMUFDDecayUpdateAuxvars
 !    procedure, public :: Checkpoint => PMUFDDecayCheckpoint    
 !    procedure, public :: Restart => PMUFDDecayRestart  
+    procedure, public :: InputRecord => PMUFDDecayInputRecord
     procedure, public :: Destroy => PMUFDDecayDestroy
   end type pm_ufd_decay_type
   
@@ -988,6 +989,30 @@ recursive subroutine PMUFDDecayFinalizeRun(this)
   endif  
   
 end subroutine PMUFDDecayFinalizeRun
+
+! ************************************************************************** !
+
+subroutine PMUFDDecayInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_ufd_decay_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMUFDDecayInputRecord
 
 ! ************************************************************************** !
 

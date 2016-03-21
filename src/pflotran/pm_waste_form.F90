@@ -96,6 +96,7 @@ module PM_Waste_Form_class
     procedure, public :: Solve => PMGlassSolve
     procedure, public :: Checkpoint => PMGlassCheckpoint    
     procedure, public :: Restart => PMGlassRestart  
+    procedure, public :: InputRecord => PMWFGlassInputRecord
     procedure, public :: Destroy => PMGlassDestroy
   end type pm_waste_form_glass_type
   
@@ -135,6 +136,7 @@ module PM_Waste_Form_class
 !    procedure, public :: TimeCut => PMFMDMTimeCut
 !    procedure, public :: UpdateSolution => PMFMDMUpdateSolution
 !    procedure, public :: UpdateAuxVars => PMFMDMUpdateAuxVars
+    procedure, public :: InputRecord => PMFMDMInputRecord
     procedure, public :: Destroy => PMFMDMDestroy
   end type pm_waste_form_fmdm_type
   
@@ -1786,6 +1788,30 @@ end subroutine PMGlassFinalizeRun
 
 ! ************************************************************************** !
 
+subroutine PMWFGlassInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_waste_form_glass_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMWFGlassInputRecord
+
+! ************************************************************************** !
+
 subroutine PMGlassStrip(this)
   ! 
   ! Strips Glass process model
@@ -2437,6 +2463,30 @@ recursive subroutine PMFMDMFinalizeRun(this)
   endif  
   
 end subroutine PMFMDMFinalizeRun
+
+! ************************************************************************** !
+
+subroutine PMFMDMInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_waste_form_fmdm_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMFMDMInputRecord
 
 ! ************************************************************************** !
 

@@ -36,6 +36,7 @@ module PM_Surface_class
     procedure, public :: CheckpointBinary => PMSurfaceCheckpointBinary
     procedure, public :: RestartBinary => PMSurfaceRestartBinary
     procedure, public :: UpdateAuxvars => PMSurfaceUpdateAuxvars
+    procedure, public :: InputRecord => PMSurfaceInputRecord
   end type pm_surface_type
 
   public :: PMSurfaceCreate, &
@@ -348,6 +349,30 @@ recursive subroutine PMSurfaceFinalizeRun(this)
   endif
 
 end subroutine PMSurfaceFinalizeRun
+
+! ************************************************************************** !
+
+subroutine PMSurfaceInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_surface_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMSurfaceInputRecord
 
 ! ************************************************************************** !
 

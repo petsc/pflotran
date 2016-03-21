@@ -35,6 +35,7 @@ module PM_Immis_class
     procedure, public :: UpdateAuxVars => PMImmisUpdateAuxVars
     procedure, public :: MaxChange => PMImmisMaxChange
     procedure, public :: ComputeMassBalance => PMImmisComputeMassBalance
+    procedure, public :: InputRecord => PMImmisInputRecord
     procedure, public :: Destroy => PMImmisDestroy
   end type pm_immis_type
   
@@ -462,6 +463,30 @@ recursive subroutine PMImmisFinalizeRun(this)
   endif  
   
 end subroutine PMImmisFinalizeRun
+
+! ************************************************************************** !
+
+subroutine PMImmisInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_immis_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMImmisInputRecord
 
 ! ************************************************************************** !
 
