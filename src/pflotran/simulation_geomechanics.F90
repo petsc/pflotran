@@ -35,7 +35,6 @@ module Simulation_Geomechanics_class
   end type simulation_geomechanics_type
   
   public :: GeomechanicsSimulationCreate, &
-            GeomechanicsSimInputRecord, &
             GeomechanicsSimulationDestroy
   
 contains

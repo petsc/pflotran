@@ -36,7 +36,6 @@ module Simulation_Surf_Subsurf_class
 
   public :: SurfSubsurfaceSimulationCreate, &
             SurfSubsurfaceSimulationInit, &
-            SurfSubsurfaceInputRecord, &
             SurfSubsurfaceFinalizeRun, &
             SurfSubsurfaceSimulationStrip, &
             SurfSubsurfaceSimulationDestroy
@@ -156,6 +155,7 @@ subroutine SurfSubsurfaceInputRecord(this)
   implicit none
   
   class(simulation_surfsubsurface_type) :: this
+  class(pmc_base_type), pointer :: master_pmc, cur_pmc
 
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: id
@@ -169,8 +169,14 @@ subroutine SurfSubsurfaceInputRecord(this)
     write(id,'(a)') '---------------------------------------------------------&
                     &-----------------------'
   
-    write(id,'(a20)',advance='no') 'simulation type: '
+    write(id,'(a25)',advance='no') 'simulation type: '
     write(id,'(a)') 'surface-subsurface'
+
+    if (associated(this%process_model_coupler_list)) then
+      master_pmc => this%process_model_coupler_list
+      write(id,'(a25)',advance='no') 'master process model coupler: '
+      write(id,'(a)') master_pmc%name
+    endif
   endif
 
 end subroutine SurfSubsurfaceInputRecord

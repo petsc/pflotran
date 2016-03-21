@@ -38,7 +38,6 @@ module Simulation_Subsurface_class
   
   public :: SubsurfaceSimulationCreate, &
             SubsurfaceSimulationInit, &
-            SubsurfaceSimInputRecord, &
             SubsurfaceFinalizeRun, &
             SubsurfaceSimulationStrip, &
             SubsurfaceSimulationDestroy
@@ -108,16 +107,22 @@ subroutine SubsurfaceSimInputRecord(this)
   ! Date: 03/17/2016
   ! 
   use Option_module
+  use Timestepper_Base_class
+  use PM_Base_class
+  use PMC_Base_class
   
   implicit none
   
   class(simulation_subsurface_type) :: this
+  class(pmc_base_type), pointer :: cur_pmc, cur_pmc_peer
+  class(pm_base_type), pointer :: cur_pm
 
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: id
 
   id = this%option%fid_inputrecord
   if (OptionPrintToFile(this%option)) then
+  !----------------------------------------------------------------------------
     write(id,'(a)') ' '
     write(id,'(a)') '---------------------------------------------------------&
                     &-----------------------'
@@ -125,8 +130,66 @@ subroutine SubsurfaceSimInputRecord(this)
     write(id,'(a)') '---------------------------------------------------------&
                     &-----------------------'
   
-    write(id,'(a20)',advance='no') 'simulation type: '
+    write(id,'(a29)',advance='no') 'simulation type: '
     write(id,'(a)') 'subsurface'
+
+    call this%process_model_coupler_list%inputrecord
+
+    !cur_pmc => this%process_model_coupler_list
+    !do ! loop through pmc's children
+    !  if (.not.associated(cur_pmc)) exit
+    !  call cur_pmc%inputrecord
+    !  write(id,'(a)') ' '
+    !  write(id,'(a29)',advance='no') 'pmc: '
+    !  write(id,'(a)') cur_pmc%name
+    !  if (associated(cur_pmc%timestepper)) then
+    !    write(id,'(a29)',advance='no') 'pmc timestepper: '
+    !    write(id,'(a)') cur_pmc%timestepper%name
+    !    call cur_pmc%timestepper%inputrecord
+    !  endif
+    !  cur_pm => cur_pmc%pm_list
+    !  do ! loop through pm's
+    !    if (.not.associated(cur_pm)) exit
+    !    write(id,'(a29)',advance='no') 'pm: '
+    !    write(id,'(a)') cur_pm%name
+    !    cur_pm => cur_pm%next
+    !  enddo
+    !  cur_pmc => cur_pmc%child
+    !enddo
+
+    !cur_pmc => this%process_model_coupler_list
+    !do ! loop through pmc's peers 
+    !  if (.not.associated(cur_pmc)) exit
+    !  cur_pmc_peer => cur_pmc%peer
+    !  do
+    !    if (.not.associated(cur_pmc_peer)) exit
+    !    write(id,'(a)') ' '
+    !    write(id,'(a29)',advance='no') 'pmc: '
+    !    write(id,'(a)') cur_pmc_peer%name // ', peer of ' // cur_pmc%name 
+    !    if (associated(cur_pmc_peer%timestepper)) then
+    !      write(id,'(a29)',advance='no') 'pmc timestepper: '
+    !      write(id,'(a)') cur_pmc_peer%timestepper%name
+    !      call cur_pmc_peer%timestepper%inputrecord
+    !    endif
+    !    cur_pm => cur_pmc_peer%pm_list
+    !    do ! loop through pm's
+    !      if (.not.associated(cur_pm)) exit
+    !      write(id,'(a29)',advance='no') 'pm: '
+    !      write(id,'(a)') cur_pm%name
+    !      cur_pm => cur_pm%next
+    !    enddo
+    !    cur_pmc_peer => cur_pmc_peer%peer
+    !  enddo
+    !  cur_pmc =>cur_pmc%child
+    !enddo
+
+    write(id,'(a)') ' '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') ' REALIZATION '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+  !----------------------------------------------------------------------------
   endif
 
 end subroutine SubsurfaceSimInputRecord

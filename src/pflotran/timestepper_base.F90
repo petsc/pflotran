@@ -69,6 +69,7 @@ module Timestepper_Base_class
     procedure, public :: Reset => TimestepperBaseReset
     procedure, public :: WallClockStop => TimestepperBaseWallClockStop
     procedure, public :: PrintInfo => TimestepperBasePrintInfo
+    procedure, public :: InputRecord => TimestepperBaseInputRecord
     procedure, public :: FinalizeRun => TimestepperBaseFinalizeRun
     procedure, public :: Strip => TimestepperBaseStrip
     procedure, public :: Destroy => TimestepperBaseDestroy
@@ -94,7 +95,8 @@ module Timestepper_Base_class
             TimestepperBaseGetHeader, &
             TimestepperBaseReset, &
             TimestepperBaseRegisterHeader, &
-            TimestepperBasePrintInfo
+            TimestepperBasePrintInfo, &
+            TimestepperBaseInputRecord
 
 contains
 
@@ -591,6 +593,30 @@ subroutine TimestepperBasePrintInfo(this,option)
   endif    
 
 end subroutine TimestepperBasePrintInfo
+
+! ************************************************************************** !
+
+subroutine TimestepperBaseInputRecord(this)
+  ! 
+  ! Prints information about the time stepper to the input record.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+  
+  implicit none
+  
+  class(timestepper_base_type) :: this
+
+#ifdef DEBUG
+  call printMsg(this%option,'TimestepperBaseInputRecord()')
+#endif
+
+  write(*,*) 'TimestepperBaseInputRecord must be extended for &
+             &each timestepper mode.'
+  stop
+
+end subroutine TimestepperBaseInputRecord
 
 ! ************************************************************************** !
 

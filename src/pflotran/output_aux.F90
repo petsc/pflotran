@@ -700,14 +700,14 @@ subroutine OpenAndWriteInputRecord(option)
     write(id,'(a)') '---------------------------------------------------------&
                     &-----------------------'
   
-    write(id,'(a15)',advance='no') 'input file: '  
+    write(id,'(a18)',advance='no') 'input file: '  
     write(id,*) trim(option%global_prefix) // '.in' 
     
-    write(id,'(a15)',advance='no') 'group: ' 
+    write(id,'(a18)',advance='no') 'group: ' 
     write(id,*) trim(option%group_prefix)
   
     write(word,*) option%global_commsize
-    write(id,'(a15)',advance='no') 'n processors: ' 
+    write(id,'(a18)',advance='no') 'n processors: ' 
     write(id,*) trim(adjustl(word))
   endif
 

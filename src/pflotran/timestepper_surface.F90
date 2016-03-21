@@ -22,6 +22,7 @@ module Timestepper_Surface_class
     procedure, public :: RestartBinary => TimestepperSurfaceRestartBinary
     procedure, public :: Reset => TimestepperSurfaceReset
     procedure, public :: SetTargetTime => TimestepperSurfaceSetTargetTime
+    procedure, public :: InputRecord => TimestepperSurfInputRecord
     procedure, public :: Strip => TimestepperSurfaceStrip
     procedure, public :: StepDT => TimestepperSurfaceStepDT
   end type timestepper_surface_type
@@ -472,6 +473,35 @@ subroutine TimestepperSurfacePrintInfo(this,option)
   call SolverPrintLinearInfo(this%solver,this%name,option)
   
 end subroutine TimestepperSurfacePrintInfo
+
+! ************************************************************************** !
+
+subroutine TimestepperSurfInputRecord(this)
+  ! 
+  ! Prints information about the time stepper to the input record.
+  ! To get a## format, must match that in simulation types.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+  
+  implicit none
+  
+  class(timestepper_surface_type) :: this
+
+  PetscInt :: id
+  character(len=MAXWORDLENGTH) :: word
+   
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pmc timestepper: '
+  write(id,'(a)') this%name
+
+  write(id,'(a29)',advance='no') 'max timestep size: '
+  write(word,*) this%dt_max_allowable
+  write(id,'(a)') trim(adjustl(word)) // ' sec'
+
+end subroutine TimestepperSurfInputRecord
 
 ! ************************************************************************** !
 

@@ -48,7 +48,6 @@ module Simulation_Hydrogeophysics_class
   end type simulation_hydrogeophysics_type
   
   public :: HydrogeophysicsCreate, &
-            HydrogeophysInputRecord, &
             HydrogeophysicsDestroy
   
 contains
