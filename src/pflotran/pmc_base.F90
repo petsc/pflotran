@@ -178,6 +178,8 @@ subroutine PMCBaseInputRecord(this)
 
   ! print information about self
   write(id,'(a)') ' '
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') ' '
   write(id,'(a29)',advance='no') 'pmc: '
   write(id,'(a)') this%name
   if (associated(this%timestepper)) then

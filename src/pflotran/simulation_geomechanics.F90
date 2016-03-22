@@ -122,27 +122,16 @@ subroutine GeomechanicsSimInputRecord(this)
   ! Author: Jenn Frederick, SNL
   ! Date: 03/17/2016
   ! 
-  use Option_module
   
   implicit none
   
   class(simulation_geomechanics_type) :: this
 
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: id
-
-  id = this%option%fid_inputrecord
-  if (OptionPrintToFile(this%option)) then
-    write(id,'(a)') ' '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
-    write(id,'(a)') ' SIMULATION '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
-  
-    write(id,'(a20)',advance='no') 'simulation type: '
-    write(id,'(a)') 'geomechanics'
-  endif
+  PetscInt :: id = INPUT_RECORD_UNIT
+ 
+  write(id,'(a29)',advance='no') 'simulation type: '
+  write(id,'(a)') 'geomechanics'
 
 end subroutine GeomechanicsSimInputRecord
 

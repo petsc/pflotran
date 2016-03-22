@@ -106,43 +106,16 @@ subroutine SubsurfaceSimInputRecord(this)
   ! Author: Jenn Frederick, SNL
   ! Date: 03/17/2016
   ! 
-  use Option_module
-  use Timestepper_Base_class
-  use PM_Base_class
-  use PMC_Base_class
   
   implicit none
   
   class(simulation_subsurface_type) :: this
-  class(pmc_base_type), pointer :: cur_pmc, cur_pmc_peer
-  class(pm_base_type), pointer :: cur_pm
 
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: id
-
-  id = this%option%fid_inputrecord
-  if (OptionPrintToFile(this%option)) then
-  !----------------------------------------------------------------------------
-    write(id,'(a)') ' '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
-    write(id,'(a)') ' SIMULATION '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
-  
-    write(id,'(a29)',advance='no') 'simulation type: '
-    write(id,'(a)') 'subsurface'
-
-    call this%process_model_coupler_list%inputrecord
-
-    write(id,'(a)') ' '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
-    write(id,'(a)') ' REALIZATION '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
-  !----------------------------------------------------------------------------
-  endif
+  PetscInt :: id = INPUT_RECORD_UNIT
+ 
+  write(id,'(a29)',advance='no') 'simulation type: '
+  write(id,'(a)') 'subsurface'
 
 end subroutine SubsurfaceSimInputRecord
 

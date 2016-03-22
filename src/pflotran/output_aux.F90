@@ -248,7 +248,8 @@ function CheckpointOptionCreate()
   checkpoint_option%tunit = ''
   checkpoint_option%tconv = 0.d0
   checkpoint_option%periodic_time_incr = UNINITIALIZED_DOUBLE
-  checkpoint_option%periodic_ts_incr = huge(checkpoint_option%periodic_ts_incr)
+  checkpoint_option%periodic_ts_incr = 0.d0
+  !checkpoint_option%periodic_ts_incr = huge(checkpoint_option%periodic_ts_incr)
   checkpoint_option%format = CHECKPOINT_BINARY
 
   CheckpointOptionCreate => checkpoint_option

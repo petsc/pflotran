@@ -70,6 +70,7 @@ module Checkpoint_module
             CheckPointReadCompatibilityHDF5, &
 #endif
             CheckpointPeriodicTimeWaypoints, &
+            CheckpointInputRecord, &
             CheckpointRead
 
 contains
@@ -1649,5 +1650,77 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
 
 end subroutine CheckpointPeriodicTimeWaypoints
   
+! ************************************************************************** !
+
+subroutine CheckpointInputRecord(checkpoint_option,waypoint_list)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  !  
+  use Output_Aux_module
+  use Waypoint_module
+
+  implicit none
+
+  type(checkpoint_option_type), pointer :: checkpoint_option
+  type(waypoint_list_type), pointer :: waypoint_list
+  
+  type(waypoint_type), pointer :: cur_waypoint
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscBool :: checkpoints_found
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  write(id,'(a)') ' '
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'CHECKPOINTS'
+
+  write(id,'(a29)',advance='no') 'periodic timestep: '
+  if (checkpoint_option%periodic_ts_incr == 0) then
+    write(id,'(a)') 'OFF'
+  else
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'timestep increment: '
+    write(word,*) checkpoint_option%periodic_ts_incr
+    write(id,'(a)') adjustl(trim(word))
+  endif
+
+  write(id,'(a29)',advance='no') 'periodic time: '
+  if (checkpoint_option%periodic_time_incr <= 0) then
+    write(id,'(a)') 'OFF'
+  else
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'time increment: '
+    write(word,*) checkpoint_option%periodic_time_incr * &
+                  checkpoint_option%tconv
+    write(id,'(a)') adjustl(trim(word)) // &
+                    adjustl(trim(checkpoint_option%tunit))
+  endif
+
+  string = ''
+  checkpoints_found = PETSC_FALSE
+  write(id,'(a29)',advance='no') 'specific times: '
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%print_checkpoint) then
+      checkpoints_found = PETSC_TRUE
+      write(word,*) cur_waypoint%time*checkpoint_option%tconv
+      string = trim(string) // adjustl(trim(word)) // ','
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+  if (checkpoints_found) then
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'times (' // &
+                                    trim(checkpoint_option%tunit) // '): '
+    write(id,'(a)') trim(string)
+  else
+    write(id,'(a)') 'OFF'
+  endif
+  
+end subroutine CheckpointInputRecord
 
 end module Checkpoint_module

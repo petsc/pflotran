@@ -39,6 +39,7 @@ module Simulation_Base_class
   public :: SimulationBaseCreate, &
             SimulationBaseInit, &
             SimulationBaseInitializeRun, &
+            SimulationInputRecordPrint, &
             SimulationInputRecord, &
             SimulationGetFinalWaypointTime, &
             SimulationBaseFinalizeRun, &
@@ -158,7 +159,7 @@ subroutine SimulationBaseInitializeRun(this)
     call this%JumpStart()
   endif
   
-  call this%InputRecord()
+  call SimulationInputRecordPrint(this)
   call printMsg(this%option," ")
   call printMsg(this%option,"  Finished Initialization")
   call PetscLogEventEnd(logging%event_init,ierr);CHKERRQ(ierr)
@@ -169,6 +170,51 @@ subroutine SimulationBaseInitializeRun(this)
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
   
 end subroutine SimulationBaseInitializeRun
+
+! ************************************************************************** !
+
+subroutine SimulationInputRecordPrint(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+  use Checkpoint_module
+
+  implicit none
+  
+  class(simulation_base_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  if (OptionPrintToFile(this%option)) then
+  !----------------------------------------------------------------------------
+    write(id,'(a)') ' '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') ' SIMULATION '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+  
+    ! print simulation-specific information
+    call this%InputRecord()
+    ! print checkpoint information
+    call CheckpointInputRecord(this%checkpoint_option,this%waypoint_list_outer)
+    ! print process model coupler and process model information
+    call this%process_model_coupler_list%InputRecord()
+
+    write(id,'(a)') ' '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') ' REALIZATION '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+  !----------------------------------------------------------------------------
+  endif
+
+end subroutine SimulationInputRecordPrint
 
 ! ************************************************************************** !
 

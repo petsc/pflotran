@@ -150,34 +150,16 @@ subroutine SurfSubsurfaceInputRecord(this)
   ! Author: Jenn Frederick, SNL
   ! Date: 03/17/2016
   ! 
-  use Option_module
-  
+
   implicit none
   
   class(simulation_surfsubsurface_type) :: this
-  class(pmc_base_type), pointer :: master_pmc, cur_pmc
-
-  character(len=MAXWORDLENGTH) :: word
-  PetscInt :: id
-
-  id = this%option%fid_inputrecord
-  if (OptionPrintToFile(this%option)) then
-    write(id,'(a)') ' '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
-    write(id,'(a)') ' SIMULATION '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
   
-    write(id,'(a25)',advance='no') 'simulation type: '
-    write(id,'(a)') 'surface-subsurface'
-
-    if (associated(this%process_model_coupler_list)) then
-      master_pmc => this%process_model_coupler_list
-      write(id,'(a25)',advance='no') 'master process model coupler: '
-      write(id,'(a)') master_pmc%name
-    endif
-  endif
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id = INPUT_RECORD_UNIT
+ 
+  write(id,'(a29)',advance='no') 'simulation type: '
+  write(id,'(a)') 'surface-subsurface'
 
 end subroutine SurfSubsurfaceInputRecord
 
