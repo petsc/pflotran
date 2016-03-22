@@ -269,23 +269,24 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   
   ! SubsurfaceInitSimulation() must be called after pmc linkages are set above.
   call SubsurfaceInitSimulation(simulation)
-
+  
+  ! create sync waypoint list to be used a few lines below
+  sync_waypoint_list => &
+    WaypointCreateSyncWaypointList(simulation%waypoint_list_subsurface)
+  ! merge in outer waypoints (e.g. checkpoint times)
+  call WaypointListCopyAndMerge(simulation%waypoint_list_subsurface, &
+                                simulation%waypoint_list_outer,option)
+  ! add sync waypoints into outer list
+  call WaypointListMerge(simulation%waypoint_list_outer,sync_waypoint_list, &
+                         option)
+  ! add in periodic time waypoints for checkpointing. these will not appear
+  ! in the outer list
+  call CheckpointPeriodicTimeWaypoints(simulation%checkpoint_option, &
+                                       simulation%waypoint_list_subsurface)
+ 
   ! clean up waypoints
   if (.not.option%steady_state) then
-    ! create sync waypoint list to be used a few lines below
-    sync_waypoint_list => &
-      WaypointCreateSyncWaypointList(simulation%waypoint_list_subsurface)
-    ! merge in outer waypoints (e.g. checkpoint times)
-    call WaypointListCopyAndMerge(simulation%waypoint_list_subsurface, &
-                                  simulation%waypoint_list_outer,option)
-    ! add sync waypoints into outer list
-    call WaypointListMerge(simulation%waypoint_list_outer,sync_waypoint_list, &
-                           option)
-    ! add in periodic time waypoints for checkpointing. these will not appear
-    ! in the outer list
-    call CheckpointPeriodicTimeWaypoints(simulation%checkpoint_option, &
-                                         simulation%waypoint_list_subsurface)
-    ! fill in holes in waypoint data
+   ! fill in holes in waypoint data
     call WaypointListFillIn(simulation%waypoint_list_subsurface,option)
     call WaypointListRemoveExtraWaypnts(simulation%waypoint_list_subsurface, &
                                         option)
