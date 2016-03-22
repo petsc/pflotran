@@ -157,7 +157,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     endif
  
     call GeomechInitSetupRealization(simulation)
-    call InitCommonAddOutputWaypoints(simulation%output_option, &
+    call InitCommonAddOutputWaypoints(option,simulation%output_option, &
                                       simulation%waypoint_list_geomechanics)    
     call GeomechInitSetupSolvers(geomech_realization,subsurf_realization, &
                                  timestepper%convergence_context, &

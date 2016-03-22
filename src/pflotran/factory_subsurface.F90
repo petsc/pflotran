@@ -774,7 +774,7 @@ subroutine SubsurfaceInitSimulation(simulation)
 
 ! begin from old Init()  
   call SubsurfaceSetupRealization(simulation)
-  call InitCommonAddOutputWaypoints(simulation%output_option, &
+  call InitCommonAddOutputWaypoints(option,simulation%output_option, &
                                     simulation%waypoint_list_subsurface)
   
   !TODO(geh): refactor

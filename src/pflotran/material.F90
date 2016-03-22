@@ -282,25 +282,48 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('SPECIFIC_HEAT','HEAT_CAPACITY') 
         call InputReadDouble(input,option,material_property%specific_heat)
         call InputErrorMsg(input,option,'specific heat','MATERIAL_PROPERTY')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'J/kg-C'
+          material_property%specific_heat = material_property%specific_heat * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('LONGITUDINAL_DISPERSIVITY') 
         call InputReadDouble(input,option,material_property%dispersivity(1))
-        call InputErrorMsg(input,option,'longitudinal_dispersivity','MATERIAL_PROPERTY')
+        call InputErrorMsg(input,option,'longitudinal_dispersivity', &
+                           'MATERIAL_PROPERTY')
       case('TRANSVERSE_DISPERSIVITY_H') 
         call InputReadDouble(input,option,material_property%dispersivity(2))
-        call InputErrorMsg(input,option,'transverse_dispersivity_h','MATERIAL_PROPERTY')
+        call InputErrorMsg(input,option,'transverse_dispersivity_h', &
+                           'MATERIAL_PROPERTY')
       case('TRANSVERSE_DISPERSIVITY_V') 
         call InputReadDouble(input,option,material_property%dispersivity(3))
-        call InputErrorMsg(input,option,'transverse_dispersivity_v','MATERIAL_PROPERTY')
+        call InputErrorMsg(input,option,'transverse_dispersivity_v', &
+                           'MATERIAL_PROPERTY')
       case('THERMAL_CONDUCTIVITY_DRY') 
         call InputReadDouble(input,option, &
                              material_property%thermal_conductivity_dry)
         call InputErrorMsg(input,option,'dry thermal conductivity', &
                            'MATERIAL_PROPERTY')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'W/m-C'
+          material_property%thermal_conductivity_dry = &
+            material_property%thermal_conductivity_dry * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('THERMAL_CONDUCTIVITY_WET') 
         call InputReadDouble(input,option, &
                              material_property%thermal_conductivity_wet)
         call InputErrorMsg(input,option,'wet thermal conductivity', &
                            'MATERIAL_PROPERTY')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'W/m-C'
+          material_property%thermal_conductivity_wet = &
+            material_property%thermal_conductivity_wet * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('THERMAL_COND_EXPONENT') 
         call InputReadDouble(input,option, &
                              material_property%alpha)
@@ -312,11 +335,19 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%thermal_conductivity_frozen)
         call InputErrorMsg(input,option,'frozen thermal conductivity', &
                            'MATERIAL_PROPERTY')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'W/m-C'
+          material_property%thermal_conductivity_frozen = &
+            material_property%thermal_conductivity_frozen * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('THERMAL_COND_EXPONENT_FROZEN') 
         therm_k_exp_frz = PETSC_TRUE
         call InputReadDouble(input,option, &
                              material_property%alpha_fr)
-        call InputErrorMsg(input,option,'thermal conductivity frozen exponent', &
+        call InputErrorMsg(input,option, &
+                           'thermal conductivity frozen exponent', &
                            'MATERIAL_PROPERTY')
       !case('PORE_COMPRESSIBILITY')
       !  call InputReadDouble(input,option, &
@@ -385,7 +416,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
               material_property%isotropic_permeability = PETSC_TRUE
             case('PERMEABILITY_SCALING_FACTOR')
               call InputReadDouble(input,option, &
-                                   material_property%permeability_scaling_factor)
+                                  material_property%permeability_scaling_factor)
               call InputErrorMsg(input,option,'permeability scaling factor', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')
             case('PERM_X')

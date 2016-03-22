@@ -73,7 +73,8 @@ module Utility_module
             Transposer, &
             Determinant, &
             InterfaceApproxWithDeriv, &
-            InterfaceApproxWithoutDeriv
+            InterfaceApproxWithoutDeriv, &
+            PrintProgressBarInt
             
 contains
 
@@ -1969,5 +1970,48 @@ subroutine InterfaceApproxWithoutDeriv(v_up, v_dn, dv_up2dn, &
                                 approx_type, v_interf, dummy_out, dummy_out)
 
 end subroutine InterfaceApproxWithoutDeriv
+
+! ************************************************************************** !
+
+subroutine PrintProgressBarInt(max,increment,current)
+  ! 
+  ! Prints a piece of a progress bar to the screen based on the maximum
+  ! value, the increment of progress (must be given in percent), and the
+  ! current value.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/16/2016
+  ! 
+
+  implicit none
+  
+  PetscInt :: max
+  PetscInt :: increment
+  PetscInt :: current
+
+  PetscInt :: g, j, chunk
+  character(len=MAXWORDLENGTH) :: percent_num
+
+  if (max < increment) then
+    max = max*(increment/max)
+    current = current*(increment/max)
+  endif
+
+  chunk = floor(max*(increment/100.0))
+
+  if (mod(current,chunk) == 0) then
+    j = current/chunk
+    g = 0
+    do while(g < (100))
+      g = g + increment
+      if (g/increment == j) then
+        write(percent_num,*) g
+        write(*,'(a4)',advance='no') trim(adjustl(percent_num)) // '%-'
+        if (g == 100) write(*,*) '  Done.'
+      endif
+    enddo   
+  endif
+
+end subroutine PrintProgressBarInt
 
 end module Utility_module

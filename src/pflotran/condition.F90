@@ -142,7 +142,8 @@ module Condition_module
             TranConditionUpdate, &
             FlowConditionIsTransient, &
             ConditionReadValues, &
-            GetSubConditionName
+            GetSubConditionName, &
+            FlowConditionUnknownItype
     
 contains
 
@@ -3396,6 +3397,29 @@ function FlowSubConditionIsTransient(sub_condition)
   
 end function FlowSubConditionIsTransient
 
+! ************************************************************************** !
+
+function FlowConditionUnknownItype(condition,message,type_name)
+  ! 
+  ! Returns a string indicating which flow condition has a wrong type.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/21/16
+  ! 
+  implicit none
+  
+  type(flow_condition_type) :: condition
+  character(len=*) :: message
+  character(len=*) :: type_name
+  
+  character(len=MAXSTRINGLENGTH) :: FlowConditionUnknownItype
+
+  FlowConditionUnknownItype = 'Unknown TYPE (' // trim(type_name) // &
+    ') for ' // trim(message) // ' within FLOW_CONDITION "' // &
+    trim(condition%name) // '".'
+  
+end function FlowConditionUnknownItype
+  
 ! ************************************************************************** !
 
 subroutine FlowConditionDestroyList(condition_list)

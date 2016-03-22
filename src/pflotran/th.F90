@@ -134,11 +134,12 @@ subroutine THSetupPatch(realization)
   type(fluid_property_type), pointer :: cur_fluid_property
   type(sec_heat_type), pointer :: TH_sec_heat_vars(:)
   type(coupler_type), pointer :: initial_condition
+  character(len=MAXWORDLENGTH) :: word
   PetscReal :: area_per_vol
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: i, iphase, local_id, material_id
-  
+  PetscBool :: error_found
   
   option => realization%option
   patch => realization%patch
@@ -165,27 +166,76 @@ subroutine THSetupPatch(realization)
   endif
 
   !Copy the values in the TH_parameter from the global realization 
+  error_found = PETSC_FALSE
   do i = 1, size(patch%material_property_array)
+    word = patch%material_property_array(i)%ptr%name 
+    if (Uninitialized(patch%material_property_array(i)%ptr%specific_heat)) then
+      option%io_buffer = 'Non-initialized HEAT_CAPACITY in material ' // &
+                         trim(word)
+      call printMsg(option)
+      error_found = PETSC_TRUE
+    endif
+    if (Uninitialized(patch%material_property_array(i)%ptr% &
+                      thermal_conductivity_wet)) then
+      option%io_buffer = 'Non-initialized THERMAL_CONDUCTIVITY_WET in &
+                         &material ' // &
+                         trim(word)
+      call printMsg(option)
+      error_found = PETSC_TRUE
+    endif
+    if (Uninitialized(patch%material_property_array(i)%ptr% &
+                      thermal_conductivity_dry)) then
+      option%io_buffer = 'Non-initialized THERMAL_CONDUCTIVITY_DRY in &
+                         &material ' // &
+                         trim(word)
+      call printMsg(option)
+      error_found = PETSC_TRUE
+    endif
+    if (option%use_th_freezing) then
+      if (Uninitialized(patch%material_property_array(i)%ptr% &
+                        thermal_conductivity_frozen)) then
+        option%io_buffer = 'Non-initialized THERMAL_CONDUCTIVITY_FROZEN in &
+                           &material ' // &
+                           trim(word)
+        call printMsg(option)
+        error_found = PETSC_TRUE
+      endif
+      if (Uninitialized(patch%material_property_array(i)%ptr% &
+                        alpha_fr)) then
+        option%io_buffer = 'Non-initialized THERMAL_COND_EXPONENT_FROZEN in &
+                           &material ' // &
+                           trim(word)
+        call printMsg(option)
+        error_found = PETSC_TRUE
+      endif
+    endif
     material_id = iabs(patch%material_property_array(i)%ptr%internal_id)
     ! kg rock/m^3 rock * J/kg rock-K * 1.e-6 MJ/J = MJ/m^3-K
     patch%aux%TH%TH_parameter%dencpr(material_id) = &
       patch%material_property_array(i)%ptr%rock_density*option%scale* &
         patch%material_property_array(i)%ptr%specific_heat
- 
     patch%aux%TH%TH_parameter%ckwet(material_id) = &
-      patch%material_property_array(i)%ptr%thermal_conductivity_wet*option%scale  
+      patch%material_property_array(i)%ptr%thermal_conductivity_wet* &
+      option%scale  
     patch%aux%TH%TH_parameter%ckdry(material_id) = &
-      patch%material_property_array(i)%ptr%thermal_conductivity_dry*option%scale
+      patch%material_property_array(i)%ptr%thermal_conductivity_dry* &
+      option%scale
     patch%aux%TH%TH_parameter%alpha(material_id) = &
       patch%material_property_array(i)%ptr%alpha
     if (option%use_th_freezing) then
-       patch%aux%TH%TH_parameter%ckfrozen(material_id) = &
-            patch%material_property_array(i)%ptr%thermal_conductivity_frozen*option%scale
-       patch%aux%TH%TH_parameter%alpha_fr(material_id) = &
-            patch%material_property_array(i)%ptr%alpha_fr
+      patch%aux%TH%TH_parameter%ckfrozen(material_id) = &
+        patch%material_property_array(i)%ptr%thermal_conductivity_frozen* &
+        option%scale
+      patch%aux%TH%TH_parameter%alpha_fr(material_id) = &
+        patch%material_property_array(i)%ptr%alpha_fr
     endif
 
   enddo 
+
+  if (error_found) then
+    option%io_buffer = 'Material property errors found in THSetup.'
+    call printErrMsg(option)
+  endif
 
   do i = 1, size(patch%saturation_function_array)
     patch%aux%TH%TH_parameter%sir(:,patch%saturation_function_array(i)%ptr%id) = &

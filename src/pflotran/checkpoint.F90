@@ -1594,6 +1594,7 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
   use Option_module
   use Waypoint_module
   use Output_Aux_module
+  use Utility_module
 
   implicit none
 
@@ -1601,10 +1602,14 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
   type(checkpoint_option_type), pointer :: checkpoint_option
   type(waypoint_list_type) :: waypoint_list
   type(waypoint_type), pointer :: waypoint
+  character(len=MAXWORDLENGTH) :: word
   PetscReal :: final_time
   PetscReal :: temp_real
+  PetscReal :: num_waypoints, warning_num_waypoints
+  PetscInt :: k
   
   final_time = WaypointListGetFinalTime(waypoint_list)
+  warning_num_waypoints = 15000.0
 
   if (final_time < 1.d-40) then
     option%io_buffer = 'No final time specified in waypoint list. &
@@ -1616,13 +1621,28 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
   if (associated(checkpoint_option)) then
     if (Initialized(checkpoint_option%periodic_time_incr)) then
       temp_real = 0.d0
+      num_waypoints = final_time / checkpoint_option%periodic_time_incr
+      if ((num_waypoints > warning_num_waypoints) .and. &
+          OptionPrintToScreen(option)) then
+        write(word,*) floor(num_waypoints)
+        write(*,*) 'WARNING: Large number (' // trim(adjustl(word)) // &
+                   ') of periodic checkpoints requested.'
+        write(*,'(a68)',advance='no') '         Creating periodic checkpoint &
+                                      &waypoints . . . Progress: 0%-'
+      endif
+      k = 0
       do
+        k = k + 1
         temp_real = temp_real + checkpoint_option%periodic_time_incr
         if (temp_real > final_time) exit
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_checkpoint = PETSC_TRUE
         call WaypointInsertInList(waypoint,waypoint_list)
+        if ((num_waypoints > warning_num_waypoints) .and. &
+            OptionPrintToScreen(option)) then
+          call PrintProgressBarInt(floor(num_waypoints),10,k)
+        endif
       enddo
     endif
   endif
