@@ -476,6 +476,8 @@ subroutine PMMiscibleInputRecord(this)
 
   write(id,'(a29)',advance='no') 'pm: '
   write(id,'(a)') this%name
+  write(id,'(a29)',advance='no') 'mode: '
+  write(id,'(a)') 'miscible'
 
 end subroutine PMMiscibleInputRecord
 

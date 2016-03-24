@@ -465,6 +465,8 @@ subroutine PMFlash2InputRecord(this)
 
   write(id,'(a29)',advance='no') 'pm: '
   write(id,'(a)') this%name
+  write(id,'(a29)',advance='no') 'mode: '
+  write(id,'(a)') 'flash2'
 
 end subroutine PMFlash2InputRecord
 

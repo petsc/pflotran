@@ -150,6 +150,7 @@ subroutine SurfSubsurfaceInputRecord(this)
   ! Author: Jenn Frederick, SNL
   ! Date: 03/17/2016
   ! 
+  use Output_module
 
   implicit none
   
@@ -160,6 +161,9 @@ subroutine SurfSubsurfaceInputRecord(this)
  
   write(id,'(a29)',advance='no') 'simulation type: '
   write(id,'(a)') 'surface-subsurface'
+
+  ! print output file information
+  call OutputInputRecord(this%output_option,this%waypoint_list_surfsubsurface)
 
 end subroutine SurfSubsurfaceInputRecord
 

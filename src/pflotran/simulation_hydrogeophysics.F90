@@ -136,6 +136,9 @@ subroutine HydrogeophysInputRecord(this)
   write(id,'(a29)',advance='no') 'simulation type: '
   write(id,'(a)') 'hydrogeophysics'
 
+  ! print output file information
+  !call OutputInputRecord(this%output_option,this%waypoint_list_hydrogeophysics)
+
 end subroutine HydrogeophysInputRecord
 
 ! ************************************************************************** !

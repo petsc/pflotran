@@ -556,6 +556,8 @@ subroutine PMMphaseInputRecord(this)
 
   write(id,'(a29)',advance='no') 'pm: '
   write(id,'(a)') this%name
+  write(id,'(a29)',advance='no') 'mode: '
+  write(id,'(a)') 'mphase'
 
 end subroutine PMMphaseInputRecord
 

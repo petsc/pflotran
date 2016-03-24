@@ -1411,6 +1411,14 @@ subroutine PMGeneralInputRecord(this)
 
   write(id,'(a29)',advance='no') 'pm: '
   write(id,'(a)') this%name
+  write(id,'(a29)',advance='no') 'mode: '
+  write(id,'(a)') 'general'
+  if (this%check_post_convergence) then
+    write(id,'(a29)',advance='no') 'ITOL_SCALED_RESIDUAL: '
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'ITOL_RELATIVE_RESIDUAL: '
+    write(id,'(a)') 'ON'
+  endif
 
 end subroutine PMGeneralInputRecord
 

@@ -1003,6 +1003,8 @@ subroutine PMTOilImsInputRecord(this)
 
   write(id,'(a29)',advance='no') 'pm: '
   write(id,'(a)') this%name
+  write(id,'(a29)',advance='no') 'mode: '
+  write(id,'(a)') 'thermal oil immiscible'
 
 end subroutine PMTOilImsInputRecord
 

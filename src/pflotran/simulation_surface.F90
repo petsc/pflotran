@@ -93,6 +93,7 @@ subroutine SurfaceSimInputRecord(this)
   ! Author: Jenn Frederick, SNL
   ! Date: 03/17/2016
   ! 
+  use Output_module
   
   implicit none
   
@@ -103,6 +104,9 @@ subroutine SurfaceSimInputRecord(this)
  
   write(id,'(a29)',advance='no') 'simulation type: '
   write(id,'(a)') 'surface'
+
+  ! print output file information
+  call OutputInputRecord(this%output_option,this%waypoint_list_surface)
 
 end subroutine SurfaceSimInputRecord
 

@@ -122,6 +122,7 @@ subroutine GeomechanicsSimInputRecord(this)
   ! Author: Jenn Frederick, SNL
   ! Date: 03/17/2016
   ! 
+  use Output_module
   
   implicit none
   
@@ -132,6 +133,9 @@ subroutine GeomechanicsSimInputRecord(this)
  
   write(id,'(a29)',advance='no') 'simulation type: '
   write(id,'(a)') 'geomechanics'
+
+  ! print output file information
+  call OutputInputRecord(this%output_option,this%waypoint_list_geomechanics)
 
 end subroutine GeomechanicsSimInputRecord
 

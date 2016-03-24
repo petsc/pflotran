@@ -1674,6 +1674,8 @@ subroutine CheckpointInputRecord(checkpoint_option,waypoint_list)
   PetscInt :: id = INPUT_RECORD_UNIT
 
   write(id,'(a)') ' '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
   write(id,'(a29)',advance='no') '---------------------------: '
   write(id,'(a)') 'CHECKPOINTS'
 

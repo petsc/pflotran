@@ -188,29 +188,20 @@ subroutine SimulationInputRecordPrint(this)
 
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: id = INPUT_RECORD_UNIT
+  PetscBool :: is_open
 
-  if (OptionPrintToFile(this%option)) then
+  inquire(id, OPENED=is_open)
+  if (is_open .and. OptionPrintToFile(this%option)) then
   !----------------------------------------------------------------------------
-    write(id,'(a)') ' '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
-    write(id,'(a)') ' SIMULATION '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
-  
-    ! print simulation-specific information
-    call this%InputRecord()
     ! print checkpoint information
     call CheckpointInputRecord(this%checkpoint_option,this%waypoint_list_outer)
+  
+    write(id,'(a)') ' '
     ! print process model coupler and process model information
     call this%process_model_coupler_list%InputRecord()
-
-    write(id,'(a)') ' '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
-    write(id,'(a)') ' REALIZATION '
-    write(id,'(a)') '---------------------------------------------------------&
-                    &-----------------------'
+    
+    ! print simulation-specific information
+    call this%InputRecord()
   !----------------------------------------------------------------------------
   endif
 
