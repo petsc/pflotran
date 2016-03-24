@@ -1314,20 +1314,26 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
   ! check of uninitialized values
   if (num_soil_compress_func > 0 .and. &
       num_soil_compress_func /= num_material_properties) then
-    option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION must be defined for all ' // &
-      'materials.'
+    option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION must be defined for all &
+      &materials.'
     call printErrMsg(option)
   endif
   if (soil_compressibility_index > 0 .and. &
       num_soil_compress /= num_material_properties) then
-    option%io_buffer = 'SOIL_COMPRESSIBILITY must be defined for all ' // &
-      'materials.'
+    option%io_buffer = 'SOIL_COMPRESSIBILITY must be defined for all &
+      &materials.'
     call printErrMsg(option)
   endif
   if (soil_reference_pressure_index > 0 .and. &
       num_soil_ref_press /= num_material_properties) then
-    option%io_buffer = 'SOIL_REFERENCE_PRESSURE must be defined for all ' // &
-      'materials.'
+    option%io_buffer = 'SOIL_REFERENCE_PRESSURE must be defined for all &
+      &materials.'
+    call printErrMsg(option)
+  endif
+  if (soil_compressibility_index > 0 .and. &
+      soil_reference_pressure_index == 0) then
+    option%io_buffer = 'SOIL_REFERENCE_PRESSURE must be defined to model &
+      &soil compressibility.'
     call printErrMsg(option)
   endif
   
