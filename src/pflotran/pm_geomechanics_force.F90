@@ -34,6 +34,7 @@ module PM_Geomechanics_Force_class
     procedure, public :: UpdateSolution => PMGeomechForceUpdateSolution
     procedure, public :: CheckpointBinary => PMGeomechForceCheckpointBinary
     procedure, public :: RestartBinary => PMGeomechForceRestartBinary
+    procedure, public :: InputRecord => PMGeomechForceInputRecord
     procedure, public :: Destroy => PMGeomechForceDestroy
     procedure, public :: FinalizeTimestep => PMGeomechForceFinalizeTimestep
   end type pm_geomech_force_type
@@ -366,6 +367,30 @@ subroutine PMGeomechForceRestartBinary(this,viewer)
   call printErrMsg(this%option,'add code for restarting Geomech in PM approach')
   
 end subroutine PMGeomechForceRestartBinary
+
+! ************************************************************************** !
+
+subroutine PMGeomechForceInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_geomech_force_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMGeomechForceInputRecord
 
 ! ************************************************************************** !
 

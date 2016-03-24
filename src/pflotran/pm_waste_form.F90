@@ -96,6 +96,7 @@ module PM_Waste_Form_class
     procedure, public :: Solve => PMGlassSolve
     procedure, public :: Checkpoint => PMGlassCheckpoint    
     procedure, public :: Restart => PMGlassRestart  
+    procedure, public :: InputRecord => PMWFGlassInputRecord
     procedure, public :: Destroy => PMGlassDestroy
   end type pm_waste_form_glass_type
   
@@ -135,6 +136,7 @@ module PM_Waste_Form_class
 !    procedure, public :: TimeCut => PMFMDMTimeCut
 !    procedure, public :: UpdateSolution => PMFMDMUpdateSolution
 !    procedure, public :: UpdateAuxVars => PMFMDMUpdateAuxVars
+    procedure, public :: InputRecord => PMFMDMInputRecord
     procedure, public :: Destroy => PMFMDMDestroy
   end type pm_waste_form_fmdm_type
   
@@ -1786,6 +1788,120 @@ end subroutine PMGlassFinalizeRun
 
 ! ************************************************************************** !
 
+subroutine PMWFGlassInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_waste_form_glass_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  class(waste_form_glass_type), pointer :: cur_waste_form
+  PetscInt :: id
+  PetscInt :: k
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+  write(id,'(a29)',advance='no') 'specific surface area: '
+  write(word,*) this%specific_surface_area
+  write(id,'(a)') adjustl(trim(word)) // 'm^2/m^3'
+  
+  write(id,'(a29)',advance='no') 'glass density: '
+  write(word,*) this%glass_density
+  write(id,'(a)') adjustl(trim(word)) // 'kg/m^3'
+
+  write(id,'(a29)',advance='no') 'print mass balance file: '
+  if (this%print_mass_balance) then
+    write(id,'(a)') 'ON'
+  else
+    write(id,'(a)') 'OFF'
+  endif
+
+  write(id,'(a29)',advance='no') 'canister degradation model: '
+  if (this%canister_degradation_model) then
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'canister material constant: '
+    write(word,*) this%canister_material_constant 
+    write(id,'(a)') adjustl(trim(word))
+    write(id,'(a29)',advance='no') 'vitality log-10 mean: '
+    write(word,*) this%vitality_rate_mean 
+    write(id,'(a)') adjustl(trim(word)) // 'log-10/yr'
+    write(id,'(a29)',advance='no') 'vitality log-10 st.dev.: '
+    write(word,*) this%vitality_rate_stdev 
+    write(id,'(a)') adjustl(trim(word)) // 'log-10/yr'
+    write(id,'(a29)',advance='no') 'vitality log-10 truncation: '
+    write(word,*) this%vitality_rate_trunc 
+    write(id,'(a)') adjustl(trim(word)) // 'log-10/yr'
+  else
+    write(id,'(a)') 'OFF'
+  endif
+
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') ' '
+  do k = 1,this%num_species
+    write(id,'(a29)',advance='no') '------ radionuclide species: '
+    write(id,'(a)') this%rad_species_list(k)%name
+    write(id,'(a29)',advance='no') 'parent species: '
+    write(id,'(a)') this%rad_species_list(k)%parent
+    write(id,'(a29)',advance='no') 'formula weight: '
+    write(word,*) this%rad_species_list(k)%formula_weight 
+    write(id,'(a)') adjustl(trim(word)) // ' g/mol'
+    write(id,'(a29)',advance='no') 'decay constant: '
+    write(word,*) this%rad_species_list(k)%decay_constant 
+    write(id,'(a)') adjustl(trim(word)) // ' 1/sec'
+    write(id,'(a29)',advance='no') 'instant release fraction: '
+    write(word,*) this%rad_species_list(k)%inst_release_fraction 
+    write(id,'(a)') adjustl(trim(word))
+    write(id,'(a29)',advance='no') 'initial mass fraction: '
+    write(word,*) this%rad_species_list(k)%mass_fraction 
+    write(id,'(a)') adjustl(trim(word))
+  enddo
+
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') ' '
+  cur_waste_form => WFGlassCast(this%waste_form_list)
+  k = 0
+  do
+    if (.not.associated(cur_waste_form)) exit
+    k = k + 1
+    write(id,'(a29)',advance='no') '---------- glass waste form: '
+    write(word,*) k
+    write(id,'(a)') '# ' // adjustl(trim(word))
+    write(id,'(a29)',advance='no') 'coordinate (x): '
+    write(word,*) cur_waste_form%coordinate%x
+    write(id,'(a)') adjustl(trim(word)) // 'm'
+    write(id,'(a29)',advance='no') 'coordinate (y): '
+    write(word,*) cur_waste_form%coordinate%y
+    write(id,'(a)') adjustl(trim(word)) // 'm'
+    write(id,'(a29)',advance='no') 'coordinate (z): '
+    write(word,*) cur_waste_form%coordinate%z
+    write(id,'(a)') adjustl(trim(word)) // 'm'
+    write(id,'(a29)',advance='no') 'volume: '
+    write(word,*) cur_waste_form%volume 
+    write(id,'(a)') adjustl(trim(word)) // 'm^3'
+    write(id,'(a29)',advance='no') 'exposure factor: '
+    write(word,*) cur_waste_form%exposure_factor
+    write(id,'(a)') adjustl(trim(word))
+    if (cur_waste_form%canister_degradation_flag) then
+      write(id,'(a29)',advance='no') '60C can. vit. deg. rate: '
+      write(word,*) cur_waste_form%canister_vitality_rate
+      write(id,'(a)') adjustl(trim(word)) // '1/sec'
+    endif
+    cur_waste_form => WFGlassCast(cur_waste_form%next)
+  enddo
+  
+end subroutine PMWFGlassInputRecord
+
+! ************************************************************************** !
+
 subroutine PMGlassStrip(this)
   ! 
   ! Strips Glass process model
@@ -2437,6 +2553,30 @@ recursive subroutine PMFMDMFinalizeRun(this)
   endif  
   
 end subroutine PMFMDMFinalizeRun
+
+! ************************************************************************** !
+
+subroutine PMFMDMInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_waste_form_fmdm_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMFMDMInputRecord
 
 ! ************************************************************************** !
 

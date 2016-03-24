@@ -168,7 +168,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   call InputFindStringInFile(input,option,string)
   if (input%ierr == 0) then
     option%input_record = PETSC_TRUE
-    write(*,*) 'Input record requested.'
+    call OpenAndWriteInputRecord(option)
   endif
 
   string = 'SIMULATION'

@@ -35,6 +35,7 @@ module PM_Miscible_class
     procedure, public :: UpdateAuxVars => PMMiscibleUpdateAuxVars
     procedure, public :: MaxChange => PMMiscibleMaxChange
     procedure, public :: ComputeMassBalance => PMMiscibleComputeMassBalance
+    procedure, public :: InputRecord => PMMiscibleInputRecord
     procedure, public :: Destroy => PMMiscibleDestroy
   end type pm_miscible_type
   
@@ -453,6 +454,32 @@ subroutine PMMiscibleComputeMassBalance(this,mass_balance_array)
   !call MiscibleComputeMassBalance(this%realization,mass_balance_array)
 
 end subroutine PMMiscibleComputeMassBalance
+
+! ************************************************************************** !
+
+subroutine PMMiscibleInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_miscible_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+  write(id,'(a29)',advance='no') 'mode: '
+  write(id,'(a)') 'miscible'
+
+end subroutine PMMiscibleInputRecord
 
 ! ************************************************************************** !
 

@@ -33,6 +33,7 @@ module PM_Richards_class
     procedure, public :: UpdateAuxVars => PMRichardsUpdateAuxVars
     procedure, public :: MaxChange => PMRichardsMaxChange
     procedure, public :: ComputeMassBalance => PMRichardsComputeMassBalance
+    procedure, public :: InputRecord => PMRichardsInputRecord
     procedure, public :: Destroy => PMRichardsDestroy
   end type pm_richards_type
   
@@ -597,6 +598,38 @@ subroutine PMRichardsComputeMassBalance(this,mass_balance_array)
   call RichardsComputeMassBalance(this%realization,mass_balance_array)
 
 end subroutine PMRichardsComputeMassBalance
+
+! ************************************************************************** !
+
+subroutine PMRichardsInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_richards_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+  write(id,'(a29)',advance='no') 'mode: '
+  write(id,'(a)') 'richards'
+  if (this%check_post_convergence) then
+    write(id,'(a29)',advance='no') 'ITOL_SCALED_RESIDUAL: '
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'ITOL_RELATIVE_UPDATE: '
+    write(id,'(a)') 'ON'
+  endif
+
+end subroutine PMRichardsInputRecord
 
 ! ************************************************************************** !
 

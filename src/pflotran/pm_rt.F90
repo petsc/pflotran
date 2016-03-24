@@ -62,6 +62,7 @@ module PM_RT_class
     procedure, public :: CheckpointHDF5 => PMRTCheckpointHDF5
     procedure, public :: RestartBinary => PMRTRestartBinary
     procedure, public :: RestartHDF5 => PMRTRestartHDF5
+    procedure, public :: InputRecord => PMRTInputRecord
     procedure, public :: Destroy => PMRTDestroy
   end type pm_rt_type
   
@@ -1806,6 +1807,30 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
 #endif
 
 end subroutine PMRTRestartHDF5
+
+! ************************************************************************** !
+
+subroutine PMRTInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_rt_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMRTInputRecord
 
 ! ************************************************************************** !
 
