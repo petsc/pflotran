@@ -17,6 +17,7 @@ module PM_Waste_Form_class
 
   PetscBool, public :: bypass_warning_message = PETSC_FALSE
 
+! --------------- waste form species packages -----------------------------------------
   type, public :: rad_species_type
    PetscReal :: formula_weight
    PetscReal :: decay_constant
@@ -29,76 +30,120 @@ module PM_Waste_Form_class
    character(len=MAXWORDLENGTH) :: name
   end type rad_species_type
 
-  type, public :: fmdm_species_type
-   PetscReal, pointer :: formula_weight(:)
-   PetscInt, pointer :: column_id(:)
-   PetscInt :: num_species
-   character(len=MAXWORDLENGTH), pointer :: name(:)
-  end type fmdm_species_type
+  !type, public :: fmdm_species_type
+  ! PetscReal, pointer :: formula_weight(:)
+  ! PetscInt, pointer :: column_id(:)
+  ! PetscInt :: num_species
+  ! character(len=MAXWORDLENGTH), pointer :: name(:)
+  !end type fmdm_species_type
 
-  type :: waste_form_base_type
-    PetscInt :: id
-    PetscInt :: local_cell_id
-    type(point3d_type) :: coordinate
-    PetscReal :: volume
-    PetscReal, pointer :: instantaneous_mass_rate(:)    ! mol/sec
-    PetscReal, pointer :: cumulative_mass(:)            ! mol
-    PetscBool :: canister_degradation_flag
-    PetscReal :: canister_vitality
-    PetscReal :: canister_vitality_rate
-    PetscBool :: breached
-    class(waste_form_base_type), pointer :: next
-  end type waste_form_base_type
-  
-  type, extends(waste_form_base_type) :: waste_form_fmdm_type
-    PetscReal, pointer :: concentration(:,:)
-    PetscReal :: specific_surface_area
-    PetscReal :: burnup
-  end type waste_form_fmdm_type
-  
-  type, extends(waste_form_base_type) :: waste_form_glass_type
-    PetscReal :: exposure_factor
-    PetscReal :: glass_dissolution_rate  ! kg / sec
-    PetscReal, pointer :: rad_mass_fraction(:)
-    PetscReal, pointer :: rad_concentration(:)
-    PetscReal, pointer :: inst_release_amount(:)
-  end type waste_form_glass_type
-  
-  type, public, extends(pm_base_type) :: pm_waste_form_type
-    class(realization_subsurface_type), pointer :: realization
-    character(len=MAXWORDLENGTH) :: data_mediator_species
-    class(data_mediator_vec_type), pointer :: data_mediator
-    class(waste_form_base_type), pointer :: waste_form_list
-    class(dataset_base_type), pointer ::  mass_fraction_dataset
+! --------------- waste form mechanism types ------------------------------------------
+  type, public :: wf_mechanism_base_type
     type(rad_species_type), pointer :: rad_species_list(:)
     PetscInt :: num_species
-    PetscBool :: print_mass_balance
-    PetscBool :: mass_frac_file_flag
     PetscBool :: canister_degradation_model
     PetscReal :: vitality_rate_mean
     PetscReal :: vitality_rate_stdev
     PetscReal :: vitality_rate_trunc
     PetscReal :: canister_material_constant
+    PetscReal :: matrix_density ! kg/m^3
+    type(wf_mechanism_base_type), pointer :: next
+  contains
+    procedure, public :: Dissolution => WFMechBaseDissolution
+  end type wf_mechanism_base_type
+
+  type, extends(wf_mechansim_base_type) :: wf_mechanism_glass_type
+    character(len=MAXWORDLENGTH) :: name
+    PetscReal :: specific_surface_area
+    PetscReal :: dissolution_rate  ! kg / sec
+  contains
+    procedure, public :: Dissolution => WFMechGlassDissolution
+  end type wf_mechanism_glass_type
+
+  type, extends(wf_mechansim_base_type) :: wf_mechanism_dsnf_type
+    character(len=MAXWORDLENGTH) :: name
+    PetscReal :: specific_surface_area  ! not sure if needed
+    PetscReal :: dissolution_rate  ! kg / sec
+  contains
+    procedure, public :: Dissolution => WFMechDSNFDissolution
+  end type wf_mechanism_dsnf_type
+  
+  type, extends(wf_mechansim_base_type) :: wf_mechanism_custom_type
+    character(len=MAXWORDLENGTH) :: name
+    PetscReal :: specific_surface_area  ! not sure if needed
+    PetscReal :: dissolution_rate  ! kg / sec
+    PetscReal :: frac_dissolution_rate  ! 1 / sec
+  contains
+    procedure, public :: Dissolution => WFMechCustomDissolution
+  end type wf_mechanism_custom_type
+
+! --------------- waste form types ----------------------------------------------------
+  type :: waste_form_base_type
+    PetscInt :: id
+    PetscInt :: local_cell_id
+    type(point3d_type) :: coordinate
+    PetscReal :: volume
+    PetscReal :: exposure_factor
+    PetscReal, pointer :: instantaneous_mass_rate(:)    ! mol/sec
+    PetscReal, pointer :: cumulative_mass(:)            ! mol
+    PetscReal, pointer :: rad_mass_fraction(:)          ! g-rad/g-matrix
+    PetscReal, pointer :: rad_concentration(:)          ! mol-rad/g-matrix
+    PetscReal, pointer :: inst_release_amount(:)        ! of rad
+    PetscBool :: canister_degradation_flag
+    PetscReal :: canister_vitality
+    PetscReal :: canister_vitality_rate
+    PetscBool :: breached
+    type(wf_mechanism_base_type), pointer :: mechanism
+    class(waste_form_base_type), pointer :: next
+  end type waste_form_base_type
+  
+  !type, extends(waste_form_base_type) :: waste_form_fmdm_type
+  !  PetscReal, pointer :: concentration(:,:)
+  !  PetscReal :: specific_surface_area
+  !  PetscReal :: burnup
+  !end type waste_form_fmdm_type
+
+! --------------- waste form process model --------------------------------------------
+  type, public, extends(pm_base_type) :: pm_waste_form_type
+    class(realization_subsurface_type), pointer :: realization
+    character(len=MAXWORDLENGTH) :: data_mediator_species
+    class(data_mediator_vec_type), pointer :: data_mediator
+    class(waste_form_base_type), pointer :: waste_form_list
+    !class(dataset_base_type), pointer ::  mass_fraction_dataset
+    type(wf_mechanism_base_type), pointer :: mechanism_list
+    PetscBool :: print_mass_balance
+    PetscBool :: mass_frac_file_flag
   contains
     procedure, public :: PMWasteFormSetRealization
+    procedure, public :: Setup => PMWFSetup
+    procedure, public :: Read => PMWFRead
+    procedure, public :: InitializeRun => PMWFInitializeRun
+    procedure, public :: InitializeTimestep => PMWFInitializeTimestep
+    procedure, public :: FinalizeTimestep => PMWFFinalizeTimestep
+    procedure, public :: UpdateSolution => PMWFUpdateSolution
+    procedure, public :: Solve => PMWFSolve
+    procedure, public :: Checkpoint => PMWFCheckpoint    
+    procedure, public :: Restart => PMWFRestart  
+    procedure, public :: InputRecord => PMWFInputRecord
+    procedure, public :: Destroy => PMWFDestroy
   end type pm_waste_form_type
   
-  type, public, extends(pm_waste_form_type) :: pm_waste_form_glass_type
-    PetscReal :: specific_surface_area
-    PetscReal :: glass_density
-  contains
-    procedure, public :: Setup => PMGlassSetup
-    procedure, public :: Read => PMGlassRead
-    procedure, public :: InitializeRun => PMWFGlassInitializeRun
-    procedure, public :: InitializeTimestep => PMWFGlassInitializeTimestep
-    procedure, public :: FinalizeTimestep => PMGlassFinalizeTimestep
-    procedure, public :: UpdateSolution => PMGlassUpdateSolution
-    procedure, public :: Solve => PMGlassSolve
-    procedure, public :: Checkpoint => PMGlassCheckpoint    
-    procedure, public :: Restart => PMGlassRestart  
-    procedure, public :: InputRecord => PMWFGlassInputRecord
-    procedure, public :: Destroy => PMGlassDestroy
-  end type pm_waste_form_glass_type
+  !type, public, extends(pm_waste_form_type) :: pm_waste_form_glass_type
+  !  PetscReal :: specific_surface_area
+  !  PetscReal :: glass_density
+  !contains
+  !  procedure, public :: Setup => PMGlassSetup
+  !  procedure, public :: Read => PMGlassRead
+  !  procedure, public :: InitializeRun => PMWFGlassInitializeRun
+  !  procedure, public :: InitializeTimestep => PMWFGlassInitializeTimestep
+  !  procedure, public :: FinalizeTimestep => PMGlassFinalizeTimestep
+  !  procedure, public :: UpdateSolution => PMGlassUpdateSolution
+  !  procedure, public :: Solve => PMGlassSolve
+  !  procedure, public :: Checkpoint => PMGlassCheckpoint    
+  !  procedure, public :: Restart => PMGlassRestart  
+  !  procedure, public :: InputRecord => PMWFGlassInputRecord
+  !  procedure, public :: Destroy => PMGlassDestroy
+  !end type pm_waste_form_glass_type
   
   type, public, extends(pm_waste_form_type) :: pm_waste_form_fmdm_type
     type(fmdm_species_type) :: fmdm_species
@@ -142,11 +187,165 @@ module PM_Waste_Form_class
   
   public :: PMFMDMCreate, &
             PMFMDMSetup, &
-            PMGlassCreate, &
-            PMGlassSetup, &
-            PMWFRadSpeciesCreate
+            WFMechanismGlassCreate, &
+            WFMechanismDSNFCreate, &
+            WFMechanismCustomCreate, &
+            PMWFSetup, &
+            WFRadSpeciesCreate
   
 contains
+
+! ************************************************************************** !
+
+subroutine WFMechanismInit(this)
+  ! 
+  ! Initializes the base waste form mechanism package
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+
+  implicit none
+
+  type(wf_mechanism_base_type) :: this
+
+  nullify(this%next)
+  nullify(this%rad_species_list)
+  this%num_species = 0
+  this%matrix_density = UNINITIALIZED_DOUBLE
+ !---- canister degradation model ----------------------
+  this%canister_degradation_model = PETSC_FALSE
+  this%vitality_rate_mean = UNINITIALIZED_DOUBLE
+  this%vitality_rate_stdev = UNINITIALIZED_DOUBLE
+  this%vitality_rate_trunc = UNINITIALIZED_DOUBLE
+  this%canister_material_constant = UNINITIALIZED_DOUBLE
+ !------------------------------------------------------
+
+end subroutine WFMechanismInit
+
+! ************************************************************************** !
+
+function WFMechanismGlassCreate()
+  ! 
+  ! Creates the glass waste form mechanism package
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+
+  implicit none
+  
+  class(wf_mechanism_glass_type), pointer :: PMWFMechanismGlassCreate
+  
+  allocate(PMWFMechanismGlassCreate)
+  call PMWFMechanismInit(PMWFMechanismGlassCreate)
+  PMWFMechanismGlassCreate%name =''
+  PMWFMechanismGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  PMWFMechanismGlassCreate%dissolution_rate = 0.d0  ! kg / sec
+
+end function WFMechanismGlassCreate
+
+! ************************************************************************** !
+
+function WFMechanismDSNFCreate()
+  ! 
+  ! Creates the DSNF (DOE Spent Nuclear Fuel) waste form mechanism package
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+
+  implicit none
+  
+  class(wf_mechanism_dsnf_type), pointer :: PMWFMechanismDSNFCreate
+  
+  allocate(PMWFMechanismDSNFCreate)
+  call PMWFMechanismInit(PMWFMechanismDSNFCreate)
+  PMWFMechanismDSNFCreate%name = ''
+  PMWFMechanismDSNFCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  PMWFMechanismDSNFCreate%dissolution_rate = 0.d0  ! kg / sec
+
+end function WFMechanismDSNFCreate
+
+! ************************************************************************** !
+
+function WFMechanismCustomCreate()
+  ! 
+  ! Creates the 'custom' waste form mechanism package
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+
+  implicit none
+  
+  class(wf_mechanism_custom_type), pointer :: PMWFMechanismCustomCreate
+  
+  allocate(PMWFMechanismCustomCreate)
+  call PMWFMechanismInit(PMWFMechanismCustomCreate)
+  PMWFMechanismCustomCreate%name = ''
+  PMWFMechanismCustomCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  PMWFMechanismCustomCreate%dissolution_rate = UNINITIALIZED_DOUBLE  ! kg / sec
+  PMWFMechanismCustomCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1 / sec
+
+end function WFMechanismCustomCreate
+
+! ************************************************************************** !
+
+function WFRadSpeciesCreate()
+  ! 
+  ! Creates a radioactive species in the waste form mechanism package
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/09/16
+
+  implicit none
+  
+  type(rad_species_type) :: PMWFRadSpeciesCreate
+
+  PMWFRadSpeciesCreate%name = ''
+  PMWFRadSpeciesCreate%parent = ''
+  PMWFRadSpeciesCreate%parent_id = UNINITIALIZED_INTEGER
+  PMWFRadSpeciesCreate%formula_weight = UNINITIALIZED_DOUBLE
+  PMWFRadSpeciesCreate%decay_constant = UNINITIALIZED_DOUBLE
+  PMWFRadSpeciesCreate%mass_fraction = UNINITIALIZED_DOUBLE
+  PMWFRadSpeciesCreate%inst_release_fraction = UNINITIALIZED_DOUBLE
+  PMWFRadSpeciesCreate%column_id = UNINITIALIZED_INTEGER
+  PMWFRadSpeciesCreate%ispecies = UNINITIALIZED_INTEGER
+
+end function WFRadSpeciesCreate
+
+! ************************************************************************** !
+
+function WasteFormCreate()
+  ! 
+  ! Creates a waste form and initializes all parameters
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+
+  implicit none
+
+  type(waste_form_base_type) :: WasteFormCreate
+
+  WasteFormCreate%id = UNINITIALIZED_INTEGER
+  WasteFormCreate%local_cell_id = UNINITIALIZED_INTEGER
+  WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
+  WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
+  WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
+  WasteFormCreate%volume = UNINITIALIZED_DOUBLE
+  WasteFormCreate%exposure_factor = UNINITIALIZED_DOUBLE
+  nullify(WasteFormCreate%instantaneous_mass_rate) !mol-rad/sec
+  nullify(WasteFormCreate%cumulative_mass) ! mol-rad
+  nullify(WasteFormCreate%rad_mass_fraction) ! g-rad/g-matrix
+  nullify(WasteFormCreate%rad_concentration) ! mol-rad/g-matrix
+  nullify(WasteFormCreate%inst_release_amount) ! of rad
+  nullify(WasteFormCreate%mechanism)
+  nullify(WasteFormCreate%next)
+ !------- canister degradation model -----------------
+  WasteFormCreate%canister_degradation_flag = PETSC_FALSE
+  WasteFormCreate%breached = PETSC_FALSE
+  WasteFormCreate%canister_vitality = 0.d0
+  WasteFormCreate%canister_vitality_rate = UNINITIALIZED_DOUBLE
+ !----------------------------------------------------
+
+end function WasteFormCreate
 
 ! ************************************************************************** !
 
@@ -156,6 +355,7 @@ subroutine PMWasteFormInit(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 01/15/15, 07/20/15
+  ! Notes: Modified by Jenn Frederick 03/24/2016
 
   implicit none
   
@@ -165,19 +365,278 @@ subroutine PMWasteFormInit(this)
   nullify(this%realization)
   nullify(this%data_mediator)
   nullify(this%mass_fraction_dataset)
+  nullify(this%waste_form_list)
+  nullify(this%mechanism_list)  
   this%mass_frac_file_flag = PETSC_FALSE
   this%print_mass_balance = PETSC_FALSE
-  nullify(this%rad_species_list)
-  this%num_species = 0
- !------- canister degradation model -------------------
-  this%canister_degradation_model = PETSC_FALSE
-  this%vitality_rate_mean = UNINITIALIZED_DOUBLE
-  this%vitality_rate_stdev = UNINITIALIZED_DOUBLE
-  this%vitality_rate_trunc = UNINITIALIZED_DOUBLE
-  this%canister_material_constant = UNINITIALIZED_DOUBLE
- !------------------------------------------------------
 
 end subroutine PMWasteFormInit
+
+! ************************************************************************** !
+
+subroutine PMWasteFormRead(this,input)
+  ! 
+  ! Reads input file parameters associated with the waste form process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+  ! Notes: Modified by Jenn Frederick, 03/24/2016
+
+  use Input_Aux_module
+  use Utility_module
+  use Option_module
+  use String_module
+  use Units_module
+  
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  type(input_type), pointer :: input
+  
+  type(option_type), pointer :: option
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string, internal_units
+  class(waste_form_base_type), pointer :: new_waste_form, prev_waste_form
+  PetscBool :: found, first_string
+  PetscInt :: k
+
+  option => this%option
+  error_string = 'WASTE_FORM'
+  input%ierr = 0
+  first_string = PETSC_TRUE
+
+  option%io_buffer = 'pflotran card:: ' // trim(error_string)
+  call printMsg(option)
+
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+
+    call PMWFReadMechanism(this,input,option,word,error_string,found)
+    if (found) cycle
+    
+    call PMWFReadWasteForm(this,input,option,word,error_string,found)
+    if (found) cycle
+
+    select case(trim(word))
+    !-------------------------------------
+      case('PRINT_MASS_BALANCE')
+    !-------------------------------------
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    !-------------------------------------
+    end select
+  enddo
+
+  call PMWFReadError(this,input,option,error_string)
+  select type(this)
+    class is(pm_waste_form_glass_type)
+      call PMWFAssignColIdsFromHeader(this,input,option,error_string)
+  end select
+    
+end subroutine PMWasteFormRead
+
+! ************************************************************************** !
+
+subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
+  ! 
+  ! Reads input file parameters associated with the waste form mechanism
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+  !
+  use Input_Aux_module
+  use Reaction_Aux_module, only: GetPrimarySpeciesIDFromName
+  use Option_module
+  use Condition_module, only : ConditionReadValues
+  use Dataset_Ascii_class 
+  use String_module
+  use Units_module
+  
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  type(input_type), pointer :: input
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH) :: keyword
+  character(len=MAXSTRINGLENGTH) :: error_string
+  PetscBool :: found
+
+  character(len=MAXWORDLENGTH) :: word, units, internal_units
+  character(len=MAXSTRINGLENGTH) :: temp_buf, string
+  class(dataset_ascii_type), pointer :: dataset_ascii
+  type(rad_species_type), pointer :: temp_species_array(:)
+  type(wf_mechanism_base_type), pointer :: new_mechanism
+  PetscInt :: k, j, icol
+  PetscReal :: double
+
+  error_string = error_string // ',MECHANISM'
+  found = PETSC_TRUE
+  allocate(temp_species_array(50))
+  k = 0
+
+  select case(trim(keyword))
+  !-------------------------------------
+    case('MECHANISM')
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      call InputErrorMsg(input,option,'mechanism type',error_string)
+      call StringToUpper(word)
+      select case(trim(word))
+      !---------------------------------
+        case(GLASS)
+          error_string = error_string // ' GLASS'
+          allocate(new_mechanism)
+          call WFMechanismGlassCreate(new_mechanism)
+      !---------------------------------
+        case(DSNF)
+          error_string = error_string // ' DSNF'
+          allocate(new_mechanism)
+          call WFMechanismDSNFCreate(new_mechanism)
+      !---------------------------------
+        case(CUSTOM)
+          error_string = error_string // ' CUSTOM'
+          allocate(new_mechanism)
+          call WFMechanismCustomCreate(new_mechanism)
+      !---------------------------------
+        case default
+          option%io_buffer = 'Unrecognized mechanism type &
+                             &in the ' // trim(error_string) // ' block.'
+          call printErrMsg(option)
+      !---------------------------------
+      end select
+      
+      do
+        call InputReadPflotranString(input,option)
+        if (InputError(input)) exit
+        if (InputCheckExit(input,option)) exit
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword',error_string)
+        call StringToUpper(word)
+        select case(trim(word))
+        !--------------------------
+          case('NAME')
+            call InputReadWord(input,option,new_mechanism%name,PETSC_TRUE)
+            call InputErrorMsg(input,option,'mechanism name',error_string)
+        !--------------------------
+          case('SPECIFIC_SURFACE_AREA')
+            call InputReadDouble(input,option,new_mechanism%specific_surface_area)
+            call InputErrorMsg(input,option,'specific surface area',error_string)
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (input%ierr == 0) then
+              internal_units = 'm^2/m^3'
+              new_mechanism%specific_surface_area = UnitsConvertToInternal(word, &
+                   internal_units,option) * new_mechanism%specific_surface_area
+            endif
+        !--------------------------
+          case('MATRIX_DENSITY')
+            call InputReadDouble(input,option,new_mechanism%matrix_density)
+            call InputErrorMsg(input,option,'matrix density',error_string)
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (input%ierr == 0) then
+              internal_units = 'kg/m^3'
+              new_mechanism%matrix_density = UnitsConvertToInternal(word, &
+                   internal_units,option) * new_mechanism%matrix_density
+            endif
+        !--------------------------
+          case('FRACTIONAL_DISSOLUTION_RATE')
+            select type(new_mechanism)
+              type is(wf_mechanism_custom_type)
+                call InputReadDouble(input,option,new_mechanism%frac_dissolution_rate)
+                call InputErrorMsg(input,option,'fractional dissolution rate',error_string)
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                if (input%ierr == 0) then
+                  internal_units = 'unitless/sec'
+                  new_mechanism%frac_dissolution_rate = UnitsConvertToInternal(word, &
+                       internal_units,option) * new_mechanism%frac_dissolution_rate
+                endif
+              type is(wf_mechanism_glass_type)
+                option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE cannot be specified for '
+                                   // trim(error_string)
+                call printErrMsg(option)
+              type is(wf_mechanism_dsnf_type)
+                option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE cannot be specified for '
+                                   // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case('DISSOLUTION_RATE')
+            select type(new_mechanism)
+              type is(wf_mechanism_custom_type)
+                call InputReadDouble(input,option,new_mechanism%dissolution_rate)
+                call InputErrorMsg(input,option,'dissolution rate',error_string)
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                if (input%ierr == 0) then
+                  internal_units = 'kg/sec'
+                  new_mechanism%dissolution_rate = UnitsConvertToInternal(word, &
+                       internal_units,option) * new_mechanism%dissolution_rate
+                endif
+              type is(wf_mechanism_glass_type)
+                option%io_buffer = 'DISSOLUTION_RATE cannot be specified for '
+                                   // trim(error_string)
+                call printErrMsg(option)
+              type is(wf_mechanism_dsnf_type)
+                option%io_buffer = 'DISSOLUTION_RATE cannot be specified for '
+                                   // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case default
+            call InputKeywordUnrecognized(word,error_string,option)
+        !--------------------------
+        end select
+      enddo
+
+      if (new_mechanism%name == '') then
+        option%io_buffer = 'NAME must be specified in ' // trim(error_string) // ' block.'
+        call printErrMsg(option)
+      endif
+      if (uninitialized(new_mechanism%specific_surface_area)) then
+        option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' &
+                           // trim(error_string) // ' block.'
+        call printErrMsg(option)
+      endif
+      if (uninitialized(new_mechanism%matrix_density)) then
+        option%io_buffer = 'MATRIX_DENSITY must be specified in ' &
+                           // trim(error_string) // ' block.'
+        call printErrMsg(option)
+      endif
+      select type(new_mechanism)
+        type is(wf_mechanism_custom_type)
+          if (uninitialized(new_mechanism%frac_dissolution_rate) .and. &
+              uninitialized(new_mechanism%dissolution_rate)) then
+            option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE or DISSOLUTION_RATE must be &
+                               &specified in ' // trim(error_string) // ' block.'
+            call printErrMsg(option)
+          endif
+          if (initialized(new_mechanism%frac_dissolution_rate) .and. &
+              initialized(new_mechanism%dissolution_rate)) then
+            option%io_buffer = 'Either FRACTIONAL_DISSOLUTION_RATE or DISSOLUTION_RATE &
+                               &must be specified in ' // trim(error_string) // ' block. &
+                               &Both cannot be specified.'
+            call printErrMsg(option)
+          endif
+      end select
+
+      if (.not.associated(this%mechanism_list)) then
+        this%mechanism_list => new_mechanism
+        prev_mechanism => new_mechanism
+      else
+        prev_mechanism%next => new_mechanism
+        prev_mechanism => new_mechanism
+      endif
+      nullify(new_mechanism)
+  !-------------------------------------    
+    case default !(MECHANISM keyword not found)
+      found = PETSC_FALSE
+  !-------------------------------------
+  end select
+
+end subroutine PMWFReadMechanism
 
 ! ************************************************************************** !
 
@@ -188,7 +647,7 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
-  ! Notes: Updated/modified by Jenn Frederick, 2/3/2016
+  ! Notes: Modified by Jenn Frederick, 2/3/2016, 03/24/2016
 
   use Input_Aux_module
   use Reaction_Aux_module, only: GetPrimarySpeciesIDFromName
@@ -226,7 +685,7 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
         call InputReadPflotranString(input,option)
         if (InputCheckExit(input,option)) exit
         k = k + 1
-        temp_species_array(k) = PMWFRadSpeciesCreate() 
+        temp_species_array(k) = WFRadSpeciesCreate() 
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'species name',error_string)
         temp_species_array(k)%name = trim(word)
@@ -374,6 +833,102 @@ subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
   end select
 
 end subroutine PMWasteFormReadSelectCase
+
+! ************************************************************************** !
+
+subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
+  ! 
+  ! Reads input file parameters associated with the waste form 
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+  !
+  use Input_Aux_module
+  use Reaction_Aux_module, only: GetPrimarySpeciesIDFromName
+  use Option_module
+  use Condition_module, only : ConditionReadValues
+  use Dataset_Ascii_class 
+  use String_module
+  use Units_module
+  
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  type(input_type), pointer :: input
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH) :: keyword
+  character(len=MAXSTRINGLENGTH) :: error_string
+  PetscBool :: found
+
+  character(len=MAXWORDLENGTH) :: word, units, internal_units
+  type(waste_form_base_type), pointer :: new_waste_form, prev_waste_form
+
+  error_string = error_string // ',WASTE_FORM'
+  found = PETSC_TRUE
+
+  select case(trim(keyword))
+  !-------------------------------------
+    case('WASTE_FORM')
+      error_string = error_string // 'WASTE_FORM'
+      allocate(new_waste_form)
+      new_waste_form => WasteFormCreate()
+      do
+        call InputReadPflotranString(input,option)
+        if (InputError(input)) exit
+        if (InputCheckExit(input,option)) exit
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword',error_string)
+        call StringToUpper(word)
+        select case(trim(word))
+          case('EXPOSURE_FACTOR')
+            call InputReadDouble(input,option,new_waste_form%exposure_factor)
+            call InputErrorMsg(input,option,'exposure factor',error_string)
+          case('VOLUME')
+            call InputReadDouble(input,option,new_waste_form%volume)
+            call InputErrorMsg(input,option,'volume',error_string)
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (input%ierr == 0) then
+              internal_units = 'm^3'
+              new_waste_form%volume = UnitsConvertToInternal(word, &
+                   internal_units,option) * new_waste_form%volume
+            endif
+          case('COORDINATE')
+            call GeometryReadCoordinate(input,option,new_waste_form%coordinate, &
+                                        error_string)
+          case('MECHANISM')
+          case default
+            call InputKeywordUnrecognized(word,error_string,option)
+        end select
+      enddo
+      
+      if (Uninitialized(new_waste_form%volume)) then
+        option%io_buffer = 'VOLUME must be specified for all waste forms.'
+        call printErrMsg(option)
+      endif
+      if (Uninitialized(new_waste_form%coordinate%z)) then
+        option%io_buffer = 'COORDINATE must be specified for all waste forms.'
+        call printErrMsg(option)
+      endif
+      if (.not.associated(new_waste_form%mechanism)) then
+        option%io_buffer = 'MECHANISM must be specified for all waste forms.'
+        call printErrMsg(option)
+      endif
+      
+      if (.not.associated(this%waste_form_list)) then
+        this%waste_form_list => new_waste_form
+        prev_waste_form => new_waste_form
+      else
+        prev_waste_form%next => new_waste_form
+        prev_waste_form => new_waste_form
+      endif
+      nullify(new_waste_form)
+  !-------------------------------------
+    case default
+      found = PETSC_FALSE
+  !-------------------------------------
+  end select
+
+end subroutine PMWFReadWasteForm
 
 ! ************************************************************************** !
 
@@ -543,31 +1098,6 @@ end subroutine PMWasteFormSetRealization
 
 ! ************************************************************************** !
 
-function PMWFRadSpeciesCreate()
-  ! 
-  ! Creates a radioactive species in the waste form process model
-  ! 
-  ! Author: Jenn Frederick
-  ! Date: 03/09/16
-
-  implicit none
-  
-  type(rad_species_type) :: PMWFRadSpeciesCreate
-
-  PMWFRadSpeciesCreate%name = ''
-  PMWFRadSpeciesCreate%parent = ''
-  PMWFRadSpeciesCreate%parent_id = UNINITIALIZED_INTEGER
-  PMWFRadSpeciesCreate%formula_weight = UNINITIALIZED_DOUBLE
-  PMWFRadSpeciesCreate%decay_constant = UNINITIALIZED_DOUBLE
-  PMWFRadSpeciesCreate%mass_fraction = UNINITIALIZED_DOUBLE
-  PMWFRadSpeciesCreate%inst_release_fraction = UNINITIALIZED_DOUBLE
-  PMWFRadSpeciesCreate%column_id = UNINITIALIZED_INTEGER
-  PMWFRadSpeciesCreate%ispecies = UNINITIALIZED_INTEGER
-
-end function PMWFRadSpeciesCreate
-
-! ************************************************************************** !
-
  subroutine PMWFInitializeRun(this)
   ! 
   ! Initializes the process model for the simulation
@@ -722,36 +1252,6 @@ subroutine PMWasteFormStrip(this)
   nullify(this%rad_species_list)
   
 end subroutine PMWasteFormStrip
-
-! ************************************************************************** !
-
-subroutine WasteFormBaseInit(base)
-  ! 
-  ! Initializes the base waste form data
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(waste_form_base_type) :: base
-
-  base%id = UNINITIALIZED_INTEGER
-  base%local_cell_id = UNINITIALIZED_INTEGER
-  base%coordinate%x = UNINITIALIZED_DOUBLE
-  base%coordinate%y = UNINITIALIZED_DOUBLE
-  base%coordinate%z = UNINITIALIZED_DOUBLE
-  nullify(base%instantaneous_mass_rate)
-  nullify(base%cumulative_mass)
-  base%volume = UNINITIALIZED_DOUBLE
- !------- canister degradation model -----------------
-  base%canister_degradation_flag = PETSC_FALSE
-  base%breached = PETSC_FALSE
-  base%canister_vitality = 0d0
-  base%canister_vitality_rate = UNINITIALIZED_DOUBLE
- !----------------------------------------------------
-
-end subroutine WasteFormBaseInit
 
 ! ************************************************************************** !
 
@@ -1079,28 +1579,6 @@ end subroutine PMWFInitializeTimestep
 
 ! ************************************************************************** !
 
-subroutine WFGlassInit(glass)
-  ! 
-  ! Initializes the glass waste form
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-  implicit none
-  
-  class(waste_form_glass_type) :: glass
-
-  call WasteFormBaseInit(glass)
-  glass%exposure_factor = UNINITIALIZED_DOUBLE
-  glass%glass_dissolution_rate = UNINITIALIZED_DOUBLE
-  nullify(glass%rad_mass_fraction)
-  nullify(glass%rad_concentration)
-  nullify(glass%inst_release_amount)
-  nullify(glass%next)
-
-end subroutine WFGlassInit
-
-! ************************************************************************** !
-
 function WFGlassCast(this)
   ! 
   ! Casts waste_form_base_type to waste_form_glass_type
@@ -1175,150 +1653,6 @@ function PMGlassCreate()
   PMGlassCreate%glass_density = 2.65d3 ! kg/m^3
 
 end function PMGlassCreate
-
-! ************************************************************************** !
-
-subroutine PMGlassRead(this,input)
-  ! 
-  ! Reads input file parameters associated with the waste form process model
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  use Input_Aux_module
-  use Utility_module
-  use Option_module
-  use String_module
-  use Units_module
-  
-  implicit none
-  
-  class(pm_waste_form_glass_type) :: this
-  type(input_type), pointer :: input
-  
-  type(option_type), pointer :: option
-  character(len=MAXWORDLENGTH) :: word
-  character(len=MAXSTRINGLENGTH) :: error_string, internal_units
-  class(waste_form_glass_type), pointer :: new_waste_form, prev_waste_form
-  PetscBool :: found, first_string
-  PetscInt :: k
-
-  option => this%option
-  error_string = 'GLASS'
-  input%ierr = 0
-  first_string = PETSC_TRUE
-
-  option%io_buffer = 'pflotran card:: ' // trim(error_string)
-  call printMsg(option)
-
-  do
-    call InputReadPflotranString(input,option)
-    if (InputError(input)) exit
-    if (InputCheckExit(input,option)) exit
-    
-    call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword',error_string)
-    call StringToUpper(word)
-    
-    call PMWasteFormReadSelectCase(this,input,word,found,error_string,option)
-    if (found) cycle
-
-    select case(trim(word))
-    !-------------------------------------
-      case('WASTE_FORM')
-        error_string = 'GLASS,WASTE_FORM'
-        allocate(new_waste_form)
-        call WFGlassInit(new_waste_form)
-        do
-          call InputReadPflotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword',error_string)
-          call StringToUpper(word)
-          select case(trim(word))
-            case('EXPOSURE_FACTOR')
-              call InputReadDouble(input,option,new_waste_form%exposure_factor)
-              call InputErrorMsg(input,option,'exposure factor',error_string)
-            case('VOLUME')
-              call InputReadDouble(input,option,new_waste_form%volume)
-              call InputErrorMsg(input,option,'volume',error_string)
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              if (input%ierr == 0) then
-                internal_units = 'm^3'
-                new_waste_form%volume = UnitsConvertToInternal(word, &
-                                        internal_units, &
-                                        option) * new_waste_form%volume
-              endif
-            case('COORDINATE')
-              call GeometryReadCoordinate(input,option, &
-                                          new_waste_form%coordinate, &
-                                          error_string)
-            case default
-              call InputKeywordUnrecognized(word,error_string,option)
-          end select
-        enddo
-        if (Uninitialized(new_waste_form%volume)) then
-          option%io_buffer = &
-            'VOLUME must be specified for all glass ' // &
-            'waste packages.'
-          call printErrMsg(option)
-        endif
-        if (Uninitialized(new_waste_form%exposure_factor)) then
-          option%io_buffer = &
-            'EXPOSURE_FACTOR must be specified for all glass ' // &
-            'waste packages.'
-          call printErrMsg(option)
-        endif
-        if (Uninitialized(new_waste_form%coordinate%z)) then
-          option%io_buffer = &
-            'COORDINATE must be specified for all glass ' // &
-            'waste packages.'
-          call printErrMsg(option)
-        endif
-        if (.not.associated(this%waste_form_list)) then
-          this%waste_form_list => new_waste_form
-          prev_waste_form => new_waste_form
-        else
-          prev_waste_form%next => new_waste_form
-          prev_waste_form => new_waste_form
-        endif
-        nullify(new_waste_form)
-        error_string = 'GLASS'
-    !-------------------------------------
-      case('SPECIFIC_SURFACE_AREA')
-        call InputReadDouble(input,option,this%specific_surface_area)
-        call InputErrorMsg(input,option,'specific surface area',error_string)
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'm^2/m^3'
-          this%specific_surface_area = UnitsConvertToInternal(word, &
-                            internal_units,option) * this%specific_surface_area
-        endif
-    !-------------------------------------
-      case('GLASS_DENSITY')
-        call InputReadDouble(input,option,this%glass_density)
-        call InputErrorMsg(input,option,'glass density',error_string)
-    !-------------------------------------
-      case default
-        call InputKeywordUnrecognized(word,error_string,option)
-    !-------------------------------------
-    end select
-  enddo
-
-  call PMWFReadError(this,input,option,error_string)
-  select type(this)
-    class is(pm_waste_form_glass_type)
-      call PMWFAssignColIdsFromHeader(this,input,option,error_string)
-  end select
-
-  if (Uninitialized(this%specific_surface_area)) then
-    option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' // &
-      trim(error_string)
-    call printErrMsg(option)
-  endif
-    
-end subroutine PMGlassRead
 
 ! ************************************************************************** !
 

@@ -201,9 +201,9 @@ function OutputOptionCreate()
   output_option%periodic_snap_output_ts_imod  = 100000000
   output_option%periodic_obs_output_ts_imod  = 100000000
   output_option%periodic_msbl_output_ts_imod  = 100000000
-  output_option%periodic_snap_output_time_incr = 0.d0
-  output_option%periodic_obs_output_time_incr = 0.d0
-  output_option%periodic_msbl_output_time_incr = 0.d0
+  output_option%periodic_snap_output_time_incr = 0
+  output_option%periodic_obs_output_time_incr = 0
+  output_option%periodic_msbl_output_time_incr = 0
   output_option%plot_name = ""
   output_option%aveg_var_time = 0.d0
   output_option%aveg_var_dtime = 0.d0
@@ -248,7 +248,7 @@ function CheckpointOptionCreate()
   checkpoint_option%tunit = ''
   checkpoint_option%tconv = 0.d0
   checkpoint_option%periodic_time_incr = UNINITIALIZED_DOUBLE
-  checkpoint_option%periodic_ts_incr = 0.d0
+  checkpoint_option%periodic_ts_incr = 0
   !checkpoint_option%periodic_ts_incr = huge(checkpoint_option%periodic_ts_incr)
   checkpoint_option%format = CHECKPOINT_BINARY
 
