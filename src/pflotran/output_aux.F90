@@ -144,6 +144,7 @@ module Output_Aux_module
             OutputWriteVariableListToHeader, &
             OutputVariableToCategoryString, &
             OutputVariableAppendDefaults, &
+            OpenAndWriteInputRecord, &
             OutputOptionDestroy, &
             OutputVariableListDestroy, &
             CheckpointOptionCreate, &
@@ -200,9 +201,9 @@ function OutputOptionCreate()
   output_option%periodic_snap_output_ts_imod  = 100000000
   output_option%periodic_obs_output_ts_imod  = 100000000
   output_option%periodic_msbl_output_ts_imod  = 100000000
-  output_option%periodic_snap_output_time_incr = 0.d0
-  output_option%periodic_obs_output_time_incr = 0.d0
-  output_option%periodic_msbl_output_time_incr = 0.d0
+  output_option%periodic_snap_output_time_incr = 0
+  output_option%periodic_obs_output_time_incr = 0
+  output_option%periodic_msbl_output_time_incr = 0
   output_option%plot_name = ""
   output_option%aveg_var_time = 0.d0
   output_option%aveg_var_dtime = 0.d0
@@ -247,7 +248,8 @@ function CheckpointOptionCreate()
   checkpoint_option%tunit = ''
   checkpoint_option%tconv = 0.d0
   checkpoint_option%periodic_time_incr = UNINITIALIZED_DOUBLE
-  checkpoint_option%periodic_ts_incr = huge(checkpoint_option%periodic_ts_incr)
+  checkpoint_option%periodic_ts_incr = 0
+  !checkpoint_option%periodic_ts_incr = huge(checkpoint_option%periodic_ts_incr)
   checkpoint_option%format = CHECKPOINT_BINARY
 
   CheckpointOptionCreate => checkpoint_option
@@ -662,6 +664,55 @@ subroutine OutputVariableAppendDefaults(output_variable_list,option)
   call OutputVariableAddToList(output_variable_list,output_variable)
   
 end subroutine OutputVariableAppendDefaults
+
+! ************************************************************************** !
+
+subroutine OpenAndWriteInputRecord(option)
+  ! 
+  ! Opens the input record file and begins to write to it.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type), pointer :: option
+
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: filename
+  PetscInt :: id
+
+  id = option%fid_inputrecord
+  filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+             '-input-record.tec'
+  open(unit=id,file=filename,action="write",status="replace")
+  call fdate(word)
+  if (OptionPrintToFile(option)) then
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') ' PFLOTRAN INPUT RECORD    ' // trim(word)
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+  
+    write(id,'(a18)',advance='no') 'input file: '  
+    write(id,*) trim(option%global_prefix) // '.in' 
+    
+    write(id,'(a18)',advance='no') 'group: ' 
+    write(id,*) trim(option%group_prefix)
+  
+    write(word,*) option%global_commsize
+    write(id,'(a18)',advance='no') 'n processors: ' 
+    write(id,*) trim(adjustl(word))
+  endif
+
+end subroutine OpenAndWriteInputRecord
 
 ! ************************************************************************** !
 

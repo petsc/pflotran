@@ -2178,7 +2178,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   PetscInt :: iconn
   PetscInt :: count
   PetscReal, pointer :: flowrates(:,:)
-  PetscReal, pointer :: darcy(:)
+  PetscReal, pointer :: darcy(:), area(:)
   PetscInt, pointer :: nat_ids_up(:),nat_ids_dn(:)
   PetscReal, pointer :: density(:)
   Vec :: vec_proc
@@ -2205,7 +2205,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   call OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
                                      nat_ids_up,nat_ids_dn)
   call OutputGetExplicitFlowrates(realization_base,count,vec_proc,flowrates, &
-                                  darcy)
+                                  darcy,area)
   call OutputGetExplicitAuxVars(realization_base,count,vec_proc, &
                                 density)
     
@@ -2232,6 +2232,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
     write(OUTPUT_UNIT,1001,advance='no') nat_ids_dn(i)
     write(OUTPUT_UNIT,1000,advance='no') darcy(i)
     write(OUTPUT_UNIT,1000,advance='no') density(i)
+    write(OUTPUT_UNIT,1000,advance='no') area(i)
     write(OUTPUT_UNIT,'(a)')
   enddo                     
   close(OUTPUT_UNIT)
@@ -2241,6 +2242,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   deallocate(nat_ids_up)
   deallocate(nat_ids_dn)
   deallocate(density)
+  deallocate(area)
   
  ! Order of printing for the 2nd file
  ! cellid saturation porosity density[kg/m3] pressure[Pa]

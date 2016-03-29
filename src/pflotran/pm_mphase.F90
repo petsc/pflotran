@@ -35,6 +35,7 @@ module PM_Mphase_class
     procedure, public :: UpdateAuxVars => PMMphaseUpdateAuxVars
     procedure, public :: MaxChange => PMMphaseMaxChange
     procedure, public :: ComputeMassBalance => PMMphaseComputeMassBalance
+    procedure, public :: InputRecord => PMMphaseInputRecord
     procedure, public :: Destroy => PMMphaseDestroy
   end type pm_mphase_type
   
@@ -533,6 +534,32 @@ subroutine PMMphaseComputeMassBalance(this,mass_balance_array)
   !call MphaseComputeMassBalance(this%realization,mass_balance_array)
 
 end subroutine PMMphaseComputeMassBalance
+
+! ************************************************************************** !
+
+subroutine PMMphaseInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_mphase_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+  write(id,'(a29)',advance='no') 'mode: '
+  write(id,'(a)') 'mphase'
+
+end subroutine PMMphaseInputRecord
 
 ! ************************************************************************** !
 

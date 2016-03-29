@@ -64,6 +64,7 @@ module PM_Subsurface_Flow_class
     procedure, public :: CheckpointHDF5 => PMSubsurfaceFlowCheckpointHDF5
     procedure, public :: RestartHDF5 => PMSubsurfaceFlowRestartHDF5
 #endif
+    procedure, public :: InputRecord => PMSubsurfaceFlowInputRecord
 !    procedure, public :: Destroy => PMSubsurfaceFlowDestroy
   end type pm_subsurface_flow_type
   
@@ -735,6 +736,30 @@ recursive subroutine PMSubsurfaceFlowFinalizeRun(this)
   endif  
   
 end subroutine PMSubsurfaceFlowFinalizeRun
+
+! ************************************************************************** !
+
+subroutine PMSubsurfaceFlowInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_subsurface_flow_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMSubsurfaceFlowInputRecord
 
 ! ************************************************************************** !
 
