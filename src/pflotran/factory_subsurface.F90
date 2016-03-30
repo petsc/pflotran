@@ -183,12 +183,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   call SubsurfaceReadRequiredCards(simulation)
   call SubsurfaceReadInput(simulation)
   if (associated(pm_waste_form)) then
-    select type(pm_waste_form)
-      class is (pm_waste_form_fmdm_type)
-        string = 'FMDM'
-      class is (pm_waste_form_glass_type)
-        string = 'GLASS'
-    end select
+    string = 'WASTE_FORM_GENERAL'
     call InputFindStringInFile(realization%input,option,string)
     call InputFindStringErrorMsg(realization%input,option,string)
     call pm_waste_form%Read(realization%input)
@@ -203,7 +198,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   
   if (associated(pm_waste_form)) then
     if (.not.associated(simulation%rt_process_model_coupler)) then
-      option%io_buffer = 'The Waste Form process models require ' // &
+      option%io_buffer = 'The Waste Form process model requires ' // &
         'reactive transport.'
       call printErrMsg(option)
     endif
@@ -214,12 +209,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     pmc_third_party%pm_ptr%pm => pm_waste_form
     pmc_third_party%realization => realization
     ! set up logging stage
-    select type(pm_waste_form)
-      class is (pm_waste_form_fmdm_type)
-        string = 'FMDM'
-      class is (pm_waste_form_glass_type)
-        string = 'GLASS'
-    end select
+    string = 'WASTE_FORM_GENERAL'
     call LoggingCreateStage(string,pmc_third_party%stage)
     simulation%rt_process_model_coupler%child => pmc_third_party
     nullify(pmc_third_party)
@@ -551,7 +541,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
       case('OPTIONS')
         if (.not.associated(pm)) then
           option%io_buffer = 'MODE keyword must be read first under ' // &
-            error_string
+                             trim(error_string)
           call printErrMsg(option)
         endif
         call pm%Read(input)
@@ -641,13 +631,12 @@ subroutine SubsurfaceReadWasteFormPM(input, option, pm)
         call InputErrorMsg(input,option,'mode',error_string)
         call StringToUpper(word)
         select case(word)
-          case('FMDM')
-            pm => PMFMDMCreate()
-          case('GLASS')
-            pm => PMGlassCreate()
+          case('GENERAL')
+            pm => PMWFCreate()
           case default
-            option%io_buffer = 'WASTE FORM type "' // trim(word) // &
-              '" not recognized.'
+            option%io_buffer = 'WASTE FORM type ' // trim(word) // &
+              ' not recognized. Only TYPE GENERAL currently supported. &
+              & TYPE GLASS or TYPE FMDM no longer supported.'
             call printErrMsg(option)
         end select
       case default
@@ -875,7 +864,7 @@ subroutine SubsurfaceInitSimulation(simulation)
             endif
             call cur_process_model%PMRTSetRealization(realization)
           class is (pm_waste_form_type)
-            call cur_process_model%PMWasteFormSetRealization(realization)
+            call cur_process_model%PMWFSetRealization(realization)
           class is (pm_ufd_decay_type)
             call cur_process_model%PMUFDDecaySetRealization(realization)
         end select
