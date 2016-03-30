@@ -156,7 +156,7 @@ end subroutine PMCBaseInit
 
 ! ************************************************************************** !
 
-subroutine PMCBaseInputRecord(this)
+recursive subroutine PMCBaseInputRecord(this)
   ! 
   ! Writes ingested information to the input record file.
   ! 
