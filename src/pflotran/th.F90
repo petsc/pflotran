@@ -3761,8 +3761,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       r_p(istart:iend) = r_p(istart:iend) - Res_src
 
       if (option%compute_mass_balance_new) then
-        global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) = &
-          global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - Res_src
+        global_auxvars_ss(sum_connection)%mass_balance_delta(1,1) = &
+          global_auxvars_ss(sum_connection)%mass_balance_delta(1,1) - Res_src(1)
       endif
       if (associated(patch%ss_flow_vol_fluxes)) then
         ! fluid flux [m^3/sec] = qsrc_mol [kmol/sec] / den [kmol/m^3]
@@ -3933,8 +3933,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) = &
-          global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) - Res(1:2)
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) - Res(1)
       endif
 
       iend = local_id*option%nflowdof
