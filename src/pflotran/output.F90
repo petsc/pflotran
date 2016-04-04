@@ -132,6 +132,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
   aveg_mass_flowrate = PETSC_FALSE
   aveg_energy_flowrate = PETSC_FALSE
   k = 0
+  nullify(temp_real_array)
 
   select case(trim(block_name))
     case('SNAPSHOT_FILE')
