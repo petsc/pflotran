@@ -345,7 +345,7 @@ end function UCellComputeVolumeOfTetrahedron
 
 subroutine UCellComputePlane(plane,point1,point2,point3)
   ! 
-  ! Computes the plane intersected by 3 points
+  ! Calculates the plane intersected by 3 points
   ! 
   ! Author: Glenn Hammond
   ! Date: 10/30/09
@@ -381,7 +381,7 @@ end subroutine UCellComputePlane
 
 subroutine UCellProjectPointOntoPlane(plane,point,intercept)
   ! 
-  ! Computes the intercept of a point with a plane
+  ! Calculates the intercept of a point with a plane
   ! 
   ! Author: Glenn Hammond
   ! Date: 11/22/11
@@ -411,7 +411,7 @@ end subroutine UCellProjectPointOntoPlane
 
 subroutine UCellGetPlaneIntercept(plane,point1,point2,intercept)
   ! 
-  ! Computes the intercept of a line with a plane
+  ! Calculates the intercept of a line with a plane
   ! 
   ! Author: Glenn Hammond
   ! Date: 10/30/09
@@ -448,7 +448,7 @@ end subroutine UCellGetPlaneIntercept
 
 function UCellComputeDistanceFromPlane(plane,point)
   ! 
-  ! Computes the intercept of a line with a plane
+  ! Calculates the distance of a point from a plane
   ! 
   ! Author: Glenn Hammond
   ! Date: 10/24/11
