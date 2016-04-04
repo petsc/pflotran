@@ -107,7 +107,9 @@ subroutine SubsurfaceSimInputRecord(this)
   ! Date: 03/17/2016
   ! 
   use Output_module
+  use Discretization_module
   use Reaction_Aux_module
+  use Region_module
   
   implicit none
   
@@ -146,6 +148,13 @@ subroutine SubsurfaceSimInputRecord(this)
       write(id,'(a)') 'thermal-oil-immiscible'
   end select
 
+  ! print grid/discretization information
+  call DiscretizationInputRecord(this%realization%discretization)
+
+  ! print region information
+  call RegionInputRecord(this%realization%region_list)
+
+  ! consider putting the following stuff in realization_aux.F90
   write(id,'(a)') ' '
   write(id,'(a)') '---------------------------------------------------------&
        &-----------------------'

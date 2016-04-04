@@ -956,13 +956,12 @@ pm_ufd_decay.o : field.o global.o global_aux.o grid.o input_aux.o \
                  pm_base.o reaction_aux.o reaction_mineral_aux.o \
                  reactive_transport_aux.o realization_subsurface.o string.o \
                  utility.o
-pm_waste_form.o : condition.o data_mediator_vec.o dataset.o dataset_ascii.o \
+pm_waste_form.o : condition.o data_mediator_vec.o dataset_ascii.o \
                   dataset_base.o field.o geometry.o global_aux.o grid.o \
                   grid_structured.o grid_unstructured.o input_aux.o \
                   material_aux.o option.o output_aux.o pflotran_constants.o \
-                  pm_base.o reaction_aux.o reactive_transport_aux.o \
-                  realization_base.o realization_subsurface.o string.o \
-                  time_storage.o units.o utility.o
+                  pm_base.o reaction_aux.o realization_base.o \
+                  realization_subsurface.o string.o units.o utility.o
 pmc_auxiliary.o : option.o pflotran_constants.o pm_auxiliary.o pmc_base.o \
                   realization_subsurface.o timestepper_base.o
 pmc_base.o : checkpoint.o logging.o option.o output.o output_aux.o \
@@ -1174,10 +1173,11 @@ simulation_hydrogeophysics.o : option.o pflotran_constants.o \
                                wrapper_hydrogeophysics.o
 simulation_subsurface.o : logging.o option.o output.o output_aux.o \
                           pflotran_constants.o pmc_base.o pmc_subsurface.o \
-                          pmc_third_party.o reaction_clm.o reaction_sandbox.o \
-                          realization_subsurface.o regression.o \
-                          simulation_base.o srcsink_sandbox.o timestepper_BE.o \
-                          timestepper_base.o waypoint.o wipp.o
+                          pmc_third_party.o reaction_aux.o reaction_clm.o \
+                          reaction_sandbox.o realization_subsurface.o \
+                          regression.o simulation_base.o srcsink_sandbox.o \
+                          timestepper_BE.o timestepper_base.o waypoint.o \
+                          wipp.o
 simulation_surface.o : logging.o option.o output.o pflotran_constants.o \
                        pmc_base.o pmc_surface.o realization_surface.o \
                        regression.o simulation_base.o timestepper_base.o \

@@ -89,7 +89,8 @@ module Region_module
   
   public :: RegionCreate, RegionDestroy, RegionAddToList, RegionReadFromFile, &
             RegionInitList, RegionDestroyList, RegionGetPtrFromList, & 
-            RegionRead, RegionReadSideSet, RegionCreateSideset
+            RegionRead, RegionReadSideSet, RegionCreateSideset, &
+            RegionInputRecord
   
 contains
 
@@ -1201,7 +1202,41 @@ function RegionGetPtrFromList(region_name,region_list)
   
 end function RegionGetPtrFromList
 
-! ************************************************************************** !
+! **************************************************************************** !
+
+subroutine RegionInputRecord(region_list)
+  ! 
+  ! Prints ingested region information
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/30/2016
+  ! 
+
+  implicit none
+
+  type(region_list_type), pointer :: region_list
+  type(region_type), pointer :: cur_region
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'REGIONS'
+  cur_region => region_list%first
+  do
+    if (.not.associated(cur_region)) exit
+    write(id,'(a29)',advance='no') 'region: '
+    write(id,'(a)') trim(cur_region%name)
+    cur_region => cur_region%next
+  enddo
+  
+
+end subroutine RegionInputRecord
+
+! **************************************************************************** !
 
 subroutine RegionDestroySideset(sideset)
   ! 
