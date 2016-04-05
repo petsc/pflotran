@@ -3710,9 +3710,11 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,realization,ierr)
    
     select case(option%idt_switch)
       case(1) 
-        ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+        ra(1:option%nflowdof,1:option%nflowdof) = &
+          ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
-        if (option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+        if (option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) = &
+          ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     end select
 
     Jup = ra(1:option%nflowdof,1:option%nflowdof)
@@ -4575,9 +4577,11 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,realization,ierr)
    
     select case(option%idt_switch)
     case(1)
-      ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+      ra(1:option%nflowdof,1:option%nflowdof) = &
+        ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     case(-1)
-      if (option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+      if (option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) = &
+        ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     end select
 
     Jup=ra(1:option%nflowdof,1:option%nflowdof)
