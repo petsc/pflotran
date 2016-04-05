@@ -2338,6 +2338,7 @@ subroutine SubsurfaceReadInput(simulation)
               units_conversion = &
                 UnitsConvertToInternal(word,internal_units,option) 
               string = 'OBSERVATION_TIMES,TIMES'
+              nullify(temp_real_array)
               call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
                                     string,input,option)
               do temp_int = 1, size(temp_real_array)
