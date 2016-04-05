@@ -120,8 +120,7 @@ subroutine DownregRead(this,input,option)
                        'SOURCE_SINK_SANDBOX,DOWNREG')
     call StringToUpper(word)   
 
-    ! reads the REGION
-    call SSSandboxBaseRead(this,input,option,word,found)
+    call SSSandboxBaseSelectCase(this,input,option,word,found)
     if (found) cycle
     
     select case(trim(word))
@@ -180,7 +179,7 @@ end subroutine DownregRead
 
 ! ************************************************************************** !
 
-subroutine DownregSetup(this,region_list,option)
+subroutine DownregSetup(this,grid,option)
   ! 
   ! Sets up the mass rate src/sink
   ! 
@@ -188,18 +187,16 @@ subroutine DownregSetup(this,region_list,option)
   ! Date: 06/03/14
 
   use Option_module
-  use Region_module
+  use Grid_module
   use General_Aux_module, only : general_fmw_com => fmw_comp
 
   implicit none
   
   class(srcsink_sandbox_downreg_type) :: this
-  type(region_list_type) :: region_list
+  type(grid_type) :: grid
   type(option_type) :: option
   
-  PetscInt :: i
-  
-  call SSSandboxBaseSetup(this,region_list,option)
+  call SSSandboxBaseSetup(this,grid,option)
 
 end subroutine DownregSetup 
 

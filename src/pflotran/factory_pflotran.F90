@@ -164,6 +164,13 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   
   input => InputCreate(IN_UNIT,option%input_filename,option)
 
+  string = 'INPUT_RECORD_FILE'
+  call InputFindStringInFile(input,option,string)
+  if (input%ierr == 0) then
+    option%input_record = PETSC_TRUE
+    call OpenAndWriteInputRecord(option)
+  endif
+
   string = 'SIMULATION'
   call InputFindStringInFile(input,option,string)
   call InputFindStringErrorMsg(input,option,string)

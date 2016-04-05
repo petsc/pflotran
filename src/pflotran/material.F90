@@ -15,6 +15,7 @@ module Material_module
   type, public :: material_property_type
     PetscInt :: external_id
     PetscInt :: internal_id
+    PetscBool :: active
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: permeability(3,3)
     PetscBool :: isotropic_permeability
@@ -131,6 +132,7 @@ function MaterialPropertyCreate()
   allocate(material_property)
   material_property%external_id = 0
   material_property%internal_id = 0
+  material_property%active = PETSC_TRUE
   material_property%name = ''
   ! initialize to UNINITIALIZED_DOUBLE to catch bugs
   material_property%permeability = UNINITIALIZED_DOUBLE
@@ -213,6 +215,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   use String_module
   use Fracture_module
   use Dataset_module
+  use Units_module
   
   implicit none
   
@@ -220,7 +223,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   type(input_type), pointer :: input
   type(option_type) :: option
   
-  character(len=MAXWORDLENGTH) :: keyword, word
+  character(len=MAXWORDLENGTH) :: keyword, word, internal_units
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: buffer_save
 
@@ -251,6 +254,16 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('ID') 
         call InputReadInt(input,option,material_property%external_id)
         call InputErrorMsg(input,option,'id','MATERIAL_PROPERTY')
+        if (material_property%external_id == UNINITIALIZED_INTEGER) then
+          write(string,*) UNINITIALIZED_INTEGER
+          option%io_buffer = 'Material ID "' // trim(adjustl(string)) // &
+            '" is reserved for uninitialized materials.  Please choose a &
+            &different value.'
+        endif
+      case('ACTIVE')
+        material_property%active = PETSC_TRUE
+      case('INACTIVE')
+        material_property%active = PETSC_FALSE
       case('SATURATION_FUNCTION','CHARACTERISTIC_CURVES') 
         call InputReadWord(input,option, &
                            material_property%saturation_function_name, &
@@ -260,28 +273,57 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('ROCK_DENSITY') 
         call InputReadDouble(input,option,material_property%rock_density)
         call InputErrorMsg(input,option,'rock density','MATERIAL_PROPERTY')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'kg/m^3'
+          material_property%rock_density = material_property%rock_density * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('SPECIFIC_HEAT','HEAT_CAPACITY') 
         call InputReadDouble(input,option,material_property%specific_heat)
         call InputErrorMsg(input,option,'specific heat','MATERIAL_PROPERTY')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'J/kg-C'
+          material_property%specific_heat = material_property%specific_heat * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('LONGITUDINAL_DISPERSIVITY') 
         call InputReadDouble(input,option,material_property%dispersivity(1))
-        call InputErrorMsg(input,option,'longitudinal_dispersivity','MATERIAL_PROPERTY')
+        call InputErrorMsg(input,option,'longitudinal_dispersivity', &
+                           'MATERIAL_PROPERTY')
       case('TRANSVERSE_DISPERSIVITY_H') 
         call InputReadDouble(input,option,material_property%dispersivity(2))
-        call InputErrorMsg(input,option,'transverse_dispersivity_h','MATERIAL_PROPERTY')
+        call InputErrorMsg(input,option,'transverse_dispersivity_h', &
+                           'MATERIAL_PROPERTY')
       case('TRANSVERSE_DISPERSIVITY_V') 
         call InputReadDouble(input,option,material_property%dispersivity(3))
-        call InputErrorMsg(input,option,'transverse_dispersivity_v','MATERIAL_PROPERTY')
+        call InputErrorMsg(input,option,'transverse_dispersivity_v', &
+                           'MATERIAL_PROPERTY')
       case('THERMAL_CONDUCTIVITY_DRY') 
         call InputReadDouble(input,option, &
                              material_property%thermal_conductivity_dry)
         call InputErrorMsg(input,option,'dry thermal conductivity', &
                            'MATERIAL_PROPERTY')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'W/m-C'
+          material_property%thermal_conductivity_dry = &
+            material_property%thermal_conductivity_dry * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('THERMAL_CONDUCTIVITY_WET') 
         call InputReadDouble(input,option, &
                              material_property%thermal_conductivity_wet)
         call InputErrorMsg(input,option,'wet thermal conductivity', &
                            'MATERIAL_PROPERTY')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'W/m-C'
+          material_property%thermal_conductivity_wet = &
+            material_property%thermal_conductivity_wet * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('THERMAL_COND_EXPONENT') 
         call InputReadDouble(input,option, &
                              material_property%alpha)
@@ -293,11 +335,19 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%thermal_conductivity_frozen)
         call InputErrorMsg(input,option,'frozen thermal conductivity', &
                            'MATERIAL_PROPERTY')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'W/m-C'
+          material_property%thermal_conductivity_frozen = &
+            material_property%thermal_conductivity_frozen * &
+            UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('THERMAL_COND_EXPONENT_FROZEN') 
         therm_k_exp_frz = PETSC_TRUE
         call InputReadDouble(input,option, &
                              material_property%alpha_fr)
-        call InputErrorMsg(input,option,'thermal conductivity frozen exponent', &
+        call InputErrorMsg(input,option, &
+                           'thermal conductivity frozen exponent', &
                            'MATERIAL_PROPERTY')
       !case('PORE_COMPRESSIBILITY')
       !  call InputReadDouble(input,option, &
@@ -366,7 +416,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
               material_property%isotropic_permeability = PETSC_TRUE
             case('PERMEABILITY_SCALING_FACTOR')
               call InputReadDouble(input,option, &
-                                   material_property%permeability_scaling_factor)
+                                  material_property%permeability_scaling_factor)
               call InputErrorMsg(input,option,'permeability scaling factor', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')
             case('PERM_X')
@@ -728,10 +778,13 @@ subroutine MaterialPropertyAddToList(material_property,list)
       cur_material_property => cur_material_property%next
     enddo
     cur_material_property%next => material_property
-    material_property%internal_id = cur_material_property%internal_id + 1
+    material_property%internal_id = iabs(cur_material_property%internal_id) + 1
   else
     list => material_property
     material_property%internal_id = 1
+  endif
+  if (.not.material_property%active) then
+    material_property%internal_id = -1*material_property%internal_id
   endif
   
 end subroutine MaterialPropertyAddToList
@@ -802,7 +855,7 @@ subroutine MaterialPropConvertListToArray(list,array,option)
     if (.not.associated(cur_material_property)) exit
     max_internal_id = max_internal_id + 1
     max_external_id = max(max_external_id,cur_material_property%external_id)
-    if (max_internal_id /= cur_material_property%internal_id) then
+    if (max_internal_id /= iabs(cur_material_property%internal_id)) then
       write(string,*) cur_material_property%external_id
       option%io_buffer = 'Non-contiguous internal material id for ' // &
         'material named "' // trim(cur_material_property%name) // &
@@ -830,7 +883,7 @@ subroutine MaterialPropConvertListToArray(list,array,option)
     if (.not.associated(cur_material_property)) exit
     id_count(cur_material_property%external_id) = &
       id_count(cur_material_property%external_id) + 1
-    array(cur_material_property%internal_id)%ptr => cur_material_property
+    array(iabs(cur_material_property%internal_id))%ptr => cur_material_property
     cur_material_property => cur_material_property%next
   enddo
   
@@ -927,7 +980,7 @@ subroutine MaterialCreateIntToExtMapping(material_property_array,mapping)
   mapping(0) = 0
   
   do i = 1, size(material_property_array)
-    mapping(material_property_array(i)%ptr%internal_id) = &
+    mapping(iabs(material_property_array(i)%ptr%internal_id)) = &
       material_property_array(i)%ptr%external_id
   enddo
 
@@ -985,9 +1038,6 @@ subroutine MaterialApplyMapping(mapping,array)
       mapped_id = mapping(array(i))
     else
       mapped_id = -888 ! indicates corresponding mapped value does not exist.
-    endif
-    if (mapped_id == -888) then ! negate material id to indicate not found
-      mapped_id = -1*array(i)
     endif
     array(i) = mapped_id
   enddo
@@ -1264,20 +1314,26 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
   ! check of uninitialized values
   if (num_soil_compress_func > 0 .and. &
       num_soil_compress_func /= num_material_properties) then
-    option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION must be defined for all ' // &
-      'materials.'
+    option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION must be defined for all &
+      &materials.'
     call printErrMsg(option)
   endif
   if (soil_compressibility_index > 0 .and. &
       num_soil_compress /= num_material_properties) then
-    option%io_buffer = 'SOIL_COMPRESSIBILITY must be defined for all ' // &
-      'materials.'
+    option%io_buffer = 'SOIL_COMPRESSIBILITY must be defined for all &
+      &materials.'
     call printErrMsg(option)
   endif
   if (soil_reference_pressure_index > 0 .and. &
       num_soil_ref_press /= num_material_properties) then
-    option%io_buffer = 'SOIL_REFERENCE_PRESSURE must be defined for all ' // &
-      'materials.'
+    option%io_buffer = 'SOIL_REFERENCE_PRESSURE must be defined for all &
+      &materials.'
+    call printErrMsg(option)
+  endif
+  if (soil_compressibility_index > 0 .and. &
+      soil_reference_pressure_index == 0) then
+    option%io_buffer = 'SOIL_REFERENCE_PRESSURE must be defined to model &
+      &soil compressibility.'
     call printErrMsg(option)
   endif
   

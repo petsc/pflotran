@@ -1142,10 +1142,10 @@ subroutine DiscretizationNaturalToGlobal(discretization,natural_vec,global_vec,d
       call DMDANaturalToGlobalEnd(dm_ptr%dm,natural_vec,INSERT_VALUES,global_vec, &
                                   ierr);CHKERRQ(ierr)
     case(UNSTRUCTURED_GRID)
-      call VecScatterBegin(dm_ptr%ugdm%scatter_ntog,natural_vec,global_vec, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-      call VecScatterEnd(dm_ptr%ugdm%scatter_ntog,natural_vec,global_vec, &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+      call VecScatterBegin(dm_ptr%ugdm%scatter_gton,natural_vec,global_vec, &
+                           INSERT_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
+      call VecScatterEnd(dm_ptr%ugdm%scatter_gton,natural_vec,global_vec, &
+                         INSERT_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
   end select
   
 end subroutine DiscretizationNaturalToGlobal

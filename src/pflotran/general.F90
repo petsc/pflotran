@@ -75,6 +75,7 @@ subroutine GeneralSetup(realization)
   use Grid_module
   use Fluid_module
   use Material_Aux_class
+  use Output_Aux_module
  
   implicit none
   
@@ -83,6 +84,7 @@ subroutine GeneralSetup(realization)
   type(option_type), pointer :: option
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
+  type(output_variable_list_type), pointer :: list
   type(coupler_type), pointer :: boundary_condition
   type(material_parameter_type), pointer :: material_parameter
 
@@ -197,10 +199,6 @@ subroutine GeneralSetup(realization)
     patch%aux%General%auxvars_ss => gen_auxvars_ss
   endif
   patch%aux%General%num_aux_ss = sum_connection
-    
-  ! create zero array for zeroing residual and Jacobian (1 on diagonal)
-  ! for inactive cells (and isothermal)
-  call GeneralCreateZeroArray(patch,option)
 
   ! create array for zeroing Jacobian entries if isothermal and/or no air
   allocate(patch%aux%General%row_zeroing_array(grid%nlmax))
@@ -229,7 +227,10 @@ subroutine GeneralSetup(realization)
     call printErrMsg(option)
   endif
 
-  call GeneralSetPlotVariables(realization) 
+  list => realization%output_option%output_snap_variable_list
+  call GeneralSetPlotVariables(realization,list)
+  list => realization%output_option%output_obs_variable_list
+  call GeneralSetPlotVariables(realization,list)
   
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   debug_flag = 0
@@ -3139,85 +3140,6 @@ end subroutine GeneralJacobian
 
 ! ************************************************************************** !
 
-subroutine GeneralCreateZeroArray(patch,option)
-  ! 
-  ! Computes the zeroed rows for inactive grid cells
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/09/11
-  ! 
-
-  use Realization_Subsurface_class
-  use Patch_module
-  use Grid_module
-  use Option_module
-  use Field_module
-  
-  implicit none
-
-  type(patch_type) :: patch
-  type(option_type) :: option
-  
-  PetscInt :: ncount, idof
-  PetscInt :: local_id, ghosted_id
-
-  type(grid_type), pointer :: grid
-  PetscInt :: flag
-  PetscInt :: n_inactive_rows
-  PetscInt, pointer :: inactive_rows_local(:)
-  PetscInt, pointer :: inactive_rows_local_ghosted(:)
-  PetscErrorCode :: ierr
-    
-  flag = 0
-  grid => patch%grid
-  
-  n_inactive_rows = 0
-
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) then
-      n_inactive_rows = n_inactive_rows + option%nflowdof
-    endif
-  enddo
-
-  allocate(inactive_rows_local(n_inactive_rows))
-  allocate(inactive_rows_local_ghosted(n_inactive_rows))
-
-  inactive_rows_local = 0
-  inactive_rows_local_ghosted = 0
-  ncount = 0
-
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) then
-      do idof = 1, option%nflowdof
-        ncount = ncount + 1
-        inactive_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
-        inactive_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof + &
-                                              idof-1
-      enddo
-    endif
-  enddo
-
-  patch%aux%General%inactive_rows_local => inactive_rows_local
-  patch%aux%General%inactive_rows_local_ghosted => inactive_rows_local_ghosted
-  patch%aux%General%n_inactive_rows = n_inactive_rows
-  
-  call MPI_Allreduce(n_inactive_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                     MPI_MAX,option%mycomm,ierr)
-  if (flag > 0) patch%aux%General%inactive_cells_exist = PETSC_TRUE
-  if (ncount /= n_inactive_rows) then
-    if (option%myrank == option%io_rank) then
-      print *, 'Error:  Mismatch in non-zero row count!', ncount, &
-        n_inactive_rows
-    endif
-    stop
-  endif
-
-end subroutine GeneralCreateZeroArray
-
-! ************************************************************************** !
-
 function GeneralGetTecplotHeader(realization,icolumn)
   ! 
   ! Returns General Lite contribution to
@@ -3345,7 +3267,7 @@ end function GeneralGetTecplotHeader
 
 ! ************************************************************************** !
 
-subroutine GeneralSetPlotVariables(realization)
+subroutine GeneralSetPlotVariables(realization,list)
   ! 
   ! Adds variables to be printed to list
   ! 
@@ -3360,12 +3282,10 @@ subroutine GeneralSetPlotVariables(realization)
   implicit none
   
   type(realization_subsurface_type) :: realization
-  
-  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
+
+  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_type), pointer :: output_variable
-  
-  list => realization%output_option%output_variable_list
 
   if (associated(list%first)) then
     return
@@ -3445,8 +3365,7 @@ subroutine GeneralSetPlotVariables(realization)
   output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE,units,STATE)
   output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
   output_variable%iformat = 1 ! integer
-  call OutputVariableAddToList( &
-         realization%output_option%output_variable_list,output_variable)   
+  call OutputVariableAddToList(list,output_variable)   
   
 end subroutine GeneralSetPlotVariables
 
@@ -3526,7 +3445,7 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
   PetscReal :: res(option%nflowdof)
   PetscReal :: Jac(option%nflowdof,option%nflowdof)
   class(srcsink_sandbox_base_type), pointer :: cur_srcsink
-  PetscInt :: i, local_id, ghosted_id, istart, iend, idof, irow
+  PetscInt :: local_id, ghosted_id, istart, iend, irow, idof
   PetscReal :: res_pert(option%nflowdof)
   PetscReal :: aux_real(10)
   PetscErrorCode :: ierr
@@ -3538,48 +3457,45 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
   cur_srcsink => ss_sandbox_list
   do
     if (.not.associated(cur_srcsink)) exit
-      aux_real = 0.d0
-
-      do i = 1, size(cur_srcsink%region%cell_ids)
-        local_id = cur_srcsink%region%cell_ids(i)
-        ghosted_id = grid%nL2G(local_id)
-        res = 0.d0
-        Jac = 0.d0
+    aux_real = 0.d0
+    local_id = cur_srcsink%local_cell_id
+    ghosted_id = grid%nL2G(local_id)
+    res = 0.d0
+    Jac = 0.d0
+    call GeneralSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
+                      general_auxvars(ZERO_INTEGER,ghosted_id),option)
+    call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
+                              material_auxvars(ghosted_id), &
+                              aux_real,option)
+    if (compute_derivative) then
+      do idof = 1, option%nflowdof
+        res_pert = 0.d0
         call GeneralSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                          general_auxvars(ZERO_INTEGER,ghosted_id),option)
-        call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
+                                    general_auxvars(idof,ghosted_id),option)
+        call cur_srcsink%Evaluate(res_pert,Jac,PETSC_FALSE, &
                                   material_auxvars(ghosted_id), &
                                   aux_real,option)
-        if (compute_derivative) then
-          do idof = 1, option%nflowdof
-            res_pert = 0.d0
-            call GeneralSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                                       general_auxvars(idof,ghosted_id),option)
-            call cur_srcsink%Evaluate(res_pert,Jac,PETSC_FALSE, &
-                                      material_auxvars(ghosted_id), &
-                                      aux_real,option)
-            do irow = 1, option%nflowdof
-              Jac(irow,idof) = (res_pert(irow)-res(irow)) / &
-                               general_auxvars(idof,ghosted_id)%pert
-            enddo
-          enddo
-          if (general_isothermal) then
-            Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
-            Jac(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
-          endif         
-          if (general_no_air) then
-            Jac(GENERAL_GAS_EQUATION_INDEX,:) = 0.d0
-            Jac(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
-          endif          
-          call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
-                                        ghosted_id-1,Jac,ADD_VALUES, &
-                                        ierr);CHKERRQ(ierr)
-        else
-          iend = local_id*option%nflowdof
-          istart = iend - option%nflowdof + 1
-          r_p(istart:iend) = r_p(istart:iend) - res
-        endif
+        do irow = 1, option%nflowdof
+          Jac(irow,idof) = (res_pert(irow)-res(irow)) / &
+                            general_auxvars(idof,ghosted_id)%pert
+        enddo
       enddo
+      if (general_isothermal) then
+        Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
+        Jac(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0
+      endif         
+      if (general_no_air) then
+        Jac(GENERAL_GAS_EQUATION_INDEX,:) = 0.d0
+        Jac(:,GENERAL_GAS_EQUATION_INDEX) = 0.d0
+      endif          
+      call MatSetValuesBlockedLocal(Jacobian,1,ghosted_id-1,1, &
+                                    ghosted_id-1,Jac,ADD_VALUES, &
+                                    ierr);CHKERRQ(ierr)
+    else
+      iend = local_id*option%nflowdof
+      istart = iend - option%nflowdof + 1
+      r_p(istart:iend) = r_p(istart:iend) - res
+    endif
     cur_srcsink => cur_srcsink%next
   enddo
   

@@ -366,6 +366,7 @@ subroutine THAuxVarComputeNoFreezing(x,auxvar,global_auxvar, &
   PetscReal :: alpha
   PetscReal :: Dk
   PetscReal :: Dk_dry
+  PetscReal :: aux(1)
 
 ! auxvar%den = 0.d0
 ! auxvar%den_kg = 0.d0
@@ -413,20 +414,26 @@ subroutine THAuxVarComputeNoFreezing(x,auxvar,global_auxvar, &
     dpw_dp = 1.d0
   endif  
 
-!  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-  call EOSWaterDensity(global_auxvar%temp,pw,dw_kg,dw_mol,dw_dp,dw_dt,ierr)
+  ! may need to compute dpsat_dt to pass to VISW
+  call EOSWaterSaturationPressure(global_auxvar%temp,sat_pressure,dpsat_dt,ierr)
   call EOSWaterEnthalpy(global_auxvar%temp,pw,hw,hw_dp,hw_dt,ierr)
+  if (.not.option%flow%density_depends_on_salinity) then
+    call EOSWaterDensity(global_auxvar%temp,pw,dw_kg,dw_mol,dw_dp,dw_dt,ierr)
+    call EOSWaterViscosity(global_auxvar%temp,pw,sat_pressure,dpsat_dt,visl, &
+                           dvis_dt,dvis_dp,dvis_dpsat,ierr)
+  else
+    aux(1) = global_auxvar%m_nacl(1)
+    call EOSWaterDensityExt(global_auxvar%temp,pw,aux, &
+                            dw_kg,dw_mol,dw_dp,dw_dt,ierr)
+    call EOSWaterViscosityExt(global_auxvar%temp,pw,sat_pressure,dpsat_dt,aux, &
+                              visl,dvis_dt,dvis_dp,dvis_dpsat,ierr)
+  endif
   ! J/kmol -> whatever units
   hw = hw * option%scale
   hw_dp = hw_dp * option%scale
   hw_dt = hw_dt * option%scale
   
-! may need to compute dpsat_dt to pass to VISW
-  call EOSWaterSaturationPressure(global_auxvar%temp,sat_pressure,dpsat_dt,ierr)
-  
 !  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)
-  call EOSWaterViscosity(global_auxvar%temp,pw,sat_pressure,dpsat_dt,visl, &
-                         dvis_dt,dvis_dp,dvis_dpsat,ierr)
   if (iphase == 3) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
     dw_dp = 0.d0
@@ -737,8 +744,8 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   ! Derivative of Kersten number
   auxvar%dKe_dp = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dp
   auxvar%dKe_dt = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dt
-  auxvar%dKe_fr_dt = alpha_fr*(global_auxvar%sat(1) + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_dt
-  auxvar%dKe_fr_dp = alpha_fr*(global_auxvar%sat(1) + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_dp
+  auxvar%dKe_fr_dt = alpha_fr*(auxvar%sat_ice + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_ice_dt
+  auxvar%dKe_fr_dp = alpha_fr*(auxvar%sat_ice + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_ice_dp
 
   if (option%ice_model == DALL_AMICO) then
     auxvar%den_ice = dw_mol

@@ -84,7 +84,8 @@ subroutine OutputTecplotHeader(fid,realization_base,icolumn)
            '"Z [m]"'
   write(fid,'(a)',advance="no") trim(string)
 
-  call OutputWriteVariableListToHeader(fid,output_option%output_variable_list, &
+  call OutputWriteVariableListToHeader(fid, &
+                                      output_option%output_snap_variable_list, &
                                        '',icolumn,PETSC_TRUE,variable_count)
   ! need to terminate line
   write(fid,'(a)') ''
@@ -284,8 +285,8 @@ subroutine OutputTecplotBlock(realization_base)
     call WriteTecplotUGridVertices(OUTPUT_UNIT,realization_base)
   endif
 
-  ! loop over variables and write to file
-  cur_variable => output_option%output_variable_list%first
+  ! loop over snapshot variables and write to file
+  cur_variable => output_option%output_snap_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
     call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
@@ -995,8 +996,8 @@ subroutine OutputTecplotPoint(realization_base)
     write(OUTPUT_UNIT,1000,advance='no') grid%y(ghosted_id)
     write(OUTPUT_UNIT,1000,advance='no') grid%z(ghosted_id)
 
-    ! loop over variables and write to file
-    cur_variable => output_option%output_variable_list%first
+    ! loop over snapshot variables and write to file
+    cur_variable => output_option%output_snap_variable_list%first
     do
       if (.not.associated(cur_variable)) exit
       value = RealizGetVariableValueAtCell(realization_base,cur_variable%ivar, &
@@ -2177,7 +2178,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   PetscInt :: iconn
   PetscInt :: count
   PetscReal, pointer :: flowrates(:,:)
-  PetscReal, pointer :: darcy(:)
+  PetscReal, pointer :: darcy(:), area(:)
   PetscInt, pointer :: nat_ids_up(:),nat_ids_dn(:)
   PetscReal, pointer :: density(:)
   Vec :: vec_proc
@@ -2204,7 +2205,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   call OutputGetExplicitIDsFlowrates(realization_base,count,vec_proc, &
                                      nat_ids_up,nat_ids_dn)
   call OutputGetExplicitFlowrates(realization_base,count,vec_proc,flowrates, &
-                                  darcy)
+                                  darcy,area)
   call OutputGetExplicitAuxVars(realization_base,count,vec_proc, &
                                 density)
     
@@ -2231,6 +2232,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
     write(OUTPUT_UNIT,1001,advance='no') nat_ids_dn(i)
     write(OUTPUT_UNIT,1000,advance='no') darcy(i)
     write(OUTPUT_UNIT,1000,advance='no') density(i)
+    write(OUTPUT_UNIT,1000,advance='no') area(i)
     write(OUTPUT_UNIT,'(a)')
   enddo                     
   close(OUTPUT_UNIT)
@@ -2240,6 +2242,7 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   deallocate(nat_ids_up)
   deallocate(nat_ids_dn)
   deallocate(density)
+  deallocate(area)
   
  ! Order of printing for the 2nd file
  ! cellid saturation porosity density[kg/m3] pressure[Pa]

@@ -12,6 +12,7 @@ SIMULATION
     /
   /
   CHECKPOINT
+    TIMES d 50.d0 60.d0
     PERIODIC TIMESTEP 10
   /
 END

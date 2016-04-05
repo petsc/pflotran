@@ -55,6 +55,7 @@ STANDARD_CFG = \
 	default/scco2/flash2/flash2.cfg \
 	default/regions/regions.cfg \
 	default/salinity/salinity.cfg \
+	default/timestepping/timestepping.cfg \
 	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\
         general/general.cfg \
         hydrogeophysics/hydrogeophysics.cfg \
@@ -195,6 +196,9 @@ clean-tests :
 	-find . -type f -name 'tmp-restart-*' -print0 | xargs -0 rm
 	-find . -type f -name '*.chk' -print0 | xargs -0 rm
 	-find . -type f -name '*.pyc' -print0 | xargs -0 rm
+	-find . -type f -name 'sigma*.txt' -print0 | xargs -0 rm 
+	-find . -type f -name '*.dpd' -print0 | xargs -0 rm
+	-find . -type f -name 'e4d*.log' -print0 | xargs -0 rm
 	-find . -type d -name '__pycache__' -print0 | xargs -0 rm -r
 	-rm -f default/anisothermal/thc_1d.h5
 	-rm -f default/anisothermal/th_1d.h5
@@ -224,4 +228,30 @@ clean-tests :
 	-rm -f wipp/nuts/case4r1_modified-int.dat
 	-rm -f wipp/bragflo/gas_generation_2d-np4.h5
 	-rm -f default/543/543_hanford_srfcplx_base*.h5
+	-rm -f default/condition/dataset/east_surface_cell_centered.h5
+	-rm -f default/condition/dataset/east_surface_node_centered.h5
+	-rm -f default/condition/dataset/north_surface_cell_centered.h5
+	-rm -f default/condition/dataset/north_surface_node_centered.h5
+	-rm -f default/condition/dataset/top_surface_cell_centered.h5
+	-rm -f default/condition/dataset/top_surface_node_centered.h5
+	-rm -f default/condition/dataset/x_line_cell_centered.h5
+	-rm -f default/condition/dataset/x_line_node_centered.h5
+	-rm -f default/condition/dataset/y_line_cell_centered.h5
+	-rm -f default/condition/dataset/y_line_node_centered.h5
+	-rm -f default/condition/dataset/z_line_cell_centered.h5
+	-rm -f default/condition/dataset/z_line_node_centered.h5
+	-rm -f default/salinity/20x20_xz.h5
+	-rm -f default/timestepping/20x20_xz.h5
+	-rm -f hydrogeophysics/e4d__000000000003600.dpd
+	-rm -f hydrogeophysics/e4d__000000000010800.dpd
+	-rm -f hydrogeophysics/e4d__000000000025200.dpd
+	-rm -f hydrogeophysics/e4d__000000000054000.dpd
+	-rm -f hydrogeophysics/e4d__000000000111600.dpd
+	-rm -f hydrogeophysics/sigma__000000000003600.txt
+	-rm -f hydrogeophysics/sigma__000000000010800.txt
+	-rm -f hydrogeophysics/sigma__000000000025200.txt
+	-rm -f hydrogeophysics/sigma__000000000054000.txt
+	-rm -f hydrogeophysics/sigma__000000000111600.txt
+	-rm -f ufd/glass-wf_mass-0.dat
+	-rm -f wipp/bragflo/well_production2-ss_mass-0.dat
 

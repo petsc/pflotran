@@ -29,10 +29,11 @@ module PM_Base_class
     class(realization_base_type), pointer :: realization_base
     class(pm_base_type), pointer :: next
   contains
-    procedure, public :: Setup => PMBaseInit
+    procedure, public :: Setup => PMBaseSetup
     procedure, public :: Read => PMBaseRead
     procedure, public :: SetupSolvers => PMBaseSetupSolvers
     procedure, public :: InitializeRun => PMBaseThisOnly
+    procedure, public :: InputRecord => PMBaseInputRecord
     procedure, public :: FinalizeRun => PMBaseThisOnly
     procedure, public :: Residual => PMBaseResidual
     procedure, public :: Jacobian => PMBaseJacobian
@@ -62,11 +63,11 @@ module PM_Base_class
     PetscInt :: ndof
   end type pm_base_header_type
     
-  public :: PMBaseInit
-  
-  public :: PMBaseResidual
-  public :: PMBaseJacobian
-  public :: PMBaseRHSFunction
+  public :: PMBaseInit, &
+            PMBaseInputRecord, &
+            PMBaseResidual, &
+            PMBaseJacobian, &
+            PMBaseRHSFunction
   
 contains
 
@@ -106,9 +107,18 @@ end subroutine PMBaseRead
 subroutine PMBaseSetup(this)
   implicit none
   class(pm_base_type) :: this
-  print *, 'Must extend c.'
+  print *, 'Must extend PMBaseSetup.'
   stop
 end subroutine PMBaseSetup
+
+! ************************************************************************** !
+
+subroutine PMBaseInputRecord(this)
+  implicit none
+  class(pm_base_type) :: this
+  print *, 'Must extend PMBaseInputRecord.'
+  stop
+end subroutine PMBaseInputRecord
 
 ! ************************************************************************** !
 
@@ -265,8 +275,8 @@ subroutine PMBaseCheckpointBinary(this,viewer)
 #include "petsc/finclude/petscviewer.h"      
   class(pm_base_type) :: this
   PetscViewer :: viewer
-  print *, 'Must extend PMBaseCheckpointBinary/RestartBinary.'
-  stop
+!  print *, 'Must extend PMBaseCheckpointBinary/RestartBinary.'
+!  stop
 end subroutine PMBaseCheckpointBinary
 
 ! ************************************************************************** !
@@ -291,8 +301,8 @@ subroutine PMBaseCheckpointHDF5(this, pm_grp_id)
 #else
   integer(HID_T) :: pm_grp_id
 #endif
-  print *, 'Must extend PMBaseCheckpointHDF5/RestartHDF5.'
-  stop
+!  print *, 'Must extend PMBaseCheckpointHDF5/RestartHDF5.'
+!  stop
 #endif
 
 end subroutine PMBaseCheckpointHDF5

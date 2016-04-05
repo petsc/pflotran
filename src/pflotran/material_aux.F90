@@ -51,7 +51,7 @@ module Material_Aux_class
   type, public :: material_parameter_type
     PetscReal, pointer :: soil_residual_saturation(:,:)
     PetscReal, pointer :: soil_heat_capacity(:) ! MJ/kg rock-K
-    PetscReal, pointer :: soil_thermal_conductivity(:,:) ! W/M
+    PetscReal, pointer :: soil_thermal_conductivity(:,:) ! W/m-K
   end type material_parameter_type  
   
   type, public :: material_type

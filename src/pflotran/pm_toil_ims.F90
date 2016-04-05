@@ -46,6 +46,7 @@ module PM_TOilIms_class
     !procedure, public :: ComputeMassBalance => PMGeneralComputeMassBalance
     procedure, public :: CheckpointBinary => PMTOilImsCheckpointBinary
     procedure, public :: RestartBinary => PMTOilImsRestartBinary
+    procedure, public :: InputRecord => PMTOilImsInputRecord
     procedure, public :: Destroy => PMTOilImsDestroy
   end type pm_toil_ims_type
   
@@ -980,6 +981,32 @@ subroutine PMTOilImsRestartBinary(this,viewer)
                              STATE,ZERO_INTEGER)
   
 end subroutine PMTOilImsRestartBinary
+
+! ************************************************************************** !
+
+subroutine PMTOilImsInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_toil_ims_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+  write(id,'(a29)',advance='no') 'mode: '
+  write(id,'(a)') 'thermal oil immiscible'
+
+end subroutine PMTOilImsInputRecord
 
 ! ************************************************************************** !
 

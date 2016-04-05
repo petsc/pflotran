@@ -385,7 +385,8 @@ subroutine WriteObservationHeader(fid,realization_base,cell_string, &
   option => realization_base%option
   output_option => realization_base%output_option
   
-  call OutputWriteVariableListToHeader(fid,output_option%output_variable_list, &
+  call OutputWriteVariableListToHeader(fid, &
+                                       output_option%output_obs_variable_list, &
                                        cell_string,icolumn,PETSC_FALSE, &
                                        variable_count)
 
@@ -875,8 +876,8 @@ subroutine WriteObservationDataForCell(fid,realization_base,local_id)
 
   ghosted_id = grid%nL2G(local_id)
 
-  ! loop over variables and write to file
-  cur_variable => output_option%output_variable_list%first
+  ! loop over observation variables and write to file
+  cur_variable => output_option%output_obs_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
     if (cur_variable%plot_only) then
@@ -999,8 +1000,8 @@ subroutine WriteObservationDataForCoord(fid,realization_base,region)
     enddo
   enddo
   
-  ! loop over variables and write to file
-  cur_variable => output_option%output_variable_list%first
+  ! loop over observation variables and write to file
+  cur_variable => output_option%output_obs_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
     if (cur_variable%plot_only) then

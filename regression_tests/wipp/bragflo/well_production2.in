@@ -1,0 +1,227 @@
+! 9.8 Test Case #8.  Well Production at Specified Bottom Hole Pressure
+! MUST RUN THIS SIMULATION IN IMMISCIBLE PFLOTRAN
+! uncomment gen_auxvar%xmol(acid,lid) = 1.d-10 in general_aux.F90
+! For more descriptions of the problem please read case_8.docx
+
+!=========================== flow mode ========================================
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+      OPTIONS
+        !  ITOL_SCALED_RESIDUAL 1.d-5
+        !  WINDOW_EPSILON 1.d-4
+        ISOTHERMAL
+        TWO_PHASE_ENERGY_DOF TEMPERATURE
+        GAS_COMPONENT_FORMULA_WEIGHT 2.01588d0 ! kg/kmol
+      /
+    /
+  /
+END
+
+SUBSURFACE
+
+
+REGRESSION
+  CELLS
+    1
+    2
+  /
+END
+
+!=========================== time stepper options =============================
+TIMESTEPPER FLOW
+!  TS_ACCELERATION 8
+  MAX_TS_CUTS 0
+/
+
+!=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 2 1 1
+  DXYZ
+    2*10.d0
+    10.d0
+    10.d0
+  /
+/
+
+!=========================== solver options ===================================
+TIMESTEPPER FLOW
+!  DT_FACTOR 2.d0 1.8d0 1.6d0 1.4d0 1.2d0 1.d0 0.8d0 0.6d0 0.4d0
+END
+
+NEWTON_SOLVER FLOW
+  ATOL 1.d-4
+  RTOL 1.d-4
+  STOL 1.d-30
+!  NO_INFINITY_NORM
+!  MAXIT 100
+/
+
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+/
+
+!=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+/
+
+EOS WATER
+  DENSITY EXPONENTIAL 996.629 101325.d0 4.45d-10
+  VISCOSITY CONSTANT 8.5d-4
+  ENTHALPY CONSTANT 1.8890d6
+/
+
+EOS GAS
+  VISCOSITY CONSTANT 8.92d-6
+/
+
+!=========================== material properties ==============================
+MATERIAL_PROPERTY soil
+  ID 1
+  CHARACTERISTIC_CURVES SF1
+  POROSITY 0.5
+  TORTUOSITY 1.
+  ROCK_DENSITY 2650.d0
+  THERMAL_CONDUCTIVITY_DRY 0.5
+  THERMAL_CONDUCTIVITY_WET 2.
+  HEAT_CAPACITY 830.
+  SOIL_COMPRESSIBILITY_FUNCTION BRAGFLO
+  SOIL_COMPRESSIBILITY 0.d0
+  SOIL_REFERENCE_PRESSURE 101325.d0
+  PERMEABILITY
+    PERM_ISO 1.d-13
+  /
+/
+
+!=========================== saturation functions =============================
+CHARACTERISTIC_CURVES SF1
+  SATURATION_FUNCTION BROOKS_COREY
+    LAMBDA 0.7D0
+    ALPHA  9.869D-6
+    LIQUID_RESIDUAL_SATURATION 0.D0
+    MAX_CAPILLARY_PRESSURE 0.D0
+  /
+  PERMEABILITY_FUNCTION BURDINE
+    LAMBDA 0.7D0
+    LIQUID_RESIDUAL_SATURATION 0.D0
+  /
+  PERMEABILITY_FUNCTION BURDINE_BC_GAS
+    LAMBDA 0.7D0
+    LIQUID_RESIDUAL_SATURATION 0.D0
+    GAS_RESIDUAL_SATURATION    0.D0
+  /
+END
+
+
+!=========================== output options ===================================
+OUTPUT
+  TIME_UNITS min
+skip
+!  PERIODIC_OBSERVATION TIMESTEP 1
+  TIMES s 1.d2 2.d2 3.d2 4.d2 5.d2 6.d2 7.d2 8.d2 9.d2 1.d3
+!  VELOCITIES
+!  FORMAT TECPLOT POINT
+  FORMAT HDF5
+  VARIABLES
+    LIQUID_PRESSURE
+    GAS_PRESSURE
+    LIQUID_DENSITY
+    GAS_DENSITY
+    LIQUID_SATURATION
+    GAS_SATURATION
+!    LIQUID_WELL_FLOW_RATE
+!    GAS_WELL_FLOW_RATE
+    LIQUID_MOLE_FRACTIONS
+  /
+noskip
+/
+!=========================== times ============================================
+TIME
+  FINAL_TIME 1.d3 s
+  INITIAL_TIMESTEP_SIZE 100.d0 s
+  MAXIMUM_TIMESTEP_SIZE 100.d0 s
+/
+
+!=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    20.d0 10.d0 10.d0
+  /
+/
+
+REGION top
+  FACE top
+  COORDINATES
+    0.d0 0.d0 10.d0
+    20.d0 10.d0 10.d0
+  /
+/
+
+REGION injection_point
+  COORDINATE 5.d0 5.d0 5.d0
+/
+
+REGION 1
+  BLOCK 1 1 1 1 1 1
+END
+
+REGION 2
+  BLOCK 2 2 1 1 1 1
+END
+
+
+!=========================== observation points ===============================
+OBSERVATION
+  REGION injection_point
+/
+
+!=========================== flow conditions ==================================
+FLOW_CONDITION 1
+  TYPE
+    GAS_PRESSURE dirichlet
+    LIQUID_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 10.0e+06
+  LIQUID_SATURATION 0.5d0
+  TEMPERATURE 25.d0
+END
+
+!=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION 1
+  REGION 1
+/
+
+INITIAL_CONDITION
+  FLOW_CONDITION 1
+  REGION 2
+/
+
+SOURCE_SINK_SANDBOX
+  MASS_BALANCE
+  WIPP-WELL
+    COORDINATE 5.d0 5.d0 5.d0
+    WELL_PRESSURE 1.d6
+    WELL_PRODUCTIVITY_INDEX 5.d-13
+  /
+  WIPP-WELL
+    COORDINATE 5.d0 5.d0 5.d0
+    WELL_PRESSURE 1.d6
+    WELL_PRODUCTIVITY_INDEX 5.d-13
+  /
+/
+
+!=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil
+  REGION all
+/
+
+END_SUBSURFACE

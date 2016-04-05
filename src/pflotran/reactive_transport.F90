@@ -132,6 +132,7 @@ subroutine RTSetup(realization)
   use Secondary_Continuum_Aux_module, only : sec_transport_type, &
                                              SecondaryAuxRTCreate
   use Secondary_Continuum_module, only : SecondaryRTAuxVarInit
+  use Output_Aux_module
  
   implicit none
 
@@ -140,6 +141,7 @@ subroutine RTSetup(realization)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(output_variable_list_type), pointer :: list
   type(reaction_type), pointer :: reaction
   type(coupler_type), pointer :: boundary_condition
   type(coupler_type), pointer :: source_sink
@@ -191,9 +193,7 @@ subroutine RTSetup(realization)
     ghosted_id = grid%nL2G(local_id)
 
     ! Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif    
+    if (patch%imat(ghosted_id) <= 0) cycle
     
     if (material_auxvars(ghosted_id)%volume < 0.d0 .and. flag(1) == 0) then
       flag(1) = 1
@@ -297,10 +297,6 @@ subroutine RTSetup(realization)
   patch%aux%RT%num_aux_ss = sum_connection
   option%iflag = 0
 
-  ! create zero array for zeroing residual and Jacobian (1 on diagonal)
-  ! for inactive cells (and isothermal)
-  call RTCreateZeroArray(patch,reaction,option)
-  
   ! initialize parameters
   cur_fluid_property => realization%fluid_properties
   do 
@@ -312,8 +308,14 @@ subroutine RTSetup(realization)
       cur_fluid_property%diffusion_activation_energy
     cur_fluid_property => cur_fluid_property%next
   enddo
-  
-  call RTSetPlotVariables(realization)
+ 
+  list => realization%output_option%output_snap_variable_list
+  call RTSetPlotVariables(realization,list)
+  if (.not.associated(realization%output_option%output_snap_variable_list, &
+                 realization%output_option%output_obs_variable_list)) then
+    list => realization%output_option%output_obs_variable_list
+    call RTSetPlotVariables(realization,list)
+  endif
   
 end subroutine RTSetup
 
@@ -2541,9 +2543,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   ! only one secondary continuum for now for each primary continuum node
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
       
       offset = (local_id-1)*reaction%ncomp
       istartall = offset + 1
@@ -3971,91 +3971,6 @@ end subroutine RTUpdateAuxVars
 
 ! ************************************************************************** !
 
-subroutine RTCreateZeroArray(patch,reaction,option)
-  ! 
-  ! Computes the zeroed rows for inactive grid cells
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 12/13/07
-  ! 
-
-  use Patch_module
-  use Grid_module
-  use Option_module
-  
-  implicit none
-
-  type(patch_type) :: patch
-  type(reaction_type) :: reaction
-  type(option_type) :: option
-  
-  PetscInt :: ncount, idof
-  PetscInt :: local_id, ghosted_id, icomp
-
-  type(grid_type), pointer :: grid
-  PetscInt :: flag
-  PetscInt :: ndof
-  PetscInt :: n_zero_rows
-  PetscInt, pointer :: zero_rows_local(:)
-  PetscInt, pointer :: zero_rows_local_ghosted(:)
-  PetscErrorCode :: ierr
-
-  flag = 0
-  grid => patch%grid
-  
-  n_zero_rows = 0
-  
-  if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
-    ndof = reaction%ncomp
-  else
-    ndof = 1
-  endif
-
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) then
-      n_zero_rows = n_zero_rows + ndof
-    else
-    endif
-  enddo
-
-  allocate(zero_rows_local(n_zero_rows))
-  allocate(zero_rows_local_ghosted(n_zero_rows))
-
-  zero_rows_local = 0
-  zero_rows_local_ghosted = 0
-  ncount = 0
-
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) then
-      do icomp = 1, ndof
-        ncount = ncount + 1
-        zero_rows_local(ncount) = (local_id-1)*ndof+icomp
-        zero_rows_local_ghosted(ncount) = (ghosted_id-1)*ndof+icomp-1
-      enddo
-    else
-    endif
-  enddo
-
-  patch%aux%RT%zero_rows_local => zero_rows_local
-  patch%aux%RT%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%aux%RT%n_zero_rows = n_zero_rows  
-
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                     MPI_MAX,option%mycomm,ierr)
-     
-  if (flag > 0) patch%aux%RT%inactive_cells_exist = PETSC_TRUE
-     
-  if (ncount /= n_zero_rows) then
-    print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
-    stop
-   endif
-
-end subroutine RTCreateZeroArray
-
-! ************************************************************************** !
-
 subroutine RTMaxChange(realization,dcmax,dvfmax)
   ! 
   ! Computes the maximum change in the solution vector
@@ -4124,7 +4039,7 @@ end subroutine RTMaxChange
 
 ! ************************************************************************** !
 
-subroutine RTSetPlotVariables(realization)
+subroutine RTSetPlotVariables(realization,list)
   ! 
   ! Adds variables to be printed to list
   ! 
@@ -4140,10 +4055,9 @@ subroutine RTSetPlotVariables(realization)
   implicit none
   
   type(realization_subsurface_type) :: realization
-  
-  character(len=MAXWORDLENGTH) :: name,  units
   type(output_variable_list_type), pointer :: list
   
+  character(len=MAXWORDLENGTH) :: name,  units
   character(len=MAXSTRINGLENGTH) string
   character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
   type(option_type), pointer :: option
@@ -4152,7 +4066,6 @@ subroutine RTSetPlotVariables(realization)
   
   option => realization%option
   reaction => realization%reaction
-  list => realization%output_option%output_variable_list
   
   if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
     free_mol_char = 'm'
@@ -4173,7 +4086,7 @@ subroutine RTSetPlotVariables(realization)
   endif
   
   if (reaction%print_pH .and. associated(reaction%species_idx)) then
-    if (reaction%species_idx%h_ion_id > 0) then
+    if (reaction%species_idx%h_ion_id /= 0) then
       name = 'pH'
       units = ''
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &

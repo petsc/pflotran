@@ -94,7 +94,8 @@ module Solver_module
             SolverCreateTS, &
             SolverPrintNewtonInfo, &
             SolverPrintLinearInfo, &
-            SolverCheckCommandLine
+            SolverCheckCommandLine, &
+            SolverLinearPrintFailedReason
   
 contains
 
@@ -890,6 +891,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
 
   PetscInt :: fid
 
+#if !defined(PETSC_HAVE_MUMPS)
   if (option%mycommsize > 1) then
     if (solver%ksp_type == KSPPREONLY .and. solver%pc_type == PCLU) then
       option%io_buffer = 'Direct solver (KSPPREONLY + PCLU) not ' // &
@@ -897,6 +899,7 @@ subroutine SolverPrintLinearInfo(solver,header,option)
       call printErrMsg(option)
     endif
   endif
+#endif
   
   if (OptionPrintToScreen(option)) then
     write(*,*) 
@@ -1119,6 +1122,55 @@ subroutine SolverCheckCommandLine(solver)
                              
 
 end subroutine SolverCheckCommandLine
+
+! ************************************************************************** !
+
+subroutine SolverLinearPrintFailedReason(solver,option)    
+  ! 
+  ! Prints the reason for the solver failing
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/16
+  ! 
+  use Option_module
+
+  implicit none
+  
+  type(solver_type) :: solver
+  type(option_type) :: option
+
+  KSPConvergedReason :: ksp_reason
+  PetscErrorCode :: ierr
+
+  call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr);CHKERRQ(ierr)
+  select case(ksp_reason)
+    case(KSP_DIVERGED_ITS)
+      option%io_buffer = ' -> KSPReason: Diverged due to iterations'
+    case(KSP_DIVERGED_DTOL)
+      option%io_buffer = ' -> KSPReason: Diverged due to dtol'
+    case(KSP_DIVERGED_BREAKDOWN)
+      option%io_buffer = ' -> KSPReason: Diverged due to breakdown'
+    case(KSP_DIVERGED_BREAKDOWN_BICG)
+      option%io_buffer = ' -> KSPReason: Diverged due to breakdown bicg'
+    case(KSP_DIVERGED_NONSYMMETRIC)
+      option%io_buffer = ' -> KSPReason: Diverged due to nonsymmetric'
+    case(KSP_DIVERGED_INDEFINITE_PC)
+      option%io_buffer = ' -> KSPReason: Diverged due to indefinite PC'
+    case(KSP_DIVERGED_NANORINF)
+      option%io_buffer = ' -> KSPReason: Diverged due to NaN or Inf PC'
+    case(KSP_DIVERGED_INDEFINITE_MAT)
+      option%io_buffer = ' -> KSPReason: Diverged due to indefinite matix'
+!geh: this value is defined in the PETSc master, but not maint.
+!    case(KSP_DIVERGED_PCSETUP_FAILED)
+    case(-11)
+      option%io_buffer = ' -> KSPReason: Diverged due to PC setup failed'
+    case default
+      write(option%io_buffer,'('' -> KSPReason: Unknown: '',i2)') &
+        ksp_reason
+  end select
+  call printMsg(option)
+
+end subroutine SolverLinearPrintFailedReason
 
 ! ************************************************************************** !
 

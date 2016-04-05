@@ -47,6 +47,7 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: io_buffer
   
     PetscInt :: fid_out
+    PetscInt :: fid_inputrecord
     
     ! defines the mode (e.g. mph, richards, vadose, etc.
     character(len=MAXWORDLENGTH) :: flowmode
@@ -96,6 +97,7 @@ module Option_module
   
     PetscInt :: iflag
     PetscInt :: status
+    PetscBool :: input_record
     !geh: remove once legacy code is gone.
 !    PetscBool :: init_stage
     ! these flags are for printing outside of time step loop
@@ -348,6 +350,7 @@ subroutine OptionInitAll(option)
   option%hdf5_read_group_size = 0
   option%hdf5_write_group_size = 0
 
+  option%input_record = PETSC_FALSE
   option%print_screen_flag = PETSC_FALSE
   option%print_file_flag = PETSC_FALSE
   option%print_to_screen = PETSC_TRUE
@@ -391,6 +394,7 @@ subroutine OptionInitRealization(option)
   
   
   option%fid_out = OUT_UNIT
+  option%fid_inputrecord = INPUT_RECORD_UNIT
 
   option%iflag = 0
   option%io_buffer = ''

@@ -93,6 +93,7 @@ subroutine Flash2Setup(realization)
 
   use Realization_Subsurface_class
   use Patch_module
+  use Output_Aux_module
 !  use span_wagner_module
 !  use co2_sw_module
 !  use span_wagner_spline_module 
@@ -100,6 +101,7 @@ subroutine Flash2Setup(realization)
   type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
+  type(output_variable_list_type), pointer :: list
  
   cur_patch => realization%patch_list%first
   do
@@ -109,7 +111,10 @@ subroutine Flash2Setup(realization)
     cur_patch => cur_patch%next
   enddo
 
-  call Flash2SetPlotVariables(realization)
+  list => realization%output_option%output_snap_variable_list
+  call Flash2SetPlotVariables(list)
+  list => realization%output_option%output_obs_variable_list
+  call Flash2SetPlotVariables(list)
 
 end subroutine Flash2Setup
 
@@ -167,16 +172,16 @@ subroutine Flash2SetupPatch(realization)
 ! dencpr  
   allocate(patch%aux%Flash2%Flash2_parameter%dencpr(size(patch%material_property_array)))
   do ipara = 1, size(patch%material_property_array)
-    patch%aux%Flash2%Flash2_parameter%dencpr(patch% &
-        material_property_array(ipara)%ptr%internal_id) = &
+    patch%aux%Flash2%Flash2_parameter%dencpr(iabs(patch% &
+        material_property_array(ipara)%ptr%internal_id)) = &
       patch%material_property_array(ipara)%ptr%rock_density*option%scale*&
       patch%material_property_array(ipara)%ptr%specific_heat
   enddo
 ! ckwet
   allocate(patch%aux%Flash2%Flash2_parameter%ckwet(size(patch%material_property_array)))
   do ipara = 1, size(patch%material_property_array)
-    patch%aux%Flash2%Flash2_parameter%ckwet(patch% &
-        material_property_array(ipara)%ptr%internal_id) = &
+    patch%aux%Flash2%Flash2_parameter%ckwet(iabs(patch% &
+        material_property_array(ipara)%ptr%internal_id)) = &
       patch%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
 ! Flash2_parameters create_end *****************************************
@@ -222,11 +227,6 @@ subroutine Flash2SetupPatch(realization)
   ! should be allocated by the number of BC connections, just for debug now
   allocate(patch%aux%Flash2%Resold_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
-  
-  !print *,' Flash2 setup get AuxBc point'
-  ! create zero array for zeroing residual and Jacobian (1 on diagonal)
-  ! for inactive cells (and isothermal)
-  call Flash2CreateZeroArray(patch,option)
 
 end subroutine Flash2SetupPatch
 
@@ -4664,108 +4664,6 @@ end subroutine Flash2JacobianPatch2
 
 ! ************************************************************************** !
 
-subroutine Flash2CreateZeroArray(patch,option)
-  ! 
-  ! Computes the zeroed rows for inactive grid cells
-  ! 
-  ! Author: Chuan Lu
-  ! Date: 10/13/08
-  ! 
-
-  use Patch_module
-  use Grid_module
-  use Option_module
-  
-  implicit none
-
-  type(patch_type) :: patch
-  type(option_type) :: option
-  
-  PetscInt :: ncount, idof
-  PetscInt :: local_id, ghosted_id
-
-  type(grid_type), pointer :: grid
-  PetscInt :: flag = 0
-  PetscInt :: n_zero_rows
-  PetscInt, pointer :: zero_rows_local(:)
-  PetscInt, pointer :: zero_rows_local_ghosted(:)
-  PetscErrorCode :: ierr
-    
-  grid => patch%grid
-  
-  n_zero_rows = 0
-
-  if (associated(patch%imat)) then
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) then
-        n_zero_rows = n_zero_rows + option%nflowdof
-      else
-#ifdef ISOTHERMAL
-        n_zero_rows = n_zero_rows + 1
-#endif
-      endif
-    enddo
-  else
-#ifdef ISOTHERMAL
-    n_zero_rows = n_zero_rows + grid%nlmax
-#endif
-  endif
-! print *,'zero rows=', n_zero_rows
-  allocate(zero_rows_local(n_zero_rows))
-  allocate(zero_rows_local_ghosted(n_zero_rows))
-! print *,'zero rows allocated' 
-  zero_rows_local = 0
-  zero_rows_local_ghosted = 0
-  ncount = 0
-
-  if (associated(patch%imat)) then
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) then
-        do idof = 1, option%nflowdof
-          ncount = ncount + 1
-          zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
-          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
-        enddo
-      else
-#ifdef ISOTHERMAL
-        ncount = ncount + 1
-        zero_rows_local(ncount) = local_id*option%nflowdof
-        zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-#endif
-      endif
-    enddo
-  else
-#ifdef ISOTHERMAL
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      ncount = ncount + 1
-      zero_rows_local(ncount) = local_id*option%nflowdof
-      zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-    enddo
-#endif
-  endif
-!print *,'zero rows point 1'
-  patch%aux%Flash2%n_zero_rows = n_zero_rows
-!print *,'zero rows point 2'
-  patch%aux%Flash2%zero_rows_local => zero_rows_local
-!print *,'zero rows point 3'  
-  patch%aux%Flash2%zero_rows_local_ghosted => zero_rows_local_ghosted
-!print *,'zero rows point 4'
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
-                     option%mycomm,ierr)
-  if (flag > 0) patch%aux%Flash2%inactive_cells_exist = PETSC_TRUE
-
-  if (ncount /= n_zero_rows) then
-    print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
-    stop
-  endif
-! print *,'zero rows', flag
-end subroutine Flash2CreateZeroArray
-
-! ************************************************************************** !
-
 subroutine Flash2MaxChange(realization,dpmax,dtmpmax,dsmax)
   ! 
   ! Computes the maximum change in the solution vector
@@ -4967,27 +4865,23 @@ end function Flash2GetTecplotHeader
 
 ! ************************************************************************** !
 
-subroutine Flash2SetPlotVariables(realization)
+subroutine Flash2SetPlotVariables(list)
   ! 
   ! Adds variables to be printed to list
   ! 
   ! Author: Glenn Hammond
   ! Date: 10/15/12
   ! 
-  
-  use Realization_Subsurface_class
+
   use Output_Aux_module
   use Variables_module
   
   implicit none
 
-  type(realization_subsurface_type) :: realization
-  type(output_variable_type) :: output_variable
-  
-  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
-  
-  list => realization%output_option%output_variable_list
+
+  type(output_variable_type) :: output_variable
+  character(len=MAXWORDLENGTH) :: name, units
   
   if (associated(list%first)) then
     return

@@ -35,6 +35,7 @@ module PM_Flash2_class
     procedure, public :: UpdateAuxVars => PMFlash2UpdateAuxVars
     procedure, public :: MaxChange => PMFlash2MaxChange
     procedure, public :: ComputeMassBalance => PMFlash2ComputeMassBalance
+    procedure, public :: InputRecord => PMFlash2InputRecord
     procedure, public :: Destroy => PMFlash2Destroy
   end type pm_flash2_type
   
@@ -442,6 +443,32 @@ subroutine PMFlash2ComputeMassBalance(this,mass_balance_array)
   !call Flash2ComputeMassBalance(this%realization,mass_balance_array)
 
 end subroutine PMFlash2ComputeMassBalance
+
+! ************************************************************************** !
+
+subroutine PMFlash2InputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_flash2_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+  write(id,'(a29)',advance='no') 'mode: '
+  write(id,'(a)') 'flash2'
+
+end subroutine PMFlash2InputRecord
 
 ! ************************************************************************** !
 

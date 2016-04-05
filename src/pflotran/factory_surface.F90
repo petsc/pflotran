@@ -84,7 +84,7 @@ subroutine SurfaceJumpStart(simulation)
   use Option_module
   use Timestepper_Surface_class
   use Output_Aux_module
-  use Output_module, only : Output, OutputInit, OutputPrintCouplers
+  use Output_module
   use Logging_module  
   use Condition_Control_module
   use Checkpoint_Surface_module
@@ -101,13 +101,14 @@ subroutine SurfaceJumpStart(simulation)
   type(output_option_type), pointer :: output_option
 
   character(len=MAXSTRINGLENGTH) :: string
-  PetscBool :: plot_flag, transient_plot_flag
+  PetscBool :: snapshot_plot_flag,observation_plot_flag,massbal_plot_flag
   PetscBool :: surf_flow_read
   PetscBool :: failure
   PetscErrorCode :: ierr
   PetscReal :: surf_flow_prev_dt
 
   surf_realization => simulation%surf_realization
+  output_option => simulation%output_option
   
   select type(ts => simulation%surf_flow_process_model_coupler%timestepper)
     class is(timestepper_surface_type)
@@ -121,15 +122,17 @@ subroutine SurfaceJumpStart(simulation)
                            failure, ierr);CHKERRQ(ierr)
                              
   if (option%steady_state) then
-    option%io_buffer = 'Running in steady-state not yet supported for surface-flow.'
+    option%io_buffer = 'Running in steady-state not yet supported for &
+                       &surface-flow.'
     call printErrMsg(option)
     return
   endif
   
   master_timestepper => surf_flow_timestepper
 
-  plot_flag = PETSC_FALSE
-  transient_plot_flag = PETSC_FALSE
+  snapshot_plot_flag = PETSC_FALSE
+  observation_plot_flag = PETSC_FALSE
+  massbal_plot_flag = PETSC_FALSE
   surf_flow_read = PETSC_FALSE
   failure = PETSC_FALSE
   
@@ -175,11 +178,12 @@ subroutine SurfaceJumpStart(simulation)
   ! print initial condition output if not a restarted sim
   call OutputSurfaceInit(master_timestepper%steps)
   if (output_option%plot_number == 0 .and. &
-      master_timestepper%max_time_step >= 0 .and. &
-      output_option%print_initial) then
-    plot_flag = PETSC_TRUE
-    transient_plot_flag = PETSC_TRUE
-!    call OutputSurface(surf_realization,plot_flag,transient_plot_flag)
+      master_timestepper%max_time_step >= 0) then
+    if (output_option%print_initial_snap) snapshot_plot_flag = PETSC_TRUE
+    if (output_option%print_initial_obs) observation_plot_flag = PETSC_TRUE
+    if (output_option%print_initial_massbal) massbal_plot_flag = PETSC_FALSE
+    !call OutputSurface(surf_realization,snapshot_plot_flag, &
+    !                   observation_plot_flag,massbal_plot_flag)
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
@@ -195,7 +199,8 @@ subroutine SurfaceJumpStart(simulation)
     return
   endif
 
-  ! increment plot number so that 000 is always the initial condition, and nothing else
+  ! increment plot number so that 000 is always the initial condition, 
+  ! and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
 
   if (.not.associated(surf_flow_timestepper%cur_waypoint)) then
@@ -457,9 +462,13 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
           call StringToUpper(word)
           select case(trim(word))
             case('NO_FINAL','NO_PRINT_FINAL')
-              output_option%print_final = PETSC_FALSE
+              output_option%print_final_snap = PETSC_FALSE
+              output_option%print_final_obs = PETSC_FALSE
+              output_option%print_final_massbal = PETSC_FALSE
             case('NO_INITIAL','NO_PRINT_INITIAL')
-              output_option%print_initial = PETSC_FALSE
+              output_option%print_initial_snap = PETSC_FALSE
+              output_option%print_initial_obs = PETSC_FALSE
+              output_option%print_initial_massbal = PETSC_FALSE
             case('PERMEABILITY')
               option%io_buffer = 'PERMEABILITY output must now be entered &
                                  &under OUTPUT/VARIABLES card.'
@@ -484,7 +493,7 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
               do i = 1, size(temp_real_array)
                 waypoint => WaypointCreate()
                 waypoint%time = temp_real_array(i)*units_conversion
-                waypoint%print_output = PETSC_TRUE
+                waypoint%print_snap_output = PETSC_TRUE
                 call WaypointInsertInList(waypoint,waypoint_list)
               enddo
               call DeallocateArray(temp_real_array)
@@ -535,7 +544,7 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
                                      'SURF_OUTPUT,PERIODIC,TIME')
                   units_conversion = UnitsConvertToInternal(word, &
                                      internal_units,option)
-                  output_option%periodic_output_time_incr = temp_real* &
+                  output_option%periodic_snap_output_time_incr = temp_real* &
                                                             units_conversion
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   if (input%ierr == 0) then
@@ -565,13 +574,13 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
                       do
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
-                        waypoint%print_output = PETSC_TRUE
+                        waypoint%print_snap_output = PETSC_TRUE
                         call WaypointInsertInList(waypoint,waypoint_list)
                         temp_real = temp_real + &
-                                    output_option%periodic_output_time_incr
+                                    output_option%periodic_snap_output_time_incr
                         if (temp_real > temp_real2) exit
                       enddo
-                      output_option%periodic_output_time_incr = 0.d0
+                      output_option%periodic_snap_output_time_incr = 0.d0
                     else
                       input%ierr = 1
                       call InputErrorMsg(input,option,'between', &
@@ -580,7 +589,7 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
                   endif
                 case('TIMESTEP')
                   call InputReadInt(input,option, &
-                                    output_option%periodic_output_ts_imod)
+                                    output_option%periodic_snap_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'SURF_OUTPUT,PERIODIC,TIMESTEP')
                 case default
@@ -604,11 +613,11 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
                                      'SURF_OUTPUT,PERIODIC_OBSERVATION,TIME')
                   units_conversion = UnitsConvertToInternal(word, &
                                      internal_units,option) 
-                  output_option%periodic_tr_output_time_incr = temp_real* &
+                  output_option%periodic_obs_output_time_incr = temp_real* &
                                                                units_conversion
                 case('TIMESTEP')
                   call InputReadInt(input,option, &
-                                    output_option%periodic_tr_output_ts_imod)
+                                    output_option%periodic_obs_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'SURF_OUTPUT,PERIODIC_OBSERVATION,&
                                      &TIMESTEP')
@@ -742,7 +751,7 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
             output_option%print_hdf5_aveg_mass_flowrate = aveg_mass_flowrate
             output_option%print_hdf5_aveg_energy_flowrate = aveg_energy_flowrate
             if (aveg_mass_flowrate.or.aveg_energy_flowrate) then
-              if (output_option%periodic_output_time_incr==0.d0) then
+              if (output_option%periodic_snap_output_time_incr==0.d0) then
                 option%io_buffer = 'Keyword: AVEGRAGE_FLOWRATES/ ' // &
                   'AVEGRAGE_MASS_FLOWRATE/ENERGY_FLOWRATE defined without' // &
                   ' PERIODIC TIME being set.'

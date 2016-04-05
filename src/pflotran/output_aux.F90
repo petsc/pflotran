@@ -29,8 +29,12 @@ module Output_Aux_module
     character(len=MAXWORDLENGTH) :: tunit
     PetscReal :: tconv
 
-    PetscBool :: print_initial
-    PetscBool :: print_final
+    PetscBool :: print_initial_obs
+    PetscBool :: print_final_obs
+    PetscBool :: print_initial_snap
+    PetscBool :: print_final_snap
+    PetscBool :: print_initial_massbal
+    PetscBool :: print_final_massbal
   
     PetscBool :: print_hdf5
     PetscBool :: print_hdf5_vel_cent
@@ -60,17 +64,21 @@ module Output_Aux_module
     PetscInt :: screen_imod
     PetscInt :: output_file_imod
     
-    PetscInt :: periodic_output_ts_imod
-    PetscInt :: periodic_tr_output_ts_imod
+    PetscInt :: periodic_snap_output_ts_imod
+    PetscInt :: periodic_obs_output_ts_imod
+    PetscInt :: periodic_msbl_output_ts_imod
     
-    PetscReal :: periodic_output_time_incr
-    PetscReal :: periodic_tr_output_time_incr
+    PetscReal :: periodic_snap_output_time_incr
+    PetscReal :: periodic_obs_output_time_incr
+    PetscReal :: periodic_msbl_output_time_incr
     
     PetscBool :: filter_non_state_variables
 
     PetscInt :: xmf_vert_len
     
-    type(output_variable_list_type), pointer :: output_variable_list
+    type(output_variable_list_type), pointer :: output_variable_list ! (master)
+    type(output_variable_list_type), pointer :: output_snap_variable_list
+    type(output_variable_list_type), pointer :: output_obs_variable_list
     type(output_variable_list_type), pointer :: aveg_output_variable_list
 
     PetscReal :: aveg_var_time
@@ -93,6 +101,7 @@ module Output_Aux_module
   type, public :: output_variable_type
     character(len=MAXWORDLENGTH) :: name   ! string that appears in hdf5 file
     character(len=MAXWORDLENGTH) :: units
+    ! jmf: change to snapshot_plot_only?
     PetscBool :: plot_only
     PetscInt :: iformat   ! 0 = for REAL values; 1 = for INTEGER values
     PetscInt :: icategory ! category for variable-specific regression testing
@@ -134,8 +143,8 @@ module Output_Aux_module
             OutputWriteToHeader, &
             OutputWriteVariableListToHeader, &
             OutputVariableToCategoryString, &
-            OutputVariableRead, &
             OutputVariableAppendDefaults, &
+            OpenAndWriteInputRecord, &
             OutputOptionDestroy, &
             OutputVariableListDestroy, &
             CheckpointOptionCreate, &
@@ -180,23 +189,33 @@ function OutputOptionCreate()
   output_option%print_observation = PETSC_FALSE
   output_option%print_column_ids = PETSC_FALSE
   output_option%print_mad = PETSC_FALSE
-  output_option%print_initial = PETSC_TRUE
-  output_option%print_final = PETSC_TRUE
+  output_option%print_initial_obs = PETSC_TRUE
+  output_option%print_final_obs = PETSC_TRUE
+  output_option%print_initial_snap = PETSC_TRUE
+  output_option%print_final_snap = PETSC_TRUE
+  output_option%print_initial_massbal = PETSC_FALSE
+  output_option%print_final_massbal = PETSC_TRUE
   output_option%plot_number = 0
   output_option%screen_imod = 1
   output_option%output_file_imod = 1
-  output_option%periodic_output_ts_imod  = 100000000
-  output_option%periodic_output_time_incr = 0.d0
-  output_option%periodic_tr_output_ts_imod = 100000000
-  output_option%periodic_tr_output_time_incr = 0.d0
+  output_option%periodic_snap_output_ts_imod  = 100000000
+  output_option%periodic_obs_output_ts_imod  = 100000000
+  output_option%periodic_msbl_output_ts_imod  = 100000000
+  output_option%periodic_snap_output_time_incr = 0
+  output_option%periodic_obs_output_time_incr = 0
+  output_option%periodic_msbl_output_time_incr = 0
   output_option%plot_name = ""
   output_option%aveg_var_time = 0.d0
   output_option%aveg_var_dtime = 0.d0
-  output_option%xmf_vert_len = 0
+  output_option%xmf_vert_len = UNINITIALIZED_INTEGER
   output_option%filter_non_state_variables = PETSC_TRUE
 
-  nullify(output_option%output_variable_list)
-  output_option%output_variable_list => OutputVariableListCreate()
+  nullify(output_option%output_variable_list) ! master
+  output_option%output_variable_list => OutputVariableListCreate() ! master
+  nullify(output_option%output_snap_variable_list)
+  output_option%output_snap_variable_list => OutputVariableListCreate()
+  nullify(output_option%output_obs_variable_list)
+  output_option%output_obs_variable_list => OutputVariableListCreate()
   nullify(output_option%aveg_output_variable_list)
   output_option%aveg_output_variable_list => OutputVariableListCreate()
   
@@ -229,8 +248,11 @@ function CheckpointOptionCreate()
   checkpoint_option%tunit = ''
   checkpoint_option%tconv = 0.d0
   checkpoint_option%periodic_time_incr = UNINITIALIZED_DOUBLE
-  checkpoint_option%periodic_ts_incr = huge(checkpoint_option%periodic_ts_incr)
+  checkpoint_option%periodic_ts_incr = 0
+  !checkpoint_option%periodic_ts_incr = huge(checkpoint_option%periodic_ts_incr)
   checkpoint_option%format = CHECKPOINT_BINARY
+
+  CheckpointOptionCreate => checkpoint_option
   
 end function CheckpointOptionCreate 
   
@@ -612,417 +634,6 @@ end function OutputVariableToCategoryString
 
 ! ************************************************************************** !
 
-subroutine OutputVariableRead(input,option,output_variable_list)
-  ! 
-  ! This routine reads variable from input file.
-  ! 
-  ! Author: Gautam Bisht, LBNL; Glenn Hammond PNNL/SNL
-  ! Date: 12/21/12
-  ! 
-
-  use Option_module
-  use Input_Aux_module
-  use String_module
-  use Variables_module
-
-  implicit none
-
-  type(option_type), pointer :: option
-  type(input_type), pointer :: input
-  type(output_variable_list_type), pointer :: output_variable_list
-  
-  character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: name, units
-  type(output_variable_type), pointer :: output_variable
-  PetscInt :: temp_int
-
-  do
-    call InputReadPflotranString(input,option)
-    if (InputError(input)) exit
-    if (InputCheckExit(input,option)) exit
-    
-    call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','VARIABLES')
-    call StringToUpper(word)
-    
-    select case(trim(word))
-      case ('MAXIMUM_PRESSURE')
-        name = 'Maximum Pressure'
-        units = 'Pa'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_PRESSURE,units, &
-                                     MAXIMUM_PRESSURE)
-      case ('LIQUID_PRESSURE')
-        name = 'Liquid Pressure'
-        units = 'Pa'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_PRESSURE,units, &
-                                     LIQUID_PRESSURE)
-      case ('LIQUID_SATURATION')
-        name = 'Liquid Saturation'
-        units = ''
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_SATURATION,units, &
-                                     LIQUID_SATURATION)
-      case ('LIQUID_HEAD')
-        name = 'Liquid Head'
-        units = 'm'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     LIQUID_HEAD)
-        
-      case ('LIQUID_DENSITY')
-        name = 'Liquid Density'
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          if (StringCompareIgnoreCase(word,'MOLAR')) then
-            units = 'kmol/m^3'
-            temp_int = LIQUID_DENSITY_MOL
-          else
-            call InputErrorMsg(input,option,'optional keyword', &
-                               'VARIABLES,LIQUID_DENSITY')
-          endif
-        else
-          units = 'kg/m^3'
-          temp_int = LIQUID_DENSITY
-        endif
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     temp_int)
-      case ('LIQUID_MOBILITY')
-        name = 'Liquid Mobility'
-        units = '1/Pa-s'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     LIQUID_MOBILITY)
-      case ('LIQUID_ENERGY')
-        name = 'Liquid Energy'
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          if (StringCompareIgnoreCase(word,'PER_VOLUME')) then
-            units = 'MJ/m^3'
-            temp_int = ONE_INTEGER
-          else
-            call InputErrorMsg(input,option,'optional keyword', &
-                               'VARIABLES,LIQUID_ENERGY')
-          endif
-        else
-          units = 'MJ/kmol'
-          temp_int = ZERO_INTEGER
-        endif
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     LIQUID_ENERGY,temp_int)
-    
-      case ('GAS_PRESSURE')
-        name = 'Gas Pressure'
-        units = 'Pa'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_PRESSURE,units, &
-                                     GAS_PRESSURE)
-      case ('GAS_SATURATION')
-        name = 'Gas Saturation'
-        units = ''
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_SATURATION,units, &
-                                     GAS_SATURATION)
-      case ('GAS_DENSITY')
-        name = 'Gas Density'
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          if (StringCompareIgnoreCase(word,'MOLAR')) then
-            units = 'kmol/m^3'
-            temp_int = GAS_DENSITY_MOL
-          else
-            call InputErrorMsg(input,option,'optional keyword', &
-                               'VARIABLES,GAS_DENSITY')
-          endif
-        else
-          units = 'kg/m^3'
-          temp_int = GAS_DENSITY
-        endif
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     temp_int)
-      case ('GAS_MOBILITY')
-        name = 'Gas Mobility'
-        units = '1/Pa-s'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     GAS_MOBILITY)
-      case ('GAS_ENERGY')
-        name = 'Gas Energy'
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          if (StringCompareIgnoreCase(word,'PER_VOLUME')) then
-            units = 'MJ/m^3'
-            temp_int = ONE_INTEGER
-          else
-            input%ierr = 1
-            call InputErrorMsg(input,option,'optional keyword', &
-                               'VARIABLES,GAS_ENERGY')
-          endif
-        else
-          units = 'MJ/kmol'
-          temp_int = ZERO_INTEGER
-        endif
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     GAS_ENERGY,temp_int)
-      case ('OIL_PRESSURE')
-        name = 'Oil Pressure'
-        units = 'Pa'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_PRESSURE,units, &
-                                     OIL_PRESSURE)
-      case ('OIL_SATURATION')
-        name = 'Oil Saturation'
-        units = ''
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_SATURATION,units, &
-                                     OIL_SATURATION)
-      case ('OIL_DENSITY')
-        name = 'Oil Density'
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          if (StringCompareIgnoreCase(word,'MOLAR')) then
-            units = 'kmol/m^3'
-            temp_int = OIL_DENSITY_MOL
-          else
-            call InputErrorMsg(input,option,'optional keyword', &
-                               'VARIABLES,OIL_DENSITY')
-          endif
-        else
-          units = 'kg/m^3'
-          temp_int = OIL_DENSITY
-        endif
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     temp_int)
-      case ('OIL_MOBILITY')
-        name = 'Oil Mobility'
-        units = '1/Pa-s'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     OIL_MOBILITY)
-      case ('OIL_ENERGY')
-        name = 'Oil Energy'
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          if (StringCompareIgnoreCase(word,'PER_VOLUME')) then
-            units = 'MJ/m^3'
-            temp_int = ONE_INTEGER
-          else
-            input%ierr = 1
-            call InputErrorMsg(input,option,'optional keyword', &
-                               'VARIABLES,OIL_ENERGY')
-          endif
-        else
-          units = 'MJ/kmol'
-          temp_int = ZERO_INTEGER
-        endif
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     OIL_ENERGY,temp_int)
-      case ('LIQUID_MOLE_FRACTIONS')
-        name = 'X_g^l'
-        units = ''
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     LIQUID_MOLE_FRACTION, &
-                                     option%air_id)
-        name = 'X_l^l'
-        units = ''
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     LIQUID_MOLE_FRACTION, &
-                                     option%water_id)
-      case ('GAS_MOLE_FRACTIONS')
-        name = 'X_g^g'
-        units = ''
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     GAS_MOLE_FRACTION, &
-                                     option%air_id)
-        name = 'X_l^g'
-        units = ''
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     GAS_MOLE_FRACTION, &
-                                     option%water_id)
-      case ('LIQUID_MASS_FRACTIONS')
-        name = 'w_g^l'
-        units = ''
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     LIQUID_MASS_FRACTION, &
-                                     option%air_id)
-        name = 'w_l^l'
-        units = ''
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     LIQUID_MASS_FRACTION, &
-                                     option%water_id)
-      case ('GAS_MASS_FRACTIONS')
-        name = 'w_g^g'
-        units = ''
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     GAS_MASS_FRACTION, &
-                                     option%air_id)
-        name = 'w_l^g'
-        units = ''
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     GAS_MASS_FRACTION, &
-                                     option%water_id)
-      case ('AIR_PRESSURE')
-        name = 'Air Pressure'
-        units = 'Pa'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_PRESSURE,units, &
-                                     AIR_PRESSURE)
-      case ('CAPILLARY_PRESSURE')
-        name = 'Capillary Pressure'
-        units = 'Pa'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_PRESSURE,units, &
-                                     CAPILLARY_PRESSURE)
-      case ('VAPOR_PRESSURE')
-        name = 'Vapor Pressure'
-        units = 'Pa'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_PRESSURE,units, &
-                                     VAPOR_PRESSURE)
-      case ('SATURATION_PRESSURE')
-        name = 'Saturation Pressure'
-        units = 'Pa'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_PRESSURE,units, &
-                                     SATURATION_PRESSURE)
-      case('THERMODYNAMIC_STATE')
-        name = 'Thermodynamic State'
-         units = ''
-         output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
-                                                 units,STATE)
-         ! toggle output off for observation
-!geh: nope, this can change over time.
-!geh         output_variable%plot_only = PETSC_TRUE 
-
-         output_variable%iformat = 1 ! integer
-         call OutputVariableAddToList(output_variable_list,output_variable)
-         nullify(output_variable)
-      case ('TEMPERATURE')
-        name = 'Temperature'
-        units = 'C'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     TEMPERATURE)
-      case ('RESIDUAL')
-        units = ''
-        do temp_int = 1, option%nflowdof
-          write(word,*) temp_int
-          name = 'Residual_' // trim(adjustl(word))
-          call OutputVariableAddToList(output_variable_list,name, &
-                                       OUTPUT_GENERIC,units, &
-                                       RESIDUAL,temp_int)
-        enddo
-      case ('POROSITY')
-        units = ''
-        name = 'Porosity'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     POROSITY)
-      case ('MINERAL_POROSITY')
-        units = ''
-        name = 'Mineral Porosity'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     MINERAL_POROSITY)
-      case ('EFFECTIVE_POROSITY')
-        units = ''
-        name = 'Effective Porosity'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     EFFECTIVE_POROSITY)
-      case ('TORTUOSITY')
-        units = ''
-        name = 'Tortuosity'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     TORTUOSITY)
-      case ('PERMEABILITY','PERMEABILITY_X')
-        units = 'm^2'
-        name = 'Permeability X'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     PERMEABILITY)
-      case ('PERMEABILITY_Y')
-        units = 'm^2'
-        name = 'Permeability Y'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     PERMEABILITY_Y)
-      case ('PERMEABILITY_Z')
-        units = 'm^2'
-        name = 'Permeability Z'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     PERMEABILITY_Z)
-      case ('SOIL_COMPRESSIBILITY')
-        units = ''
-        name = 'Compressibility'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     SOIL_COMPRESSIBILITY)
-      case ('SOIL_REFERENCE_PRESSURE')
-        units = 'Pa'
-        name = 'Soil Reference Pressure'
-        call OutputVariableAddToList(output_variable_list,name, &
-                                     OUTPUT_GENERIC,units, &
-                                     SOIL_REFERENCE_PRESSURE)
-      case ('PROCESS_ID')
-        units = ''
-        name = 'Process ID'
-        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
-                                                units,PROCESS_ID)
-        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
-        output_variable%iformat = 1 ! integer
-        call OutputVariableAddToList(output_variable_list,output_variable)
-      case ('VOLUME')
-        units = ''
-        name = 'Volume'
-        output_variable => OutputVariableCreate(name,OUTPUT_GENERIC, &
-                                                units,VOLUME)
-        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
-        output_variable%iformat = 0 ! double
-        call OutputVariableAddToList(output_variable_list,output_variable)
-      case ('MATERIAL_ID')
-        units = ''
-        name = 'Material ID'
-        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
-                                                units,MATERIAL_ID)
-        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
-        output_variable%iformat = 1 ! integer
-        call OutputVariableAddToList(output_variable_list,output_variable)
-      case ('MATERIAL_ID_KLUDGE_FOR_VISIT')
-        units = ''
-        name = 'Kludged material ids for VisIt'
-        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
-                                                units,MATERIAL_ID)
-        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
-        output_variable%iformat = 1 ! integer
-        call OutputVariableAddToList(output_variable_list,output_variable)
-      case default
-        call InputKeywordUnrecognized(word,'VARIABLES',option)
-    end select
-
-  enddo
-
-end subroutine OutputVariableRead
-
-! ************************************************************************** !
-
 subroutine OutputVariableAppendDefaults(output_variable_list,option)
   ! 
   ! Adds default output variables to list
@@ -1056,6 +667,55 @@ end subroutine OutputVariableAppendDefaults
 
 ! ************************************************************************** !
 
+subroutine OpenAndWriteInputRecord(option)
+  ! 
+  ! Opens the input record file and begins to write to it.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type), pointer :: option
+
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: filename
+  PetscInt :: id
+
+  id = option%fid_inputrecord
+  filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+             '-input-record.tec'
+  open(unit=id,file=filename,action="write",status="replace")
+  call fdate(word)
+  if (OptionPrintToFile(option)) then
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') ' PFLOTRAN INPUT RECORD    ' // trim(word)
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+  
+    write(id,'(a18)',advance='no') 'input file: '  
+    write(id,*) trim(option%global_prefix) // '.in' 
+    
+    write(id,'(a18)',advance='no') 'group: ' 
+    write(id,*) trim(option%group_prefix)
+  
+    write(word,*) option%global_commsize
+    write(id,'(a18)',advance='no') 'n processors: ' 
+    write(id,*) trim(adjustl(word))
+  endif
+
+end subroutine OpenAndWriteInputRecord
+
+! ************************************************************************** !
+
 subroutine OutputVariableListDestroy(output_variable_list)
   ! 
   ! Deallocates an output variable list object
@@ -1068,6 +728,8 @@ subroutine OutputVariableListDestroy(output_variable_list)
   
   type(output_variable_list_type), pointer :: output_variable_list
   
+  if (.not.associated(output_variable_list)) return
+
   nullify(output_variable_list%last)
   call OutputVariableDestroy(output_variable_list%first)
   
@@ -1135,8 +797,20 @@ subroutine OutputOptionDestroy(output_option)
   type(output_option_type), pointer :: output_option
   
   if (.not.associated(output_option)) return
+
+  if (associated(output_option%output_variable_list, &
+                 output_option%output_snap_variable_list)) then
+    nullify(output_option%output_snap_variable_list)
+  endif
+
+  if (associated(output_option%output_variable_list, &
+                 output_option%output_obs_variable_list)) then
+    nullify(output_option%output_obs_variable_list)
+  endif
   
   call OutputVariableListDestroy(output_option%output_variable_list)
+  call OutputVariableListDestroy(output_option%output_snap_variable_list)
+  call OutputVariableListDestroy(output_option%output_obs_variable_list)
   call OutputVariableListDestroy(output_option%aveg_output_variable_list)
   
   deallocate(output_option)

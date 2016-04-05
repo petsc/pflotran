@@ -879,11 +879,12 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   implicit none
 
   type(grid_unstructured_type) :: unstructured_grid
-  type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: filename
+  type(option_type) :: option
+
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
-
+  character(len=MAXSTRINGLENGTH) :: string
   PetscMPIInt :: hdf5_err
   PetscMPIInt :: rank_mpi
   PetscInt :: istart, iend, ii, jj
@@ -895,6 +896,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   PetscInt, pointer :: int_buffer(:,:)
   PetscReal, pointer :: double_buffer(:,:)
   PetscInt, parameter :: max_nvert_per_cell = 8  
+  PetscInt :: error_count
   PetscErrorCode :: ierr
 
 #if defined(PETSC_HAVE_HDF5)
@@ -1009,6 +1011,27 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   allocate(unstructured_grid%cell_vertices(max_nvert_per_cell, &
                                              num_cells_local))
   unstructured_grid%cell_vertices = -1
+
+  ! check for incorrectly assigned cell types
+  error_count = 0
+  do ii = 1, num_cells_local
+    select case(int_buffer(1,ii))
+      case(4,5,6,8)
+      case default
+        write(string,*) int_buffer(1,ii)
+        option%io_buffer = 'Unknown cell type : ' // trim(adjustl(string))
+        error_count = error_count + 1
+        if (error_count < 10) then
+          call printMsgByRank(option)
+        endif
+    end select
+  enddo
+  call MPI_Allreduce(error_count,MPI_IN_PLACE,ONE_INTEGER_MPI,MPI_INTEGER, &
+                     MPI_MAX,option%mycomm,ierr)
+  if (error_count > 0) then
+    option%io_buffer = 'Unknown cell types in ' // trim(filename) // '.'
+    call printErrMsg(option)
+  endif
   
   do ii = 1, num_cells_local
     do jj = 2, int_buffer(1,ii) + 1
@@ -2946,11 +2969,11 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
         ! need to swap so that distance is negative (point lies below plane)
         if (cell_type == TRI_TYPE .or. cell_type == QUAD_TYPE) then
           ! Error message for 2D cell type
-          option%io_buffer = 'Cell: '
+          option%io_buffer = 'Cell:'
           write(string,'(i13)') nG2A(nL2G(local_id))
-          option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // &
-            ' of type "' // trim(UCellTypeToWord(cell_type,option)) // &
-            '" with vertices:'
+          option%io_buffer = trim(option%io_buffer) // ' ' // &
+            trim(adjustl(string)) // ' of type "' // &
+            trim(UCellTypeToWord(cell_type,option)) // '" with vertices:'
           do i = 1, num_vertices
             write(string,'(i13)') &
               unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i))
@@ -2983,11 +3006,11 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
           error_found = PETSC_TRUE
         else
           ! Error message for 3D cell type
-          option%io_buffer = 'Cell: '
+          option%io_buffer = 'Cell:'
           write(string,'(i13)') nG2A(nL2G(local_id))
-          option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // &
-            'of type "' // trim(UCellTypeToWord(cell_type,option)) // &
-            '" with vertices:'
+          option%io_buffer = trim(option%io_buffer) // ' ' // &
+            trim(adjustl(string)) // ' of type "' // &
+            trim(UCellTypeToWord(cell_type,option)) // '" with vertices:'
           do i = 1, num_vertices
             write(string,'(i13)') &
               unstructured_grid%vertex_ids_natural(cell_vertex_ids_before(i))
