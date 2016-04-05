@@ -717,8 +717,10 @@ subroutine PMUFDDecaySolve(this,time,ierr)
         iiso = this%element_isotopes(i,iele)
         ipri = this%isotope_to_primary_species(iiso)
         imnrl = this%isotope_to_mineral(iiso)
-        ! # indicated time level (0 = prev time level, 1 = new time level)        
-        conc_iso_aq0 = rt_auxvars(ghosted_id)%total(ipri,1) ! mol/L
+        ! # indicated time level (0 = prev time level, 1 = new time level) 
+        conc_iso_aq0 = xx_p((local_id-1)*reaction%ncomp+ipri) * &
+                       den_w_kg / 1000.d0  ! mol/L
+        !conc_iso_aq0 = rt_auxvars(ghosted_id)%total(ipri,1) ! mol/L
         conc_iso_sorb0 = rt_auxvars(ghosted_id)%total_sorb_eq(ipri) ! mol/m^3 bulk
         conc_iso_ppt0 = rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) ! m^3 mnrl/m^3 bulk
         mass_iso_aq0 = conc_iso_aq0*vps*1.d3 ! mol/L * m^3 water * 1000 L /m^3 = mol

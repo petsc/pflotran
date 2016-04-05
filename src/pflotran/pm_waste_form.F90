@@ -17,7 +17,7 @@ module PM_Waste_Form_class
 
   PetscBool, public :: bypass_warning_message = PETSC_FALSE
 
-! --------------- waste form species packages ----------------------------------
+! --------------- waste form species packages ---------------------------------
   type, public :: rad_species_type
    PetscReal :: formula_weight
    PetscReal :: decay_constant
@@ -30,7 +30,7 @@ module PM_Waste_Form_class
    character(len=MAXWORDLENGTH) :: name
   end type rad_species_type
 
-! --------------- waste form mechanism types -----------------------------------
+! --------------- waste form mechanism types ----------------------------------
   type :: wf_mechanism_base_type
     type(rad_species_type), pointer :: rad_species_list(:)
     PetscInt :: num_species
@@ -75,7 +75,7 @@ module PM_Waste_Form_class
     procedure, public :: Dissolution => WFMechCustomDissolution
   end type wf_mechanism_custom_type
 
-! --------------- waste form types ---------------------------------------------
+! --------------- waste form types --------------------------------------------
   type :: waste_form_base_type
     PetscInt :: id
     PetscInt :: local_cell_id
@@ -98,7 +98,7 @@ module PM_Waste_Form_class
     class(waste_form_base_type), pointer :: next
   end type waste_form_base_type
 
-! --------------- waste form process model -------------------------------------
+! --------------- waste form process model ------------------------------------
   type, public, extends(pm_base_type) :: pm_waste_form_type
     class(realization_subsurface_type), pointer :: realization
     character(len=MAXWORDLENGTH) :: data_mediator_species
@@ -506,23 +506,27 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             new_mechanism%name = trim(word)
         !--------------------------
           case('SPECIFIC_SURFACE_AREA')
-            select type(new_mechanism)
-              type is(wf_mechanism_dsnf_type)
-                option%io_buffer = 'SPECIFIC_SURFACE_AREA cannot be &
-                                   &specified for ' // trim(error_string)
-                call printErrMsg(option)
-            end select
-            call InputReadDouble(input,option, &
-                                 new_mechanism%specific_surface_area)
+            call InputReadDouble(input,option,double)
             call InputErrorMsg(input,option,'specific surface area', &
                                error_string)
             call InputReadWord(input,option,word,PETSC_TRUE)
             if (input%ierr == 0) then
               internal_units = 'm^2/m^3'
-              new_mechanism%specific_surface_area = &
-                   UnitsConvertToInternal(word,internal_units,option) * &
-                   new_mechanism%specific_surface_area
+              double = UnitsConvertToInternal(word,internal_units,option) * &
+                       double
             endif
+            select type(new_mechanism)
+              type is(wf_mechanism_dsnf_type)
+                option%io_buffer = 'SPECIFIC_SURFACE_AREA cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+              type is(wf_mechanism_custom_type)
+                new_mechanism%specific_surface_area = double
+              type is(wf_mechanism_glass_type)
+                new_mechanism%specific_surface_area = double
+              type is(wf_mechanism_fmdm_type)
+                new_mechanism%specific_surface_area = double
+            end select
         !--------------------------
           case('MATRIX_DENSITY')
             call InputReadDouble(input,option,new_mechanism%matrix_density)
@@ -1427,9 +1431,10 @@ subroutine WFMechGlassDissolution(this,waste_form,pm)
   global_auxvars => pm%realization%patch%aux%Global%auxvars
 
   ! kg glass/m^2/day
-  this%dissolution_rate = 560.d0*exp(-7397.d0/ &
-    (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))
-
+  !this%dissolution_rate = 560.d0*exp(-7397.d0/ &
+  !  (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))
+  this%dissolution_rate = 1.0d-10
+  
   ! kg glass / sec
   waste_form%eff_dissolution_rate = &
     this%dissolution_rate * &          ! kg-glass/m^2/day
@@ -1461,7 +1466,8 @@ subroutine WFMechDSNFDissolution(this,waste_form,pm)
                                            ! 1/day -> 1/sec
   PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
   
-  this%frac_dissolution_rate = 1.0d0  ! whole/day 
+  !this%frac_dissolution_rate = 1.0d0  ! whole/day 
+  this%frac_dissolution_rate = 1.0d-10  ! whole/day 
 
   ! kg matrix/sec
   waste_form%eff_dissolution_rate = &
@@ -1472,6 +1478,49 @@ subroutine WFMechDSNFDissolution(this,waste_form,pm)
     time_conversion                          ! day/sec
 
 end subroutine WFMechDSNFDissolution
+
+! ************************************************************************** !
+
+subroutine WFMechFMDMDissolution(this,waste_form,pm)
+  !
+  ! Calculates the FMDM waste form dissolution rate
+  !
+  ! Author: Jenn Frederick
+  ! Date: 03/28/2016
+
+  use Grid_module
+  use Global_Aux_module
+
+  implicit none
+
+  class(wf_mechanism_fmdm_type) :: this
+  class(waste_form_base_type) :: waste_form
+  class(pm_waste_form_type) :: pm
+
+  ! Note: Units for dissolution rates have already been converted to
+  ! internal units within the PMWFRead routine.
+  ! This is a placeholder routine!!!
+
+  if (uninitialized(this%frac_dissolution_rate)) then
+    ! kg glass / sec
+    waste_form%eff_dissolution_rate = &
+       this%dissolution_rate * &         ! kg-matrix/m^2/sec
+       this%specific_surface_area * &    ! m^2/kg-matrix
+       this%matrix_density * &           ! kg-matrix/m^3-matrix
+       waste_form%volume * &             ! m^3-matrix
+       waste_form%exposure_factor        ! [-]
+  endif
+
+  if (uninitialized(this%dissolution_rate)) then
+    ! kg matrix/sec
+    waste_form%eff_dissolution_rate = &
+       this%frac_dissolution_rate * &     ! [-]/sec
+       this%matrix_density * &            ! kg matrix/m^3 matrix
+       waste_form%volume * &              ! m^3 matrix
+       waste_form%exposure_factor         ! [-]
+  endif
+
+end subroutine WFMechFMDMDissolution
 
 ! ************************************************************************** !
 
