@@ -1521,6 +1521,7 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
 !geh: this needs to be tested.
 #if 0
         temp_string = 'CHECKPOINT,TIMES'
+        nullify(temp_real_array)
         call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
                               temp_string,input,option)
         do i = 1, size(temp_real_array)

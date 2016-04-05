@@ -715,6 +715,7 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
               units_conversion = UnitsConvertToInternal(word, &
                                                         internal_units,option)
               string = 'GEOMECHANICS_OUTPUT,TIMES'
+              nullify(temp_real_array)
               call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
                                     string,input,option)
               do i = 1, size(temp_real_array)

@@ -488,6 +488,7 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
               units_conversion = UnitsConvertToInternal(word, &
                                  internal_units,option)
               temp_string = 'SURF_OUTPUT,TIMES'
+              nullify(temp_real_array)
               call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
                                     temp_string,input,option)
               do i = 1, size(temp_real_array)
