@@ -382,6 +382,7 @@ subroutine PMWFRead(this,input)
     select case(trim(word))
     !-------------------------------------
       case('PRINT_MASS_BALANCE')
+        this%print_mass_balance = PETSC_TRUE
     !-------------------------------------
       case default
         call InputKeywordUnrecognized(word,error_string,option)
@@ -474,9 +475,12 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
           new_mechanism => MechanismDSNFCreate()
       !---------------------------------
         case('FMDM')
-          error_string = trim(error_string) // ' FMDM'
-          allocate(new_mechanism)
-          new_mechanism => MechanismFMDMCreate()
+          option%io_buffer = 'FMDM waste form not yet implemented. Sorry! ' &
+                             // trim(error_string)
+          call printErrMsg(option)
+          !error_string = trim(error_string) // ' FMDM'
+          !allocate(new_mechanism)
+          !new_mechanism => MechanismFMDMCreate()
       !---------------------------------
         case('CUSTOM')
           error_string = trim(error_string) // ' CUSTOM'
@@ -1060,7 +1064,7 @@ end subroutine PMWFSetup
     num_species = cur_waste_form%mechanism%num_species
     allocate(cur_waste_form%instantaneous_mass_rate(num_species))
     allocate(cur_waste_form%cumulative_mass(num_species))
-    cur_waste_form%instantaneous_mass_rate = UNINITIALIZED_DOUBLE
+    cur_waste_form%instantaneous_mass_rate = 0.d0
     cur_waste_form%cumulative_mass = 0.d0
     allocate(cur_waste_form%rad_mass_fraction(num_species))
     allocate(cur_waste_form%rad_concentration(num_species))
@@ -1205,7 +1209,7 @@ subroutine PMWFInitializeTimestep(this)
   dt = option%tran_dt
   
   if (option%print_screen_flag) then
-    write(*,'(/,2("=")," WASTE FORM MODEL ",65("="))')
+    write(*,'(/,2("=")," WASTE FORM MODEL ",60("="))')
   endif
 
   cur_waste_form => this%waste_form_list
@@ -1220,30 +1224,43 @@ subroutine PMWFInitializeTimestep(this)
          cur_waste_form%mechanism%matrix_density * &  ! kg-matrix/m^3-matrix
          dt                                           ! sec
     cur_waste_form%volume = cur_waste_form%volume - dV
+    if (cur_waste_form%volume <= 1.d-10) then
+      cur_waste_form%volume = 0.d0
+    endif
 
     k = 0
     ! ------ get species concentrations from mass fractions ----------------
     do while (k < num_species)
       k = k + 1
-      cur_waste_form%rad_concentration(k) = &
-        cur_waste_form%rad_mass_fraction(k) / &
-        cur_waste_form%mechanism%rad_species_list(k)%formula_weight
+      if (cur_waste_form%volume <= 0.d0) then
+        cur_waste_form%rad_concentration(k) = 0.d0
+        cur_waste_form%rad_mass_fraction(k) = 0.d0
+      else
+        cur_waste_form%rad_concentration(k) = &
+          cur_waste_form%rad_mass_fraction(k) / &
+          cur_waste_form%mechanism%rad_species_list(k)%formula_weight
+      endif
     enddo
 
     !---------------- vitality degradation function ------------------------
     if (cur_waste_form%canister_degradation_flag) then
-      cur_waste_form%eff_canister_vit_rate = &
-        cur_waste_form%canister_vitality_rate * &
-        exp( cur_waste_form%mechanism%canister_material_constant * &
-        ( (1.d0/333.15d0) - &
-        (1.d0/(global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))% &
-         temp+273.15d0))) )
-      cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
-                        - ( cur_waste_form%eff_canister_vit_rate * &   ! [1/yr]
-                            dt * &                                     ! [sec]
-                            (1.0/(365.0*24.0*3600.0)) )                ! [yr/sec]
       if (cur_waste_form%canister_vitality < 1.d-3) then
         cur_waste_form%canister_vitality = 0.d0
+        cur_waste_form%eff_canister_vit_rate = 0.d0
+      else
+        cur_waste_form%eff_canister_vit_rate = &
+          cur_waste_form%canister_vitality_rate * &
+          exp( cur_waste_form%mechanism%canister_material_constant * &
+          ( (1.d0/333.15d0) - &
+          (1.d0/(global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))% &
+           temp+273.15d0))) )
+        cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
+                      - ( cur_waste_form%eff_canister_vit_rate * &   ! [1/yr]
+                          dt * &                                     ! [sec]
+                          (1.0/(365.0*24.0*3600.0)) )                ! [yr/sec]
+        if (cur_waste_form%canister_vitality < 1.d-3) then
+          cur_waste_form%canister_vitality = 0.d0
+        endif
       endif
     endif
 
@@ -1286,23 +1303,24 @@ subroutine PMWFInitializeTimestep(this)
       call VecRestoreArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
     endif
 
-    k = 0
-    !------- decay the radionuclide species --------------------------------
-    do while (k < num_species)
-      k = k + 1
-      ! If species has a parent, save the parent's initial concentration
-      if (cur_waste_form%mechanism%rad_species_list(k)%parent_id /= 0) then
-        p = cur_waste_form%mechanism%rad_species_list(k)%parent_id
-        parent_concentration_old = cur_waste_form%rad_concentration(p)
-      endif
-      ! Decay the species
-      cur_waste_form%rad_concentration(k) = &
+    if (cur_waste_form%volume >= 0.d0) then
+      k = 0
+      !------- decay the radionuclide species --------------------------------
+      do while (k < num_species)
+        k = k + 1
+        ! If species has a parent, save the parent's initial concentration
+        if (cur_waste_form%mechanism%rad_species_list(k)%parent_id /= 0) then
+          p = cur_waste_form%mechanism%rad_species_list(k)%parent_id
+          parent_concentration_old = cur_waste_form%rad_concentration(p)
+        endif
+        ! Decay the species
+        cur_waste_form%rad_concentration(k) = &
            cur_waste_form%rad_concentration(k) * exp(-1.0d0*dt* &
            cur_waste_form%mechanism%rad_species_list(k)%decay_constant)
-      ! If species has a parent, adjust new concentration due to ingrowth
-      if (cur_waste_form%mechanism%rad_species_list(k)%parent_id /= 0) then
-        p = cur_waste_form%mechanism%rad_species_list(k)%parent_id
-        cur_waste_form%rad_concentration(k) = &
+        ! If species has a parent, adjust new concentration due to ingrowth
+        if (cur_waste_form%mechanism%rad_species_list(k)%parent_id /= 0) then
+          p = cur_waste_form%mechanism%rad_species_list(k)%parent_id
+          cur_waste_form%rad_concentration(k) = &
              cur_waste_form%rad_concentration(k) + &
              ((cur_waste_form%mechanism%rad_species_list(p)%decay_constant* &
              parent_concentration_old)/ &
@@ -1312,18 +1330,17 @@ subroutine PMWFInitializeTimestep(this)
                   cur_waste_form%mechanism%rad_species_list(p)%decay_constant) &
              - exp(-1.0d0*dt* &
                    cur_waste_form%mechanism%rad_species_list(k)%decay_constant))
-      endif
-    enddo
-      
-    k = 0
-    ! ------ update species mass fractions ---------------------------------
-    do while (k < num_species)
-      k = k + 1
-      cur_waste_form%rad_mass_fraction(k) = &
-      cur_waste_form%rad_concentration(k) * &
-        cur_waste_form%mechanism%rad_species_list(k)%formula_weight
-    enddo
-
+        endif
+      enddo
+      k = 0
+      ! ------ update species mass fractions ---------------------------------
+      do while (k < num_species)
+        k = k + 1
+        cur_waste_form%rad_mass_fraction(k) = &
+        cur_waste_form%rad_concentration(k) * &
+          cur_waste_form%mechanism%rad_species_list(k)%formula_weight
+      enddo
+    endif
     cur_waste_form => cur_waste_form%next
   enddo
 
@@ -1353,14 +1370,14 @@ subroutine PMWFSolve(this,time,ierr)
   class(waste_form_base_type), pointer :: cur_waste_form
   PetscInt :: i, j
   PetscInt :: num_species
-  PetscReal, pointer :: vec_p(:)            
+  PetscReal, pointer :: vec_p(:)  
 
   call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   cur_waste_form => this%waste_form_list
   i = 0
   do 
     if (.not.associated(cur_waste_form)) exit
-    num_species = cur_waste_form%mechanism%num_species
+    num_species = cur_waste_form%mechanism%num_species    
     if ((cur_waste_form%volume > 0.d0) .and. &
         (cur_waste_form%canister_vitality == 0.d0)) then
       ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]
@@ -1375,7 +1392,7 @@ subroutine PMWFSolve(this,time,ierr)
            1.d3)                                              ! kmol -> mol
         vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)  ! mol/sec
       enddo
-    else ! (canister not yet breached, or all waste form has dissolved already)
+    else ! (canister not breached, or all waste form has dissolved already)
       cur_waste_form%eff_dissolution_rate = 0.d0
       cur_waste_form%instantaneous_mass_rate = 0.d0
     endif
@@ -1431,9 +1448,8 @@ subroutine WFMechGlassDissolution(this,waste_form,pm)
   global_auxvars => pm%realization%patch%aux%Global%auxvars
 
   ! kg glass/m^2/day
-  !this%dissolution_rate = 560.d0*exp(-7397.d0/ &
-  !  (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))
-  this%dissolution_rate = 1.0d-10
+  this%dissolution_rate = 560.d0*exp(-7397.d0/ &
+    (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))
   
   ! kg glass / sec
   waste_form%eff_dissolution_rate = &
@@ -1463,19 +1479,17 @@ subroutine WFMechDSNFDissolution(this,waste_form,pm)
   class(wf_mechanism_dsnf_type) :: this
   class(waste_form_base_type) :: waste_form
   class(pm_waste_form_type) :: pm  
-                                           ! 1/day -> 1/sec
+                                           ! day/sec
   PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
   
-  !this%frac_dissolution_rate = 1.0d0  ! whole/day 
-  this%frac_dissolution_rate = 1.0d-10  ! whole/day 
+  this%frac_dissolution_rate = 1.d0 / (1.1d0*pm%realization%option%tran_dt) 
 
   ! kg matrix/sec
   waste_form%eff_dissolution_rate = &
-    this%frac_dissolution_rate * &           ! 1/day
+    this%frac_dissolution_rate * &           ! 1/sec
     this%matrix_density * &                  ! kg matrix/m^3 matrix
     waste_form%volume * &                    ! m^3 matrix
-    waste_form%exposure_factor * &           ! [-]
-    time_conversion                          ! day/sec
+    waste_form%exposure_factor               ! [-]
 
 end subroutine WFMechDSNFDissolution
 
@@ -1497,28 +1511,9 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm)
   class(waste_form_base_type) :: waste_form
   class(pm_waste_form_type) :: pm
 
-  ! Note: Units for dissolution rates have already been converted to
-  ! internal units within the PMWFRead routine.
   ! This is a placeholder routine!!!
 
-  if (uninitialized(this%frac_dissolution_rate)) then
-    ! kg glass / sec
-    waste_form%eff_dissolution_rate = &
-       this%dissolution_rate * &         ! kg-matrix/m^2/sec
-       this%specific_surface_area * &    ! m^2/kg-matrix
-       this%matrix_density * &           ! kg-matrix/m^3-matrix
-       waste_form%volume * &             ! m^3-matrix
-       waste_form%exposure_factor        ! [-]
-  endif
-
-  if (uninitialized(this%dissolution_rate)) then
-    ! kg matrix/sec
-    waste_form%eff_dissolution_rate = &
-       this%frac_dissolution_rate * &     ! [-]/sec
-       this%matrix_density * &            ! kg matrix/m^3 matrix
-       waste_form%volume * &              ! m^3 matrix
-       waste_form%exposure_factor         ! [-]
-  endif
+  
 
 end subroutine WFMechFMDMDissolution
 
@@ -1551,9 +1546,7 @@ subroutine WFMechCustomDissolution(this,waste_form,pm)
        this%matrix_density * &           ! kg-matrix/m^3-matrix
        waste_form%volume * &             ! m^3-matrix
        waste_form%exposure_factor        ! [-]
-  endif
-
-  if (uninitialized(this%dissolution_rate)) then
+  else
     ! kg matrix/sec
     waste_form%eff_dissolution_rate = &
        this%frac_dissolution_rate * &     ! [-]/sec
@@ -1664,12 +1657,10 @@ subroutine PMWFOutput(this)
     if (.not.associated(cur_waste_form)) exit
     do i = 1, cur_waste_form%mechanism%num_species
       write(fid,100,advance="no") cur_waste_form%cumulative_mass(i), &
-                                  cur_waste_form%instantaneous_mass_rate(i) * &
-                                  output_option%tconv, &
+                                  cur_waste_form%instantaneous_mass_rate(i), &
                                   cur_waste_form%rad_mass_fraction(i)
     enddo
-    write(fid,100,advance="no") cur_waste_form%eff_dissolution_rate * &
-                                output_option%tconv, &
+    write(fid,100,advance="no") cur_waste_form%eff_dissolution_rate, &
                                 cur_waste_form%volume, &
                                 cur_waste_form%eff_canister_vit_rate, &
                                 cur_waste_form%canister_vitality*100.0
@@ -1763,13 +1754,15 @@ subroutine PMWFOutputHeader(this)
              ' ' // trim(adjustl(z_string)) // ')'
     do i = 1, cur_waste_form%mechanism%num_species
       variable_string = trim(cur_waste_form%mechanism%rad_species_list(i)%name) &
-                        // ' Mass Flux'
+                        // ' Cum. Mass Flux'
       ! cumulative
       units_string = 'mol'
       call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
                                icolumn)
+      variable_string = trim(cur_waste_form%mechanism%rad_species_list(i)%name) &
+                        // ' Inst. Mass Flux'
       ! instantaneous
-      units_string = 'mol/' // trim(adjustl(output_option%tunit))
+      units_string = 'mol/s' !// trim(adjustl(output_option%tunit))
       call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
                                icolumn)       
       variable_string = trim(cur_waste_form%mechanism%rad_species_list(i)%name) &
@@ -1779,7 +1772,7 @@ subroutine PMWFOutputHeader(this)
                                icolumn)
     enddo
     variable_string = 'WF Dissolution Rate'
-    units_string = 'kg/' // trim(adjustl(output_option%tunit))
+    units_string = 'kg/s' !// trim(adjustl(output_option%tunit))
     call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
                              icolumn)
     variable_string = 'WF Volume'
