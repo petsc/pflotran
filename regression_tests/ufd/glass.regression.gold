@@ -1,56 +1,71 @@
 -- PRESSURE: Liquid Pressure --
-      Max:   2.0621472342396E+05
-      Min:   1.9643532986952E+05
-     Mean:   2.0132502664674E+05
-        1:   2.0621472342396E+05
+      Max:   2.1110447180329E+05
+      Min:   1.9154568469429E+05
+     Mean:   2.0132507106365E+05
+        1:   2.1110447180329E+05
 -- SATURATION: Liquid Saturation --
       Max:   1.0000000000000E+00
       Min:   1.0000000000000E+00
      Mean:   1.0000000000000E+00
         1:   1.0000000000000E+00
 -- CONCENTRATION: Total I-129 --
-      Max:   1.0000019532485E-07
-      Min:   9.9999804675150E-08
-     Mean:   1.0000000000000E-07
-        1:   1.0000019532485E-07
+      Max:   1.0000042219692E-20
+      Min:   9.9999577801033E-21
+     Mean:   1.0000000000000E-20
+        1:   1.0000042219692E-20
 -- CONCENTRATION: Total Am-241 --
-      Max:   1.0000019532485E-07
-      Min:   9.9999804675150E-08
-     Mean:   1.0000000000000E-07
-        1:   1.0000019532485E-07
+      Max:   1.0000042219692E-20
+      Min:   9.9999577801033E-21
+     Mean:   1.0000000000000E-20
+        1:   1.0000042219692E-20
 -- CONCENTRATION: Total Np-237 --
-      Max:   1.0000019532485E-07
-      Min:   9.9999804675150E-08
-     Mean:   1.0000000000000E-07
-        1:   1.0000019532485E-07
+      Max:   1.0000042219692E-20
+      Min:   9.9999577801033E-21
+     Mean:   1.0000000000000E-20
+        1:   1.0000042219692E-20
 -- CONCENTRATION: Total U-233 --
-      Max:   1.0000019532485E-07
-      Min:   9.9999804675150E-08
-     Mean:   1.0000000000000E-07
-        1:   1.0000019532485E-07
+      Max:   1.0000042219692E-20
+      Min:   9.9999577801033E-21
+     Mean:   1.0000000000000E-20
+        1:   1.0000042219692E-20
 -- CONCENTRATION: Total Th-229 --
-      Max:   1.0000019532485E-07
-      Min:   9.9999804675150E-08
-     Mean:   1.0000000000000E-07
-        1:   1.0000019532485E-07
+      Max:   1.0000042219692E-20
+      Min:   9.9999577801033E-21
+     Mean:   1.0000000000000E-20
+        1:   1.0000042219692E-20
+-- CONCENTRATION: Total Pu-240 --
+      Max:   1.0000042219692E-20
+      Min:   9.9999577801033E-21
+     Mean:   1.0000000000000E-20
+        1:   1.0000042219692E-20
+-- CONCENTRATION: Total Tc-99 --
+      Max:   1.0000042219692E-20
+      Min:   9.9999577801033E-21
+     Mean:   1.0000000000000E-20
+        1:   1.0000042219692E-20
+-- CONCENTRATION: Total C-tracer --
+      Max:   1.0000042219692E-20
+      Min:   9.9999577801033E-21
+     Mean:   1.0000000000000E-20
+        1:   1.0000042219692E-20
 -- DISCRETE: Material ID --
       Max:         1
       Min:         1
      Mean:   1.0000000000000E+00
         1:         1
 -- SOLUTION: Flow --
-   Time (seconds):   5.1675081253052E-02
-   Time Steps:           93
-   Newton Iterations:           98
-   Solver Iterations:           95
+   Time (seconds):   9.0167284011841E-02
+   Time Steps:          122
+   Newton Iterations:          128
+   Solver Iterations:          125
    Time Step Cuts:            0
-   Solution 2-Norm:   2.8480054595764E+05
-   Residual 2-Norm:   2.3957709635678E-18
+   Solution 2-Norm:   3.4897940597254E+05
+   Residual 2-Norm:   8.8813010111187E-19
 -- SOLUTION: Transport --
-   Time (seconds):   4.3485164642334E-02
-   Time Steps:           93
-   Newton Iterations:           93
-   Solver Iterations:           93
+   Time (seconds):   2.0264339447021E-01
+   Time Steps:          122
+   Newton Iterations:          122
+   Solver Iterations:          122
    Time Step Cuts:            0
-   Solution 2-Norm:   3.1711398447290E-07
-   Residual 2-Norm:   0.0000000000000E+00
+   Solution 2-Norm:   4.9127087228520E-20
+   Residual 2-Norm:   2.0780000667823E-39

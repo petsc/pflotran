@@ -357,7 +357,7 @@ subroutine PMWFRead(this,input)
 
   option => this%option
   input%ierr = 0
-  error_string = 'WASTE_FORM'
+  error_string = 'WASTE_FORM_GENERAL'
 
   option%io_buffer = 'pflotran card:: ' // trim(error_string)
   call printMsg(option)
@@ -371,11 +371,11 @@ subroutine PMWFRead(this,input)
     call InputErrorMsg(input,option,'keyword',error_string)
     call StringToUpper(word)
 
-    error_string = 'WASTE_FORM'
+    error_string = 'WASTE_FORM_GENERAL'
     call PMWFReadMechanism(this,input,option,word,error_string,found)
     if (found) cycle
     
-    error_string = 'WASTE_FORM'
+    error_string = 'WASTE_FORM_GENERAL'
     call PMWFReadWasteForm(this,input,option,word,error_string,found)
     if (found) cycle
    
@@ -1118,6 +1118,7 @@ end subroutine PMWFSetup
   ! count of waste form cells
   cur_waste_form => this%waste_form_list
   num_waste_form_cells = 0
+  size_of_vec = 0
   do
     if (.not.associated(cur_waste_form)) exit
     size_of_vec = size_of_vec + cur_waste_form%mechanism%num_species
@@ -1143,6 +1144,8 @@ end subroutine PMWFSetup
       enddo
       cur_waste_form => cur_waste_form%next
     enddo                             ! zero-based indexing
+    !write(*,*) species_indices_in_residual(:)
+    !stop
     species_indices_in_residual(:) = species_indices_in_residual(:) - 1
     ! set to global petsc index
     species_indices_in_residual(:) = species_indices_in_residual(:) + &
@@ -1379,7 +1382,7 @@ subroutine PMWFSolve(this,time,ierr)
     if (.not.associated(cur_waste_form)) exit
     num_species = cur_waste_form%mechanism%num_species    
     if ((cur_waste_form%volume > 0.d0) .and. &
-        (cur_waste_form%canister_vitality == 0.d0)) then
+        (cur_waste_form%canister_vitality <= 1.d-40)) then
       ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]
       call cur_waste_form%mechanism%Dissolution(cur_waste_form,this)
       ! mol/sec
@@ -1393,6 +1396,7 @@ subroutine PMWFSolve(this,time,ierr)
         vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)  ! mol/sec
       enddo
     else ! (canister not breached, or all waste form has dissolved already)
+      i = i + num_species
       cur_waste_form%eff_dissolution_rate = 0.d0
       cur_waste_form%instantaneous_mass_rate = 0.d0
     endif
