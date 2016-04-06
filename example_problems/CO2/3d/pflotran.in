@@ -55,6 +55,7 @@ FORMAT TECPLOT BLOCK
 /
 
 #=========================== fluid properties =================================
+CO2_DATABASE co2data0.dat
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
@@ -113,7 +114,7 @@ END
 
 #=========================== flow conditions ==================================
 FLOW_CONDITION initial
-UNITS Pa,C,M,yr
+#UNITS Pa,C,M,yr
 TYPE
 PRESSURE hydrostatic
 TEMPERATURE zero_gradient
@@ -122,13 +123,13 @@ ENTHALPY dirichlet
 /
 IPHASE 1
 PRESSURE 2D7 2D7
-TEMPERATURE 50 C
-CONCENTRATION 1d-6 M
+TEMPERATURE 50
+CONCENTRATION 1d-6
 ENTHALPY 0.d0 0.d0
 /
 
 FLOW_CONDITION top
-UNITS Pa,C,M,yr
+#UNITS Pa,C,M,yr
 TYPE
 PRESSURE dirichlet
 TEMPERATURE zero_gradient
@@ -143,7 +144,8 @@ ENTHALPY 0.d0 0.d0
 /
 
 FLOW_CONDITION source
-UNITS Pa,C,M,yr
+#UNITS Pa,C,M,yr
+SYNC_TIMESTEP_WITH_UPDATE
 TYPE
 RATE mass_rate
 PRESSURE dirichlet
@@ -151,7 +153,14 @@ TEMPERATURE dirichlet
 CONCENTRATION dirichlet
 ENTHALPY dirichlet
 /
-RATE file c2i.txt  ! kg/s
+RATE LIST
+  TIME_UNITS y
+  DATA_UNITS kg/s
+0.  0. 1.d-4
+10. 0. 1.d-4
+10.001 0. 0.
+1d22 0. 0.
+/
 PRESSURE 2.d7 2.d7
 TEMPERATURE 50.d0
 CONCENTRATION 0.D0
