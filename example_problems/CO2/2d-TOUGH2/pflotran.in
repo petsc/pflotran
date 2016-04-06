@@ -66,6 +66,7 @@ FORMAT HDF5
 /
 
 #=========================== fluid properties =================================
+CO2_DATABASE co2data0.dat
 FLUID_PROPERTY
 DIFFUSION_COEFFICIENT 1.d-9
 /
@@ -149,8 +150,8 @@ ENTHALPY dirichlet
 /
 IPHASE 1
 PRESSURE 2D7 2D7
-TEMPERATURE 50 C
-CONCENTRATION 1d-6 M
+TEMPERATURE 50
+CONCENTRATION 1d-6
 ENTHALPY 0.d0 0.d0
 /
 

@@ -1536,7 +1536,7 @@ subroutine RichardsResidualSourceSink(r,realization,ierr)
   enddo
 
   call RichardsSSSandbox(r,null_mat,PETSC_FALSE,grid,material_auxvars, &
-                         global_auxvars,option)
+                         global_auxvars,rich_auxvars,option)
   
   if (patch%aux%Richards%inactive_cells_exist) then
     do i=1,patch%aux%Richards%n_zero_rows
@@ -2264,7 +2264,7 @@ subroutine RichardsJacobianSourceSink(A,realization,ierr)
   enddo
 
   call RichardsSSSandbox(null_vec,A,PETSC_TRUE,grid,material_auxvars, &
-                         global_auxvars,option)
+                         global_auxvars,rich_auxvars,option)
 
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
@@ -2775,13 +2775,14 @@ end subroutine RichardsComputeCoeffsForSurfFlux
 ! ************************************************************************** !
 
 subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
-                             grid,material_auxvars,global_auxvars,option)
+                             grid,material_auxvars,global_auxvars,rich_auxvars,option)
   ! 
   ! Evaluates source/sink term storing residual and/or Jacobian
   ! 
   ! Author: Guoping Tang
   ! Date: 06/03/14
   ! 
+  ! Modified by: Ayman Alzraiee on 04/05/2016 
 
   use Option_module
   use Grid_module
@@ -2801,7 +2802,7 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
   Mat :: Jacobian
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
-  
+  type(richards_auxvar_type), pointer :: rich_auxvars(:)
   type(grid_type) :: grid
   type(option_type) :: option
   
@@ -2826,13 +2827,13 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
     res = 0.d0
     Jac = 0.d0
     call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                      global_auxvars(ghosted_id),option)
+                      global_auxvars(ghosted_id),rich_auxvars(ghosted_id),option)
     call cur_srcsink%Evaluate(res,Jac,PETSC_FALSE, &
                               material_auxvars(ghosted_id), &
                               aux_real,option)
     if (compute_derivative) then
       call RichardsSSSandboxLoadAuxReal(cur_srcsink,aux_real, &
-                                        global_auxvars(ghosted_id),option)
+                                        global_auxvars(ghosted_id),rich_auxvars(ghosted_id),option)
       call cur_srcsink%Evaluate(res,Jac,PETSC_TRUE, &
                                 material_auxvars(ghosted_id), &
                                 aux_real,option)
@@ -2855,8 +2856,8 @@ end subroutine RichardsSSSandbox
 
 ! ************************************************************************** !
 
-subroutine RichardsSSSandboxLoadAuxReal(srcsink,aux_real,global_auxvar,option)
-
+subroutine RichardsSSSandboxLoadAuxReal(srcsink,aux_real,global_auxvar,rich_auxvars,option)
+! Modified by: Ayman Alzraiee on 04/05/2016 
   use Option_module
   use SrcSink_Sandbox_Base_class
   use SrcSink_Sandbox_Downreg_class
@@ -2866,15 +2867,17 @@ subroutine RichardsSSSandboxLoadAuxReal(srcsink,aux_real,global_auxvar,option)
   class(srcsink_sandbox_base_type) :: srcsink
   PetscReal :: aux_real(:)
   type(global_auxvar_type) :: global_auxvar
+  type(richards_auxvar_type) :: rich_auxvars
   type(option_type) :: option
   
   aux_real = 0.d0
 
-  select type(srcsink)
-    class is(srcsink_sandbox_downreg_type)
-      aux_real(1) = global_auxvar%pres(1)
-      aux_real(2) = global_auxvar%den(1)
-  end select
+  !select type(srcsink)
+  !  class is(srcsink_sandbox_downreg_type)
+      aux_real(1) = rich_auxvars%kvr ! fluid mobility
+      aux_real(3) = global_auxvar%pres(1)
+      aux_real(9) = global_auxvar%den(1)
+  !end select
   
 end subroutine RichardsSSSandboxLoadAuxReal
 
