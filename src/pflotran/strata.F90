@@ -55,6 +55,7 @@ module Strata_module
             StrataRead, &
             StrataWithinTimePeriod, &
             StrataEvolves, &
+            StrataInputRecord, &
             StrataDestroyList
   
 contains
@@ -328,6 +329,75 @@ function StrataEvolves(strata_list)
   enddo
   
 end function StrataEvolves
+
+! **************************************************************************** !
+
+subroutine StrataInputRecord(strata_list)
+  ! 
+  ! Prints ingested strata information to the input record file
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/07/2016
+  ! 
+
+  implicit none
+
+  type(strata_list_type), pointer :: strata_list
+  
+  type(strata_type), pointer :: cur_strata
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'STRATA'
+  
+  cur_strata => strata_list%first
+  do
+    if (.not.associated(cur_strata)) exit
+    
+    write(id,'(a29)',advance='no') 'strata material name: '
+    write(id,'(a)') adjustl(trim(cur_strata%material_property_name))
+    
+    if (len_trim(cur_strata%material_property_filename) > 0) then
+      write(id,'(a29)',advance='no') 'from file: '
+      write(id,'(a)') adjustl(trim(cur_strata%material_property_filename)) 
+    endif
+    
+    write(id,'(a29)',advance='no') 'associated region name: '
+    write(id,'(a)') adjustl(trim(cur_strata%region_name))
+    
+    write(id,'(a29)',advance='no') 'strata is: '
+    if (cur_strata%active) then
+      write(id,'(a)') 'active'
+    else
+      write(id,'(a)') 'inactive'
+    endif
+    
+    write(id,'(a29)',advance='no') 'realization-dependent: '
+    if (cur_strata%realization_dependent) then
+      write(id,'(a)') 'TRUE'
+    else
+      write(id,'(a)') 'FALSE'
+    endif
+    
+    if (initialized(cur_strata%start_time)) then
+      write(id,'(a29)',advance='no') 'start time: '
+      write(word1,*) cur_strata%start_time
+      write(id,'(a)') adjustl(trim(word1))
+      write(id,'(a29)',advance='no') 'final time: '
+      write(word1,*) cur_strata%final_time
+      write(id,'(a)') adjustl(trim(word1))
+    endif
+    
+    write(id,'(a29)') '---------------------------: '
+    cur_strata => cur_strata%next
+  enddo
+  
+end subroutine StrataInputRecord
 
 ! ************************************************************************** !
 

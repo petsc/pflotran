@@ -110,6 +110,7 @@ subroutine SubsurfaceSimInputRecord(this)
   use Discretization_module
   use Reaction_Aux_module
   use Region_module
+  use Strata_module
   
   implicit none
   
@@ -153,8 +154,11 @@ subroutine SubsurfaceSimInputRecord(this)
 
   ! print region information
   call RegionInputRecord(this%realization%region_list)
+  
+  ! print strata information
+  call StrataInputRecord(this%realization%patch%strata_list)
 
-  ! consider putting the following stuff in realization_aux.F90
+  ! consider putting the following stuff in reaction_aux.F90
   write(id,'(a)') ' '
   write(id,'(a)') '---------------------------------------------------------&
        &-----------------------'
