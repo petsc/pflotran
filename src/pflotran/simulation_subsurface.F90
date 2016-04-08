@@ -111,6 +111,7 @@ subroutine SubsurfaceSimInputRecord(this)
   use Reaction_Aux_module
   use Region_module
   use Strata_module
+  use Material_module
   
   implicit none
   
@@ -157,6 +158,12 @@ subroutine SubsurfaceSimInputRecord(this)
   
   ! print strata information
   call StrataInputRecord(this%realization%patch%strata_list)
+  
+  ! print material property information
+  call MaterialPropInputRecord(this%realization%material_properties)
+  
+  ! print characteristic curves information
+  
 
   ! consider putting the following stuff in reaction_aux.F90
   write(id,'(a)') ' '
