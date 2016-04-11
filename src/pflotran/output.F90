@@ -440,6 +440,22 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
 !.............................
       case('PRINT_COLUMN_IDS')
         output_option%print_column_ids = PETSC_TRUE
+        
+!.............................
+      case('DETAILED')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputDefaultMsg(input,option, &
+                           'OUTPUT,MASS_BALANCE,DETAILED')
+        if (len_trim(word) > 0) then
+          call StringToUpper(word)
+          select case(trim(word))
+            case('DETAILED')
+              option%mass_bal_detailed = PETSC_TRUE
+            case default
+              call InputKeywordUnrecognized(word, &
+                                            'OUTPUT,MASS_BALANCE',option)
+          end select
+        endif
 
 !...............................
       case('VELOCITY_AT_CENTER')

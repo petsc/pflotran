@@ -1342,6 +1342,10 @@ subroutine PMWFInitializeTimestep(this)
         cur_waste_form%rad_mass_fraction(k) = &
         cur_waste_form%rad_concentration(k) * &
           cur_waste_form%mechanism%rad_species_list(k)%formula_weight
+        ! to avoid errors in plotting data when conc is very very low:  
+        if (cur_waste_form%rad_mass_fraction(k) <= 1e-50) then
+          cur_waste_form%rad_mass_fraction(k) = 0.d0
+        endif
       enddo
     endif
     cur_waste_form => cur_waste_form%next
@@ -1641,7 +1645,7 @@ subroutine PMWFOutput(this)
   
   if (.not.associated(this%waste_form_list)) return
   
-100 format(100es16.8)
+100 format(100es18.8)
 
   option => this%realization%option
   output_option => this%realization%output_option

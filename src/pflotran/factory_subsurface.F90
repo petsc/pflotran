@@ -2247,6 +2247,7 @@ subroutine SubsurfaceReadInput(simulation)
 !              output_option%print_volume = PETSC_TRUE
             case('MASS_BALANCE')
               option%compute_mass_balance_new = PETSC_TRUE
+              output_option%periodic_msbl_output_ts_imod = 1
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputDefaultMsg(input,option, &
                                    'OUTPUT,MASS_BALANCE,DETAILED')
