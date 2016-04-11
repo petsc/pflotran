@@ -112,6 +112,7 @@ subroutine SubsurfaceSimInputRecord(this)
   use Region_module
   use Strata_module
   use Material_module
+  use Characteristic_Curves_module
   
   implicit none
   
@@ -163,7 +164,7 @@ subroutine SubsurfaceSimInputRecord(this)
   call MaterialPropInputRecord(this%realization%material_properties)
   
   ! print characteristic curves information
-  
+  call CharCurvesInputRecord(this%realization%patch%characteristic_curves)
 
   ! consider putting the following stuff in reaction_aux.F90
   write(id,'(a)') ' '
