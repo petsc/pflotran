@@ -411,6 +411,71 @@ subroutine PMWFRead(this,input)
                          ' not found amoung given mechanism names.'
       call printErrMsg(option)
     endif
+    if (initialized(cur_waste_form%canister_vitality_rate) .and. &
+        .not. cur_waste_form%mechanism%canister_degradation_model) then
+      option%io_buffer = 'WASTE_FORM MECHANISM ' // &
+                         trim(cur_waste_form%mech_name) // &
+                         ' does not have the canister degradation model turned &
+                         &on, but at least one of the waste forms assigned to &
+                         &this mechanism specifies a canister vitality rate.'
+      call printErrMsg(option)
+    endif
+    ! both waste form and mechanism canister vitality rate parameters 
+    ! are specified:
+    if (initialized(cur_waste_form%canister_vitality_rate) .and. &
+        ( initialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
+          initialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
+          initialized(cur_waste_form%mechanism%vitality_rate_trunc) )) then
+      option%io_buffer = 'Either CANISTER_VITALITY_RATE within the &
+                         &WASTE_FORM blocks -or- the VITALITY_LOG10_MEAN, &
+                         &VITALITY_LOG10_STDEV, and VITALITY_UPPER_TRUNCATION & 
+                         &within the WASTE_FORM MECHANISM ' // &
+                         trim(cur_waste_form%mechanism%name) // &
+                         ' block should be specified, but not both.'
+      call printErrMsg(option)
+    endif
+    ! the canister degradation model is on, but neither canister vitality
+    ! rate parameters were given:
+    if (cur_waste_form%mechanism%canister_degradation_model) then 
+      if ( (uninitialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
+            uninitialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
+            uninitialized(cur_waste_form%mechanism%vitality_rate_trunc) ) .and. &
+          uninitialized(cur_waste_form%canister_vitality_rate) )  then 
+        option%io_buffer = 'CANISTER_VITALITY_RATE within the &
+                         &WASTE_FORM blocks -or- the VITALITY_LOG10_MEAN, &
+                         &VITALITY_LOG10_STDEV, and VITALITY_UPPER_TRUNCATION & 
+                         &within the WASTE_FORM MECHANISM ' // &
+                         trim(cur_waste_form%mechanism%name) // &
+                         ' block should be specified (but not both).'
+        call printErrMsg(option)
+      endif
+    endif
+    ! the canister degradation model is on, but neither canister vitality
+    ! rate parameters were given:
+    if (uninitialized(cur_waste_form%canister_vitality_rate) .and. &
+        cur_waste_form%canister_degradation_flag) then
+      if (uninitialized(cur_waste_form%mechanism%vitality_rate_mean)) then
+        option%io_buffer = 'VITALITY_LOG10_MEAN must be given in the '&
+                            // trim(error_string) // ' ' // &
+                            trim(cur_waste_form%mechanism%name) // &
+                            ', CANISTER_DEGRADATION_MODEL block.'
+        call printErrMsg(option)
+      endif
+      if (uninitialized(cur_waste_form%mechanism%vitality_rate_stdev)) then
+        option%io_buffer = 'VITALITY_LOG10_STDEV must be given in the '&
+                           // trim(error_string) // ' ' // &
+                           trim(cur_waste_form%mechanism%name) // &
+                           ', CANISTER_DEGRADATION_MODEL block.'
+        call printErrMsg(option)
+      endif
+      if (uninitialized(cur_waste_form%mechanism%vitality_rate_trunc)) then
+        option%io_buffer = 'VITALITY_UPPER_TRUNCATION must be given in the '&
+                           // trim(error_string) // ' ' // &
+                           trim(cur_waste_form%mechanism%name) // &
+                           ', CANISTER_DEGRADATION_MODEL block.'
+        call printErrMsg(option)
+      endif 
+    endif
     cur_waste_form => cur_waste_form%next
   enddo
     
@@ -747,35 +812,13 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
         call printErrMsg(option)
       endif
 
-      if (new_mechanism%canister_degradation_model) then
-        if (uninitialized(new_mechanism%vitality_rate_mean)) then
-          option%io_buffer = 'VITALITY_LOG10_MEAN must be given in the '&
-                             // trim(error_string) // ' ' // &
-                             trim(new_mechanism%name) // &
-                             ', CANISTER_DEGRADATION_MODEL block.'
-          call printErrMsg(option)
-        endif
-        if (uninitialized(new_mechanism%vitality_rate_stdev)) then
-          option%io_buffer = 'VITALITY_LOG10_STDEV must be given in the '&
-                             // trim(error_string) // ' ' // &
-                             trim(new_mechanism%name) // &
-                             ', CANISTER_DEGRADATION_MODEL block.'
-          call printErrMsg(option)
-        endif
-        if (uninitialized(new_mechanism%vitality_rate_trunc)) then
-          option%io_buffer = 'VITALITY_UPPER_TRUNCATION must be given in the '&
-                             // trim(error_string) // ' ' // &
-                             trim(new_mechanism%name) // &
-                             ', CANISTER_DEGRADATION_MODEL block.'
-          call printErrMsg(option)
-        endif
-        if (uninitialized(new_mechanism%canister_material_constant)) then
-          option%io_buffer = 'CANISTER_MATERIAL_CONSTANT must be given in the '&
-                             // trim(error_string) // ' ' // &
-                             trim(new_mechanism%name) // &
-                             ', CANISTER_DEGRADATION_MODEL block.'
-          call printErrMsg(option)
-        endif
+      if (new_mechanism%canister_degradation_model .and. &
+          uninitialized(new_mechanism%canister_material_constant)) then
+        option%io_buffer = 'CANISTER_MATERIAL_CONSTANT must be given in the '&
+                           // trim(error_string) // ' ' // &
+                           trim(new_mechanism%name) // &
+                           ', CANISTER_DEGRADATION_MODEL block.'
+        call printErrMsg(option)
       endif
 
       if (.not.associated(new_mechanism%rad_species_list)) then
@@ -879,6 +922,18 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
             call InputErrorMsg(input,option,'mechanism assignment',error_string)
             call StringToUpper(word)
             new_waste_form%mech_name = trim(word)
+        !-----------------------------
+          case('CANISTER_VITALITY_RATE')
+            call InputReadDouble(input,option, &
+                                 new_waste_form%canister_vitality_rate)
+            call InputErrorMsg(input,option,'canister vitality rate',error_string)
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (input%ierr == 0) then
+              internal_units = 'unitless/sec'
+              new_waste_form%canister_vitality_rate = UnitsConvertToInternal(word, &
+                   internal_units,option) * &
+                   new_waste_form%canister_vitality_rate
+            endif
         !-----------------------------    
           case default
             call InputKeywordUnrecognized(word,error_string,option)
@@ -1083,17 +1138,19 @@ end subroutine PMWFSetup
     if (cur_waste_form%mechanism%canister_degradation_model) then
       cur_waste_form%canister_degradation_flag = PETSC_TRUE
       cur_waste_form%canister_vitality = 1.d0
-      call GetRndNumFromNormalDist(cur_waste_form%mechanism%vitality_rate_mean, &
-                                   cur_waste_form%mechanism%vitality_rate_stdev,&
-                                   cur_waste_form%canister_vitality_rate)
-      if (cur_waste_form%canister_vitality_rate > &
-          cur_waste_form%mechanism%vitality_rate_trunc) then
+      if (Uninitialized(cur_waste_form%canister_vitality_rate)) then
+        call GetRndNumFromNormalDist(cur_waste_form%mechanism%vitality_rate_mean, &
+                                     cur_waste_form%mechanism%vitality_rate_stdev,&
+                                     cur_waste_form%canister_vitality_rate)
+        if (cur_waste_form%canister_vitality_rate > &
+            cur_waste_form%mechanism%vitality_rate_trunc) then
+          cur_waste_form%canister_vitality_rate = &
+            cur_waste_form%mechanism%vitality_rate_trunc
+        endif
+        ! Given rates are in units of log-10/yr, so convert to 1/yr:
         cur_waste_form%canister_vitality_rate = &
-          cur_waste_form%mechanism%vitality_rate_trunc
+          10.0**(cur_waste_form%canister_vitality_rate)
       endif
-      ! Given rates are in units of log-10/yr, so convert to 1/yr:
-      cur_waste_form%canister_vitality_rate = &
-        10.0**(cur_waste_form%canister_vitality_rate)
     endif
    !----------------------------------------------------------
     cur_waste_form => cur_waste_form%next
