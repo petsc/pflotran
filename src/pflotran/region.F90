@@ -1265,13 +1265,13 @@ subroutine RegionInputRecord(region_list)
         write(id,'(a)') 'COORDINATE(S)'
         write(id,'(a29)',advance='no') 'X coordinate(s): '
         write(string,*) cur_region%coordinates%x
-        write(id,'(a)') adjustl(trim(string))
+        write(id,'(a)') adjustl(trim(string)) // ' m'
         write(id,'(a29)',advance='no') 'Y coordinate(s): '
         write(string,*) cur_region%coordinates%y
-        write(id,'(a)') adjustl(trim(string))
+        write(id,'(a)') adjustl(trim(string)) // ' m'
         write(id,'(a29)',advance='no') 'Z coordinate(s): '
         write(string,*) cur_region%coordinates%z
-        write(id,'(a)') adjustl(trim(string))
+        write(id,'(a)') adjustl(trim(string)) // ' m'
     !--------------------------------
       case (DEFINED_BY_CELL_AND_FACE_IDS)
         write(id,'(a29)',advance='no') 'defined by: '
@@ -1315,12 +1315,6 @@ subroutine RegionInputRecord(region_list)
         case (TOP_FACE)
           write(id,'(a)') 'top'
       end select
-    endif
-    
-    if (associated(cur_region%cell_ids)) then
-      write(id,'(a29)',advance='no') 'cell IDs: '
-      write(string,*) cur_region%cell_ids
-      write(id,'(a)') adjustl(trim(string))
     endif
     
     write(id,'(a29)') '---------------------------: '

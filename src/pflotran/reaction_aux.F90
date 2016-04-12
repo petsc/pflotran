@@ -349,7 +349,6 @@ module Reaction_Aux_module
     PetscBool :: update_armor_mineral_surface
     PetscInt :: update_armor_mineral_surface_flag
 
-
     PetscBool :: use_sandbox
     
   end type reaction_type
@@ -406,6 +405,7 @@ module Reaction_Aux_module
             ColloidConstraintDestroy, &
             IonExchangeRxnCreate, &
             IonExchangeCationCreate, &
+            ReactionInputRecord, &
             ReactionDestroy, &
             LogKeh
              
@@ -1683,6 +1683,150 @@ PetscReal function logkeh(tk)
   logkeh = cm1 * log(tk) + c0 + c1 * tk + c2 / tk + c3 / (tk * tk)
 
 end function logkeh
+
+! ************************************************************************** !
+
+subroutine ReactionInputRecord(rxn)
+  ! 
+  ! Prints ingested chemistry and reactive transport information to the input 
+  ! record file.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/12/2016
+  ! 
+  use Reaction_Immobile_Aux_module
+
+  implicit none
+
+  type(reaction_type), pointer :: rxn
+  
+  type(aq_species_type), pointer :: cur_aq_species
+  type(gas_species_type), pointer :: cur_gas_species
+  type(immobile_species_type), pointer :: cur_imm_species
+  type(radioactive_decay_rxn_type), pointer :: cur_rad_decay_rxn
+  type(kd_rxn_type), pointer :: cur_kd_rxn
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+       &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'CHEMISTRY'
+  
+! --------- primary species list ---------------------------------------------
+  if (associated(rxn%primary_species_list)) then
+    write(id,'(a29)',advance='no') 'primary species list: '
+    cur_aq_species => rxn%primary_species_list
+    write(id,'(a)') trim(cur_aq_species%name)
+    cur_aq_species => cur_aq_species%next
+    do
+      if (.not.associated(cur_aq_species)) exit
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') trim(cur_aq_species%name)
+      cur_aq_species => cur_aq_species%next
+    enddo
+    write(id,'(a29)') '---------------------------: '
+  endif
+! --------- secondary species list -------------------------------------------
+  if (associated(rxn%secondary_species_list)) then
+    write(id,'(a29)',advance='no') 'secondary species list: '
+    cur_aq_species => rxn%secondary_species_list
+    write(id,'(a)') trim(cur_aq_species%name)
+    cur_aq_species => cur_aq_species%next
+    do
+      if (.not.associated(cur_aq_species)) exit
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') trim(cur_aq_species%name)
+      cur_aq_species => cur_aq_species%next
+    enddo
+    write(id,'(a29)') '---------------------------: '
+  endif
+! --------- gas species list -------------------------------------------------
+  if (associated(rxn%gas_species_list)) then
+    write(id,'(a29)',advance='no') 'gas species list: '
+    cur_gas_species => rxn%gas_species_list
+    write(id,'(a)') trim(cur_gas_species%name)
+    cur_gas_species => cur_gas_species%next
+    do
+      if (.not.associated(cur_gas_species)) exit
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') trim(cur_gas_species%name)
+      cur_gas_species => cur_gas_species%next
+    enddo
+    write(id,'(a29)') '---------------------------: '
+  endif
+! --------- immobile species list --------------------------------------------
+  if (associated(rxn%immobile%list)) then
+    write(id,'(a29)',advance='no') 'immobile species list: '
+    cur_imm_species => rxn%immobile%list
+    write(id,'(a)') trim(cur_imm_species%name)
+    cur_imm_species => cur_imm_species%next
+    do
+      if (.not.associated(cur_imm_species)) exit
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') trim(cur_imm_species%name)
+      cur_imm_species => cur_imm_species%next
+    enddo
+    write(id,'(a29)') '---------------------------: '
+  endif
+  
+! --------- radioactive decay reaction list ----------------------------------
+  if (associated(rxn%radioactive_decay_rxn_list)) then
+    cur_rad_decay_rxn => rxn%radioactive_decay_rxn_list
+    do
+      if (.not.associated(cur_rad_decay_rxn)) exit
+      write(id,'(a29)',advance='no') 'radioactive decay reaction: '
+      write(id,'(a)') adjustl(trim(cur_rad_decay_rxn%reaction))  
+      write(id,'(a29)',advance='no') 'decay rate: '
+      write(word1,*) cur_rad_decay_rxn%rate_constant
+      write(id,'(a)') adjustl(trim(word1)) // ' 1/sec'
+      
+      write(id,'(a29)') '---------------------------: '
+      cur_rad_decay_rxn => cur_rad_decay_rxn%next
+    enddo
+  endif
+  
+! --------- sorption isotherm reaction list ----------------------------------
+  if (associated(rxn%kd_rxn_list)) then
+    cur_kd_rxn => rxn%kd_rxn_list
+    do
+      if (.not.associated(cur_kd_rxn)) exit
+      write(id,'(a29)',advance='no') 'sorption, isotherm reaction: '
+      write(id,'(a)') adjustl(trim(cur_kd_rxn%species_name))  
+      write(id,'(a29)',advance='no') 'type: '
+      select case (cur_kd_rxn%itype)
+        case (SORPTION_LINEAR)
+          write(id,'(a)') 'linear sorption'
+        case (SORPTION_LANGMUIR)
+          write(id,'(a)') 'langmuir sorption'
+          write(id,'(a29)',advance='no') 'langmuir b: '
+          write(word1,*) cur_kd_rxn%Langmuir_B
+          write(id,'(a)') adjustl(trim(word1)) 
+        case (SORPTION_FREUNDLICH)
+          write(id,'(a)') 'freundlich sorption'
+          write(id,'(a29)',advance='no') 'freundlich n: '
+          write(word1,*) cur_kd_rxn%Freundlich_N
+          write(id,'(a)') adjustl(trim(word1))
+      end select
+      if (len_trim(cur_kd_rxn%kd_mineral_name) > 0) then
+        write(id,'(a29)',advance='no') 'Kd mineral name: '
+        write(id,'(a)') adjustl(trim(cur_kd_rxn%kd_mineral_name))
+        word2 = ' L/kg'
+      else
+        word2 = ' kg/m^3'
+      endif
+      write(id,'(a29)',advance='no') 'distribution coeff. / Kd: '
+      write(word1,*) cur_kd_rxn%Kd
+      write(id,'(a)') adjustl(trim(word1)) // adjustl(trim(word2))
+      
+      write(id,'(a29)') '---------------------------: '
+      cur_kd_rxn => cur_kd_rxn%next
+    enddo
+  endif
+  
+end subroutine ReactionInputRecord
 
 ! ************************************************************************** !
 

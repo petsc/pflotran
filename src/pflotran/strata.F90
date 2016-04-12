@@ -387,10 +387,10 @@ subroutine StrataInputRecord(strata_list)
     if (initialized(cur_strata%start_time)) then
       write(id,'(a29)',advance='no') 'start time: '
       write(word1,*) cur_strata%start_time
-      write(id,'(a)') adjustl(trim(word1))
+      write(id,'(a)') adjustl(trim(word1)) // ' sec'
       write(id,'(a29)',advance='no') 'final time: '
       write(word1,*) cur_strata%final_time
-      write(id,'(a)') adjustl(trim(word1))
+      write(id,'(a)') adjustl(trim(word1)) // ' sec'
     endif
     
     write(id,'(a29)') '---------------------------: '

@@ -1316,7 +1316,8 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   if (associated(output_option%output_snap_variable_list%first)) then
     write(id,'(a29)',advance='no') 'variable list: '
     cur_variable => output_option%output_snap_variable_list%first
-    write(id,'(a)') trim(cur_variable%name)
+    write(id,'(a)') trim(cur_variable%name) // ' [' // &
+                    trim(cur_variable%units) // ']'
     cur_variable => cur_variable%next
     do
       if (.not.associated(cur_variable)) exit

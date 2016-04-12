@@ -118,14 +118,9 @@ subroutine SubsurfaceSimInputRecord(this)
   
   class(simulation_subsurface_type) :: this
 
-  type(aq_species_type), pointer :: cur_aq_species
-  type(gas_species_type), pointer :: cur_gas_species
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: id = INPUT_RECORD_UNIT
-
-  ! print output file information
-  call OutputInputRecord(this%output_option,this%waypoint_list_subsurface)
- 
+  
   write(id,'(a)') ' '
   write(id,'(a)') '---------------------------------------------------------&
                   &-----------------------'
@@ -151,6 +146,9 @@ subroutine SubsurfaceSimInputRecord(this)
       write(id,'(a)') 'thermal-oil-immiscible'
   end select
 
+  ! print output file information
+  call OutputInputRecord(this%output_option,this%waypoint_list_subsurface)
+
   ! print grid/discretization information
   call DiscretizationInputRecord(this%realization%discretization)
 
@@ -166,51 +164,9 @@ subroutine SubsurfaceSimInputRecord(this)
   ! print characteristic curves information
   call CharCurvesInputRecord(this%realization%patch%characteristic_curves)
 
-  ! consider putting the following stuff in reaction_aux.F90
-  write(id,'(a)') ' '
-  write(id,'(a)') '---------------------------------------------------------&
-       &-----------------------'
-  write(id,'(a29)',advance='no') '---------------------------: '
-  write(id,'(a)') 'CHEMISTRY'
-! --------- primary species list ---------------------------------------------
-  if (associated(this%realization%reaction%primary_species_list)) then
-    write(id,'(a29)',advance='no') 'primary species list: '
-    cur_aq_species => this%realization%reaction%primary_species_list
-    write(id,'(a)') trim(cur_aq_species%name)
-    cur_aq_species => cur_aq_species%next
-    do
-      if (.not.associated(cur_aq_species)) exit
-      write(id,'(a29)',advance='no') ' '
-      write(id,'(a)') trim(cur_aq_species%name)
-      cur_aq_species => cur_aq_species%next
-    enddo
-  endif
-! --------- secondary species list -------------------------------------------
-  if (associated(this%realization%reaction%secondary_species_list)) then
-    write(id,'(a29)',advance='no') 'secondary species list: '
-    cur_aq_species => this%realization%reaction%secondary_species_list
-    write(id,'(a)') trim(cur_aq_species%name)
-    cur_aq_species => cur_aq_species%next
-    do
-      if (.not.associated(cur_aq_species)) exit
-      write(id,'(a29)',advance='no') ' '
-      write(id,'(a)') trim(cur_aq_species%name)
-      cur_aq_species => cur_aq_species%next
-    enddo
-  endif
-! --------- gas species list -------------------------------------------------
-  if (associated(this%realization%reaction%gas_species_list)) then
-    write(id,'(a29)',advance='no') 'gas species list: '
-    cur_gas_species => this%realization%reaction%gas_species_list
-    write(id,'(a)') trim(cur_gas_species%name)
-    cur_gas_species => cur_gas_species%next
-    do
-      if (.not.associated(cur_gas_species)) exit
-      write(id,'(a29)',advance='no') ' '
-      write(id,'(a)') trim(cur_gas_species%name)
-      cur_gas_species => cur_gas_species%next
-    enddo
-  endif
+  ! print chemistry & reactive transport information
+  call ReactionInputRecord(this%realization%reaction)
+
 
 end subroutine SubsurfaceSimInputRecord
 
