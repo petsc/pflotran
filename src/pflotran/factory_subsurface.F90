@@ -644,6 +644,9 @@ subroutine SubsurfaceReadWasteFormPM(input, option, pm)
             call printErrMsg(option)
         end select
       case default
+        option%io_buffer = 'Keyword ' // trim(word) // &
+              ' not recognized for the ' // trim(error_string) // ' block.' 
+        call printErrMsg(option)
     end select
   enddo
   
@@ -692,6 +695,9 @@ subroutine SubsurfaceReadUFDDecayPM(input, option, pm)
     call StringToUpper(word)
     select case(word)
       case default
+        option%io_buffer = 'Keyword ' // trim(word) // &
+              ' not recognized for the ' // trim(error_string) // ' block.' 
+        call printErrMsg(option)
     end select
   enddo
   

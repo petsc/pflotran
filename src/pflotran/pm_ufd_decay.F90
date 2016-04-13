@@ -149,6 +149,9 @@ subroutine PMUFDDecayRead(this,input)
 
   option => this%option
   
+  option%io_buffer = 'pflotran card:: UFD_Decay'
+  call printMsg(option)
+  
   input%ierr = 0
   nullify(prev_isotope)
   nullify(prev_element)
