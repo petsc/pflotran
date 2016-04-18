@@ -116,7 +116,7 @@ module Patch_module
             PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars, &
             PatchLocalizeRegions, PatchUpdateUniformVelocity, &
             PatchGetVariable, PatchGetVariableValueAtCell, &
-            PatchSetVariable, &
+            PatchSetVariable, PatchCouplerInputRecord, &
             PatchInitConstraints, &
             PatchCountCells, PatchGetIvarsFromKeyword, &
             PatchGetVarNameFromKeyword, &
@@ -6660,6 +6660,111 @@ function PatchGetConnectionsFromCoords(patch,coordinates,integral_flux_name, &
   endif
   
 end function PatchGetConnectionsFromCoords
+
+! **************************************************************************** !
+
+subroutine PatchCouplerInputRecord(patch)
+  ! 
+  ! Prints ingested coupler information to the input record file
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/18/2016
+  ! 
+  use Coupler_module
+
+  implicit none
+  
+  type(patch_type), pointer :: patch
+
+  type(coupler_type), pointer :: cur_coupler
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: k
+  PetscInt :: id = INPUT_RECORD_UNIT
+  
+  k = 0
+  
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'INITIAL CONDITIONS'
+  
+  ! Initial conditions
+  cur_coupler => patch%initial_condition_list%first
+  do
+    if (.not.associated(cur_coupler)) exit
+    k = k + 1
+    write(id,'(a29)',advance='no') 'initial condition listed: '
+    write(word1,*) k
+    write(id,'(a)') '#' // adjustl(trim(word1))
+    write(id,'(a29)',advance='no') 'applies to region: '
+    write(id,'(a)') adjustl(trim(cur_coupler%region_name))
+    if (len_trim(cur_coupler%flow_condition_name) > 0) then
+      write(id,'(a29)',advance='no') 'flow condition name: '
+      write(id,'(a)') adjustl(trim(cur_coupler%flow_condition_name))
+    endif
+    if (len_trim(cur_coupler%tran_condition_name) > 0) then
+      write(id,'(a29)',advance='no') 'transport condition name: '
+      write(id,'(a)') adjustl(trim(cur_coupler%tran_condition_name))
+    endif
+    write(id,'(a29)') '---------------------------: '
+    cur_coupler => cur_coupler%next
+  enddo
+  
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'BOUNDARY CONDITIONS'
+  
+  ! Boundary conditions
+  cur_coupler => patch%boundary_condition_list%first
+  do
+    if (.not.associated(cur_coupler)) exit
+    write(id,'(a29)',advance='no') 'boundary condition name: '
+    write(id,'(a)') adjustl(trim(cur_coupler%name))
+    write(id,'(a29)',advance='no') 'applies to region: '
+    write(id,'(a)') adjustl(trim(cur_coupler%region_name))
+    if (len_trim(cur_coupler%flow_condition_name) > 0) then
+      write(id,'(a29)',advance='no') 'flow condition name: '
+      write(id,'(a)') adjustl(trim(cur_coupler%flow_condition_name))
+    endif
+    if (len_trim(cur_coupler%tran_condition_name) > 0) then
+      write(id,'(a29)',advance='no') 'transport condition name: '
+      write(id,'(a)') adjustl(trim(cur_coupler%tran_condition_name))
+    endif
+    write(id,'(a29)') '---------------------------: '
+    cur_coupler => cur_coupler%next
+  enddo
+  
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'SOURCE-SINKS'
+  
+  ! Source-Sink conditions
+  cur_coupler => patch%source_sink_list%first
+  do
+    if (.not.associated(cur_coupler)) exit
+    write(id,'(a29)',advance='no') 'source-sink name: '
+    write(id,'(a)') adjustl(trim(cur_coupler%name))
+    write(id,'(a29)',advance='no') 'applies to region: '
+    write(id,'(a)') adjustl(trim(cur_coupler%region_name))
+    if (len_trim(cur_coupler%flow_condition_name) > 0) then
+      write(id,'(a29)',advance='no') 'flow condition name: '
+      write(id,'(a)') adjustl(trim(cur_coupler%flow_condition_name))
+    endif
+    if (len_trim(cur_coupler%tran_condition_name) > 0) then
+      write(id,'(a29)',advance='no') 'transport condition name: '
+      write(id,'(a)') adjustl(trim(cur_coupler%tran_condition_name))
+    endif
+    write(id,'(a29)') '---------------------------: '
+    cur_coupler => cur_coupler%next
+  enddo
+  
+end subroutine PatchCouplerInputRecord
 
 ! ************************************************************************** !
 

@@ -485,8 +485,8 @@ connection.o : pflotran_constants.o utility.o
 convergence.o : grid.o option.o pflotran_constants.o solver.o
 coupler.o : condition.o connection.o dataset_base.o dataset_gridded_hdf5.o \
             grid.o grid_unstructured_aux.o grid_unstructured_explicit.o \
-            input_aux.o option.o pflotran_constants.o region.o string.o \
-            utility.o
+            input_aux.o option.o pflotran_constants.o region.o \
+            string.o utility.o
 data_mediator.o : data_mediator_base.o option.o
 data_mediator_base.o : dataset_global_hdf5.o option.o pflotran_constants.o
 data_mediator_dataset.o : data_mediator_base.o dataset_base.o \
@@ -1171,13 +1171,14 @@ simulation_hydrogeophysics.o : option.o pflotran_constants.o \
                                pmc_hydrogeophysics.o simulation_base.o \
                                simulation_subsurface.o \
                                wrapper_hydrogeophysics.o
-simulation_subsurface.o : logging.o option.o output.o output_aux.o \
+simulation_subsurface.o : characteristic_curves.o coupler.o discretization.o \
+                          logging.o material.o option.o output.o output_aux.o \
                           pflotran_constants.o pmc_base.o pmc_subsurface.o \
                           pmc_third_party.o reaction_aux.o reaction_clm.o \
-                          reaction_sandbox.o realization_subsurface.o \
+                          reaction_sandbox.o realization_subsurface.o region.o \
                           regression.o simulation_base.o srcsink_sandbox.o \
-                          timestepper_BE.o timestepper_base.o waypoint.o \
-                          wipp.o
+                          strata.o timestepper_BE.o timestepper_base.o \
+                          waypoint.o wipp.o
 simulation_surface.o : logging.o option.o output.o pflotran_constants.o \
                        pmc_base.o pmc_surface.o realization_surface.o \
                        regression.o simulation_base.o timestepper_base.o \
