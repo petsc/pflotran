@@ -1113,7 +1113,7 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
   string="      </Geometry>"
   write(fid,'(a)') trim(string)
  
-#if 0
+!#if 0
   string="      <Attribute Name=""X"" AttributeType=""Scalar""  Center=""Node"">"
   write(fid,'(a)') trim(string)
 
@@ -1130,7 +1130,41 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
 
   string="      </Attribute>"
   write(fid,'(a)') trim(string)  
-#endif
+  
+  string="      <Attribute Name=""Y"" AttributeType=""Scalar""  Center=""Node"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) ngvert
+  string="        <DataItem Dimensions=""" // &
+      trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  write(fid,'(a)') trim(string)
+
+  string="        " // trim(filename) //":/Domain/Y"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem> " 
+  write(fid,'(a)') trim(string)
+
+  string="      </Attribute>"
+  write(fid,'(a)') trim(string) 
+  
+  string="      <Attribute Name=""Z"" AttributeType=""Scalar""  Center=""Node"">"
+  write(fid,'(a)') trim(string)
+
+  write(string2,*) ngvert
+  string="        <DataItem Dimensions=""" // &
+      trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  write(fid,'(a)') trim(string)
+
+  string="        " // trim(filename) //":/Domain/Z"
+  write(fid,'(a)') trim(string)
+
+  string="        </DataItem> " 
+  write(fid,'(a)') trim(string)
+
+  string="      </Attribute>"
+  write(fid,'(a)') trim(string) 
+!#endif
 
 end subroutine OutputXMFHeaderGeomech
 

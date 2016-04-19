@@ -114,6 +114,7 @@ subroutine SubsurfaceSimInputRecord(this)
   use Material_module
   use Characteristic_Curves_module
   use Patch_module
+  use Condition_module
   
   implicit none
   
@@ -170,6 +171,11 @@ subroutine SubsurfaceSimInputRecord(this)
   
   ! print coupler information (ICs, BCs, SSs)
   call PatchCouplerInputRecord(this%realization%patch)
+  
+  ! print flow and trans condition information
+  call FlowTranCondInputRecord(this%realization%flow_conditions, &
+                               this%realization%transport_conditions, &
+                               this%realization%option)
 
 
 end subroutine SubsurfaceSimInputRecord

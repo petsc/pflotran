@@ -1171,8 +1171,9 @@ simulation_hydrogeophysics.o : option.o pflotran_constants.o \
                                pmc_hydrogeophysics.o simulation_base.o \
                                simulation_subsurface.o \
                                wrapper_hydrogeophysics.o
-simulation_subsurface.o : characteristic_curves.o coupler.o discretization.o \
-                          logging.o material.o option.o output.o output_aux.o \
+simulation_subsurface.o : characteristic_curves.o condition.o coupler.o \
+                          discretization.o logging.o \
+                          material.o option.o output.o output_aux.o \
                           pflotran_constants.o pmc_base.o pmc_subsurface.o \
                           pmc_third_party.o reaction_aux.o reaction_clm.o \
                           reaction_sandbox.o realization_subsurface.o region.o \

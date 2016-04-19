@@ -143,7 +143,8 @@ module Condition_module
             FlowConditionIsTransient, &
             ConditionReadValues, &
             GetSubConditionName, &
-            FlowConditionUnknownItype
+            FlowConditionUnknownItype, &
+            FlowTranCondInputRecord
     
 contains
 
@@ -3419,6 +3420,99 @@ function FlowConditionUnknownItype(condition,message,type_name)
     trim(condition%name) // '".'
   
 end function FlowConditionUnknownItype
+
+! **************************************************************************** !
+
+subroutine FlowTranCondInputRecord(flow_condition_list,tran_condition_list, &
+                                   option)
+  ! 
+  ! Prints ingested flow and transport condition information to 
+  ! the input record file.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/19/2016
+  ! 
+  use Option_module
+  use Dataset_Base_class
+  Use Transport_Constraint_module
+
+  implicit none
+  
+  type(condition_list_type), pointer :: flow_condition_list
+  type(tran_condition_list_type), pointer :: tran_condition_list
+  type(option_type), pointer :: option
+
+  type(tran_constraint_coupler_type), pointer :: cur_tcon_coupler
+  type(flow_condition_type), pointer :: cur_fc
+  type(tran_condition_type), pointer :: cur_tc
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: k
+  PetscInt :: id = INPUT_RECORD_UNIT
+  
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'FLOW CONDITIONS'
+  
+  cur_fc => flow_condition_list%first
+  do
+    if (.not.associated(cur_fc)) exit
+    write(id,'(a29)',advance='no') 'flow condition name: '
+    write(id,'(a)') adjustl(trim(cur_fc%name))
+    if (cur_fc%num_sub_conditions > 0) then
+      do k = 1,cur_fc%num_sub_conditions
+        write(id,'(a29)',advance='no') 'sub condition name: '
+        write(id,'(a)') adjustl(trim(cur_fc%sub_condition_ptr(k)%ptr%name))
+        write(id,'(a29)',advance='no') 'sub condition type: '
+        write(id,'(a)') adjustl(trim(cur_fc%sub_condition_ptr(k)%ptr%ctype))
+        if (associated(cur_fc%sub_condition_ptr(k)%ptr%dataset)) then
+        ! Print out dataset here using existing routine?
+          !call DatasetPrint(cur_fc%sub_condition_ptr(k)%ptr%dataset,option)
+        endif
+        if (associated(cur_fc%sub_condition_ptr(k)%ptr%gradient)) then
+        ! Print out gradient here using existing routine?
+          !call DatasetPrint(cur_fc%sub_condition_ptr(k)%ptr%gradient,option)
+        endif
+      enddo
+    endif
+    
+    write(id,'(a29)') '---------------------------: '
+    cur_fc => cur_fc%next
+  enddo
+  
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'TRANSPORT CONDITIONS'
+  
+  cur_tc => tran_condition_list%first
+  do
+    if (.not.associated(cur_tc)) exit
+    write(id,'(a29)',advance='no') 'transport condition name: '
+    write(id,'(a)') adjustl(trim(cur_tc%name))
+    write(id,'(a29)',advance='no') 'is transient?: '
+    if (cur_tc%is_transient) then
+      write(id,'(a)') 'YES'
+    else
+      write(id,'(a)') 'NO'
+    endif
+    cur_tcon_coupler => cur_tc%constraint_coupler_list
+    do
+      if (.not.associated(cur_tcon_coupler)) exit
+      write(id,'(a29)',advance='no') 'transport constraint name: '
+      write(id,'(a)') adjustl(trim(cur_tcon_coupler%constraint_name))
+      ! continue here:
+      cur_tcon_coupler => cur_tcon_coupler%next
+    enddo
+    
+    write(id,'(a29)') '---------------------------: '
+    cur_tc => cur_tc%next
+  enddo
+  
+end subroutine FlowTranCondInputRecord
   
 ! ************************************************************************** !
 

@@ -6665,7 +6665,7 @@ end function PatchGetConnectionsFromCoords
 
 subroutine PatchCouplerInputRecord(patch)
   ! 
-  ! Prints ingested coupler information to the input record file
+  ! Prints ingested coupler information to the input record file.
   ! 
   ! Author: Jenn Frederick
   ! Date: 04/18/2016
