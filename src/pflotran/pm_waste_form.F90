@@ -1151,6 +1151,10 @@ end subroutine PMWFSetup
         ! Given rates are in units of log-10/yr, so convert to 1/yr:
         cur_waste_form%canister_vitality_rate = &
           10.0**(cur_waste_form%canister_vitality_rate)
+        ! Convert rates from 1/yr to internal units of 1/sec
+        cur_waste_form%canister_vitality_rate = &
+          cur_waste_form%canister_vitality_rate * &
+          (1.0/365.0/24.0/3600.0)
       endif
     endif
    !----------------------------------------------------------
@@ -1318,9 +1322,7 @@ subroutine PMWFInitializeTimestep(this)
           (1.d0/(global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))% &
            temp+273.15d0))) )
         cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
-                      - ( cur_waste_form%eff_canister_vit_rate * &   ! [1/yr]
-                          dt * &                                     ! [sec]
-                          (1.0/(365.0*24.0*3600.0)) )                ! [yr/sec]
+                     - (cur_waste_form%eff_canister_vit_rate*dt)
         if (cur_waste_form%canister_vitality < 1.d-3) then
           cur_waste_form%canister_vitality = 0.d0
         endif
