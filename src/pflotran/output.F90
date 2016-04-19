@@ -423,6 +423,16 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
 
 !......................
       case('VARIABLES')
+        if (option%iflowmode == FLASH2_MODE) then
+          option%io_buffer = 'A variable list cannot be specified for &
+                 &FLASH2 MODE. Variables are determined internally.'
+          call printErrMsg(option)
+        endif
+        if (option%iflowmode == MPH_MODE) then
+          option%io_buffer = 'A variable list cannot be specified for &
+                 &MPHASE MODE. Variables are determined internally.'
+          call printErrMsg(option)
+        endif
         select case(trim(block_name))
           case('SNAPSHOT_FILE')           
             call OutputVariableRead(input,option, &
