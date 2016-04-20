@@ -103,8 +103,6 @@ module Variables_module
   PetscInt, parameter, public :: GEOMECH_REL_DISP_Z      = 89
 
   PetscInt, parameter, public :: VOLUME                  = 90
-  !jmf
-  !PetscInt, parameter, public :: REGION_VOLUME           = 91
   PetscInt, parameter, public :: TORTUOSITY              = 91
   PetscInt, parameter, public :: AIR_PRESSURE            = 92
   PetscInt, parameter, public :: CAPILLARY_PRESSURE      = 93

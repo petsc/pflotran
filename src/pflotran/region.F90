@@ -39,7 +39,6 @@ module Region_module
     type(point3d_type), pointer :: coordinates(:)
     PetscInt :: iface
     PetscInt :: num_cells
-    PetscReal :: volume  ! Keeps track of the volume of a region
     PetscInt, pointer :: cell_ids(:)
     PetscInt, pointer :: faces(:)
     !TODO(geh): Tear anything to do with structured/unstructured grids other
@@ -123,7 +122,6 @@ function RegionCreateWithNothing()
   region%j2 = 0
   region%k1 = 0
   region%k2 = 0
-  region%volume = 0
   region%iface = 0
   region%num_cells = 0
   ! By default it is assumed that the region is applicable to strucutred grid,
