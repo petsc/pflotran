@@ -1117,7 +1117,7 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
   string="      <Attribute Name=""X"" AttributeType=""Scalar""  Center=""Node"">"
   write(fid,'(a)') trim(string)
 
-  write(string2,*) ngvert
+!  write(string2,*) ngvert
   string="        <DataItem Dimensions=""" // &
       trim(adjustl(string2)) // " 1"" Format=""HDF""> "
   write(fid,'(a)') trim(string)
@@ -1134,7 +1134,7 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
   string="      <Attribute Name=""Y"" AttributeType=""Scalar""  Center=""Node"">"
   write(fid,'(a)') trim(string)
 
-  write(string2,*) ngvert
+!  write(string2,*) ngvert
   string="        <DataItem Dimensions=""" // &
       trim(adjustl(string2)) // " 1"" Format=""HDF""> "
   write(fid,'(a)') trim(string)
@@ -1151,7 +1151,7 @@ subroutine OutputXMFHeaderGeomech(fid,time,nmax,xmf_vert_len,ngvert,filename)
   string="      <Attribute Name=""Z"" AttributeType=""Scalar""  Center=""Node"">"
   write(fid,'(a)') trim(string)
 
-  write(string2,*) ngvert
+!  write(string2,*) ngvert
   string="        <DataItem Dimensions=""" // &
       trim(adjustl(string2)) // " 1"" Format=""HDF""> "
   write(fid,'(a)') trim(string)
@@ -1432,6 +1432,10 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
     call WriteHDF5CoordinatesXDMFGeomech(geomech_realization,option,grp_id)
     call h5gclose_f(grp_id,hdf5_err)
   endif
+  
+   ! KLK
+   ! hack to use xmf_filename id as "time", so all xmf files don't have time=0.0
+   read(xmf_filename(len_trim(xmf_filename)-6:len_trim(xmf_filename)-4),*) option%time 
 
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write xmf geomech output file: ' // &

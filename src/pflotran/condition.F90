@@ -144,7 +144,8 @@ module Condition_module
             ConditionReadValues, &
             GetSubConditionName, &
             FlowConditionUnknownItype, &
-            FlowTranCondInputRecord
+            FlowCondInputRecord, &
+            TranCondInputRecord
     
 contains
 
@@ -3423,10 +3424,9 @@ end function FlowConditionUnknownItype
 
 ! **************************************************************************** !
 
-subroutine FlowTranCondInputRecord(flow_condition_list,tran_condition_list, &
-                                   option)
+subroutine FlowCondInputRecord(flow_condition_list,option)
   ! 
-  ! Prints ingested flow and transport condition information to 
+  ! Prints ingested flow condition information to 
   ! the input record file.
   ! 
   ! Author: Jenn Frederick
@@ -3434,17 +3434,13 @@ subroutine FlowTranCondInputRecord(flow_condition_list,tran_condition_list, &
   ! 
   use Option_module
   use Dataset_Base_class
-  Use Transport_Constraint_module
 
   implicit none
   
   type(condition_list_type), pointer :: flow_condition_list
-  type(tran_condition_list_type), pointer :: tran_condition_list
   type(option_type), pointer :: option
 
-  type(tran_constraint_coupler_type), pointer :: cur_tcon_coupler
   type(flow_condition_type), pointer :: cur_fc
-  type(tran_condition_type), pointer :: cur_tc
   character(len=MAXWORDLENGTH) :: word1, word2
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: k
@@ -3482,6 +3478,34 @@ subroutine FlowTranCondInputRecord(flow_condition_list,tran_condition_list, &
     cur_fc => cur_fc%next
   enddo
   
+end subroutine FlowCondInputRecord
+
+! **************************************************************************** !
+
+subroutine TranCondInputRecord(tran_condition_list,option)
+  ! 
+  ! Prints ingested transport condition information to 
+  ! the input record file.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/19/2016
+  ! 
+  use Option_module
+  use Dataset_Base_class
+  Use Transport_Constraint_module
+
+  implicit none
+  
+  type(tran_condition_list_type), pointer :: tran_condition_list
+  type(option_type), pointer :: option
+
+  type(tran_constraint_coupler_type), pointer :: cur_tcon_coupler
+  type(tran_condition_type), pointer :: cur_tc
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: k
+  PetscInt :: id = INPUT_RECORD_UNIT
+  
   write(id,'(a)') ' '
   write(id,'(a)') '---------------------------------------------------------&
                   &-----------------------'
@@ -3512,7 +3536,7 @@ subroutine FlowTranCondInputRecord(flow_condition_list,tran_condition_list, &
     cur_tc => cur_tc%next
   enddo
   
-end subroutine FlowTranCondInputRecord
+end subroutine TranCondInputRecord
   
 ! ************************************************************************** !
 

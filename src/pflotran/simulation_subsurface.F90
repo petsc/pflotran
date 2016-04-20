@@ -173,10 +173,10 @@ subroutine SubsurfaceSimInputRecord(this)
   call PatchCouplerInputRecord(this%realization%patch)
   
   ! print flow and trans condition information
-  call FlowTranCondInputRecord(this%realization%flow_conditions, &
-                               this%realization%transport_conditions, &
-                               this%realization%option)
-
+  call FlowCondInputRecord(this%realization%flow_conditions, &
+                           this%realization%option)
+  call TranCondInputRecord(this%realization%transport_conditions, &
+                           this%realization%option)
 
 end subroutine SubsurfaceSimInputRecord
 
