@@ -326,6 +326,8 @@ function PMWFCreate()
   nullify(PMWFCreate%mechanism_list)  
   PMWFCreate%print_mass_balance = PETSC_FALSE
 
+  call PMBaseInit(PMWFCreate)
+
 end function PMWFCreate
 
 ! ************************************************************************** !

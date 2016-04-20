@@ -254,4 +254,5 @@ clean-tests :
 	-rm -f hydrogeophysics/sigma__000000000111600.txt
 	-rm -f ufd/glass-wf_mass-0.dat
 	-rm -f wipp/bragflo/well_production2-ss_mass-0.dat
+	-rm -f ufd/glass-*.vtk
 
