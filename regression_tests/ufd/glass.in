@@ -112,14 +112,12 @@ CHARACTERISTIC_CURVES sf1
 END
 
 #=========================== output options ===================================
-skip
 OUTPUT
   SNAPSHOT_FILE
     PERIODIC TIME 10 day
     FORMAT VTK
   /
 END
-noskip
 
 #=========================== times ============================================
 TIME
