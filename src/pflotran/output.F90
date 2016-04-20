@@ -927,8 +927,17 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
         output_variable%iformat = 1 ! integer
         call OutputVariableAddToList(output_variable_list,output_variable)
+!jmf
+!       case ('REGION_VOLUME')
+!         units = 'm^3'
+!         name = 'Region Volume'
+!         output_variable => OutputVariableCreate(name,OUTPUT_GENERIC, &
+!                                                 units,REGION_VOLUME)
+!         output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+!         output_variable%iformat = 0 ! double
+!         call OutputVariableAddToList(output_variable_list,output_variable)
       case ('VOLUME')
-        units = ''
+        units = 'm^3'
         name = 'Volume'
         output_variable => OutputVariableCreate(name,OUTPUT_GENERIC, &
                                                 units,VOLUME)
