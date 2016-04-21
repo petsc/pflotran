@@ -58,6 +58,10 @@ docs/user_manual/user_manual.out
 docs/user_manual/user_manual.synctex.gz
 docs/user_manual/user_manual.toc
 docs/user_manual/developer_guide.pdf
+docs/user_manual/user_manual.idx
+docs/user_manual/user_manual.ilg
+docs/user_manual/user_manual.ind
+
 *.bin
 *.bin.info
 *.xmf
