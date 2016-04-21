@@ -90,6 +90,7 @@ subroutine PMAuxiliaryInit(this)
   nullify(this%comm1)
   nullify(this%salinity)
   this%ctype = ''
+  this%name = 'pm_auxillary'
   
   call PMBaseInit(this)
   
