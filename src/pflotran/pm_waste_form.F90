@@ -325,6 +325,7 @@ function PMWFCreate()
   nullify(PMWFCreate%waste_form_list)
   nullify(PMWFCreate%mechanism_list)  
   PMWFCreate%print_mass_balance = PETSC_FALSE
+  PMWFCreate%name = 'waste form general'
 
   call PMBaseInit(PMWFCreate)
 
@@ -2008,6 +2009,9 @@ subroutine PMWFInputRecord(this)
   PetscInt :: k
 
   id = INPUT_RECORD_UNIT
+  
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
 
   
 end subroutine PMWFInputRecord

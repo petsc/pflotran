@@ -116,7 +116,7 @@ end subroutine PMBaseSetup
 subroutine PMBaseInputRecord(this)
   implicit none
   class(pm_base_type) :: this
-  print *, 'Must extend PMBaseInputRecord for ' // trim(this%name)
+  print *, 'Must extend PMBaseInputRecord for: ' // trim(this%name)
   stop
 end subroutine PMBaseInputRecord
 
