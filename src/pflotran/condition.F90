@@ -3608,7 +3608,7 @@ subroutine TranCondInputRecord(tran_condition_list,option)
           write(string,*) trim(cur_tcon_coupler%surface_complexes%names(k))
           write(word1,*) cur_tcon_coupler%surface_complexes%constraint_conc(k)
           write(id,'(a)') trim(string) // ', ' // adjustl(trim(word1)) &
-                          // ' mol'
+                          // ' mol/m^3'
         enddo
       endif
       
