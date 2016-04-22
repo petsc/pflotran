@@ -452,7 +452,7 @@ subroutine PMUFDDecayInit(this)
     word = isotope%name
     word = trim(word) // '(s)'
     this%isotope_to_mineral(isotope%iisotope) = &
-      GetMineralIDFromName(reaction%mineral,word,PETSC_TRUE)
+      GetKineticMineralIDFromName(word,reaction%mineral,option)
     this%element_isotopes(0,isotope%ielement) = &
       this%element_isotopes(0,isotope%ielement) + 1
     this%element_isotopes(this%element_isotopes(0,isotope%ielement), &

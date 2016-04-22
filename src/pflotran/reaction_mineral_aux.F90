@@ -446,38 +446,40 @@ end function GetMineralCount
 
 ! ************************************************************************** !
 
-function GetMineralIDFromName1(mineral,name)
+function GetMineralIDFromName1(name,mineral,option)
   ! 
   ! Returns the id of mineral with the corresponding name
   ! 
   ! Author: Glenn Hammond
   ! Date: 09/04/08
   ! 
-
+  use Option_module
   use String_module
   
   implicit none
   
   type(mineral_type) :: mineral
   character(len=MAXWORDLENGTH) :: name
+  type(option_type) :: option
 
   PetscInt :: GetMineralIDFromName1
 
   GetMineralIDFromName1 = &
-    GetMineralIDFromName(mineral,name,PETSC_FALSE)
+    GetMineralIDFromName(name,mineral,PETSC_FALSE,PETSC_TRUE,option)
  
 end function GetMineralIDFromName1
 
 ! ************************************************************************** !
 
-function GetMineralIDFromName2(mineral,name,must_be_kinetic)
+function GetMineralIDFromName2(name,mineral,must_be_kinetic,return_error, &
+                               option)
   ! 
   ! Returns the id of mineral with the corresponding name
   ! 
   ! Author: Glenn Hammond
   ! Date: 09/04/08
   ! 
-
+  use Option_module
   use String_module
   
   implicit none
@@ -485,6 +487,8 @@ function GetMineralIDFromName2(mineral,name,must_be_kinetic)
   type(mineral_type) :: mineral
   character(len=MAXWORDLENGTH) :: name
   PetscBool :: must_be_kinetic
+  PetscBool :: return_error
+  type(option_type) :: option
 
   PetscInt :: GetMineralIDFromName2
   type(mineral_rxn_type), pointer :: cur_mineral
@@ -511,11 +515,17 @@ function GetMineralIDFromName2(mineral,name,must_be_kinetic)
     cur_mineral => cur_mineral%next
   enddo
 
+  if (return_error .and. GetMineralIDFromName2 <= 0) then
+    option%io_buffer = 'Mineral "' // trim(name) // &
+      '" not found among minerals in GetMineralIDFromName().'
+    call printErrMsg(option)
+  endif
+
 end function GetMineralIDFromName2
 
 ! ************************************************************************** !
 
-function GetKineticMineralIDFromName(mineral,name)
+function GetKineticMineralIDFromName(name,mineral,option)
   ! 
   ! Returns the id of kinetic mineral with the
   ! corresponding name
@@ -523,18 +533,19 @@ function GetKineticMineralIDFromName(mineral,name)
   ! Author: Glenn Hammond
   ! Date: 03/11/13
   ! 
-
+  use Option_module
   use String_module
   
   implicit none
   
-  type(mineral_type) :: mineral
   character(len=MAXWORDLENGTH) :: name
+  type(mineral_type) :: mineral
+  type(option_type) :: option
 
   PetscInt :: GetKineticMineralIDFromName
 
   GetKineticMineralIDFromName = &
-    GetMineralIDFromName(mineral,name,PETSC_TRUE)
+    GetMineralIDFromName(name,mineral,PETSC_TRUE,PETSC_TRUE,option)
 
 end function GetKineticMineralIDFromName
 

@@ -369,9 +369,6 @@ module Reaction_Aux_module
             GetGasCount, &
             GetGasNames, &
             GetGasIDFromName, &
-            GetMineralCount, &
-            GetMineralNames, &
-            GetMineralIDFromName, &
             GetColloidCount, &
             GetColloidNames, &
             GetColloidIDFromName, &
