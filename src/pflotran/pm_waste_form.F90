@@ -1033,6 +1033,7 @@ subroutine PMWFSetup(this)
   class(waste_form_base_type), pointer :: next_waste_form
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: i, j, k, local_id
+  PetscReal :: x, y, z
   PetscInt :: waste_form_id
   PetscInt :: temp_int
   PetscErrorCode :: ierr
@@ -1047,21 +1048,19 @@ subroutine PMWFSetup(this)
     if (.not.associated(cur_waste_form)) exit
     waste_form_id = waste_form_id + 1
     local_id = -1
+    x = cur_waste_form%coordinate%x
+    y = cur_waste_form%coordinate%y
+    z = cur_waste_form%coordinate%z
     select case(grid%itype)
       case(STRUCTURED_GRID)
-        call StructGridGetIJKFromCoordinate(grid%structured_grid, &
-                                            cur_waste_form%coordinate%x, &
-                                            cur_waste_form%coordinate%y, &
-                                            cur_waste_form%coordinate%z, &
+        call StructGridGetIJKFromCoordinate(grid%structured_grid,x,y,z, &
                                             i,j,k)
         if (i > 0 .and. j > 0 .and. k > 0) then
           local_id = i + (j-1)*grid%structured_grid%nlx + &
                       (k-1)*grid%structured_grid%nlxy
         endif
       case(IMPLICIT_UNSTRUCTURED_GRID)
-        call UGridGetCellFromPoint(cur_waste_form%coordinate%x, &
-                                   cur_waste_form%coordinate%y, &
-                                   cur_waste_form%coordinate%z, &
+        call UGridGetCellFromPoint(x,y,z, &
                                    grid%unstructured_grid,option,local_id)
       case default
           option%io_buffer = 'Only STRUCTURED_GRID and ' // &
@@ -1091,11 +1090,11 @@ subroutine PMWFSetup(this)
     call MPI_Allreduce(temp_int,MPI_IN_PLACE,ONE_INTEGER_MPI, &
                        MPI_INTEGER, MPI_SUM,option%mycomm,ierr)
     if (temp_int /= 1) then
-      write(word,*) cur_waste_form%coordinate%x
+      write(word,*) x
       option%io_buffer = word
-      write(word,*) cur_waste_form%coordinate%y
+      write(word,*) y
       option%io_buffer = trim(option%io_buffer) // ' ' // word
-      write(word,*) cur_waste_form%coordinate%z
+      write(word,*) z
       option%io_buffer = trim(option%io_buffer) // ' ' // word
       if (temp_int == 0) then
         option%io_buffer = 'Waste form coordinate (' // &
