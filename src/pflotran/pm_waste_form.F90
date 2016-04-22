@@ -916,7 +916,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
                    internal_units,option) * new_waste_form%volume
             endif
         !-----------------------------
-          case('WF_COORDINATE')
+          case('COORDINATE')
             call GeometryReadCoordinate(input,option, &
                                         new_waste_form%coordinate,error_string)
         !-----------------------------
@@ -950,7 +950,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
         call printErrMsg(option)
       endif
       if (Uninitialized(new_waste_form%coordinate%z)) then
-        option%io_buffer = 'WF_COORDINATE must be specified for all waste forms.'
+        option%io_buffer = 'COORDINATE must be specified for all waste forms.'
         call printErrMsg(option)
       endif
       if (new_waste_form%mech_name == '') then
