@@ -13,6 +13,8 @@ SIMULATION
     WASTE_FORM general
       TYPE GENERAL
     /
+    UFD_DECAY ufd_decay
+    /
   /
 END
 
@@ -36,6 +38,43 @@ CHEMISTRY
     Tc-99
     C-tracer
   /
+  MINERALS
+    I-129(s)
+    Am-241(s)        
+    Np-237(s)
+    U-233(s)  
+    Th-229(s) 
+    Pu-240(s)
+    Tc-99(s)
+    C-tracer(s)
+  /
+  MINERAL_KINETICS
+    I-129(s)
+      RATE_CONSTANT 0.d0
+    /
+    Am-241(s)
+      RATE_CONSTANT 0.d0
+    /
+    Np-237(s)
+      RATE_CONSTANT 0.d0
+    /
+    U-233(s) 
+      RATE_CONSTANT 0.d0
+    /
+    Th-229(s) 
+      RATE_CONSTANT 0.d0
+    /
+    Pu-240(s)
+      RATE_CONSTANT 0.d0
+    /
+    Tc-99(s)
+      RATE_CONSTANT 0.d0
+    /
+    C-tracer(s)
+      RATE_CONSTANT 0.d0
+    /
+  /
+  
   OUTPUT
     TOTAL
     I-129
@@ -47,6 +86,9 @@ CHEMISTRY
     Tc-99
     C-tracer
   /
+  
+  DATABASE ./ufd-decay.dat
+  
 END
 
 #=========================== solver options ===================================
@@ -114,7 +156,7 @@ END
 #=========================== output options ===================================
 OUTPUT
   SNAPSHOT_FILE
-    PERIODIC TIME 10 day
+    PERIODIC TIME 50 day
     FORMAT VTK
   /
 END
@@ -166,6 +208,16 @@ CONSTRAINT groundwater
     Pu-240    1.e-20        F
     Tc-99     1.e-20        F
     C-tracer  1.e-20        F
+  /
+  MINERALS
+    I-129(s)  0.d0 1.d0
+    Am-241(s) 0.d0 1.d0
+    Np-237(s) 0.d0 1.d0
+    U-233(s)  0.d0 1.d0
+    Th-229(s) 0.d0 1.d0
+    Pu-240(s) 0.d0 1.d0
+    Tc-99(s)  0.d0 1.d0
+    C-tracer(s) 0.d0 1.d0
   /
 END
 
@@ -220,9 +272,6 @@ WASTE_FORM_GENERAL
       Tc-99   98.91d0   1.04d-13  8.87d-6  0.0d0
     /  
     CANISTER_DEGRADATION_MODEL
-      VITALITY_LOG10_MEAN -0.1
-      VITALITY_LOG10_STDEV 0.5
-      VITALITY_UPPER_TRUNCATION 0
       CANISTER_MATERIAL_CONSTANT 1500
     /
   /
@@ -248,6 +297,7 @@ WASTE_FORM_GENERAL
     EXPOSURE_FACTOR 10.0d0
     VOLUME 1.14d0 m^3
     MECHANISM_NAME dsnf01
+    CANISTER_VITALITY_RATE 0.50 1/day
   /
   WASTE_FORM
     COORDINATE 1.0d0 1.0d0 1.5d0
@@ -265,3 +315,74 @@ WASTE_FORM_GENERAL
   PRINT_MASS_BALANCE
   
 END_WASTE_FORM_GENERAL
+
+#=========================== ufd decay ========================================
+UFD_DECAY
+  ELEMENT I
+    SOLUBILITY 1.d4
+    KD 0.d0 #kg water/m^3 bulk
+  /
+  ELEMENT Am
+    SOLUBILITY 3.39d-7
+    KD 6.d6
+  /
+  ELEMENT Np
+    SOLUBILITY 4.07d-9
+    KD 3.5d5
+  /
+  ELEMENT U
+    SOLUBILITY 3.16d-14
+    KD 6.1d5
+  /
+  ELEMENT Th
+    SOLUBILITY 7.94d-11
+    KD 2.5d6
+  /
+  ELEMENT Tc
+    SOLUBILITY 7.94d-11
+    KD 2.5d6
+  /
+  ELEMENT Pu
+    SOLUBILITY 7.94d-11
+    KD 2.5d6
+  /
+  ELEMENT C
+    SOLUBILITY 1.d4
+    KD 0.d0
+  /
+  ISOTOPE I-129
+    ELEMENT I
+    DECAY_RATE 1.29d-15
+  /
+  ISOTOPE Am-241
+    ELEMENT Am
+    DECAY_RATE 5.08d-11
+    DAUGHTER Np-237 1.d0
+  /
+  ISOTOPE Np-237
+    ELEMENT Np
+    DECAY_RATE 1.03d-14
+    DAUGHTER U-233 1.d0
+  /
+  ISOTOPE U-233
+    ELEMENT U
+    DECAY_RATE 1.38d-13
+    DAUGHTER Th-229 1.d0
+  /
+  ISOTOPE Th-229
+    ELEMENT Th
+    DECAY_RATE 2.78d-12
+  /
+  ISOTOPE Tc-99
+    ELEMENT Tc
+    DECAY_RATE 1.04d-13
+  /
+  ISOTOPE Pu-240
+    ELEMENT Pu
+    DECAY_RATE 3.34d-12
+  /
+  ISOTOPE C-tracer
+    ELEMENT C
+    DECAY_RATE 1.00d-20
+  /
+END
