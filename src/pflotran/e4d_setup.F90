@@ -400,9 +400,13 @@ contains
        end if
     end do
   
+#if 0 
+!geh: this do loop produces an unwanted fort.20 file.  where should this
+!     data be written?
     do i=1,nmap
        write(20,*) map_inds(i,:),map(i)
     end do
+#endif
   end subroutine get_mesh_interp
   !____________________________________________________________________
  !____________________________________________________________________
