@@ -1031,8 +1031,10 @@ subroutine PMWFSetup(this)
   type(option_type), pointer :: option
   class(waste_form_base_type), pointer :: cur_waste_form, prev_waste_form
   class(waste_form_base_type), pointer :: next_waste_form
+  character(len=MAXWORDLENGTH) :: word
   PetscInt :: i, j, k, local_id
   PetscInt :: waste_form_id
+  PetscInt :: temp_int
   PetscErrorCode :: ierr
   
   grid => this%realization%patch%grid
@@ -1071,6 +1073,7 @@ subroutine PMWFSetup(this)
       cur_waste_form%local_cell_id = local_id
       prev_waste_form => cur_waste_form
       cur_waste_form => cur_waste_form%next
+      temp_int = 1
     else
       ! remove waste form
       next_waste_form => cur_waste_form%next
@@ -1081,7 +1084,29 @@ subroutine PMWFSetup(this)
       endif
       deallocate(cur_waste_form)
       cur_waste_form => next_waste_form
+      temp_int = 0
     endif
+    ! check to ensure that the waste form is define/located once within the
+    ! modeling domain.
+    call MPI_Allreduce(temp_int,MPI_IN_PLACE,ONE_INTEGER_MPI, &
+                       MPI_INTEGER, MPI_SUM,option%mycomm,ierr)
+    if (temp_int /= 1) then
+      write(word,*) cur_waste_form%coordinate%x
+      option%io_buffer = word
+      write(word,*) cur_waste_form%coordinate%y
+      option%io_buffer = trim(option%io_buffer) // ' ' // word
+      write(word,*) cur_waste_form%coordinate%z
+      option%io_buffer = trim(option%io_buffer) // ' ' // word
+      if (temp_int == 0) then
+        option%io_buffer = 'Waste form coordinate (' // &
+          trim(option%io_buffer) // ') is outside domain.'
+      else
+        option%io_buffer = 'Waste form coordinate (' // &
+          trim(option%io_buffer) // &
+          ') is defined more than once within domain.'
+      endif
+      call printErrMsg(option)
+    endif    
   enddo
   
 end subroutine PMWFSetup
