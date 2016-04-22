@@ -955,16 +955,18 @@ subroutine SolverPrintNewtonInfo(solver,header,option)
   if (OptionPrintToScreen(option)) then
     write(*,*) 
     write(*,'(a)') trim(header) // ' Newton Solver'
-    write(*,'("     atol:",1pe12.4)') solver%newton_atol
-    write(*,'("     rtol:",1pe12.4)') solver%newton_rtol
-    write(*,'("     stol:",1pe12.4)') solver%newton_stol
-    write(*,'("     dtol:",1pe12.4)') solver%newton_dtol
-    write(*,'("  maxnorm:",1pe12.4)') solver%max_norm
-    write(*,'("inftolres:",1pe12.4)') solver%newton_inf_res_tol
-    write(*,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
-    write(*,'(" max iter:",i6)') solver%newton_max_iterations
-    write(*,'(" min iter:",i6)') solver%newton_min_iterations
-    write(*,'("     maxf:",i6)') solver%newton_maxf
+    write(*,'("        atol:",1pe12.4)') solver%newton_atol
+    write(*,'("        rtol:",1pe12.4)') solver%newton_rtol
+    write(*,'("        stol:",1pe12.4)') solver%newton_stol
+    write(*,'("        dtol:",1pe12.4)') solver%newton_dtol
+    write(*,'("     maxnorm:",1pe12.4)') solver%max_norm
+    write(*,'("   inftolres:",1pe12.4)') solver%newton_inf_res_tol
+    write(*,'("   inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
+    write(*,'("inftolrelupd:",1pe12.4)') solver%newton_inf_rel_update_tol
+    write(*,'("inftolsclres:",1pe12.4)') solver%newton_inf_scaled_res_tol
+    write(*,'("    max iter:",i6)') solver%newton_max_iterations
+    write(*,'("    min iter:",i6)') solver%newton_min_iterations
+    write(*,'("        maxf:",i6)') solver%newton_maxf
     write(*,*) 
     if (len_trim(solver%J_mat_type) > 2) then
       write(*,'("matrix type:",a20)') solver%J_mat_type
@@ -1001,16 +1003,18 @@ subroutine SolverPrintNewtonInfo(solver,header,option)
     fid = option%fid_out
     write(fid,*) 
     write(fid,'(a)') trim(header) // ' Newton Solver'
-    write(fid,'("     atol:",1pe12.4)') solver%newton_atol
-    write(fid,'("     rtol:",1pe12.4)') solver%newton_rtol
-    write(fid,'("     stol:",1pe12.4)') solver%newton_stol
-    write(fid,'("     dtol:",1pe12.4)') solver%newton_dtol
-    write(fid,'("  maxnorm:",1pe12.4)') solver%max_norm
-    write(fid,'("inftolres:",1pe12.4)') solver%newton_inf_res_tol
-    write(fid,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
-    write(fid,'(" max iter:",i6)') solver%newton_max_iterations
-    write(fid,'(" min iter:",i6)') solver%newton_min_iterations
-    write(fid,'("     maxf:",i6)') solver%newton_maxf
+    write(fid,'("        atol:",1pe12.4)') solver%newton_atol
+    write(fid,'("        rtol:",1pe12.4)') solver%newton_rtol
+    write(fid,'("        stol:",1pe12.4)') solver%newton_stol
+    write(fid,'("        dtol:",1pe12.4)') solver%newton_dtol
+    write(fid,'("     maxnorm:",1pe12.4)') solver%max_norm
+    write(fid,'("   inftolres:",1pe12.4)') solver%newton_inf_res_tol
+    write(fid,'("   inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
+    write(fid,'("inftolrelupd:",1pe12.4)') solver%newton_inf_rel_update_tol
+    write(fid,'("inftolsclres:",1pe12.4)') solver%newton_inf_scaled_res_tol
+    write(fid,'("    max iter:",i6)') solver%newton_max_iterations
+    write(fid,'("    min iter:",i6)') solver%newton_min_iterations
+    write(fid,'("        maxf:",i6)') solver%newton_maxf
     write(fid,*) 
     if (len_trim(solver%J_mat_type) > 2) then
       write(fid,'("matrix type:",a20)') solver%J_mat_type
