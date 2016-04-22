@@ -349,6 +349,7 @@ subroutine PMWFRead(this,input)
   
   class(pm_waste_form_type) :: this
   type(input_type), pointer :: input
+  type(discretization_type), pointer :: discretization
   
   class(waste_form_base_type), pointer :: cur_waste_form
   class(wf_mechanism_base_type), pointer :: cur_mechanism
@@ -878,6 +879,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   character(len=MAXWORDLENGTH) :: keyword
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
+  type(discretization_type), pointer :: discretization
 
   PetscBool :: added
   character(len=MAXWORDLENGTH) :: word, internal_units
