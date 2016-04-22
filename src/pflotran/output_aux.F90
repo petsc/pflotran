@@ -136,6 +136,7 @@ module Output_Aux_module
   PetscInt, parameter, public :: OUTPUT_DISCRETE = 6
   
   public :: OutputOptionCreate, &
+            OutputOptionDuplicate, &
             OutputVariableCreate, &
             OutputVariableListCreate, &
             OutputVariableListDuplicate, &
@@ -227,6 +228,90 @@ function OutputOptionCreate()
   OutputOptionCreate => output_option
   
 end function OutputOptionCreate
+
+! ************************************************************************** !
+
+function OutputOptionDuplicate(output_option)
+  ! 
+  ! Creates a copy of output options object
+  ! 
+  ! Author: Gautam Bisht, LBNL
+  ! Date: 04/22/2016
+  ! 
+
+  implicit none
+  
+  type(output_option_type), pointer :: output_option
+
+  type(output_option_type), pointer :: OutputOptionDuplicate
+
+  type(output_option_type), pointer :: output_option2
+  
+  allocate(output_option2)
+
+  output_option2%print_hdf5 = output_option%print_hdf5
+  output_option2%print_hdf5_vel_cent = output_option%print_hdf5_vel_cent
+  output_option2%print_hdf5_vel_face = output_option%print_hdf5_vel_face
+  output_option2%print_single_h5_file = output_option%print_single_h5_file
+  output_option2%times_per_h5_file = output_option%times_per_h5_file
+  output_option2%print_hdf5_mass_flowrate = output_option%print_hdf5_mass_flowrate
+  output_option2%print_hdf5_energy_flowrate = output_option%print_hdf5_energy_flowrate
+  output_option2%print_hdf5_aveg_mass_flowrate = output_option%print_hdf5_aveg_mass_flowrate
+  output_option2%print_hdf5_aveg_energy_flowrate = output_option%print_hdf5_aveg_energy_flowrate
+  output_option2%print_explicit_flowrate = output_option%print_explicit_flowrate
+  output_option2%print_tecplot = output_option%print_tecplot
+  output_option2%tecplot_format = output_option%tecplot_format
+  output_option2%print_tecplot_vel_cent = output_option%print_tecplot_vel_cent
+  output_option2%print_fluxes = output_option%print_fluxes
+  output_option2%print_tecplot_vel_face = output_option%print_tecplot_vel_face
+  output_option2%print_vtk = output_option%print_vtk
+  output_option2%print_vtk_vel_cent = output_option%print_vtk_vel_cent
+  output_option2%print_observation = output_option%print_observation
+  output_option2%print_column_ids = output_option%print_column_ids
+  output_option2%print_mad = output_option%print_mad
+  output_option2%print_initial_obs = output_option%print_initial_obs
+  output_option2%print_final_obs = output_option%print_final_obs
+  output_option2%print_initial_snap = output_option%print_initial_snap
+  output_option2%print_final_snap = output_option%print_final_snap
+  output_option2%print_initial_massbal = output_option%print_initial_massbal
+  output_option2%print_final_massbal = output_option%print_final_massbal
+  output_option2%plot_number = output_option%plot_number
+  output_option2%screen_imod = output_option%screen_imod
+  output_option2%output_file_imod = output_option%output_file_imod
+  output_option2%periodic_snap_output_ts_imod = output_option%periodic_snap_output_ts_imod
+  output_option2%periodic_obs_output_ts_imod = output_option%periodic_obs_output_ts_imod
+  output_option2%periodic_msbl_output_ts_imod = output_option%periodic_msbl_output_ts_imod
+  output_option2%periodic_snap_output_time_incr = output_option%periodic_snap_output_time_incr
+  output_option2%periodic_obs_output_time_incr = output_option%periodic_obs_output_time_incr
+  output_option2%periodic_msbl_output_time_incr = output_option%periodic_msbl_output_time_incr
+  output_option2%plot_name = output_option%plot_name
+  output_option2%aveg_var_time = output_option%aveg_var_time
+  output_option2%aveg_var_dtime = output_option%aveg_var_dtime
+  output_option2%xmf_vert_len = output_option%xmf_vert_len
+  output_option2%filter_non_state_variables = output_option%filter_non_state_variables
+
+  nullify(output_option2%output_variable_list)
+  nullify(output_option2%output_snap_variable_list)
+  nullify(output_option2%output_obs_variable_list)
+  nullify(output_option2%aveg_output_variable_list)
+
+  output_option2%output_variable_list => &
+       OutputVariableListDuplicate(output_option%output_variable_list)
+  output_option2%output_snap_variable_list => &
+       OutputVariableListDuplicate(output_option%output_snap_variable_list)
+  output_option2%output_obs_variable_list => &
+       OutputVariableListDuplicate(output_option%output_obs_variable_list)
+  output_option2%aveg_output_variable_list => &
+       OutputVariableListDuplicate(output_option%aveg_output_variable_list)
+  
+  output_option2%tconv = output_option%tconv
+  output_option2%tunit = output_option%tunit
+  
+  output_option2%print_hydrograph = output_option%print_hydrograph
+
+  OutputOptionDuplicate => output_option2
+  
+end function OutputOptionDuplicate
 
 ! ************************************************************************** !
 
@@ -389,7 +474,7 @@ end function OutputVariableListCreate
 
 ! ************************************************************************** !
 
-function OutputVariableListDuplicate(old_list,new_list)
+function OutputVariableListDuplicate(old_list)
   ! 
   ! initializes output variable list object
   ! 
