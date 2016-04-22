@@ -919,6 +919,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
           case('COORDINATE')
             call GeometryReadCoordinate(input,option, &
                                         new_waste_form%coordinate,error_string)
+            ! check if coordinate is within the domain
         !-----------------------------
           case('MECHANISM_NAME')
             call InputReadWord(input,option,word,PETSC_TRUE)

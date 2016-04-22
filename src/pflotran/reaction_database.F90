@@ -720,7 +720,7 @@ subroutine DatabaseRead(reaction,option)
       flag = PETSC_TRUE
       option%io_buffer = 'Mineral (' // trim(cur_mineral%name) // &
                ') not found in database.'
-      call printMsg(option)
+      call printErrMsg(option)
     endif
     if (.not.reaction%use_geothermal_hpt) then
       if (.not.DatabaseCheckLegitimateLogKs(cur_mineral%dbaserxn, &
