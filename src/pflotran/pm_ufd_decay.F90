@@ -721,7 +721,7 @@ subroutine PMUFDDecaySolve(this,time,ierr)
       do i = 1, this%element_isotopes(0,iele)
         iiso = this%element_isotopes(i,iele)
         ipri = this%isotope_to_primary_species(iiso)
-        imnrl = this%isotope_to_mineral(iiso) ! it's imnrl = -1
+        imnrl = this%isotope_to_mineral(iiso)
         ! # indicated time level (0 = prev time level, 1 = new time level) 
         conc_iso_aq0 = xx_p((local_id-1)*reaction%ncomp+ipri) * &
                        den_w_kg / 1000.d0  ! mol/L
