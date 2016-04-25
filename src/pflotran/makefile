@@ -605,7 +605,7 @@ factory_surfsubsurface.o : coupler.o discretization.o dm_kludge.o \
                            grid.o grid_unstructured.o grid_unstructured_aux.o \
                            grid_unstructured_cell.o init_common.o \
                            init_surface.o input_aux.o logging.o option.o \
-                           patch.o pflotran_constants.o pm_base.o \
+                           output_aux.o patch.o pflotran_constants.o pm_base.o \
                            pm_base_pointer.o pm_surface.o pm_surface_flow.o \
                            pm_surface_th.o pmc_base.o pmc_surface.o \
                            realization_subsurface.o realization_surface.o \
@@ -865,10 +865,11 @@ patch.o : auxiliary.o characteristic_curves.o condition.o connection.o \
           material.o material_aux.o miscible_aux.o mphase_aux.o observation.o \
           option.o output_aux.o pflotran_constants.o reaction.o reaction_aux.o \
           reaction_mineral.o reaction_mineral_aux.o \
-          reaction_surf_complex_aux.o reactive_transport_aux.o region.o \
-          richards_aux.o saturation.o saturation_function.o strata.o \
-          surface_auxiliary.o surface_field.o surface_material.o th_aux.o \
-          toil_ims_aux.o transport_constraint.o utility.o variables.o
+          reaction_surf_complex_aux.o reactive_transport_aux.o \
+          realization_subsurface.o region.o richards_aux.o saturation.o \
+          saturation_function.o strata.o surface_auxiliary.o surface_field.o \
+          surface_material.o th_aux.o toil_ims_aux.o transport_constraint.o \
+          utility.o variables.o
 pflotran.o : factory_geomechanics.o factory_hydrogeophysics.o \
              factory_pflotran.o factory_subsurface.o factory_surface.o \
              factory_surfsubsurface.o multisimulation.o option.o output_aux.o \
@@ -957,9 +958,9 @@ pm_ufd_decay.o : field.o global.o global_aux.o grid.o input_aux.o \
                  reactive_transport_aux.o realization_subsurface.o string.o \
                  utility.o
 pm_waste_form.o : condition.o data_mediator_vec.o dataset_ascii.o \
-                  dataset_base.o discretization.o field.o geometry.o \
-                  global_aux.o grid.o grid_structured.o grid_unstructured.o \
-                  input_aux.o material_aux.o option.o output_aux.o \
+                  dataset_base.o field.o geometry.o global_aux.o grid.o \
+                  grid_structured.o grid_unstructured.o input_aux.o \
+                  material_aux.o option.o output_aux.o patch.o \
                   pflotran_constants.o pm_base.o reaction_aux.o \
                   realization_base.o realization_subsurface.o string.o units.o \
                   utility.o
@@ -1284,6 +1285,7 @@ wipp.o : input_aux.o lookup_table.o material_aux.o option.o \
          pflotran_constants.o string.o units.o utility.o
 wrapper_hydrogeophysics.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \
                             pflotran_constants.o
+
 
 # developer level regression testing
 test : utest rtest

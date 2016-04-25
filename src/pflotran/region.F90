@@ -1321,7 +1321,6 @@ subroutine RegionInputRecord(region_list)
     cur_region => cur_region%next
   enddo
   
-
 end subroutine RegionInputRecord
 
 ! **************************************************************************** !

@@ -121,7 +121,8 @@ module Patch_module
             PatchCountCells, PatchGetIvarsFromKeyword, &
             PatchGetVarNameFromKeyword, &
             PatchCalculateCFL1Timestep, &
-            PatchGetCellCenteredVelocities
+            PatchGetCellCenteredVelocities, &
+            PatchGetMassInRegion
 
 contains
 
@@ -6765,6 +6766,104 @@ subroutine PatchCouplerInputRecord(patch)
   enddo
   
 end subroutine PatchCouplerInputRecord
+
+! **************************************************************************** !
+
+subroutine PatchGetMassInRegion(region,realization,global_total_mass)
+  ! 
+  ! Calculates the total mass (aqueous, sorbed, and precipitated) in a region
+  ! in units of mol.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/25/2016
+  ! 
+  use Global_Aux_module
+  use Material_Aux_class
+  use Reaction_Aux_module
+  use Field_module
+  use Realization_Subsurface_class
+  use Grid_module
+  use Option_module
+  use Region_module
+  use Reactive_Transport_Aux_module
+
+  implicit none
+  
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+  
+  type(region_type), pointer :: region
+  class(realization_subsurface_type), pointer :: realization
+  PetscReal :: global_total_mass  ! [mol]
+  
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  type(reaction_type), pointer :: reaction
+  type(field_type), pointer :: field
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  PetscReal, pointer :: xx_p(:)   ! [mol/kg-water]
+  PetscReal :: aq_species_mass    ! [mol]
+  PetscReal :: sorb_species_mass  ! [mol]
+  PetscReal :: ppt_species_mass   ! [mol]
+  PetscReal :: kg_water           ! [kg-water]
+  PetscReal :: volume             ! [m^3]
+  PetscInt :: k, j, m
+  PetscInt :: local_id, ghosted_id, idof
+  PetscErrorCode :: ierr
+  PetscReal :: local_total_mass
+  
+  global_auxvars => realization%patch%aux%Global%auxvars
+  material_auxvars => realization%patch%aux%Material%auxvars
+  rt_auxvars => realization%patch%aux%RT%auxvars
+  reaction => realization%reaction
+  field => realization%field
+  option => realization%option
+  grid => realization%patch%grid
+  local_total_mass = 0.d0
+  global_total_mass = 0.d0
+  
+  call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+  
+  ! Loop through all cells in the region:
+  do k = 1,size(region%cell_ids)
+    local_id = k
+    ghosted_id = grid%nL2G(local_id)
+    if (realization%patch%imat(ghosted_id) <= 0) cycle
+    kg_water = material_auxvars(ghosted_id)%porosity * &         ! [-]
+               global_auxvars(ghosted_id)%sat(LIQUID_PHASE) * &  ! [-]
+               material_auxvars(ghosted_id)%volume * &           ! [m^3]
+               global_auxvars(ghosted_id)%den_kg(LIQUID_PHASE)   ! [kg/m^3-water]
+    volume = material_auxvars(ghosted_id)%volume                 ! [m^3]
+    ! Loop through aqueous and sorbed species:
+    do j = 1,reaction%ncomp
+      idof = j + (reaction%ncomp * (local_id-1))
+      aq_species_mass = 0.d0
+      sorb_species_mass = 0.d0
+      ! aqueous species; units [mol/kg-water]*[kg-water]=[mol]
+      aq_species_mass = xx_p(idof) * kg_water  ! [mol]
+      ! sorbed species; units [mol/m^3-bulk]*[m^3-bulk]=[mol]
+      sorb_species_mass = rt_auxvars(ghosted_id)%total_sorb_eq(j) * volume
+      local_total_mass = local_total_mass + aq_species_mass + &
+                                            sorb_species_mass
+    enddo
+    do m = 1,reaction%mineral%nkinmnrl
+      ppt_species_mass = 0.d0
+      ! precip. species; units [m^3-mnrl/m^3-bulk]*[m^3-bulk]/[m^3-mnrl/mol-mnrl]=[mol]
+      ppt_species_mass = rt_auxvars(ghosted_id)%mnrl_volfrac(m) * volume / &
+                         reaction%mineral%kinmnrl_molar_vol(m)      
+      local_total_mass = local_total_mass + ppt_species_mass
+    enddo 
+  enddo ! Cell loop
+  
+  call VecRestoreArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+  
+  ! Sum the local_total_mass across all processes that own the region: 
+  call MPI_Allreduce(local_total_mass,global_total_mass,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
+
+end subroutine PatchGetMassInRegion
 
 ! ************************************************************************** !
 
