@@ -98,7 +98,7 @@ subroutine PMBaseRead(this,input)
   implicit none
   class(pm_base_type) :: this
   type(input_type), pointer :: input
-  print *, 'Must extend PMBaseRead.'
+  print *, 'Must extend PMBaseRead for: ' // trim(this%name)
   stop
 end subroutine PMBaseRead
 
@@ -107,7 +107,7 @@ end subroutine PMBaseRead
 subroutine PMBaseSetup(this)
   implicit none
   class(pm_base_type) :: this
-  print *, 'Must extend PMBaseSetup.'
+  print *, 'Must extend PMBaseSetup for: ' // trim(this%name)
   stop
 end subroutine PMBaseSetup
 
@@ -127,7 +127,7 @@ subroutine PMBaseSetupSolvers(this,solver)
   implicit none
   class(pm_base_type) :: this
   type(solver_type) :: solver
-  print *, 'Must extend PMBaseSetupSolvers.'
+  print *, 'Must extend PMBaseSetupSolvers for: ' // trim(this%name)
   stop
 end subroutine PMBaseSetupSolvers
 
@@ -140,7 +140,7 @@ subroutine PMBaseResidual(this,snes,xx,r,ierr)
   Vec :: xx
   Vec :: r
   PetscErrorCode :: ierr
-  print *, 'Must extend PMBaseResidual.'
+  print *, 'Must extend PMBaseResidual for: ' // trim(this%name)
   stop
 end subroutine PMBaseResidual
 
@@ -153,7 +153,7 @@ subroutine PMBaseJacobian(this,snes,xx,A,B,ierr)
   Vec :: xx
   Mat :: A, B
   PetscErrorCode :: ierr
-  print *, 'Must extend PMBaseJacobian.'
+  print *, 'Must extend PMBaseJacobian for: ' // trim(this%name)
   stop
 end subroutine PMBaseJacobian
 
@@ -168,7 +168,7 @@ subroutine PMBaseUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   PetscInt :: iacceleration
   PetscInt :: num_newton_iterations
   PetscReal :: tfac(:)
-  print *, 'Must extend PMBaseUpdateTimestep.'
+  print *, 'Must extend PMBaseUpdateTimestep for: ' // trim(this%name)
   stop
 end subroutine PMBaseUpdateTimestep
 
@@ -182,7 +182,7 @@ subroutine PMBaseCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   Vec :: dX
   PetscBool :: changed
   PetscErrorCode :: ierr
-  print *, 'Must extend PMBaseCheckUpdatePre.'
+  print *, 'Must extend PMBaseCheckUpdatePre for: ' // trim(this%name)
   stop
 end subroutine PMBaseCheckUpdatePre
 
@@ -199,7 +199,7 @@ subroutine PMBaseCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   PetscBool :: dX_changed
   PetscBool :: X1_changed
   PetscErrorCode :: ierr
-  print *, 'Must extend PMBaseCheckUpdatePost.'
+  print *, 'Must extend PMBaseCheckUpdatePost for: ' // trim(this%name)
   stop
 end subroutine PMBaseCheckUpdatePost
 
@@ -208,7 +208,7 @@ end subroutine PMBaseCheckUpdatePost
 subroutine PMBaseThisOnly(this)
   implicit none
   class(pm_base_type) :: this
-  print *, 'Must extend PMBaseThisOnly.'
+  print *, 'Must extend PMBaseThisOnly for: ' // trim(this%name)
   stop
 end subroutine PMBaseThisOnly
 
@@ -218,7 +218,7 @@ subroutine PMBaseThisTime(this,time)
   implicit none
   class(pm_base_type) :: this
   PetscReal :: time
-  print *, 'Must extend PMBaseThisTime.'
+  print *, 'Must extend PMBaseThisTime for: ' // trim(this%name)
   stop
 end subroutine PMBaseThisTime
 
@@ -229,7 +229,7 @@ subroutine PMBaseThisTimeError(this,time,ierr)
   class(pm_base_type) :: this
   PetscReal :: time
   PetscErrorCode :: ierr
-  print *, 'Must extend PMBaseThisTimeError.'
+  print *, 'Must extend PMBaseThisTimeError for: ' // trim(this%name)
   stop
 end subroutine PMBaseThisTimeError
 
@@ -240,7 +240,7 @@ function PMBaseFunctionThisOnly(this)
   class(pm_base_type) :: this
   PetscBool ::  PMBaseFunctionThisOnly
   PMBaseFunctionThisOnly = PETSC_TRUE
-  print *, 'Must extend PMBaseFunctionThisOnly.'
+  print *, 'Must extend PMBaseFunctionThisOnly for: ' // trim(this%name)
   stop
 end function PMBaseFunctionThisOnly
 
@@ -250,7 +250,7 @@ subroutine PMBaseComputeMassBalance(this,mass_balance_array)
   implicit none
   class(pm_base_type) :: this
   PetscReal :: mass_balance_array(:)
-  print *, 'Must extend PMBaseComputeMassBalance.'
+  print *, 'Must extend PMBaseComputeMassBalance for: ' // trim(this%name)
   stop
 end subroutine PMBaseComputeMassBalance
 
@@ -264,7 +264,7 @@ subroutine PMBaseRHSFunction(this,ts,time,xx,ff,ierr)
   Vec :: xx
   Vec :: ff
   PetscErrorCode :: ierr
-  print *, 'Must extend PMBaseRHSFunction.'
+  print *, 'Must extend PMBaseRHSFunction for: ' // trim(this%name)
   stop
 end subroutine PMBaseRHSFunction
 
