@@ -121,6 +121,28 @@ MFD_CFG = \
 CHECK_CFG = \
 	ascem/1d/1d-calcite/1d-calcite.cfg
 
+NOHDF5_CFG = \
+	default/column/column.cfg \
+	default/scco2/flash2/flash2.cfg \
+	geothermal_hpt/1D_Calcite/calcite_hpt.cfg \
+	default/materials/soil_compressibility/soil_compressibility.cfg \
+	wipp/nuts/nuts.cfg \
+	default/multicontinuum/multicontinuum.cfg \
+	wipp/bragflo/bragflo.cfg \
+	ufd/ufd.cfg \
+	hydrogeophysics/hydrogeophysics.cfg \
+	ascem/1d/1d-calcite/1d-calcite.cfg \
+	default/materials/mineral_volume/mineral_volume.cfg \
+	default/batch/batch.cfg \
+	shortcourse/1D_Calcite/calcite.cfg \
+	ascem/batch/batch.cfg \
+	default/scco2/mphase/mphase.cfg \
+	default/input_format/input_format.cfg \
+	shortcourse/copper_leaching/cu_leaching.cfg \
+	default/eos/eos.cfg \
+	default/regions/regions.cfg \
+	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg
+
 test : standard
 
 standard :
@@ -176,6 +198,11 @@ ngee-biogeochemistry :
 test_mimetic :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		--config-files $(MFD_CFG)
+
+nonhdf5_test :
+	$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		--suite standard standard_parallel \
+		--config-files $(NOHDF5_CFG)
 
 #
 # Try to cleanup the regression test output.
