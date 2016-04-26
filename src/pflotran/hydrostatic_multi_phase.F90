@@ -391,8 +391,11 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
     else if (owc(Z_DIRECTION) < min_z) then !owc below domain (oil only)
       !OIL PRESSURE
       coupler%flow_aux_real_var(1,iconn) = po_cell 
-      !OIL SATURATION
-      coupler%flow_aux_real_var(2,iconn) = 1.0d0 - sat_ir(1)
+      !OIL SATURATION 
+      ! coupler%flow_aux_real_var(2,iconn) = 1.0d0 - sat_ir(1)
+      ! assign value read from input
+      coupler%flow_aux_real_var(2,iconn) = &
+                coupler%flow_condition%toil_ims%saturation%dataset%rarray(1)
     else
       !use instgructions below when imposing pc=0 capillary pressure 
       !if ( grid%z(ghosted_id) > owc(Z_DIRECTION) ) then
