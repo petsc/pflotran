@@ -148,7 +148,7 @@ test : standard
 standard :
 ifeq ($(strip $(PARMETIS_LIB)),)
 	@echo "********************************************************"
-	@echo "  PFloTran does not appear to be compiled with Parmetis."
+	@echo "  PFLOTRAN does not appear to be compiled with Parmetis."
 	@echo "  Skipping unstructured mesh tests."
 	@echo "********************************************************"
 endif
@@ -186,7 +186,7 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 		--config-files $(MESH_CFG) --suite mesh
 else
 	@echo "********************************************************"
-	@echo "  PFloTran does not appear to be compiled with Parmetis."
+	@echo "  PFLOTRAN does not appear to be compiled with Parmetis."
 	@echo "  Skipping unstructured mesh tests."
 	@echo "********************************************************"
 endif
