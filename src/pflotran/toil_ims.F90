@@ -2402,8 +2402,8 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
   ! 
   ! Computes the residual equation
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/09/11
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 11/05/15
   ! 
 
   use Realization_Subsurface_class
@@ -3090,8 +3090,8 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
   ! zero out isothermal and inactive cells
   if (patch%aux%TOil_ims%inactive_cells_exist) then
     qsrc = 1.d0 ! solely a temporary variable in this conditional
-    call MatZeroRowsLocal(A,patch%aux%General%n_inactive_rows, &
-                          patch%aux%General%inactive_rows_local_ghosted, &
+    call MatZeroRowsLocal(A,patch%aux%TOil_ims%n_inactive_rows, &
+                          patch%aux%TOil_ims%inactive_rows_local_ghosted, &
                           qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           ierr);CHKERRQ(ierr)
   endif
