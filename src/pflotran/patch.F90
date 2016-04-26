@@ -121,7 +121,8 @@ module Patch_module
             PatchCountCells, PatchGetIvarsFromKeyword, &
             PatchGetVarNameFromKeyword, &
             PatchCalculateCFL1Timestep, &
-            PatchGetCellCenteredVelocities
+            PatchGetCellCenteredVelocities, &
+            PatchGetMassInRegion
 
 contains
 
@@ -6765,6 +6766,92 @@ subroutine PatchCouplerInputRecord(patch)
   enddo
   
 end subroutine PatchCouplerInputRecord
+
+! **************************************************************************** !
+
+subroutine PatchGetMassInRegion(region,patch,option,global_total_mass)
+  ! 
+  ! Calculates the total mass (aqueous, sorbed, and precipitated) in a region
+  ! in units of mol.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/25/2016
+  ! 
+  use Global_Aux_module
+  use Material_Aux_class
+  use Reaction_Aux_module
+  use Grid_module
+  use Option_module
+  use Region_module
+  use Reactive_Transport_Aux_module
+
+  implicit none
+  
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+  
+  type(region_type), pointer :: region
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  PetscReal :: global_total_mass  ! [mol]
+  
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  type(reaction_type), pointer :: reaction
+  PetscReal :: aq_species_mass    ! [mol]
+  PetscReal :: sorb_species_mass  ! [mol]
+  PetscReal :: ppt_species_mass   ! [mol]
+  PetscReal :: m3_water           ! [m^3-water]
+  PetscReal :: m3_bulk            ! [m^3-bulk]
+  PetscInt :: k, j, m
+  PetscInt :: local_id, ghosted_id
+  PetscErrorCode :: ierr
+  PetscReal :: local_total_mass
+  
+  global_auxvars => patch%aux%Global%auxvars
+  material_auxvars => patch%aux%Material%auxvars
+  rt_auxvars => patch%aux%RT%auxvars
+  reaction => patch%reaction
+  local_total_mass = 0.d0
+  global_total_mass = 0.d0
+  
+  ! Loop through all cells in the region:
+  do k = 1,size(region%cell_ids)
+    local_id = k
+    ghosted_id = patch%grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    m3_water = material_auxvars(ghosted_id)%porosity * &         ! [-]
+               global_auxvars(ghosted_id)%sat(LIQUID_PHASE) * &  ! [water]
+               material_auxvars(ghosted_id)%volume               ! [m^3-bulk]
+    m3_bulk = material_auxvars(ghosted_id)%volume                ! [m^3-bulk]
+    ! Loop through aqueous and sorbed species:
+    do j = 1,reaction%ncomp
+      aq_species_mass = 0.d0
+      sorb_species_mass = 0.d0
+      ! aqueous species; units [mol/L-water]*[m^3-water]*[1000L/m^3-water]=[mol]
+      aq_species_mass = rt_auxvars(ghosted_id)%total(j,LIQUID_PHASE) * &
+                        m3_water * 1.0d3
+      ! sorbed species; units [mol/m^3-bulk]*[m^3-bulk]=[mol]
+      sorb_species_mass = rt_auxvars(ghosted_id)%total_sorb_eq(j) * m3_bulk
+      local_total_mass = local_total_mass + aq_species_mass + &
+                                            sorb_species_mass
+    enddo
+    ! Loop through precipitated species:
+    do m = 1,reaction%mineral%nkinmnrl
+      ppt_species_mass = 0.d0
+      ! precip. species; units [m^3-mnrl/m^3-bulk]*[m^3-bulk]/[m^3-mnrl/mol-mnrl]=[mol]
+      ppt_species_mass = rt_auxvars(ghosted_id)%mnrl_volfrac(m) * m3_bulk / &
+                         reaction%mineral%kinmnrl_molar_vol(m)      
+      local_total_mass = local_total_mass + ppt_species_mass
+    enddo 
+  enddo ! Cell loop
+  
+  ! Sum the local_total_mass across all processes that own the region: 
+  call MPI_Allreduce(local_total_mass,global_total_mass,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
+
+end subroutine PatchGetMassInRegion
 
 ! ************************************************************************** !
 

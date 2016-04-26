@@ -1035,7 +1035,7 @@ subroutine PMWFSetup(this)
   PetscInt :: i, j, k, local_id
   PetscReal :: x, y, z
   PetscInt :: waste_form_id
-  PetscInt :: temp_int
+  PetscInt :: temp_int_local, temp_int_global
   PetscErrorCode :: ierr
   
   grid => this%realization%patch%grid
@@ -1064,7 +1064,7 @@ subroutine PMWFSetup(this)
                                    grid%unstructured_grid,option,local_id)
       case default
           option%io_buffer = 'Only STRUCTURED_GRID and ' // &
-            'IMPLICIT_UNSTRUCTURED_GRID types supported in PMGlass.'
+            'IMPLICIT_UNSTRUCTURED_GRID types supported in PMWasteForm.'
           call printErrMsg(option)
     end select
     if (local_id > 0) then
@@ -1072,7 +1072,7 @@ subroutine PMWFSetup(this)
       cur_waste_form%local_cell_id = local_id
       prev_waste_form => cur_waste_form
       cur_waste_form => cur_waste_form%next
-      temp_int = 1
+      temp_int_local = 1
     else
       ! remove waste form
       next_waste_form => cur_waste_form%next
@@ -1083,26 +1083,26 @@ subroutine PMWFSetup(this)
       endif
       deallocate(cur_waste_form)
       cur_waste_form => next_waste_form
-      temp_int = 0
+      temp_int_local = 0
     endif
-    ! check to ensure that the waste form is define/located once within the
-    ! modeling domain.
-    call MPI_Allreduce(temp_int,MPI_IN_PLACE,ONE_INTEGER_MPI, &
-                       MPI_INTEGER, MPI_SUM,option%mycomm,ierr)
-    if (temp_int /= 1) then
+    ! check to ensure that the waste form is defined within the domain, and
+    ! that its located only once within the domain.
+    call MPI_Allreduce(temp_int_local,temp_int_global,ONE_INTEGER_MPI, &
+                       MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+    if (temp_int_global /= 1) then
       write(word,*) x
       option%io_buffer = word
       write(word,*) y
       option%io_buffer = trim(option%io_buffer) // ' ' // word
       write(word,*) z
       option%io_buffer = trim(option%io_buffer) // ' ' // word
-      if (temp_int == 0) then
+      if (temp_int_global == 0) then
         option%io_buffer = 'Waste form coordinate (' // &
           trim(option%io_buffer) // ') is outside domain.'
       else
         option%io_buffer = 'Waste form coordinate (' // &
-          trim(option%io_buffer) // &
-          ') is defined more than once within domain.'
+                           trim(option%io_buffer) // &
+                           ') is defined more than once within domain.'
       endif
       call printErrMsg(option)
     endif    
@@ -1268,6 +1268,7 @@ subroutine PMWFInitializeTimestep(this)
   use Field_module
   use Option_module
   use Grid_module
+  use Patch_module
   
   implicit none
 
@@ -1316,7 +1317,7 @@ subroutine PMWFInitializeTimestep(this)
     allocate(concentration_old(num_species))
     ! ------ update mass balances after transport step ---------------------
     cur_waste_form%cumulative_mass = cur_waste_form%cumulative_mass + &
-                                     cur_waste_form%instantaneous_mass_rate * dt
+                                     cur_waste_form%instantaneous_mass_rate*dt
     ! ------ update matrix volume ------------------------------------------
     dV = cur_waste_form%eff_dissolution_rate / &      ! kg-matrix/sec
          cwfm%matrix_density * &                      ! kg-matrix/m^3-matrix
