@@ -109,8 +109,9 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   class(pmc_base_type), pointer :: pmc_base
   PetscInt :: local_stop_flag
   PetscBool :: failure
-  PetscBool :: plot_flag
-  PetscBool :: transient_plot_flag
+  PetscBool :: snapshot_plot_flag
+  PetscBool :: observation_plot_flag
+  PetscBool :: massbal_plot_flag
   PetscBool :: checkpoint_at_this_time_flag
   PetscBool :: checkpoint_at_this_timestep_flag
   class(pm_base_type), pointer :: cur_pm
@@ -135,8 +136,9 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     if (this%timestepper%target_time >= sync_time) exit
     
     call SetOutputFlags(this)
-    plot_flag = PETSC_FALSE
-    transient_plot_flag = PETSC_FALSE
+    snapshot_plot_flag = PETSC_FALSE
+    observation_plot_flag = PETSC_FALSE
+    massbal_plot_flag = PETSC_FALSE
     checkpoint_at_this_time_flag = PETSC_FALSE
     checkpoint_at_this_timestep_flag = PETSC_FALSE
     
@@ -150,9 +152,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     end select
 
     ! Find mininum allowable timestep across all processors
-    call MPI_Allreduce(dt_max_loc,dt_max_glb,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION,&
-                     MPI_MIN,this%option%mycomm,ierr)
-
+    call MPI_Allreduce(dt_max_loc,dt_max_glb,ONE_INTEGER_MPI, &
+                       MPI_DOUBLE_PRECISION,MPI_MIN,this%option%mycomm,ierr)
     select type(timestepper => this%timestepper)
       class is(timestepper_surface_type)
         timestepper%dt_max_allowable = dt_max_glb
@@ -160,8 +161,9 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
           this%option%surf_subsurf_coupling_flow_dt
     end select
     call this%timestepper%SetTargetTime(sync_time,this%option, &
-                                        local_stop_flag,plot_flag, &
-                                        transient_plot_flag, &
+                                        local_stop_flag,snapshot_plot_flag, &
+                                        observation_plot_flag, &
+                                        massbal_plot_flag, &
                                         checkpoint_at_this_time_flag)
 
     this%option%surf_flow_dt = this%timestepper%dt
@@ -197,24 +199,27 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
     ! TODO(GB): Modify OutputSurface()
     !if (associated(this%Output)) then
       if (this%timestepper%time_step_cut_flag) then
-        plot_flag = PETSC_FALSE
+        snapshot_plot_flag = PETSC_FALSE
       endif
       ! however, if we are using the modulus of the output_option%imod, we may
       ! still print
-      if (mod(this%timestepper%steps, &
-              this%pm_list% &
-                output_option%periodic_output_ts_imod) == 0) then
-        plot_flag = PETSC_TRUE
+      if (mod(this%timestepper%steps,this%pm_list% &
+              output_option%periodic_snap_output_ts_imod) == 0) then
+        snapshot_plot_flag = PETSC_TRUE
       endif
-      if (plot_flag .or. mod(this%timestepper%steps, &
-                             this%pm_list%output_option% &
-                               periodic_tr_output_ts_imod) == 0) then
-        transient_plot_flag = PETSC_TRUE
+      if (mod(this%timestepper%steps,this%pm_list%output_option% &
+              periodic_obs_output_ts_imod) == 0) then
+        observation_plot_flag = PETSC_TRUE
       endif
-      !call this%Output(this%pm_list%realization_base,plot_flag, &
-      !                 transient_plot_flag)
+      if (mod(this%timestepper%steps,this%pm_list%output_option% &
+              periodic_msbl_output_ts_imod) == 0) then
+        massbal_plot_flag = PETSC_TRUE
+      endif
+      !call this%Output(this%pm_list%realization_base,snapshot_plot_flag, &
+      !                 observation_plot_flag, massbal_plot_flag)
       call OutputSurface(this%surf_realization, this%subsurf_realization, &
-                         plot_flag, transient_plot_flag)
+                         snapshot_plot_flag, observation_plot_flag, &
+                         massbal_plot_flag)
     !endif
 
     if (this%is_master .and. associated(this%checkpoint_option)) then

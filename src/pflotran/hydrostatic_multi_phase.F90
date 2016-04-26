@@ -614,12 +614,15 @@ function PhaseDensity(iphase,p,t,xm_nacl)
   PetscReal, intent(in) :: xm_nacl
  
   PetscReal :: PhaseDensity ! kg/m3 
+  PetscReal :: dw_mol
+  PetscReal :: aux(1)
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
   select case(iphase)
     case(HYDRO_LIQ_PHASE)
-      call EOSWaterDensityNaCl(t,p,xm_nacl,PhaseDensity) 
+      aux(1) = xm_nacl
+      call EOSWaterDensityExt(t,p,aux,PhaseDensity,dw_mol,ierr)
     case(HYDRO_GAS_PHASE)
       !call EOSGasDensityNoDerive(t,p,PhaseDensity,ierr)
       ! rho_kg = rho * GAS_FMW (to get gas FMW currenlty mode specific)

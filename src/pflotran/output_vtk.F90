@@ -96,7 +96,7 @@ subroutine OutputVTK(realization_base)
     write(OUTPUT_UNIT,'(''CELL_DATA'',i8)') grid%nmax
   endif
   
-  cur_variable => output_option%output_variable_list%first
+  cur_variable => output_option%output_snap_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
     call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &

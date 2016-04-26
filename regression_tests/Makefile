@@ -54,6 +54,8 @@ STANDARD_CFG = \
 	default/scco2/mphase/mphase.cfg \
 	default/scco2/flash2/flash2.cfg \
 	default/regions/regions.cfg \
+	default/salinity/salinity.cfg \
+	default/timestepping/timestepping.cfg \
 	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\
         general/general.cfg \
         hydrogeophysics/hydrogeophysics.cfg \
@@ -119,12 +121,34 @@ MFD_CFG = \
 CHECK_CFG = \
 	ascem/1d/1d-calcite/1d-calcite.cfg
 
+NOHDF5_CFG = \
+	default/column/column.cfg \
+	default/scco2/flash2/flash2.cfg \
+	geothermal_hpt/1D_Calcite/calcite_hpt.cfg \
+	default/materials/soil_compressibility/soil_compressibility.cfg \
+	wipp/nuts/nuts.cfg \
+	default/multicontinuum/multicontinuum.cfg \
+	wipp/bragflo/bragflo.cfg \
+	ufd/ufd.cfg \
+	hydrogeophysics/hydrogeophysics.cfg \
+	ascem/1d/1d-calcite/1d-calcite.cfg \
+	default/materials/mineral_volume/mineral_volume.cfg \
+	default/batch/batch.cfg \
+	shortcourse/1D_Calcite/calcite.cfg \
+	ascem/batch/batch.cfg \
+	default/scco2/mphase/mphase.cfg \
+	default/input_format/input_format.cfg \
+	shortcourse/copper_leaching/cu_leaching.cfg \
+	default/eos/eos.cfg \
+	default/regions/regions.cfg \
+	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg
+
 test : standard
 
 standard :
 ifeq ($(strip $(PARMETIS_LIB)),)
 	@echo "********************************************************"
-	@echo "  PFloTran does not appear to be compiled with Parmetis."
+	@echo "  PFLOTRAN does not appear to be compiled with Parmetis."
 	@echo "  Skipping unstructured mesh tests."
 	@echo "********************************************************"
 endif
@@ -162,7 +186,7 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 		--config-files $(MESH_CFG) --suite mesh
 else
 	@echo "********************************************************"
-	@echo "  PFloTran does not appear to be compiled with Parmetis."
+	@echo "  PFLOTRAN does not appear to be compiled with Parmetis."
 	@echo "  Skipping unstructured mesh tests."
 	@echo "********************************************************"
 endif
@@ -174,6 +198,11 @@ ngee-biogeochemistry :
 test_mimetic :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		--config-files $(MFD_CFG)
+
+nonhdf5_test :
+	$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		--suite standard standard_parallel \
+		--config-files $(NOHDF5_CFG)
 
 #
 # Try to cleanup the regression test output.
@@ -194,6 +223,9 @@ clean-tests :
 	-find . -type f -name 'tmp-restart-*' -print0 | xargs -0 rm
 	-find . -type f -name '*.chk' -print0 | xargs -0 rm
 	-find . -type f -name '*.pyc' -print0 | xargs -0 rm
+	-find . -type f -name 'sigma*.txt' -print0 | xargs -0 rm 
+	-find . -type f -name '*.dpd' -print0 | xargs -0 rm
+	-find . -type f -name 'e4d*.log' -print0 | xargs -0 rm
 	-find . -type d -name '__pycache__' -print0 | xargs -0 rm -r
 	-rm -f default/anisothermal/thc_1d.h5
 	-rm -f default/anisothermal/th_1d.h5
@@ -223,4 +255,31 @@ clean-tests :
 	-rm -f wipp/nuts/case4r1_modified-int.dat
 	-rm -f wipp/bragflo/gas_generation_2d-np4.h5
 	-rm -f default/543/543_hanford_srfcplx_base*.h5
+	-rm -f default/condition/dataset/east_surface_cell_centered.h5
+	-rm -f default/condition/dataset/east_surface_node_centered.h5
+	-rm -f default/condition/dataset/north_surface_cell_centered.h5
+	-rm -f default/condition/dataset/north_surface_node_centered.h5
+	-rm -f default/condition/dataset/top_surface_cell_centered.h5
+	-rm -f default/condition/dataset/top_surface_node_centered.h5
+	-rm -f default/condition/dataset/x_line_cell_centered.h5
+	-rm -f default/condition/dataset/x_line_node_centered.h5
+	-rm -f default/condition/dataset/y_line_cell_centered.h5
+	-rm -f default/condition/dataset/y_line_node_centered.h5
+	-rm -f default/condition/dataset/z_line_cell_centered.h5
+	-rm -f default/condition/dataset/z_line_node_centered.h5
+	-rm -f default/salinity/20x20_xz.h5
+	-rm -f default/timestepping/20x20_xz.h5
+	-rm -f hydrogeophysics/e4d__000000000003600.dpd
+	-rm -f hydrogeophysics/e4d__000000000010800.dpd
+	-rm -f hydrogeophysics/e4d__000000000025200.dpd
+	-rm -f hydrogeophysics/e4d__000000000054000.dpd
+	-rm -f hydrogeophysics/e4d__000000000111600.dpd
+	-rm -f hydrogeophysics/sigma__000000000003600.txt
+	-rm -f hydrogeophysics/sigma__000000000010800.txt
+	-rm -f hydrogeophysics/sigma__000000000025200.txt
+	-rm -f hydrogeophysics/sigma__000000000054000.txt
+	-rm -f hydrogeophysics/sigma__000000000111600.txt
+	-rm -f ufd/glass-wf_mass-0.dat
+	-rm -f wipp/bragflo/well_production2-ss_mass-0.dat
+	-rm -f ufd/glass-*.vtk
 

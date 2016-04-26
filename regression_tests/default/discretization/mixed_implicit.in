@@ -40,7 +40,7 @@ END
 
 #=========================== discretization ===================================
 GRID
-  TYPE unstructured ./mixed.ugi
+  TYPE unstructured ./mixed.h5
 END
 
 #=========================== solver options ===================================

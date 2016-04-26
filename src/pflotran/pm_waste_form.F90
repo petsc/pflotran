@@ -17,451 +17,982 @@ module PM_Waste_Form_class
 
   PetscBool, public :: bypass_warning_message = PETSC_FALSE
 
-  type, public :: wf_species_type
-   PetscReal, allocatable :: formula_weight(:)
-   PetscInt, allocatable :: column_id(:)
-   PetscInt, allocatable :: ispecies(:)
-   PetscInt :: num_species
-   character(len=MAXWORDLENGTH), allocatable :: name(:)
-  end type wf_species_type
+! --------------- waste form species packages ---------------------------------
+  type, public :: rad_species_type
+   PetscReal :: formula_weight
+   PetscReal :: decay_constant
+   PetscReal :: mass_fraction
+   PetscReal :: inst_release_fraction
+   PetscInt :: daugh_id
+   character(len=MAXWORDLENGTH) :: daughter
+   PetscInt :: column_id
+   PetscInt :: ispecies
+   character(len=MAXWORDLENGTH) :: name
+  end type rad_species_type
 
-  type, public :: fmdm_species_type
-   PetscReal, allocatable :: formula_weight(:)
-   PetscInt, allocatable :: column_id(:)
-   PetscInt :: num_species
-   character(len=MAXWORDLENGTH), allocatable :: name(:)
-  end type fmdm_species_type
+! --------------- waste form mechanism types ----------------------------------
+  type :: wf_mechanism_base_type
+    type(rad_species_type), pointer :: rad_species_list(:)
+    PetscInt :: num_species
+    PetscBool :: canister_degradation_model
+    PetscReal :: vitality_rate_mean
+    PetscReal :: vitality_rate_stdev
+    PetscReal :: vitality_rate_trunc
+    PetscReal :: canister_material_constant
+    PetscReal :: matrix_density ! kg/m^3
+    character(len=MAXWORDLENGTH) :: name
+    class(wf_mechanism_base_type), pointer :: next
+  contains
+    procedure, public :: Dissolution => WFMechBaseDissolution
+  end type wf_mechanism_base_type
 
+  type, public, extends(wf_mechanism_base_type) :: wf_mechanism_glass_type
+    PetscReal :: specific_surface_area   
+    PetscReal :: dissolution_rate         ! kg-glass/m^2/day
+  contains
+    procedure, public :: Dissolution => WFMechGlassDissolution
+  end type wf_mechanism_glass_type
+
+  type, public, extends(wf_mechanism_base_type) :: wf_mechanism_dsnf_type
+    PetscReal :: frac_dissolution_rate    ! 1/day
+  contains
+    procedure, public :: Dissolution => WFMechDSNFDissolution
+  end type wf_mechanism_dsnf_type
+
+  type, public, extends(wf_mechanism_base_type) :: wf_mechanism_fmdm_type
+    PetscReal :: specific_surface_area 
+    PetscReal :: dissolution_rate         ! kg-matrix/m^2/day
+    PetscReal :: frac_dissolution_rate    ! 1/day
+  contains
+    procedure, public :: Dissolution => WFMechFMDMDissolution
+  end type wf_mechanism_fmdm_type
+  
+  type, public, extends(wf_mechanism_base_type) :: wf_mechanism_custom_type
+    PetscReal :: specific_surface_area 
+    PetscReal :: dissolution_rate         ! kg-matrix/m^2/day
+    PetscReal :: frac_dissolution_rate    ! 1/day
+  contains
+    procedure, public :: Dissolution => WFMechCustomDissolution
+  end type wf_mechanism_custom_type
+
+! --------------- waste form types --------------------------------------------
   type :: waste_form_base_type
     PetscInt :: id
     PetscInt :: local_cell_id
     type(point3d_type) :: coordinate
     PetscReal :: volume
+    PetscReal :: exposure_factor
+    PetscReal :: eff_dissolution_rate                   ! kg-matrix/sec
     PetscReal, pointer :: instantaneous_mass_rate(:)    ! mol/sec
     PetscReal, pointer :: cumulative_mass(:)            ! mol
+    PetscReal, pointer :: rad_mass_fraction(:)          ! g-rad/g-matrix
+    PetscReal, pointer :: rad_concentration(:)          ! mol-rad/g-matrix
+    PetscReal, pointer :: inst_release_amount(:)        ! of rad
     PetscBool :: canister_degradation_flag
     PetscReal :: canister_vitality
     PetscReal :: canister_vitality_rate
+    PetscReal :: eff_canister_vit_rate
+    PetscBool :: breached
+    character(len=MAXWORDLENGTH) :: mech_name
+    class(wf_mechanism_base_type), pointer :: mechanism
     class(waste_form_base_type), pointer :: next
   end type waste_form_base_type
-  
-  type, extends(waste_form_base_type) :: waste_form_fmdm_type
-    PetscReal, pointer :: concentration(:,:)
-    PetscReal :: specific_surface_area
-    PetscReal :: burnup
-  end type waste_form_fmdm_type
-  
-  type, extends(waste_form_base_type) :: waste_form_glass_type
-    PetscReal :: exposure_factor
-    PetscReal :: glass_dissolution_rate  ! kg / sec
-  end type waste_form_glass_type
-  
+
+! --------------- waste form process model ------------------------------------
   type, public, extends(pm_base_type) :: pm_waste_form_type
     class(realization_subsurface_type), pointer :: realization
     character(len=MAXWORDLENGTH) :: data_mediator_species
     class(data_mediator_vec_type), pointer :: data_mediator
     class(waste_form_base_type), pointer :: waste_form_list
-    type(wf_species_type) :: wf_species
-    class(dataset_base_type), pointer ::  mass_fraction_dataset
+    class(wf_mechanism_base_type), pointer :: mechanism_list
     PetscBool :: print_mass_balance
-    PetscBool :: canister_degradation_model
-    PetscReal :: vitality_rate_mean
-    PetscReal :: vitality_rate_stdev
-    PetscReal :: vitality_rate_trunc
   contains
-    procedure, public :: PMWasteFormSetRealization
+    procedure, public :: PMWFSetRealization
+    procedure, public :: Setup => PMWFSetup
+    procedure, public :: Read => PMWFRead
+    procedure, public :: InitializeRun => PMWFInitializeRun
+    procedure, public :: InitializeTimestep => PMWFInitializeTimestep
+    procedure, public :: FinalizeTimestep => PMWFFinalizeTimestep
+    procedure, public :: UpdateSolution => PMWFUpdateSolution
+    procedure, public :: Solve => PMWFSolve
+    procedure, public :: Checkpoint => PMWFCheckpoint    
+    procedure, public :: Restart => PMWFRestart  
+    procedure, public :: InputRecord => PMWFInputRecord
+    procedure, public :: Destroy => PMWFDestroy
   end type pm_waste_form_type
   
-  type, public, extends(pm_waste_form_type) :: pm_waste_form_glass_type
-    PetscReal :: specific_surface_area
-    PetscReal :: glass_density
-  contains
-    procedure, public :: Setup => PMGlassSetup
-    procedure, public :: Read => PMGlassRead
-    procedure, public :: InitializeRun => PMWFGlassInitializeRun
-    procedure, public :: InitializeTimestep => PMWFGlassInitializeTimestep
-    procedure, public :: FinalizeTimestep => PMGlassFinalizeTimestep
-    procedure, public :: UpdateSolution => PMGlassUpdateSolution
-    procedure, public :: Solve => PMGlassSolve
-    procedure, public :: Checkpoint => PMGlassCheckpoint    
-    procedure, public :: Restart => PMGlassRestart  
-    procedure, public :: Destroy => PMGlassDestroy
-  end type pm_waste_form_glass_type
-  
-  type, public, extends(pm_waste_form_type) :: pm_waste_form_fmdm_type
-    type(fmdm_species_type) :: fmdm_species
-    PetscInt :: num_grid_cells_in_waste_form
-    ! mapping of fmdm species into fmdm concentration array
-    PetscInt, pointer :: mapping_fmdm(:)
-    ! mapping of species in fmdm concentration array to pflotran
-    PetscInt, pointer :: mapping_fmdm_to_pflotran(:)
-    PetscInt :: iUO2_2p
-    PetscInt :: iUCO3_2n
-    PetscInt :: iUO2
-    PetscInt :: iCO3_2n
-    PetscInt :: iO2
-    PetscInt :: iH2O2
-    PetscInt :: iFe_2p
-    PetscInt :: iH2
-    PetscInt :: iUO2_sld
-    PetscInt :: iUO3_sld
-    PetscInt :: iUO4_sld
-    PetscInt :: num_concentrations
-    PetscBool :: initialized
-  contains
-!geh: commented out subroutines can only be called externally
-    procedure, public :: Setup => PMFMDMSetup
-    procedure, public :: Read => PMFMDMRead
-!    procedure, public :: SetupSolvers => PMFMDMSetupSolvers
-    procedure, public :: InitializeRun => PMFMDMInitializeRun
-!!    procedure, public :: FinalizeRun => PMFMDMFinalizeRun
-    procedure, public :: InitializeTimestep => PMFMDMInitializeTimestep
-    procedure, public :: FinalizeTimestep => PMFMDMFinalizeTimestep
-!    procedure, public :: PreSolve => PMFMDMPreSolve
-    procedure, public :: Solve => PMFMDMSolve
-!    procedure, public :: PostSolve => PMFMDMPostSolve
-!    procedure, public :: AcceptSolution => PMFMDMAcceptSolution
-!    procedure, public :: TimeCut => PMFMDMTimeCut
-!    procedure, public :: UpdateSolution => PMFMDMUpdateSolution
-!    procedure, public :: UpdateAuxVars => PMFMDMUpdateAuxVars
-    procedure, public :: CheckpointBinary => PMFMDMCheckpointBinary
-    procedure, public :: RestartBinary => PMFMDMRestartBinary
-    procedure, public :: Destroy => PMFMDMDestroy
-  end type pm_waste_form_fmdm_type
-  
-  public :: PMFMDMCreate, &
-            PMFMDMSetup, &
-            PMGlassCreate, &
-            PMGlassSetup
+  public :: PMWFCreate, &
+            PMWFSetup, &
+            MechanismGlassCreate, &
+            MechanismDSNFCreate, &
+            MechanismCustomCreate, &
+            MechanismFMDMCreate, &
+            RadSpeciesCreate
   
 contains
 
 ! ************************************************************************** !
 
-subroutine PMWasteFormInit(this)
+subroutine MechanismInit(this)
   ! 
-  ! Creates the waste form process model
+  ! Initializes the base waste form mechanism package
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 01/15/15, 07/20/15
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
 
   implicit none
-  
-  class(pm_waste_form_type) :: this
-  
-  call PMBaseInit(this)
-  nullify(this%realization)
-  nullify(this%data_mediator)
-  nullify(this%mass_fraction_dataset)
-  this%wf_species%num_species = 0
- !------- canister degradation model --------------
+
+  class(wf_mechanism_base_type) :: this
+
+  nullify(this%next)
+  nullify(this%rad_species_list)
+  this%num_species = 0
+  this%matrix_density = UNINITIALIZED_DOUBLE
+  this%name = ''
+ !---- canister degradation model ----------------------
   this%canister_degradation_model = PETSC_FALSE
   this%vitality_rate_mean = UNINITIALIZED_DOUBLE
   this%vitality_rate_stdev = UNINITIALIZED_DOUBLE
   this%vitality_rate_trunc = UNINITIALIZED_DOUBLE
- !-------------------------------------------------
-!geh: only initialize if a pointer, instead of allocatable
-!  nullify(this%wf_species%name)
-!  nullify(this%wf_species%formula_weight)
-!  nullify(this%wf_species%column_id)
-!  nullify(this%wf_species%ispecies)
+  this%canister_material_constant = UNINITIALIZED_DOUBLE
+ !------------------------------------------------------
 
-end subroutine PMWasteFormInit
+end subroutine MechanismInit
 
 ! ************************************************************************** !
 
-subroutine PMWasteFormReadSelectCase(this,input,keyword,found,error_string, &
-                                     option)
+function MechanismGlassCreate()
+  ! 
+  ! Creates the glass waste form mechanism package
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+
+  implicit none
+  
+  class(wf_mechanism_glass_type), pointer :: MechanismGlassCreate
+  
+  allocate(MechanismGlassCreate)
+  call MechanismInit(MechanismGlassCreate)
+  MechanismGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  MechanismGlassCreate%dissolution_rate = 0.d0  ! kg / sec
+
+end function MechanismGlassCreate
+
+! ************************************************************************** !
+
+function MechanismDSNFCreate()
+  ! 
+  ! Creates the DSNF (DOE Spent Nuclear Fuel) waste form mechanism package
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+
+  implicit none
+  
+  class(wf_mechanism_dsnf_type), pointer :: MechanismDSNFCreate
+  
+  allocate(MechanismDSNFCreate)
+  call MechanismInit(MechanismDSNFCreate)
+  MechanismDSNFCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
+
+end function MechanismDSNFCreate
+
+! ************************************************************************** !
+
+function MechanismFMDMCreate()
+  ! 
+  ! Creates the FMDM waste form mechanism package
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+
+  implicit none
+  
+  class(wf_mechanism_fmdm_type), pointer :: MechanismFMDMCreate
+  
+  allocate(MechanismFMDMCreate)
+  call MechanismInit(MechanismFMDMCreate)
+  MechanismFMDMCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  MechanismFMDMCreate%dissolution_rate = UNINITIALIZED_DOUBLE  ! kg/sec
+  MechanismFMDMCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
+
+end function MechanismFMDMCreate
+
+! ************************************************************************** !
+
+function MechanismCustomCreate()
+  ! 
+  ! Creates the 'custom' waste form mechanism package
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+
+  implicit none
+  
+  class(wf_mechanism_custom_type), pointer :: MechanismCustomCreate
+  
+  allocate(MechanismCustomCreate)
+  call MechanismInit(MechanismCustomCreate)
+  MechanismCustomCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  MechanismCustomCreate%dissolution_rate = UNINITIALIZED_DOUBLE  ! kg/sec
+  MechanismCustomCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
+
+end function MechanismCustomCreate
+
+! ************************************************************************** !
+
+function RadSpeciesCreate()
+  ! 
+  ! Creates a radioactive species in the waste form mechanism package
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/09/16
+
+  implicit none
+  
+  type(rad_species_type) :: RadSpeciesCreate
+
+  RadSpeciesCreate%name = ''
+  RadSpeciesCreate%daughter = ''
+  RadSpeciesCreate%daugh_id = UNINITIALIZED_INTEGER
+  RadSpeciesCreate%formula_weight = UNINITIALIZED_DOUBLE
+  RadSpeciesCreate%decay_constant = UNINITIALIZED_DOUBLE
+  RadSpeciesCreate%mass_fraction = UNINITIALIZED_DOUBLE
+  RadSpeciesCreate%inst_release_fraction = UNINITIALIZED_DOUBLE
+  RadSpeciesCreate%column_id = UNINITIALIZED_INTEGER
+  RadSpeciesCreate%ispecies = UNINITIALIZED_INTEGER
+
+end function RadSpeciesCreate
+
+! ************************************************************************** !
+
+function WasteFormCreate()
+  ! 
+  ! Creates a waste form and initializes all parameters
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+
+  implicit none
+
+  type(waste_form_base_type), pointer :: WasteFormCreate
+
+  allocate(WasteFormCreate)
+  WasteFormCreate%id = UNINITIALIZED_INTEGER
+  WasteFormCreate%local_cell_id = UNINITIALIZED_INTEGER
+  WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
+  WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
+  WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
+  WasteFormCreate%volume = UNINITIALIZED_DOUBLE
+  WasteFormCreate%exposure_factor = 1.0d0
+  WasteFormCreate%eff_dissolution_rate = UNINITIALIZED_DOUBLE
+  WasteFormCreate%mech_name = ''
+  nullify(WasteFormCreate%instantaneous_mass_rate) ! mol-rad/sec
+  nullify(WasteFormCreate%cumulative_mass) ! mol-rad
+  nullify(WasteFormCreate%rad_mass_fraction) ! g-rad/g-matrix
+  nullify(WasteFormCreate%rad_concentration) ! mol-rad/g-matrix
+  nullify(WasteFormCreate%inst_release_amount) ! of rad
+  nullify(WasteFormCreate%mechanism)
+  nullify(WasteFormCreate%next)
+ !------- canister degradation model -----------------
+  WasteFormCreate%canister_degradation_flag = PETSC_FALSE
+  WasteFormCreate%breached = PETSC_FALSE
+  WasteFormCreate%canister_vitality = 0.d0
+  WasteFormCreate%canister_vitality_rate = UNINITIALIZED_DOUBLE
+  WasteFormCreate%eff_canister_vit_rate = UNINITIALIZED_DOUBLE
+ !----------------------------------------------------
+
+end function WasteFormCreate
+
+! ************************************************************************** !
+
+function PMWFCreate()
+  ! 
+  ! Creates and initializes the waste form process model
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/15/15, 07/20/15
+  ! Notes: Modified by Jenn Frederick 03/24/2016
+
+  implicit none
+  
+  class(pm_waste_form_type), pointer :: PMWFCreate
+  
+  allocate(PMWFCreate)
+  nullify(PMWFCreate%realization)
+  nullify(PMWFCreate%data_mediator)
+  nullify(PMWFCreate%waste_form_list)
+  nullify(PMWFCreate%mechanism_list)  
+  PMWFCreate%print_mass_balance = PETSC_FALSE
+  PMWFCreate%name = 'waste form general'
+
+  call PMBaseInit(PMWFCreate)
+
+end function PMWFCreate
+
+! ************************************************************************** !
+
+subroutine PMWFRead(this,input)
   ! 
   ! Reads input file parameters associated with the waste form process model
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
-  ! Notes: Updated/modified by Jenn Frederick, 2/3/2016
+  ! Notes: Modified by Jenn Frederick, 03/24/2016
 
   use Input_Aux_module
-  use Reaction_Aux_module, only: GetPrimarySpeciesIDFromName
   use Option_module
-  use Condition_module, only : ConditionReadValues
-  use Dataset_Ascii_class 
   use String_module
   
   implicit none
   
   class(pm_waste_form_type) :: this
   type(input_type), pointer :: input
-  character(len=MAXWORDLENGTH) :: keyword
-  PetscBool :: found
+  
+  class(waste_form_base_type), pointer :: cur_waste_form
+  class(wf_mechanism_base_type), pointer :: cur_mechanism
+  type(option_type), pointer :: option
+  character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
+  PetscBool :: found
+  PetscBool :: matched
+
+  option => this%option
+  input%ierr = 0
+  error_string = 'WASTE_FORM_GENERAL'
+
+  option%io_buffer = 'pflotran card:: ' // trim(error_string)
+  call printMsg(option)
+
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+
+    error_string = 'WASTE_FORM_GENERAL'
+    call PMWFReadMechanism(this,input,option,word,error_string,found)
+    if (found) cycle
+    
+    error_string = 'WASTE_FORM_GENERAL'
+    call PMWFReadWasteForm(this,input,option,word,error_string,found)
+    if (found) cycle
+   
+    select case(trim(word))
+    !-------------------------------------
+      case('PRINT_MASS_BALANCE')
+        this%print_mass_balance = PETSC_TRUE
+    !-------------------------------------
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    !-------------------------------------
+    end select
+  enddo
+
+  cur_waste_form => this%waste_form_list
+  do
+    if (.not.associated(cur_waste_form)) exit
+    matched = PETSC_FALSE
+    cur_mechanism => this%mechanism_list
+    do
+      if (.not.associated(cur_mechanism)) exit
+      if (StringCompare(trim(cur_waste_form%mech_name), &
+                        trim(cur_mechanism%name))) then
+        cur_waste_form%mechanism => cur_mechanism
+        matched = PETSC_TRUE
+      endif
+      if (matched) exit
+      cur_mechanism => cur_mechanism%next
+    enddo
+    if (.not.associated(cur_waste_form%mechanism)) then
+      option%io_buffer = 'WASTE_FORM MECHANISM ' // &
+                         trim(cur_waste_form%mech_name) // &
+                         ' not found amoung given mechanism names.'
+      call printErrMsg(option)
+    endif
+    if (initialized(cur_waste_form%canister_vitality_rate) .and. &
+        .not. cur_waste_form%mechanism%canister_degradation_model) then
+      option%io_buffer = 'WASTE_FORM MECHANISM ' // &
+                         trim(cur_waste_form%mech_name) // &
+                         ' does not have the canister degradation model turned &
+                         &on, but at least one of the waste forms assigned to &
+                         &this mechanism specifies a canister vitality rate.'
+      call printErrMsg(option)
+    endif
+    ! both waste form and mechanism canister vitality rate parameters 
+    ! are specified:
+    if (initialized(cur_waste_form%canister_vitality_rate) .and. &
+        ( initialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
+          initialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
+          initialized(cur_waste_form%mechanism%vitality_rate_trunc) )) then
+      option%io_buffer = 'Either CANISTER_VITALITY_RATE within the &
+                         &WASTE_FORM blocks -or- the VITALITY_LOG10_MEAN, &
+                         &VITALITY_LOG10_STDEV, and VITALITY_UPPER_TRUNCATION & 
+                         &within the WASTE_FORM MECHANISM ' // &
+                         trim(cur_waste_form%mechanism%name) // &
+                         ' block should be specified, but not both.'
+      call printErrMsg(option)
+    endif
+    ! the canister degradation model is on, but neither canister vitality
+    ! rate parameters were given:
+    if (cur_waste_form%mechanism%canister_degradation_model) then 
+      if ( (uninitialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
+            uninitialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
+            uninitialized(cur_waste_form%mechanism%vitality_rate_trunc) ) .and. &
+          uninitialized(cur_waste_form%canister_vitality_rate) )  then 
+        option%io_buffer = 'CANISTER_VITALITY_RATE within the &
+                         &WASTE_FORM blocks -or- the VITALITY_LOG10_MEAN, &
+                         &VITALITY_LOG10_STDEV, and VITALITY_UPPER_TRUNCATION & 
+                         &within the WASTE_FORM MECHANISM ' // &
+                         trim(cur_waste_form%mechanism%name) // &
+                         ' block should be specified (but not both).'
+        call printErrMsg(option)
+      endif
+    endif
+    ! the canister degradation model is on, but neither canister vitality
+    ! rate parameters were given:
+    if (uninitialized(cur_waste_form%canister_vitality_rate) .and. &
+        cur_waste_form%canister_degradation_flag) then
+      if (uninitialized(cur_waste_form%mechanism%vitality_rate_mean)) then
+        option%io_buffer = 'VITALITY_LOG10_MEAN must be given in the '&
+                            // trim(error_string) // ' ' // &
+                            trim(cur_waste_form%mechanism%name) // &
+                            ', CANISTER_DEGRADATION_MODEL block.'
+        call printErrMsg(option)
+      endif
+      if (uninitialized(cur_waste_form%mechanism%vitality_rate_stdev)) then
+        option%io_buffer = 'VITALITY_LOG10_STDEV must be given in the '&
+                           // trim(error_string) // ' ' // &
+                           trim(cur_waste_form%mechanism%name) // &
+                           ', CANISTER_DEGRADATION_MODEL block.'
+        call printErrMsg(option)
+      endif
+      if (uninitialized(cur_waste_form%mechanism%vitality_rate_trunc)) then
+        option%io_buffer = 'VITALITY_UPPER_TRUNCATION must be given in the '&
+                           // trim(error_string) // ' ' // &
+                           trim(cur_waste_form%mechanism%name) // &
+                           ', CANISTER_DEGRADATION_MODEL block.'
+        call printErrMsg(option)
+      endif 
+    endif
+    cur_waste_form => cur_waste_form%next
+  enddo
+    
+end subroutine PMWFRead
+
+! ************************************************************************** !
+
+subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
+  ! 
+  ! Reads input file parameters associated with the waste form mechanism
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/24/2016
+  !
+  use Input_Aux_module
+  use Reaction_Aux_module, only: GetPrimarySpeciesIDFromName
+  use Option_module
+  use Condition_module, only : ConditionReadValues
+  use String_module
+  use Units_module
+  
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  type(input_type), pointer :: input
   type(option_type) :: option
+  character(len=MAXWORDLENGTH) :: keyword
+  character(len=MAXSTRINGLENGTH) :: error_string
+  PetscBool :: found
 
-  character(len=MAXWORDLENGTH) :: word, units
-  character(len=MAXSTRINGLENGTH) :: temp_buf, string, units_category
-  character(len=MAXSTRINGLENGTH) :: species_name_buf
-  character(len=MAXSTRINGLENGTH) :: species_formula_wt_buf
-  class(dataset_ascii_type), pointer :: dataset_ascii
-  PetscInt :: k, icol
+  PetscBool :: added
+  character(len=MAXWORDLENGTH) :: word, units, internal_units
+  character(len=MAXSTRINGLENGTH) :: temp_buf, string
+  type(rad_species_type), pointer :: temp_species_array(:)
+  class(wf_mechanism_base_type), pointer :: new_mechanism, cur_mechanism
+  PetscInt :: k, j, icol
+  PetscReal :: double
 
+  error_string = trim(error_string) // ',MECHANISM'
   found = PETSC_TRUE
-  species_name_buf = ''
-  species_formula_wt_buf = ''
+  added = PETSC_FALSE
+  input%ierr = 0
+  allocate(temp_species_array(50))
   k = 0
 
   select case(trim(keyword))
-!-------------------------------------
-    case('SPECIES')
+  !-------------------------------------
+    case('MECHANISM')
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      call InputErrorMsg(input,option,'mechanism type',error_string)
+      call StringToUpper(word)
+      select case(trim(word))
+      !---------------------------------
+        case('GLASS')
+          error_string = trim(error_string) // ' GLASS'
+          allocate(new_mechanism)
+          new_mechanism => MechanismGlassCreate()
+      !---------------------------------
+        case('DSNF')
+          error_string = trim(error_string) // ' DSNF'
+          allocate(new_mechanism)
+          new_mechanism => MechanismDSNFCreate()
+      !---------------------------------
+        case('FMDM')
+          option%io_buffer = 'FMDM waste form not yet implemented. Sorry! ' &
+                             // trim(error_string)
+          call printErrMsg(option)
+          !error_string = trim(error_string) // ' FMDM'
+          !allocate(new_mechanism)
+          !new_mechanism => MechanismFMDMCreate()
+      !---------------------------------
+        case('CUSTOM')
+          error_string = trim(error_string) // ' CUSTOM'
+          allocate(new_mechanism)
+          new_mechanism => MechanismCustomCreate()
+      !---------------------------------
+        case default
+          option%io_buffer = 'Unrecognized mechanism type &
+                             &in the ' // trim(error_string) // ' block.'
+          call printErrMsg(option)
+      !---------------------------------
+      end select
+      
       do
         call InputReadPflotranString(input,option)
+        if (InputError(input)) exit
         if (InputCheckExit(input,option)) exit
-        k = k + 1
         call InputReadWord(input,option,word,PETSC_TRUE)
-        species_name_buf = trim(species_name_buf) // ' ' // trim(word)
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        species_formula_wt_buf = trim(species_formula_wt_buf) // ' ' &
-                                 // trim(word)
-        this%wf_species%num_species = k
+        call InputErrorMsg(input,option,'keyword',error_string)
+        call StringToUpper(word)
+        select case(trim(word))
+        !--------------------------
+          case('NAME')
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'mechanism name',error_string)
+            call StringToUpper(word)
+            new_mechanism%name = trim(word)
+        !--------------------------
+          case('SPECIFIC_SURFACE_AREA')
+            call InputReadDouble(input,option,double)
+            call InputErrorMsg(input,option,'specific surface area', &
+                               error_string)
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (input%ierr == 0) then
+              internal_units = 'm^2/m^3'
+              double = UnitsConvertToInternal(word,internal_units,option) * &
+                       double
+            endif
+            select type(new_mechanism)
+              type is(wf_mechanism_dsnf_type)
+                option%io_buffer = 'SPECIFIC_SURFACE_AREA cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+              type is(wf_mechanism_custom_type)
+                new_mechanism%specific_surface_area = double
+              type is(wf_mechanism_glass_type)
+                new_mechanism%specific_surface_area = double
+              type is(wf_mechanism_fmdm_type)
+                new_mechanism%specific_surface_area = double
+            end select
+        !--------------------------
+          case('MATRIX_DENSITY')
+            call InputReadDouble(input,option,new_mechanism%matrix_density)
+            call InputErrorMsg(input,option,'matrix density',error_string)
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (input%ierr == 0) then
+              internal_units = 'kg/m^3'
+              new_mechanism%matrix_density = UnitsConvertToInternal(word, &
+                   internal_units,option) * new_mechanism%matrix_density
+            endif
+        !--------------------------
+          case('FRACTIONAL_DISSOLUTION_RATE')
+            select type(new_mechanism)
+              type is(wf_mechanism_custom_type)
+                call InputReadDouble(input,option, &
+                     new_mechanism%frac_dissolution_rate)
+                call InputErrorMsg(input,option,'fractional dissolution rate', &
+                                   error_string)
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                if (input%ierr == 0) then
+                  internal_units = 'unitless/sec'
+                  new_mechanism%frac_dissolution_rate = &
+                    UnitsConvertToInternal(word,internal_units,option) * &
+                    new_mechanism%frac_dissolution_rate
+                endif
+              type is(wf_mechanism_glass_type)
+                option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+              type is(wf_mechanism_dsnf_type)
+                option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case('DISSOLUTION_RATE')
+            select type(new_mechanism)
+              type is(wf_mechanism_custom_type)
+                call InputReadDouble(input,option, &
+                     new_mechanism%dissolution_rate)
+                call InputErrorMsg(input,option,'dissolution rate',error_string)
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                if (input%ierr == 0) then
+                  internal_units = 'kg/m^2-sec'
+                  new_mechanism%dissolution_rate = &
+                    UnitsConvertToInternal(word,internal_units,option) * &
+                    new_mechanism%dissolution_rate
+                endif
+              type is(wf_mechanism_glass_type)
+                option%io_buffer = 'DISSOLUTION_RATE cannot be specified for ' &
+                                   // trim(error_string)
+                call printErrMsg(option)
+              type is(wf_mechanism_dsnf_type)
+                option%io_buffer = 'DISSOLUTION_RATE cannot be specified for ' &
+                                   // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case('SPECIES')
+            do
+              call InputReadPflotranString(input,option)
+              if (InputCheckExit(input,option)) exit
+              k = k + 1
+              temp_species_array(k) = RadSpeciesCreate() 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'SPECIES name',error_string)
+              temp_species_array(k)%name = trim(word)
+              call InputReadDouble(input,option,double)
+              call InputErrorMsg(input,option,'SPECIES formula weight', &
+                                 error_string)
+              temp_species_array(k)%formula_weight = double
+              call InputReadDouble(input,option,double)
+              call InputErrorMsg(input,option,'SPECIES decay rate constant', &
+                                 error_string)
+              temp_species_array(k)%decay_constant = double
+              call InputReadDouble(input,option,double)
+              call InputErrorMsg(input,option,'SPECIES initial mass fraction', &
+                                 error_string)
+              temp_species_array(k)%mass_fraction = double
+              call InputReadDouble(input,option,double)
+              call InputErrorMsg(input,option,'SPECIES instant release &
+                                 &fraction',error_string)
+              temp_species_array(k)%inst_release_fraction = double
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                temp_species_array(k)%daughter = trim(word)
+              else
+                temp_species_array(k)%daughter = 'no_daughter'
+              endif
+              new_mechanism%num_species = k
+            enddo
+            if (k == 0) then
+              option%io_buffer = 'At least one radionuclide species must be &
+                                 &provided in the ' // trim(error_string) // &
+                                 ', SPECIES block.'
+              call printErrMsg(option)
+            endif
+            allocate(new_mechanism%rad_species_list(k))
+            new_mechanism%rad_species_list(1:k) = temp_species_array(1:k)
+            deallocate(temp_species_array)
+            k = 0
+            do while (k < new_mechanism%num_species)
+              k = k + 1
+              if (trim(new_mechanism%rad_species_list(k)%daughter) == &
+                  'no_daughter') then
+                new_mechanism%rad_species_list(k)%daugh_id = 0
+              else
+                j = 0
+                do while (j < new_mechanism%num_species)
+                  j = j + 1
+                  if (trim(new_mechanism%rad_species_list(k)%daughter) == &
+                       trim(new_mechanism%rad_species_list(j)%name)) then
+                    new_mechanism%rad_species_list(k)%daugh_id = j
+                    exit
+                  endif
+                enddo
+              endif
+            enddo
+        !--------------------------
+          case('CANISTER_DEGRADATION_MODEL')
+            new_mechanism%canister_degradation_model = PETSC_TRUE
+            do
+              call InputReadPflotranString(input,option)
+              if (InputCheckExit(input,option)) exit
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call StringToUpper(word)
+              select case(trim(word))
+              case('VITALITY_LOG10_MEAN')
+                call InputReadDouble(input,option, &
+                                     new_mechanism%vitality_rate_mean)
+                call InputErrorMsg(input,option,'canister vitality log-10 &
+                                   &mean value',error_string)
+              case('VITALITY_LOG10_STDEV')
+                call InputReadDouble(input,option, &
+                                     new_mechanism%vitality_rate_stdev)
+                call InputErrorMsg(input,option,'canister vitality log-10 &
+                                   &st. dev. value',error_string)
+              case('VITALITY_UPPER_TRUNCATION')
+                call InputReadDouble(input,option, &
+                                     new_mechanism%vitality_rate_trunc)
+                call InputErrorMsg(input,option,'canister vitality log-10 &
+                                   &upper truncation value',error_string)
+              case('CANISTER_MATERIAL_CONSTANT')
+                call InputReadDouble(input,option, &
+                                     new_mechanism%canister_material_constant)
+                call InputErrorMsg(input,option,'canister material constant', &
+                                   error_string)
+              case default
+                option%io_buffer = 'Keyword ' // trim(word) // &
+                                   ' not recognized in the ' // &
+                                   trim(error_string) // &
+                                   ' CANISTER_DEGRADATION_MODEL block.'
+                call printErrMsg(option)
+              end select
+            enddo
+        !--------------------------
+          case default
+            call InputKeywordUnrecognized(word,error_string,option)
+        !--------------------------
+        end select
       enddo
-      if (k == 0) then
-        option%io_buffer = 'At least one species name and formula weight &
-                           &must be given in the ' // trim(error_string) &
+
+     !----------- error messaging ----------------------------------------------
+      if (new_mechanism%name == '') then
+        option%io_buffer = 'NAME must be specified in ' // trim(error_string) &
                            // ' block.'
         call printErrMsg(option)
       endif
-      allocate(this%wf_species%name(k))  
-      allocate(this%wf_species%formula_weight(k))
-      allocate(this%wf_species%column_id(k))
-      allocate(this%wf_species%ispecies(k))
-      input%buf = species_name_buf
-      k = 0
-      do while (k < this%wf_species%num_species)
-        k = k + 1
-        call InputReadWord(input,option,this%wf_species%name(k),PETSC_TRUE)
-        call InputErrorMsg(input,option,'species name',error_string)
-      enddo
-      input%buf = species_formula_wt_buf
-      k = 0
-      do while (k < this%wf_species%num_species)
-        k = k + 1
-        call InputReadDouble(input,option,this%wf_species%formula_weight(k))
-        call InputErrorMsg(input,option,'species formula weight',error_string)
-        this%wf_species%column_id(k) = UNINITIALIZED_INTEGER
-        this%wf_species%ispecies(k) = UNINITIALIZED_INTEGER
-      enddo
-!-------------------------------------
-    case('MASS_FRACTION')
-      temp_buf = input%buf
-      call InputReadWord(input,option,word,PETSC_TRUE)
-      call InputErrorMsg(input,option,'mass fraction file/list',error_string)
-      call StringToUpper(word)
-      select case(trim(word))
-        case('FILE') ! OK format, do now throw error
-        case('LIST') ! OK format, do not throw error
-        case default
-          option%io_buffer = 'A mass fraction FILE or LIST must be given in &
-                             &the ' // trim(error_string) // ' block. Only &
-                             &FILE or LIST supported in the ' &
-                             // trim(error_string) // ' block.'
-        call printErrMsg(option)
-      end select
-      input%buf = temp_buf
-      dataset_ascii => DatasetAsciiCreate()
-      this%mass_fraction_dataset => dataset_ascii
-      dataset_ascii%data_type = DATASET_REAL
-      units_category = 'unitless'
-      call ConditionReadValues(input,option,word,this%mass_fraction_dataset, &
-                               units,units_category)
-      if (associated(dataset_ascii%time_storage)) then
-        ! default time interpolation is linear
-        if (dataset_ascii%time_storage%time_interpolation_method == &
-             INTERPOLATION_NULL) then
-          dataset_ascii%time_storage%time_interpolation_method = &
-               INTERPOLATION_LINEAR
-        endif
-      endif
-      if (dataset_ascii%header == '') then
-        option%io_buffer = 'A HEADER must be specified in the ' // &
-                           trim(error_string) // ' mass fraction file/list.'
-        call printErrMsg(option)
-      endif
-!-------------------------------------
-    case('CANISTER_DEGRADATION_MODEL')
-      this%canister_degradation_model = PETSC_TRUE
-      option%io_buffer = 'canister degradation model'
-      call printMsg(option)
-      do
-        call InputReadPflotranString(input,option)
-        if (InputCheckExit(input,option)) exit
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call StringToUpper(word)
-        select case(trim(word))
-          case('VITALITY_LOG10_MEAN')
-            call InputReadDouble(input,option,this%vitality_rate_mean)
-            call InputErrorMsg(input,option,'canister vitality log-10 &
-                               &mean value',error_string)
-          case('VITALITY_LOG10_STDEV')
-            call InputReadDouble(input,option,this%vitality_rate_stdev)
-            call InputErrorMsg(input,option,'canister vitality log-10 &
-                               &st. dev. value',error_string)
-          case('VITALITY_UPPER_TRUNCATION')
-            call InputReadDouble(input,option,this%vitality_rate_trunc)
-            call InputErrorMsg(input,option,'canister vitality log-10 &
-                               &upper truncation value',error_string)
-          case default
-            option%io_buffer = 'Keyword ' // trim(word) // ' not recognized &
-                               &in the ' // trim(error_string) // &
-                               ' CANISTER_DEGRADATION_MODEL block.'
+      select type(new_mechanism)
+        type is(wf_mechanism_glass_type)
+          if (uninitialized(new_mechanism%specific_surface_area)) then
+            option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' &
+                               // trim(error_string) // ' ' // &
+                               trim(new_mechanism%name) // ' block.'
             call printErrMsg(option)
-        end select
-      enddo
-!-------------------------------------
-    case('PRINT_MASS_BALANCE')
-      this%print_mass_balance = PETSC_TRUE
-!-------------------------------------    
-    case default
+          endif
+        type is(wf_mechanism_custom_type)
+          if (uninitialized(new_mechanism%specific_surface_area) .and. &
+              uninitialized(new_mechanism%dissolution_rate) .and. &
+              uninitialized(new_mechanism%frac_dissolution_rate)) then
+            option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE or &
+                               &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
+                               &must be specified in ' // trim(error_string) &
+                               // ' ' // trim(new_mechanism%name) // ' block.'
+            call printErrMsg(option)
+          endif
+          if ( (initialized(new_mechanism%frac_dissolution_rate) .and. &
+                initialized(new_mechanism%dissolution_rate)    ) .or. &
+               (uninitialized(new_mechanism%frac_dissolution_rate) .and. &
+                uninitialized(new_mechanism%dissolution_rate)    ) ) then
+            option%io_buffer = 'Either FRACTIONAL_DISSOLUTION_RATE or &
+                               &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
+                               &must be specified in ' // trim(error_string) &
+                               // ' ' // trim(new_mechanism%name) // ' block. &
+                               &Both types of dissolution rates cannot be &
+                               &specified.'
+            call printErrMsg(option)
+          endif
+          if ( (initialized(new_mechanism%specific_surface_area) .and. &
+                uninitialized(new_mechanism%dissolution_rate)  ) .or. &
+               (uninitialized(new_mechanism%specific_surface_area) .and. &
+                initialized(new_mechanism%dissolution_rate)      ) ) then
+            option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE or &
+                               &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
+                               &must be specified in ' // trim(error_string) &
+                               // ' ' // trim(new_mechanism%name) // ' block.'
+            call printErrMsg(option)
+          endif
+      end select
+      if (uninitialized(new_mechanism%matrix_density)) then
+        option%io_buffer = 'MATRIX_DENSITY must be specified in ' // &
+                           trim(error_string) // ' ' // &
+                           trim(new_mechanism%name) // ' block.'
+        call printErrMsg(option)
+      endif
+
+      if (new_mechanism%canister_degradation_model .and. &
+          uninitialized(new_mechanism%canister_material_constant)) then
+        option%io_buffer = 'CANISTER_MATERIAL_CONSTANT must be given in the '&
+                           // trim(error_string) // ' ' // &
+                           trim(new_mechanism%name) // &
+                           ', CANISTER_DEGRADATION_MODEL block.'
+        call printErrMsg(option)
+      endif
+
+      if (.not.associated(new_mechanism%rad_species_list)) then
+        option%io_buffer = 'At least one SPECIES must be specified in the ' // &
+          trim(error_string) // ' ' // trim(new_mechanism%name) // ' block.'
+        call printErrMsg(option)
+      endif
+
+      if (.not.associated(this%mechanism_list)) then
+        this%mechanism_list => new_mechanism
+      else
+        cur_mechanism => this%mechanism_list
+        do
+          if (.not.associated(cur_mechanism)) exit
+          if (.not.associated(cur_mechanism%next)) then
+            cur_mechanism%next => new_mechanism
+            added = PETSC_TRUE
+          endif
+          if (added) exit
+          cur_mechanism => cur_mechanism%next
+        enddo
+      endif
+      nullify(new_mechanism)
+  !-------------------------------------    
+    case default !(MECHANISM keyword not found)
       found = PETSC_FALSE
-!-------------------------------------
+  !-------------------------------------
   end select
 
-end subroutine PMWasteFormReadSelectCase
+end subroutine PMWFReadMechanism
 
 ! ************************************************************************** !
 
-subroutine PMWFReadError(this,input,option,error_string)
+subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   ! 
-  ! Checks for input deck reading errors for the waste form process model.
+  ! Reads input file parameters associated with the waste form 
   ! 
   ! Author: Jenn Frederick
-  ! Date: 02/12/2016
-
-  use Option_module
+  ! Date: 03/24/2016
+  !
   use Input_Aux_module
-
+  use Reaction_Aux_module, only: GetPrimarySpeciesIDFromName
+  use Option_module
+  use Condition_module, only : ConditionReadValues
+  use Dataset_Ascii_class 
+  use String_module
+  use Units_module
+  
   implicit none
   
   class(pm_waste_form_type) :: this
   type(input_type), pointer :: input
   type(option_type) :: option
+  character(len=MAXWORDLENGTH) :: keyword
   character(len=MAXSTRINGLENGTH) :: error_string
+  PetscBool :: found
 
-  if (.not.associated(this%mass_fraction_dataset)) then
-    option%io_buffer = 'MASS_FRACTION must be specified in the ' // &
-                       trim(error_string) // ' block.'
-    call printErrMsg(option)
-  endif
-  if (.not.associated(this%waste_form_list)) then
-    option%io_buffer = 'At least one WASTE_FORM must be specified in the ' // &
-                       trim(error_string) // ' block.'
-    call printErrMsg(option)
-  endif
-  if (.not.allocated(this%wf_species%name)) then
-    option%io_buffer = 'At least one SPECIES NAME and FORMULA_WEIGHT must be &
-                       &specified in the ' // trim(error_string) // ' block.'
-    call printErrMsg(option)
-  endif
-  
-  if (this%canister_degradation_model) then
-    if (uninitialized(this%vitality_rate_mean)) then
-      option%io_buffer = 'VITALITY_LOG10_MEAN must be given in the '&
-                         // trim(error_string) // &
-                         ', CANISTER_DEGRADATION_MODEL block.'
-      call printErrMsg(option)
-    endif
-    if (uninitialized(this%vitality_rate_stdev)) then
-      option%io_buffer = 'VITALITY_LOG10_STDEV must be given in the '&
-                         // trim(error_string) // &
-                         ', CANISTER_DEGRADATION_MODEL block.'
-      call printErrMsg(option)
-    endif
-    if (uninitialized(this%vitality_rate_trunc)) then
-      option%io_buffer = 'VITALITY_UPPER_TRUNCATION must be given in the '&
-                         // trim(error_string) // &
-                         ', CANISTER_DEGRADATION_MODEL block.'
-      call printErrMsg(option)
-    endif
-  endif
+  PetscBool :: added
+  character(len=MAXWORDLENGTH) :: word, internal_units
+  class(waste_form_base_type), pointer :: new_waste_form, cur_waste_form
+  class(wf_mechanism_base_type), pointer :: cur_mechanism
 
-end subroutine PMWFReadError
+  error_string = trim(error_string) // ',WASTE_FORM'
+  found = PETSC_TRUE
+  added = PETSC_FALSE
 
-! ************************************************************************** !
-
-subroutine PMWFAssignColIdsFromHeader(this,input,option,error_string)
-  ! 
-  ! Reads the mass fraction file header and assigns a column id to each species
-  ! in the waste form process model.
-  ! 
-  ! Author: Jenn Frederick
-  ! Date: 02/12/2016
-
-  use Option_module
-  use String_module, only : StringToUpper
-  use Input_Aux_module
-
-  implicit none
-  
-  class(pm_waste_form_type) :: this
-  type(input_type), pointer :: input
-  type(option_type) :: option
-  character(len=MAXSTRINGLENGTH) :: error_string
-
-  PetscInt :: icol, k
-  character(len=MAXWORDLENGTH) :: word
-
-  input%buf = this%mass_fraction_dataset%header
-  input%ierr = 0
-  icol = 0
-  call InputReadWord(input,option,word,PETSC_TRUE)
-  call StringToUpper(word)
-  if ((input%ierr == 0) .and. (trim(word) == 'HEADER')) then
-    call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'while reading the mass fraction file/&
-                       &list header',error_string)
-    call StringToUpper(word)
-    if (trim(word) == 'TIME') then
+  select case(trim(keyword))
+  !-------------------------------------
+    case('WASTE_FORM')
+      allocate(new_waste_form)
+      new_waste_form => WasteFormCreate()
       do
-        k = 0
+        call InputReadPflotranString(input,option)
+        if (InputError(input)) exit
+        if (InputCheckExit(input,option)) exit
         call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          icol = icol + 1
-              
-          do while (k < this%wf_species%num_species)
-            k = k + 1
-            if (trim(word) == trim(this%wf_species%name(k))) then
-              this%wf_species%column_id(k) = icol
-              exit
+        call InputErrorMsg(input,option,'keyword',error_string)
+        call StringToUpper(word)
+        select case(trim(word))
+        !-----------------------------
+          case('EXPOSURE_FACTOR')
+            call InputReadDouble(input,option,new_waste_form%exposure_factor)
+            call InputErrorMsg(input,option,'exposure factor',error_string)
+        !-----------------------------
+          case('VOLUME')
+            call InputReadDouble(input,option,new_waste_form%volume)
+            call InputErrorMsg(input,option,'volume',error_string)
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (input%ierr == 0) then
+              internal_units = 'm^3'
+              new_waste_form%volume = UnitsConvertToInternal(word, &
+                   internal_units,option) * new_waste_form%volume
             endif
-          enddo ! k loop
-
-        else
-          exit
-        endif
-      enddo ! icol loop
-      k = 0
-      do while (k < this%wf_species%num_species)
-        k = k + 1
-        if (Uninitialized(this%wf_species%column_id(k))) then
-          option%io_buffer = 'Mismatch between species in the ' &
-                              // trim(error_string) // ' mass fraction file/&
-                              &list header and those listed in the ' &
-                              // trim(error_string) // ' block.'
-          call printErrMsg(option)
-        endif
+        !-----------------------------
+          case('COORDINATE')
+            call GeometryReadCoordinate(input,option, &
+                                        new_waste_form%coordinate,error_string)
+            ! check if coordinate is within the domain
+        !-----------------------------
+          case('MECHANISM_NAME')
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'mechanism assignment',error_string)
+            call StringToUpper(word)
+            new_waste_form%mech_name = trim(word)
+        !-----------------------------
+          case('CANISTER_VITALITY_RATE')
+            call InputReadDouble(input,option, &
+                                 new_waste_form%canister_vitality_rate)
+            call InputErrorMsg(input,option,'canister vitality rate',error_string)
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            if (input%ierr == 0) then
+              internal_units = 'unitless/sec'
+              new_waste_form%canister_vitality_rate = UnitsConvertToInternal(word, &
+                   internal_units,option) * &
+                   new_waste_form%canister_vitality_rate
+            endif
+        !-----------------------------    
+          case default
+            call InputKeywordUnrecognized(word,error_string,option)
+        !-----------------------------
+        end select
       enddo
-    else
-      option%io_buffer = 'The first column in the ' // trim(error_string) &
-                         // ' mass fraction file/list must be TIME.'
-      call printErrMsg(option)
-    endif
-  else
-    option%io_buffer = 'A HEADER must be specified in the ' // &
-                       trim(error_string) // ' mass fraction file/list.'
+      
+     ! ----------------- error messaging -------------------------------------
+      if (Uninitialized(new_waste_form%volume)) then
+        option%io_buffer = 'VOLUME must be specified for all waste forms.'
+        call printErrMsg(option)
+      endif
+      if (Uninitialized(new_waste_form%coordinate%z)) then
+        option%io_buffer = 'COORDINATE must be specified for all waste forms.'
+        call printErrMsg(option)
+      endif
+      if (new_waste_form%mech_name == '') then
+        option%io_buffer = 'MECHANISM_NAME must be specified for &
+                           &all waste forms.'
+        call printErrMsg(option)
+      endif
+      !note: do not throw error if EXPOSURE_FACTOR isn't specified (default = 1)
+      
+      if (.not.associated(this%waste_form_list)) then
+        this%waste_form_list => new_waste_form
+      else
+        cur_waste_form => this%waste_form_list
+        do
+          if (.not.associated(cur_waste_form)) exit
+          if (.not.associated(cur_waste_form%next)) then
+            cur_waste_form%next => new_waste_form
+            added = PETSC_TRUE
+          endif
+          if (added) exit
+          cur_waste_form => cur_waste_form%next
+        enddo
+      endif
+      nullify(new_waste_form)
+  !-------------------------------------
+    case default
+      found = PETSC_FALSE
+  !-------------------------------------
+  end select
+
+  if (.not.associated(this%waste_form_list)) then
+    option%io_buffer = 'At least one WASTE_FORM must be specified in the &
+                       &WASTE_FORM_GENERAL block.'
     call printErrMsg(option)
   endif
 
-end subroutine PMWFAssignColIdsFromHeader
+end subroutine PMWFReadWasteForm
 
 ! ************************************************************************** !
 
-subroutine PMWasteFormSetRealization(this,realization)
+subroutine PMWFSetRealization(this,realization)
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
@@ -476,7 +1007,108 @@ subroutine PMWasteFormSetRealization(this,realization)
   this%realization => realization
   this%realization_base => realization
 
-end subroutine PMWasteFormSetRealization
+end subroutine PMWFSetRealization
+
+! ************************************************************************** !
+
+subroutine PMWFSetup(this)
+  ! 
+  ! Maps waste forms to grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+
+  use Grid_module
+  use Grid_Structured_module
+  use Grid_Unstructured_module
+  use Option_module
+
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  class(waste_form_base_type), pointer :: cur_waste_form, prev_waste_form
+  class(waste_form_base_type), pointer :: next_waste_form
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: i, j, k, local_id
+  PetscReal :: x, y, z
+  PetscInt :: waste_form_id
+  PetscInt :: temp_int_local, temp_int_global
+  PetscErrorCode :: ierr
+  
+  grid => this%realization%patch%grid
+  option => this%realization%option
+  
+  waste_form_id = 0
+  nullify(prev_waste_form)
+  cur_waste_form => this%waste_form_list
+  do
+    if (.not.associated(cur_waste_form)) exit
+    waste_form_id = waste_form_id + 1
+    local_id = -1
+    x = cur_waste_form%coordinate%x
+    y = cur_waste_form%coordinate%y
+    z = cur_waste_form%coordinate%z
+    select case(grid%itype)
+      case(STRUCTURED_GRID)
+        call StructGridGetIJKFromCoordinate(grid%structured_grid,x,y,z, &
+                                            i,j,k)
+        if (i > 0 .and. j > 0 .and. k > 0) then
+          local_id = i + (j-1)*grid%structured_grid%nlx + &
+                      (k-1)*grid%structured_grid%nlxy
+        endif
+      case(IMPLICIT_UNSTRUCTURED_GRID)
+        call UGridGetCellFromPoint(x,y,z, &
+                                   grid%unstructured_grid,option,local_id)
+      case default
+          option%io_buffer = 'Only STRUCTURED_GRID and ' // &
+            'IMPLICIT_UNSTRUCTURED_GRID types supported in PMWasteForm.'
+          call printErrMsg(option)
+    end select
+    if (local_id > 0) then
+      cur_waste_form%id = waste_form_id
+      cur_waste_form%local_cell_id = local_id
+      prev_waste_form => cur_waste_form
+      cur_waste_form => cur_waste_form%next
+      temp_int_local = 1
+    else
+      ! remove waste form
+      next_waste_form => cur_waste_form%next
+      if (associated(prev_waste_form)) then
+        prev_waste_form%next => next_waste_form
+      else
+        this%waste_form_list => next_waste_form
+      endif
+      deallocate(cur_waste_form)
+      cur_waste_form => next_waste_form
+      temp_int_local = 0
+    endif
+    ! check to ensure that the waste form is defined within the domain, and
+    ! that its located only once within the domain.
+    call MPI_Allreduce(temp_int_local,temp_int_global,ONE_INTEGER_MPI, &
+                       MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+    if (temp_int_global /= 1) then
+      write(word,*) x
+      option%io_buffer = word
+      write(word,*) y
+      option%io_buffer = trim(option%io_buffer) // ' ' // word
+      write(word,*) z
+      option%io_buffer = trim(option%io_buffer) // ' ' // word
+      if (temp_int_global == 0) then
+        option%io_buffer = 'Waste form coordinate (' // &
+          trim(option%io_buffer) // ') is outside domain.'
+      else
+        option%io_buffer = 'Waste form coordinate (' // &
+                           trim(option%io_buffer) // &
+                           ') is defined more than once within domain.'
+      endif
+      call printErrMsg(option)
+    endif    
+  enddo
+  
+end subroutine PMWFSetup
 
 ! ************************************************************************** !
 
@@ -502,6 +1134,8 @@ end subroutine PMWasteFormSetRealization
   IS :: is
   class(waste_form_base_type), pointer :: cur_waste_form
   PetscInt :: num_waste_form_cells
+  PetscInt :: num_species
+  PetscInt :: size_of_vec
   PetscInt :: i, j
   PetscInt :: data_mediator_species_id
   PetscInt, allocatable :: species_indices_in_residual(:)
@@ -510,25 +1144,48 @@ end subroutine PMWasteFormSetRealization
   cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit
-    allocate(cur_waste_form%instantaneous_mass_rate&
-                                  (this%wf_species%num_species))
-    allocate(cur_waste_form%cumulative_mass&
-                                  (this%wf_species%num_species))
-    cur_waste_form%instantaneous_mass_rate = UNINITIALIZED_DOUBLE
-    cur_waste_form%cumulative_mass = UNINITIALIZED_DOUBLE
-    if (this%canister_degradation_model) then
+    num_species = cur_waste_form%mechanism%num_species
+    allocate(cur_waste_form%instantaneous_mass_rate(num_species))
+    allocate(cur_waste_form%cumulative_mass(num_species))
+    cur_waste_form%instantaneous_mass_rate = 0.d0
+    cur_waste_form%cumulative_mass = 0.d0
+    allocate(cur_waste_form%rad_mass_fraction(num_species))
+    allocate(cur_waste_form%rad_concentration(num_species))
+    allocate(cur_waste_form%inst_release_amount(num_species))
+    cur_waste_form%rad_mass_fraction = &
+      cur_waste_form%mechanism%rad_species_list%mass_fraction
+    cur_waste_form%rad_concentration = 0.d0
+    cur_waste_form%inst_release_amount = 0.d0
+    do j = 1, num_species
+      cur_waste_form%mechanism%rad_species_list(j)%ispecies = &
+        GetPrimarySpeciesIDFromName( &
+        cur_waste_form%mechanism%rad_species_list(j)%name, &
+        this%realization%reaction,this%option)
+    enddo
+   !--------- canister degradation model --------------------
+    if (cur_waste_form%mechanism%canister_degradation_model) then
       cur_waste_form%canister_degradation_flag = PETSC_TRUE
       cur_waste_form%canister_vitality = 1.d0
-      call GetRndNumFromNormalDist(this%vitality_rate_mean, &
-                                   this%vitality_rate_stdev, &
-                                   cur_waste_form%canister_vitality_rate)
-      if (cur_waste_form%canister_vitality_rate > this%vitality_rate_trunc) then
-        cur_waste_form%canister_vitality_rate = this%vitality_rate_trunc
+      if (Uninitialized(cur_waste_form%canister_vitality_rate)) then
+        call GetRndNumFromNormalDist( &
+             cur_waste_form%mechanism%vitality_rate_mean, &
+             cur_waste_form%mechanism%vitality_rate_stdev,&
+             cur_waste_form%canister_vitality_rate)
+        if (cur_waste_form%canister_vitality_rate > &
+            cur_waste_form%mechanism%vitality_rate_trunc) then
+          cur_waste_form%canister_vitality_rate = &
+            cur_waste_form%mechanism%vitality_rate_trunc
+        endif
+        ! Given rates are in units of log-10/yr, so convert to 1/yr:
+        cur_waste_form%canister_vitality_rate = &
+          10.0**(cur_waste_form%canister_vitality_rate)
+        ! Convert rates from 1/yr to internal units of 1/sec
+        cur_waste_form%canister_vitality_rate = &
+          cur_waste_form%canister_vitality_rate * &
+          (1.0/365.0/24.0/3600.0)
       endif
-      ! Given rates are in units of log-10/yr, so convert to 1/yr:
-      cur_waste_form%canister_vitality_rate = &
-                                10.0**(cur_waste_form%canister_vitality_rate)
     endif
+   !----------------------------------------------------------
     cur_waste_form => cur_waste_form%next
   enddo
   
@@ -542,11 +1199,6 @@ end subroutine PMWasteFormSetRealization
     call PMWFOutput(this)
   endif
 
-  do j = 1, this%wf_species%num_species
-    this%wf_species%ispecies(j) = &
-      GetPrimarySpeciesIDFromName(this%wf_species%name(j), &
-                                  this%realization%reaction,this%option)
-  enddo
   ! set up mass transfer
   call RealizCreateTranMassTransferVec(this%realization)
   this%data_mediator => DataMediatorVecCreate()
@@ -556,190 +1208,571 @@ end subroutine PMWasteFormSetRealization
   ! count of waste form cells
   cur_waste_form => this%waste_form_list
   num_waste_form_cells = 0
+  size_of_vec = 0
   do
     if (.not.associated(cur_waste_form)) exit
+    size_of_vec = size_of_vec + cur_waste_form%mechanism%num_species
     num_waste_form_cells = num_waste_form_cells + 1
     cur_waste_form => cur_waste_form%next
   enddo
-  call VecCreateSeq(PETSC_COMM_SELF,num_waste_form_cells* &
-                                    this%wf_species%num_species, &
+  call VecCreateSeq(PETSC_COMM_SELF,size_of_vec, &
                     this%data_mediator%vec,ierr);CHKERRQ(ierr)
   call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
 
   if (num_waste_form_cells > 0) then
-    allocate(species_indices_in_residual(num_waste_form_cells* &
-                                         this%wf_species%num_species))
+    allocate(species_indices_in_residual(size_of_vec))
     species_indices_in_residual = 0
     cur_waste_form => this%waste_form_list
     i = 0
     do
       if (.not.associated(cur_waste_form)) exit
-      do j = 1, this%wf_species%num_species
+      do j = 1,cur_waste_form%mechanism%num_species
         i = i + 1
         species_indices_in_residual(i) = &
           (cur_waste_form%local_cell_id-1)*this%option%ntrandof + &
-          this%wf_species%ispecies(j)
+          cur_waste_form%mechanism%rad_species_list(j)%ispecies
       enddo
       cur_waste_form => cur_waste_form%next
     enddo                             ! zero-based indexing
+    !write(*,*) species_indices_in_residual(:)
+    !stop
     species_indices_in_residual(:) = species_indices_in_residual(:) - 1
     ! set to global petsc index
     species_indices_in_residual(:) = species_indices_in_residual(:) + &
       this%realization%patch%grid%global_offset*this%option%ntrandof
   endif
-  call ISCreateGeneral(this%option%mycomm,num_waste_form_cells* &
-                                          this%wf_species%num_species, &
-                       species_indices_in_residual,PETSC_COPY_VALUES,is, &
-                       ierr);CHKERRQ(ierr)
+  call ISCreateGeneral(this%option%mycomm,size_of_vec, &
+                       species_indices_in_residual, &
+                       PETSC_COPY_VALUES,is,ierr);CHKERRQ(ierr)
   if (allocated(species_indices_in_residual)) &
     deallocate(species_indices_in_residual)
   call VecScatterCreate(this%data_mediator%vec,PETSC_NULL_OBJECT, &
                         this%realization%field%tran_r,is, &
                         this%data_mediator%scatter_ctx,ierr);CHKERRQ(ierr)
   call ISDestroy(is,ierr);CHKERRQ(ierr)
+
+  call PMWFSolve(this,0.d0,ierr)
   
 end subroutine PMWFInitializeRun
 
 ! ************************************************************************** !
 
-subroutine PMWasteFormStrip(this)
-  ! 
-  ! Destroys a waste form process model
+subroutine PMWFInitializeTimestep(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
+  ! Notes: Modified by Jenn Frederick 03/28/2016
 
-  implicit none
-  
-  class(pm_waste_form_type) :: this
-
-  nullify(this%realization)
-  nullify(this%data_mediator)
-  deallocate(this%wf_species%name)  
-  deallocate(this%wf_species%formula_weight)
-  deallocate(this%wf_species%column_id)
-  deallocate(this%wf_species%ispecies)
-  
-  
-end subroutine PMWasteFormStrip
-
-! ************************************************************************** !
-
-subroutine WasteFormBaseInit(base)
-  ! 
-  ! Initializes the base waste form data
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(waste_form_base_type) :: base
-
-  base%id = UNINITIALIZED_INTEGER
-  base%local_cell_id = UNINITIALIZED_INTEGER
-  base%coordinate%x = UNINITIALIZED_DOUBLE
-  base%coordinate%y = UNINITIALIZED_DOUBLE
-  base%coordinate%z = UNINITIALIZED_DOUBLE
-  nullify(base%instantaneous_mass_rate)
-  nullify(base%cumulative_mass)
-  base%volume = UNINITIALIZED_DOUBLE
- !------- canister degradation model -----------------
-  base%canister_degradation_flag = PETSC_FALSE
-  base%canister_vitality = 0d0
-  base%canister_vitality_rate = UNINITIALIZED_DOUBLE
- !----------------------------------------------------
-
-end subroutine WasteFormBaseInit
-
-! ************************************************************************** !
-
-subroutine PMWFBaseSetup(this)
-  ! 
-  ! Maps waste forms to grid cells
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  use Grid_module
-  use Grid_Structured_module
-  use Grid_Unstructured_module
+  use Global_Aux_module
+  use Material_Aux_class
+  use Field_module
   use Option_module
-
+  use Grid_module
+  use Patch_module
+  
   implicit none
+
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
   
   class(pm_waste_form_type) :: this
   
-  type(grid_type), pointer :: grid
+  class(waste_form_base_type), pointer :: cur_waste_form
+  class(wf_mechanism_base_type), pointer :: cwfm
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(field_type), pointer :: field
   type(option_type), pointer :: option
-  class(waste_form_base_type), pointer :: cur_waste_form, prev_waste_form, &
-                                          next_waste_form
-  PetscInt :: i, j, k, local_id
-  PetscInt :: waste_form_id
+  type(grid_type), pointer :: grid
+  PetscReal :: rate
+  PetscReal :: dV
+  PetscReal :: dt
+  PetscInt :: k, p, g, d
+  PetscInt :: num_species
+  PetscErrorCode :: ierr
+  PetscInt :: cell_id, idof
+  PetscReal, allocatable :: Coeff(:)
+  PetscReal, allocatable :: concentration_old(:)
+  PetscReal :: inst_release_molality
+  PetscReal, parameter :: conversion = 1.d0/(24.d0*3600.d0)
+  PetscReal, pointer :: xx_p(:)
+
+  global_auxvars => this%realization%patch%aux%Global%auxvars
+  material_auxvars => this%realization%patch%aux%Material%auxvars
+  field => this%realization%field
+  option => this%option
+  grid => this%realization%patch%grid
+  dt = option%tran_dt
+  
+  if (option%print_screen_flag) then
+    write(*,'(/,2("=")," WASTE FORM MODEL ",60("="))')
+  endif
+
+  cur_waste_form => this%waste_form_list
+  do 
+    if (.not.associated(cur_waste_form)) exit
+    cwfm => cur_waste_form%mechanism
+    num_species = cwfm%num_species
+    allocate(Coeff(num_species))
+    allocate(concentration_old(num_species))
+    ! ------ update mass balances after transport step ---------------------
+    cur_waste_form%cumulative_mass = cur_waste_form%cumulative_mass + &
+                                     cur_waste_form%instantaneous_mass_rate*dt
+    ! ------ update matrix volume ------------------------------------------
+    dV = cur_waste_form%eff_dissolution_rate / &      ! kg-matrix/sec
+         cwfm%matrix_density * &                      ! kg-matrix/m^3-matrix
+         dt                                           ! sec
+    cur_waste_form%volume = cur_waste_form%volume - dV
+    if (cur_waste_form%volume <= 1.d-10) then
+      cur_waste_form%volume = 0.d0
+    endif
+    
+    ! ------ get species concentrations from mass fractions ----------------
+    do k = 1,num_species
+      if (cur_waste_form%volume <= 0.d0) then
+        cur_waste_form%rad_concentration(k) = 0.d0
+        cur_waste_form%rad_mass_fraction(k) = 0.d0
+      else
+        cur_waste_form%rad_concentration(k) = &
+          cur_waste_form%rad_mass_fraction(k) / &
+          cwfm%rad_species_list(k)%formula_weight
+      endif
+    enddo
+
+    !---------------- vitality degradation function ------------------------
+    if (cur_waste_form%canister_degradation_flag) then
+      if (cur_waste_form%canister_vitality < 1.d-3) then
+        cur_waste_form%canister_vitality = 0.d0
+        cur_waste_form%eff_canister_vit_rate = 0.d0
+      else
+        cur_waste_form%eff_canister_vit_rate = &
+          cur_waste_form%canister_vitality_rate * &
+          exp( cwfm%canister_material_constant * ( (1.d0/333.15d0) - &
+          (1.d0/(global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))% &
+           temp+273.15d0))) )
+        cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
+                     - (cur_waste_form%eff_canister_vit_rate*dt)
+        if (cur_waste_form%canister_vitality < 1.d-3) then
+          cur_waste_form%canister_vitality = 0.d0
+        endif
+      endif
+    endif
+
+    !------- instantaneous release ----------------------------------------- 
+    if (.not.cur_waste_form%breached .and. &
+           cur_waste_form%canister_vitality == 0.d0) then
+      call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+      do k = 1,num_species
+        cur_waste_form%inst_release_amount(k) = &
+           (cwfm%rad_species_list(k)%inst_release_fraction * &
+            cur_waste_form%rad_concentration(k))
+        cur_waste_form%rad_concentration(k) = &
+           cur_waste_form%rad_concentration(k) - &
+           cur_waste_form%inst_release_amount(k)
+        ! update mass fractions after instantaneous release
+        cur_waste_form%rad_mass_fraction(k) = &
+           cur_waste_form%rad_concentration(k) * &
+           cwfm%rad_species_list(k)%formula_weight
+        ! update transport solution vector with mass injection molality
+        ! as an alternative to a source term (issue with tran_dt changing)
+        idof = cwfm%rad_species_list(k)%ispecies + &
+               ((cur_waste_form%local_cell_id - 1) * option%ntrandof) 
+        cell_id = cur_waste_form%local_cell_id
+        inst_release_molality = &                    ! [mol-rad/kg-water]
+           ! [mol-rad]
+          (cur_waste_form%inst_release_amount(k) * & ! [mol-rad/g-matrix]
+           cur_waste_form%volume * &                 ! [m^3-matrix]
+           cwfm%matrix_density * &                   ! [kg-matrix/m^3-matrix] 
+           1.d3) / &                                ! [kg-matrix] -> [g-matrix]
+           ! [kg-water]
+          (material_auxvars(cell_id)%porosity * &         ! [-]
+           global_auxvars(cell_id)%sat(LIQUID_PHASE) * &  ! [-]
+           material_auxvars(cell_id)%volume * &           ! [m^3]
+           global_auxvars(cell_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
+        xx_p(idof) = xx_p(idof) + inst_release_molality
+      enddo
+      cur_waste_form%breached = PETSC_TRUE 
+      call VecRestoreArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+    endif
+    
+    ! Save the concentration after inst. release for the decay step
+    do k = 1,num_species
+      concentration_old(k) = cur_waste_form%rad_concentration(k)
+    enddo
+
+    if (cur_waste_form%volume >= 0.d0) then
+      !------- decay the radionuclide species --------------------------------
+      ! FIRST PASS =====================
+      do d = 1,num_species
+        ! Update the initial value of the species coefficient
+        Coeff(d) = cur_waste_form%rad_concentration(d)
+        do p = 1,num_species
+          ! If the daughter has a parent(s):
+          if (d == cwfm%rad_species_list(p)%daugh_id) then
+            Coeff(d) = Coeff(d) - &
+              (cwfm%rad_species_list(p)%decay_constant * &
+               concentration_old(p)) / &
+              (cwfm%rad_species_list(d)%decay_constant - &
+               cwfm%rad_species_list(p)%decay_constant)
+            do g = 1,num_species
+              ! If the daughter has a grandparent(s):
+              if (p == cwfm%rad_species_list(g)%daugh_id) then
+                Coeff(d) = Coeff(d) - &
+                  ((cwfm%rad_species_list(p)%decay_constant* &
+                    cwfm%rad_species_list(g)%decay_constant* &
+                    concentration_old(g)) / &
+                  ((cwfm%rad_species_list(p)%decay_constant - &
+                    cwfm%rad_species_list(g)%decay_constant)* &
+                   (cwfm%rad_species_list(d)%decay_constant - &
+                    cwfm%rad_species_list(g)%decay_constant))) + &
+                  ((cwfm%rad_species_list(p)%decay_constant* &
+                    cwfm%rad_species_list(g)%decay_constant* &
+                    concentration_old(g)) / &
+                  ((cwfm%rad_species_list(p)%decay_constant - &
+                    cwfm%rad_species_list(g)%decay_constant)* &
+                   (cwfm%rad_species_list(d)%decay_constant - &
+                    cwfm%rad_species_list(p)%decay_constant)))
+              endif
+            enddo ! grandparent loop
+          endif
+        enddo ! parent loop
+      enddo
+      ! SECOND PASS ====================
+      do d = 1,num_species
+        ! Decay the species
+        cur_waste_form%rad_concentration(d) = Coeff(d) * exp(-1.d0 * &
+          cwfm%rad_species_list(d)%decay_constant * dt)
+        do p = 1,num_species
+          ! If the daughter has a parent(s):
+          if (d == cwfm%rad_species_list(p)%daugh_id) then
+            cur_waste_form%rad_concentration(d) = &
+              cur_waste_form%rad_concentration(d) + &
+              (((cwfm%rad_species_list(p)%decay_constant* &
+                 concentration_old(p)) / &
+                (cwfm%rad_species_list(d)%decay_constant - &
+                 cwfm%rad_species_list(p)%decay_constant)) * &
+               exp(-1.d0 * cwfm%rad_species_list(p)%decay_constant * dt)) 
+            do g = 1,num_species
+              ! If the daughter has a grandparent(s):
+              if (p == cwfm%rad_species_list(g)%daugh_id) then
+                cur_waste_form%rad_concentration(d) = &
+                  cur_waste_form%rad_concentration(d) - &
+                  ((cwfm%rad_species_list(p)%decay_constant* &
+                    cwfm%rad_species_list(g)%decay_constant* &
+                    concentration_old(g)*exp(-1.d0* &
+                    cwfm%rad_species_list(p)%decay_constant*dt)) / &
+                  ((cwfm%rad_species_list(p)%decay_constant - &
+                    cwfm%rad_species_list(g)%decay_constant)* &
+                   (cwfm%rad_species_list(d)%decay_constant - &
+                    cwfm%rad_species_list(p)%decay_constant))) + &
+                  ((cwfm%rad_species_list(p)%decay_constant* &
+                    cwfm%rad_species_list(g)%decay_constant* &
+                    concentration_old(g)*exp(-1.d0* &
+                    cwfm%rad_species_list(g)%decay_constant*dt)) / &
+                  ((cwfm%rad_species_list(p)%decay_constant - &
+                    cwfm%rad_species_list(g)%decay_constant)* &
+                   (cwfm%rad_species_list(d)%decay_constant - &
+                    cwfm%rad_species_list(g)%decay_constant)))
+              endif
+            enddo ! grandparent loop
+          endif
+        enddo ! parent loop
+      enddo     
+
+      ! ------ update species mass fractions ---------------------------------
+      do k = 1,num_species
+        cur_waste_form%rad_mass_fraction(k) = &
+        cur_waste_form%rad_concentration(k) * &
+          cur_waste_form%mechanism%rad_species_list(k)%formula_weight
+        ! to avoid errors in plotting data when conc is very very low:  
+        if (cur_waste_form%rad_mass_fraction(k) <= 1e-40) then
+          cur_waste_form%rad_mass_fraction(k) = 0.d0
+        endif
+      enddo
+    endif
+    deallocate(concentration_old)
+    deallocate(Coeff)
+    cur_waste_form => cur_waste_form%next
+  enddo
+
+  if (this%print_mass_balance) then
+    call PMWFOutput(this)
+  endif
+
+end subroutine PMWFInitializeTimestep
+
+! ************************************************************************** !
+
+subroutine PMWFSolve(this,time,ierr)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+  !
+  
+  implicit none
+
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+
+  class(pm_waste_form_type) :: this
+  PetscReal :: time
   PetscErrorCode :: ierr
   
-  grid => this%realization%patch%grid
-  option => this%realization%option
-  
-  waste_form_id = 0
-  nullify(prev_waste_form)
+  class(waste_form_base_type), pointer :: cur_waste_form
+  PetscInt :: i, j
+  PetscInt :: num_species
+  PetscReal, pointer :: vec_p(:)  
+
+  call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   cur_waste_form => this%waste_form_list
-  do
+  i = 0
+  do 
     if (.not.associated(cur_waste_form)) exit
-    waste_form_id = waste_form_id + 1
-    local_id = -1
-    select case(grid%itype)
-      case(STRUCTURED_GRID)
-        call StructGridGetIJKFromCoordinate(grid%structured_grid, &
-                                            cur_waste_form%coordinate%x, &
-                                            cur_waste_form%coordinate%y, &
-                                            cur_waste_form%coordinate%z, &
-                                            i,j,k)
-        if (i > 0 .and. j > 0 .and. k > 0) then
-          local_id = i + (j-1)*grid%structured_grid%nlx + &
-                      (k-1)*grid%structured_grid%nlxy
-        endif
-      case(IMPLICIT_UNSTRUCTURED_GRID)
-        call UGridGetCellFromPoint(cur_waste_form%coordinate%x, &
-                                   cur_waste_form%coordinate%y, &
-                                   cur_waste_form%coordinate%z, &
-                                   grid%unstructured_grid,option,local_id)
-      case default
-          option%io_buffer = 'Only STRUCTURED_GRID and ' // &
-            'IMPLICIT_UNSTRUCTURED_GRID types supported in PMGlass.'
-          call printErrMsg(option)
-    end select
-    if (local_id > 0) then
-      cur_waste_form%id = waste_form_id
-      cur_waste_form%local_cell_id = local_id
-      prev_waste_form => cur_waste_form
-      cur_waste_form => cur_waste_form%next
-    else
-      ! remove waste form
-      next_waste_form => cur_waste_form%next
-      if (associated(prev_waste_form)) then
-        prev_waste_form%next => next_waste_form
-      else
-        this%waste_form_list => next_waste_form
-      endif
-      deallocate(cur_waste_form)
-      cur_waste_form => next_waste_form
+    num_species = cur_waste_form%mechanism%num_species    
+    if ((cur_waste_form%volume > 0.d0) .and. &
+        (cur_waste_form%canister_vitality <= 1.d-40)) then
+      ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]
+      call cur_waste_form%mechanism%Dissolution(cur_waste_form,this)
+      ! mol/sec
+      do j = 1,num_species
+        i = i + 1
+        cur_waste_form%instantaneous_mass_rate(j) = &
+          (cur_waste_form%eff_dissolution_rate * &            ! kg-matrix/sec
+           cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kmol-rad/kg-rad
+           cur_waste_form%rad_mass_fraction(j) * &            ! kg-rad/kg-matrix
+           1.d3)                                              ! kmol -> mol
+        vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)  ! mol/sec
+      enddo
+    else ! (canister not breached, or all waste form has dissolved already)
+      i = i + num_species
+      cur_waste_form%eff_dissolution_rate = 0.d0
+      cur_waste_form%instantaneous_mass_rate = 0.d0
     endif
+    cur_waste_form => cur_waste_form%next
   enddo
   
-end subroutine PMWFBaseSetup
+  call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
+  
+end subroutine PMWFSolve
+
+! ************************************************************************** !
+
+subroutine WFMechBaseDissolution(this,waste_form,pm) 
+  ! 
+  ! Calculates the waste form dissolution rate; must be extended
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/28/2016
+
+  implicit none
+  
+  class(wf_mechanism_base_type) :: this
+  class(waste_form_base_type) :: waste_form
+  class(pm_waste_form_type) :: pm
+
+  ! This routine must be extended.
+
+end subroutine WFMechBaseDissolution
+
+! ************************************************************************** !
+
+subroutine WFMechGlassDissolution(this,waste_form,pm) 
+  ! 
+  ! Calculates the glass waste form dissolution rate
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/28/2016
+
+  use Grid_module  
+  use Global_Aux_module
+
+  implicit none
+  
+  class(wf_mechanism_glass_type) :: this
+  class(waste_form_base_type) :: waste_form
+  class(pm_waste_form_type) :: pm
+
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_auxvars(:)                                                                    ! 1/day -> 1/sec
+  PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
+
+  grid => pm%realization%patch%grid
+  global_auxvars => pm%realization%patch%aux%Global%auxvars
+
+  ! kg glass/m^2/day
+  this%dissolution_rate = 560.d0*exp(-7397.d0/ &
+    (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))
+  
+  ! kg glass / sec
+  waste_form%eff_dissolution_rate = &
+    this%dissolution_rate * &          ! kg-glass/m^2/day
+    this%specific_surface_area * &     ! m^2/kg glass
+    this%matrix_density * &            ! kg-glass/m^3-glass
+    waste_form%volume * &              ! m^3-glass
+    waste_form%exposure_factor * &     ! [-]
+    time_conversion                    ! day/sec
+
+end subroutine WFMechGlassDissolution
+
+! ************************************************************************** !
+
+subroutine WFMechDSNFDissolution(this,waste_form,pm) 
+  ! 
+  ! Calculates the DSNF waste form dissolution rate
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/28/2016
+
+  use Grid_module  
+  use Global_Aux_module
+
+  implicit none
+
+  class(wf_mechanism_dsnf_type) :: this
+  class(waste_form_base_type) :: waste_form
+  class(pm_waste_form_type) :: pm  
+                                           ! day/sec
+  PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
+  
+  this%frac_dissolution_rate = 1.d0 / (1.1d0*pm%realization%option%tran_dt) 
+
+  ! kg matrix/sec
+  waste_form%eff_dissolution_rate = &
+    this%frac_dissolution_rate * &           ! 1/sec
+    this%matrix_density * &                  ! kg matrix/m^3 matrix
+    waste_form%volume * &                    ! m^3 matrix
+    waste_form%exposure_factor               ! [-]
+
+end subroutine WFMechDSNFDissolution
+
+! ************************************************************************** !
+
+subroutine WFMechFMDMDissolution(this,waste_form,pm)
+  !
+  ! Calculates the FMDM waste form dissolution rate
+  !
+  ! Author: Jenn Frederick
+  ! Date: 03/28/2016
+
+  use Grid_module
+  use Global_Aux_module
+
+  implicit none
+
+  class(wf_mechanism_fmdm_type) :: this
+  class(waste_form_base_type) :: waste_form
+  class(pm_waste_form_type) :: pm
+
+  ! This is a placeholder routine!!!
+
+  
+
+end subroutine WFMechFMDMDissolution
+
+! ************************************************************************** !
+
+subroutine WFMechCustomDissolution(this,waste_form,pm) 
+  ! 
+  ! Calculates the "custom" waste form dissolution rate
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/28/2016
+
+  use Grid_module  
+  use Global_Aux_module
+
+  implicit none
+
+  class(wf_mechanism_custom_type) :: this
+  class(waste_form_base_type) :: waste_form
+  class(pm_waste_form_type) :: pm
+
+  ! Note: Units for dissolution rates have already been converted to
+  ! internal units within the PMWFRead routine.
+
+  if (uninitialized(this%frac_dissolution_rate)) then
+    ! kg glass / sec
+    waste_form%eff_dissolution_rate = &
+       this%dissolution_rate * &         ! kg-matrix/m^2/sec
+       this%specific_surface_area * &    ! m^2/kg-matrix
+       this%matrix_density * &           ! kg-matrix/m^3-matrix
+       waste_form%volume * &             ! m^3-matrix
+       waste_form%exposure_factor        ! [-]
+  else
+    ! kg matrix/sec
+    waste_form%eff_dissolution_rate = &
+       this%frac_dissolution_rate * &     ! [-]/sec
+       this%matrix_density * &            ! kg matrix/m^3 matrix
+       waste_form%volume * &              ! m^3 matrix
+       waste_form%exposure_factor         ! [-]
+  endif
+
+end subroutine WFMechCustomDissolution
+
+! ************************************************************************** !
+
+subroutine PMWFFinalizeTimestep(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  
+end subroutine PMWFFinalizeTimestep
+
+! ************************************************************************** !
+
+subroutine PMWFUpdateSolution(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  
+  PetscErrorCode :: ierr
+  
+  ! update glass mass here?
+
+end subroutine PMWFUpdateSolution
+
+! ************************************************************************** !
+
+recursive subroutine PMWFFinalizeRun(this)
+  ! 
+  ! Finalizes the time stepping
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/26/15
+  
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  
+  ! do something here
+  
+  if (associated(this%next)) then
+    call this%next%FinalizeRun()
+  endif  
+  
+end subroutine PMWFFinalizeRun
 
 ! ************************************************************************** !
 
 subroutine PMWFOutput(this)
   ! 
-  ! Maps waste forms to grid cells
+  ! Sets up output for a waste form process model
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
 
   use Option_module
   use Output_Aux_module
+  use Global_Aux_module
+  use Grid_module
 
   implicit none
   
@@ -748,16 +1781,20 @@ subroutine PMWFOutput(this)
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
   class(waste_form_base_type), pointer :: cur_waste_form
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   character(len=MAXSTRINGLENGTH) :: filename
   PetscInt :: fid
   PetscInt :: i
   
   if (.not.associated(this%waste_form_list)) return
   
-100 format(100es16.8)
+100 format(100es18.8)
 
   option => this%realization%option
   output_option => this%realization%output_option
+  grid => this%realization%patch%grid
+  global_auxvars => this%realization%patch%aux%Global%auxvars
   
   fid = 86
   filename = PMWFOutputFilename(option)
@@ -770,20 +1807,15 @@ subroutine PMWFOutput(this)
   cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit
-    do i = 1, this%wf_species%num_species
+    do i = 1, cur_waste_form%mechanism%num_species
       write(fid,100,advance="no") cur_waste_form%cumulative_mass(i), &
-                                  cur_waste_form%instantaneous_mass_rate(i) * &
-                                  output_option%tconv
+                                  cur_waste_form%instantaneous_mass_rate(i), &
+                                  cur_waste_form%rad_mass_fraction(i)
     enddo
-    select type(cur_waste_form)
-      class is (waste_form_glass_type)
-        write(fid,100,advance="no") cur_waste_form%volume, &
-                                    cur_waste_form%glass_dissolution_rate * &
-                                    output_option%tconv, &
-                                    cur_waste_form%canister_vitality*100.0
-      class is (waste_form_fmdm_type)
-        write(fid,100,advance="no") cur_waste_form%canister_vitality*100.0
-    end select
+    write(fid,100,advance="no") cur_waste_form%eff_dissolution_rate, &
+                                cur_waste_form%volume, &
+                                cur_waste_form%eff_canister_vit_rate, &
+                                cur_waste_form%canister_vitality*100.0
     cur_waste_form => cur_waste_form%next
   enddo
   close(fid)
@@ -841,6 +1873,8 @@ subroutine PMWFOutputHeader(this)
   PetscInt :: fid
   PetscInt :: icolumn, i
   
+  if (.not.associated(this%waste_form_list)) return
+  
   output_option => this%realization%output_option
   grid => this%realization%patch%grid
   
@@ -870,38 +1904,42 @@ subroutine PMWFOutputHeader(this)
              ' (' // trim(adjustl(x_string)) // &
              ' ' // trim(adjustl(y_string)) // &
              ' ' // trim(adjustl(z_string)) // ')'
-    do i = 1, this%wf_species%num_species
-      variable_string = trim(this%wf_species%name(i)) // &
-        ' Mass Flux'
+    do i = 1, cur_waste_form%mechanism%num_species
+      variable_string = trim(cur_waste_form%mechanism%rad_species_list(i)%name) &
+                        // ' Cum. Mass Flux'
       ! cumulative
       units_string = 'mol'
-      call OutputWriteToHeader(fid,variable_string,units_string, &
-                               cell_string,icolumn)
+      call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                               icolumn)
+      variable_string = trim(cur_waste_form%mechanism%rad_species_list(i)%name) &
+                        // ' Inst. Mass Flux'
       ! instantaneous
-      units_string = 'mol/' // trim(adjustl(output_option%tunit))
-      call OutputWriteToHeader(fid,variable_string,units_string, &
-                               cell_string,icolumn)
+      units_string = 'mol/s' !// trim(adjustl(output_option%tunit))
+      call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                               icolumn)       
+      variable_string = trim(cur_waste_form%mechanism%rad_species_list(i)%name) &
+                        // ' Mass Frac.'
+      units_string = 'g-rad/g-matrix' 
+      call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                               icolumn)
     enddo
-    select type(cur_waste_form)
-      class is (waste_form_glass_type)
-        variable_string = 'WF Volume'
-        units_string = 'm^3'
-        call OutputWriteToHeader(fid,variable_string,units_string, &
-                                 cell_string,icolumn)
-        variable_string = 'WF Dissolution Rate'
-        units_string = 'kg/' // trim(adjustl(output_option%tunit))
-        call OutputWriteToHeader(fid,variable_string,units_string, &
-                                 cell_string,icolumn)
-        variable_string = 'WF Canister Vitality'
-        units_string = '%' 
-        call OutputWriteToHeader(fid,variable_string,units_string, &
-                                 cell_string,icolumn)
-      class is (waste_form_fmdm_type)
-        variable_string = 'WF Canister Vitality'
-        units_string = '%' 
-        call OutputWriteToHeader(fid,variable_string,units_string, &
-                                 cell_string,icolumn)
-    end select
+    variable_string = 'WF Dissolution Rate'
+    units_string = 'kg/s' !// trim(adjustl(output_option%tunit))
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
+    variable_string = 'WF Volume'
+    units_string = 'm^3'
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
+    variable_string = 'WF Vitality Degradation Rate'
+    units_string = '1/yr'
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
+    variable_string = 'WF Canister Vitality'
+    units_string = '%' 
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
+
     cur_waste_form => cur_waste_form%next
   enddo
   
@@ -909,509 +1947,11 @@ subroutine PMWFOutputHeader(this)
   
 end subroutine PMWFOutputHeader
 
-! ************************************************************************** !
+! ***************************************************************************** !
 
-subroutine PMWFInitializeTimestep(this)
+subroutine PMWFCheckpoint(this,viewer)
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-  use Dataset_module
-  
-  implicit none
-  
-  class(pm_waste_form_type) :: this
-
-  class(waste_form_base_type), pointer :: cur_waste_form
-  PetscReal :: dt
-
-  dt = this%option%tran_dt
-  ! update cumulative values
-  cur_waste_form => this%waste_form_list
-  do
-    if (.not.associated(cur_waste_form)) exit
-    cur_waste_form%cumulative_mass = cur_waste_form%cumulative_mass + &
-                                   cur_waste_form%instantaneous_mass_rate * dt
-    cur_waste_form => cur_waste_form%next
-  enddo  
-
-  if (this%print_mass_balance) then
-    call PMWFOutput(this)
-  endif
-
-end subroutine PMWFInitializeTimestep
-
-! ************************************************************************** !
-
-subroutine WFGlassInit(glass)
-  ! 
-  ! Initializes the glass waste form
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-  implicit none
-  
-  class(waste_form_glass_type) :: glass
-
-  call WasteFormBaseInit(glass)
-  glass%exposure_factor = UNINITIALIZED_DOUBLE
-  glass%glass_dissolution_rate = UNINITIALIZED_DOUBLE
-  nullify(glass%next)
-
-end subroutine WFGlassInit
-
-! ************************************************************************** !
-
-function WFGlassCast(this)
-  ! 
-  ! Casts waste_form_base_type to waste_form_glass_type
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(waste_form_base_type), pointer :: this
-  
-  class(waste_form_glass_type), pointer :: WFGlassCast
-  
-  nullify(WFGlassCast)
-  if (associated(this)) then
-    select type(this)
-      class is(waste_form_glass_type)
-        WFGlassCast => this
-      class default
-        print *, 'Wrong class in WFGlassCast'
-        stop
-    end select
-  endif
-
-end function WFGlassCast
-
-! ************************************************************************** !
-
-function WFFMDMCast(this)
-  ! 
-  ! Casts waste_form_base_type to waste_form_glass_type
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(waste_form_base_type), pointer :: this
-  
-  class(waste_form_fmdm_type), pointer :: WFFMDMCast
-  
-  nullify(WFFMDMCast)
-  if (associated(this)) then
-    select type(this)
-      class is(waste_form_fmdm_type)
-        WFFMDMCast => this
-      class default
-        print *, 'Wrong class in WFGlassCast'
-        stop
-    end select
-  endif
-
-end function WFFMDMCast
-
-! ************************************************************************** !
-
-function PMGlassCreate()
-  ! 
-  ! Creates the Glass waste form process model
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_glass_type), pointer :: PMGlassCreate
-  
-  allocate(PMGlassCreate)
-  call PMWasteFormInit(PMGlassCreate)
-  nullify(PMGlassCreate%waste_form_list)
-  PMGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE
-  PMGlassCreate%glass_density = 2.65d3 ! kg/m^3
-
-end function PMGlassCreate
-
-! ************************************************************************** !
-
-subroutine PMGlassRead(this,input)
-  ! 
-  ! Reads input file parameters associated with the waste form process model
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  use Input_Aux_module
-  use Utility_module
-  use Option_module
-  use String_module
-  use Units_module
-  
-  implicit none
-  
-  class(pm_waste_form_glass_type) :: this
-  type(input_type), pointer :: input
-  
-  type(option_type), pointer :: option
-  character(len=MAXWORDLENGTH) :: word
-  character(len=MAXSTRINGLENGTH) :: error_string
-  class(waste_form_glass_type), pointer :: new_waste_form, prev_waste_form
-  PetscBool :: found
-
-  option => this%option
-  error_string = 'GLASS'
-  input%ierr = 0
-
-  option%io_buffer = 'pflotran card:: ' // trim(error_string)
-  call printMsg(option)
-
-  do
-    call InputReadPflotranString(input,option)
-    if (InputError(input)) exit
-    if (InputCheckExit(input,option)) exit
-    
-    call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword',error_string)
-    call StringToUpper(word)
-    
-    call PMWasteFormReadSelectCase(this,input,word,found,error_string,option)
-    if (found) cycle
-
-    select case(trim(word))
-    !-------------------------------------
-      case('WASTE_FORM')
-        error_string = 'GLASS,WASTE_FORM'
-        allocate(new_waste_form)
-        call WFGlassInit(new_waste_form)
-        do
-          call InputReadPflotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword',error_string)
-          call StringToUpper(word)
-          select case(trim(word))
-            case('EXPOSURE_FACTOR')
-              call InputReadDouble(input,option,new_waste_form%exposure_factor)
-              call InputErrorMsg(input,option,'exposure factor',error_string)
-            case('VOLUME')
-              call InputReadDouble(input,option,new_waste_form%volume)
-              call InputErrorMsg(input,option,'volume',error_string)
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              if (input%ierr == 0) then
-                new_waste_form%volume = UnitsConvertToInternal(word,'volume', &
-                                        option) * new_waste_form%volume
-              endif
-            case('COORDINATE')
-              call GeometryReadCoordinate(input,option, &
-                                          new_waste_form%coordinate, &
-                                          error_string)
-            case default
-              call InputKeywordUnrecognized(word,error_string,option)
-          end select
-        enddo
-        if (Uninitialized(new_waste_form%volume)) then
-          option%io_buffer = &
-            'VOLUME must be specified for all glass ' // &
-            'waste packages.'
-          call printErrMsg(option)
-        endif
-        if (Uninitialized(new_waste_form%exposure_factor)) then
-          option%io_buffer = &
-            'EXPOSURE_FACTOR must be specified for all glass ' // &
-            'waste packages.'
-          call printErrMsg(option)
-        endif
-        if (Uninitialized(new_waste_form%coordinate%z)) then
-          option%io_buffer = &
-            'COORDINATE must be specified for all glass ' // &
-            'waste packages.'
-          call printErrMsg(option)
-        endif
-        if (.not.associated(this%waste_form_list)) then
-          this%waste_form_list => new_waste_form
-          prev_waste_form => new_waste_form
-        else
-          prev_waste_form%next => new_waste_form
-          prev_waste_form => new_waste_form
-        endif
-        nullify(new_waste_form)
-        error_string = 'GLASS'
-    !-------------------------------------
-      case('SPECIFIC_SURFACE_AREA')
-        call InputReadDouble(input,option,this%specific_surface_area)
-        call InputErrorMsg(input,option,'specific surface area',error_string)
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          this%specific_surface_area = UnitsConvertToInternal(word, &
-                            'area/volume',option) * this%specific_surface_area
-        endif
-    !-------------------------------------
-      case('GLASS_DENSITY')
-        call InputReadDouble(input,option,this%glass_density)
-        call InputErrorMsg(input,option,'glass density',error_string)
-    !-------------------------------------
-      case default
-        call InputKeywordUnrecognized(word,error_string,option)
-    !-------------------------------------
-    end select
-  enddo
-
-  call PMWFReadError(this,input,option,error_string)
-  call PMWFAssignColIdsFromHeader(this,input,option,error_string)
-
-  if (Uninitialized(this%specific_surface_area)) then
-    option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' // &
-      trim(error_string)
-    call printErrMsg(option)
-  endif
-    
-end subroutine PMGlassRead
-
-! ************************************************************************** !
-
-subroutine PMGlassSetup(this)
-  ! 
-  ! Initializes variables associated with subsurface process models
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_glass_type) :: this
-
-  call PMWFBaseSetup(this)
-  
-end subroutine PMGlassSetup
-
-! ************************************************************************** !
-
-recursive subroutine PMWFGlassInitializeRun(this)
-  ! 
-  ! Initializes the process model for the simulation
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  use Dataset_module
-  use Time_Storage_module
-  
-  implicit none
-
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-
-  class(pm_waste_form_glass_type) :: this
-  
-  type(time_storage_type), pointer :: null_time_storage
-  PetscErrorCode :: ierr
-  
-  call PMWFInitializeRun(this)
-  
-  ! restart
-  if (this%option%restart_flag .and. &
-      this%option%overwrite_restart_transport) then
-  endif
-
-  nullify(null_time_storage)
-  call DatasetVerify(this%mass_fraction_dataset,null_time_storage,this%option)
-
-  call PMGlassSolve(this,0.d0,ierr)
-  
-end subroutine PMWFGlassInitializeRun
-
-! ************************************************************************** !
-
-subroutine PMWFGlassInitializeTimestep(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-  use Dataset_module
-  
-  implicit none
-  
-  class(pm_waste_form_glass_type) :: this
-  
-  class(waste_form_glass_type), pointer :: cur_waste_form
-  PetscReal :: rate
-  PetscReal :: dV
-  PetscReal, parameter :: conversion = 1.d0/(24.d0*3600.d0)
-  
-  if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," GLASS MODEL ",65("="))')
-  endif
-  
-  ! due to output witin, must be called prior to update
-  call PMWFInitializeTimestep(this)
-
-  ! update mass balances after transport step
-  cur_waste_form => WFGlassCast(this%waste_form_list)
-  do 
-    if (.not.associated(cur_waste_form)) exit
-    ! m^3 glass
-    dV = cur_waste_form%glass_dissolution_rate / & ! kg glass/sec
-         this%glass_density * &                    ! kg glass/m^3 glass
-         this%option%tran_dt                       ! sec
-    cur_waste_form%volume = cur_waste_form%volume - dV
-    cur_waste_form => WFGlassCast(cur_waste_form%next)
-  enddo
-  
-  call DatasetUpdate(this%mass_fraction_dataset,this%option%time,this%option)
-
-end subroutine PMWFGlassInitializeTimestep
-
-! ************************************************************************** !
-
-subroutine PMGlassPreSolve(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_glass_type) :: this
-  
-end subroutine PMGlassPreSolve
-
-! ************************************************************************** !
-
-subroutine PMGlassSolve(this,time,ierr)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-  !
-  use Grid_module
-  use Global_Aux_module
-  
-  implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-
-  class(pm_waste_form_glass_type) :: this
-  PetscReal :: time
-  PetscErrorCode :: ierr
-  
-  class(waste_form_glass_type), pointer :: cur_waste_form
-  type(grid_type), pointer :: grid
-  type(global_auxvar_type), pointer :: global_auxvars(:)
-  PetscInt :: i, j
-  PetscReal, pointer :: vec_p(:)            ! 1/day -> 1/sec
-  PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
-  PetscReal :: fuel_dissolution_rate
-
-  grid => this%realization%patch%grid
-  global_auxvars => this%realization%patch%aux%Global%auxvars
-
-  call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
-  cur_waste_form => WFGlassCast(this%waste_form_list)
-  i = 0
-  do 
-    if (.not.associated(cur_waste_form)) exit
-    if (cur_waste_form%canister_degradation_flag) then
-!     ---------------- Vitality degradation function --------------------------
-      cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
-                        - ( cur_waste_form%canister_vitality_rate * & ! [1/yr]
-                            this%option%tran_dt * &                   ! [sec]
-                            (1.0/(365.0*24.0*3600.0)) )               ! [yr/sec]
-      if (cur_waste_form%canister_vitality < 1.d-3) then
-        cur_waste_form%canister_vitality = 0.d0
-      endif
-!     -------------------------------------------------------------------------
-    endif
-    if ((cur_waste_form%volume > 0.d0) .and. &
-        (cur_waste_form%canister_vitality == 0.d0)) then
-      fuel_dissolution_rate = & ! kg glass/m^2/day
-        560.d0*exp(-7397.d0/ &
-            (global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))%temp+273.15d0))
-      ! kg glass / sec
-      cur_waste_form%glass_dissolution_rate = &
-        fuel_dissolution_rate * &          ! kg glass (dissolving)/m^2/day
-        this%specific_surface_area * &     ! m^2/kg glass
-        cur_waste_form%exposure_factor * & ! [-]
-        cur_waste_form%volume * &          ! m^3 glass
-        this%glass_density * &             ! kg glass/m^3 glass
-        time_conversion                    ! 1/day -> 1/sec
-      ! mol/sec
-      do j = 1, this%wf_species%num_species
-        i = i + 1
-        cur_waste_form%instantaneous_mass_rate(j) = &
-          cur_waste_form%glass_dissolution_rate * & ! kg glass / sec
-          this%wf_species%formula_weight(j) * &  ! kmol radnuclide/kg radnuclide
-          this%mass_fraction_dataset% &
-          rarray(this%wf_species%column_id(j)) * &  ! kg radionuclide/kg glass
-          1.d3                                      ! kmol -> mol
-        vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)    ! mol/sec
-      enddo
-    else
-      cur_waste_form%glass_dissolution_rate = 0.d0
-      cur_waste_form%instantaneous_mass_rate = 0.d0
-    endif
-    cur_waste_form => WFGlassCast(cur_waste_form%next)
-  enddo
-  
-  call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
-  
-end subroutine PMGlassSolve
-
-! ************************************************************************** !
-
-subroutine PMGlassFinalizeTimestep(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_glass_type) :: this
-  
-end subroutine PMGlassFinalizeTimestep
-
-! ************************************************************************** !
-
-subroutine PMGlassUpdateSolution(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_glass_type) :: this
-  
-  PetscErrorCode :: ierr
-  
-  ! update glass mass here
-
-end subroutine PMGlassUpdateSolution  
-
-! ************************************************************************** !
-
-subroutine PMGlassUpdateAuxVars(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_glass_type) :: this
-
-  this%option%io_buffer = 'PMGlassUpdateAuxVars() must be extended.'
-  call printErrMsg(this%option)
-
-end subroutine PMGlassUpdateAuxVars   
-
-! ************************************************************************** !
-
-subroutine PMGlassCheckpoint(this,viewer)
-  ! 
-  ! Checkpoints data associated with Subsurface PM
+  ! Checkpoints data associated with the waste form process model
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
@@ -1421,7 +1961,7 @@ subroutine PMGlassCheckpoint(this,viewer)
   implicit none
 #include "petsc/finclude/petscviewer.h"      
 
-  class(pm_waste_form_glass_type) :: this
+  class(pm_waste_form_type) :: this
   PetscViewer :: viewer
   
   class(waste_form_base_type), pointer :: cur_waste_form
@@ -1432,7 +1972,7 @@ subroutine PMGlassCheckpoint(this,viewer)
   Vec :: local, global
   PetscErrorCode :: ierr
   
-  this%option%io_buffer = 'PMGlassCheckpoint not implemented.'
+  this%option%io_buffer = 'PMWFCheckpoint not implemented.'
   call printErrMsg(this%option)
   
   ! calculate maximum waste form id
@@ -1450,11 +1990,11 @@ subroutine PMGlassCheckpoint(this,viewer)
 !  call VecCreateMPI(this%option%mycomm,local_waste_form_count,PETSC_DETERMINE,ierr)
   
                      
-end subroutine PMGlassCheckpoint
+end subroutine PMWFCheckpoint
 
-! ************************************************************************** !
+! ***************************************************************************** !
 
-subroutine PMGlassRestart(this,viewer)
+subroutine PMWFRestart(this,viewer)
   ! 
   ! Restarts data associated with Subsurface PM
   ! 
@@ -1464,792 +2004,130 @@ subroutine PMGlassRestart(this,viewer)
   implicit none
 #include "petsc/finclude/petscviewer.h"      
 
-  class(pm_waste_form_glass_type) :: this
+  class(pm_waste_form_type) :: this
   PetscViewer :: viewer
   
-  this%option%io_buffer = 'PMGlassRestart not implemented.'
+  this%option%io_buffer = 'PMWFRestart not implemented.'
   call printErrMsg(this%option)
 !  call RestartFlowProcessModel(viewer,this%realization)
 !  call this%UpdateAuxVars()
 !  call this%UpdateSolution()
   
-end subroutine PMGlassRestart
+end subroutine PMWFRestart
 
 ! ************************************************************************** !
 
-recursive subroutine PMGlassFinalizeRun(this)
+subroutine PMWFInputRecord(this)
   ! 
-  ! Finalizes the time stepping
+  ! Writes ingested information to the input record file.
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
   
   implicit none
   
-  class(pm_waste_form_glass_type) :: this
-  
-  ! do something here
-  
-  if (associated(this%next)) then
-    call this%next%FinalizeRun()
-  endif  
-  
-end subroutine PMGlassFinalizeRun
+  class(pm_waste_form_type) :: this
 
-! ************************************************************************** !
-
-subroutine PMGlassStrip(this)
-  ! 
-  ! Destroys strips Glass process model
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  use Dataset_module
-
-  implicit none
-  
-  class(pm_waste_form_glass_type) :: this
-  
-  class(waste_form_glass_type), pointer :: cur_waste_form, prev_waste_form
-  
-  PetscInt :: i
-  
-  call PMWasteFormStrip(this)
-  call DatasetDestroy(this%mass_fraction_dataset)
-
-  cur_waste_form => WFGlassCast(this%waste_form_list)
-  do
-    if (.not.associated(cur_waste_form)) exit
-    prev_waste_form => cur_waste_form
-    cur_waste_form => WFGlassCast(cur_waste_form%next)
-    deallocate(prev_waste_form)
-    nullify(prev_waste_form)
-  enddo
-  nullify(this%waste_form_list)
-
-end subroutine PMGlassStrip
-  
-! ************************************************************************** !
-
-subroutine PMGlassDestroy(this)
-  ! 
-  ! Destroys Glass process model
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_glass_type) :: this
-  
-  call PMGlassStrip(this)
-  
-end subroutine PMGlassDestroy
-  
-! ************************************************************************** !
-
-subroutine WFFMDMInit(fmdm)
-  ! 
-  ! Initializes the fuel matrix degradation model waste form
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(waste_form_fmdm_type) :: fmdm
-
-  call WasteFormBaseInit(fmdm)  
-  fmdm%specific_surface_area = UNINITIALIZED_DOUBLE
-  fmdm%burnup = UNINITIALIZED_DOUBLE
-  nullify(fmdm%concentration)
-  nullify(fmdm%next)
-  
-end subroutine WFFMDMInit
-
-! ************************************************************************** !
-
-function PMFMDMCreate()
-  ! 
-  ! Creates the FMDM waste form process model
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_fmdm_type), pointer :: PMFMDMCreate
-  
-  allocate(PMFMDMCreate)
-  call PMWasteFormInit(PMFMDMCreate)
-  nullify(PMFMDMCreate%waste_form_list)
-  PMFMDMCreate%num_grid_cells_in_waste_form = UNINITIALIZED_INTEGER
-  PMFMDMCreate%num_concentrations = 11
-  PMFMDMCreate%iUO2_2p = 1
-  PMFMDMCreate%iUCO3_2n = 2
-  PMFMDMCreate%iUO2 = 3
-  PMFMDMCreate%iCO3_2n = 4
-  PMFMDMCreate%iO2 = 5
-  PMFMDMCreate%iH2O2 = 6
-  PMFMDMCreate%iFe_2p = 7
-  PMFMDMCreate%iH2 = 8
-  PMFMDMCreate%iUO2_sld = 9
-  PMFMDMCreate%iUO3_sld = 10
-  PMFMDMCreate%iUO4_sld = 11
-  allocate(PMFMDMCreate%mapping_fmdm_to_pflotran( &
-             PMFMDMCreate%num_concentrations))
-  PMFMDMCreate%mapping_fmdm_to_pflotran = UNINITIALIZED_INTEGER
-  allocate(PMFMDMCreate%mapping_fmdm(4))
-  PMFMDMCreate%mapping_fmdm = [PMFMDMCreate%iO2, &
-                               PMFMDMCreate%iCO3_2n, &
-                               PMFMDMCreate%iH2, &
-                               PMFMDMCreate%iFe_2p]
-  PMFMDMCreate%initialized = PETSC_FALSE
-
-end function PMFMDMCreate
-
-! ************************************************************************** !
-
-subroutine PMFMDMRead(this,input)
-  ! 
-  ! Reads input file parameters associated with the waste form process model
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  use Input_Aux_module
-  use String_module
-  use Utility_module
-  use Option_module
-  use Units_module
-  
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-  type(input_type), pointer :: input
-  
-  type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXSTRINGLENGTH) :: error_string
-  class(waste_form_fmdm_type), pointer :: new_waste_form, prev_waste_form
-  PetscBool :: found
+  class(waste_form_base_type), pointer :: cur_waste_form
+  PetscInt :: id
+  PetscInt :: k
 
-  option => this%option
-  error_string = 'FMDM'
-  input%ierr = 0
-
-  option%io_buffer = 'pflotran card:: ' // trim(error_string)
-  call printMsg(option)
-
-  do
-    call InputReadPflotranString(input,option)
-    if (InputError(input)) exit
-    if (InputCheckExit(input,option)) exit
-    
-    call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword',error_string)
-    call StringToUpper(word)
-    
-    call PMWasteFormReadSelectCase(this,input,word,found,error_string,option)
-    if (found) cycle
-
-    select case(trim(word))
-    !-------------------------------------
-      case('NUM_GRID_CELLS')
-        call InputReadInt(input,option,this%num_grid_cells_in_waste_form)
-        call InputErrorMsg(input,option,'num_grid_cells',error_string)
-        if (this%num_grid_cells_in_waste_form /= 40) then
-          option%io_buffer = 'The FMDM model is currently hardwired to 40 ' // &
-            'grid cells.  Please set NUM_GRID_CELLs to 40. This will be ' // &
-            'fixed in the future.'
-          call printErrMsg(option)
-        endif
-      !-------------------------------------
-      case('WASTE_FORM')
-        error_string = 'FMDM,WASTE_FORM'
-        allocate(new_waste_form)
-        call WFFMDMInit(new_waste_form)
-        do
-          call InputReadPflotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword',error_string)
-          call StringToUpper(word)
-          select case(trim(word))
-            case('SPECIFIC_SURFACE_AREA')
-              call InputReadDouble(input,option, &
-                                   new_waste_form%specific_surface_area)
-              call InputErrorMsg(input,option,'specific surface area', &
-                                 error_string)
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              if (input%ierr == 0) then
-                new_waste_form%specific_surface_area = &
-                           UnitsConvertToInternal(word,'area/volume',option) * &
-                           new_waste_form%specific_surface_area
-              endif
-            case('VOLUME')
-              call InputReadDouble(input,option,new_waste_form%volume)
-              call InputErrorMsg(input,option,'volume',error_string)
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              if (input%ierr == 0) then
-                new_waste_form%volume = UnitsConvertToInternal(word,'volume', &
-                                        option) * new_waste_form%volume
-              endif
-            case('BURNUP')
-              call InputReadDouble(input,option,new_waste_form%burnup)
-              call InputErrorMsg(input,option,'burnup',error_string)
-            case('COORDINATE')
-              call GeometryReadCoordinate(input,option, &
-                                          new_waste_form%coordinate, &
-                                          error_string)
-            case default
-              call InputKeywordUnrecognized(word,error_string,option)
-          end select
-        enddo
-        if (Uninitialized(new_waste_form%specific_surface_area)) then
-          option%io_buffer = &
-            'SPECIFIC_SURFACE_AREA must be specified for all fuel matrix ' // &
-            'degradation model waste packages.'
-          call printErrMsg(option)
-        endif
-        if (Uninitialized(new_waste_form%volume)) then
-          option%io_buffer = &
-            'VOLUME must be specified for all fuel matrix ' // &
-            'degradation model waste packages.'
-          call printErrMsg(option)
-        endif
-        if (Uninitialized(new_waste_form%burnup)) then
-          option%io_buffer = &
-            'BURNUP must be specified for all fuel matrix ' // &
-            'degradation model waste packages.'
-          call printErrMsg(option)
-        endif
-        if (Uninitialized(new_waste_form%coordinate%z)) then
-          option%io_buffer = &
-            'COORDINATE must be specified for all fuel matrix ' // &
-            'degradation model waste packages.'
-          call printErrMsg(option)
-        endif
-        if (.not.associated(this%waste_form_list)) then
-          this%waste_form_list => new_waste_form
-          prev_waste_form => new_waste_form
-        else
-          prev_waste_form%next => new_waste_form
-          prev_waste_form => new_waste_form
-        endif
-        nullify(new_waste_form)
-        error_string = 'FMDM'
-    !-------------------------------------
-      case('BYPASS_WARNING_MESSAGE')
-        bypass_warning_message = PETSC_TRUE
-    !-------------------------------------
-      case default
-        call InputKeywordUnrecognized(word,error_string,option)
-    !-------------------------------------
-    end select
-  enddo
-
-  call PMWFReadError(this,input,option,error_string)
-  call PMWFAssignColIdsFromHeader(this,input,option,error_string)
+  id = INPUT_RECORD_UNIT
   
-  if (Uninitialized(this%num_grid_cells_in_waste_form)) then
-    option%io_buffer = &
-      'NUM_GRID_CELLS must be specified for fuel matrix degradation model.'
-    call printErrMsg(option)
-  endif
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
 
-end subroutine PMFMDMRead
+  
+end subroutine PMWFInputRecord
 
 ! ************************************************************************** !
 
-subroutine PMFMDMSetup(this)
+subroutine PMWFStrip(this)
   ! 
-  ! Initializes variables associated with subsurface process models
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  use Reaction_Aux_module
-  use Option_module
-
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-  
-  type(option_type), pointer :: option
-  type(reaction_type), pointer :: reaction
-  character(len=MAXWORDLENGTH) :: species_name
-  class(waste_form_fmdm_type), pointer :: cur_waste_form
-  
-  option => this%realization%option
-  reaction => this%realization%reaction
-  
-  call PMWFBaseSetup(this)
-
-  cur_waste_form => WFFMDMCast(this%waste_form_list)
-  do 
-    if (.not.associated(cur_waste_form)) exit
-    ! allocate concentration array
-    allocate(cur_waste_form%concentration(this%num_concentrations, &
-                                          this%num_grid_cells_in_waste_form))
-    cur_waste_form%concentration = 1.d-20
-    allocate(cur_waste_form%instantaneous_mass_rate(1))
-    cur_waste_form%instantaneous_mass_rate = 0.d0
-    allocate(cur_waste_form%cumulative_mass(1))
-    cur_waste_form%cumulative_mass = 0.d0
-    cur_waste_form => WFFMDMCast(cur_waste_form%next)
-  enddo
-    
-  ! set up indexing of solute concentrations
-  species_name = 'O2(aq)'
-  this%mapping_fmdm_to_pflotran(this%iO2) = &
-    GetPrimarySpeciesIDFromName(species_name,reaction,option)
-  species_name = 'HCO3-'
-  this%mapping_fmdm_to_pflotran(this%iCO3_2n) = &
-    GetPrimarySpeciesIDFromName(species_name,reaction,option)
-  species_name = 'H2(aq)'
-  this%mapping_fmdm_to_pflotran(this%iH2) = &
-    GetPrimarySpeciesIDFromName(species_name,reaction,option)
-  species_name = 'Fe++'
-  this%mapping_fmdm_to_pflotran(this%iFe_2p) = &
-    GetPrimarySpeciesIDFromName(species_name,reaction,option)
-  
-end subroutine PMFMDMSetup
-
-! ************************************************************************** !
-
-recursive subroutine PMFMDMInitializeRun(this)
-  ! 
-  ! Initializes the process model for the simulation
+  ! Strips the waste form process model
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
-  
-  implicit none
+  ! Notes: Modified by Jenn Frederick, 03/28/2016
 
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-
-  class(pm_waste_form_fmdm_type) :: this
-  
-  PetscReal :: time
-  PetscErrorCode :: ierr
-  
-#ifdef PM_WP_DEBUG  
-  call printMsg(this%option,'PMRT%InitializeRun()')
-#endif
-
-#ifndef FMDM_MODEL
-  this%option%io_buffer = 'Preprocessing statement FMDM_MODEL must be ' // &
-    'defined and the ANL FMDM library must be linked to PFLOTRAN to ' // &
-    'employ the fuel matrix degradation model.'
-  if (.not.bypass_warning_message) then
-    call printErrMsg(this%option)
-  endif
-#endif
-
-  ! restart
-  if (this%option%restart_flag .and. &
-      this%option%overwrite_restart_transport) then
-  endif
-  
-  call PMWFInitializeRun(this)
-
-  time = 0.d0
-  call PMFMDMSolve(this,time,ierr)  
-
-end subroutine PMFMDMInitializeRun
-
-! ************************************************************************** !
-
-subroutine PMFMDMInitializeTimestep(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-
-  if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," FUEL MATRIX DEGRADATION MODEL ",47("="))')
-  endif
-
-  ! due to output witin, must be called prior to update
-  call PMWFInitializeTimestep(this)
-
-end subroutine PMFMDMInitializeTimestep
-
-! ************************************************************************** !
-
-subroutine PMFMDMPreSolve(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  use Grid_module
-  use Reactive_Transport_Aux_module
-
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-  
-  type(grid_type), pointer :: grid
-  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
-  class(waste_form_fmdm_type), pointer :: cur_waste_form
-  PetscInt :: i
-  PetscInt :: icomp_fmdm
-  PetscInt :: icomp_pflotran
-  PetscInt :: ghosted_id
-  
-  grid => this%realization%patch%grid
-  rt_auxvars => this%realization%patch%aux%RT%auxvars
-  
-  cur_waste_form => WFFMDMCast(this%waste_form_list)
-  do 
-    if (.not.associated(cur_waste_form)) exit
-    ghosted_id = grid%nL2G(cur_waste_form%local_cell_id)
-    ! overwrite the components in this%mapping_pflotran array
-    do i = 1, size(this%mapping_fmdm)
-      icomp_fmdm = this%mapping_fmdm(i)
-      icomp_pflotran = this%mapping_fmdm_to_pflotran(icomp_fmdm)
-      cur_waste_form%concentration(icomp_fmdm,1) = &
-        ! the 1 in the second index if for the liquid phase
-        rt_auxvars(ghosted_id)%total(icomp_pflotran,1)
-    enddo
-    cur_waste_form => WFFMDMCast(cur_waste_form%next)
-  enddo
-  
-end subroutine PMFMDMPreSolve
-
-! ************************************************************************** !
-
-subroutine PMFMDMSolve(this,time,ierr)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-  !
-!  use Argonne_Mixed_Potential_module
-  use Grid_module
-  use Global_Aux_module
-  
-  implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-
-  interface
-    subroutine AMP_step ( burnup, sTme, temperature_C, conc, initialRun, &
-                          fuelDisRate, success )
-      real ( kind = 8), intent( in ) :: burnup   
-      real ( kind = 8), intent( in ) :: sTme   
-      real ( kind = 8), intent( in ) :: temperature_C   
-      real ( kind = 8), intent( inout ),  dimension (:,:) :: conc
-      logical ( kind = 4), intent( in ) :: initialRun
-      real ( kind = 8), intent(out) :: fuelDisRate
-      integer ( kind = 4), intent(out) :: success
-    end subroutine
-  end interface  
-
-  class(pm_waste_form_fmdm_type) :: this
-  PetscReal :: time
-  PetscErrorCode :: ierr
-  
-  class(waste_form_fmdm_type), pointer :: cur_waste_form
-  type(global_auxvar_type), pointer :: global_auxvars(:)
-  type(grid_type), pointer :: grid
-   PetscInt :: i
-  PetscReal, pointer :: vec_p(:)       ! g(U)/m^2/yr -> mol(U)/m^2/sec
-  PetscReal, parameter :: conversion = 1.d0/238.d0/(365.d0*24.d0*3600.d0)
-  PetscReal :: fuel_dissolution_rate   ! g/m^2/yr
-  
-  integer ( kind = 4) :: success
-  logical ( kind = 4) :: initialRun
-  
-  grid => this%realization%patch%grid
-  global_auxvars => this%realization%patch%aux%Global%auxvars
- 
-  if (this%initialized) then
-    initialRun = PETSC_FALSE
-  else
-    initialRun = PETSC_TRUE
-    this%initialized = PETSC_TRUE
-  endif
-
-  ierr = 0
-  call PMFMDMPreSolve(this)
-  call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
-  cur_waste_form => WFFMDMCast(this%waste_form_list)
-  i = 0
-  do 
-    if (.not.associated(cur_waste_form)) exit
-    i = i + 1
-#ifdef FMDM_MODEL  
-    call AMP_step(cur_waste_form%burnup, time, &
-                  global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))%temp, &
-                  cur_waste_form%concentration, initialRun, &
-                  fuel_dissolution_rate, success)
-#else
-    success = 1
-    fuel_dissolution_rate = cur_waste_form%burnup
-#endif
-    if (success == 0) then
-      ierr = 1
-      exit
-    endif      ! mol(U)/sec
-    cur_waste_form%instantaneous_mass_rate = &
-               fuel_dissolution_rate * &                ! g/m^2/yr
-               cur_waste_form%specific_surface_area * & ! m^2/m^3 waste
-               cur_waste_form%volume * &                ! m^3 waste
-               conversion                               ! g(U)/yr -> mol(U)/sec
-    vec_p(i) = cur_waste_form%instantaneous_mass_rate(1)
-    cur_waste_form => WFFMDMCast(cur_waste_form%next)
-  enddo
-  call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
-  
-end subroutine PMFMDMSolve
-
-! ************************************************************************** !
-
-subroutine PMFMDMPostSolve(this)
-  ! 
-  ! PMFMDMUpdatePostSolve:
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-  ! 
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-  
-end subroutine PMFMDMPostSolve
-
-! ************************************************************************** !
-
-function PMFMDMAcceptSolution(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-  
-  PetscBool :: PMFMDMAcceptSolution
-  
-  ! do nothing
-  PMFMDMAcceptSolution = PETSC_TRUE
-  
-end function PMFMDMAcceptSolution
-
-! ************************************************************************** !
-
-subroutine PMFMDMUpdatePropertiesTS(this)
-  ! 
-  ! Updates parameters/properties at each Newton iteration
-  !
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-  
-!  call RealizationUpdatePropertiesNI(this%realization)
-
-end subroutine PMFMDMUpdatePropertiesTS
-
-! ************************************************************************** !
-
-subroutine PMFMDMTimeCut(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-  
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-  
-  PetscErrorCode :: ierr
-  
-end subroutine PMFMDMTimeCut
-
-! ************************************************************************** !
-
-subroutine PMFMDMFinalizeTimestep(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-  
-end subroutine PMFMDMFinalizeTimestep
-
-! ************************************************************************** !
-
-subroutine PMFMDMUpdateSolution(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-  
-  PetscErrorCode :: ierr
-
-end subroutine PMFMDMUpdateSolution  
-
-! ************************************************************************** !
-
-subroutine PMFMDMUpdateAuxVars(this)
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-
-  this%option%io_buffer = 'PMFMDMUpdateAuxVars() must be extended.'
-  call printErrMsg(this%option)
-
-end subroutine PMFMDMUpdateAuxVars   
-
-! ************************************************************************** !
-
-subroutine PMFMDMCheckpointBinary(this,viewer)
-  !
-  ! Checkpoints data associated with Subsurface PM
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-#include "petsc/finclude/petscviewer.h"      
-
-  class(pm_waste_form_fmdm_type) :: this
-  PetscViewer :: viewer
-  
-end subroutine PMFMDMCheckpointBinary
-
-! ************************************************************************** !
-
-subroutine PMFMDMRestartBinary(this,viewer)
-  !
-  ! Restarts data associated with Subsurface PM
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-
-  implicit none
-#include "petsc/finclude/petscviewer.h"      
-
-  class(pm_waste_form_fmdm_type) :: this
-  PetscViewer :: viewer
-  
-!  call RestartFlowProcessModel(viewer,this%realization)
-!  call this%UpdateAuxVars()
-!  call this%UpdateSolution()
-  
-end subroutine PMFMDMRestartBinary
-
-! ************************************************************************** !
-
-recursive subroutine PMFMDMFinalizeRun(this)
-  ! 
-  ! Finalizes the time stepping
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-  
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-  
-  ! do something here
-  
-  if (associated(this%next)) then
-    call this%next%FinalizeRun()
-  endif  
-  
-end subroutine PMFMDMFinalizeRun
-
-! ************************************************************************** !
-
-subroutine WFFMDMStrip(fmdm)
-  ! 
-  ! Initializes the fuel matrix degradation model waste form
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
   use Utility_module, only : DeallocateArray
 
   implicit none
   
-  class(waste_form_fmdm_type) :: fmdm
+  class(pm_waste_form_type) :: this
+  
+  class(waste_form_base_type), pointer :: cur_waste_form, prev_waste_form
 
-  call DeallocateArray(fmdm%concentration)
-  
-end subroutine WFFMDMStrip
+  nullify(this%realization)
+  nullify(this%data_mediator)
 
-! ************************************************************************** !
-
-subroutine PMFMDMStrip(this)
-  ! 
-  ! Destroys strips FMDM process model
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 08/26/15
-  use Utility_module, only : DeallocateArray
-
-  implicit none
-  
-  class(pm_waste_form_fmdm_type) :: this
-  class(waste_form_fmdm_type), pointer :: cur_waste_form, prev_waste_form
-  
-  PetscInt :: i
-  
-  call PMWasteFormStrip(this)
-  
-  cur_waste_form => WFFMDMCast(this%waste_form_list)
+  cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit
     prev_waste_form => cur_waste_form
-    cur_waste_form => WFFMDMCast(cur_waste_form%next)
-    call WFFMDMStrip(prev_waste_form)
+    cur_waste_form => cur_waste_form%next
+    call DeallocateArray(prev_waste_form%rad_mass_fraction)
+    call DeallocateArray(prev_waste_form%rad_concentration)
+    call DeallocateArray(prev_waste_form%inst_release_amount)
+    call DeallocateArray(prev_waste_form%instantaneous_mass_rate)
+    call DeallocateArray(prev_waste_form%cumulative_mass)
+    nullify(prev_waste_form%mechanism)
     deallocate(prev_waste_form)
     nullify(prev_waste_form)
   enddo
-  call DeallocateArray(this%mapping_fmdm_to_pflotran)
-  call DeallocateArray(this%mapping_fmdm)
-  ! this is solely a pointer
-!  call DataMediatorVecDestroy(this%data_mediator)
   nullify(this%waste_form_list)
+  call PMWFMechanismStrip(this)
+
+end subroutine PMWFStrip
+
+! ************************************************************************** !
+
+subroutine PMWFMechanismStrip(this)
+  ! 
+  ! Strips the waste form mechanisms in the waste form process model.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/28/2016
+  !
+  implicit none
   
-end subroutine PMFMDMStrip
+  class(pm_waste_form_type) :: this
+  
+  class(wf_mechanism_base_type), pointer :: cur_mechanism, prev_mechanism
+
+  cur_mechanism => this%mechanism_list
+  do
+    if (.not.associated(cur_mechanism)) exit
+    prev_mechanism => cur_mechanism
+    cur_mechanism => cur_mechanism%next
+    deallocate(prev_mechanism%rad_species_list)
+    nullify(prev_mechanism%rad_species_list)
+    deallocate(prev_mechanism)
+    nullify(prev_mechanism)
+  enddo
+  nullify(this%mechanism_list)
+
+end subroutine PMWFMechanismStrip
   
 ! ************************************************************************** !
 
-subroutine PMFMDMDestroy(this)
+subroutine PMWFDestroy(this)
   ! 
-  ! Destroys FMDM process model
+  ! Destroys the waste form process model
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
 
   implicit none
   
-  class(pm_waste_form_fmdm_type) :: this
+  class(pm_waste_form_type) :: this
   
-  call PMFMDMStrip(this)
+  call PMWFStrip(this)
   
-end subroutine PMFMDMDestroy
+end subroutine PMWFDestroy
+
+
   
 end module PM_Waste_Form_class

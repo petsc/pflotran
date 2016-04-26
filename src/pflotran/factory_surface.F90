@@ -84,7 +84,7 @@ subroutine SurfaceJumpStart(simulation)
   use Option_module
   use Timestepper_Surface_class
   use Output_Aux_module
-  use Output_module, only : Output, OutputInit, OutputPrintCouplers
+  use Output_module
   use Logging_module  
   use Condition_Control_module
   use Checkpoint_Surface_module
@@ -101,13 +101,14 @@ subroutine SurfaceJumpStart(simulation)
   type(output_option_type), pointer :: output_option
 
   character(len=MAXSTRINGLENGTH) :: string
-  PetscBool :: plot_flag, transient_plot_flag
+  PetscBool :: snapshot_plot_flag,observation_plot_flag,massbal_plot_flag
   PetscBool :: surf_flow_read
   PetscBool :: failure
   PetscErrorCode :: ierr
   PetscReal :: surf_flow_prev_dt
 
   surf_realization => simulation%surf_realization
+  output_option => simulation%output_option
   
   select type(ts => simulation%surf_flow_process_model_coupler%timestepper)
     class is(timestepper_surface_type)
@@ -121,15 +122,17 @@ subroutine SurfaceJumpStart(simulation)
                            failure, ierr);CHKERRQ(ierr)
                              
   if (option%steady_state) then
-    option%io_buffer = 'Running in steady-state not yet supported for surface-flow.'
+    option%io_buffer = 'Running in steady-state not yet supported for &
+                       &surface-flow.'
     call printErrMsg(option)
     return
   endif
   
   master_timestepper => surf_flow_timestepper
 
-  plot_flag = PETSC_FALSE
-  transient_plot_flag = PETSC_FALSE
+  snapshot_plot_flag = PETSC_FALSE
+  observation_plot_flag = PETSC_FALSE
+  massbal_plot_flag = PETSC_FALSE
   surf_flow_read = PETSC_FALSE
   failure = PETSC_FALSE
   
@@ -175,11 +178,12 @@ subroutine SurfaceJumpStart(simulation)
   ! print initial condition output if not a restarted sim
   call OutputSurfaceInit(master_timestepper%steps)
   if (output_option%plot_number == 0 .and. &
-      master_timestepper%max_time_step >= 0 .and. &
-      output_option%print_initial) then
-    plot_flag = PETSC_TRUE
-    transient_plot_flag = PETSC_TRUE
-!    call OutputSurface(surf_realization,plot_flag,transient_plot_flag)
+      master_timestepper%max_time_step >= 0) then
+    if (output_option%print_initial_snap) snapshot_plot_flag = PETSC_TRUE
+    if (output_option%print_initial_obs) observation_plot_flag = PETSC_TRUE
+    if (output_option%print_initial_massbal) massbal_plot_flag = PETSC_FALSE
+    !call OutputSurface(surf_realization,snapshot_plot_flag, &
+    !                   observation_plot_flag,massbal_plot_flag)
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only
@@ -195,7 +199,8 @@ subroutine SurfaceJumpStart(simulation)
     return
   endif
 
-  ! increment plot number so that 000 is always the initial condition, and nothing else
+  ! increment plot number so that 000 is always the initial condition, 
+  ! and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
 
   if (.not.associated(surf_flow_timestepper%cur_waypoint)) then
@@ -279,7 +284,8 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
   PetscReal, pointer :: temp_real_array(:)
   PetscInt :: i
 
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word 
+  character(len=MAXWORDLENGTH) :: internal_units
   character(len=MAXSTRINGLENGTH) :: temp_string
   character(len=MAXWORDLENGTH) :: card
   character(len=1) :: backslash
@@ -353,7 +359,7 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
         call InputErrorMsg(input,option,'name','MATERIAL_PROPERTY')
         call SurfaceMaterialPropertyRead(surf_material_property,input,option)
         call SurfaceMaterialPropertyAddToList(surf_material_property, &
-                                          surf_realization%surf_material_properties)
+                                      surf_realization%surf_material_properties)
         nullify(surf_material_property)
 
       !.........................................................................
@@ -379,7 +385,8 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
         else
           call FlowConditionRead(flow_condition,input,option)
         endif
-        call FlowConditionAddToList(flow_condition,surf_realization%surf_flow_conditions)
+        call FlowConditionAddToList(flow_condition, &
+                                    surf_realization%surf_flow_conditions)
         nullify(flow_condition)
 
       !.........................................................................
@@ -455,30 +462,39 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
           call StringToUpper(word)
           select case(trim(word))
             case('NO_FINAL','NO_PRINT_FINAL')
-              output_option%print_final = PETSC_FALSE
+              output_option%print_final_snap = PETSC_FALSE
+              output_option%print_final_obs = PETSC_FALSE
+              output_option%print_final_massbal = PETSC_FALSE
             case('NO_INITIAL','NO_PRINT_INITIAL')
-              output_option%print_initial = PETSC_FALSE
+              output_option%print_initial_snap = PETSC_FALSE
+              output_option%print_initial_obs = PETSC_FALSE
+              output_option%print_initial_massbal = PETSC_FALSE
             case('PERMEABILITY')
-              option%io_buffer = 'PERMEABILITY output must now be entered under OUTPUT/VARIABLES card.'
+              option%io_buffer = 'PERMEABILITY output must now be entered &
+                                 &under OUTPUT/VARIABLES card.'
               call printErrMsg(option)
 !              output_option%print_permeability = PETSC_TRUE
             case('POROSITY')
-              option%io_buffer = 'POROSITY output must now be entered under OUTPUT/VARIABLES card.'
+              option%io_buffer = 'POROSITY output must now be entered under &
+                                 &OUTPUT/VARIABLES card.'
               call printErrMsg(option)
 !              output_option%print_porosity = PETSC_TRUE
             case('PRINT_COLUMN_IDS')
               output_option%print_column_ids = PETSC_TRUE
             case('TIMES')
+              internal_units = 'sec'
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'units','SURF_OUTPUT')
-              units_conversion = UnitsConvertToInternal(word,'time',option)
+              units_conversion = UnitsConvertToInternal(word, &
+                                 internal_units,option)
               temp_string = 'SURF_OUTPUT,TIMES'
+              nullify(temp_real_array)
               call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
                                     temp_string,input,option)
               do i = 1, size(temp_real_array)
                 waypoint => WaypointCreate()
                 waypoint%time = temp_real_array(i)*units_conversion
-                waypoint%print_output = PETSC_TRUE
+                waypoint%print_snap_output = PETSC_TRUE
                 call WaypointInsertInList(waypoint,waypoint_list)
               enddo
               call DeallocateArray(temp_real_array)
@@ -520,26 +536,28 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
               call StringToUpper(word)
               select case(trim(word))
                 case('TIME')
+                  internal_units = 'sec'
                   call InputReadDouble(input,option,temp_real)
                   call InputErrorMsg(input,option,'time increment', &
                                      'SURF_OUTPUT,PERIODIC,TIME')
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
                                      'SURF_OUTPUT,PERIODIC,TIME')
-                  units_conversion = UnitsConvertToInternal(word,'time',option)
-                  output_option%periodic_output_time_incr = temp_real* &
+                  units_conversion = UnitsConvertToInternal(word, &
+                                     internal_units,option)
+                  output_option%periodic_snap_output_time_incr = temp_real* &
                                                             units_conversion
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   if (input%ierr == 0) then
                     if (StringCompareIgnoreCase(word,'between')) then
-
                       call InputReadDouble(input,option,temp_real)
                       call InputErrorMsg(input,option,'start time', &
                                          'SURF_OUTPUT,PERIODIC,TIME')
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       call InputErrorMsg(input,option,'start time units', &
                                          'SURF_OUTPUT,PERIODIC,TIME')
-                      units_conversion = UnitsConvertToInternal(word,'time',option)
+                      units_conversion = UnitsConvertToInternal(word, &
+                                         internal_units,option)
                       temp_real = temp_real * units_conversion
                       call InputReadWord(input,option,word,PETSC_TRUE)
                       if (.not.StringCompareIgnoreCase(word,'and')) then
@@ -557,12 +575,13 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
                       do
                         waypoint => WaypointCreate()
                         waypoint%time = temp_real
-                        waypoint%print_output = PETSC_TRUE
+                        waypoint%print_snap_output = PETSC_TRUE
                         call WaypointInsertInList(waypoint,waypoint_list)
-                        temp_real = temp_real + output_option%periodic_output_time_incr
+                        temp_real = temp_real + &
+                                    output_option%periodic_snap_output_time_incr
                         if (temp_real > temp_real2) exit
                       enddo
-                      output_option%periodic_output_time_incr = 0.d0
+                      output_option%periodic_snap_output_time_incr = 0.d0
                     else
                       input%ierr = 1
                       call InputErrorMsg(input,option,'between', &
@@ -571,7 +590,7 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
                   endif
                 case('TIMESTEP')
                   call InputReadInt(input,option, &
-                                    output_option%periodic_output_ts_imod)
+                                    output_option%periodic_snap_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'SURF_OUTPUT,PERIODIC,TIMESTEP')
                 case default
@@ -586,20 +605,23 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
               call StringToUpper(word)
               select case(trim(word))
                 case('TIME')
+                  internal_units = 'sec'
                   call InputReadDouble(input,option,temp_real)
                   call InputErrorMsg(input,option,'time increment', &
                                      'SURF_OUTPUT,PERIODIC_OBSERVATION,TIME')
                   call InputReadWord(input,option,word,PETSC_TRUE)
                   call InputErrorMsg(input,option,'time increment units', &
                                      'SURF_OUTPUT,PERIODIC_OBSERVATION,TIME')
-                  units_conversion = UnitsConvertToInternal(word,'time',option) 
-                  output_option%periodic_tr_output_time_incr = temp_real* &
+                  units_conversion = UnitsConvertToInternal(word, &
+                                     internal_units,option) 
+                  output_option%periodic_obs_output_time_incr = temp_real* &
                                                                units_conversion
                 case('TIMESTEP')
                   call InputReadInt(input,option, &
-                                    output_option%periodic_tr_output_ts_imod)
+                                    output_option%periodic_obs_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
-                                     'SURF_OUTPUT,PERIODIC_OBSERVATION,TIMESTEP')
+                                     'SURF_OUTPUT,PERIODIC_OBSERVATION,&
+                                     &TIMESTEP')
                 case default
                   call InputKeywordUnrecognized(word, &
                     'SURF_OUTPUT,PERIODIC_OBSERVATION,TIMESTEP',option)
@@ -628,8 +650,9 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
                             case('TIMES_PER_FILE')
                               call InputReadInt(input,option, &
                                               output_option%times_per_h5_file)
-                              call InputErrorMsg(input,option,'timestep increment', &
-                                        'OUTPUT,FORMAT,MULTIPLE_FILES,TIMES_PER_FILE')
+                              call InputErrorMsg(input,option,'timestep &
+                                     &increment','OUTPUT,FORMAT,MULTIPLE_FILES&
+                                     &,TIMES_PER_FILE')
                             case default
                               call InputKeywordUnrecognized(word, &
                                 'SURF_OUTPUT,FORMAT,HDF5,MULTIPLE_FILES',option)
@@ -653,7 +676,8 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
                     case('BLOCK')
                       output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
                     case('FEQUADRILATERAL')
-                      output_option%tecplot_format = TECPLOT_FEQUADRILATERAL_FORMAT
+                      output_option%tecplot_format = &
+                        TECPLOT_FEQUADRILATERAL_FORMAT
                     case default
                       option%io_buffer = 'TECPLOT format (' // trim(word) // &
                                          ') not recongnized.'
@@ -664,7 +688,8 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
                     output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
                   endif
                   if (grid%itype == IMPLICIT_UNSTRUCTURED_GRID) then
-                    output_option%tecplot_format = TECPLOT_FEQUADRILATERAL_FORMAT
+                    output_option%tecplot_format = &
+                      TECPLOT_FEQUADRILATERAL_FORMAT
                   endif
                 case ('VTK')
                   output_option%print_vtk = PETSC_TRUE
@@ -677,11 +702,13 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
               velocities = PETSC_TRUE
             case ('HDF5_WRITE_GROUP_SIZE')
               call InputReadInt(input,option,option%hdf5_write_group_size)
-              call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
+              call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE', &
+                                 'Group size')
             case('HYDROGRAPH')
               output_option%print_hydrograph = PETSC_TRUE
             case('PROCESSOR_ID')
-              option%io_buffer = 'PROCESSOR_ID output must now be entered under OUTPUT/VARIABLES card as PROCESS_ID.'
+              option%io_buffer = 'PROCESSOR_ID output must now be entered &
+                                 &under OUTPUT/VARIABLES card as PROCESS_ID.'
               call printErrMsg(option)
 !              output_option%print_iproc = PETSC_TRUE
             case('FLOWRATES','FLOWRATE')
@@ -699,9 +726,11 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
             case('AVERAGE_ENERGY_FLOWRATE')
               aveg_energy_flowrate = PETSC_TRUE
             case('VARIABLES')
-              call OutputSurfaceVariableRead(input,option,output_option%output_variable_list)
+              call OutputSurfaceVariableRead(input,option, &
+                     output_option%output_variable_list)
             case('AVERAGE_VARIABLES')
-              call OutputSurfaceVariableRead(input,option,output_option%aveg_output_variable_list)
+              call OutputSurfaceVariableRead(input,option, &
+                     output_option%aveg_output_variable_list)
             case default
               call InputKeywordUnrecognized(word,'SURF_OUTPUT',option)
           end select
@@ -715,14 +744,15 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
           if (output_option%print_vtk) &
             output_option%print_vtk_vel_cent = PETSC_TRUE
         endif
-        if (mass_flowrate.or.energy_flowrate.or.aveg_mass_flowrate.or.aveg_energy_flowrate) then
+        if (mass_flowrate.or.energy_flowrate.or.aveg_mass_flowrate.or. &
+            aveg_energy_flowrate) then
           if (output_option%print_hdf5) then
             output_option%print_hdf5_mass_flowrate = mass_flowrate
             output_option%print_hdf5_energy_flowrate = energy_flowrate
             output_option%print_hdf5_aveg_mass_flowrate = aveg_mass_flowrate
             output_option%print_hdf5_aveg_energy_flowrate = aveg_energy_flowrate
             if (aveg_mass_flowrate.or.aveg_energy_flowrate) then
-              if (output_option%periodic_output_time_incr==0.d0) then
+              if (output_option%periodic_snap_output_time_incr==0.d0) then
                 option%io_buffer = 'Keyword: AVEGRAGE_FLOWRATES/ ' // &
                   'AVEGRAGE_MASS_FLOWRATE/ENERGY_FLOWRATE defined without' // &
                   ' PERIODIC TIME being set.'
@@ -754,6 +784,7 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'word','SURF_TIME')
+          internal_units = 'sec'
           select case(trim(word))
             case ('INITIAL_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
@@ -762,7 +793,7 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
               call InputErrorMsg(input,option, &
                                  'Initial Timestep Size Time Units','TIME')
               surf_realization%dt_init = &
-                           temp_real*UnitsConvertToInternal(word,'time',option)
+                temp_real*UnitsConvertToInternal(word,internal_units,option)
             case('MAXIMUM_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Maximum Timestep Size','TIME') 
@@ -770,7 +801,7 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
               call InputErrorMsg(input,option, &
                                  'Maximum Timestep Size Time Units','TIME')
               surf_realization%dt_max = & 
-                           temp_real*UnitsConvertToInternal(word,'time',option)
+                temp_real*UnitsConvertToInternal(word,internal_units,option)
             case('COUPLING_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Coupling Timestep Size','TIME') 
@@ -778,7 +809,7 @@ subroutine SurfaceReadInput(surf_realization,surf_flow_solver,waypoint_list, &
               call InputErrorMsg(input,option, &
                                  'Coupling Timestep Size Time Units','TIME')
               surf_realization%dt_coupling = &
-                           temp_real*UnitsConvertToInternal(word,'time',option)
+                temp_real*UnitsConvertToInternal(word,internal_units,option)
             case default
               call InputKeywordUnrecognized(word,'TIME',option)
             end select

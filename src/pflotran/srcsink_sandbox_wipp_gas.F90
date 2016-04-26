@@ -81,7 +81,7 @@ subroutine WIPPGasGenerationRead(this,input,option)
   type(option_type) :: option
 
   PetscInt :: i
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   PetscBool :: found
   
   do 
@@ -94,15 +94,16 @@ subroutine WIPPGasGenerationRead(this,input,option)
                        'SRCSINK_SANDBOX,WIPP')
     call StringToUpper(word)   
 
-    ! reads the REGION
-    call SSSandboxBaseRead(this,input,option,word,found)
+    call SSSandboxBaseSelectCase(this,input,option,word,found)
     if (found) cycle
     
     select case(trim(word))
       case('INUNDATED_CORROSION_RATE')
+        internal_units = 'unitless/sec'
         call InputReadDouble(input,option,this%inundated_corrosion_rate)
         call InputDefaultMsg(input,option,'inundated_corrosion_rate')
       case('INUNDATED_DEGRADATION_RATE')
+        internal_units = 'unitless/sec'
         call InputReadDouble(input,option,this%inundated_degradation_rate)
         call InputDefaultMsg(input,option,'inundated_degradation_rate')
       case('HUMID_CORROSION_FACTOR')
@@ -127,22 +128,22 @@ end subroutine WIPPGasGenerationRead
 
 ! ************************************************************************** !
 
-subroutine WIPPGasGenerationSetup(this,region_list,option)
+subroutine WIPPGasGenerationSetup(this,grid,option)
   ! 
   ! Sets up the WIPP gas generation src/sink
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/11/14
   use Option_module
-  use Region_module
-
+  use Grid_module
+  
   implicit none
   
   class(srcsink_sandbox_wipp_gas_type) :: this
-  type(region_list_type) :: region_list  
+  type(grid_type) :: grid
   type(option_type) :: option
   
-  call SSSandboxBaseSetup(this,region_list,option)
+  call SSSandboxBaseSetup(this,grid,option)
 
 end subroutine WIPPGasGenerationSetup 
 

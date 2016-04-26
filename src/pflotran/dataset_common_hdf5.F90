@@ -264,6 +264,7 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
   PetscMPIInt :: array_rank_mpi
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: attribute_name, time_units
+  character(len=MAXWORDLENGTH) :: internal_units
   PetscMPIInt :: int_mpi
   PetscInt :: temp_int, num_times_read_by_iorank
   PetscMPIInt :: hdf5_err, h5fopen_err
@@ -384,8 +385,9 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
     call printMsg(option)  
     call h5fclose_f(file_id,hdf5_err)
     call h5close_f(hdf5_err) 
+    internal_units = 'sec'
     time_storage%times = time_storage%times * &
-      UnitsConvertToInternal(time_units,'time',option)
+      UnitsConvertToInternal(time_units,internal_units,option)
   endif
 
   int_mpi = num_times

@@ -69,6 +69,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
   use Realization_Surface_class
   use Timestepper_Surface_class
   use Logging_module
+  use Output_Aux_module
   
   implicit none
 #include "petsc/finclude/petscvec.h"
@@ -137,7 +138,11 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
   if (associated(pm_surface_flow) .or. associated(pm_surface_th)) then
     simulation%surf_realization => RealizSurfCreate(option)
     surf_realization => simulation%surf_realization
-    surf_realization%output_option => simulation%output_option
+    surf_realization%output_option => OutputOptionDuplicate(simulation%output_option)
+    nullify(surf_realization%output_option%output_snap_variable_list)
+    nullify(surf_realization%output_option%output_obs_variable_list)
+    surf_realization%output_option%output_snap_variable_list => OutputVariableListCreate()
+    surf_realization%output_option%output_obs_variable_list => OutputVariableListCreate()
     subsurf_realization => simulation%realization
     surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
     surf_realization%subsurf_filename = &
@@ -199,7 +204,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
     waypoint => WaypointCreate()
     waypoint%final = PETSC_TRUE
     waypoint%time = simulation%waypoint_list_subsurface%last%time
-    waypoint%print_output = PETSC_TRUE
+    waypoint%print_snap_output = PETSC_TRUE
     call WaypointInsertInList(waypoint,simulation%waypoint_list_surfsubsurface)   
     ! merge in outer waypoints (e.g. checkpoint times)
     call WaypointListCopyAndMerge(simulation%waypoint_list_surfsubsurface, &
@@ -208,7 +213,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
                                   simulation%waypoint_list_outer,option)
     call InitSurfaceSetupRealization(surf_realization,subsurf_realization, &
                                      simulation%waypoint_list_surfsubsurface)
-    call InitCommonAddOutputWaypoints(simulation%output_option, &
+    call InitCommonAddOutputWaypoints(option,simulation%output_option, &
                                       simulation%waypoint_list_surfsubsurface)
     ! fill in holes in waypoint data
     call WaypointListFillIn(simulation%waypoint_list_surfsubsurface,option)

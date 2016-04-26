@@ -78,10 +78,12 @@ subroutine THSetup(realization)
 
   use Realization_Subsurface_class
   use Patch_module
+  use Output_Aux_module
 
   type(realization_subsurface_type) :: realization
   
   type(patch_type), pointer :: cur_patch
+  type(output_variable_list_type), pointer :: list
   
   cur_patch => realization%patch_list%first
   do
@@ -91,7 +93,10 @@ subroutine THSetup(realization)
     cur_patch => cur_patch%next
   enddo
 
-  call THSetPlotVariables(realization)
+  list => realization%output_option%output_snap_variable_list
+  call THSetPlotVariables(realization,list)
+  list => realization%output_option%output_obs_variable_list
+  call THSetPlotVariables(realization,list)
 
 end subroutine THSetup
 
@@ -129,11 +134,12 @@ subroutine THSetupPatch(realization)
   type(fluid_property_type), pointer :: cur_fluid_property
   type(sec_heat_type), pointer :: TH_sec_heat_vars(:)
   type(coupler_type), pointer :: initial_condition
+  character(len=MAXWORDLENGTH) :: word
   PetscReal :: area_per_vol
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: i, iphase, local_id, material_id
-  
+  PetscBool :: error_found
   
   option => realization%option
   patch => realization%patch
@@ -160,27 +166,76 @@ subroutine THSetupPatch(realization)
   endif
 
   !Copy the values in the TH_parameter from the global realization 
+  error_found = PETSC_FALSE
   do i = 1, size(patch%material_property_array)
-    material_id = patch%material_property_array(i)%ptr%internal_id
+    word = patch%material_property_array(i)%ptr%name 
+    if (Uninitialized(patch%material_property_array(i)%ptr%specific_heat)) then
+      option%io_buffer = 'Non-initialized HEAT_CAPACITY in material ' // &
+                         trim(word)
+      call printMsg(option)
+      error_found = PETSC_TRUE
+    endif
+    if (Uninitialized(patch%material_property_array(i)%ptr% &
+                      thermal_conductivity_wet)) then
+      option%io_buffer = 'Non-initialized THERMAL_CONDUCTIVITY_WET in &
+                         &material ' // &
+                         trim(word)
+      call printMsg(option)
+      error_found = PETSC_TRUE
+    endif
+    if (Uninitialized(patch%material_property_array(i)%ptr% &
+                      thermal_conductivity_dry)) then
+      option%io_buffer = 'Non-initialized THERMAL_CONDUCTIVITY_DRY in &
+                         &material ' // &
+                         trim(word)
+      call printMsg(option)
+      error_found = PETSC_TRUE
+    endif
+    if (option%use_th_freezing) then
+      if (Uninitialized(patch%material_property_array(i)%ptr% &
+                        thermal_conductivity_frozen)) then
+        option%io_buffer = 'Non-initialized THERMAL_CONDUCTIVITY_FROZEN in &
+                           &material ' // &
+                           trim(word)
+        call printMsg(option)
+        error_found = PETSC_TRUE
+      endif
+      if (Uninitialized(patch%material_property_array(i)%ptr% &
+                        alpha_fr)) then
+        option%io_buffer = 'Non-initialized THERMAL_COND_EXPONENT_FROZEN in &
+                           &material ' // &
+                           trim(word)
+        call printMsg(option)
+        error_found = PETSC_TRUE
+      endif
+    endif
+    material_id = iabs(patch%material_property_array(i)%ptr%internal_id)
     ! kg rock/m^3 rock * J/kg rock-K * 1.e-6 MJ/J = MJ/m^3-K
     patch%aux%TH%TH_parameter%dencpr(material_id) = &
       patch%material_property_array(i)%ptr%rock_density*option%scale* &
         patch%material_property_array(i)%ptr%specific_heat
- 
     patch%aux%TH%TH_parameter%ckwet(material_id) = &
-      patch%material_property_array(i)%ptr%thermal_conductivity_wet*option%scale  
+      patch%material_property_array(i)%ptr%thermal_conductivity_wet* &
+      option%scale  
     patch%aux%TH%TH_parameter%ckdry(material_id) = &
-      patch%material_property_array(i)%ptr%thermal_conductivity_dry*option%scale
+      patch%material_property_array(i)%ptr%thermal_conductivity_dry* &
+      option%scale
     patch%aux%TH%TH_parameter%alpha(material_id) = &
       patch%material_property_array(i)%ptr%alpha
     if (option%use_th_freezing) then
-       patch%aux%TH%TH_parameter%ckfrozen(material_id) = &
-            patch%material_property_array(i)%ptr%thermal_conductivity_frozen*option%scale
-       patch%aux%TH%TH_parameter%alpha_fr(material_id) = &
-            patch%material_property_array(i)%ptr%alpha_fr
+      patch%aux%TH%TH_parameter%ckfrozen(material_id) = &
+        patch%material_property_array(i)%ptr%thermal_conductivity_frozen* &
+        option%scale
+      patch%aux%TH%TH_parameter%alpha_fr(material_id) = &
+        patch%material_property_array(i)%ptr%alpha_fr
     endif
 
   enddo 
+
+  if (error_found) then
+    option%io_buffer = 'Material property errors found in THSetup.'
+    call printErrMsg(option)
+  endif
 
   do i = 1, size(patch%saturation_function_array)
     patch%aux%TH%TH_parameter%sir(:,patch%saturation_function_array(i)%ptr%id) = &
@@ -300,11 +355,6 @@ subroutine THSetupPatch(realization)
     patch%aux%TH%auxvars_ss => TH_auxvars_ss
   endif
   patch%aux%TH%num_aux_ss = sum_connection
-
-
-  ! create zero array for zeroing residual and Jacobian (1 on diagonal)
-  ! for inactive cells (and isothermal)
-  call THCreateZeroArray(patch,option)
   
   ! initialize parameters
   cur_fluid_property => realization%fluid_properties
@@ -3711,8 +3761,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
       r_p(istart:iend) = r_p(istart:iend) - Res_src
 
       if (option%compute_mass_balance_new) then
-        global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) = &
-          global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - Res_src
+        global_auxvars_ss(sum_connection)%mass_balance_delta(1,1) = &
+          global_auxvars_ss(sum_connection)%mass_balance_delta(1,1) - Res_src(1)
       endif
       if (associated(patch%ss_flow_vol_fluxes)) then
         ! fluid flux [m^3/sec] = qsrc_mol [kmol/sec] / den [kmol/m^3]
@@ -3883,8 +3933,8 @@ subroutine THResidualPatch(snes,xx,r,realization,ierr)
 
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) = &
-          global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) - Res(1:2)
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1,1) - Res(1)
       endif
 
       iend = local_id*option%nflowdof
@@ -4493,107 +4543,6 @@ end subroutine THJacobianPatch
 
 ! ************************************************************************** !
 
-subroutine THCreateZeroArray(patch,option)
-  ! 
-  ! Computes the zeroed rows for inactive grid cells
-  ! 
-  ! Author: ???
-  ! Date: 12/13/07
-  ! 
-
-  use Patch_module
-  use Grid_module
-  use Option_module
-  
-  implicit none
-
-  type(patch_type) :: patch
-  type(option_type) :: option
-  
-  PetscInt :: ncount, idof
-  PetscInt :: local_id, ghosted_id
-
-  type(grid_type), pointer :: grid
-  PetscInt :: flag
-  PetscInt :: n_zero_rows
-  PetscInt, pointer :: zero_rows_local(:)
-  PetscInt, pointer :: zero_rows_local_ghosted(:)
-  PetscErrorCode :: ierr
-  
-  flag = 0
-  grid => patch%grid
-  
-  n_zero_rows = 0
-
-  if (associated(patch%imat)) then
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) then
-        n_zero_rows = n_zero_rows + option%nflowdof
-      else
-#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
-        n_zero_rows = n_zero_rows + 1
-#endif
-      endif
-    enddo
-  else
-#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
-    n_zero_rows = n_zero_rows + grid%nlmax
-#endif
-  endif
-
-  allocate(zero_rows_local(n_zero_rows))
-  allocate(zero_rows_local_ghosted(n_zero_rows))
-
-  zero_rows_local = 0
-  zero_rows_local_ghosted = 0
-  ncount = 0
-
-  if (associated(patch%imat)) then
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) <= 0) then
-        do idof = 1, option%nflowdof
-          ncount = ncount + 1
-          zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
-          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
-        enddo
-      else
-#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
-        ncount = ncount + 1
-        zero_rows_local(ncount) = local_id*option%nflowdof
-        zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-#endif
-      endif
-    enddo
-  else
-#ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      ncount = ncount + 1
-      zero_rows_local(ncount) = local_id*option%nflowdof
-      zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
-    enddo
-#endif
-  endif
-
-  patch%aux%TH%zero_rows_local => zero_rows_local
-  patch%aux%TH%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%aux%TH%n_zero_rows = n_zero_rows
-
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
-                     MPI_MAX,option%mycomm,ierr)
-  if (flag > 0) patch%aux%TH%inactive_cells_exist = PETSC_TRUE
-
-  if (ncount /= n_zero_rows) then
-    print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
-    stop
-  endif
-
-end subroutine THCreateZeroArray
-
-! ************************************************************************** !
-
 subroutine THMaxChange(realization,dpmax,dtmpmax)
   ! 
   ! Computes the maximum change in the solution vector
@@ -4825,7 +4774,7 @@ end function THGetTecplotHeader
 
 ! ************************************************************************** !
 
-subroutine THSetPlotVariables(realization)
+subroutine THSetPlotVariables(realization,list)
   ! 
   ! Adds variables to be printed to list
   ! 
@@ -4842,12 +4791,10 @@ subroutine THSetPlotVariables(realization)
   implicit none
 
   type(realization_subsurface_type) :: realization
-  type(output_variable_type) :: output_variable
-  
-  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
-  
-  list => realization%output_option%output_variable_list
+
+  type(output_variable_type) :: output_variable
+  character(len=MAXWORDLENGTH) :: name, units
   
   if (associated(list%first)) then
     return

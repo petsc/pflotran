@@ -55,6 +55,7 @@ subroutine SurfaceTHSetup(surf_realization)
   use Coupler_module
   use Connection_module
   use Fluid_module
+  use Output_Aux_module
  
   implicit none
   
@@ -69,11 +70,11 @@ subroutine SurfaceTHSetup(surf_realization)
   type(Surface_TH_auxvar_type), pointer :: Surf_TH_auxvars_ss(:)
   type(fluid_property_type), pointer :: cur_fluid_property
   type(coupler_type), pointer :: initial_condition
+  type(output_variable_list_type), pointer :: list
   PetscReal :: area_per_vol
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: i, iphase
-  
   
   option => surf_realization%option
   patch => surf_realization%patch
@@ -122,15 +123,18 @@ subroutine SurfaceTHSetup(surf_realization)
   endif
   patch%surf_aux%SurfaceTH%num_aux_ss = sum_connection
 
-  call SurfaceTHSetPlotVariables(surf_realization)
+  list => surf_realization%output_option%output_snap_variable_list
+  call SurfaceTHSetPlotVariables(list)
+  list => surf_realization%output_option%output_obs_variable_list
+  call SurfaceTHSetPlotVariables(list)
 
 end subroutine SurfaceTHSetup
 
 ! ************************************************************************** !
 
-subroutine SurfaceTHSetPlotVariables(surf_realization)
+subroutine SurfaceTHSetPlotVariables(list)
   ! 
-  ! This routine adds variables to be printed to list
+  ! This routine adds default variables to be printed to list
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 02/28/13
@@ -142,12 +146,9 @@ subroutine SurfaceTHSetPlotVariables(surf_realization)
     
   implicit none
   
-  class(realization_surface_type) :: surf_realization
-  
-  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
-  
-  list => surf_realization%output_option%output_variable_list
+
+  character(len=MAXWORDLENGTH) :: name, units
   
   if (associated(list%first)) then
     return

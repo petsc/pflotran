@@ -36,6 +36,7 @@ module PMC_Base_class
   contains
     procedure, public :: Init => PMCBaseInit
     procedure, public :: InitializeRun
+    procedure, public :: InputRecord => PMCBaseInputRecord
     procedure, public :: CastToBase => PMCCastToBase
     procedure, public :: SetTimestepper => PMCBaseSetTimestepper
     procedure, public :: SetupSolvers => PMCBaseSetupSolvers
@@ -84,6 +85,7 @@ module PMC_Base_class
     
   public :: PMCBaseCreate, &
             PMCBaseInit, &
+            PMCBaseInputRecord, &
             PMCBaseStrip, &
             SetOutputFlags
   
@@ -151,6 +153,55 @@ subroutine PMCBaseInit(this)
   nullify(this%pm_ptr%pm)
   
 end subroutine PMCBaseInit
+
+! ************************************************************************** !
+
+recursive subroutine PMCBaseInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+
+  use PM_Base_class
+  
+  implicit none
+  
+  class(pmc_base_type) :: this
+  class(pm_base_type), pointer :: cur_pm
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  ! print information about self
+  write(id,'(a)') ' '
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') ' '
+  write(id,'(a29)',advance='no') 'pmc: '
+  write(id,'(a)') this%name
+  if (associated(this%timestepper)) then
+    call this%timestepper%inputrecord
+  endif
+  cur_pm => this%pm_list
+  do ! loop through this pmc's process models
+    if (.not.associated(cur_pm)) exit
+    call cur_pm%inputrecord
+    cur_pm => cur_pm%next
+  enddo
+
+  ! print information about child's pmc
+  if (associated(this%child)) then
+    call this%child%inputrecord
+  endif
+  ! print information about peer's pmc
+  if (associated(this%peer)) then
+    call this%peer%inputrecord
+  endif
+  
+end subroutine PMCBaseInputRecord
 
 ! ************************************************************************** !
 
@@ -282,8 +333,9 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   
   PetscInt :: local_stop_flag
   PetscBool :: failure
-  PetscBool :: plot_flag
-  PetscBool :: transient_plot_flag
+  PetscBool :: snapshot_plot_flag
+  PetscBool :: observation_plot_flag
+  PetscBool :: massbal_plot_flag
   PetscBool :: checkpoint_at_this_time_flag
   PetscBool :: checkpoint_at_this_timestep_flag
   class(pm_base_type), pointer :: cur_pm
@@ -304,14 +356,16 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
     if (this%timestepper%target_time >= sync_time) exit
     
     call SetOutputFlags(this)
-    plot_flag = PETSC_FALSE
-    transient_plot_flag = PETSC_FALSE
+    snapshot_plot_flag = PETSC_FALSE
+    observation_plot_flag = PETSC_FALSE
+    massbal_plot_flag = PETSC_FALSE
     checkpoint_at_this_time_flag = PETSC_FALSE
     checkpoint_at_this_timestep_flag = PETSC_FALSE
     
     call this%timestepper%SetTargetTime(sync_time,this%option, &
-                                        local_stop_flag,plot_flag, &
-                                        transient_plot_flag, &
+                                        local_stop_flag,snapshot_plot_flag, &
+                                        observation_plot_flag, &
+                                        massbal_plot_flag, &
                                         checkpoint_at_this_time_flag)
     call this%timestepper%StepDT(this%pm_list,local_stop_flag)
 
@@ -345,28 +399,30 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
     ! the specified time since it will be met in a later time step.
     if (this%timestepper%time_step_cut_flag) then
       checkpoint_at_this_time_flag = PETSC_FALSE
-      plot_flag = PETSC_FALSE
+      snapshot_plot_flag = PETSC_FALSE
     endif
 
     ! only print output for process models of depth 0
     if (associated(this%Output)) then
       ! however, if we are using the modulus of the output_option%imod, we may
       ! still print
-      if (mod(this%timestepper%steps, &
-              this%pm_list% &
-                output_option%periodic_output_ts_imod) == 0) then
-        plot_flag = PETSC_TRUE
+      if (mod(this%timestepper%steps,this%pm_list% &
+              output_option%periodic_snap_output_ts_imod) == 0) then
+        snapshot_plot_flag = PETSC_TRUE
       endif
-      if (plot_flag .or. mod(this%timestepper%steps, &
-                             this%pm_list%output_option% &
-                               periodic_tr_output_ts_imod) == 0) then
-        transient_plot_flag = PETSC_TRUE
+      if (mod(this%timestepper%steps,this%pm_list%output_option% &
+              periodic_obs_output_ts_imod) == 0) then
+        observation_plot_flag = PETSC_TRUE
+      endif
+      if (mod(this%timestepper%steps,this%pm_list%output_option% &
+              periodic_msbl_output_ts_imod) == 0) then
+        massbal_plot_flag = PETSC_TRUE
       endif
       
-      if (this%option%steady_state) plot_flag = PETSC_TRUE
+      if (this%option%steady_state) snapshot_plot_flag = PETSC_TRUE
       
-      call this%Output(this%pm_list%realization_base,plot_flag, &
-                       transient_plot_flag)
+      call this%Output(this%pm_list%realization_base,snapshot_plot_flag, &
+                       observation_plot_flag,massbal_plot_flag)
     endif
     
     if (this%is_master .and. associated(this%checkpoint_option)) then
@@ -377,8 +433,9 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
       endif
     endif
 
-    if (checkpoint_at_this_time_flag .or. &
-        checkpoint_at_this_timestep_flag) then
+    if (this%is_master .and. &
+        (checkpoint_at_this_time_flag .or. &
+         checkpoint_at_this_timestep_flag)) then
       ! if checkpointing, need to sync all other PMCs.  Those "below" are
       ! already in sync, but not those "next".
       ! Set data needed by process-model
@@ -554,7 +611,8 @@ recursive subroutine OutputLocal(this)
   cur_pm => this%pm_list
   do
     if (.not.associated(cur_pm)) exit
-!    call Output(cur_pm%realization,plot_flag,transient_plot_flag)
+!    call Output(cur_pm%realization,snapshot_plot_flag,observation_plot_flag, &
+!                massbal_plot_flag)
     cur_pm => cur_pm%next
   enddo
     
@@ -590,9 +648,10 @@ recursive subroutine PMCBaseCheckpoint(this,filename_append)
 #if !defined(PETSC_HAVE_HDF5)
     this%option%io_buffer = 'HDF5 formatted checkpointing not supported &
       &unless PFLOTRAN is compiled with HDF5 libraries enabled.'
-    call printErrMsg(option)
-#endif
+    call printErrMsg(this%option)
+#else
     call this%CheckpointHDF5(chk_grp_id,filename_append)
+#endif
   endif
 
 end subroutine PMCBaseCheckpoint
@@ -662,7 +721,7 @@ recursive subroutine PMCBaseCheckpointBinary(this,viewer,append_name)
   endif
   
   if (associated(this%peer)) then
-    call this%child%CheckpointBinary(viewer,append_name)
+    call this%peer%CheckpointBinary(viewer,append_name)
   endif
   
   if (this%is_master) then

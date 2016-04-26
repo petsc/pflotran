@@ -75,6 +75,7 @@ module Discretization_module
             DiscretizationGetDMPtrFromIndex, &
             DiscretizationUpdateTVDGhosts, &
             DiscretAOApplicationToPetsc, &
+            DiscretizationInputRecord, &
             DiscretizationPrintInfo
   
 contains
@@ -1142,10 +1143,10 @@ subroutine DiscretizationNaturalToGlobal(discretization,natural_vec,global_vec,d
       call DMDANaturalToGlobalEnd(dm_ptr%dm,natural_vec,INSERT_VALUES,global_vec, &
                                   ierr);CHKERRQ(ierr)
     case(UNSTRUCTURED_GRID)
-      call VecScatterBegin(dm_ptr%ugdm%scatter_ntog,natural_vec,global_vec, &
-                           INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-      call VecScatterEnd(dm_ptr%ugdm%scatter_ntog,natural_vec,global_vec, &
-                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+      call VecScatterBegin(dm_ptr%ugdm%scatter_gton,natural_vec,global_vec, &
+                           INSERT_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
+      call VecScatterEnd(dm_ptr%ugdm%scatter_gton,natural_vec,global_vec, &
+                         INSERT_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
   end select
   
 end subroutine DiscretizationNaturalToGlobal
@@ -1443,6 +1444,83 @@ subroutine DiscretAOApplicationToPetsc(discretization,int_array)
   call AOApplicationToPetsc(ao,size(int_array),int_array,ierr);CHKERRQ(ierr)
   
 end subroutine DiscretAOApplicationToPetsc
+
+! **************************************************************************** !
+
+subroutine DiscretizationInputRecord(discretization)
+  ! 
+  ! Prints ingested grid/discretization information
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/30/2016
+  ! 
+
+  implicit none
+
+  type(discretization_type), pointer :: discretization
+
+  type(grid_type), pointer :: grid
+  character(len=MAXWORDLENGTH) :: word, word1, word2
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  grid => discretization%grid
+
+  write(id,'(a)') ' '
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+       &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'GRID'
+  write(id,'(a29)',advance='no') 'grid type: '
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
+      write(id,'(a)') trim(grid%ctype)
+      write(id,'(a29)',advance='no') ': '
+      write(id,'(a)') trim(grid%structured_grid%ctype)
+      write(id,'(a29)',advance='no') 'number grid cells X: '
+      write(word,*) grid%structured_grid%nx
+      write(id,'(a)') adjustl(trim(word)) 
+      write(id,'(a29)',advance='no') 'number grid cells Y: '
+      write(word,*) grid%structured_grid%ny
+      write(id,'(a)') adjustl(trim(word)) 
+      write(id,'(a29)',advance='no') 'number grid cells Z: '
+      write(word,*) grid%structured_grid%nz
+      write(id,'(a)') adjustl(trim(word)) 
+      write(id,'(a29)',advance='no') 'delta-X (m): '
+      write(id,'(1p10e12.4)') grid%structured_grid%dx_global
+      write(id,'(a29)',advance='no') 'delta-Y (m): '
+      write(id,'(1p10e12.4)') grid%structured_grid%dy_global
+      write(id,'(a29)',advance='no') 'delta-Z (m): '
+      write(id,'(1p10e12.4)') grid%structured_grid%dz_global
+    case(EXPLICIT_UNSTRUCTURED_GRID,IMPLICIT_UNSTRUCTURED_GRID, &
+         POLYHEDRA_UNSTRUCTURED_GRID)
+      write(id,'(a)') trim(grid%ctype)
+  end select
+
+  write(id,'(a29)',advance='no') 'bounds X: '
+  write(word1,*) grid%structured_grid%bounds(X_DIRECTION,LOWER)
+  write(word2,*) grid%structured_grid%bounds(X_DIRECTION,UPPER)
+  write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
+  write(id,'(a29)',advance='no') 'bounds Y: '
+  write(word1,*) grid%structured_grid%bounds(Y_DIRECTION,LOWER)
+  write(word2,*) grid%structured_grid%bounds(Y_DIRECTION,UPPER)
+  write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
+  write(id,'(a29)',advance='no') 'bounds Z: '
+  write(word1,*) grid%structured_grid%bounds(Z_DIRECTION,LOWER)
+  write(word2,*) grid%structured_grid%bounds(Z_DIRECTION,UPPER)
+  write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
+
+  write(id,'(a29)',advance='no') 'global origin: '
+  write(word,*) discretization%origin_global(X_DIRECTION)
+  write(id,'(a)') '(x) ' // adjustl(trim(word)) // ' m'
+  write(id,'(a29)',advance='no') ': '
+  write(word,*) discretization%origin_global(Y_DIRECTION)
+  write(id,'(a)') '(y) ' // adjustl(trim(word)) // ' m'
+  write(id,'(a29)',advance='no') ': '
+  write(word,*) discretization%origin_global(Z_DIRECTION)
+  write(id,'(a)') '(z) ' // adjustl(trim(word)) // ' m'
+
+end subroutine DiscretizationInputRecord
 
 ! ************************************************************************** !
 

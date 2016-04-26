@@ -36,6 +36,7 @@ module PM_General_class
     procedure, public :: UpdateAuxVars => PMGeneralUpdateAuxVars
     procedure, public :: MaxChange => PMGeneralMaxChange
     procedure, public :: ComputeMassBalance => PMGeneralComputeMassBalance
+    procedure, public :: InputRecord => PMGeneralInputRecord
     procedure, public :: CheckpointBinary => PMGeneralCheckpointBinary
     procedure, public :: RestartBinary => PMGeneralRestartBinary
     procedure, public :: Destroy => PMGeneralDestroy
@@ -1388,6 +1389,38 @@ subroutine PMGeneralComputeMassBalance(this,mass_balance_array)
   call GeneralComputeMassBalance(this%realization,mass_balance_array)
 
 end subroutine PMGeneralComputeMassBalance
+
+! ************************************************************************** !
+
+subroutine PMGeneralInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_general_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+  write(id,'(a29)',advance='no') 'mode: '
+  write(id,'(a)') 'general'
+  if (this%check_post_convergence) then
+    write(id,'(a29)',advance='no') 'ITOL_SCALED_RESIDUAL: '
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'ITOL_RELATIVE_RESIDUAL: '
+    write(id,'(a)') 'ON'
+  endif
+
+end subroutine PMGeneralInputRecord
 
 ! ************************************************************************** !
 

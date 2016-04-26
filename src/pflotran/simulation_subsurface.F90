@@ -29,6 +29,7 @@ module Simulation_Subsurface_class
   contains
     procedure, public :: Init => SubsurfaceSimulationInit
     procedure, public :: JumpStart => SubsurfaceSimulationJumpStart
+    procedure, public :: InputRecord => SubsurfaceSimInputRecord
 !    procedure, public :: ExecuteRun
 !    procedure, public :: RunToTime
     procedure, public :: FinalizeRun => SubsurfaceFinalizeRun
@@ -98,6 +99,89 @@ end subroutine SubsurfaceSimulationInit
 
 ! ************************************************************************** !
 
+subroutine SubsurfaceSimInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+  use Output_module
+  use Discretization_module
+  use Reaction_Aux_module
+  use Region_module
+  use Strata_module
+  use Material_module
+  use Characteristic_Curves_module
+  use Patch_module
+  use Condition_module
+  
+  implicit none
+  
+  class(simulation_subsurface_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id = INPUT_RECORD_UNIT
+  
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') 'simulation type: '
+  write(id,'(a)') 'subsurface'
+  write(id,'(a29)',advance='no') 'flow mode: '
+  select case(this%realization%option%iflowmode)
+    case(MPH_MODE)
+      write(id,'(a)') 'multi-phase'
+    case(RICHARDS_MODE)
+      write(id,'(a)') 'richards'
+    case(IMS_MODE)
+      write(id,'(a)') 'immiscible'
+    case(FLASH2_MODE)
+      write(id,'(a)') 'flash2'
+    case(G_MODE)
+      write(id,'(a)') 'general'
+    case(MIS_MODE)
+      write(id,'(a)') 'miscible'
+    case(TH_MODE)
+      write(id,'(a)') 'thermo-hydro'
+    case(TOIL_IMS_MODE)
+      write(id,'(a)') 'thermal-oil-immiscible'
+  end select
+
+  ! print output file information
+  call OutputInputRecord(this%output_option,this%waypoint_list_subsurface)
+
+  ! print grid/discretization information
+  call DiscretizationInputRecord(this%realization%discretization)
+
+  ! print region information
+  call RegionInputRecord(this%realization%patch%region_list)
+  
+  ! print strata information
+  call StrataInputRecord(this%realization%patch%strata_list)
+  
+  ! print material property information
+  call MaterialPropInputRecord(this%realization%material_properties)
+  
+  ! print characteristic curves information
+  call CharCurvesInputRecord(this%realization%patch%characteristic_curves)
+
+  ! print chemistry & reactive transport information
+  call ReactionInputRecord(this%realization%reaction)
+  
+  ! print coupler information (ICs, BCs, SSs)
+  call PatchCouplerInputRecord(this%realization%patch)
+  
+  ! print flow and trans condition information
+  call FlowCondInputRecord(this%realization%flow_conditions, &
+                           this%realization%option)
+  call TranCondInputRecord(this%realization%transport_conditions, &
+                           this%realization%option)
+
+end subroutine SubsurfaceSimInputRecord
+
+! ************************************************************************** !
+
 subroutine SubsurfaceSimulationJumpStart(this)
   ! 
   ! Initializes simulation
@@ -120,7 +204,7 @@ subroutine SubsurfaceSimulationJumpStart(this)
   class(timestepper_base_type), pointer :: tran_timestepper
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
-  PetscBool :: plot_flag, transient_plot_flag
+  PetscBool :: snapshot_plot_flag, observation_plot_flag, massbal_plot_flag
   
 #ifdef DEBUG
   call printMsg(this%option,'SubsurfaceSimulationJumpStart()')
@@ -129,6 +213,9 @@ subroutine SubsurfaceSimulationJumpStart(this)
   nullify(master_timestepper)
   nullify(flow_timestepper)
   nullify(tran_timestepper)
+  snapshot_plot_flag = PETSC_FALSE
+  observation_plot_flag = PETSC_FALSE
+  massbal_plot_flag = PETSC_FALSE
 
   option => this%option
   output_option => this%output_option
@@ -159,11 +246,12 @@ subroutine SubsurfaceSimulationJumpStart(this)
   ! print initial condition output if not a restarted sim
   call OutputInit(option,master_timestepper%steps)
   if (output_option%plot_number == 0 .and. &
-      master_timestepper%max_time_step >= 0 .and. &
-      output_option%print_initial) then
-    plot_flag = PETSC_TRUE
-    transient_plot_flag = PETSC_TRUE
-    call Output(this%realization,plot_flag,transient_plot_flag)
+      master_timestepper%max_time_step >= 0) then
+    if (output_option%print_initial_snap) snapshot_plot_flag = PETSC_TRUE
+    if (output_option%print_initial_obs) observation_plot_flag = PETSC_TRUE
+    if (output_option%print_initial_massbal) massbal_plot_flag = PETSC_FALSE
+    call Output(this%realization,snapshot_plot_flag,observation_plot_flag, &
+                massbal_plot_flag)
   endif
   
   !if TIMESTEPPER->MAX_STEPS < 1, print out initial condition only

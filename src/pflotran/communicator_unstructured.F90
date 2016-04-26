@@ -140,9 +140,6 @@ subroutine UnstructuredLocalToGlobal(this,source,destination)
   call VecScatterEnd(this%ugdm%scatter_ltog,source,destination, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
       
-!  call DMLocalToGlobalBegin(this%dm,source,INSERT_VALUES,destination,ierr)
-!  call DMLocalToGlobalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
-  
 end subroutine UnstructuredLocalToGlobal
 
 ! ************************************************************************** !
@@ -167,9 +164,6 @@ subroutine UnstructuredLocalToLocal(this,source,destination)
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(this%ugdm%scatter_ltol,source,destination, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  
-!  call DMLocalToLocalBegin(this%dm,source,INSERT_VALUES,destination,ierr)
-!  call DMLocalToLocalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
   
 end subroutine UnstructuredLocalToLocal
 
@@ -196,9 +190,6 @@ subroutine UnstructuredGlobalToNatural(this,source,destination)
   call VecScatterEnd(this%ugdm%scatter_gton,source,destination, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   
-!  call DMDAGlobalToNaturalBegin(this%dm,source,INSERT_VALUES,destination,ierr)
-!  call DMDAGlobalToNaturalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
-  
 end subroutine UnstructuredGlobalToNatural
 
 ! ************************************************************************** !
@@ -219,13 +210,10 @@ subroutine UnstructuredNaturalToGlobal(this,source,destination)
 
   PetscErrorCode :: ierr
 
-  call VecScatterBegin(this%ugdm%scatter_ntog,source,destination, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(this%ugdm%scatter_ntog,source,destination, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  
-!  call DMDANaturalToGlobalBegin(this%dm,source,INSERT_VALUES,destination,ierr)
-!  call DMDANaturalToGlobalEnd(this%dm,source,INSERT_VALUES,destination,ierr)
+  call VecScatterBegin(this%ugdm%scatter_gton,source,destination, &
+                       INSERT_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
+  call VecScatterEnd(this%ugdm%scatter_gton,source,destination, &
+                     INSERT_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
   
 end subroutine UnstructuredNaturalToGlobal
 

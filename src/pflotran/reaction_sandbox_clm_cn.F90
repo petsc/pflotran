@@ -114,7 +114,7 @@ subroutine CLM_CN_Read(this,input,option)
   type(input_type), pointer :: input
   type(option_type) :: option
   
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   
   type(pool_type), pointer :: new_pool, prev_pool
   type(clm_cn_reaction_type), pointer :: new_reaction, prev_reaction
@@ -208,31 +208,35 @@ subroutine CLM_CN_Read(this,input,option)
               call InputErrorMsg(input,option,'rate constant', &
                      'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
               call InputReadWord(input,option,word,PETSC_TRUE)
+              internal_units = 'unitless/sec'
               if (InputError(input)) then
                 input%err_buf = 'CLM-CN RATE CONSTANT UNITS'
                 call InputDefaultMsg(input,option)
               else              
                 rate_constant = rate_constant * &
-                  UnitsConvertToInternal(word,'concentration/time',option)
+                  UnitsConvertToInternal(word,internal_units,option)
               endif
             case('TURNOVER_TIME')
               call InputReadDouble(input,option,turnover_time)
               call InputErrorMsg(input,option,'turnover time', &
                      'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
               call InputReadWord(input,option,word,PETSC_TRUE)
+              internal_units = 'sec'
               if (InputError(input)) then
                 input%err_buf = 'CLM-CN TURNOVER TIME UNITS'
                 call InputDefaultMsg(input,option)
               else              
                 turnover_time = turnover_time * &
-                  UnitsConvertToInternal(word,'time',option)
+                  UnitsConvertToInternal(word,internal_units,option)
               endif
             case('RESPIRATION_FRACTION')
-              call InputReadDouble(input,option,new_reaction%respiration_fraction)
+              call InputReadDouble(input,option, &
+                                   new_reaction%respiration_fraction)
               call InputErrorMsg(input,option,'respiration fraction', &
                      'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
             case('N_INHIBITION')
-              call InputReadDouble(input,option,new_reaction%inhibition_constant)
+              call InputReadDouble(input,option, &
+                                   new_reaction%inhibition_constant)
               call InputErrorMsg(input,option,'inhibition constant', &
                      'CHEMISTRY,REACTION_SANDBOX,CLM-CN,REACTION')
             case default

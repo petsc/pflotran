@@ -621,17 +621,16 @@ end subroutine StepperUpdateDTMax
 
 ! ************************************************************************** !
 
-subroutine StepperSetTargetTimes(flow_timestepper,tran_timestepper, &                         
-
+subroutine StepperSetTargetTimes(flow_timestepper,tran_timestepper,option, &
+                                 snapshot_plot_flag,observation_plot_flag, &
+                                 observation_plot_flag,checkpoint_flag)
   !
   ! Sets target time for flow and transport solvers
   ! 
   ! Author: Glenn Hammond
   ! Date: 02/19/08
-  ! 
-                                 option,plot_flag, &
-                                 transient_plot_flag, &
-                                 checkpoint_flag)                                    
+  ! Note: Modified by Jenn Frederick, 2/23/2016
+  !
 
   use Option_module
   
@@ -639,8 +638,9 @@ subroutine StepperSetTargetTimes(flow_timestepper,tran_timestepper, &
 
   type(timestepper_type), pointer :: flow_timestepper, tran_timestepper
   type(option_type) :: option
-  PetscBool :: plot_flag
-  PetscBool :: transient_plot_flag
+  PetscBool :: snapshot_plot_flag
+  PetscBool :: observation_plot_flag
+  PetscBool :: massbal_plot_flag
   PetscBool :: checkpoint_flag                                                               
   
   PetscReal :: target_time
@@ -672,11 +672,12 @@ subroutine StepperSetTargetTimes(flow_timestepper,tran_timestepper, &
   ! in order to synchronize with the waypoint time
   if (option%match_waypoint) then
     ! if the maximum time step size decreased in the past step, need to set
-    ! the time step size to the minimum of the stepper%prev_dt and stepper%dt_max
-    if (associated(flow_timestepper)) option%flow_dt = min(flow_timestepper%prev_dt, &
-                                                       flow_timestepper%dt_max)
-    if (associated(tran_timestepper)) option%tran_dt = min(tran_timestepper%prev_dt, &
-                                                       tran_timestepper%dt_max)
+    ! the time step size to the minimum of the stepper%prev_dt and 
+    ! stepper%dt_max
+    if (associated(flow_timestepper)) option%flow_dt = &
+      min(flow_timestepper%prev_dt,flow_timestepper%dt_max)
+    if (associated(tran_timestepper)) option%tran_dt = &
+      min(tran_timestepper%prev_dt,tran_timestepper%dt_max)
     option%match_waypoint = PETSC_FALSE
   endif
 
@@ -702,9 +703,9 @@ subroutine StepperSetTargetTimes(flow_timestepper,tran_timestepper, &
     target_time = tran_timestepper%target_time + option%tran_dt
   endif
   
-  ! For the case where the second waypoint is a printout after the first time step
-  ! we must increment the waypoint beyond the first (time=0.) waypoint.  Otherwise
-  ! the second time step will be zero. - geh
+  ! For the case where the second waypoint is a printout after the first 
+  ! time step we must increment the waypoint beyond the first (time=0.) 
+  ! waypoint.  Otherwise the second time step will be zero. - geh
   if (cur_waypoint%time < 1.d-40) then
     cur_waypoint => cur_waypoint%next
   endif
@@ -718,21 +719,24 @@ subroutine StepperSetTargetTimes(flow_timestepper,tran_timestepper, &
     if (target_time + tolerance*dt >= cur_waypoint%time .and. &
         (cur_waypoint%sync .or. &
          cur_waypoint%update_conditions .or. &
-         cur_waypoint%print_output .or. &
+         cur_waypoint%print_snap_output .or. &
          cur_waypoint%print_checkpoint .or. &
-         cur_waypoint%print_tr_output .or. &
+         cur_waypoint%print_obs_output .or. &
+         cur_waypoint%print_msbl_output .or. &
          cur_waypoint%final)) then
       ! decrement by time step size
       target_time = target_time - dt
       ! set new time step size based on waypoint time
       dt = cur_waypoint%time - target_time
-      if (dt > dt_max .and. dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
+      if (dt > dt_max .and. dabs(dt-dt_max) > 1.d0) then 
+        ! 1 sec tolerance to avoid cancellation
         dt = dt_max                    ! error from waypoint%time - time
         target_time = target_time + dt
       else
         target_time = cur_waypoint%time
-        if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
-        if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
+        if (cur_waypoint%print_snap_output) snapshot_plot_flag = PETSC_TRUE
+        if (cur_waypoint%print_obs_output) observation_plot_flag = PETSC_TRUE
+        if (cur_waypoint%print_msbl_output) massbal_plot_flag = PETSC_TRUE
         if (cur_waypoint%print_checkpoint) checkpoint_flag = PETSC_TRUE
         option%match_waypoint = PETSC_TRUE
         cur_waypoint => cur_waypoint%next
@@ -840,8 +844,9 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   PetscInt :: sum_newton_iterations, sum_linear_iterations
   PetscInt :: num_newton_iterations, num_linear_iterations
   PetscReal :: fnorm, scaled_fnorm, inorm
-  PetscBool :: plot_flag
-  PetscBool :: transient_plot_flag
+  PetscBool :: snapshot_plot_flag
+  PetscBool :: observation_plot_flag
+  PetscBool :: massbal_plot_flag
   PetscLogDouble :: log_start_time, log_end_time
 
   type(option_type), pointer :: option
@@ -981,9 +986,11 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
           print *,"Stopping execution!"
         endif
         realization%output_option%plot_name = 'flow_cut_to_failure'
-        plot_flag = PETSC_TRUE
-        transient_plot_flag = PETSC_FALSE
-        call Output(realization,plot_flag,transient_plot_flag)
+        snapshot_plot_flag = PETSC_TRUE
+        observation_plot_flag = PETSC_FALSE
+        massbal_plot_flag = PETSC_FALSE
+        call Output(realization,snapshot_plot_flag,observation_plot_flag, &
+                    massbal_plot_flag)
         failure = PETSC_TRUE
         return
       endif
@@ -1043,13 +1050,13 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr);CHKERRQ(ierr)
   call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
-    write(*, '(/," FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
+    write(*, '(/," FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
       stepper%target_time/realization%output_option%tconv, &
       option%flow_dt/realization%output_option%tconv, &
-      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      trim(realization%output_option%tunit),snes_reason,sum_newton_iterations, &
       stepper%cumulative_newton_iterations,sum_linear_iterations, &
       stepper%cumulative_linear_iterations,icut, &
       stepper%cumulative_time_step_cuts
@@ -1065,13 +1072,12 @@ subroutine StepperStepFlowDT(realization,stepper,failure)
   endif
   if (option%print_file_flag) then
     write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
-      & " [",a1, &
-      & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
+      & " [",a,"]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
       stepper%target_time/realization%output_option%tconv, &
       option%flow_dt/realization%output_option%tconv, &
-      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      trim(realization%output_option%tunit),snes_reason,sum_newton_iterations, &
       stepper%cumulative_newton_iterations,sum_linear_iterations, &
       stepper%cumulative_linear_iterations,icut, &
       stepper%cumulative_time_step_cuts
@@ -1333,8 +1339,9 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   PetscReal :: fnorm, scaled_fnorm, inorm, prev_norm, dif_norm, rel_norm
   PetscReal :: tempreal, tempreal2
   Vec :: update_vec
-  PetscBool :: plot_flag
-  PetscBool :: transient_plot_flag
+  PetscBool :: snapshot_plot_flag
+  PetscBool :: observation_plot_flag
+  PetscBool :: massbal_plot_flag
   PetscLogDouble :: log_start_time, log_end_time
 
   PetscViewer :: viewer
@@ -1493,9 +1500,11 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             print *,"Stopping execution!"
           endif
           realization%output_option%plot_name = 'flow_cut_to_failure'
-          plot_flag = PETSC_TRUE
-          transient_plot_flag = PETSC_FALSE
-          call Output(realization,plot_flag,transient_plot_flag)
+          snapshot_plot_flag = PETSC_TRUE
+          observation_plot_flag = PETSC_FALSE
+          massbal_plot_flag = PETSC_FALSE
+          call Output(realization,snapshot_plot_flag,observation_plot_flag, &
+                      massbal_plot_flag)
           failure = PETSC_TRUE
           return
         endif
@@ -1638,13 +1647,13 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr);CHKERRQ(ierr)
   call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
-    write(*, '(/," FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
+    write(*, '(/," FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
       stepper%target_time/realization%output_option%tconv, &
       option%flow_dt/realization%output_option%tconv, &
-      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      trim(realization%output_option%tunit),snes_reason,sum_newton_iterations, &
       stepper%cumulative_newton_iterations,sum_linear_iterations, &
       stepper%cumulative_linear_iterations,icut, &
       stepper%cumulative_time_step_cuts
@@ -1659,13 +1668,13 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     write(*,'("  --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
   endif
   if (option%print_file_flag) then
-    write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1, &
-      & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
+    write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
+      " [",a, "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
       stepper%target_time/realization%output_option%tconv, &
       option%flow_dt/realization%output_option%tconv, &
-      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      trim(realization%output_option%tunit),snes_reason,sum_newton_iterations, &
       stepper%cumulative_newton_iterations,sum_linear_iterations, &
       stepper%cumulative_linear_iterations,icut, &
       stepper%cumulative_time_step_cuts
@@ -1768,8 +1777,9 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
   PetscInt :: num_newton_iterations, num_linear_iterations
   PetscInt :: n, nmax_inf
   PetscReal :: fnorm, scaled_fnorm, inorm
-  PetscBool :: plot_flag  
-  PetscBool :: transient_plot_flag  
+  PetscBool :: snapshot_plot_flag  
+  PetscBool :: observation_plot_flag
+  PetscBool :: massbal_plot_flag
   PetscReal, pointer :: r_p(:), xx_p(:), log_xx_p(:)
   PetscReal :: final_tran_time
   PetscLogDouble :: log_start_time, log_end_time
@@ -1896,9 +1906,11 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
           print *,"Stopping execution!"
         endif
         realization%output_option%plot_name = 'tran_cut_to_failure'
-        plot_flag = PETSC_TRUE
-        transient_plot_flag = PETSC_FALSE
-        call Output(realization,plot_flag,transient_plot_flag)
+        snapshot_plot_flag = PETSC_TRUE
+        observation_plot_flag = PETSC_FALSE
+        massbal_plot_flag = PETSC_FALSE
+        call Output(realization,snapshot_plot_flag,observation_plot_flag, &
+                    massbal_plot_flag)
         failure = PETSC_TRUE
         return
       endif
@@ -1947,27 +1959,27 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
     if (option%nflowdof > 0 .and. .not.steady_flow) then
 
     write(*, '(/," TRAN ",i6," Time= ",1pe12.5," Target= ",1pe12.5, &
-      & " Dt= ",1pe12.5," [",a1,"]", &
+      & " Dt= ",1pe12.5," [",a,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i6,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
       final_tran_time/realization%output_option%tconv, &
       flow_t1/realization%output_option%tconv, &
       option%tran_dt/realization%output_option%tconv, &
-      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      trim(realization%output_option%tunit),snes_reason,sum_newton_iterations, &
       stepper%cumulative_newton_iterations,sum_linear_iterations, &
       stepper%cumulative_linear_iterations,icut, &
       stepper%cumulative_time_step_cuts
 
     else
 
-    write(*, '(/," TRAN ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
+    write(*, '(/," TRAN ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i6,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
       final_tran_time/realization%output_option%tconv, &
       option%tran_dt/realization%output_option%tconv, &
-      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      trim(realization%output_option%tunit),snes_reason,sum_newton_iterations, &
       stepper%cumulative_newton_iterations,sum_linear_iterations, &
       stepper%cumulative_linear_iterations,icut, &
       stepper%cumulative_time_step_cuts
@@ -1986,12 +1998,12 @@ subroutine StepperStepTransportDT_GI(realization,stepper, &
 
   if (option%print_file_flag) then
     write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
-      & " [",a1,"]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i6,"]", &
+      & " [",a,"]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i6,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps, &
       final_tran_time/realization%output_option%tconv, &
       option%tran_dt/realization%output_option%tconv, &
-      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      trim(realization%output_option%tunit),snes_reason,sum_newton_iterations, &
       stepper%cumulative_newton_iterations,sum_linear_iterations, &
       stepper%cumulative_linear_iterations,icut, &
       stepper%cumulative_time_step_cuts
@@ -2059,8 +2071,9 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   KSPConvergedReason :: ksp_reason 
   PetscInt :: sum_linear_iterations, num_linear_iterations
   PetscInt :: idof
-  PetscBool :: plot_flag  
-  PetscBool :: transient_plot_flag  
+  PetscBool :: snapshot_plot_flag  
+  PetscBool :: observation_plot_flag
+  PetscBool :: massbal_plot_flag
   PetscReal, pointer :: vec_ptr(:)
   PetscReal :: inf_norm, euclid_norm
   PetscReal :: final_tran_time
@@ -2250,24 +2263,24 @@ subroutine StepperStepTransportDT_OS(realization,stepper, &
   
   if (option%print_screen_flag) then
     write(*, '(" TRAN ",i6," Time= ",1pe12.5," Dt= ", &
-          & 1pe12.5," [",a1,"]"," ksp_conv_reason: ",i4,/," linear = ",i5, &
+          & 1pe12.5," [",a,"]"," ksp_conv_reason: ",i4,/," linear = ",i5, &
           & " [",i10,"]")') stepper%steps, &
 !geh        option%tran_time/realization%output_option%tconv, &
-        final_tran_time/realization%output_option%tconv, &
-        option%tran_dt/realization%output_option%tconv, &
-        realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
-        stepper%cumulative_linear_iterations
+          final_tran_time/realization%output_option%tconv, &
+          option%tran_dt/realization%output_option%tconv, &
+          trim(realization%output_option%tunit),ksp_reason, &
+          sum_linear_iterations,stepper%cumulative_linear_iterations
   endif
 
   if (option%print_file_flag) then
     write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.5," Dt= ", &
-          & 1pe12.5," [",a1,"]"," ksp_conv_reason = ",i4,/," linear = ",i5, &
+          & 1pe12.5," [",a,"]"," ksp_conv_reason = ",i4,/," linear = ",i5, &
           & " [",i10,"]")') stepper%steps, &
 !geh        option%tran_time/realization%output_option%tconv, &
-        final_tran_time/realization%output_option%tconv, &
-        option%tran_dt/realization%output_option%tconv, &
-        realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
-        stepper%cumulative_linear_iterations
+          final_tran_time/realization%output_option%tconv, &
+          option%tran_dt/realization%output_option%tconv, &
+          trim(realization%output_option%tunit),ksp_reason, &
+          sum_linear_iterations,stepper%cumulative_linear_iterations
   endif
 
   call RTMaxChange(realization)
@@ -2306,8 +2319,9 @@ subroutine StepperRunSteadyState(realization,flow_timestepper,tran_timestepper)
   type(timestepper_type), pointer :: flow_timestepper
   type(timestepper_type), pointer :: tran_timestepper
 
-  PetscBool :: transient_plot_flag
-  PetscBool :: plot_flag
+  PetscBool :: observation_plot_flag
+  PetscBool :: snapshot_plot_flag
+  PetscBool :: massbal_plot_flag
   PetscBool :: failure
   PetscLogDouble :: start_time, end_time
   character(len=MAXSTRINGLENGTH) :: string
@@ -2319,8 +2333,9 @@ subroutine StepperRunSteadyState(realization,flow_timestepper,tran_timestepper)
   option => realization%option
   output_option => realization%output_option
 
-  plot_flag = PETSC_FALSE
-  transient_plot_flag = PETSC_FALSE
+  snapshot_plot_flag = PETSC_FALSE
+  observation_plot_flag = PETSC_FALSE
+  massbal_plot_flag = PETSC_FALSE
   failure = PETSC_FALSE
 
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
@@ -2331,12 +2346,12 @@ subroutine StepperRunSteadyState(realization,flow_timestepper,tran_timestepper)
   else
     call OutputInit(tran_timestepper%steps)
   endif
-  transient_plot_flag = PETSC_FALSE
-  plot_flag = PETSC_TRUE
-  if (output_option%print_initial) then
-    transient_plot_flag = PETSC_FALSE
-    call Output(realization,plot_flag,transient_plot_flag)
-  endif
+
+  if (output_option%print_initial_obs) observation_plot_flag = PETSC_TRUE
+  if (output_option%print_initial_snap) snapshot_plot_flag = PETSC_TRUE
+  if (output_option%print_initial_massbal) massbal_plot_flag = PETSC_FALSE
+  call Output(realization,snapshot_plot_flag,observation_plot_flag, &
+              massbal_plot_flag)
 
   if (OptionPrintToScreen(option)) then
     option%print_screen_flag = PETSC_TRUE
@@ -2350,7 +2365,7 @@ subroutine StepperRunSteadyState(realization,flow_timestepper,tran_timestepper)
     option%print_file_flag = PETSC_FALSE
   endif
 
-  plot_flag = PETSC_TRUE
+  snapshot_plot_flag = PETSC_TRUE
     
   if (associated(flow_timestepper)) then
     call PetscTime(start_time, ierr);CHKERRQ(ierr)
@@ -2390,9 +2405,10 @@ subroutine StepperRunSteadyState(realization,flow_timestepper,tran_timestepper)
     if (failure) return ! if transport solve fails, exit
   endif
 
-  if (output_option%print_initial) then
+  if (output_option%print_initial_snap) then
     output_option%plot_number = 1
-    call Output(realization,plot_flag,transient_plot_flag)
+    call Output(realization,snapshot_plot_flag,observation_plot_flag, &
+                massbal_plot_flag)
   endif
    
   if (option%checkpoint_flag) then
@@ -3299,12 +3315,12 @@ subroutine TimestepperEnforceCFLLimit(stepper,option,output_option)
   if (stepper%cfl_limiter_ts < option%tran_dt) then
     option%tran_dt = stepper%cfl_limiter_ts
     if (OptionPrintToScreen(option)) then
-      write(*,'(" CFL Limiting: ",1pe12.4," [",a1,"]")') &
-            stepper%cfl_limiter_ts/output_option%tconv,output_option%tunit
+      write(*,'(" CFL Limiting: ",1pe12.4," [",a,"]")') &
+            stepper%cfl_limiter_ts/output_option%tconv,trim(output_option%tunit)
     endif
     if (OptionPrintToFile(option)) then
-      write(option%fid_out,'(/," CFL Limiting: ",1pe12.4," [",a1,"]",/)') &
-            stepper%cfl_limiter_ts/output_option%tconv,output_option%tunit
+      write(option%fid_out,'(/," CFL Limiting: ",1pe12.4," [",a,"]",/)') &
+            stepper%cfl_limiter_ts/output_option%tconv,trim(output_option%tunit)
     endif        
   endif    
 

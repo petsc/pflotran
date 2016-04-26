@@ -478,7 +478,7 @@ subroutine CreepClosureRead(this,input,option)
   
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: keyword, word
+  character(len=MAXWORDLENGTH) :: keyword, word, internal_units
   character(len=MAXSTRINGLENGTH) :: error_string = 'CREEP_CLOSURE'
   type(input_type), pointer :: input2
   PetscInt :: temp_int
@@ -538,10 +538,12 @@ subroutine CreepClosureRead(this,input,option)
         call InputReadInt(input2,option,this%num_values_per_time)
         call InputErrorMsg(input2,option,'number of pressure',error_string)
       case('TIME_UNITS') 
+        internal_units = 'sec'
         call InputReadWord(input2,option,word,PETSC_TRUE) 
         call InputErrorMsg(input2,option,'UNITS','CONDITION')   
         call StringToLower(word)
-        time_units_conversion = UnitsConvertToInternal(word,'time',option)
+        time_units_conversion = UnitsConvertToInternal(word, &
+                                internal_units,option)
       case('TIME')
         if (Uninitialized(this%num_times) .or. &
             Uninitialized(this%num_values_per_time)) then

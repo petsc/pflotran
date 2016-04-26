@@ -494,10 +494,10 @@ subroutine GeomechDiscretizationNaturalToGlobal(geomech_discretization, &
   dm_ptr => GeomechDiscretizationGetDMPtrFromIndex(geomech_discretization, &
                                                    dm_index)
   
-  call VecScatterBegin(dm_ptr%gmdm%scatter_ntog,natural_vec,global_vec, &
-                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  call VecScatterEnd(dm_ptr%gmdm%scatter_ntog,natural_vec,global_vec, &
-                     INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  call VecScatterBegin(dm_ptr%gmdm%scatter_gton,natural_vec,global_vec, &
+                       INSERT_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
+  call VecScatterEnd(dm_ptr%gmdm%scatter_gton,natural_vec,global_vec, &
+                     INSERT_VALUES,SCATTER_REVERSE,ierr);CHKERRQ(ierr)
   
 end subroutine GeomechDiscretizationNaturalToGlobal
 

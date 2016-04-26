@@ -379,7 +379,7 @@ contains
        write(13,*) "Rank ",i,": ",tnmap(i)
     end do
     close(13)
-   
+    
   
     allocate(map_inds(nmap,2),map(nmap))
     
@@ -400,6 +400,13 @@ contains
        end if
     end do
   
+#if 0 
+!geh: this do loop produces an unwanted fort.20 file.  where should this
+!     data be written?
+    do i=1,nmap
+       write(20,*) map_inds(i,:),map(i)
+    end do
+#endif
   end subroutine get_mesh_interp
   !____________________________________________________________________
  !____________________________________________________________________
@@ -517,7 +524,14 @@ contains
     read(12,*) pfzcb(1:pfnz+1)
 
     close(12)
-    
+    open(13,file=trim(log_file),action='write',status='old',position='append')
+    write(13,*) "________________PF MESH PARAMETERS___________________"
+    write(13,*) "NX, NY, NZ: ",pfnx,pfny,pfnz
+    write(13,*) "xmin  xmax: ",pfxcb(1),pfxcb(pfnx+1)
+    write(13,*) "ymin  ymax: ",pfycb(1),pfycb(pfny+1)
+    write(13,*) "zmin  zmax: ",pfzcb(1),pfzcb(pfnz+1)
+    write(13,*)
+    close(13)
     
   end subroutine get_pfmesh
   !____________________________________________________________________
@@ -617,6 +631,8 @@ contains
   !__________________________________________________________________
   subroutine setup_frun
     implicit none
+
+#include "petsc/finclude/petscsys.h"
     
     integer :: status(MPI_STATUS_SIZE)
     integer :: neven, nextra, ce, i,itmp
@@ -650,28 +666,29 @@ contains
     call build_delA
 
     !!Initialize the Petsc A matrix
-    call MatCreateSeqAIJ(PETSC_COMM_SELF,nnodes,nnodes,d_nz,d_nnz,A,perr)
-    call MatSetFromOptions(A,perr)
+    call MatCreateSeqAIJ(PETSC_COMM_SELF,nnodes,nnodes,d_nz,d_nnz,A, &
+                         perr);CHKERRQ(perr)
+    call MatSetFromOptions(A,perr);CHKERRQ(perr)
  
     !Get the electrode ownership indexes 
     call get_electrode_nodes
-    call MatGetType(A,tp,perr)
+    call MatGetType(A,tp,perr);CHKERRQ(perr)
     
     !Set up the source and solution vectors
-    call VecCreate(PETSC_COMM_SELF,X,perr)
-    call VecSetSizes(X,nnodes,PETSC_DECIDE,perr)
-    call VecSetFromOptions(X,perr)
+    call VecCreate(PETSC_COMM_SELF,X,perr);CHKERRQ(perr)
+    call VecSetSizes(X,nnodes,PETSC_DECIDE,perr);CHKERRQ(perr)
+    call VecSetFromOptions(X,perr);CHKERRQ(perr)
  
     !allocate and setup the pole solution vector
-    call VecCreate(PETSC_COMM_SELF,psol,perr)
-    call VecSetSizes(psol,nnodes,PETSC_DECIDE,perr)
-    call VecSetFromOptions(psol,perr)
+    call VecCreate(PETSC_COMM_SELF,psol,perr);CHKERRQ(perr)
+    call VecSetSizes(psol,nnodes,PETSC_DECIDE,perr);CHKERRQ(perr)
+    call VecSetFromOptions(psol,perr);CHKERRQ(perr)
     allocate(poles(nnodes,my_ne))
     poles = 0
 
-    call VecCreate(PETSC_COMM_SELF,B,perr)
-    call VecSetSizes(B,nnodes,PETSC_DECIDE,perr)
-    call VecSetFromOptions(B,perr)
+    call VecCreate(PETSC_COMM_SELF,B,perr);CHKERRQ(perr)
+    call VecSetSizes(B,nnodes,PETSC_DECIDE,perr);CHKERRQ(perr)
+    call VecSetFromOptions(B,perr);CHKERRQ(perr)
 
     !A_map  and S_map given the coupling info so we can deallocate the 
     !nodes and elements
@@ -734,25 +751,29 @@ contains
     zmn=xmn
     xmx=-1e15
     ymx=xmx
-    xmx=xmx
+    zmx=xmx
    
+
     allocate(midx(pfnx),midy(pfny),midz(pfnz))
     do i=1,pfnx
        midx(i) = 0.5*(pfxcb(i+1)+pfxcb(i))
        if(midx(i)<xmn) xmn=midx(i)
        if(midx(i)>xmx) xmx=midx(i)
+      
     end do
    
     do i=1,pfny
        midy(i) = 0.5*(pfycb(i+1)+pfycb(i))
        if(midy(i)<ymn) ymn=midy(i)
-       if(midy(i)>ymn) ymx=midy(i)
+       if(midy(i)>ymx) ymx=midy(i)
+    
     end do
 
     do i=1,pfnz
        midz(i) = 0.5*(pfzcb(i+1)+pfzcb(i))
        if(midz(i)<zmn) zmn=midz(i)
-       if(midz(i)>zmn) zmx=midz(i)
+       if(midz(i)>zmx) zmx=midz(i)
+
     end do
 
     nodes(:,1)=nodes(:,1)+xorig
@@ -765,22 +786,22 @@ contains
     flags=.true.
     cnt=0
     n_tets=0
-
+   
 
     !!find which elements we need to map
     do i=jind(my_rank,1),jind(my_rank,2)
        cnt=cnt+1
        imx=maxval(nodes(elements(i,1:4),1))
        imn=minval(nodes(elements(i,1:4),1))
-       if(imn<xmn .or. imx>xmx) then
+       if((imn<xmn .or. imx>xmx) .and. (pfnx > 1)) then
           flags(cnt)=.false.
+
           goto 100
        end if
      
-
        imx=maxval(nodes(elements(i,1:4),2))
        imn=minval(nodes(elements(i,1:4),2))
-       if(imn<ymn .or. imx>ymx) then
+       if((imn<ymn .or. imx>ymx) .and. (pfny > 1)) then
           flags(cnt)=.false.
           goto 100
        end if
@@ -789,7 +810,7 @@ contains
        imx=maxval(nodes(elements(i,1:4),3))
        imn=minval(nodes(elements(i,1:4),3)) 
     
-       if(imn<zmn .or. imx>zmx) then
+       if((imn<zmn .or. imx>zmx) .and. (pfnz>1)) then
           flags(cnt)=.false.
           goto 100
        end if
@@ -827,38 +848,80 @@ contains
 
           !get the weighting function for each point
           do j=1,9
-             do k=1,pfnx
-                 if(midx(k)>pts(j,1)) then
-                    indx=k-1
-                    exit
-                 end if
-              end do
-              do k=1,pfny
-                 if(midy(k)>pts(j,2)) then
-                    indy=k-1
-                    exit
-                 end if
-              end do
-              do k=1,pfnz
-                 if(midz(k)>pts(j,3)) then
-                    indz=k-1
-                    exit
-                 end if
-              end do
-              
-              vi(5) = indx + (indy-1)*pfnx + (indz-1)*pfnx*pfny
-              vi(8) = vi(5)+1
-              vi(6) = vi(5)+pfnx
-              vi(7) = vi(6)+1
-              vi(1:4) = vi(5:8) + pfnx*pfny
+             if(pfnx .eq. 1) then
+                indx = 1
+             else
+                do k=1,pfnx
+                   if(midx(k)>pts(j,1)) then
+                      indx=k-1
+                      exit
+                   end if
+                end do
+             end if
 
-              C(1)=(pts(j,1)-midx(indx))/(midx(indx+1)-midx(indx));
+             if(pfny.eq.1) then
+                indy = 1
+             else
+                do k=1,pfny
+                   if(midy(k)>pts(j,2)) then
+                      indy=k-1
+                      exit
+                   end if
+                end do
+             end if
+             
+             if(pfnz .eq.1) then
+                indz = 1
+             else
+                do k=1,pfnz
+                   if(midz(k)>pts(j,3)) then
+                      indz=k-1
+                      exit
+                   end if
+                end do
+             end if
+
+             
+             if(pfny .eq.1) then
+                !for 2D problem in x,z
+                vi(5) = indx + (indy-1)*pfnx + (indz-1)*pfnx*pfny
+                vi(6) = vi(5)
+                vi(8) = vi(5)+1
+                vi(7) = vi(8);
+                vi(1) = vi(5)+pfnx
+                vi(2) = vi(1);
+                vi(3) = vi(1)+1;
+                vi(4) = vi(3);
+                
+             else
+                vi(5) = indx + (indy-1)*pfnx + (indz-1)*pfnx*pfny
+                vi(8) = vi(5)+1
+                vi(6) = vi(5)+pfnx
+                vi(7) = vi(6)+1
+                vi(1:4) = vi(5:8) + pfnx*pfny
+             end if
+
+              if(pfnx .eq.1) then
+                 C(1)=0
+              else
+                 C(1)=(pts(j,1)-midx(indx))/(midx(indx+1)-midx(indx));
+              end if
               C(2)=C(1);
               C(3)=C(1);
               C(4)=C(1);
-              C(5)=(pts(j,2)-midy(indy))/(midy(indy+1)-midy(indy));
+
+              if(pfny .eq.1) then
+                 C(5)=0
+              else
+                 C(5)=(pts(j,2)-midy(indy))/(midy(indy+1)-midy(indy));
+              end if
               C(6)=C(5);
-              C(7)=(pts(j,3)-midz(indz))/(midz(indz+1)-midz(indz));
+              
+              if(pfnz .eq.1) then
+                 C(7)=0
+              else
+                 C(7)=(pts(j,3)-midz(indz))/(midz(indz+1)-midz(indz));
+              end if
 
               wi(1)=(1-C(1))*(1-C(6))*C(7);
               wi(2)=(1-C(2))*C(6)*C(7);

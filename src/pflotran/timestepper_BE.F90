@@ -18,6 +18,7 @@ module Timestepper_BE_class
     PetscInt :: num_linear_iterations ! number of linear solver iterations in a time step
     PetscInt :: cumulative_newton_iterations       ! Total number of Newton iterations
     PetscInt :: cumulative_linear_iterations     ! Total number of linear iterations
+    PetscInt :: cumulative_wasted_linear_iterations
 
     PetscInt :: iaccel        ! Accelerator index
     ! An array of multiplicative factors that specify how to increase time step.
@@ -42,6 +43,7 @@ module Timestepper_BE_class
 #endif
     procedure, public :: Reset => TimestepperBEReset
     procedure, public :: PrintInfo => TimestepperBEPrintInfo
+    procedure, public :: InputRecord => TimestepperBEInputRecord
     procedure, public :: FinalizeRun => TimestepperBEFinalizeRun
     procedure, public :: Strip => TimestepperBEStrip
     procedure, public :: Destroy => TimestepperBEDestroy
@@ -117,6 +119,7 @@ subroutine TimestepperBEInit(this)
 
   this%cumulative_newton_iterations = 0
   this%cumulative_linear_iterations = 0
+  this%cumulative_wasted_linear_iterations = 0
 
   this%iaccel = 5
   this%ntfac = 13
@@ -280,12 +283,14 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   PetscLogDouble :: log_end_time
   PetscInt :: num_newton_iterations
   PetscInt :: num_linear_iterations
+  PetscInt :: num_linear_iterations2
   PetscInt :: sum_newton_iterations
   PetscInt :: sum_linear_iterations
-  character(len=2) :: tunit
+  PetscInt :: sum_wasted_linear_iterations
+  character(len=MAXWORDLENGTH) :: tunit
   PetscReal :: tconv
   PetscReal :: fnorm, inorm, scaled_fnorm
-  PetscBool :: plot_flag, transient_plot_flag
+  PetscBool :: snapshot_plot_flag, observation_plot_flag, massbal_plot_flag
   Vec :: residual_vec
   PetscErrorCode :: ierr
   
@@ -303,6 +308,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   tconv = process_model%output_option%tconv
   tunit = process_model%output_option%tunit
   sum_linear_iterations = 0
+  sum_wasted_linear_iterations = 0
   sum_newton_iterations = 0
   icut = 0
   
@@ -336,6 +342,8 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
     sum_linear_iterations = sum_linear_iterations + num_linear_iterations
   
     if (snes_reason <= 0 .or. .not. process_model%AcceptSolution()) then
+      sum_wasted_linear_iterations = sum_wasted_linear_iterations + &
+        num_linear_iterations
       ! The Newton solver diverged, so try reducing the time step.
       icut = icut + 1
       this%time_step_cut_flag = PETSC_TRUE
@@ -346,7 +354,8 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
 
       if (icut > this%max_time_step_cuts .or. this%dt < this%dt_min) then
 
-        write(option%io_buffer,'(" Stopping: Time step cut criteria exceeded!")')
+        write(option%io_buffer,'(" Stopping: Time step cut criteria &
+                                   &exceeded!")')
         call printMsg(option)
         write(option%io_buffer,'("    icut =",i3,", max_time_step_cuts=",i3)') &
              icut,this%max_time_step_cuts
@@ -356,9 +365,11 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
         call printMsg(option)
         
         process_model%output_option%plot_name = 'flow_cut_to_failure'
-        plot_flag = PETSC_TRUE
-        transient_plot_flag = PETSC_FALSE
-        call Output(process_model%realization_base,plot_flag,transient_plot_flag)
+        snapshot_plot_flag = PETSC_TRUE
+        observation_plot_flag = PETSC_FALSE
+        massbal_plot_flag = PETSC_FALSE
+        call Output(process_model%realization_base,snapshot_plot_flag, &
+                    observation_plot_flag,massbal_plot_flag)
         stop_flag = TS_STOP_FAILURE
         return
       endif
@@ -373,6 +384,14 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
            option%time/tconv, &
            this%dt/tconv
       call printMsg(option)
+      if (snes_reason == SNES_DIVERGED_LINEAR_SOLVE) then
+        call KSPGetIterationNumber(solver%ksp,num_linear_iterations2, &
+                                   ierr);CHKERRQ(ierr)
+        sum_wasted_linear_iterations = sum_wasted_linear_iterations + &
+          num_linear_iterations2
+        sum_linear_iterations = sum_linear_iterations + num_linear_iterations2
+        call SolverLinearPrintFailedReason(solver,option)
+      endif
 
       this%target_time = this%target_time + this%dt
       option%dt = this%dt
@@ -389,6 +408,8 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
     this%cumulative_newton_iterations + sum_newton_iterations
   this%cumulative_linear_iterations = &
     this%cumulative_linear_iterations + sum_linear_iterations
+  this%cumulative_wasted_linear_iterations = &
+    this%cumulative_wasted_linear_iterations + sum_wasted_linear_iterations
   this%cumulative_time_step_cuts = &
     this%cumulative_time_step_cuts + icut
 
@@ -401,16 +422,18 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   call VecNorm(residual_vec,NORM_2,fnorm,ierr);CHKERRQ(ierr)
   call VecNorm(residual_vec,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
   if (option%print_screen_flag) then
-    write(*, '(/," Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5," [",a1,"]", &
-      & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
-      & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
-      this%steps, &
-      this%target_time/tconv, &
-      this%dt/tconv, &
-      tunit,snes_reason,sum_newton_iterations, &
-      this%cumulative_newton_iterations,sum_linear_iterations, &
-      this%cumulative_linear_iterations,icut, &
-      this%cumulative_time_step_cuts
+      write(*, '(/," Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
+           & " [",a,"]", " snes_conv_reason: ",i4,/,"  newton = ",i3, &
+           & " [",i8,"]", " linear = ",i5," [",i10,"]"," cuts = ",i2, &
+           & " [",i4,"]")') &
+           this%steps, &
+           this%target_time/tconv, &
+           this%dt/tconv, &
+           trim(tunit),snes_reason,sum_newton_iterations, &
+           this%cumulative_newton_iterations,sum_linear_iterations, &
+           this%cumulative_linear_iterations,icut, &
+           this%cumulative_time_step_cuts
+
 
     if (associated(process_model%realization_base%discretization%grid)) then
        scaled_fnorm = fnorm/process_model%realization_base% &
@@ -425,13 +448,12 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   endif
   if (option%print_file_flag) then
     write(option%fid_out, '(" Step ",i6," Time= ",1pe12.5," Dt= ",1pe12.5, &
-      & " [",a1, &
-      & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
-      & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
+      & " [",a,"]"," snes_conv_reason: ",i4,/,"  newton = ",i3, &
+      & " [",i8,"]", " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       this%steps, &
       this%target_time/tconv, &
       this%dt/tconv, &
-      tunit,snes_reason,sum_newton_iterations, &
+      trim(tunit),snes_reason,sum_newton_iterations, &
       this%cumulative_newton_iterations,sum_linear_iterations, &
       this%cumulative_linear_iterations,icut, &
       this%cumulative_time_step_cuts
@@ -441,9 +463,9 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   call process_model%FinalizeTimestep()
   
   if (this%print_ekg .and. OptionPrintToFile(option)) then
-100 format(a32," TIMESTEP ",i10,2es16.8,a3,i3,i5,i3,i5,i5,i10)
+100 format(a32," TIMESTEP ",i10,2es16.8,a,i3,i5,i3,i5,i5,i10)
     write(IUNIT_EKG,100) trim(this%name), this%steps, this%target_time/tconv, &
-      this%dt/tconv, tunit, &
+      this%dt/tconv, trim(tunit), &
       icut, this%cumulative_time_step_cuts, &
       sum_newton_iterations, this%cumulative_newton_iterations, &
       sum_linear_iterations, this%cumulative_linear_iterations
@@ -522,6 +544,7 @@ subroutine TimestepperBERegisterHeader(this,bag,header)
   call PetscBagRegisterInt(bag,header%cumulative_linear_iterations,0, &
                            "cumulative_linear_iterations","", &
                            ierr);CHKERRQ(ierr)
+! need to add cumulative wasted linear iterations
   call PetscBagRegisterInt(bag,header%num_newton_iterations,0, &
                            "num_newton_iterations","",ierr);CHKERRQ(ierr)
 
@@ -930,6 +953,43 @@ end subroutine TimestepperBEPrintInfo
 
 ! ************************************************************************** !
 
+subroutine TimestepperBEInputRecord(this)
+  ! 
+  ! Prints information about the time stepper to the input record.
+  ! To get a## format, must match that in simulation types.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+  
+  implicit none
+  
+  class(timestepper_BE_type) :: this
+
+  PetscInt :: id
+  character(len=MAXWORDLENGTH) :: word
+   
+  id = INPUT_RECORD_UNIT
+  
+  write(id,'(a29)',advance='no') 'pmc timestepper: '
+  write(id,'(a)') this%name
+
+  write(id,'(a29)',advance='no') 'initial timestep size: '
+  write(word,*) this%dt_init
+  write(id,'(a)') trim(adjustl(word)) // ' sec'
+
+  write(id,'(a29)',advance='no') 'min timestep size: '
+  write(word,*) this%dt_min
+  write(id,'(a)') trim(adjustl(word)) // ' sec'
+
+  write(id,'(a29)',advance='no') 'max timestep size: '
+  write(word,*) this%dt_max
+  write(id,'(a)') trim(adjustl(word)) // ' sec'
+
+end subroutine TimestepperBEInputRecord
+
+! ************************************************************************** !
+
 recursive subroutine TimestepperBEFinalizeRun(this,option)
   ! 
   ! Finalizes the time stepping
@@ -959,6 +1019,9 @@ recursive subroutine TimestepperBEFinalizeRun(this,option)
             this%cumulative_newton_iterations, &
             this%cumulative_linear_iterations, &
             this%cumulative_time_step_cuts
+    write(string,'(i12)') this%cumulative_wasted_linear_iterations
+    write(*,'(a)') trim(this%name) // ' TS BE Wasted Linear Iterations = ' // &
+      trim(adjustl(string))
     write(string,'(f12.1)') this%cumulative_solver_time
     write(*,'(a)') trim(this%name) // ' TS BE SNES time = ' // &
       trim(adjustl(string)) // ' seconds'

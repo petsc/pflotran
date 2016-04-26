@@ -433,6 +433,10 @@ subroutine RealizationCreateDiscretization(realization)
   end select
   call realization%comm1%SetDM(discretization%dm_1dof)
 
+  if (option%flow%quasi_3d) then
+    call RealizCreateFlowMassTransferVec(realization)
+  endif
+
 end subroutine RealizationCreateDiscretization
 
 ! ************************************************************************** !
@@ -1410,7 +1414,8 @@ subroutine RealizationAddWaypointsToList(realization,waypoint_list)
   do
     if (.not.associated(cur_waypoint)) exit
     if (cur_waypoint%final) then
-      cur_waypoint%print_output = realization%output_option%print_final
+      cur_waypoint%print_snap_output = &
+        realization%output_option%print_final_snap
       exit
     endif
     cur_waypoint => cur_waypoint%next

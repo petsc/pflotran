@@ -135,15 +135,18 @@ subroutine ReactionReadPass1(reaction,input,option)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: card
+  character(len=MAXWORDLENGTH) :: internal_units
+  character(len=MAXWORDLENGTH) :: kd_units
   type(aq_species_type), pointer :: species, prev_species
   type(gas_species_type), pointer :: gas, prev_gas
-  type(immobile_species_type), pointer :: immobile_species, prev_immobile_species
+  type(immobile_species_type), pointer :: immobile_species
+  type(immobile_species_type), pointer :: prev_immobile_species
   type(colloid_type), pointer :: colloid, prev_colloid
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
   type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
-  type(radioactive_decay_rxn_type), pointer :: radioactive_decay_rxn, &
-                                               prev_radioactive_decay_rxn
+  type(radioactive_decay_rxn_type), pointer :: radioactive_decay_rxn
+  type(radioactive_decay_rxn_type), pointer :: prev_radioactive_decay_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
   type(kd_rxn_type), pointer :: sec_cont_kd_rxn, sec_cont_prev_kd_rxn
   PetscInt :: i, temp_int
@@ -171,6 +174,7 @@ subroutine ReactionReadPass1(reaction,input,option)
   reaction_sandbox_read = PETSC_FALSE
   reaction_clm_read = PETSC_FALSE
   
+  kd_units = ''
   srfcplx_count = 0
   input%ierr = 0
   do
@@ -196,7 +200,8 @@ subroutine ReactionReadPass1(reaction,input,option)
           
           species => AqueousSpeciesCreate()
           call InputReadWord(input,option,species%name,PETSC_TRUE)  
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,PRIMARY_SPECIES')    
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,&
+                             &PRIMARY_SPECIES')    
           if (.not.associated(reaction%primary_species_list)) then
             reaction%primary_species_list => species
             species%id = 1
@@ -219,7 +224,8 @@ subroutine ReactionReadPass1(reaction,input,option)
           
           species => AqueousSpeciesCreate()
           call InputReadWord(input,option,species%name,PETSC_TRUE)  
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,SECONDARY_SPECIES')
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,&
+                             &SECONDARY_SPECIES')
           if (.not.associated(reaction%secondary_species_list)) then
             reaction%secondary_species_list => species
             species%id = 1
@@ -313,31 +319,33 @@ subroutine ReactionReadPass1(reaction,input,option)
               call InputErrorMsg(input,option,'reaction', &
                                'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
             case('RATE_CONSTANT')
+              internal_units = 'unitless/sec'
               call InputReadDouble(input,option, &
                                    radioactive_decay_rxn%rate_constant)
               call InputErrorMsg(input,option,'rate constant', &
-                               'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
+                'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,RATE_CONSTANT') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (InputError(input)) then
                 call InputDefaultMsg(input,option, &
-                                  'RADIOACTIVE_DECAY_RXN RATE_CONSTANT UNITS')
+                  'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,RATE_CONSTANT UNITS')
               else
                 radioactive_decay_rxn%rate_constant = &
-                  UnitsConvertToInternal(word,'unknown/time',option) * &
+                  UnitsConvertToInternal(word,internal_units,option) * &
                   radioactive_decay_rxn%rate_constant
               endif
             case('HALF_LIFE')
+              internal_units = 'sec'
               call InputReadDouble(input,option, &
                                    radioactive_decay_rxn%half_life)
               call InputErrorMsg(input,option,'half life', &
-                               'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
+                'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,HALF_LIFE') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (InputError(input)) then
                 call InputDefaultMsg(input,option, &
-                                     'RADIOACTIVE_DECAY_RXN HALF_LIFE UNITS')
+                  'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,HALF_LIFE UNITS')
               else
                 radioactive_decay_rxn%half_life = &
-                  UnitsConvertToInternal(word,'time',option) * &
+                  UnitsConvertToInternal(word,internal_units,option) * &
                   radioactive_decay_rxn%half_life
               endif
               ! convert half life to rate constant
@@ -345,8 +353,7 @@ subroutine ReactionReadPass1(reaction,input,option)
                 -1.d0*log(0.5d0)/radioactive_decay_rxn%half_life
             case default
               call InputKeywordUnrecognized(word, &
-                                          'CHEMISTRY,IMMOBILE_DECAY_REACTION', &
-                                            option)
+                'CHEMISTRY,IMMOBILE_DECAY_REACTION',option)
           end select
         enddo   
         if (Uninitialized(radioactive_decay_rxn%rate_constant)) then
@@ -611,6 +618,8 @@ subroutine ReactionReadPass1(reaction,input,option)
                       call InputErrorMsg(input,option, &
                                          'DISTRIBUTION_COEFFICIENT', &
                                          'CHEMISTRY,ISOTHERM_REACTIONS')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      if (input%ierr == 0) kd_units = trim(word)
                     ! S.Karra, 02/20/2014
                     case('SEC_CONT_DISTRIBUTION_COEFFICIENT', &
                          'SEC_CONT_KD')
@@ -644,6 +653,19 @@ subroutine ReactionReadPass1(reaction,input,option)
                               'CHEMISTRY,SORPTION,ISOTHERM_REACTIONS',option)
                   end select
                 enddo
+
+                if (len_trim(kd_units) > 0) then
+                  if (len_trim(kd_rxn%kd_mineral_name) > 0) then
+                    internal_units = 'L/kg'
+                    kd_rxn%Kd = kd_rxn%Kd * &
+                      UnitsConvertToInternal(kd_units,internal_units,option)
+                  else
+                    internal_units = 'kg/m^3'
+                    kd_rxn%Kd = kd_rxn%Kd * &
+                      UnitsConvertToInternal(kd_units,internal_units,option)
+                  endif
+                endif
+
                 ! add to list
                 if (.not.associated(reaction%kd_rxn_list)) then
                   reaction%kd_rxn_list => kd_rxn
@@ -669,7 +691,6 @@ subroutine ReactionReadPass1(reaction,input,option)
                   sec_cont_prev_kd_rxn => sec_cont_kd_rxn
                   nullify(sec_cont_kd_rxn)
                 endif
-                
               enddo
             
             case('SURFACE_COMPLEXATION_RXN')
@@ -4310,6 +4331,7 @@ subroutine RTotalSorbKD(rt_auxvar,global_auxvar,material_auxvar,reaction, &
   PetscReal :: one_over_n
   PetscReal :: molality_one_over_n
   PetscReal :: kd_kgw_m3b  
+  PetscReal :: temp
 
   PetscInt, parameter :: iphase = 1
 
@@ -4320,6 +4342,11 @@ subroutine RTotalSorbKD(rt_auxvar,global_auxvar,material_auxvar,reaction, &
       ! NOTE: mineral volume fraction here is solely a scaling factor.  It has 
       ! nothing to do with the soil volume; that is calculated through as a 
       ! function of porosity.
+      temp = reaction%eqkddistcoef(irxn)
+      temp = global_auxvar%den_kg(iphase)
+      temp = (1.d0-material_auxvar%porosity)
+      temp = material_auxvar%soil_particle_density
+      temp = (rt_auxvar%mnrl_volfrac(reaction%eqkdmineral(irxn)))
       kd_kgw_m3b = reaction%eqkddistcoef(irxn) * & !KD units [mL water/g soil]
                    global_auxvar%den_kg(iphase) * &
                    (1.d0-material_auxvar%porosity) * &

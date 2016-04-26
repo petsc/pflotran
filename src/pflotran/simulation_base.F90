@@ -28,6 +28,7 @@ module Simulation_Base_class
   contains
     procedure, public :: Init => SimulationBaseInit
     procedure, public :: InitializeRun => SimulationBaseInitializeRun
+    procedure, public :: InputRecord => SimulationInputRecord
     procedure, public :: JumpStart => SimulationBaseJumpStart
     procedure, public :: ExecuteRun
     procedure, public :: RunToTime
@@ -38,6 +39,8 @@ module Simulation_Base_class
   public :: SimulationBaseCreate, &
             SimulationBaseInit, &
             SimulationBaseInitializeRun, &
+            SimulationInputRecordPrint, &
+            SimulationInputRecord, &
             SimulationGetFinalWaypointTime, &
             SimulationBaseFinalizeRun, &
             SimulationBaseStrip, &
@@ -137,7 +140,13 @@ subroutine SimulationBaseInitializeRun(this)
       if (index(this%option%restart_filename,'.chk') > 0) then
         call this%process_model_coupler_list%RestartBinary(viewer)
       elseif (index(this%option%restart_filename,'.h5') > 0) then
+#if !defined(PETSC_HAVE_HDF5)
+         this%option%io_buffer = 'HDF5 formatted restart not supported &
+              &unless PFLOTRAN is compiled with HDF5 libraries enabled.'
+         call printErrMsg(this%option)
+#else
         call this%process_model_coupler_list%RestartHDF5(chk_grp_id)
+#endif
       else
         this%option%io_buffer = 'Unknown restart filename format. ' // &
         'Only *.chk and *.h5 supported.'
@@ -150,6 +159,7 @@ subroutine SimulationBaseInitializeRun(this)
     call this%JumpStart()
   endif
   
+  call SimulationInputRecordPrint(this)
   call printMsg(this%option," ")
   call printMsg(this%option,"  Finished Initialization")
   call PetscLogEventEnd(logging%event_init,ierr);CHKERRQ(ierr)
@@ -160,6 +170,67 @@ subroutine SimulationBaseInitializeRun(this)
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
   
 end subroutine SimulationBaseInitializeRun
+
+! ************************************************************************** !
+
+subroutine SimulationInputRecordPrint(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+  use Checkpoint_module
+
+  implicit none
+  
+  class(simulation_base_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id = INPUT_RECORD_UNIT
+  PetscBool :: is_open
+
+  inquire(id, OPENED=is_open)
+  if (is_open .and. OptionPrintToFile(this%option)) then
+  !----------------------------------------------------------------------------
+    ! print checkpoint information
+    call CheckpointInputRecord(this%checkpoint_option,this%waypoint_list_outer)
+  
+    write(id,'(a)') ' '
+    ! print process model coupler and process model information
+    call this%process_model_coupler_list%InputRecord()
+    
+    ! print simulation-specific information
+    call this%InputRecord()
+  !----------------------------------------------------------------------------
+  endif
+
+end subroutine SimulationInputRecordPrint
+
+! ************************************************************************** !
+
+subroutine SimulationInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! This subroutine must be extended in the extended simulation objects.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+
+  implicit none
+  
+  class(simulation_base_type) :: this
+
+#ifdef DEBUG
+  call printMsg(this%option,'SimulationInputRecord()')
+#endif
+
+  this%option%io_buffer = 'SimulationInputRecord must be extended for ' // &
+    'each simulation mode.'
+  call printErrMsg(this%option)
+
+end subroutine SimulationInputRecord
 
 ! ************************************************************************** !
 

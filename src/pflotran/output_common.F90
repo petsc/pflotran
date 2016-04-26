@@ -1582,7 +1582,7 @@ end subroutine OutputGetExplicitIDsFlowrates
 ! ************************************************************************** !
 
 subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
-                                      flowrates,darcy)
+                                      flowrates,darcy,area)
   ! 
   ! Forms a vector of magnitude of flowrates
   ! which will be printed out to file for particle tracking.
@@ -1618,7 +1618,7 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
   
   PetscReal, pointer :: vec_proc_ptr(:)
   PetscReal, pointer :: flowrates(:,:)
-  PetscReal, pointer :: darcy(:)
+  PetscReal, pointer :: darcy(:), area(:)
   PetscInt :: offset
   PetscInt :: iconn
   PetscErrorCode :: ierr
@@ -1638,6 +1638,7 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
   ! Count the number of connections on a local process
   allocate(flowrates(count,option%nflowdof))
   allocate(darcy(count))
+  allocate(area(count))
   call VecGetArrayF90(vec_proc,vec_proc_ptr,ierr);CHKERRQ(ierr)
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -1658,6 +1659,7 @@ subroutine OutputGetExplicitFlowrates(realization_base,count,vec_proc, &
             patch%internal_flow_fluxes(idof,sum_connection)
         enddo
         darcy(count) = patch%internal_velocities(1,sum_connection)
+        area(count) = cur_connection_set%area(iconn)
       endif
     enddo
     cur_connection_set => cur_connection_set%next

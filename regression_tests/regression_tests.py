@@ -1,6 +1,6 @@
 #!/bin/env python
 """
-Program to manage and run PFloTran regression tests.
+Program to manage and run PFLOTRAN regression tests.
 
 """
 
@@ -1811,7 +1811,7 @@ def setup_testlog(txtwrap):
     testlog = open(filename, 'w')
     print("  Test log file : {0}".format(filename))
 
-    print("PFloTran Regression Test Log", file=testlog)
+    print("PFLOTRAN Regression Test Log", file=testlog)
     print("Date : {0}".format(now), file=testlog)
     print("System Info :", file=testlog)
     print("    platform : {0}".format(sys.platform), file=testlog)

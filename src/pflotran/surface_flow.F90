@@ -45,18 +45,24 @@ subroutine SurfaceFlowSetup(surf_realization)
   ! 
 
   use Realization_Surface_class
+  use Output_Aux_module
   
   class(realization_surface_type) :: surf_realization
 
-  call SurfaceFlowSetPlotVariables(surf_realization)
+  type(output_variable_list_type), pointer :: list
+
+  list => surf_realization%output_option%output_snap_variable_list
+  call SurfaceFlowSetPlotVariables(list)
+  list => surf_realization%output_option%output_obs_variable_list
+  call SurfaceFlowSetPlotVariables(list)
   
 end subroutine SurfaceFlowSetup
 
 ! ************************************************************************** !
 
-subroutine SurfaceFlowSetPlotVariables(surf_realization)
+subroutine SurfaceFlowSetPlotVariables(list)
   ! 
-  ! This routine adds variables to be printed to list
+  ! This routine adds default variables to be printed to list
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 10/30/12
@@ -68,12 +74,9 @@ subroutine SurfaceFlowSetPlotVariables(surf_realization)
     
   implicit none
   
-  class(realization_surface_type) :: surf_realization
-  
-  character(len=MAXWORDLENGTH) :: name, units
   type(output_variable_list_type), pointer :: list
-  
-  list => surf_realization%output_option%output_variable_list
+
+  character(len=MAXWORDLENGTH) :: name, units
   
   if (associated(list%first)) then
     return

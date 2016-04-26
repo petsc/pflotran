@@ -68,7 +68,7 @@ subroutine MassRateRead(this,input,option)
   type(option_type) :: option
 
   PetscInt :: i
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   PetscBool :: found
   
   do 
@@ -81,8 +81,7 @@ subroutine MassRateRead(this,input,option)
                        'SOURCE_SINK_SANDBOX,MASS_RATE')
     call StringToUpper(word)   
 
-    ! reads the REGION
-    call SSSandboxBaseRead(this,input,option,word,found)
+    call SSSandboxBaseSelectCase(this,input,option,word,found)
     if (found) cycle
     
     select case(trim(word))
@@ -94,10 +93,13 @@ subroutine MassRateRead(this,input,option)
           select case(i)
             case(ONE_INTEGER)
               word = 'Liquid Component Rate'
+              internal_units = 'kg/sec'
             case(TWO_INTEGER)
               word = 'Gas Component Rate'
+              internal_units = 'kg/sec'
             case(THREE_INTEGER)
               word = 'Energy Rate'
+              internal_units = 'MW|MJ/sec'
             case default
               write(word,*) i
               option%io_buffer = 'Unknown dof #' // trim(adjustl(word)) // &
@@ -106,6 +108,11 @@ subroutine MassRateRead(this,input,option)
           end select
           call InputReadDouble(input,option,this%rate(i))
           call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,MASS_RATE')
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          if (input%ierr == 0) then            
+            this%rate(i) = this%rate(i) * &
+              UnitsConvertToInternal(word,internal_units,option)
+          endif
         enddo
       case default
         call InputKeywordUnrecognized(word,'SRCSINK_SANDBOX,MASS_RATE',option)
@@ -116,7 +123,7 @@ end subroutine MassRateRead
 
 ! ************************************************************************** !
 
-subroutine MassRateSetup(this,region_list,option)
+subroutine MassRateSetup(this,grid,option)
   ! 
   ! Sets up the mass rate src/sink
   ! 
@@ -124,18 +131,16 @@ subroutine MassRateSetup(this,region_list,option)
   ! Date: 05/06/14
 
   use Option_module
-  use Region_module
+  use Grid_module
   use General_Aux_module, only : general_fmw_com => fmw_comp
 
   implicit none
   
   class(srcsink_sandbox_mass_rate_type) :: this
-  type(region_list_type) :: region_list
+  type(grid_type) :: grid
   type(option_type) :: option
   
-  PetscInt :: i
-  
-  call SSSandboxBaseSetup(this,region_list,option)
+  call SSSandboxBaseSetup(this,grid,option)
   ! convert rate from kg/s to mol/s
   select case(option%iflowmode)
     case(RICHARDS_MODE)

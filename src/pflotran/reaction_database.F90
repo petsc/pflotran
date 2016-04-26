@@ -720,7 +720,7 @@ subroutine DatabaseRead(reaction,option)
       flag = PETSC_TRUE
       option%io_buffer = 'Mineral (' // trim(cur_mineral%name) // &
                ') not found in database.'
-      call printMsg(option)
+      call printErrMsg(option)
     endif
     if (.not.reaction%use_geothermal_hpt) then
       if (.not.DatabaseCheckLegitimateLogKs(cur_mineral%dbaserxn, &
@@ -2728,8 +2728,8 @@ subroutine BasisInit(reaction,option)
           ! nothing to do here as the linkage to rick density is already set
         case(MINERAL_SURFACE)
           surface_complexation%srfcplxrxn_to_surf(irxn) = &
-            GetKineticMineralIDFromName(reaction%mineral, &
-                                        cur_srfcplx_rxn%surface_name)
+            GetKineticMineralIDFromName(cur_srfcplx_rxn%surface_name, &
+                                        reaction%mineral,option)
           if (surface_complexation%srfcplxrxn_to_surf(irxn) < 0) then
             option%io_buffer = 'Mineral ' // &
                                 trim(cur_srfcplx_rxn%surface_name) // &
@@ -2898,8 +2898,8 @@ subroutine BasisInit(reaction,option)
       reaction%eqionx_rxn_cation_X_offset(irxn) = icount
       if (len_trim(cur_ionx_rxn%mineral_name) > 1) then
         reaction%eqionx_rxn_to_surf(irxn) = &
-          GetKineticMineralIDFromName(reaction%mineral, &
-                                      cur_ionx_rxn%mineral_name)
+          GetKineticMineralIDFromName(cur_ionx_rxn%mineral_name, &
+                                      reaction%mineral,option)
         if (reaction%eqionx_rxn_to_surf(irxn) < 0) then
           option%io_buffer = 'Mineral ' // trim(cur_ionx_rxn%mineral_name) // &
                              ' listed in ion exchange ' // &
@@ -3472,8 +3472,8 @@ subroutine BasisInit(reaction,option)
       ! associate mineral id
       if (len_trim(cur_kd_rxn%kd_mineral_name) > 1) then
         reaction%eqkdmineral(irxn) = &
-          GetKineticMineralIDFromName(reaction%mineral, &
-                                      cur_kd_rxn%kd_mineral_name)
+          GetKineticMineralIDFromName(cur_kd_rxn%kd_mineral_name, &
+                                      reaction%mineral,option)
         if (reaction%eqkdmineral(irxn) < 0) then
           option%io_buffer = 'Mineral ' // trim(cur_ionx_rxn%mineral_name) // &
                              ' listed in kd (linear sorption)' // &
@@ -4039,7 +4039,6 @@ subroutine BasisPrint(reaction,title,option)
 130 format(a,100f11.4)
 140 format(a,f6.2)
 150 format(a,es11.4,a)
-160 format(i2,a)
 
   if (OptionPrintToFile(option)) then
     write(option%fid_out,*)

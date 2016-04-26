@@ -70,6 +70,7 @@ module Checkpoint_module
             CheckPointReadCompatibilityHDF5, &
 #endif
             CheckpointPeriodicTimeWaypoints, &
+            CheckpointInputRecord, &
             CheckpointRead
 
 contains
@@ -1456,7 +1457,8 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: card
   character(len=MAXSTRINGLENGTH) :: temp_string
-  character(len=MAXSTRINGLENGTH) :: units_category
+  character(len=MAXWORDLENGTH) :: internal_units
+  character(len=MAXWORDLENGTH) :: default_time_units
   type(waypoint_type), pointer :: waypoint
   PetscReal :: units_conversion
   PetscReal :: temp_real
@@ -1471,6 +1473,7 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
   
   format_binary = PETSC_FALSE
   format_hdf5 = PETSC_FALSE
+  default_time_units = ''
   do
     call InputReadPflotranString(input,option)
     call InputReadStringErrorMsg(input,option,'CHECKPOINT')
@@ -1492,10 +1495,10 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
             call InputReadWord(input,option,word,PETSC_TRUE)
             call InputErrorMsg(input,option,'time increment units', &
                                 'CHECKPOINT,PERIODIC,TIME')
-            units_category = 'time'
+            internal_units = 'sec'
             units_conversion = UnitsConvertToInternal(word, &
-                                units_category,option)
-            checkpoint_option%tconv = 1/units_conversion
+                                internal_units,option)
+            checkpoint_option%tconv = 1.d0/units_conversion
             checkpoint_option%tunit = trim(word)
             checkpoint_option%periodic_time_incr = temp_real*units_conversion
           case('TIMESTEP')
@@ -1510,14 +1513,15 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'time units', &
                             'CHECKPOINT,TIMES')
-        units_category = 'time'
-        units_conversion = UnitsConvertToInternal(word,units_category, &
+        internal_units = 'sec'
+        units_conversion = UnitsConvertToInternal(word,internal_units, &
                                                   option)
-        checkpoint_option%tconv = 1/units_conversion
+        checkpoint_option%tconv = 1.d0/units_conversion
         checkpoint_option%tunit = trim(word)
 !geh: this needs to be tested.
 #if 0
         temp_string = 'CHECKPOINT,TIMES'
+        nullify(temp_real_array)
         call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
                               temp_string,input,option)
         do i = 1, size(temp_real_array)
@@ -1553,19 +1557,29 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
             call InputKeywordUnrecognized(word,'CHECKPOINT,FORMAT', &
                                           option)
         end select
+      case ('TIME_UNITS')
+        call InputReadWord(input,option,default_time_units,PETSC_TRUE)
+        call InputErrorMsg(input,option,'time units','CHECKPOINT')
       case default
           call InputErrorMsg(input,option,'checkpoint option type', &
                               'CHECKPOINT: Must specify PERIODIC TIME, &
                               &PERIODIC TIMESTEP, TIMES, or FORMAT')
     end select
-    if (format_binary .and. format_hdf5) then
-      checkpoint_option%format = CHECKPOINT_BOTH
-    else if (format_hdf5) then
-      checkpoint_option%format = CHECKPOINT_HDF5
-    else ! default
-      checkpoint_option%format = CHECKPOINT_BINARY
-    endif
   enddo
+  if (len_trim(default_time_units) > 0) then
+    internal_units = 'sec'
+    units_conversion = UnitsConvertToInternal(default_time_units, &
+                                              internal_units,option)
+    checkpoint_option%tconv = 1.d0/units_conversion
+    checkpoint_option%tunit = trim(default_time_units)
+  endif
+  if (format_binary .and. format_hdf5) then
+    checkpoint_option%format = CHECKPOINT_BOTH
+  else if (format_hdf5) then
+    checkpoint_option%format = CHECKPOINT_HDF5
+  else ! default
+    checkpoint_option%format = CHECKPOINT_BINARY
+  endif
   
 end subroutine CheckpointRead
 
@@ -1582,6 +1596,7 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
   use Option_module
   use Waypoint_module
   use Output_Aux_module
+  use Utility_module
 
   implicit none
 
@@ -1589,10 +1604,14 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
   type(checkpoint_option_type), pointer :: checkpoint_option
   type(waypoint_list_type) :: waypoint_list
   type(waypoint_type), pointer :: waypoint
+  character(len=MAXWORDLENGTH) :: word
   PetscReal :: final_time
   PetscReal :: temp_real
+  PetscReal :: num_waypoints, warning_num_waypoints
+  PetscInt :: k
   
   final_time = WaypointListGetFinalTime(waypoint_list)
+  warning_num_waypoints = 15000.0
 
   if (final_time < 1.d-40) then
     option%io_buffer = 'No final time specified in waypoint list. &
@@ -1604,18 +1623,107 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
   if (associated(checkpoint_option)) then
     if (Initialized(checkpoint_option%periodic_time_incr)) then
       temp_real = 0.d0
+      num_waypoints = final_time / checkpoint_option%periodic_time_incr
+      if ((num_waypoints > warning_num_waypoints) .and. &
+          OptionPrintToScreen(option)) then
+        write(word,*) floor(num_waypoints)
+        write(*,*) 'WARNING: Large number (' // trim(adjustl(word)) // &
+                   ') of periodic checkpoints requested.'
+        write(*,'(a68)',advance='no') '         Creating periodic checkpoint &
+                                      &waypoints . . . Progress: 0%-'
+      endif
+      k = 0
       do
+        k = k + 1
         temp_real = temp_real + checkpoint_option%periodic_time_incr
         if (temp_real > final_time) exit
         waypoint => WaypointCreate()
         waypoint%time = temp_real
         waypoint%print_checkpoint = PETSC_TRUE
         call WaypointInsertInList(waypoint,waypoint_list)
+        if ((num_waypoints > warning_num_waypoints) .and. &
+            OptionPrintToScreen(option)) then
+          call PrintProgressBarInt(floor(num_waypoints),10,k)
+        endif
       enddo
     endif
   endif
 
 end subroutine CheckpointPeriodicTimeWaypoints
   
+! ************************************************************************** !
+
+subroutine CheckpointInputRecord(checkpoint_option,waypoint_list)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  !  
+  use Output_Aux_module
+  use Waypoint_module
+
+  implicit none
+
+  type(checkpoint_option_type), pointer :: checkpoint_option
+  type(waypoint_list_type), pointer :: waypoint_list
+  
+  type(waypoint_type), pointer :: cur_waypoint
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscBool :: checkpoints_found
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  write(id,'(a)') ' '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'CHECKPOINTS'
+
+  write(id,'(a29)',advance='no') 'periodic timestep: '
+  if (checkpoint_option%periodic_ts_incr == 0) then
+    write(id,'(a)') 'OFF'
+  else
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'timestep increment: '
+    write(word,*) checkpoint_option%periodic_ts_incr
+    write(id,'(a)') adjustl(trim(word))
+  endif
+
+  write(id,'(a29)',advance='no') 'periodic time: '
+  if (checkpoint_option%periodic_time_incr <= 0) then
+    write(id,'(a)') 'OFF'
+  else
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'time increment: '
+    write(word,*) checkpoint_option%periodic_time_incr * &
+                  checkpoint_option%tconv
+    write(id,'(a)') adjustl(trim(word)) // &
+                    adjustl(trim(checkpoint_option%tunit))
+  endif
+
+  string = ''
+  checkpoints_found = PETSC_FALSE
+  write(id,'(a29)',advance='no') 'specific times: '
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%print_checkpoint) then
+      checkpoints_found = PETSC_TRUE
+      write(word,*) cur_waypoint%time*checkpoint_option%tconv
+      string = trim(string) // adjustl(trim(word)) // ','
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+  if (checkpoints_found) then
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'times (' // &
+                                    trim(checkpoint_option%tunit) // '): '
+    write(id,'(a)') trim(string)
+  else
+    write(id,'(a)') 'OFF'
+  endif
+  
+end subroutine CheckpointInputRecord
 
 end module Checkpoint_module

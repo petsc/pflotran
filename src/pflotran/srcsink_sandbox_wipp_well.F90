@@ -78,8 +78,7 @@ subroutine WIPPWellRead(this,input,option)
   type(input_type), pointer :: input
   type(option_type) :: option
 
-  PetscInt :: i
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, internal_units
   PetscBool :: found
   
   do 
@@ -92,14 +91,19 @@ subroutine WIPPWellRead(this,input,option)
                        'SRCSINK_SANDBOX,WIPP')
     call StringToUpper(word)   
 
-    ! reads the REGION
-    call SSSandboxBaseRead(this,input,option,word,found)
+    call SSSandboxBaseSelectCase(this,input,option,word,found)
     if (found) cycle
     
     select case(trim(word))
       case('WELL_PRESSURE')
         call InputReadDouble(input,option,this%well_pressure)
         call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,WIPP,WELL')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (input%ierr == 0) then
+          internal_units = 'Pa'
+          this%well_pressure = this%well_pressure * &
+               UnitsConvertToInternal(word,internal_units,option)
+        endif
       case('WELL_PRODUCTIVITY_INDEX')
         call InputReadDouble(input,option,this%productivity_index)
         call InputErrorMsg(input,option,word,'SOURCE_SINK_SANDBOX,WIPP,WELL')
@@ -112,23 +116,18 @@ end subroutine WIPPWellRead
 
 ! ************************************************************************** !
 
-subroutine WIPPWellSetup(this,region_list,option)
-  ! 
-  ! Sets up the WIPP well src/sink
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 04/11/14
-
+subroutine WIPPWellSetup(this,grid,option)
+    
   use Option_module
-  use Region_module
-
+  use Grid_module
+  
   implicit none
   
   class(srcsink_sandbox_wipp_well_type) :: this
-  type(region_list_type) :: region_list  
+  type(grid_type) :: grid
   type(option_type) :: option
-  
-  call SSSandboxBaseSetup(this,region_list,option)
+    
+  call SSSandboxBaseSetup(this,grid,option)
 
 end subroutine WIPPWellSetup 
 
@@ -156,11 +155,11 @@ subroutine WIPPWellSrcSink(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: aux_real(:)
-  
   PetscReal :: q_liquid, q_gas
   
   ! q_i = rho_i*I*(kr_i/mu_i)*(p_i-p_well)
   ! units: m^3/s
+  
   q_liquid = -1.d0 * &
             this%productivity_index * &
             aux_real(WIPP_WELL_LIQUID_MOBILITY) * &
@@ -188,6 +187,10 @@ subroutine WIPPWellSrcSink(this,Residual,Jacobian,compute_derivative, &
                             q_gas * aux_real(WIPP_WELL_GAS_DENSITY) * &
                             aux_real(WIPP_WELL_GAS_ENTHALPY)
   
+  if (associated(this%instantaneous_mass_rate)) then
+    this%instantaneous_mass_rate(:) = -1.d0*Residual(:)
+  endif
+                            
   if (compute_derivative) then
     
     ! jacobian something
