@@ -149,7 +149,7 @@ subroutine TOilImsSetup(realization)
   enddo
 
   if (error_found .or. maxval(flag) > 0) then
-    option%io_buffer = 'Material property errors found in GeneralSetup.'
+    option%io_buffer = 'Material property errors found in TOilImsSetup.'
     call printErrMsg(option)
   endif
 
@@ -212,8 +212,8 @@ subroutine TOilImsInitializeTimestep(realization)
   ! 
   ! Update data in module prior to time step
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/10/11
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/20/15
   ! 
 
   use Realization_Subsurface_class

@@ -32,7 +32,8 @@ contains
 
 ! ************************************************************************** !
 subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
-              characteristic_curves_array,sat_func_id)
+              characteristic_curves_array,sat_func_id,imat)
+
   ! 
   ! Computes the hydrostatic initial/boundary condition for oil/water systems
   ! given the oil water contact (owc) elevation
@@ -72,6 +73,8 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   ! - compute equilibrating capillary pressure: pc = po - pw 
   ! - compute saturation from inverse pc curve: sw = pc^(-1)(sw) 
 
+  !PO note - this should be a member function of the coupler class!
+
   use EOS_Water_module
 
   use Option_module
@@ -96,6 +99,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   type(grid_type) :: grid
   type(characteristic_curves_ptr_type) :: characteristic_curves_array(:)
   PetscInt, pointer, intent(in) :: sat_func_id(:)
+  PetscInt, pointer, intent(in) :: imat(:)
 
   PetscReal :: xm_nacl
   PetscInt :: local_id, ghosted_id, iconn, ghosted_id_min_dist
@@ -245,7 +249,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   end if
 
   ghosted_id_min_dist = &
-      GetCouplerCellOnPhaseConact(coupler,grid,owc(Z_DIRECTION),option) 
+      GetCouplerCellOnPhaseConact(coupler,grid,imat,owc(Z_DIRECTION),option)
 
   !write(*,*) "my_rank", option%myrank, "min_ghost", ghosted_id_min_dist, &
   !           "sat_fun_id", sat_func_id(ghosted_id_min_dist)
@@ -445,7 +449,7 @@ end subroutine TOIHydrostaticUpdateCoupler
 
 ! ************************************************************************** !
 
-function GetCouplerCellOnPhaseConact(coupler,grid,z_phase_contact,option)
+function GetCouplerCellOnPhaseConact(coupler,grid,imat,z_phase_contact,option)
 
   ! Returns the ghosted_id of the closest cell to phase contact  
   ! Where more cells have the same minimum distance from z_phase_contact,
@@ -464,6 +468,7 @@ function GetCouplerCellOnPhaseConact(coupler,grid,z_phase_contact,option)
 
   type(coupler_type), intent(in) :: coupler
   type(grid_type), intent(in) :: grid
+  PetscInt, pointer, intent(in) :: imat(:)
   PetscReal, intent(in) :: z_phase_contact
   type(option_type) :: option
 
@@ -474,10 +479,12 @@ function GetCouplerCellOnPhaseConact(coupler,grid,z_phase_contact,option)
   PetscReal, pointer :: phase_contact_dist(:) 
 
   allocate(phase_contact_dist(coupler%connection_set%num_connections))
+  phase_contact_dist = 1.d20
   
   do iconn=1,coupler%connection_set%num_connections
     local_id = coupler%connection_set%id_dn(iconn)
     ghosted_id = grid%nL2G(local_id)
+    if (imat(ghosted_id) <= 0) cycle
     phase_contact_dist(iconn) = dabs(grid%z(ghosted_id) - z_phase_contact)
   end do
 
