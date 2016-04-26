@@ -865,11 +865,10 @@ patch.o : auxiliary.o characteristic_curves.o condition.o connection.o \
           material.o material_aux.o miscible_aux.o mphase_aux.o observation.o \
           option.o output_aux.o pflotran_constants.o reaction.o reaction_aux.o \
           reaction_mineral.o reaction_mineral_aux.o \
-          reaction_surf_complex_aux.o reactive_transport_aux.o \
-          realization_subsurface.o region.o richards_aux.o saturation.o \
-          saturation_function.o strata.o surface_auxiliary.o surface_field.o \
-          surface_material.o th_aux.o toil_ims_aux.o transport_constraint.o \
-          utility.o variables.o
+          reaction_surf_complex_aux.o reactive_transport_aux.o region.o \
+          richards_aux.o saturation.o saturation_function.o strata.o \
+          surface_auxiliary.o surface_field.o surface_material.o th_aux.o \
+          toil_ims_aux.o transport_constraint.o utility.o variables.o
 pflotran.o : factory_geomechanics.o factory_hydrogeophysics.o \
              factory_pflotran.o factory_subsurface.o factory_surface.o \
              factory_surfsubsurface.o multisimulation.o option.o output_aux.o \
