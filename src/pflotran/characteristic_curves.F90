@@ -5350,15 +5350,15 @@ subroutine RPF_Mod_BC_SetupPolynomials(this,option,error_string)
   this%poly%low = 0.99d0  ! just below saturated
   !this%poly%low = 0.95d0  ! just below saturated 
   this%poly%high = 1.d0   ! saturated
-  
-  select type(rpf => this)
-    class is(rpf_mod_BC_liq_type) 
-      Se_ph_low = ( this%poly%low - this%Sr ) / &
-                  (1.0 - this%Sro - this%Sr - this%Srg)
-    class is(rpf_mod_BC_oil_type)
-      Se_ph_low = ( this%poly%low - this%Sro ) / &
-                  (1.0 - this%Sro - this%Sr - this%Srg) 
-  end select 
+  Se_ph_low = this%poly%low
+  !select type(rpf => this)
+  !  class is(rpf_mod_BC_liq_type) 
+  !    Se_ph_low = ( this%poly%low - this%Sr ) / &
+  !                (1.0 - this%Sro - this%Sr - this%Srg)
+  !  class is(rpf_mod_BC_oil_type)
+  !    Se_ph_low = ( this%poly%low - this%Sro ) / &
+  !                (1.0 - this%Sro - this%Sr - this%Srg) 
+  !end select 
 
   b(1) = this%kr_max
   b(2) = this%kr_max * (Se_ph_low ** this%m)
