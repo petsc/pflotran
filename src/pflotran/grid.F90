@@ -630,7 +630,6 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         trim(region%name) // '".'
       call printErrMsg(option)
     endif
-
     region => region%next
 
   enddo
@@ -2130,5 +2129,6 @@ subroutine GridGetLocalIDFromCoordinate(grid,coordinate,option,local_id)
   endif
     
 end subroutine GridGetLocalIDFromCoordinate
+
 
 end module Grid_module

@@ -69,6 +69,7 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
   use Realization_Surface_class
   use Timestepper_Surface_class
   use Logging_module
+  use Output_Aux_module
   
   implicit none
 #include "petsc/finclude/petscvec.h"
@@ -137,7 +138,11 @@ subroutine SurfSubsurfaceInitializePostPETSc(simulation)
   if (associated(pm_surface_flow) .or. associated(pm_surface_th)) then
     simulation%surf_realization => RealizSurfCreate(option)
     surf_realization => simulation%surf_realization
-    surf_realization%output_option => simulation%output_option
+    surf_realization%output_option => OutputOptionDuplicate(simulation%output_option)
+    nullify(surf_realization%output_option%output_snap_variable_list)
+    nullify(surf_realization%output_option%output_obs_variable_list)
+    surf_realization%output_option%output_snap_variable_list => OutputVariableListCreate()
+    surf_realization%output_option%output_obs_variable_list => OutputVariableListCreate()
     subsurf_realization => simulation%realization
     surf_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
     surf_realization%subsurf_filename = &

@@ -21,6 +21,7 @@ module PM_Auxiliary_class
   contains
     procedure, public :: Setup => PMAuxiliarySetup
     procedure, public :: InitializeRun => PMAuxiliaryInitializeRun
+    procedure, public :: InputRecord => PMAuxiliaryInputRecord
     procedure, public :: Destroy => PMAuxiliaryDestroy
   end type pm_auxiliary_type
 
@@ -46,6 +47,7 @@ module PM_Auxiliary_class
             PMAuxiliaryInit, &
             PMAuxiliaryCast, &
             PMAuxiliaryRead, &
+            PMAuxiliaryInputRecord, &
             PMAuxiliarySetFunctionPointer
   
 contains
@@ -90,6 +92,7 @@ subroutine PMAuxiliaryInit(this)
   nullify(this%comm1)
   nullify(this%salinity)
   this%ctype = ''
+  this%name = ''
   
   call PMBaseInit(this)
   
@@ -229,13 +232,15 @@ subroutine PMAuxiliarySetFunctionPointer(this,string)
   
   class(pm_auxiliary_type) :: this
   character(len=*) :: string
-
+  
   this%ctype = trim(string)
   select case(string)
     case('EVOLVING_STRATA')
       this%Evaluate => PMAuxiliaryEvolvingStrata
+      this%name = 'auxiliary evolving strata'
     case('SALINITY')
       this%Evaluate => PMAuxiliarySalinity
+      this%name = 'auxiliary salinity'
     case default
       this%option%io_buffer = 'Function pointer "' // trim(string) // '" not &
         &found among available functions in PMAuxiliarySetFunctionPointer.'
@@ -362,6 +367,31 @@ subroutine PMAuxiliarySalinity(this,time,ierr)
   enddo
   
 end subroutine PMAuxiliarySalinity
+
+! ************************************************************************** !
+
+subroutine PMAuxiliaryInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 04/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_auxiliary_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMAuxiliaryInputRecord
+
 
 ! ************************************************************************** !
 

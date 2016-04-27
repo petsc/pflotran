@@ -89,7 +89,8 @@ module Region_module
   
   public :: RegionCreate, RegionDestroy, RegionAddToList, RegionReadFromFile, &
             RegionInitList, RegionDestroyList, RegionGetPtrFromList, & 
-            RegionRead, RegionReadSideSet, RegionCreateSideset
+            RegionRead, RegionReadSideSet, RegionCreateSideset, &
+            RegionInputRecord
   
 contains
 
@@ -1201,7 +1202,128 @@ function RegionGetPtrFromList(region_name,region_list)
   
 end function RegionGetPtrFromList
 
-! ************************************************************************** !
+! **************************************************************************** !
+
+subroutine RegionInputRecord(region_list)
+  ! 
+  ! Prints ingested region information to the input record file
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/30/2016
+  ! 
+  use Grid_Structured_module
+
+  implicit none
+
+  type(region_list_type), pointer :: region_list
+  
+  type(region_type), pointer :: cur_region
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'REGIONS'
+  
+  cur_region => region_list%first
+  do
+    if (.not.associated(cur_region)) exit
+    write(id,'(a29)',advance='no') 'region: '
+    write(id,'(a)') adjustl(trim(cur_region%name))
+    if (len_trim(cur_region%filename) > 0) then
+      write(id,'(a29)',advance='no') 'from file: '
+      write(id,'(a)') adjustl(trim(cur_region%filename)) 
+    endif
+    
+    select case (cur_region%def_type)
+    !--------------------------------
+      case (DEFINED_BY_BLOCK)
+        write(id,'(a29)',advance='no') 'defined by: '
+        write(id,'(a)') 'BLOCK'
+        write(id,'(a29)',advance='no') 'I indices: '
+        write(word1,*) cur_region%i1
+        write(word2,*) cur_region%i2
+        write(id,'(a)') adjustl(trim(word1)) // ' ' // adjustl(trim(word2))
+        write(id,'(a29)',advance='no') 'J indices: '
+        write(word1,*) cur_region%j1
+        write(word2,*) cur_region%j2
+        write(id,'(a)') adjustl(trim(word1)) // ' ' // adjustl(trim(word2))
+        write(id,'(a29)',advance='no') 'K indices: '
+        write(word1,*) cur_region%k1
+        write(word2,*) cur_region%k2
+        write(id,'(a)') adjustl(trim(word1)) // ' ' // adjustl(trim(word2))
+    !--------------------------------
+      case (DEFINED_BY_CARTESIAN_BOUNDARY)
+        write(id,'(a29)',advance='no') 'defined by: '
+        write(id,'(a)') 'CARTESIAN BOUNDARY'
+    !--------------------------------
+      case (DEFINED_BY_COORD)
+        write(id,'(a29)',advance='no') 'defined by: '
+        write(id,'(a)') 'COORDINATE(S)'
+        write(id,'(a29)',advance='no') 'X coordinate(s): '
+        write(string,*) cur_region%coordinates%x
+        write(id,'(a)') adjustl(trim(string)) // ' m'
+        write(id,'(a29)',advance='no') 'Y coordinate(s): '
+        write(string,*) cur_region%coordinates%y
+        write(id,'(a)') adjustl(trim(string)) // ' m'
+        write(id,'(a29)',advance='no') 'Z coordinate(s): '
+        write(string,*) cur_region%coordinates%z
+        write(id,'(a)') adjustl(trim(string)) // ' m'
+    !--------------------------------
+      case (DEFINED_BY_CELL_AND_FACE_IDS)
+        write(id,'(a29)',advance='no') 'defined by: '
+        write(id,'(a)') 'CELL AND FACE IDS'
+    !--------------------------------
+      case (DEFINED_BY_CELL_IDS)
+        write(id,'(a29)',advance='no') 'defined by: '
+        write(id,'(a)') 'CELL IDS'
+    !--------------------------------
+      case (DEFINED_BY_VERTEX_IDS)
+        write(id,'(a29)',advance='no') 'defined by: '
+        write(id,'(a)') 'VERTEX IDS'
+    !--------------------------------
+      case (DEFINED_BY_FACE_UGRID_EXP)
+        write(id,'(a29)',advance='no') 'defined by: '
+        write(id,'(a)') 'FACE UNSTRUCTURED GRID EXPLICIT'
+    !--------------------------------
+      case (DEFINED_BY_POLY_BOUNDARY_FACE)
+        write(id,'(a29)',advance='no') 'defined by: '
+        write(id,'(a)') 'POLYGON BOUNDARY FACES IN VOLUME'
+    !--------------------------------
+      case (DEFINED_BY_POLY_CELL_CENTER)
+        write(id,'(a29)',advance='no') 'defined by: '
+        write(id,'(a)') 'POLYGON CELL CENTERS IN VOLUME'
+    !--------------------------------
+    end select
+    
+    if (cur_region%iface /= 0) then
+      write(id,'(a29)',advance='no') 'face: '
+      select case (cur_region%iface)
+        case (WEST_FACE)
+          write(id,'(a)') 'west'
+        case (EAST_FACE)
+          write(id,'(a)') 'east'
+        case (NORTH_FACE)
+          write(id,'(a)') 'north'
+        case (SOUTH_FACE)
+          write(id,'(a)') 'south'
+        case (BOTTOM_FACE)
+          write(id,'(a)') 'bottom'
+        case (TOP_FACE)
+          write(id,'(a)') 'top'
+      end select
+    endif
+    
+    write(id,'(a29)') '---------------------------: '
+    cur_region => cur_region%next
+  enddo
+  
+end subroutine RegionInputRecord
+
+! **************************************************************************** !
 
 subroutine RegionDestroySideset(sideset)
   ! 

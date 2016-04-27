@@ -1397,7 +1397,7 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
     call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
     call WriteHDF5CoordinatesXDMFGeomech(geomech_realization,option,grp_id)
     call h5gclose_f(grp_id,hdf5_err)
-  endif
+  endif 
 
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write xmf geomech output file: ' // &

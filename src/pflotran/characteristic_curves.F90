@@ -16,7 +16,7 @@ module Characteristic_Curves_module
     PetscReal :: coefficients(4)
   end type polynomial_type
  
-  ! Begin Saturation Functions
+  ! Begin Saturation Functions -------------------------------------------------------
   type :: sat_func_base_type
     type(polynomial_type), pointer :: sat_poly
     type(polynomial_type), pointer :: pres_poly
@@ -64,8 +64,8 @@ module Characteristic_Curves_module
     procedure, public :: CapillaryPressure => SF_Linear_CapillaryPressure
     procedure, public :: Saturation => SF_Linear_Saturation
   end type sat_func_Linear_type
+  ! BRAGFLO KRP9 modified Brooks-Corey Model
   type, public, extends(sat_func_base_type) :: sat_func_BF_KRP9_type
-  
   contains
     procedure, public :: Init => SF_BF_KRP9_Init
     procedure, public :: Verify => SF_BF_KRP9_Verify
@@ -98,9 +98,9 @@ module Characteristic_Curves_module
     procedure, public :: Verify => SF_BF_KRP12_Verify
     procedure, public :: CapillaryPressure => SF_BF_KRP12_CapillaryPressure
   end type sat_func_BF_KRP12_type 
-  ! End Saturation Functions
+  ! End Saturation Functions -------------------------------------------------------
 
-  ! Begin Relative Permeability Functions
+  ! Begin Relative Permeability Functions ------------------------------------------
   type :: rel_perm_func_base_type
     type(polynomial_type), pointer :: poly
     PetscReal :: Sr
@@ -118,7 +118,7 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPFDefaultVerify
     procedure, public :: RelativePermeability => RPF_DefaultRelPerm
   end type rel_perm_func_default_type
-  ! Mualem-VG
+  ! Mualem-VG-liq
   type, public, extends(rel_perm_func_base_type) :: rpf_Mualem_VG_liq_type
     PetscReal :: m
   contains
@@ -127,6 +127,7 @@ module Characteristic_Curves_module
     procedure, public :: SetupPolynomials => RPF_Mualem_SetupPolynomials
     procedure, public :: RelativePermeability => RPF_Mualem_VG_Liq_RelPerm
   end type rpf_Mualem_VG_liq_type
+  ! Mualem-VG-gas
   type, public, extends(rel_perm_func_base_type) :: rpf_Mualem_VG_gas_type
     PetscReal :: m
     PetscReal :: Srg
@@ -285,7 +286,7 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPF_TOUGH2_Linear_Oil_Verify
     procedure, public :: RelativePermeability => RPF_TOUGH2_Linear_Oil_RelPerm
   end type rpf_TOUGH2_Linear_Oil_type
-  ! End Relative Permeability Functions
+  ! End Relative Permeability Functions -------------------------------------------
   
   type, public :: characteristic_curves_type
     character(len=MAXWORDLENGTH) :: name
@@ -309,6 +310,7 @@ module Characteristic_Curves_module
             CharacteristicCurvesGetID, &
             CharCurvesGetGetResidualSats, &
             CharacteristicCurvesDestroy, &
+            CharCurvesInputRecord, &
   ! required to be public for unit tests - Heeho Park
             SF_VG_Create, &
             SF_BC_Create, &
@@ -1340,6 +1342,319 @@ subroutine CharacteristicCurvesVerify(characteristic_curves,option)
   end if
   
 end subroutine CharacteristicCurvesVerify
+
+! **************************************************************************** !
+
+subroutine CharCurvesInputRecord(char_curve_list)
+  ! 
+  ! Prints ingested characteristic curves information to the input record file
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/11/2016
+  ! 
+
+  implicit none
+
+  class(characteristic_curves_type), pointer :: char_curve_list
+  
+  class(characteristic_curves_type), pointer :: cur_ccurve
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'CHARACTERISTIC CURVES'
+  
+  cur_ccurve => char_curve_list
+  do
+    if (.not.associated(cur_ccurve)) exit
+    
+    write(id,'(a29)',advance='no') 'characteristic curve name: '
+    write(id,'(a)') adjustl(trim(cur_ccurve%name))
+    
+    if (associated(cur_ccurve%saturation_function)) then
+      write(id,'(a29)',advance='no') 'saturation function: '
+      select type (sf => cur_ccurve%saturation_function)
+      !---------------------------------
+        class is (sat_func_VG_type)
+          write(id,'(a)') 'van genuchten'
+          write(id,'(a29)',advance='no') 'm: '
+          write(word1,*) sf%m
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'alpha: '
+          write(word1,*) sf%alpha
+          write(id,'(a)') adjustl(trim(word1))
+      !---------------------------------
+        class is (sat_func_BC_type)
+          write(id,'(a)') 'brooks corey'
+          write(id,'(a29)',advance='no') 'alpha: '
+          write(word1,*) sf%alpha
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'lambda: '
+          write(word1,*) sf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+      !---------------------------------
+        class is (sat_func_Linear_type)
+          write(id,'(a)') 'linear'
+          write(id,'(a29)',advance='no') 'alpha: '
+          write(word1,*) sf%alpha
+          write(id,'(a)') adjustl(trim(word1))
+      !---------------------------------
+        class is (sat_func_BF_KRP9_type)
+          write(id,'(a)') 'Bragflo KRP9 modified brooks corey'
+      !---------------------------------
+        class is (sat_func_BF_KRP4_type)
+          write(id,'(a)') 'Bragflo KRP4 modified brooks corey'
+          write(id,'(a29)',advance='no') 'alpha: '
+          write(word1,*) sf%alpha
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'lambda: '
+          write(word1,*) sf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) sf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'kpc: '
+          write(word1,*) sf%pcmax_flag
+          write(id,'(a)') adjustl(trim(word1))
+      !---------------------------------
+        class is (sat_func_BF_KRP11_type)
+          write(id,'(a)') 'Bragflo KRP11 modified brooks corey'
+      !---------------------------------
+        class is (sat_func_BF_KRP12_type)
+          write(id,'(a)') 'Bragflo KRP12 modified brooks corey'
+          write(id,'(a29)',advance='no') 'alpha: '
+          write(word1,*) sf%alpha
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'lambda: '
+          write(word1,*) sf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) sf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'socmin: '
+          write(word1,*) sf%socmin
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'soceffmin: '
+          write(word1,*) sf%soceffmin
+          write(id,'(a)') adjustl(trim(word1))
+      !---------------------------------
+        class is (sat_func_default_type)
+          write(id,'(a)') 'default'
+      !---------------------------------
+      end select
+      write(id,'(a29)',advance='no') 'liquid residual sat.: '
+      write(word1,*) cur_ccurve%saturation_function%Sr
+      write(id,'(a)') adjustl(trim(word1))
+      write(id,'(a29)',advance='no') 'max capillary pressure: '
+      write(word1,*) cur_ccurve%saturation_function%pcmax
+      write(id,'(a)') adjustl(trim(word1))
+    endif
+    
+    if (associated(cur_ccurve%liq_rel_perm_function)) then
+      write(id,'(a29)',advance='no') 'liq. relative perm. func.: '
+      select type (rpf => cur_ccurve%liq_rel_perm_function)
+      !------------------------------------
+        class is (rel_perm_func_default_type)
+          write(id,'(a)') 'default'
+      !------------------------------------
+        class is (rpf_Mualem_VG_liq_type)
+          write(id,'(a)') 'mualem_vg_liq/tough2_irp7_liq'
+          write(id,'(a29)',advance='no') 'm: '
+          write(word1,*) rpf%m
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_Mualem_BC_liq_type)
+          write(id,'(a)') 'mualem_bc_liq'
+          write(id,'(a29)',advance='no') 'lambda: '
+          write(word1,*) rpf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_Mualem_Linear_liq_type)
+          write(id,'(a)') 'mualem_linear_liq'
+          write(id,'(a29)',advance='no') 'alpha: '
+          write(word1,*) rpf%alpha
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'max capillary pressure: '
+          write(word1,*) rpf%pcmax
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_Burdine_VG_liq_type)
+          write(id,'(a)') 'burdine_vg_liq'
+          write(id,'(a29)',advance='no') 'm: '
+          write(word1,*) rpf%m
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_Burdine_BC_liq_type)
+          write(id,'(a)') 'burdine_bc_liq'
+          write(id,'(a29)',advance='no') 'lambda: '
+          write(word1,*) rpf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_Burdine_linear_liq_type)
+          write(id,'(a)') 'burdine_linear_liq'
+      !------------------------------------
+        class is (rpf_BRAGFLO_KRP9_liq_type)
+          write(id,'(a)') 'bragflo_krp9_liq'
+      !------------------------------------
+        class is (rpf_BRAGFLO_KRP4_liq_type)
+          write(id,'(a)') 'bragflo_krp4_liq'
+          write(id,'(a29)',advance='no') 'lambda: '
+          write(word1,*) rpf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_BRAGFLO_KRP11_liq_type)
+          write(id,'(a)') 'bragflo_krp11_liq'
+          write(id,'(a29)',advance='no') 'tolc: '
+          write(word1,*) rpf%tolc
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_BRAGFLO_KRP12_liq_type)
+          write(id,'(a)') 'bragflo_krp12_liq'
+          write(id,'(a29)',advance='no') 'lambda: '
+          write(word1,*) rpf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class default
+          write(id,'(a)') 'none'
+      !------------------------------------
+      end select
+    endif
+    
+    if (associated(cur_ccurve%gas_rel_perm_function)) then
+      write(id,'(a29)',advance='no') 'gas relative perm. func.: '
+      select type (rpf => cur_ccurve%gas_rel_perm_function)
+      !------------------------------------
+        class is (rel_perm_func_default_type)
+          write(id,'(a)') 'default'
+      !------------------------------------
+        class is (rpf_Mualem_VG_gas_type)
+          write(id,'(a)') 'mualem_vg_gas'
+          write(id,'(a29)',advance='no') 'm: '
+          write(word1,*) rpf%m
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_Mualem_BC_gas_type)
+          write(id,'(a)') 'mualem_bc_gas'
+          write(id,'(a29)',advance='no') 'lambda: '
+          write(word1,*) rpf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_Mualem_Linear_gas_type)
+          write(id,'(a)') 'mualem_linear_gas'
+          write(id,'(a29)',advance='no') 'alpha: '
+          write(word1,*) rpf%alpha
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'max capillary pressure: '
+          write(word1,*) rpf%pcmax
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_TOUGH2_IRP7_gas_type)
+          write(id,'(a)') 'tough2_irp7_gas'
+          write(id,'(a29)',advance='no') 'm: '
+          write(word1,*) rpf%m
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_Burdine_VG_gas_type)
+          write(id,'(a)') 'burdine_vg_gas'
+          write(id,'(a29)',advance='no') 'm: '
+          write(word1,*) rpf%m
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_Burdine_BC_gas_type)
+          write(id,'(a)') 'burdine_bc_gas'
+          write(id,'(a29)',advance='no') 'lambda: '
+          write(word1,*) rpf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_Burdine_linear_gas_type)
+          write(id,'(a)') 'burdine_linear_gas'
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_BRAGFLO_KRP9_gas_type)
+          write(id,'(a)') 'bragflo_krp9_gas'
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_BRAGFLO_KRP4_gas_type)
+          write(id,'(a)') 'bragflo_krp4_gas'
+          write(id,'(a29)',advance='no') 'lambda: '
+          write(word1,*) rpf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_BRAGFLO_KRP11_gas_type)
+          write(id,'(a)') 'bragflo_krp11_gas'
+          write(id,'(a29)',advance='no') 'tolc: '
+          write(word1,*) rpf%tolc
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_BRAGFLO_KRP12_gas_type)
+          write(id,'(a)') 'bragflo_krp12_gas'
+          write(id,'(a29)',advance='no') 'lambda: '
+          write(word1,*) rpf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class default
+          write(id,'(a)') 'none'
+      !------------------------------------
+      end select
+    endif
+    
+    if (associated(cur_ccurve%oil_rel_perm_function)) then
+      write(id,'(a29)',advance='no') 'oil relative perm. func.: '
+      select type (rpf => cur_ccurve%oil_rel_perm_function)
+      !------------------------------------
+        class is (rel_perm_func_default_type)
+          write(id,'(a)') 'default'
+      !------------------------------------
+        class is (rpf_TOUGH2_Linear_Oil_type)
+          write(id,'(a)') 'tough2_linear_oil'
+          write(id,'(a29)',advance='no') 'oil residual sat.: '
+          write(word1,*) rpf%Sro
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+      end select
+    endif
+
+    write(id,'(a29)') '---------------------------: '
+    cur_ccurve => cur_ccurve%next
+  enddo
+  
+end subroutine CharCurvesInputRecord
+
 ! End Characteristic Curves
 
 ! ************************************************************************** !

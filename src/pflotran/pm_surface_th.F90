@@ -32,6 +32,7 @@ module PM_Surface_TH_class
     procedure, public :: Destroy => PMSurfaceTHDestroy
     procedure, public :: RHSFunction => PMSurfaceTHRHSFunction
     procedure, public :: UpdateAuxVars => PMSurfaceTHUpdateAuxVars
+    procedure, public :: InputRecord => PMSurfaceTHInputRecord
   end type pm_surface_th_type
 
   public :: PMSurfaceTHCreate, &
@@ -322,6 +323,30 @@ subroutine PMSurfaceTHUpdateAuxVars(this)
   call SurfaceTHUpdateAuxVars(this%surf_realization)
 
 end subroutine PMSurfaceTHUpdateAuxVars
+
+! ************************************************************************** !
+
+subroutine PMSurfaceTHInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_surface_th_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMSurfaceTHInputRecord
 
 ! ************************************************************************** !
 

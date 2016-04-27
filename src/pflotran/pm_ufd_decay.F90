@@ -48,6 +48,7 @@ module PM_UFD_Decay_class
 !    procedure, public :: UpdateAuxvars => PMUFDDecayUpdateAuxvars
 !    procedure, public :: Checkpoint => PMUFDDecayCheckpoint    
 !    procedure, public :: Restart => PMUFDDecayRestart  
+    procedure, public :: InputRecord => PMUFDDecayInputRecord
     procedure, public :: Destroy => PMUFDDecayDestroy
   end type pm_ufd_decay_type
   
@@ -118,6 +119,8 @@ function PMUFDDecayCreate()
   nullify(PMUFDDecayCreate%isotope_list)
   nullify(PMUFDDecayCreate%element_list)
 
+  call PMBaseInit(PMUFDDecayCreate)
+
 end function PMUFDDecayCreate
 
 ! ************************************************************************** !
@@ -147,6 +150,9 @@ subroutine PMUFDDecayRead(this,input)
   type(element_type), pointer :: element, prev_element
 
   option => this%option
+  
+  option%io_buffer = 'pflotran card:: UFD_Decay'
+  call printMsg(option)
   
   input%ierr = 0
   nullify(prev_isotope)
@@ -446,7 +452,7 @@ subroutine PMUFDDecayInit(this)
     word = isotope%name
     word = trim(word) // '(s)'
     this%isotope_to_mineral(isotope%iisotope) = &
-      GetMineralIDFromName(reaction%mineral,word,PETSC_TRUE)
+      GetKineticMineralIDFromName(word,reaction%mineral,option)
     this%element_isotopes(0,isotope%ielement) = &
       this%element_isotopes(0,isotope%ielement) + 1
     this%element_isotopes(this%element_isotopes(0,isotope%ielement), &
@@ -716,8 +722,10 @@ subroutine PMUFDDecaySolve(this,time,ierr)
         iiso = this%element_isotopes(i,iele)
         ipri = this%isotope_to_primary_species(iiso)
         imnrl = this%isotope_to_mineral(iiso)
-        ! # indicated time level (0 = prev time level, 1 = new time level)        
-        conc_iso_aq0 = rt_auxvars(ghosted_id)%total(ipri,1) ! mol/L
+        ! # indicated time level (0 = prev time level, 1 = new time level) 
+        conc_iso_aq0 = xx_p((local_id-1)*reaction%ncomp+ipri) * &
+                       den_w_kg / 1000.d0  ! mol/L
+        !conc_iso_aq0 = rt_auxvars(ghosted_id)%total(ipri,1) ! mol/L
         conc_iso_sorb0 = rt_auxvars(ghosted_id)%total_sorb_eq(ipri) ! mol/m^3 bulk
         conc_iso_ppt0 = rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) ! m^3 mnrl/m^3 bulk
         mass_iso_aq0 = conc_iso_aq0*vps*1.d3 ! mol/L * m^3 water * 1000 L /m^3 = mol
@@ -988,6 +996,30 @@ recursive subroutine PMUFDDecayFinalizeRun(this)
   endif  
   
 end subroutine PMUFDDecayFinalizeRun
+
+! ************************************************************************** !
+
+subroutine PMUFDDecayInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/21/2016
+  ! 
+  
+  implicit none
+  
+  class(pm_ufd_decay_type) :: this
+
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id
+
+  id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') 'pm: '
+  write(id,'(a)') this%name
+
+end subroutine PMUFDDecayInputRecord
 
 ! ************************************************************************** !
 

@@ -27,6 +27,7 @@ module Simulation_Surf_Subsurf_class
   contains
     procedure, public :: Init => SurfSubsurfaceSimulationInit
     procedure, public :: InitializeRun => SurfSubsurfaceInitializeRun
+    procedure, public :: InputRecord => SurfSubsurfaceInputRecord
     procedure, public :: FinalizeRun => SurfSubsurfaceFinalizeRun
     procedure, public :: Strip => SurfSubsurfaceSimulationStrip
     procedure, public :: ExecuteRun => SurfSubsurfaceExecuteRun
@@ -139,6 +140,32 @@ subroutine SurfSubsurfaceInitializeRun(this)
   endif
 
 end subroutine SurfSubsurfaceInitializeRun
+
+! ************************************************************************** !
+
+subroutine SurfSubsurfaceInputRecord(this)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  ! 
+  use Output_module
+
+  implicit none
+  
+  class(simulation_surfsubsurface_type) :: this
+  
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: id = INPUT_RECORD_UNIT
+ 
+  write(id,'(a29)',advance='no') 'simulation type: '
+  write(id,'(a)') 'surface-subsurface'
+
+  ! print output file information
+  call OutputInputRecord(this%output_option,this%waypoint_list_surfsubsurface)
+
+end subroutine SurfSubsurfaceInputRecord
 
 ! ************************************************************************** !
 

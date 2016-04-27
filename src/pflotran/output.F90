@@ -44,7 +44,8 @@ module Output_module
             Output, &
             OutputPrintCouplers, &
             OutputVariableRead, &
-            OutputFileRead
+            OutputFileRead, &
+            OutputInputRecord
 
 contains
 
@@ -131,6 +132,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
   aveg_mass_flowrate = PETSC_FALSE
   aveg_energy_flowrate = PETSC_FALSE
   k = 0
+  nullify(temp_real_array)
 
   select case(trim(block_name))
     case('SNAPSHOT_FILE')
@@ -421,6 +423,12 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
 
 !......................
       case('VARIABLES')
+        select case (option%iflowmode)
+          case(FLASH2_MODE,MPH_MODE)
+            option%io_buffer = 'A variable list cannot be specified for &
+                  &the CO2 flow modes. Variables are determined internally.'
+            call printErrMsg(option)
+        end select
         select case(trim(block_name))
           case('SNAPSHOT_FILE')           
             call OutputVariableRead(input,option, &
@@ -438,6 +446,13 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
 !.............................
       case('PRINT_COLUMN_IDS')
         output_option%print_column_ids = PETSC_TRUE
+        
+!.............................
+      case('DETAILED')
+        select case(trim(block_name))
+          case('MASS_BALANCE_FILE') 
+            option%mass_bal_detailed = PETSC_TRUE
+        end select
 
 !...............................
       case('VELOCITY_AT_CENTER')
@@ -909,7 +924,7 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         output_variable%iformat = 1 ! integer
         call OutputVariableAddToList(output_variable_list,output_variable)
       case ('VOLUME')
-        units = ''
+        units = 'm^3'
         name = 'Volume'
         output_variable => OutputVariableCreate(name,OUTPUT_GENERIC, &
                                                 units,VOLUME)
@@ -1123,6 +1138,312 @@ subroutine Output(realization_base,snapshot_plot_flag,observation_plot_flag, &
   call PetscLogStagePop(ierr);CHKERRQ(ierr)
 
 end subroutine Output
+
+! ************************************************************************** !
+
+subroutine OutputInputRecord(output_option,waypoint_list)
+  ! 
+  ! Writes ingested information to the input record file.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 03/17/2016
+  !  
+  use Output_Aux_module
+  use Waypoint_module
+
+  implicit none
+
+  type(output_option_type), pointer :: output_option
+  type(waypoint_list_type), pointer :: waypoint_list
+  
+  type(waypoint_type), pointer :: cur_waypoint
+  type(output_variable_type), pointer :: cur_variable
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: snap_string,obs_string,msbl_string
+  PetscBool :: snap_output_found,obs_output_found,msbl_output_found
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  write(id,'(a)') ' '
+    write(id,'(a)') '---------------------------------------------------------&
+                    &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'OUTPUT FILES'
+
+  write(id,'(a29)',advance='no') 'periodic screen: '
+  if (output_option%screen_imod /= 0) then
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'screen increment: '
+    write(word,*) output_option%screen_imod
+    write(id,'(a)') adjustl(trim(word))
+  else
+    write(id,'(a)') 'OFF'
+  endif
+
+  write(id,'(a29)',advance='no') 'output time unit: '
+  write(id,'(a)') trim(output_option%tunit)
+
+  snap_string = ''
+  obs_string = ''
+  msbl_string = ''
+  snap_output_found = PETSC_FALSE
+  obs_output_found = PETSC_FALSE
+  msbl_output_found = PETSC_FALSE
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%print_snap_output) then
+      snap_output_found = PETSC_TRUE
+      write(word,*) cur_waypoint%time / output_option%tconv
+      snap_string = trim(snap_string) // adjustl(trim(word)) // ','
+    endif
+    if (cur_waypoint%print_obs_output) then
+      obs_output_found = PETSC_TRUE
+      write(word,*) cur_waypoint%time / output_option%tconv
+      obs_string = trim(obs_string) // adjustl(trim(word)) // ','
+    endif
+    if (cur_waypoint%print_msbl_output) then
+      msbl_output_found = PETSC_TRUE
+      write(word,*) cur_waypoint%time / output_option%tconv
+      msbl_string = trim(msbl_string) // adjustl(trim(word)) // ','
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'snapshot file output'
+  if (output_option%print_tecplot) then
+    write(id,'(a29)',advance='no') 'format: '
+    if (output_option%tecplot_format == TECPLOT_POINT_FORMAT) then
+      write(id,'(a)') 'tecplot point'
+    endif
+    if (output_option%tecplot_format == TECPLOT_BLOCK_FORMAT) then
+      write(id,'(a)') 'tecplot block'
+    endif
+    if (output_option%tecplot_format == TECPLOT_FEBRICK_FORMAT) then
+      write(id,'(a)') 'tecplot febrick'
+    endif
+    if (output_option%print_fluxes) then
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') 'print fluxes'
+    endif
+    if (output_option%print_tecplot_vel_cent) then
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') 'velocity on cell centers'
+    endif
+    if (output_option%print_tecplot_vel_face) then
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') 'velocity on cell faces'
+    endif
+  endif
+  if (output_option%print_hdf5) then
+    write(id,'(a29)',advance='no') 'format: '
+    if (output_option%print_single_h5_file) then
+      write(id,'(a)') 'hd5f, single file'
+    endif
+    if (output_option%times_per_h5_file /= 1) then
+      write(word,*) output_option%times_per_h5_file
+      write(id,'(a)') 'hdf5, ' // trim(word) // ' times per file'
+    endif
+    if (output_option%print_hdf5_vel_cent) then
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') 'velocity on cell centers'
+    endif
+    if (output_option%print_hdf5_vel_face) then
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') 'velocity on cell faces'
+    endif
+    if (output_option%print_hdf5_mass_flowrate) then
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') 'mass flow rate'
+    endif
+    if (output_option%print_hdf5_energy_flowrate) then
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') 'energy flow rate'
+    endif
+    if (output_option%print_hdf5_aveg_mass_flowrate) then
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') 'average mass flow rate'
+    endif
+    if (output_option%print_hdf5_aveg_energy_flowrate) then
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') 'average energy flow rate'
+    endif
+    if (output_option%print_explicit_flowrate) then
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') 'explicit flow rate'
+    endif
+  endif
+  if (output_option%print_mad) then
+    write(id,'(a29)',advance='no') 'format: '
+    write(id,'(a)') 'mad'
+  endif
+  if (output_option%print_vtk) then
+    write(id,'(a29)',advance='no') 'format: '
+    write(id,'(a)') 'vtk'
+  endif
+  write(id,'(a29)',advance='no') 'periodic timestep: '
+  if (output_option%periodic_snap_output_ts_imod == 100000000) then
+    write(id,'(a)') 'OFF'
+  else
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'timestep increment: '
+    write(word,*) output_option%periodic_snap_output_ts_imod
+    write(id,'(a)') adjustl(trim(word))
+  endif
+  write(id,'(a29)',advance='no') 'periodic time: '
+  if (output_option%periodic_snap_output_time_incr <= 0) then
+    write(id,'(a)') 'OFF'
+  else
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'time increment: '
+    write(word,*) output_option%periodic_snap_output_time_incr / &
+                  output_option%tconv
+    write(id,'(a)') adjustl(trim(word)) // &
+                    adjustl(trim(output_option%tunit))
+  endif
+  write(id,'(a29)',advance='no') 'specific times: '
+  if (snap_output_found) then
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'times (' // &
+                                    trim(output_option%tunit) // '): '
+    write(id,'(a)') trim(snap_string)
+  else
+    write(id,'(a)') 'OFF'
+  endif
+  if (associated(output_option%output_snap_variable_list%first)) then
+    write(id,'(a29)',advance='no') 'variable list: '
+    cur_variable => output_option%output_snap_variable_list%first
+    write(id,'(a)') trim(cur_variable%name) // ' [' // &
+                    trim(cur_variable%units) // ']'
+    cur_variable => cur_variable%next
+    do
+      if (.not.associated(cur_variable)) exit
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') trim(cur_variable%name) // ' [' // &
+           trim(cur_variable%units) // ']'
+      cur_variable => cur_variable%next
+    enddo
+  endif
+  write(id,'(a29)',advance='no') 'print initial time: '
+  if (output_option%print_initial_snap) then
+    write(id,'(a)') 'ON'
+  else
+    write(id,'(a)') 'OFF'
+  endif
+  write(id,'(a29)',advance='no') 'print final time: '
+  if (output_option%print_final_snap) then
+    write(id,'(a)') 'ON'
+  else
+    write(id,'(a)') 'OFF'
+  endif
+
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'observation file output'
+  write(id,'(a29)',advance='no') 'format: '
+  write(id,'(a)') 'tecplot'
+  write(id,'(a29)',advance='no') 'periodic timestep: '
+  if (output_option%periodic_obs_output_ts_imod == 100000000) then
+    write(id,'(a)') 'OFF'
+  else
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'timestep increment: '
+    write(word,*) output_option%periodic_obs_output_ts_imod
+    write(id,'(a)') adjustl(trim(word))
+  endif
+  write(id,'(a29)',advance='no') 'periodic time: '
+  if (output_option%periodic_obs_output_time_incr <= 0) then
+    write(id,'(a)') 'OFF'
+  else
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'time increment: '
+    write(word,*) output_option%periodic_obs_output_time_incr / &
+                  output_option%tconv
+    write(id,'(a)') adjustl(trim(word)) // &
+                    adjustl(trim(output_option%tunit))
+  endif
+  write(id,'(a29)',advance='no') 'specific times: '
+  if (obs_output_found) then
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'times (' // &
+                                    trim(output_option%tunit) // '): '
+    write(id,'(a)') trim(obs_string)
+  else
+    write(id,'(a)') 'OFF'
+  endif
+  if (associated(output_option%output_obs_variable_list%first)) then
+    write(id,'(a29)',advance='no') 'variable list: '
+    cur_variable => output_option%output_obs_variable_list%first
+    write(id,'(a)') trim(cur_variable%name)
+    cur_variable => cur_variable%next
+    do
+      if (.not.associated(cur_variable)) exit
+      write(id,'(a29)',advance='no') ' '
+      write(id,'(a)') trim(cur_variable%name) // ' [' // &
+           trim(cur_variable%units) // ']'
+      cur_variable => cur_variable%next
+    enddo
+  endif
+  write(id,'(a29)',advance='no') 'print initial time: '
+  if (output_option%print_initial_obs) then
+    write(id,'(a)') 'ON'
+  else
+    write(id,'(a)') 'OFF'
+  endif
+  write(id,'(a29)',advance='no') 'print final time: '
+  if (output_option%print_final_obs) then
+    write(id,'(a)') 'ON'
+  else
+    write(id,'(a)') 'OFF'
+  endif
+
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'mass balance file output'
+  write(id,'(a29)',advance='no') 'format: '
+  write(id,'(a)') 'tecplot'
+  write(id,'(a29)',advance='no') 'periodic timestep: '
+  if (output_option%periodic_msbl_output_ts_imod == 100000000) then
+    write(id,'(a)') 'OFF'
+  else
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'timestep increment: '
+    write(word,*) output_option%periodic_msbl_output_ts_imod
+    write(id,'(a)') adjustl(trim(word))
+  endif
+  write(id,'(a29)',advance='no') 'periodic time: '
+  if (output_option%periodic_msbl_output_time_incr <= 0) then
+    write(id,'(a)') 'OFF'
+  else
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'time increment: '
+    write(word,*) output_option%periodic_msbl_output_time_incr / &
+                  output_option%tconv
+    write(id,'(a)') adjustl(trim(word)) // &
+                    adjustl(trim(output_option%tunit))
+  endif
+  write(id,'(a29)',advance='no') 'specific times: '
+  if (msbl_output_found) then
+    write(id,'(a)') 'ON'
+    write(id,'(a29)',advance='no') 'times (' // &
+                                    trim(output_option%tunit) // '): '
+    write(id,'(a)') trim(msbl_string)
+  else
+    write(id,'(a)') 'OFF'
+  endif
+  write(id,'(a29)',advance='no') 'print initial time: '
+  if (output_option%print_initial_massbal) then
+    write(id,'(a)') 'ON'
+  else
+    write(id,'(a)') 'OFF'
+  endif
+  write(id,'(a29)',advance='no') 'print final time: '
+  if (output_option%print_final_massbal) then
+    write(id,'(a)') 'ON'
+  else
+    write(id,'(a)') 'OFF'
+  endif
+  
+
+end subroutine OutputInputRecord
 
 ! ************************************************************************** !
 

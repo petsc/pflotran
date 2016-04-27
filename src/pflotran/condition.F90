@@ -143,7 +143,9 @@ module Condition_module
             FlowConditionIsTransient, &
             ConditionReadValues, &
             GetSubConditionName, &
-            FlowConditionUnknownItype
+            FlowConditionUnknownItype, &
+            FlowCondInputRecord, &
+            TranCondInputRecord
     
 contains
 
@@ -3419,6 +3421,232 @@ function FlowConditionUnknownItype(condition,message,type_name)
     trim(condition%name) // '".'
   
 end function FlowConditionUnknownItype
+
+! **************************************************************************** !
+
+subroutine FlowCondInputRecord(flow_condition_list,option)
+  ! 
+  ! Prints ingested flow condition information to 
+  ! the input record file.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/19/2016
+  ! 
+  use Option_module
+  use Dataset_Base_class
+
+  implicit none
+  
+  type(condition_list_type), pointer :: flow_condition_list
+  type(option_type), pointer :: option
+
+  type(flow_condition_type), pointer :: cur_fc
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: k
+  PetscInt :: id = INPUT_RECORD_UNIT
+  
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'FLOW CONDITIONS'
+  
+  cur_fc => flow_condition_list%first
+  do
+    if (.not.associated(cur_fc)) exit
+    write(id,'(a29)',advance='no') 'flow condition name: '
+    write(id,'(a)') adjustl(trim(cur_fc%name))
+    if (cur_fc%num_sub_conditions > 0) then
+      do k = 1,cur_fc%num_sub_conditions
+        write(id,'(a29)',advance='no') 'sub condition name: '
+        write(id,'(a)') adjustl(trim(cur_fc%sub_condition_ptr(k)%ptr%name))
+        write(id,'(a29)',advance='no') 'sub condition type: '
+        write(id,'(a)') adjustl(trim(cur_fc%sub_condition_ptr(k)%ptr%ctype))
+        if (associated(cur_fc%sub_condition_ptr(k)%ptr%dataset)) then
+          call DatasetBasePrint(cur_fc%sub_condition_ptr(k)%ptr%dataset,option)
+          ! DatasetBasePrint doesn't seem to do anything?
+        endif
+        if (associated(cur_fc%sub_condition_ptr(k)%ptr%gradient)) then
+          call DatasetBasePrint(cur_fc%sub_condition_ptr(k)%ptr%gradient,option)
+        endif
+      enddo
+    endif
+    
+    write(id,'(a29)') '---------------------------: '
+    cur_fc => cur_fc%next
+  enddo
+  
+end subroutine FlowCondInputRecord
+
+! **************************************************************************** !
+
+subroutine TranCondInputRecord(tran_condition_list,option)
+  ! 
+  ! Prints ingested transport condition information to 
+  ! the input record file.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/19/2016
+  ! 
+  use Option_module
+  use Dataset_Base_class
+  Use Transport_Constraint_module
+
+  implicit none
+  
+  type(tran_condition_list_type), pointer :: tran_condition_list
+  type(option_type), pointer :: option
+
+  type(tran_constraint_coupler_type), pointer :: cur_tcon_coupler
+  type(tran_condition_type), pointer :: cur_tc
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: k
+  PetscInt :: id = INPUT_RECORD_UNIT
+  
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'TRANSPORT CONDITIONS'
+  
+  cur_tc => tran_condition_list%first
+  do
+    if (.not.associated(cur_tc)) exit
+    write(id,'(a29)',advance='no') 'transport condition name: '
+    write(id,'(a)') adjustl(trim(cur_tc%name))
+    write(id,'(a29)',advance='no') 'transport condition type: '
+    select case (cur_tc%itype)
+      case(DIRICHLET_BC)
+        write(id,'(a)') 'dirichlet'
+      case(DIRICHLET_ZERO_GRADIENT_BC)
+        write(id,'(a)') 'dirichlet_zero_gradient'
+      case(EQUILIBRIUM_SS)
+        write(id,'(a)') 'equilibrium'
+      case(NEUMANN_BC)
+        write(id,'(a)') 'neumann'
+      case(MASS_RATE_SS)
+        write(id,'(a)') 'mole_rate'
+      case(ZERO_GRADIENT_BC)
+        write(id,'(a)') 'zero_gradient'
+    end select
+    write(id,'(a29)',advance='no') 'is transient?: '
+    if (cur_tc%is_transient) then
+      write(id,'(a)') 'YES'
+    else
+      write(id,'(a)') 'NO'
+    endif
+    cur_tcon_coupler => cur_tc%constraint_coupler_list
+    do
+      if (.not.associated(cur_tcon_coupler)) exit
+      write(id,'(a29)',advance='no') 'transport constraint name: '
+      write(id,'(a)') adjustl(trim(cur_tcon_coupler%constraint_name))
+      
+      ! aqueous species concentraion constraint
+      if (associated(cur_tcon_coupler%aqueous_species)) then
+        do k = 1,size(cur_tcon_coupler%aqueous_species%names)
+          write(id,'(a29)',advance='no') 'aqueous species constraint: '
+          write(string,*) trim(cur_tcon_coupler%aqueous_species%names(k))
+          select case (cur_tcon_coupler%aqueous_species%constraint_type(k))
+            case(CONSTRAINT_FREE)
+              string = trim(string) // ', free'
+            case(CONSTRAINT_TOTAL)
+              string = trim(string) // ', total'
+            case(CONSTRAINT_TOTAL_SORB)
+              string = trim(string) // ', total_sorb'
+            case(CONSTRAINT_PH)
+              string = trim(string) // ', ph'
+            case(CONSTRAINT_LOG)
+              string = trim(string) // ', log'
+            case(CONSTRAINT_MINERAL)
+              string = trim(string) // ', mineral'
+            case(CONSTRAINT_GAS)
+              string = trim(string) // ', gas'
+            case(CONSTRAINT_SUPERCRIT_CO2)
+              string = trim(string) // ', super critical CO2'
+            case(CONSTRAINT_CHARGE_BAL)
+              string = trim(string) // ', charge balance'
+          end select
+          write(word1,*) cur_tcon_coupler%aqueous_species%constraint_conc(k)
+          write(id,'(a)') trim(string) // ', ' // adjustl(trim(word1)) &
+                          // ' mol'
+        enddo
+      endif
+      
+      ! free-ion guess constraint
+      if (associated(cur_tcon_coupler%free_ion_guess)) then
+        do k = 1,size(cur_tcon_coupler%free_ion_guess%names)
+          write(id,'(a29)',advance='no') 'free ion guess constraint: '
+          write(string,*) trim(cur_tcon_coupler%free_ion_guess%names(k))
+          write(word1,*) cur_tcon_coupler%free_ion_guess%conc(k)
+          write(id,'(a)') trim(string) // ', ' // adjustl(trim(word1)) &
+                          // ' mol'
+        enddo
+      endif
+      
+      ! mineral constraint
+      if (associated(cur_tcon_coupler%minerals)) then
+        do k = 1,size(cur_tcon_coupler%minerals%names)
+          write(id,'(a29)',advance='no') 'mineral vol. frac. constraint: '
+          write(string,*) trim(cur_tcon_coupler%minerals%names(k))
+          write(word1,*) cur_tcon_coupler%minerals%constraint_vol_frac(k)
+          write(id,'(a)') trim(string) // ', ' // adjustl(trim(word1)) &
+                          // ' m^3/m^3'
+          write(id,'(a29)',advance='no') 'mineral area constraint: '
+          write(string,*) trim(cur_tcon_coupler%minerals%names(k))
+          write(word1,*) cur_tcon_coupler%minerals%constraint_area(k)
+          write(id,'(a)') trim(string) // ', ' // adjustl(trim(word1)) &
+                          // ' m^2/m^3'
+        enddo
+      endif
+      
+      ! surface complexes constraint
+      if (associated(cur_tcon_coupler%surface_complexes)) then
+        do k = 1,size(cur_tcon_coupler%surface_complexes%names)
+          write(id,'(a29)',advance='no') 'surface complex constraint: '
+          write(string,*) trim(cur_tcon_coupler%surface_complexes%names(k))
+          write(word1,*) cur_tcon_coupler%surface_complexes%constraint_conc(k)
+          write(id,'(a)') trim(string) // ', ' // adjustl(trim(word1)) &
+                          // ' mol/m^3'
+        enddo
+      endif
+      
+      ! colloids constraint
+      if (associated(cur_tcon_coupler%colloids)) then
+        do k = 1,size(cur_tcon_coupler%colloids%names)
+          write(id,'(a29)',advance='no') 'colloid mobile constraint: '
+          write(string,*) trim(cur_tcon_coupler%colloids%names(k))
+          write(word1,*) cur_tcon_coupler%colloids%constraint_conc_mob(k)
+          write(id,'(a)') trim(string) // ', ' // adjustl(trim(word1)) &
+                          // ' mol'
+          write(id,'(a29)',advance='no') 'colloid immobile constraint: '
+          write(string,*) trim(cur_tcon_coupler%colloids%names(k))
+          write(word1,*) cur_tcon_coupler%colloids%constraint_conc_imb(k)
+          write(id,'(a)') trim(string) // ', ' // adjustl(trim(word1)) & 
+                          // ' mol'
+        enddo
+      endif
+      
+      ! immobile species constraint
+      if (associated(cur_tcon_coupler%immobile_species)) then
+        do k = 1,size(cur_tcon_coupler%immobile_species%names)
+          write(id,'(a29)',advance='no') 'immobile species constraint: '
+          write(string,*) trim(cur_tcon_coupler%immobile_species%names(k))
+          write(word1,*) cur_tcon_coupler%immobile_species%constraint_conc(k)
+          write(id,'(a)') trim(string) // ', ' // adjustl(trim(word1)) &
+                          // ' mol/m^3'
+        enddo
+      endif
+      
+      cur_tcon_coupler => cur_tcon_coupler%next
+    enddo
+    
+    write(id,'(a29)') '---------------------------: '
+    cur_tc => cur_tc%next
+  enddo
+  
+end subroutine TranCondInputRecord
   
 ! ************************************************************************** !
 

@@ -1962,6 +1962,13 @@ The keyword {\bf CONSTRAINT} sets up fluid compositions based on various constra
 
 %~\\
 
+\item[FREE\_ION\_GUESS] ~
+
+\begin{deflist}{000}
+\item[{\tt species\_name  guess} [molality]]
+\end{deflist}
+\item[\keyend] ~
+
 \item[MNRL, MINERALS] ~
 
 \begin{deflist}{000}
@@ -2016,6 +2023,26 @@ CONSTRAINT initial
     SO4--    6.37961e-4       T
     SiO2(aq) 5.36989e-4       T
     Tracer   2.34845e-7       F
+  /
+  FREE_ION_GUESS
+    H+       1.e-7
+    O2(aq)   1.78132e-4
+    Al+++    1.e-9
+    Ca++     1.20644e-3
+    Cu++     1.e-6
+    Fe++     1.e-9
+    Mg++     5.09772e-4
+    UO2++    2.34845e-7
+    K+       1.54789e-4
+    Na+      2.03498e-3
+    HCO3-    2.57305e-3
+    Cl-      6.97741e-4
+    F-       2.09491e-5
+    HPO4--   1.e-6
+    NO3-     4.69979e-3
+    SO4--    6.37961e-4
+    SiO2(aq) 5.36989e-4
+    Tracer   2.34845e-7
   /
   MINERALS
     Quartz         0.35  1. cm^2/cm^3
@@ -3515,7 +3542,7 @@ LINEAR_SOLVER TRANSPORT
 \item[PERMEABILITY\_CRIT\_POR] \ {\tt <float>} \ (see Eqn.\eqref{permf})
 \item[PERMEABILITY\_MIN\_SCALE\_FAC] \ {\tt <float>} \ (see Eqn.\eqref{fmin})
 \item[TORTUOSITY\_POWER] \ {\tt <float>}
-\item[MINERAL\_SURFACE\_AREA\_POWER] ~ toggle to update mineral surface area \\(see {\tt MINERAL\_KINETICS} keyword for setting porosity or volume fraction power)
+%\item[MINERAL\_SURFACE\_AREA\_POWER] Toggle to update mineral surface area \\(see {\tt MINERAL\_KINETICS} keyword for setting porosity or volume fraction power)
 %\begin{deflist}{000}
 %\item[VOLUME\_FRACTION] \ {\tt <float>} \ Volume fraction power in mineral surface area
 %\item[POROSITY] \ {\tt <float>} \ Porosity power in mineral surface area
@@ -4138,7 +4165,7 @@ END
 \item[~] -Unstructured grid: velocity outputted for internal and boundary faces. Data is outputted in HDF5 format only with no visualization support via XDMF.
 \item[VELOCITY\_AT\_CENTER] -Output cell-centered velocities (supported for structured and unstructured grids, applies to TecPlot and HDF5 output formats). Note that this is compatible only with TecPlot BLOCK format.
 
-\item[MASS\_BALANCE [DETAILED]] -Output the mass balance of the system if this card is activated. It includes global mass balance as well as fluxes at all boundaries for water and chemical species specified for output in the CHEMISTRY card. For the MPHASE mode only global mass balances are provided including supercritical CO$_2$. Output times are controlled by {\tt PERIODIC\_OBSERVATION TIMESTEP and TIME}, and printout times. Option DETAILED provides total moles of minerals.
+\item[MASS\_BALANCE] {\bf [DETAILED]} -Output the mass balance of the system if this card is activated. It includes global mass balance as well as fluxes at all boundaries for water and chemical species specified for output in the CHEMISTRY card. For the MPHASE mode only global mass balances are provided including supercritical CO$_2$. Output times are controlled by {\tt PERIODIC\_OBSERVATION TIMESTEP and TIME}, and printout times. Option DETAILED provides total moles of of each mineral.
 \end{deflist}
 \item[\keyend]
 \end{deflist}

@@ -449,7 +449,7 @@ characteristic_curves.o : input_aux.o option.o pflotran_constants.o string.o \
                           utility.o
 checkpoint.o : discretization.o field.o global.o grid.o hdf5.o input_aux.o \
                material.o option.o output_aux.o pflotran_constants.o \
-               realization_subsurface.o string.o units.o variables.o \
+               realization_subsurface.o string.o units.o utility.o variables.o \
                waypoint.o
 checkpoint_surface.o : discretization.o grid.o option.o output_aux.o \
                        pflotran_constants.o realization_surface.o \
@@ -605,7 +605,7 @@ factory_surfsubsurface.o : coupler.o discretization.o dm_kludge.o \
                            grid.o grid_unstructured.o grid_unstructured_aux.o \
                            grid_unstructured_cell.o init_common.o \
                            init_surface.o input_aux.o logging.o option.o \
-                           patch.o pflotran_constants.o pm_base.o \
+                           output_aux.o patch.o pflotran_constants.o pm_base.o \
                            pm_base_pointer.o pm_surface.o pm_surface_flow.o \
                            pm_surface_th.o pmc_base.o pmc_surface.o \
                            realization_subsurface.o realization_surface.o \
@@ -742,7 +742,7 @@ init_common.o : condition.o connection.o coupler.o discretization.o field.o \
                 grid.o hdf5.o hdf5_aux.o input_aux.o logging.o option.o \
                 output.o output_aux.o output_tecplot.o patch.o \
                 pflotran_constants.o realization_subsurface.o region.o \
-                string.o waypoint.o
+                string.o utility.o waypoint.o
 init_subsurface.o : dataset_base.o dataset_common_hdf5.o \
                     dataset_gridded_hdf5.o discretization.o field.o grid.o \
                     hdf5.o input_aux.o logging.o material.o material_aux.o \
@@ -956,12 +956,12 @@ pm_ufd_decay.o : field.o global.o global_aux.o grid.o input_aux.o \
                  pm_base.o reaction_aux.o reaction_mineral_aux.o \
                  reactive_transport_aux.o realization_subsurface.o string.o \
                  utility.o
-pm_waste_form.o : condition.o data_mediator_vec.o dataset.o dataset_ascii.o \
-                  dataset_base.o geometry.o global_aux.o grid.o \
-                  grid_structured.o grid_unstructured.o input_aux.o option.o \
-                  output_aux.o pflotran_constants.o pm_base.o reaction_aux.o \
-                  reactive_transport_aux.o realization_base.o \
-                  realization_subsurface.o string.o time_storage.o units.o \
+pm_waste_form.o : condition.o data_mediator_vec.o dataset_ascii.o \
+                  dataset_base.o field.o geometry.o global_aux.o grid.o \
+                  grid_structured.o grid_unstructured.o input_aux.o \
+                  material_aux.o option.o output_aux.o patch.o \
+                  pflotran_constants.o pm_base.o reaction_aux.o \
+                  realization_base.o realization_subsurface.o string.o units.o \
                   utility.o
 pmc_auxiliary.o : option.o pflotran_constants.o pm_auxiliary.o pmc_base.o \
                   realization_subsurface.o timestepper_base.o
@@ -1172,12 +1172,15 @@ simulation_hydrogeophysics.o : option.o pflotran_constants.o \
                                pmc_hydrogeophysics.o simulation_base.o \
                                simulation_subsurface.o \
                                wrapper_hydrogeophysics.o
-simulation_subsurface.o : logging.o option.o output.o output_aux.o \
-                          pflotran_constants.o pmc_base.o pmc_subsurface.o \
-                          pmc_third_party.o reaction_clm.o reaction_sandbox.o \
-                          realization_subsurface.o regression.o \
-                          simulation_base.o srcsink_sandbox.o timestepper_BE.o \
-                          timestepper_base.o waypoint.o wipp.o
+simulation_subsurface.o : characteristic_curves.o condition.o discretization.o \
+                          logging.o material.o option.o output.o output_aux.o \
+                          patch.o pflotran_constants.o pmc_base.o \
+                          pmc_subsurface.o pmc_third_party.o reaction_aux.o \
+                          reaction_clm.o reaction_sandbox.o \
+                          realization_subsurface.o region.o regression.o \
+                          simulation_base.o srcsink_sandbox.o strata.o \
+                          timestepper_BE.o timestepper_base.o waypoint.o \
+                          wipp.o
 simulation_surface.o : logging.o option.o output.o pflotran_constants.o \
                        pmc_base.o pmc_surface.o realization_surface.o \
                        regression.o simulation_base.o timestepper_base.o \
@@ -1281,6 +1284,8 @@ wipp.o : input_aux.o lookup_table.o material_aux.o option.o \
          pflotran_constants.o string.o units.o utility.o
 wrapper_hydrogeophysics.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \
                             pflotran_constants.o
+
+
 
 # developer level regression testing
 test : utest rtest

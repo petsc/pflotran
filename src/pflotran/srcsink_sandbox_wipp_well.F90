@@ -155,11 +155,11 @@ subroutine WIPPWellSrcSink(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: Jacobian(option%nflowdof,option%nflowdof)
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: aux_real(:)
-  
   PetscReal :: q_liquid, q_gas
   
   ! q_i = rho_i*I*(kr_i/mu_i)*(p_i-p_well)
   ! units: m^3/s
+  
   q_liquid = -1.d0 * &
             this%productivity_index * &
             aux_real(WIPP_WELL_LIQUID_MOBILITY) * &
