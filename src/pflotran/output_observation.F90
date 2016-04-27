@@ -1849,6 +1849,7 @@ subroutine OutputMassBalance(realization_base)
   use Option_module
   use Coupler_module
   use Utility_module
+  use Output_Aux_module
   
   use Richards_module, only : RichardsComputeMassBalance
   use Mphase_module, only : MphaseComputeMassBalance
@@ -1875,6 +1876,7 @@ subroutine OutputMassBalance(realization_base)
   type(grid_type), pointer :: grid
   type(output_option_type), pointer :: output_option
   type(coupler_type), pointer :: coupler
+  type(mass_balance_region_type), pointer :: cur_mbr
   type(global_auxvar_type), pointer :: global_auxvars_bc_or_ss(:)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars_bc_or_ss(:)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
@@ -2135,6 +2137,17 @@ subroutine OutputMassBalance(realization_base)
         coupler => coupler%next
       
       enddo
+      
+      ! Print the mass [mol] in the specified regions
+      if (associated(output_option%mass_balance_region_list)) then
+        cur_mbr => output_option%mass_balance_region_list
+        do
+          if (.not.associated(cur_mbr)) exit
+          string = 'Region ' // trim(cur_mbr%region%name) // ' Total Mass'
+          call OutputWriteToHeader(fid,string,'mol','',icol)
+          cur_mbr => cur_mbr%next
+        enddo
+      endif
       
 #ifdef YE_FLUX
 !geh      do offset = 1, 4

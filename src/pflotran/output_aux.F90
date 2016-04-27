@@ -1,6 +1,7 @@
 module Output_Aux_module
 
   use PFLOTRAN_Constants_module
+  use Region_module
 
   implicit none
 
@@ -80,6 +81,8 @@ module Output_Aux_module
     type(output_variable_list_type), pointer :: output_snap_variable_list
     type(output_variable_list_type), pointer :: output_obs_variable_list
     type(output_variable_list_type), pointer :: aveg_output_variable_list
+    
+    type(mass_balance_region_type), pointer :: mass_balance_region_list
 
     PetscReal :: aveg_var_time
     PetscReal :: aveg_var_dtime
@@ -110,6 +113,12 @@ module Output_Aux_module
     PetscInt :: isubsubvar
     type(output_variable_type), pointer :: next
   end type output_variable_type
+  
+  type, public :: mass_balance_region_type
+    type(region_type), pointer :: region
+    PetscReal :: total_mass
+    type(mass_balance_region_type), pointer :: next
+  end type mass_balance_region_type
 
 !  type, public, EXTENDS (output_variable_type) :: aveg_output_variable_type
 !    PetscReal :: time_interval
@@ -138,8 +147,10 @@ module Output_Aux_module
   public :: OutputOptionCreate, &
             OutputOptionDuplicate, &
             OutputVariableCreate, &
+            OutputMassBalRegionCreate, &
             OutputVariableListCreate, &
             OutputVariableListDuplicate, &
+            OutputMassBalRegListDuplicate, &
             OutputVariableAddToList, &
             OutputWriteToHeader, &
             OutputWriteVariableListToHeader, &
@@ -220,6 +231,8 @@ function OutputOptionCreate()
   nullify(output_option%aveg_output_variable_list)
   output_option%aveg_output_variable_list => OutputVariableListCreate()
   
+  nullify(output_option%mass_balance_region_list)
+  
   output_option%tconv = 1.d0
   output_option%tunit = ''
   
@@ -294,7 +307,7 @@ function OutputOptionDuplicate(output_option)
   nullify(output_option2%output_snap_variable_list)
   nullify(output_option2%output_obs_variable_list)
   nullify(output_option2%aveg_output_variable_list)
-
+  
   output_option2%output_variable_list => &
        OutputVariableListDuplicate(output_option%output_variable_list)
   output_option2%output_snap_variable_list => &
@@ -303,6 +316,12 @@ function OutputOptionDuplicate(output_option)
        OutputVariableListDuplicate(output_option%output_obs_variable_list)
   output_option2%aveg_output_variable_list => &
        OutputVariableListDuplicate(output_option%aveg_output_variable_list)
+       
+  nullify(output_option2%mass_balance_region_list)
+  if (associated(output_option%mass_balance_region_list)) then
+    output_option2%mass_balance_region_list => &
+       OutputMassBalRegListDuplicate(output_option%mass_balance_region_list)
+  endif
   
   output_option2%tconv = output_option%tconv
   output_option2%tunit = output_option%tunit
@@ -474,6 +493,26 @@ end function OutputVariableListCreate
 
 ! ************************************************************************** !
 
+function OutputMassBalRegionCreate()
+  ! 
+  ! Creates and initializes a mass balance region list object
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/26/2016
+  ! 
+
+  implicit none
+  
+  type(mass_balance_region_type), pointer :: OutputMassBalRegionCreate
+   
+  allocate(OutputMassBalRegionCreate)
+  nullify(OutputMassBalRegionCreate%region)
+  nullify(OutputMassBalRegionCreate%next)
+  
+end function OutputMassBalRegionCreate
+
+! ************************************************************************** !
+
 function OutputVariableListDuplicate(old_list)
   ! 
   ! initializes output variable list object
@@ -506,6 +545,40 @@ function OutputVariableListDuplicate(old_list)
   OutputVariableListDuplicate => new_list
   
 end function OutputVariableListDuplicate
+
+! ************************************************************************** !
+
+function OutputMassBalRegListDuplicate(old_list)
+  ! 
+  ! Duplicates a mass balance region list object
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 10/15/12
+  ! 
+
+  implicit none
+  
+  type(mass_balance_region_type) :: old_list
+  
+  type(mass_balance_region_type), pointer :: new_list
+  type(region_type), pointer :: cur_region
+  type(mass_balance_region_type), pointer :: OutputMassBalRegListDuplicate
+  
+  allocate(new_list)
+  nullify(new_list%region)
+  nullify(new_list%next)
+  
+  cur_region => old_list%region
+  do
+    if (.not.associated(cur_region)) exit
+    new_list%region => cur_region
+    cur_region => cur_region%next
+    new_list%region => new_list%region%next
+  enddo
+
+  OutputMassBalRegListDuplicate => new_list
+  
+end function OutputMassBalRegListDuplicate
 
 ! ************************************************************************** !
 
@@ -869,6 +942,32 @@ end subroutine CheckpointOptionDestroy
 
 ! ************************************************************************** !
 
+recursive subroutine OutputMassBalRegDestroy(mass_balance_region)
+  ! 
+  ! Nullifies and deallocates a mass balance region object
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/27/2016
+  ! 
+
+  implicit none
+  
+  type(mass_balance_region_type), pointer :: mass_balance_region
+  
+  if (associated(mass_balance_region)) then
+    if (associated(mass_balance_region%region)) then
+      nullify(mass_balance_region%region)
+    endif
+    if (associated(mass_balance_region%next)) then
+      call OutputMassBalRegDestroy(mass_balance_region%next)
+    endif
+    deallocate(mass_balance_region)
+  endif
+  
+end subroutine OutputMassBalRegDestroy
+
+! ************************************************************************** !
+
 subroutine OutputOptionDestroy(output_option)
   ! 
   ! Deallocates an output option
@@ -898,6 +997,8 @@ subroutine OutputOptionDestroy(output_option)
   call OutputVariableListDestroy(output_option%output_obs_variable_list)
   call OutputVariableListDestroy(output_option%aveg_output_variable_list)
   
+  call OutputMassBalRegDestroy(output_option%mass_balance_region_list)
+    
   deallocate(output_option)
   nullify(output_option)
   
