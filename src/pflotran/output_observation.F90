@@ -2739,7 +2739,8 @@ subroutine OutputMassBalance(realization_base)
     cur_mbr => output_option%mass_balance_region_list
     do
       if (.not.associated(cur_mbr)) exit
-      call PatchGetMassInRegion(cur_mbr%region,patch,option,global_total_mass)
+      call PatchGetCompMassInRegion(cur_mbr%region,patch,option, &
+                                    global_total_mass)
       write(fid,110,advance="no") global_total_mass
       cur_mbr => cur_mbr%next
     enddo

@@ -1111,7 +1111,7 @@ subroutine SubsurfaceSetupRealization(simulation)
   call RealizationPassPtrsToPatches(realization)
   call RealizationProcessDatasets(realization)
   if (realization%output_option%mass_balance_region_flag) then
-    call PatchGetMassInRegionAssign(realization%patch%region_list, &
+    call PatchGetCompMassInRegionAssign(realization%patch%region_list, &
          realization%output_option%mass_balance_region_list,option)
   endif
   ! link conditions with regions through couplers and generate connectivity

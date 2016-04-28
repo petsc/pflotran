@@ -122,8 +122,8 @@ module Patch_module
             PatchGetVarNameFromKeyword, &
             PatchCalculateCFL1Timestep, &
             PatchGetCellCenteredVelocities, &
-            PatchGetMassInRegion, &
-            PatchGetMassInRegionAssign
+            PatchGetCompMassInRegion, &
+            PatchGetCompMassInRegionAssign
 
 contains
 
@@ -6771,7 +6771,7 @@ end subroutine PatchCouplerInputRecord
 
 ! **************************************************************************** !
 
-subroutine PatchGetMassInRegion(region,patch,option,global_total_mass)
+subroutine PatchGetCompMassInRegion(region,patch,option,global_total_mass)
   ! 
   ! Calculates the total mass (aqueous, sorbed, and precipitated) in a region
   ! in units of mol.
@@ -6816,7 +6816,7 @@ subroutine PatchGetMassInRegion(region,patch,option,global_total_mass)
   global_total_mass = 0.d0
   
   ! Loop through all cells in the region:
-  do k = 1,size(region%cell_ids)
+  do k = 1,region%num_cells
     local_id = region%cell_ids(k)
     ghosted_id = patch%grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
@@ -6850,12 +6850,12 @@ subroutine PatchGetMassInRegion(region,patch,option,global_total_mass)
   call MPI_Allreduce(local_total_mass,global_total_mass,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
 
-end subroutine PatchGetMassInRegion
+end subroutine PatchGetCompMassInRegion
 
 ! **************************************************************************** !
 
-subroutine PatchGetMassInRegionAssign(region_list,mass_balance_region_list, &
-                                      option)
+subroutine PatchGetCompMassInRegionAssign(region_list, &
+           mass_balance_region_list,option)
   ! 
   ! Assigns the patch%region to the mass balance region pointer.
   ! 
@@ -6900,7 +6900,7 @@ subroutine PatchGetMassInRegionAssign(region_list,mass_balance_region_list, &
     cur_mbr => cur_mbr%next
   enddo
   
-end subroutine PatchGetMassInRegionAssign
+end subroutine PatchGetCompMassInRegionAssign
 
 ! ************************************************************************** !
 
