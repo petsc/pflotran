@@ -1823,7 +1823,9 @@ subroutine RealizationUpdatePropertiesTS(realization)
   ! since it is calculated as 1.d-sum_volfrac, it cannot be > 1
   call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                POROSITY,POROSITY_MINERAL)
-  call VecMin(field%work_loc,ivalue,min_value,ierr);CHKERRQ(ierr)
+  call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                  field%work,ONEDOF)
+  call VecMin(field%work,ivalue,min_value,ierr);CHKERRQ(ierr)
   if (min_value < 0.d0) then
     write(option%io_buffer,*) 'Sum of mineral volume fractions has ' // &
       'exceeded 1.d0 at cell (note PETSc numbering): ', ivalue
