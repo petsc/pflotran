@@ -83,6 +83,7 @@ module Output_Aux_module
     type(output_variable_list_type), pointer :: aveg_output_variable_list
     
     type(mass_balance_region_type), pointer :: mass_balance_region_list
+    PetscBool :: mass_balance_region_flag
 
     PetscReal :: aveg_var_time
     PetscReal :: aveg_var_dtime
@@ -116,6 +117,7 @@ module Output_Aux_module
   
   type, public :: mass_balance_region_type
     type(region_type), pointer :: region
+    character(len=MAXWORDLENGTH) :: name
     PetscReal :: total_mass
     type(mass_balance_region_type), pointer :: next
   end type mass_balance_region_type
@@ -232,6 +234,7 @@ function OutputOptionCreate()
   output_option%aveg_output_variable_list => OutputVariableListCreate()
   
   nullify(output_option%mass_balance_region_list)
+  output_option%mass_balance_region_flag = PETSC_FALSE
   
   output_option%tconv = 1.d0
   output_option%tunit = ''
@@ -322,6 +325,8 @@ function OutputOptionDuplicate(output_option)
     output_option2%mass_balance_region_list => &
        OutputMassBalRegListDuplicate(output_option%mass_balance_region_list)
   endif
+  output_option2%mass_balance_region_flag = &
+    output_option%mass_balance_region_flag
   
   output_option2%tconv = output_option%tconv
   output_option2%tunit = output_option%tunit
@@ -508,6 +513,8 @@ function OutputMassBalRegionCreate()
   allocate(OutputMassBalRegionCreate)
   nullify(OutputMassBalRegionCreate%region)
   nullify(OutputMassBalRegionCreate%next)
+  OutputMassBalRegionCreate%name =''
+  OutputMassBalRegionCreate%total_mass = 0.d0
   
 end function OutputMassBalRegionCreate
 
@@ -553,27 +560,42 @@ function OutputMassBalRegListDuplicate(old_list)
   ! Duplicates a mass balance region list object
   ! 
   ! Author: Jenn Frederick
-  ! Date: 10/15/12
+  ! Date: 04/27/2016
   ! 
 
   implicit none
   
-  type(mass_balance_region_type) :: old_list
+  type(mass_balance_region_type), pointer :: old_list
   
   type(mass_balance_region_type), pointer :: new_list
-  type(region_type), pointer :: cur_region
+  type(mass_balance_region_type), pointer :: new_mbr
+  type(mass_balance_region_type), pointer :: cur_mbr
   type(mass_balance_region_type), pointer :: OutputMassBalRegListDuplicate
-  
-  allocate(new_list)
-  nullify(new_list%region)
-  nullify(new_list%next)
-  
-  cur_region => old_list%region
+  PetscBool :: added
+
   do
-    if (.not.associated(cur_region)) exit
-    new_list%region => cur_region
-    cur_region => cur_region%next
-    new_list%region => new_list%region%next
+    if (.not.associated(old_list)) exit
+    new_mbr => OutputMassBalRegionCreate()
+    new_mbr%region = old_list%region
+    new_mbr%name = old_list%name
+    new_mbr%total_mass = old_list%total_mass
+    ! Add new mass balance region to new list
+    if (.not.associated(new_list)) then
+      new_list => new_mbr
+    else
+      cur_mbr => new_list
+      do
+        if (.not.associated(cur_mbr)) exit
+        if (.not.associated(cur_mbr%next)) then
+          cur_mbr%next => new_mbr
+          added = PETSC_TRUE
+        endif
+        if (added) exit
+        cur_mbr => cur_mbr%next
+      enddo
+    endif
+    old_list => old_list%next
+    nullify(new_mbr)
   enddo
 
   OutputMassBalRegListDuplicate => new_list

@@ -108,7 +108,6 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(waypoint_type), pointer :: waypoint
-  type(region_type), pointer :: cur_region
   type(mass_balance_region_type), pointer :: new_massbal_region
   type(mass_balance_region_type), pointer :: cur_mbr
   PetscReal, pointer :: temp_real_array(:)
@@ -119,7 +118,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
   PetscReal :: temp_real,temp_real2
   PetscReal :: units_conversion
   PetscInt :: k
-  PetscBool :: success, added
+  PetscBool :: added
   PetscBool :: vel_cent, vel_face
   PetscBool :: fluxes
   PetscBool :: mass_flowrate, energy_flowrate
@@ -194,6 +193,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
             call printErrMsg(option)
           case('MASS_BALANCE_FILE')
             string = 'OUTPUT,' // trim(block_name) // ',TOTAL_MASS_REGIONS'
+            output_option%mass_balance_region_flag = PETSC_TRUE
             do
               ! Read region name:
               call InputReadPflotranString(input,option)
@@ -202,26 +202,11 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
               ! Region name found; read the region name
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'keyword',string) 
-              call StringToUpper(word)
               ! Create a new mass balance region
               new_massbal_region => OutputMassBalRegionCreate()
-              ! Find the region name in the list of regions:
-              cur_region => realization%region_list%first
-              do
-                if (.not.associated(cur_region)) exit
-                success = PETSC_TRUE
-                if (StringCompareIgnoreCase(cur_region%name,word)) exit
-                success = PETSC_FALSE  
-                cur_region => cur_region%next
-              enddo
-              if (.not.success) then
-                option%io_buffer = 'Region ' // trim(word) // ' not found &
-                                   &amoung listed regions.'
-                call printErrMsg(option)
-              endif
-              ! Assign the read region to the new mass balance region:
-              new_massbal_region%region => cur_region
+              new_massbal_region%name = trim(word)
               ! Add the new mass balance region to the list
+              added = PETSC_FALSE
               if (.not.associated(output_option%mass_balance_region_list)) then
                 output_option%mass_balance_region_list => new_massbal_region
               else

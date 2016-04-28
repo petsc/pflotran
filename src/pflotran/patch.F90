@@ -122,7 +122,8 @@ module Patch_module
             PatchGetVarNameFromKeyword, &
             PatchCalculateCFL1Timestep, &
             PatchGetCellCenteredVelocities, &
-            PatchGetMassInRegion
+            PatchGetMassInRegion, &
+            PatchGetMassInRegionAssign
 
 contains
 
@@ -296,6 +297,7 @@ subroutine PatchLocalizeRegions(patch,regions,option)
   ! 
 
   use Option_module
+  use Output_Aux_module
   use Region_module
 
   implicit none
@@ -6787,9 +6789,6 @@ subroutine PatchGetMassInRegion(region,patch,option,global_total_mass)
 
   implicit none
   
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-  
   type(region_type), pointer :: region
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
@@ -6818,7 +6817,7 @@ subroutine PatchGetMassInRegion(region,patch,option,global_total_mass)
   
   ! Loop through all cells in the region:
   do k = 1,size(region%cell_ids)
-    local_id = k
+    local_id = region%cell_ids(k)
     ghosted_id = patch%grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
     m3_water = material_auxvars(ghosted_id)%porosity * &         ! [-]
@@ -6852,6 +6851,56 @@ subroutine PatchGetMassInRegion(region,patch,option,global_total_mass)
                      MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
 
 end subroutine PatchGetMassInRegion
+
+! **************************************************************************** !
+
+subroutine PatchGetMassInRegionAssign(region_list,mass_balance_region_list, &
+                                      option)
+  ! 
+  ! Assigns the patch%region to the mass balance region pointer.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/26/2016
+  ! 
+  use Output_Aux_module
+  use Region_module
+  use String_module
+
+  implicit none
+  
+  type(region_list_type), pointer :: region_list
+  type(mass_balance_region_type), pointer :: mass_balance_region_list
+  type(option_type), pointer :: option
+  
+  type(region_type), pointer :: cur_region
+  type(mass_balance_region_type), pointer :: cur_mbr
+  PetscBool :: success
+  
+  cur_mbr => mass_balance_region_list
+  do
+    if (.not.associated(cur_mbr)) exit
+    ! Loop through patch%region_list to find wanted region:
+    cur_region => region_list%first
+    do
+      if (.not.associated(cur_region)) exit
+      success = PETSC_TRUE
+      if (StringCompareIgnoreCase(cur_region%name,cur_mbr%name)) exit
+      success = PETSC_FALSE  
+      cur_region => cur_region%next
+    enddo
+    ! If the wanted region was not found, throw an error msg:
+    if (.not.success) then
+      option%io_buffer = 'Region ' // trim(cur_mbr%name) // ' not found &
+                          &amoung listed regions.'
+      call printErrMsg(option)
+    endif
+    ! Assign the mass balance region to the wanted region:
+    cur_mbr%region => cur_region
+    ! Go to next mass balance region
+    cur_mbr => cur_mbr%next
+  enddo
+  
+end subroutine PatchGetMassInRegionAssign
 
 ! ************************************************************************** !
 

@@ -331,7 +331,6 @@ subroutine GridComputeSpacing(grid,origin_global,option)
   ! Author: Glenn Hammond
   ! Date: 10/26/07
   ! 
-
   use Option_module
 
   implicit none
@@ -730,6 +729,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
     
   enddo
 #endif
+
+  ! Assign 
 
 end subroutine GridLocalizeRegions
 

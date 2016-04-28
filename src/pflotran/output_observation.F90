@@ -1910,6 +1910,8 @@ subroutine OutputMassBalance(realization_base)
 
   PetscReal, allocatable :: sum_mol_mnrl(:)
   PetscReal, allocatable :: sum_mol_mnrl_global(:)
+  
+  PetscReal :: global_total_mass
 
   PetscReal :: sum_trapped(realization_base%option%nphase)
   PetscReal :: sum_trapped_global(realization_base%option%nphase)
@@ -2138,7 +2140,7 @@ subroutine OutputMassBalance(realization_base)
       
       enddo
       
-      ! Print the mass [mol] in the specified regions
+      ! Print the mass [mol] in the specified regions (header)
       if (associated(output_option%mass_balance_region_list)) then
         cur_mbr => output_option%mass_balance_region_list
         do
@@ -2729,9 +2731,19 @@ subroutine OutputMassBalance(realization_base)
       endif
     endif
 
-    coupler => coupler%next
-  
+    coupler => coupler%next 
   enddo
+  
+  ! Print the total mass in the specified regions (data)
+  if (associated(output_option%mass_balance_region_list)) then
+    cur_mbr => output_option%mass_balance_region_list
+    do
+      if (.not.associated(cur_mbr)) exit
+      call PatchGetMassInRegion(cur_mbr%region,patch,option,global_total_mass)
+      write(fid,110,advance="no") global_total_mass
+      cur_mbr => cur_mbr%next
+    enddo
+  endif
 
 #ifdef YE_FLUX
 

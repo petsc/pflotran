@@ -1052,6 +1052,7 @@ subroutine SubsurfaceSetupRealization(simulation)
   use Reaction_Database_module
   use EOS_Water_module
   use Dataset_module
+  use Patch_module
   
   implicit none
 
@@ -1108,6 +1109,10 @@ subroutine SubsurfaceSetupRealization(simulation)
   call RealizationLocalizeRegions(realization)
   call RealizationPassPtrsToPatches(realization)
   call RealizationProcessDatasets(realization)
+  if (realization%output_option%mass_balance_region_flag) then
+    call PatchGetMassInRegionAssign(realization%patch%region_list, &
+         realization%output_option%mass_balance_region_list,option)
+  endif
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
   ! must process conditions before couplers in order to determine dataset types
