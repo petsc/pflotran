@@ -48,7 +48,6 @@ STANDARD_CFG = \
 	default/materials/soil_compressibility/soil_compressibility.cfg \
 	default/materials/mineral_volume/mineral_volume.cfg \
 	default/infiltrometer/infiltrometer.cfg \
-	default/steady/steady.cfg \
 	default/condition/condition.cfg \
 	default/condition/dataset/dataset.cfg \
 	default/multicontinuum/multicontinuum.cfg \
@@ -100,7 +99,6 @@ FLOW_CFG = \
 	default/condition/condition.cfg \
 	default/eos/eos.cfg \
 	default/infiltrometer/infiltrometer.cfg \
-	default/steady/steady.cfg \
 	default/scco2/mphase/mphase.cfg \
 	default/scco2/flash2/flash2.cfg \
 	general/general.cfg \
