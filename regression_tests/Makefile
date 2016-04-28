@@ -48,6 +48,7 @@ STANDARD_CFG = \
 	default/materials/soil_compressibility/soil_compressibility.cfg \
 	default/materials/mineral_volume/mineral_volume.cfg \
 	default/infiltrometer/infiltrometer.cfg \
+	default/steady/steady.cfg \
 	default/condition/condition.cfg \
 	default/condition/dataset/dataset.cfg \
 	default/multicontinuum/multicontinuum.cfg \
@@ -99,6 +100,7 @@ FLOW_CFG = \
 	default/condition/condition.cfg \
 	default/eos/eos.cfg \
 	default/infiltrometer/infiltrometer.cfg \
+	default/steady/steady.cfg \
 	default/scco2/mphase/mphase.cfg \
 	default/scco2/flash2/flash2.cfg \
 	general/general.cfg \
@@ -148,7 +150,7 @@ test : standard
 standard :
 ifeq ($(strip $(PARMETIS_LIB)),)
 	@echo "********************************************************"
-	@echo "  PFloTran does not appear to be compiled with Parmetis."
+	@echo "  PFLOTRAN does not appear to be compiled with Parmetis."
 	@echo "  Skipping unstructured mesh tests."
 	@echo "********************************************************"
 endif
@@ -186,7 +188,7 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 		--config-files $(MESH_CFG) --suite mesh
 else
 	@echo "********************************************************"
-	@echo "  PFloTran does not appear to be compiled with Parmetis."
+	@echo "  PFLOTRAN does not appear to be compiled with Parmetis."
 	@echo "  Skipping unstructured mesh tests."
 	@echo "********************************************************"
 endif
