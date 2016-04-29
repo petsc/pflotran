@@ -409,6 +409,11 @@ subroutine InitSubsurfAssignMatProperties(realization)
                material_property%porosity_dataset, &
                material_property%internal_id,PETSC_FALSE,field%porosity0)
       endif
+      if (associated(material_property%tortuosity_dataset)) then
+        call SubsurfReadDatasetToVecWithMask(realization, &
+               material_property%tortuosity_dataset, &
+               material_property%internal_id,PETSC_FALSE,field%tortuosity0)
+      endif
     endif
   enddo
       
@@ -788,7 +793,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset, &
   option => realization%option
 
   call VecGetArrayF90(vec,vec_p,ierr);CHKERRQ(ierr)
-  
+
   if (index(dataset%filename,'.h5') > 0) then
     group_name = ''
     dataset_name = dataset%name
