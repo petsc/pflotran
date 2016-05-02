@@ -1,7 +1,6 @@
 module Output_Aux_module
 
   use PFLOTRAN_Constants_module
-  use Region_module
 
   implicit none
 
@@ -116,8 +115,9 @@ module Output_Aux_module
   end type output_variable_type
   
   type, public :: mass_balance_region_type
-    type(region_type), pointer :: region
-    character(len=MAXWORDLENGTH) :: name
+    character(len=MAXWORDLENGTH) :: region_name
+    PetscInt :: num_cells
+    PetscInt, pointer :: region_cell_ids(:)
     PetscReal :: total_mass
     type(mass_balance_region_type), pointer :: next
   end type mass_balance_region_type
@@ -511,10 +511,11 @@ function OutputMassBalRegionCreate()
   type(mass_balance_region_type), pointer :: OutputMassBalRegionCreate
    
   allocate(OutputMassBalRegionCreate)
-  nullify(OutputMassBalRegionCreate%region)
-  nullify(OutputMassBalRegionCreate%next)
-  OutputMassBalRegionCreate%name =''
+  OutputMassBalRegionCreate%region_name =''
+  nullify(OutputMassBalRegionCreate%region_cell_ids)
+  OutputMassBalRegionCreate%num_cells = 0
   OutputMassBalRegionCreate%total_mass = 0.d0
+  nullify(OutputMassBalRegionCreate%next)
   
 end function OutputMassBalRegionCreate
 
@@ -572,12 +573,18 @@ function OutputMassBalRegListDuplicate(old_list)
   type(mass_balance_region_type), pointer :: cur_mbr
   type(mass_balance_region_type), pointer :: OutputMassBalRegListDuplicate
   PetscBool :: added
+  
+  print *, 'Subroutine OutputMassBalRegListDuplicate in output_aux.F90 &
+            &is untested. Please send an email to jmfrede@sandia.gov if &
+            &you see this error message.'
+  stop
 
   do
     if (.not.associated(old_list)) exit
     new_mbr => OutputMassBalRegionCreate()
-    new_mbr%region = old_list%region
-    new_mbr%name = old_list%name
+    new_mbr%region_name = old_list%region_name
+    new_mbr%num_cells = old_list%num_cells
+    new_mbr%region_cell_ids => old_list%region_cell_ids
     new_mbr%total_mass = old_list%total_mass
     ! Add new mass balance region to new list
     if (.not.associated(new_list)) then
@@ -977,9 +984,9 @@ recursive subroutine OutputMassBalRegDestroy(mass_balance_region)
   type(mass_balance_region_type), pointer :: mass_balance_region
   
   if (associated(mass_balance_region)) then
-    if (associated(mass_balance_region%region)) then
-      nullify(mass_balance_region%region)
-    endif
+    ! do not deallocate because the region owns the cell_ids array,
+    ! not the mass_balance_region, so just nullify it
+    nullify(mass_balance_region%region_cell_ids)
     if (associated(mass_balance_region%next)) then
       call OutputMassBalRegDestroy(mass_balance_region%next)
     endif

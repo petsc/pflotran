@@ -2145,7 +2145,7 @@ subroutine OutputMassBalance(realization_base)
         cur_mbr => output_option%mass_balance_region_list
         do
           if (.not.associated(cur_mbr)) exit
-          string = 'Region ' // trim(cur_mbr%region%name) // ' Total Mass'
+          string = 'Region ' // trim(cur_mbr%region_name) // ' Total Mass'
           call OutputWriteToHeader(fid,string,'mol','',icol)
           cur_mbr => cur_mbr%next
         enddo
@@ -2739,8 +2739,8 @@ subroutine OutputMassBalance(realization_base)
     cur_mbr => output_option%mass_balance_region_list
     do
       if (.not.associated(cur_mbr)) exit
-      call PatchGetCompMassInRegion(cur_mbr%region,patch,option, &
-                                    global_total_mass)
+      call PatchGetCompMassInRegion(cur_mbr%region_cell_ids, &
+           cur_mbr%num_cells,patch,option,global_total_mass)
       write(fid,110,advance="no") global_total_mass
       cur_mbr => cur_mbr%next
     enddo

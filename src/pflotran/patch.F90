@@ -6771,7 +6771,8 @@ end subroutine PatchCouplerInputRecord
 
 ! **************************************************************************** !
 
-subroutine PatchGetCompMassInRegion(region,patch,option,global_total_mass)
+subroutine PatchGetCompMassInRegion(cell_ids,num_cells,patch,option, &
+                                    global_total_mass)
   ! 
   ! Calculates the total mass (aqueous, sorbed, and precipitated) in a region
   ! in units of mol.
@@ -6784,12 +6785,12 @@ subroutine PatchGetCompMassInRegion(region,patch,option,global_total_mass)
   use Reaction_Aux_module
   use Grid_module
   use Option_module
-  use Region_module
   use Reactive_Transport_Aux_module
 
   implicit none
   
-  type(region_type), pointer :: region
+  PetscInt, pointer :: cell_ids(:)
+  PetscInt :: num_cells
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   PetscReal :: global_total_mass  ! [mol]
@@ -6816,8 +6817,8 @@ subroutine PatchGetCompMassInRegion(region,patch,option,global_total_mass)
   global_total_mass = 0.d0
   
   ! Loop through all cells in the region:
-  do k = 1,region%num_cells
-    local_id = region%cell_ids(k)
+  do k = 1,num_cells
+    local_id = cell_ids(k)
     ghosted_id = patch%grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
     m3_water = material_auxvars(ghosted_id)%porosity * &         ! [-]
@@ -6857,7 +6858,7 @@ end subroutine PatchGetCompMassInRegion
 subroutine PatchGetCompMassInRegionAssign(region_list, &
            mass_balance_region_list,option)
   ! 
-  ! Assigns the patch%region to the mass balance region pointer.
+  ! Assigns patch%region information to the mass balance region object
   ! 
   ! Author: Jenn Frederick
   ! Date: 04/26/2016
@@ -6884,18 +6885,19 @@ subroutine PatchGetCompMassInRegionAssign(region_list, &
     do
       if (.not.associated(cur_region)) exit
       success = PETSC_TRUE
-      if (StringCompareIgnoreCase(cur_region%name,cur_mbr%name)) exit
+      if (StringCompareIgnoreCase(cur_region%name,cur_mbr%region_name)) exit
       success = PETSC_FALSE  
       cur_region => cur_region%next
     enddo
     ! If the wanted region was not found, throw an error msg:
     if (.not.success) then
-      option%io_buffer = 'Region ' // trim(cur_mbr%name) // ' not found &
-                          &amoung listed regions.'
+      option%io_buffer = 'Region ' // trim(cur_mbr%region_name) // ' not &
+                          &found among listed regions.'
       call printErrMsg(option)
     endif
-    ! Assign the mass balance region to the wanted region:
-    cur_mbr%region => cur_region
+    ! Assign the mass balance region the wanted region's info:
+    cur_mbr%num_cells = cur_region%num_cells
+    cur_mbr%region_cell_ids => cur_region%cell_ids
     ! Go to next mass balance region
     cur_mbr => cur_mbr%next
   enddo

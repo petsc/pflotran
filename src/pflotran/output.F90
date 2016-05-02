@@ -204,7 +204,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
               call InputErrorMsg(input,option,'keyword',string) 
               ! Create a new mass balance region
               new_massbal_region => OutputMassBalRegionCreate()
-              new_massbal_region%name = trim(word)
+              new_massbal_region%region_name = trim(word)
               ! Add the new mass balance region to the list
               added = PETSC_FALSE
               if (.not.associated(output_option%mass_balance_region_list)) then
