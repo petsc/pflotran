@@ -155,7 +155,7 @@ subroutine SubsurfaceSimInputRecord(this)
   call DiscretizationInputRecord(this%realization%discretization)
 
   ! print region information
-  call RegionInputRecord(this%realization%region_list)
+  call RegionInputRecord(this%realization%patch%region_list)
   
   ! print strata information
   call StrataInputRecord(this%realization%patch%strata_list)

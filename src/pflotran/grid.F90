@@ -630,7 +630,6 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         trim(region%name) // '".'
       call printErrMsg(option)
     endif
-
     region => region%next
 
   enddo
