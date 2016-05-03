@@ -678,7 +678,7 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: local_id
   PetscInt :: ghosted_id
-  PetscInt :: iele, i, ii, iiso, idaughter, ipri, imnrl, iparent, p, g
+  PetscInt :: iele, i, p, g, ip, ig, iiso, ipri, imnrl
   PetscReal :: dt
   PetscReal :: vol, por, sat, den_w_kg, vps
   PetscReal :: conc_iso_aq0, conc_iso_sorb0, conc_iso_ppt0
@@ -747,18 +747,20 @@ subroutine PMUFDDecaySolve(this,time,ierr)
       coeff(i) = mass_old(i)
       ! loop through the isotope's parents:
       do p = 1,this%isotope_parents(0,i)
-        coeff(i) = coeff(i) - (this%isotope_decay_rate(p) * mass_old(p)) / &
-          (this%isotope_decay_rate(i) - this%isotope_decay_rate(p))
+        ip = this%isotope_parents(p,i)
+        coeff(i) = coeff(i) - (this%isotope_decay_rate(ip) * mass_old(ip)) / &
+          (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))
         ! loop through the isotope's parent's parents:
         do g = 1,this%isotope_parents(0,p)
+          ig = this%isotope_parents(g,p)
           coeff(i) = coeff(i) - &
-            ((this%isotope_decay_rate(p) * this%isotope_decay_rate(g) * &        
-            mass_old(g)) / ((this%isotope_decay_rate(p) - &
-            this%isotope_decay_rate(g)) * (this%isotope_decay_rate(i) - &
-            this%isotope_decay_rate(g)))) + ((this%isotope_decay_rate(p) * &
-            this%isotope_decay_rate(g) * mass_old(g)) / &
-            ((this%isotope_decay_rate(p) - this%isotope_decay_rate(g)) * &
-            (this%isotope_decay_rate(i) - this%isotope_decay_rate(p))))
+            ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &        
+            mass_old(ig)) / ((this%isotope_decay_rate(ip) - &
+            this%isotope_decay_rate(ig)) * (this%isotope_decay_rate(i) - &
+            this%isotope_decay_rate(ig)))) + ((this%isotope_decay_rate(ip) * &
+            this%isotope_decay_rate(ig) * mass_old(ig)) / &
+            ((this%isotope_decay_rate(ip) - this%isotope_decay_rate(ig)) * &
+            (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))))
         enddo ! grandparent loop
       enddo ! parent loop
     enddo ! isotope loop
@@ -768,21 +770,23 @@ subroutine PMUFDDecaySolve(this,time,ierr)
       mass_iso_tot1(i) = coeff(i)*exp(-1.d0*this%isotope_decay_rate(i)*dt)
       ! loop through the isotope's parents:
       do p = 1,this%isotope_parents(0,i)
+        ip = this%isotope_parents(p,i)
         mass_iso_tot1(i) = mass_iso_tot1(i) + &
-              (((this%isotope_decay_rate(p) * mass_old(p)) / &
-              (this%isotope_decay_rate(i) - this%isotope_decay_rate(p))) * &
-               exp(-1.d0 * this%isotope_decay_rate(p) * dt))
+              (((this%isotope_decay_rate(ip) * mass_old(ip)) / &
+              (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))) * &
+               exp(-1.d0 * this%isotope_decay_rate(ip) * dt))
         ! loop through the isotope's parent's parents:
         do g = 1,this%isotope_parents(0,p)
+          ig = this%isotope_parents(g,p)
           mass_iso_tot1(i) = mass_iso_tot1(i) - &
-            ((this%isotope_decay_rate(p) * this%isotope_decay_rate(g) * &
-            mass_old(g) * exp(-1.d0 * this%isotope_decay_rate(p) * dt)) / &
-            ((this%isotope_decay_rate(p) - this%isotope_decay_rate(g)) * &
-            (this%isotope_decay_rate(i) - this%isotope_decay_rate(p)))) + &
-            ((this%isotope_decay_rate(p) * this%isotope_decay_rate(g) * &
-            mass_old(g) * exp(-1.d0 * this%isotope_decay_rate(g) * dt)) / &
-            ((this%isotope_decay_rate(p) - this%isotope_decay_rate(g)) * &
-            (this%isotope_decay_rate(i) - this%isotope_decay_rate(g))))
+            ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &
+            mass_old(ig) * exp(-1.d0 * this%isotope_decay_rate(ip) * dt)) / &
+            ((this%isotope_decay_rate(ip) - this%isotope_decay_rate(ig)) * &
+            (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip)))) + &
+            ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &
+            mass_old(ig) * exp(-1.d0 * this%isotope_decay_rate(ig) * dt)) / &
+            ((this%isotope_decay_rate(ip) - this%isotope_decay_rate(ig)) * &
+            (this%isotope_decay_rate(i) - this%isotope_decay_rate(ig))))
         enddo ! grandparent loop
       enddo ! parent loop
     enddo ! isotope loop
