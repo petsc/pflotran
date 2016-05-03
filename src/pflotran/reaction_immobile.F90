@@ -279,10 +279,10 @@ subroutine RImmobileDecay(Res,Jac,compute_derivative,rt_auxvar, &
     
     ! we assume only one chemical component involved in decay reaction
     icomp = reaction%immobile%decayspecid(irxn)
-    ! units = 1/sec
-    rate_constant = reaction%immobile%decay_rate_constant(irxn)
-    ! rate [mol/sec] = [1/sec] * [mol/m^3 bulk] * [m^3 bulk]
-    rate = rate_constant*rt_auxvar%immobile(icomp)*volume
+    ! units = m^3 bulk/sec = [1/sec] * [m^3 bulk]
+    rate_constant = reaction%immobile%decay_rate_constant(irxn)*volume
+    ! rate [mol/sec] = [m^3 bulk/sec] * [mol/m^3 bulk]
+    rate = rate_constant*rt_auxvar%immobile(icomp)
     immobile_id = reaction%offset_immobile + icomp
     
     ! units = mol/sec              ! implicit stoichiometry of -1.d0 (- -1.d0*)
