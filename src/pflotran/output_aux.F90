@@ -574,10 +574,7 @@ function OutputMassBalRegListDuplicate(old_list)
   type(mass_balance_region_type), pointer :: OutputMassBalRegListDuplicate
   PetscBool :: added
   
-  print *, 'Subroutine OutputMassBalRegListDuplicate in output_aux.F90 &
-            &is untested. Please send an email to jmfrede@sandia.gov if &
-            &you see this error message.'
-  stop
+  nullify(new_list)
 
   do
     if (.not.associated(old_list)) exit
