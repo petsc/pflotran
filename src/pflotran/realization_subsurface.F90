@@ -772,6 +772,22 @@ subroutine RealProcessMatPropAndSatFunc(realization)
           call printErrMsg(option)
       end select
     endif
+    if (associated(cur_material_property%tortuosity_dataset)) then
+      string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
+               '),TORTUOSITY'
+      dataset => &
+        DatasetBaseGetPointer(realization%datasets, &
+                              cur_material_property%tortuosity_dataset%name, &
+                              string,option)
+      call DatasetDestroy(cur_material_property%tortuosity_dataset)
+      select type(dataset)
+        class is (dataset_common_hdf5_type)
+          cur_material_property%tortuosity_dataset => dataset
+        class default
+          option%io_buffer = 'Incorrect dataset type for tortuosity.'
+          call printErrMsg(option)
+      end select
+    endif
     if (associated(cur_material_property%permeability_dataset)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),PERMEABILITY or PERMEABILITY X'

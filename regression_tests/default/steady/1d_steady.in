@@ -1,0 +1,152 @@
+# 1D steady flow using STEADY_STATE keyword under OUTPUT
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 4
+END
+
+#=========================== flow mode ========================================
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  TS_ACCELERATION 8
+  MAX_TS_CUTS 5
+END
+
+NEWTON_SOLVER FLOW
+  MAXIT 20
+END
+
+LINEAR_SOLVER FLOW
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 100 1 1 
+  BOUNDS
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.1d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES default
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.5d0
+    ALPHA  1.d-4
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    MAX_CAPILLARY_PRESSURE 1.d8
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  FORMAT TECPLOT POINT
+#  FORMAT HDF5
+#  VELOCITY_AT_CENTER
+END
+
+#=========================== times ============================================
+TIME
+  STEADY_STATE
+  FINAL_TIME 1 y
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+REGION east 
+  FACE EAST 
+  COORDINATES
+    100.d0 0.d0 0.d0
+    100.d0 1.d0 1.d0
+  /
+END
+
+REGION west 
+  FACE WEST 
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE dirichlet 
+  /
+  PRESSURE 101325.d0
+END
+
+FLOW_CONDITION west 
+  TYPE
+    PRESSURE dirichlet 
+  /
+  PRESSURE 201325.d0
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+# east boundary condition
+BOUNDARY_CONDITION east 
+  FLOW_CONDITION initial
+  REGION east 
+END
+
+BOUNDARY_CONDITION west 
+  FLOW_CONDITION  west
+  REGION west 
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+END_SUBSURFACE
