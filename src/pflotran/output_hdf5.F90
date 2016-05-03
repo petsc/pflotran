@@ -3069,12 +3069,12 @@ subroutine WriteHDF5FlowratesUGrid(realization_base,option,file_id, &
 
     select case(option%iflowmode)
       case(RICHARDS_MODE)
-        string = "Mass_Flowrate [kg_s]" // CHAR(0)
+        string = "Mass_Flowrate [kg/s]" // CHAR(0)
       case(TH_MODE)
         if (dof==1) then
-          string = "Mass_Flowrate [kg_s]" // CHAR(0)
+          string = "Mass_Flowrate [kg/s]" // CHAR(0)
         else
-          string = "Energy_Flowrate [J_s]" // CHAR(0)
+          string = "Energy_Flowrate [MJ/s]" // CHAR(0)
         endif
       case default
         option%io_buffer='FLOWRATE output not implemented in this mode.'
