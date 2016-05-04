@@ -678,7 +678,7 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: local_id
   PetscInt :: ghosted_id
-  PetscInt :: iele, i, ii, iiso, idaughter, ipri, imnrl, iparent
+  PetscInt :: iele, i, p, g, ip, ig, iiso, ipri, imnrl
   PetscReal :: dt
   PetscReal :: vol, por, sat, den_w_kg, vps
   PetscReal :: conc_iso_aq0, conc_iso_sorb0, conc_iso_ppt0
@@ -688,6 +688,8 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   PetscReal :: mass_iso_tot0(this%num_isotopes), mass_iso_tot_star(this%num_isotopes)
   PetscReal :: mass_iso_tot1(this%num_isotopes), delta_mass_iso_tot(this%num_isotopes)
   PetscReal :: mass_ele_tot1
+  PetscReal :: coeff(this%num_isotopes)
+  PetscReal :: mass_old(this%num_isotopes)
   PetscReal :: mol_fraction_iso(this%num_isotopes)
   PetscReal :: kd_kgw_m3b
   PetscBool :: above_solubility
@@ -735,46 +737,60 @@ subroutine PMUFDDecaySolve(this,time,ierr)
         mass_iso_tot0(iiso) = mass_iso_aq0 + mass_iso_sorb0 + mass_iso_ppt0
       enddo
     enddo 
-#if 0                        
-        mass_iso_tot0 = mass_iso_aq0 + mass_iso_sorb0 + mass_iso_ppt0
-        ! should this be implicit in time?
-        mass_iso_tot1(iiso) = mass_iso_tot0 * exp(-1.d0*this%isotope_decay_rate(iiso)*dt)
-        delta_mass_iso_tot(iiso) = mass_iso_tot1(iiso) - mass_iso_tot0
-      enddo
-    enddo 
     
-    ! distribute decayed mass among daughter isotopes
-    do iele = 1, this%num_elements
-      do i = 1, this%element_isotopes(0,iele)
-        iiso = this%element_isotopes(i,iele)
-        do ii = 1, this%isotope_daughters(0,iiso)
-          idaughter = this%isotope_daughters(ii,iiso)
-          ! Delta is always negative for parent, positive for child
-          mass_iso_tot1(idaughter) = mass_iso_tot1(idaughter) - delta_mass_iso_tot(iiso)
-        enddo
-      enddo
-    enddo
-#endif
-    mass_iso_tot1 = 0.d0
-!    do iiso = 1, this%num_isotopes
-!      mass_iso_tot_star(iiso) = mass_iso_tot0(iiso) * &
-!                                exp(-1.d0*this%isotope_decay_rate(iiso)*dt)
-!      mass_iso_tot1(iiso) = mass_iso_tot_star(iiso)
-!    enddo
-    mass_iso_tot_star(:) = mass_iso_tot0(:) * &
-                                exp(-1.d0*this%isotope_decay_rate(:)*dt)
-    mass_iso_tot1(:) = mass_iso_tot_star(:)
-    do iiso = 1, this%num_isotopes
-      do ii = 1, this%isotope_parents(0,iiso)
-        iparent = this%isotope_parents(ii,iiso)
-        mass_iso_tot1(iiso) = mass_iso_tot1(iiso) + &
-          this%isotope_decay_rate(iparent)*mass_iso_tot0(iparent) / &
-            (this%isotope_decay_rate(iiso) - &
-             this%isotope_decay_rate(iparent)) * &
-            (exp(-1.d0*this%isotope_decay_rate(iparent)*dt) - &
-             exp(-1.d0*this%isotope_decay_rate(iiso)*dt))
-      enddo
-    enddo
+    ! save the mass from the previous time step:
+    mass_old(:) = mass_iso_tot0(:)
+
+    ! FIRST PASS decay ==============================================
+    do i = 1,this%num_isotopes
+      ! update the initial value of the isotope coefficient:
+      coeff(i) = mass_old(i)
+      ! loop through the isotope's parents:
+      do p = 1,this%isotope_parents(0,i)
+        ip = this%isotope_parents(p,i)
+        coeff(i) = coeff(i) - (this%isotope_decay_rate(ip) * mass_old(ip)) / &
+          (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))
+        ! loop through the isotope's parent's parents:
+        do g = 1,this%isotope_parents(0,p)
+          ig = this%isotope_parents(g,p)
+          coeff(i) = coeff(i) - &
+            ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &        
+            mass_old(ig)) / ((this%isotope_decay_rate(ip) - &
+            this%isotope_decay_rate(ig)) * (this%isotope_decay_rate(i) - &
+            this%isotope_decay_rate(ig)))) + ((this%isotope_decay_rate(ip) * &
+            this%isotope_decay_rate(ig) * mass_old(ig)) / &
+            ((this%isotope_decay_rate(ip) - this%isotope_decay_rate(ig)) * &
+            (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))))
+        enddo ! grandparent loop
+      enddo ! parent loop
+    enddo ! isotope loop
+    ! SECOND PASS decay =============================================
+    do i = 1,this%num_isotopes
+      ! decay the isotope species:
+      mass_iso_tot1(i) = coeff(i)*exp(-1.d0*this%isotope_decay_rate(i)*dt)
+      ! loop through the isotope's parents:
+      do p = 1,this%isotope_parents(0,i)
+        ip = this%isotope_parents(p,i)
+        mass_iso_tot1(i) = mass_iso_tot1(i) + &
+              (((this%isotope_decay_rate(ip) * mass_old(ip)) / &
+              (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))) * &
+               exp(-1.d0 * this%isotope_decay_rate(ip) * dt))
+        ! loop through the isotope's parent's parents:
+        do g = 1,this%isotope_parents(0,p)
+          ig = this%isotope_parents(g,p)
+          mass_iso_tot1(i) = mass_iso_tot1(i) - &
+            ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &
+            mass_old(ig) * exp(-1.d0 * this%isotope_decay_rate(ip) * dt)) / &
+            ((this%isotope_decay_rate(ip) - this%isotope_decay_rate(ig)) * &
+            (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip)))) + &
+            ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &
+            mass_old(ig) * exp(-1.d0 * this%isotope_decay_rate(ig) * dt)) / &
+            ((this%isotope_decay_rate(ip) - this%isotope_decay_rate(ig)) * &
+            (this%isotope_decay_rate(i) - this%isotope_decay_rate(ig))))
+        enddo ! grandparent loop
+      enddo ! parent loop
+    enddo ! isotope loop
+    
     mass_iso_tot1 = max(mass_iso_tot1,1.d-90)
 
     do iele = 1, this%num_elements

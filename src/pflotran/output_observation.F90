@@ -1849,6 +1849,7 @@ subroutine OutputMassBalance(realization_base)
   use Option_module
   use Coupler_module
   use Utility_module
+  use Output_Aux_module
   
   use Richards_module, only : RichardsComputeMassBalance
   use Mphase_module, only : MphaseComputeMassBalance
@@ -1875,6 +1876,7 @@ subroutine OutputMassBalance(realization_base)
   type(grid_type), pointer :: grid
   type(output_option_type), pointer :: output_option
   type(coupler_type), pointer :: coupler
+  type(mass_balance_region_type), pointer :: cur_mbr
   type(global_auxvar_type), pointer :: global_auxvars_bc_or_ss(:)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars_bc_or_ss(:)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
@@ -1908,6 +1910,8 @@ subroutine OutputMassBalance(realization_base)
 
   PetscReal, allocatable :: sum_mol_mnrl(:)
   PetscReal, allocatable :: sum_mol_mnrl_global(:)
+  
+  PetscReal :: global_total_mass
 
   PetscReal :: sum_trapped(realization_base%option%nphase)
   PetscReal :: sum_trapped_global(realization_base%option%nphase)
@@ -2135,6 +2139,17 @@ subroutine OutputMassBalance(realization_base)
         coupler => coupler%next
       
       enddo
+      
+      ! Print the mass [mol] in the specified regions (header)
+      if (associated(output_option%mass_balance_region_list)) then
+        cur_mbr => output_option%mass_balance_region_list
+        do
+          if (.not.associated(cur_mbr)) exit
+          string = 'Region ' // trim(cur_mbr%region_name) // ' Total Mass'
+          call OutputWriteToHeader(fid,string,'mol','',icol)
+          cur_mbr => cur_mbr%next
+        enddo
+      endif
       
 #ifdef YE_FLUX
 !geh      do offset = 1, 4
@@ -2716,9 +2731,20 @@ subroutine OutputMassBalance(realization_base)
       endif
     endif
 
-    coupler => coupler%next
-  
+    coupler => coupler%next 
   enddo
+  
+  ! Print the total mass in the specified regions (data)
+  if (associated(output_option%mass_balance_region_list)) then
+    cur_mbr => output_option%mass_balance_region_list
+    do
+      if (.not.associated(cur_mbr)) exit
+      call PatchGetCompMassInRegion(cur_mbr%region_cell_ids, &
+           cur_mbr%num_cells,patch,option,global_total_mass)
+      write(fid,110,advance="no") global_total_mass
+      cur_mbr => cur_mbr%next
+    enddo
+  endif
 
 #ifdef YE_FLUX
 
