@@ -400,8 +400,10 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
             string = trim(string) // ',HDF5'
             output_option%print_hdf5 = PETSC_TRUE
             call InputReadWord(input,option,word,PETSC_TRUE)
-            call InputDefaultMsg(input,option,string)
-            if (input%ierr == 0) then
+            if (input%ierr /= 0) then
+              call InputDefaultMsg(input,option,string)
+              output_option%print_single_h5_file = PETSC_TRUE
+            else
               call StringToUpper(word)
               select case(trim(word))
               !....................
