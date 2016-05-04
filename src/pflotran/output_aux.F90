@@ -80,6 +80,9 @@ module Output_Aux_module
     type(output_variable_list_type), pointer :: output_snap_variable_list
     type(output_variable_list_type), pointer :: output_obs_variable_list
     type(output_variable_list_type), pointer :: aveg_output_variable_list
+    
+    type(mass_balance_region_type), pointer :: mass_balance_region_list
+    PetscBool :: mass_balance_region_flag
 
     PetscReal :: aveg_var_time
     PetscReal :: aveg_var_dtime
@@ -110,6 +113,14 @@ module Output_Aux_module
     PetscInt :: isubsubvar
     type(output_variable_type), pointer :: next
   end type output_variable_type
+  
+  type, public :: mass_balance_region_type
+    character(len=MAXWORDLENGTH) :: region_name
+    PetscInt :: num_cells
+    PetscInt, pointer :: region_cell_ids(:)
+    PetscReal :: total_mass
+    type(mass_balance_region_type), pointer :: next
+  end type mass_balance_region_type
 
 !  type, public, EXTENDS (output_variable_type) :: aveg_output_variable_type
 !    PetscReal :: time_interval
@@ -138,8 +149,10 @@ module Output_Aux_module
   public :: OutputOptionCreate, &
             OutputOptionDuplicate, &
             OutputVariableCreate, &
+            OutputMassBalRegionCreate, &
             OutputVariableListCreate, &
             OutputVariableListDuplicate, &
+            OutputMassBalRegListDuplicate, &
             OutputVariableAddToList, &
             OutputWriteToHeader, &
             OutputWriteVariableListToHeader, &
@@ -220,6 +233,9 @@ function OutputOptionCreate()
   nullify(output_option%aveg_output_variable_list)
   output_option%aveg_output_variable_list => OutputVariableListCreate()
   
+  nullify(output_option%mass_balance_region_list)
+  output_option%mass_balance_region_flag = PETSC_FALSE
+  
   output_option%tconv = 1.d0
   output_option%tunit = ''
   
@@ -294,7 +310,7 @@ function OutputOptionDuplicate(output_option)
   nullify(output_option2%output_snap_variable_list)
   nullify(output_option2%output_obs_variable_list)
   nullify(output_option2%aveg_output_variable_list)
-
+  
   output_option2%output_variable_list => &
        OutputVariableListDuplicate(output_option%output_variable_list)
   output_option2%output_snap_variable_list => &
@@ -303,6 +319,14 @@ function OutputOptionDuplicate(output_option)
        OutputVariableListDuplicate(output_option%output_obs_variable_list)
   output_option2%aveg_output_variable_list => &
        OutputVariableListDuplicate(output_option%aveg_output_variable_list)
+       
+  nullify(output_option2%mass_balance_region_list)
+  if (associated(output_option%mass_balance_region_list)) then
+    output_option2%mass_balance_region_list => &
+       OutputMassBalRegListDuplicate(output_option%mass_balance_region_list)
+  endif
+  output_option2%mass_balance_region_flag = &
+    output_option%mass_balance_region_flag
   
   output_option2%tconv = output_option%tconv
   output_option2%tunit = output_option%tunit
@@ -474,6 +498,29 @@ end function OutputVariableListCreate
 
 ! ************************************************************************** !
 
+function OutputMassBalRegionCreate()
+  ! 
+  ! Creates and initializes a mass balance region list object
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/26/2016
+  ! 
+
+  implicit none
+  
+  type(mass_balance_region_type), pointer :: OutputMassBalRegionCreate
+   
+  allocate(OutputMassBalRegionCreate)
+  OutputMassBalRegionCreate%region_name =''
+  nullify(OutputMassBalRegionCreate%region_cell_ids)
+  OutputMassBalRegionCreate%num_cells = 0
+  OutputMassBalRegionCreate%total_mass = 0.d0
+  nullify(OutputMassBalRegionCreate%next)
+  
+end function OutputMassBalRegionCreate
+
+! ************************************************************************** !
+
 function OutputVariableListDuplicate(old_list)
   ! 
   ! initializes output variable list object
@@ -506,6 +553,58 @@ function OutputVariableListDuplicate(old_list)
   OutputVariableListDuplicate => new_list
   
 end function OutputVariableListDuplicate
+
+! ************************************************************************** !
+
+function OutputMassBalRegListDuplicate(old_list)
+  ! 
+  ! Duplicates a mass balance region list object
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/27/2016
+  ! 
+
+  implicit none
+  
+  type(mass_balance_region_type), pointer :: old_list
+  
+  type(mass_balance_region_type), pointer :: new_list
+  type(mass_balance_region_type), pointer :: new_mbr
+  type(mass_balance_region_type), pointer :: cur_mbr
+  type(mass_balance_region_type), pointer :: OutputMassBalRegListDuplicate
+  PetscBool :: added
+  
+  nullify(new_list)
+
+  do
+    if (.not.associated(old_list)) exit
+    new_mbr => OutputMassBalRegionCreate()
+    new_mbr%region_name = old_list%region_name
+    new_mbr%num_cells = old_list%num_cells
+    new_mbr%region_cell_ids => old_list%region_cell_ids
+    new_mbr%total_mass = old_list%total_mass
+    ! Add new mass balance region to new list
+    if (.not.associated(new_list)) then
+      new_list => new_mbr
+    else
+      cur_mbr => new_list
+      do
+        if (.not.associated(cur_mbr)) exit
+        if (.not.associated(cur_mbr%next)) then
+          cur_mbr%next => new_mbr
+          added = PETSC_TRUE
+        endif
+        if (added) exit
+        cur_mbr => cur_mbr%next
+      enddo
+    endif
+    old_list => old_list%next
+    nullify(new_mbr)
+  enddo
+
+  OutputMassBalRegListDuplicate => new_list
+  
+end function OutputMassBalRegListDuplicate
 
 ! ************************************************************************** !
 
@@ -869,6 +968,32 @@ end subroutine CheckpointOptionDestroy
 
 ! ************************************************************************** !
 
+recursive subroutine OutputMassBalRegDestroy(mass_balance_region)
+  ! 
+  ! Nullifies and deallocates a mass balance region object
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 04/27/2016
+  ! 
+
+  implicit none
+  
+  type(mass_balance_region_type), pointer :: mass_balance_region
+  
+  if (associated(mass_balance_region)) then
+    ! do not deallocate because the region owns the cell_ids array,
+    ! not the mass_balance_region, so just nullify it
+    nullify(mass_balance_region%region_cell_ids)
+    if (associated(mass_balance_region%next)) then
+      call OutputMassBalRegDestroy(mass_balance_region%next)
+    endif
+    deallocate(mass_balance_region)
+  endif
+  
+end subroutine OutputMassBalRegDestroy
+
+! ************************************************************************** !
+
 subroutine OutputOptionDestroy(output_option)
   ! 
   ! Deallocates an output option
@@ -898,6 +1023,8 @@ subroutine OutputOptionDestroy(output_option)
   call OutputVariableListDestroy(output_option%output_obs_variable_list)
   call OutputVariableListDestroy(output_option%aveg_output_variable_list)
   
+  call OutputMassBalRegDestroy(output_option%mass_balance_region_list)
+    
   deallocate(output_option)
   nullify(output_option)
   

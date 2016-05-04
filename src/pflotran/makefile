@@ -808,9 +808,9 @@ output.o : connection.o coupler.o debug.o discretization.o field.o \
            output_aux.o output_common.o output_ekg.o output_hdf5.o \
            output_observation.o output_tecplot.o output_vtk.o patch.o \
            pflotran_constants.o reaction_aux.o realization_base.o \
-           realization_subsurface.o string.o units.o utility.o variables.o \
-           waypoint.o
-output_aux.o : option.o pflotran_constants.o variables.o
+           realization_subsurface.o region.o string.o units.o utility.o \
+           variables.o waypoint.o
+output_aux.o : option.o pflotran_constants.o region.o variables.o
 output_common.o : connection.o coupler.o field.o global_aux.o grid.o \
                   grid_unstructured_aux.o grid_unstructured_cell.o hdf5.o \
                   hdf5_aux.o logging.o material_aux.o option.o output_aux.o \

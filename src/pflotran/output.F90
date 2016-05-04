@@ -86,6 +86,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
 
   use Option_module
   use Input_Aux_module
+  use Output_Aux_module
   use String_module
   use Realization_Subsurface_class
   use Waypoint_module
@@ -93,6 +94,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
   use Utility_module
   use Grid_module
   use Patch_module
+  use Region_module
 
   implicit none
 
@@ -106,6 +108,8 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(waypoint_type), pointer :: waypoint
+  type(mass_balance_region_type), pointer :: new_massbal_region
+  type(mass_balance_region_type), pointer :: cur_mbr
   PetscReal, pointer :: temp_real_array(:)
 
   character(len=MAXWORDLENGTH) :: word
@@ -114,6 +118,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
   PetscReal :: temp_real,temp_real2
   PetscReal :: units_conversion
   PetscInt :: k
+  PetscBool :: added
   PetscBool :: vel_cent, vel_face
   PetscBool :: fluxes
   PetscBool :: mass_flowrate, energy_flowrate
@@ -173,6 +178,51 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
             output_option%print_initial_snap = PETSC_FALSE
           case('MASS_BALANCE_FILE')
             output_option%print_initial_massbal = PETSC_FALSE
+        end select
+        
+!...............................
+      case('TOTAL_MASS_REGIONS')
+        select case(trim(block_name))
+          case('OBSERVATION_FILE')
+            option%io_buffer = 'TOTAL_MASS_REGIONS cannot be specified for &
+                               &OUTPUT,OBSERVATION_FILE block.'
+            call printErrMsg(option)
+          case('SNAPSHOT_FILE')
+            option%io_buffer = 'TOTAL_MASS_REGIONS cannot be specified for &
+                               &OUTPUT,SNAPSHOT_FILE block.'
+            call printErrMsg(option)
+          case('MASS_BALANCE_FILE')
+            string = 'OUTPUT,' // trim(block_name) // ',TOTAL_MASS_REGIONS'
+            output_option%mass_balance_region_flag = PETSC_TRUE
+            do
+              ! Read region name:
+              call InputReadPflotranString(input,option)
+              call InputReadStringErrorMsg(input,option,string)
+              if (InputCheckExit(input,option)) exit
+              ! Region name found; read the region name
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'keyword',string) 
+              ! Create a new mass balance region
+              new_massbal_region => OutputMassBalRegionCreate()
+              new_massbal_region%region_name = trim(word)
+              ! Add the new mass balance region to the list
+              added = PETSC_FALSE
+              if (.not.associated(output_option%mass_balance_region_list)) then
+                output_option%mass_balance_region_list => new_massbal_region
+              else
+                cur_mbr => output_option%mass_balance_region_list
+                do
+                  if (.not.associated(cur_mbr)) exit
+                  if (.not.associated(cur_mbr%next)) then
+                    cur_mbr%next => new_massbal_region
+                    added = PETSC_TRUE
+                  endif
+                  if (added) exit
+                  cur_mbr => cur_mbr%next
+                enddo
+              endif
+              nullify(new_massbal_region)
+            enddo ! Read loop
         end select
 
 !..................
@@ -350,8 +400,10 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
             string = trim(string) // ',HDF5'
             output_option%print_hdf5 = PETSC_TRUE
             call InputReadWord(input,option,word,PETSC_TRUE)
-            call InputDefaultMsg(input,option,string)
-            if (input%ierr == 0) then
+            if (input%ierr /= 0) then
+              call InputDefaultMsg(input,option,string)
+              output_option%print_single_h5_file = PETSC_TRUE
+            else
               call StringToUpper(word)
               select case(trim(word))
               !....................

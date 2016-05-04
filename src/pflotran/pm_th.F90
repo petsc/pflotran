@@ -292,7 +292,7 @@ subroutine PMTHUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   PetscReal :: up
   PetscReal :: utmp
   PetscReal :: dtt
-  PetscReal :: dt_p
+  PetscReal :: dt_u
   PetscReal :: dt_tfac
   PetscInt :: ifac
   
@@ -300,16 +300,31 @@ subroutine PMTHUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   call printMsg(this%option,'PMTH%UpdateTimestep()')
 #endif
   
-  fac = 0.5d0
-  if (num_newton_iterations >= iacceleration) then
-    fac = 0.33d0
-    ut = 0.d0
+  if (iacceleration > 0) then
+    fac = 0.5d0
+    if (num_newton_iterations >= iacceleration) then
+      fac = 0.33d0
+      ut = 0.d0
+    else
+      up = this%pressure_change_governor/(this%max_pressure_change+0.1)
+      utmp = this%temperature_change_governor/ &
+             (this%max_temperature_change+1.d-5)
+      ut = min(up,utmp)
+    endif
+    dtt = fac * dt * (1.d0 + ut)
   else
+    ifac = max(min(num_newton_iterations,size(tfac)),1)
+    dt_tfac = tfac(ifac) * dt
+
+    fac = 0.5d0
     up = this%pressure_change_governor/(this%max_pressure_change+0.1)
-    utmp = this%temperature_change_governor/(this%max_temperature_change+1.d-5)
+    utmp = this%temperature_change_governor/ &
+           (this%max_temperature_change+1.d-5)
     ut = min(up,utmp)
+    dt_u = fac * dt * (1.d0 + ut)
+
+    dtt = min(dt_tfac,dt_u)
   endif
-  dtt = fac * dt * (1.d0 + ut)
 
   if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
   if (dtt > dt_max) dtt = dt_max
