@@ -810,7 +810,7 @@ output.o : connection.o coupler.o debug.o discretization.o field.o \
            pflotran_constants.o reaction_aux.o realization_base.o \
            realization_subsurface.o region.o string.o units.o utility.o \
            variables.o waypoint.o
-output_aux.o : option.o pflotran_constants.o region.o variables.o
+output_aux.o : option.o pflotran_constants.o variables.o
 output_common.o : connection.o coupler.o field.o global_aux.o grid.o \
                   grid_unstructured_aux.o grid_unstructured_cell.o hdf5.o \
                   hdf5_aux.o logging.o material_aux.o option.o output_aux.o \
@@ -866,7 +866,7 @@ patch.o : auxiliary.o characteristic_curves.o condition.o connection.o \
           option.o output_aux.o pflotran_constants.o reaction.o reaction_aux.o \
           reaction_mineral.o reaction_mineral_aux.o \
           reaction_surf_complex_aux.o reactive_transport_aux.o region.o \
-          richards_aux.o saturation.o saturation_function.o strata.o \
+          richards_aux.o saturation.o saturation_function.o strata.o string.o \
           surface_auxiliary.o surface_field.o surface_material.o th_aux.o \
           toil_ims_aux.o transport_constraint.o utility.o variables.o
 pflotran.o : factory_geomechanics.o factory_hydrogeophysics.o \
@@ -1173,8 +1173,8 @@ simulation_hydrogeophysics.o : option.o pflotran_constants.o \
                                simulation_subsurface.o \
                                wrapper_hydrogeophysics.o
 simulation_subsurface.o : characteristic_curves.o condition.o discretization.o \
-                          logging.o material.o option.o output.o output_aux.o \
-                          patch.o pflotran_constants.o pmc_base.o \
+                          eos.o logging.o material.o option.o output.o \
+                          output_aux.o patch.o pflotran_constants.o pmc_base.o \
                           pmc_subsurface.o pmc_third_party.o reaction_aux.o \
                           reaction_clm.o reaction_sandbox.o \
                           realization_subsurface.o region.o regression.o \
@@ -1284,8 +1284,6 @@ wipp.o : input_aux.o lookup_table.o material_aux.o option.o \
          pflotran_constants.o string.o units.o utility.o
 wrapper_hydrogeophysics.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \
                             pflotran_constants.o
-
-
 
 # developer level regression testing
 test : utest rtest

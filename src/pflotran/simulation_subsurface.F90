@@ -115,6 +115,7 @@ subroutine SubsurfaceSimInputRecord(this)
   use Characteristic_Curves_module
   use Patch_module
   use Condition_module
+  use EOS_module
   
   implicit none
   
@@ -166,7 +167,7 @@ subroutine SubsurfaceSimInputRecord(this)
   ! print characteristic curves information
   call CharCurvesInputRecord(this%realization%patch%characteristic_curves)
 
-  ! print chemistry & reactive transport information
+  ! print chemistry and reactive transport information
   call ReactionInputRecord(this%realization%reaction)
   
   ! print coupler information (ICs, BCs, SSs)
@@ -177,6 +178,9 @@ subroutine SubsurfaceSimInputRecord(this)
                            this%realization%option)
   call TranCondInputRecord(this%realization%transport_conditions, &
                            this%realization%option)
+                       
+  ! print equation of state (eos) information
+  call EOSInputRecord()
 
 end subroutine SubsurfaceSimInputRecord
 
