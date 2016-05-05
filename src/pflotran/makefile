@@ -961,8 +961,8 @@ pm_waste_form.o : condition.o data_mediator_vec.o dataset_ascii.o \
                   grid_structured.o grid_unstructured.o input_aux.o \
                   material_aux.o option.o output_aux.o patch.o \
                   pflotran_constants.o pm_base.o reaction_aux.o \
-                  realization_base.o realization_subsurface.o string.o units.o \
-                  utility.o
+                  reactive_transport_aux.o realization_base.o \
+                  realization_subsurface.o string.o units.o utility.o
 pmc_auxiliary.o : option.o pflotran_constants.o pm_auxiliary.o pmc_base.o \
                   realization_subsurface.o timestepper_base.o
 pmc_base.o : checkpoint.o logging.o option.o output.o output_aux.o \
@@ -1284,6 +1284,7 @@ wipp.o : input_aux.o lookup_table.o material_aux.o option.o \
          pflotran_constants.o string.o units.o utility.o
 wrapper_hydrogeophysics.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \
                             pflotran_constants.o
+
 
 # developer level regression testing
 test : utest rtest
