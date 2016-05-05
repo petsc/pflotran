@@ -1481,8 +1481,8 @@ subroutine PMWFInitializeTimestep(this)
 
       ! ------ update species mass fractions ---------------------------------
       do k = 1,num_species
-        cur_waste_form%rad_mass_fraction(k) = &
-        cur_waste_form%rad_concentration(k) * &
+        cur_waste_form%rad_mass_fraction(k) = &       ! [g-rad/g-wf]
+        cur_waste_form%rad_concentration(k) * &       ! [mol-rad/g-wf]
           cur_waste_form%mechanism%rad_species_list(k)%formula_weight
         ! to avoid errors in plotting data when conc is very very low:  
         if (cur_waste_form%rad_mass_fraction(k) <= 1e-40) then
@@ -1537,8 +1537,8 @@ subroutine PMWFSolve(this,time,ierr)
       do j = 1,num_species
         i = i + 1
         cur_waste_form%instantaneous_mass_rate(j) = &
-          (cur_waste_form%eff_dissolution_rate * &            ! kg-matrix/sec
-           cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kmol-rad/kg-rad
+          (cur_waste_form%eff_dissolution_rate / &            ! kg-matrix/sec
+           cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kg-rad/kmol-rad
            cur_waste_form%rad_mass_fraction(j) * &            ! kg-rad/kg-matrix
            1.d3)                                              ! kmol -> mol
         vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)  ! mol/sec
@@ -1631,12 +1631,10 @@ subroutine WFMechDSNFDissolution(this,waste_form,pm)
   class(wf_mechanism_dsnf_type) :: this
   class(waste_form_base_type) :: waste_form
   class(pm_waste_form_type) :: pm  
-                                           ! day/sec
-  PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
   
   this%frac_dissolution_rate = 1.d0 / (1.1d0*pm%realization%option%tran_dt) 
 
-  ! kg matrix/sec
+  ! kg-matrix/sec
   waste_form%eff_dissolution_rate = &
     this%frac_dissolution_rate * &           ! 1/sec
     this%matrix_density * &                  ! kg matrix/m^3 matrix
