@@ -1815,17 +1815,18 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   
   type(grid_type), pointer :: grid
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
-  type(global_auxvar_type), pointer :: global_auxvars(:)
   PetscInt :: i
   PetscInt :: icomp_fmdm
   PetscInt :: icomp_pflotran
   PetscInt :: ghosted_id
   
  ! FMDM model: 
- !===================================
+ !=======================================================
   integer ( kind = 4) :: success
   logical ( kind = 4) :: initialRun
- !===================================
+  PetscReal :: time
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+ !========================================================
   
   grid => pm%realization%patch%grid
   rt_auxvars => pm%realization%patch%aux%RT%auxvars
