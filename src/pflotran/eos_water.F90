@@ -197,7 +197,8 @@ module EOS_Water_module
             EOSWaterDensityTGDPB01, &
             EOSWaterViscosityExt, &
             EOSWaterDensityExt, &
-            EOSWaterEnthalpyExt
+            EOSWaterEnthalpyExt, &
+            EOSWaterInputRecord
 
   public :: EOSWaterSetDensity, &
             EOSWaterSetEnthalpy, &
@@ -2573,6 +2574,125 @@ subroutine EOSWaterDensityExtNumericalDerive(t,p,aux,dw,dwmol,dwp,dwt,ierr)
 #endif
   
 end subroutine EOSWaterDensityExtNumericalDerive
+
+! **************************************************************************** !
+
+subroutine EOSWaterInputRecord()
+  ! 
+  ! Prints ingested equation of state information to the input record file.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 05/04/2016
+  ! 
+  
+  implicit none
+  
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'WATER'
+  
+  ! water density [kg/m^3]
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityConstant)) then
+    write(id,'(a29)',advance='no') 'water density: '
+    write(word1,*) constant_density
+    write(id,'(a)') 'constant, ' // adjustl(trim(word1)) // ' kg/m^3'
+  endif
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityExponential)) then
+    write(id,'(a29)',advance='no') 'water density: '
+    write(id,'(a)') 'exponential'
+    write(id,'(a29)',advance='no') 'exp. ref. density: '
+    write(word1,*) exponent_reference_density
+    write(id,'(a)') adjustl(trim(word1)) // ' kg/m^3'
+    write(id,'(a29)',advance='no') 'exp. ref. pressure: '
+    write(word1,*) exponent_reference_pressure
+    write(id,'(a)') adjustl(trim(word1)) // ' Pa'
+    write(id,'(a29)',advance='no') 'exp. water compressibility: '
+    write(word1,*) exponent_water_compressibility
+    write(id,'(a)') adjustl(trim(word1)) // ' 1/Pa'
+  endif
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityIFC67)) then
+    write(id,'(a29)',advance='no') 'water density: '
+    write(id,'(a)') 'default, IFC67'
+  endif
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityTGDPB01)) then
+    write(id,'(a29)',advance='no') 'water density: '
+    write(id,'(a)') 'TGDPB01'
+  endif
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityPainter)) then
+    write(id,'(a29)',advance='no') 'water density: '
+    write(id,'(a)') 'PAINTER'
+  endif
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityBatzleAndWang) .and. &
+      associated(EOSWaterDensityExtPtr,EOSWaterDensityBatzleAndWangExt)) then
+    write(id,'(a29)',advance='no') 'water density: '
+    write(id,'(a)') 'Batzle and Wang'
+  endif
+  
+  ! water viscosity [Pa-s]
+  if (associated(EOSWaterViscosityPtr,EOSWaterViscosityConstant)) then
+    write(id,'(a29)',advance='no') 'water viscosity: '
+    write(word1,*) constant_viscosity
+    write(id,'(a)') 'constant, ' // trim(word1) // ' Pa-sec'
+  endif
+  if (associated(EOSWaterViscosityPtr,EOSWaterViscosity1)) then
+    write(id,'(a29)',advance='no') 'water viscosity: '
+    write(id,'(a)') 'default'
+  endif
+  if (associated(EOSWaterViscosityPtr,EOSWaterViscosityBatzleAndWang)) then
+    write(id,'(a29)',advance='no') 'water viscosity: '
+    write(id,'(a)') 'Batzle and Wang'
+  endif
+  
+  ! water enthalpy [MJ/kg]
+  if (associated(EOSWaterViscosityPtr,EOSWaterEnthalpyConstant)) then
+    write(id,'(a29)',advance='no') 'water enthalpy: '
+    write(word1,*) constant_enthalpy
+    write(id,'(a)') 'constant, ' // trim(word1) // ' MJ/kg'
+  endif
+  if (associated(EOSWaterViscosityPtr,EOSWaterEnthalpyIFC67)) then
+    write(id,'(a29)',advance='no') 'water enthalpy: '
+    write(id,'(a)') 'default, IFC67'
+  endif
+  if (associated(EOSWaterViscosityPtr,EOSWaterEnthalpyPainter)) then
+    write(id,'(a29)',advance='no') 'water enthalpy: '
+    write(id,'(a)') 'PAINTER'
+  endif
+  
+  ! steam density
+  if (associated(EOSWaterSteamDensityEnthalpyPtr, &
+                 EOSWaterSteamDenEnthConstant)) then
+    write(id,'(a29)',advance='no') 'steam density: '
+    write(word1,*) constant_steam_density
+    write(id,'(a)') 'constant, ' // trim(word1) // ' kg/m^3'
+  endif
+  if (associated(EOSWaterSteamDensityEnthalpyPtr, &
+                 EOSWaterSteamDensityEnthalpyIFC67)) then
+    write(id,'(a29)',advance='no') 'steam density: '
+    write(id,'(a)') 'default, IFC67'
+  endif
+  
+  ! steam enthalpy [MJ/kg]
+  if (associated(EOSWaterSteamDensityEnthalpyPtr, &
+                 EOSWaterSteamDenEnthConstant)) then
+    write(id,'(a29)',advance='no') 'steam enthalpy: '
+    write(word1,*) constant_steam_enthalpy
+    write(id,'(a)') 'constant, ' // trim(word1) // ' MJ/kg'
+  endif
+  if (associated(EOSWaterSteamDensityEnthalpyPtr, &
+                 EOSWaterSteamDensityEnthalpyIFC67)) then
+    write(id,'(a29)',advance='no') 'steam enthalpy: '
+    write(id,'(a)') 'default, IFC67'
+  endif
+  
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  
+end subroutine EOSWaterInputRecord
 
 ! ************************************************************************** !
 end module EOS_Water_module
