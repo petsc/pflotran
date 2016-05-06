@@ -1788,6 +1788,7 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
 
   use Grid_module
   use Reactive_Transport_Aux_module
+  use Global_Aux_module
 
   implicit none
   
@@ -1814,6 +1815,7 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   
   type(grid_type), pointer :: grid
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars(:)
   PetscInt :: i
   PetscInt :: icomp_fmdm
   PetscInt :: icomp_pflotran
@@ -1827,6 +1829,7 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   
   grid => pm%realization%patch%grid
   rt_auxvars => pm%realization%patch%aux%RT%auxvars
+  global_auxvars => pm%realization%patch%aux%Global%auxvars
 
   ierr = 0
   
