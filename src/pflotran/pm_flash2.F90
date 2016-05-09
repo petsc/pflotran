@@ -236,6 +236,8 @@ subroutine PMFlash2UpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   !      large relative to the simulation time.  This has been removed.
       
   dt = dtt
+
+  call PMSubsurfaceFlowLimitDTByCFL(this,dt)
   
 end subroutine PMFlash2UpdateTimestep
 

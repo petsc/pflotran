@@ -371,6 +371,8 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   dt = min(dtt,tfac(ifac)*dt,dt_max)
   dt = max(dt,dt_min)
 
+  call PMSubsurfaceFlowLimitDTByCFL(this,dt)
+
 end subroutine PMGeneralUpdateTimestep
 
 ! ************************************************************************** !

@@ -37,6 +37,7 @@ module PM_Subsurface_Flow_class
     PetscReal :: temperature_change_governor
     PetscReal :: saturation_change_governor
     PetscReal :: xmol_change_governor
+    PetscReal :: cfl_governor
     ! these limit (truncate) the maximum change in a Newton iteration
     ! truncation occurs within PMXXXCheckUpdatePre
     PetscReal :: pressure_dampening_factor
@@ -77,6 +78,7 @@ module PM_Subsurface_Flow_class
             PMSubsurfaceFlowUpdateSolution, &
             PMSubsurfaceFlowUpdatePropertiesNI, &
             PMSubsurfaceFlowTimeCut, &
+            PMSubsurfaceFlowLimitDTByCFL, &
             PMSubsurfaceFlowCheckpointBinary, &
             PMSubsurfaceFlowRestartBinary, &
             PMSubsurfaceFlowReadSelectCase, &
@@ -113,6 +115,7 @@ subroutine PMSubsurfaceFlowCreate(this)
   this%temperature_change_governor = 5.d0
   this%saturation_change_governor = 0.5d0
   this%xmol_change_governor = 1.d0
+  this%cfl_governor = UNINITIALIZED_DOUBLE
   this%pressure_dampening_factor = UNINITIALIZED_DOUBLE
   this%saturation_change_limit = UNINITIALIZED_DOUBLE
   this%pressure_change_limit = UNINITIALIZED_DOUBLE
@@ -167,22 +170,28 @@ subroutine PMSubsurfaceFlowReadSelectCase(this,input,keyword,found,option)
     case('PRESSURE_DAMPENING_FACTOR')
       call InputReadDouble(input,option,this%pressure_dampening_factor)
       call InputErrorMsg(input,option,'PRESSURE_DAMPENING_FACTOR', &
-                          'TIMESTEPPER')
+                         'SUBSURFACE_FLOW OPTIONS')
 
     case('SATURATION_CHANGE_LIMIT')
       call InputReadDouble(input,option,this%saturation_change_limit)
       call InputErrorMsg(input,option,'SATURATION_CHANGE_LIMIT', &
-                          'TIMESTEPPER')
+                          'SUBSURFACE_FLOW OPTIONS')
                            
     case('PRESSURE_CHANGE_LIMIT')
       call InputReadDouble(input,option,this%pressure_change_limit)
       call InputErrorMsg(input,option,'PRESSURE_CHANGE_LIMIT', &
-                          'TIMESTEPPER')
+                          'SUBSURFACE_FLOW OPTIONS')
                            
     case('TEMPERATURE_CHANGE_LIMIT')
       call InputReadDouble(input,option,this%temperature_change_limit)
       call InputErrorMsg(input,option,'TEMPERATURE_CHANGE_LIMIT', &
-                          'TIMESTEPPER')
+                          'SUBSURFACE_FLOW OPTIONS')
+
+    case('MAX_CFL')
+      call InputReadDouble(input,option,this%cfl_governor)
+      call InputErrorMsg(input,option,'MAX_CFL', &
+                          'SUBSURFACE_FLOW OPTIONS')
+
     case default
       found = PETSC_FALSE
   end select  
@@ -528,6 +537,43 @@ subroutine PMSubsurfaceFlowTimeCut(this)
   endif             
 
 end subroutine PMSubsurfaceFlowTimeCut
+
+! ************************************************************************** !
+
+subroutine PMSubsurfaceFlowLimitDTByCFL(this,dt)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/09/16 
+  !
+  use Option_module
+  use Output_Aux_module
+
+  implicit none
+  
+  class(pm_subsurface_flow_type) :: this
+  PetscReal :: dt
+
+  PetscReal :: max_dt_cfl_1
+  type(output_option_type), pointer :: output_option
+  
+  if (Initialized(this%cfl_governor)) then
+    call RealizationCalculateCFL1Timestep(this%realization,max_dt_cfl_1) 
+    if (dt/this%cfl_governor > max_dt_cfl_1) then
+      dt = max_dt_cfl_1*this%cfl_governor
+      output_option => this%realization%output_option
+      if (OptionPrintToScreen(this%option)) then
+        write(*,'(" CFL Limiting: ",1pe12.4," [",a,"]")') &
+              dt/output_option%tconv,trim(output_option%tunit)
+      endif
+      if (OptionPrintToFile(this%option)) then
+        write(this%option%fid_out,'(/," CFL Limiting: ",1pe12.4," [",a,"]",&
+                                   &/)') &
+              dt/output_option%tconv,trim(output_option%tunit)
+      endif
+    endif
+  endif
+
+end subroutine PMSubsurfaceFlowLimitDTByCFL
 
 ! ************************************************************************** !
 
