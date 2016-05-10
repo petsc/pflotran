@@ -649,7 +649,7 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                                error_string)
             call InputReadWord(input,option,word,PETSC_TRUE)
             if (input%ierr == 0) then
-              internal_units = 'm^2/m^3'
+              internal_units = 'm^2/kg'
               double = UnitsConvertToInternal(word,internal_units,option) * &
                        double
             endif
@@ -1662,6 +1662,7 @@ subroutine PMWFSolve(this,time,ierr)
       ! mol/sec
       do j = 1,num_species
         i = i + 1
+        ! Do an exponential equation here instead?
         cur_waste_form%instantaneous_mass_rate(j) = &
           (cur_waste_form%eff_dissolution_rate / &            ! kg-matrix/sec
            cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kg-rad/kmol-rad
@@ -1789,24 +1790,30 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   use Grid_module
   use Reactive_Transport_Aux_module
   use Global_Aux_module
+  use Option_module
 
   implicit none
   
  ! FMDM model:
- !================================================================ 
+ !=================================================================== 
   interface
     subroutine AMP_step ( burnup, sTme, temperature_C, conc, &
-                          initialRun, fuelDisRate, success )
+                          initialRun, fuelDisRate, Usource, success )
       real ( kind = 8), intent( in ) :: burnup   
       real ( kind = 8), intent( in ) :: sTme   
       real ( kind = 8), intent( in ) :: temperature_C   
       real ( kind = 8), intent( inout ),  dimension (:,:) :: conc
       logical ( kind = 4), intent( in ) :: initialRun
-      real ( kind = 8), intent(out) :: fuelDisRate
+      ! sum of fluxes of 3 uranium compounds (UO2,2+;UCO3,2+;UO2)
+      ! units: g/m^2/yr where g = sum of uranium compound mass
+      real ( kind = 8), intent(out) :: fuelDisRate 
+      ! flux of just the uranium from the 3 uranium compounds 
+      ! units: g/m^2/yr where g = uranium mass
+      real ( kind = 8), intent(out) :: Usource
       integer ( kind = 4), intent(out) :: success
     end subroutine
   end interface  
- !================================================================
+ !===================================================================
 
   class(wf_mechanism_fmdm_type) :: this
   class(waste_form_base_type) :: waste_form
@@ -1825,12 +1832,15 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   integer ( kind = 4) :: success
   logical ( kind = 4) :: initialRun
   PetscReal :: time
+  PetscReal :: Usource
   type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(option_type), pointer :: option
  !========================================================
   
   grid => pm%realization%patch%grid
   rt_auxvars => pm%realization%patch%aux%RT%auxvars
   global_auxvars => pm%realization%patch%aux%Global%auxvars
+  option => pm%realization%option
 
   ierr = 0
   
@@ -1851,21 +1861,28 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   endif
   
 #ifdef FMDM_MODEL  
- ! FMDM model calculates this%dissolution_rate [g/m^2/yr]:
+ ! FMDM model calculates this%dissolution_rate and Usource [g/m^2/yr]:
  !====================================================================
+  if (option%print_screen_flag) then
+    write(*,'(/,2("=")," FMDM ",72("="))')
+  endif
+  time = option%time
   call AMP_step(this%burnup, time, &
        global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp, &
-       this%concentration, initialRun, this%dissolution_rate, success) 
+       this%concentration, initialRun, this%dissolution_rate, &
+       Usource, success) 
  !====================================================================
  
   ! convert this%dissolution_rate from fmdm to pflotran units:
   ! g/m^2/yr => kg/m^2/sec
-  this%dissolution_rate = this%dissolution_rate / (1000.0*24.0*3600.0)
+  this%dissolution_rate = this%dissolution_rate / (1000.0*24.0*3600.0*365)
+  Usource = Usource / (1000.0*24.0*3600.0*365)
 #else
   ! if no FMDM model, use the burnup as this%dissolution_rate:
   ! if no FMDM model, the units of burnup should already be kg-matrix/m^2/sec:
   success = 1
   this%dissolution_rate = this%burnup
+  Usource = this%burnup
 #endif
 
   if (success == 0) then
@@ -1880,7 +1897,7 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
      this%matrix_density * &           ! kg-matrix/m^3-matrix
      waste_form%volume * &             ! m^3-matrix
      waste_form%exposure_factor        ! [-]
-
+  
 end subroutine WFMechFMDMDissolution
 
 ! ************************************************************************** !
