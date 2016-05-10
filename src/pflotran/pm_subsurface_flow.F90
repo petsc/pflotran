@@ -554,20 +554,25 @@ subroutine PMSubsurfaceFlowLimitDTByCFL(this,dt)
   PetscReal :: dt
 
   PetscReal :: max_dt_cfl_1
+  PetscReal :: prev_dt
   type(output_option_type), pointer :: output_option
   
   if (Initialized(this%cfl_governor)) then
     call RealizationCalculateCFL1Timestep(this%realization,max_dt_cfl_1) 
     if (dt/this%cfl_governor > max_dt_cfl_1) then
+      prev_dt = dt
       dt = max_dt_cfl_1*this%cfl_governor
       output_option => this%realization%output_option
       if (OptionPrintToScreen(this%option)) then
-        write(*,'(" CFL Limiting: ",1pe12.4," [",a,"]")') &
+        write(*, &
+          '(" CFL Limiting (",f4.1,"): ",1pe12.4," -> ",1pe12.4," [",a,"]")') &
+              this%cfl_governor,prev_dt/output_option%tconv, &
               dt/output_option%tconv,trim(output_option%tunit)
       endif
       if (OptionPrintToFile(this%option)) then
-        write(this%option%fid_out,'(/," CFL Limiting: ",1pe12.4," [",a,"]",&
-                                   &/)') &
+        write(this%option%fid_out, &
+          '(" CFL Limiting (",f4.1,"): ",1pe12.4," -> ",1pe12.4," [",a,"]")') &
+              this%cfl_governor,prev_dt/output_option%tconv, &
               dt/output_option%tconv,trim(output_option%tunit)
       endif
     endif
