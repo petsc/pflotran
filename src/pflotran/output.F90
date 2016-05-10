@@ -1207,7 +1207,10 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: snap_string,obs_string,msbl_string
   PetscBool :: snap_output_found,obs_output_found,msbl_output_found
-  PetscInt :: id = INPUT_RECORD_UNIT
+  PetscInt :: id = INPUT_RECORD_UNIT  
+  character(len=10) :: Format
+  
+  Format = '(ES14.7)'
 
   write(id,'(a)') ' '
     write(id,'(a)') '---------------------------------------------------------&
@@ -1239,17 +1242,17 @@ subroutine OutputInputRecord(output_option,waypoint_list)
     if (.not.associated(cur_waypoint)) exit
     if (cur_waypoint%print_snap_output) then
       snap_output_found = PETSC_TRUE
-      write(word,*) cur_waypoint%time / output_option%tconv
+      write(word,Format) cur_waypoint%time / output_option%tconv
       snap_string = trim(snap_string) // adjustl(trim(word)) // ','
     endif
     if (cur_waypoint%print_obs_output) then
       obs_output_found = PETSC_TRUE
-      write(word,*) cur_waypoint%time / output_option%tconv
+      write(word,Format) cur_waypoint%time / output_option%tconv
       obs_string = trim(obs_string) // adjustl(trim(word)) // ','
     endif
     if (cur_waypoint%print_msbl_output) then
       msbl_output_found = PETSC_TRUE
-      write(word,*) cur_waypoint%time / output_option%tconv
+      write(word,Format) cur_waypoint%time / output_option%tconv
       msbl_string = trim(msbl_string) // adjustl(trim(word)) // ','
     endif
     cur_waypoint => cur_waypoint%next
@@ -1333,7 +1336,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,*) output_option%periodic_snap_output_ts_imod
+    write(word,Format) output_option%periodic_snap_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
@@ -1342,7 +1345,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'time increment: '
-    write(word,*) output_option%periodic_snap_output_time_incr / &
+    write(word,Format) output_option%periodic_snap_output_time_incr / &
                   output_option%tconv
     write(id,'(a)') adjustl(trim(word)) // &
                     adjustl(trim(output_option%tunit))
@@ -1393,7 +1396,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,*) output_option%periodic_obs_output_ts_imod
+    write(word,Format) output_option%periodic_obs_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
@@ -1402,7 +1405,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'time increment: '
-    write(word,*) output_option%periodic_obs_output_time_incr / &
+    write(word,Format) output_option%periodic_obs_output_time_incr / &
                   output_option%tconv
     write(id,'(a)') adjustl(trim(word)) // &
                     adjustl(trim(output_option%tunit))
@@ -1452,7 +1455,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,*) output_option%periodic_msbl_output_ts_imod
+    write(word,Format) output_option%periodic_msbl_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
@@ -1461,7 +1464,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'time increment: '
-    write(word,*) output_option%periodic_msbl_output_time_incr / &
+    write(word,Format) output_option%periodic_msbl_output_time_incr / &
                   output_option%tconv
     write(id,'(a)') adjustl(trim(word)) // &
                     adjustl(trim(output_option%tunit))

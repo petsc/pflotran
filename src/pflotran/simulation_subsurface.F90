@@ -106,6 +106,7 @@ subroutine SubsurfaceSimInputRecord(this)
   ! Author: Jenn Frederick, SNL
   ! Date: 03/17/2016
   ! 
+  use Option_module
   use Output_module
   use Discretization_module
   use Reaction_Aux_module
@@ -116,6 +117,7 @@ subroutine SubsurfaceSimInputRecord(this)
   use Patch_module
   use Condition_module
   use EOS_module
+  use Waypoint_module
   
   implicit none
   
@@ -123,6 +125,10 @@ subroutine SubsurfaceSimInputRecord(this)
 
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: id = INPUT_RECORD_UNIT
+  
+  if (OptionPrintToScreen(this%option)) then
+    write (*,*) 'Printing input record file.'
+  endif
   
   write(id,'(a)') ' '
   write(id,'(a)') '---------------------------------------------------------&
@@ -148,6 +154,9 @@ subroutine SubsurfaceSimInputRecord(this)
     case(TOIL_IMS_MODE)
       write(id,'(a)') 'thermal-oil-immiscible'
   end select
+  
+  ! print time information
+  call WaypointInputRecord(this%output_option,this%waypoint_list_subsurface)
 
   ! print output file information
   call OutputInputRecord(this%output_option,this%waypoint_list_subsurface)
