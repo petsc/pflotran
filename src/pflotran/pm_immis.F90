@@ -234,6 +234,8 @@ subroutine PMImmisUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   !      large relative to the simulation time.  This has been removed.
   dtt = max(dtt,dt_min)
   dt = dtt
+
+  call PMSubsurfaceFlowLimitDTByCFL(this,dt)
   
 end subroutine PMImmisUpdateTimestep
 

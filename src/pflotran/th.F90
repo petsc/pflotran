@@ -772,7 +772,6 @@ subroutine THUpdateAuxVarsPatch(realization)
               TH_parameter, ithrm, &
               option)
       endif
-
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -1987,6 +1986,7 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
     call GlobalAuxVarCopy(global_auxvar_up,global_auxvar_pert_up,option)
     call GlobalAuxVarCopy(global_auxvar_dn,global_auxvar_pert_dn,option)
 
+    allocate(material_auxvar_pert_up,material_auxvar_pert_dn)
     call MaterialAuxVarInit(material_auxvar_pert_up,option)
     call MaterialAuxVarInit(material_auxvar_pert_dn,option)  
     call MaterialAuxVarCopy(material_auxvar_up,material_auxvar_pert_up,option)
@@ -2115,6 +2115,8 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
     Jdn = J_pert_dn
     call GlobalAuxVarStrip(global_auxvar_pert_up)
     call GlobalAuxVarStrip(global_auxvar_pert_dn)    
+    call MaterialAuxVarStrip(material_auxvar_pert_up)
+    call MaterialAuxVarStrip(material_auxvar_pert_dn)    
   endif
 
 end subroutine THFluxDerivative
