@@ -182,7 +182,7 @@ WASTE_FORM_GENERAL
   MECHANISM FMDM # (dissolution rate determined by FMDM)
     NAME fmdm01
     MATRIX_DENSITY 19000. kg/m^3
-    SPECIFIC_SURFACE_AREA 1.0d0 m^2/m^3
+    SPECIFIC_SURFACE_AREA 0.001 m^2/g
     BURNUP 1.0d-2 kg/m^2-yr  # (because FMDM is not linked)
     SPECIES
      #name,   MW[g/mol],dcy[1/s], initMF, inst_rel_frac,daughter
