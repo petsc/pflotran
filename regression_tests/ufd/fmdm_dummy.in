@@ -9,8 +9,8 @@ SIMULATION
     SUBSURFACE_TRANSPORT transport
       GLOBAL_IMPLICIT
     /
-    WASTE_FORM mpm
-      TYPE FMDM
+    WASTE_FORM fmdm_test
+      TYPE GENERAL
     /
   /
 END
@@ -108,9 +108,9 @@ END
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 100.d0 d
+  FINAL_TIME 500.d0 yr
   INITIAL_TIMESTEP_SIZE 1.d-6 d
-  MAXIMUM_TIMESTEP_SIZE 10.d0 d
+  MAXIMUM_TIMESTEP_SIZE 2.0 yr
 END
 
 #=========================== regions ==========================================
@@ -167,19 +167,32 @@ END
 
 END_SUBSURFACE
 
-FMDM
-  BYPASS_WARNING_MESSAGE
-  NUM_GRID_CELLS 40
-  SPECIES 
-#    Tracer 87.62d0
-#    Tracer 1.d0
-    Tracer
-  /
-#  MASS_FRACTION FILE HLW_mass_fractions.txt
+
+WASTE_FORM_GENERAL
+
+  #BYPASS_WARNING_MESSAGE
+
   WASTE_FORM
     COORDINATE 0.5d0 0.5d0 0.5d0
-    SPECIFIC_SURFACE_AREA 1.d0
-    VOLUME 1.d0
-    BURNUP 1.d-2
+    VOLUME 1.d0 m^3
+    MECHANISM_NAME fmdm01
+    CANISTER_VITALITY_RATE 0.0003 1/day
   /
-END_FMDM
+
+  MECHANISM FMDM # (dissolution rate determined by FMDM)
+    NAME fmdm01
+    MATRIX_DENSITY 19000. kg/m^3
+    SPECIFIC_SURFACE_AREA 1.0d0 m^2/m^3
+    BURNUP 1.0d-2 kg/m^2-yr  # (because FMDM is not linked)
+    SPECIES
+     #name,   MW[g/mol],dcy[1/s], initMF, inst_rel_frac,daughter
+     Tracer   233.04d0  1.38d-13  9.70d-9   0.0d0
+    /
+    CANISTER_DEGRADATION_MODEL
+      CANISTER_MATERIAL_CONSTANT 1500.0
+    /
+  /
+
+  PRINT_MASS_BALANCE
+
+END_WASTE_FORM_GENERAL

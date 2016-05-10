@@ -6833,8 +6833,12 @@ subroutine PatchGetCompMassInRegion(cell_ids,num_cells,patch,option, &
       ! aqueous species; units [mol/L-water]*[m^3-water]*[1000L/m^3-water]=[mol]
       aq_species_mass = rt_auxvars(ghosted_id)%total(j,LIQUID_PHASE) * &
                         m3_water * 1.0d3
-      ! sorbed species; units [mol/m^3-bulk]*[m^3-bulk]=[mol]
-      sorb_species_mass = rt_auxvars(ghosted_id)%total_sorb_eq(j) * m3_bulk
+      if (associated(rt_auxvars(ghosted_id)%total_sorb_eq)) then
+        ! sorbed species; units [mol/m^3-bulk]*[m^3-bulk]=[mol]
+        sorb_species_mass = rt_auxvars(ghosted_id)%total_sorb_eq(j) * m3_bulk
+      else
+        sorb_species_mass = 0.d0
+      endif
       local_total_mass = local_total_mass + aq_species_mass + &
                                             sorb_species_mass
     enddo
