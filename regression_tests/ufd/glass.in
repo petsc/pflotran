@@ -245,7 +245,7 @@ WASTE_FORM_GENERAL
 
   MECHANISM GLASS 
     NAME glass01
-    SPECIFIC_SURFACE_AREA 2.78d-3 m^2/m^3
+    SPECIFIC_SURFACE_AREA 2.78d-3 m^2/kg
     MATRIX_DENSITY 2.46d3 kg/m^3
     SPECIES
      #name,   MW[g/mol],dcy[1/s], initMF, inst_rel_frac, daughter               

@@ -13,6 +13,7 @@ module EOS_module
  
   public :: EOSInit, &
             EOSRead, &
+            EOSInputRecord, &
             AllEOSDBaseDestroy
 
 contains
@@ -489,6 +490,35 @@ subroutine EOSRead(input,option)
   end select
   
 end subroutine EOSRead
+
+! **************************************************************************** !
+
+subroutine EOSInputRecord()
+  ! 
+  ! Prints ingested equation of state information to the input record file.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 05/04/2016
+  ! 
+  use EOS_Water_module
+  use EOS_Gas_module
+  use EOS_Oil_module 
+  
+  implicit none
+  
+  PetscInt :: id = INPUT_RECORD_UNIT
+  
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'EQUATIONS OF STATE (EOS)'
+
+  call EOSWaterInputRecord()
+  call EOSGasInputRecord()
+  call EOSOilInputRecord()
+  
+end subroutine EOSInputRecord
 
 ! ************************************************************************** !
 

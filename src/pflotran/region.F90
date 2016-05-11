@@ -1220,7 +1220,12 @@ subroutine RegionInputRecord(region_list)
   type(region_type), pointer :: cur_region
   character(len=MAXWORDLENGTH) :: word1, word2
   character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: k
   PetscInt :: id = INPUT_RECORD_UNIT
+  character(len=10) :: sFormat, iFormat
+  
+  sFormat = '(ES14.7)'
+  iFormat = '(I10)'
 
   write(id,'(a)') ' '
   write(id,'(a)') '---------------------------------------------------------&
@@ -1244,16 +1249,16 @@ subroutine RegionInputRecord(region_list)
         write(id,'(a29)',advance='no') 'defined by: '
         write(id,'(a)') 'BLOCK'
         write(id,'(a29)',advance='no') 'I indices: '
-        write(word1,*) cur_region%i1
-        write(word2,*) cur_region%i2
+        write(word1,iFormat) cur_region%i1
+        write(word2,iFormat) cur_region%i2
         write(id,'(a)') adjustl(trim(word1)) // ' ' // adjustl(trim(word2))
         write(id,'(a29)',advance='no') 'J indices: '
-        write(word1,*) cur_region%j1
-        write(word2,*) cur_region%j2
+        write(word1,iFormat) cur_region%j1
+        write(word2,iFormat) cur_region%j2
         write(id,'(a)') adjustl(trim(word1)) // ' ' // adjustl(trim(word2))
         write(id,'(a29)',advance='no') 'K indices: '
-        write(word1,*) cur_region%k1
-        write(word2,*) cur_region%k2
+        write(word1,iFormat) cur_region%k1
+        write(word2,iFormat) cur_region%k2
         write(id,'(a)') adjustl(trim(word1)) // ' ' // adjustl(trim(word2))
     !--------------------------------
       case (DEFINED_BY_CARTESIAN_BOUNDARY)
@@ -1264,13 +1269,25 @@ subroutine RegionInputRecord(region_list)
         write(id,'(a29)',advance='no') 'defined by: '
         write(id,'(a)') 'COORDINATE(S)'
         write(id,'(a29)',advance='no') 'X coordinate(s): '
-        write(string,*) cur_region%coordinates%x
+        string = ''
+        do k = 1,size(cur_region%coordinates)
+         write(word1,sFormat) cur_region%coordinates(k)%x
+         string = adjustl(trim(string)) // ' ' // adjustl(trim(word1))
+        enddo
         write(id,'(a)') adjustl(trim(string)) // ' m'
         write(id,'(a29)',advance='no') 'Y coordinate(s): '
-        write(string,*) cur_region%coordinates%y
+        string = ''
+        do k = 1,size(cur_region%coordinates)
+          write(word1,sFormat) cur_region%coordinates(k)%y
+          string = adjustl(trim(string)) // ' ' // adjustl(trim(word1))
+        enddo
         write(id,'(a)') adjustl(trim(string)) // ' m'
         write(id,'(a29)',advance='no') 'Z coordinate(s): '
-        write(string,*) cur_region%coordinates%z
+        string = ''
+        do k = 1,size(cur_region%coordinates)
+          write(word1,sFormat) cur_region%coordinates(k)%z
+          string = adjustl(trim(string)) // ' ' // adjustl(trim(word1))
+        enddo
         write(id,'(a)') adjustl(trim(string)) // ' m'
     !--------------------------------
       case (DEFINED_BY_CELL_AND_FACE_IDS)
