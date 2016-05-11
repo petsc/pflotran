@@ -263,23 +263,24 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   
   ! SubsurfaceInitSimulation() must be called after pmc linkages are set above.
   call SubsurfaceInitSimulation(simulation)
-
+  
+  ! create sync waypoint list to be used a few lines below
+  sync_waypoint_list => &
+    WaypointCreateSyncWaypointList(simulation%waypoint_list_subsurface)
+  ! merge in outer waypoints (e.g. checkpoint times)
+  call WaypointListCopyAndMerge(simulation%waypoint_list_subsurface, &
+                                simulation%waypoint_list_outer,option)
+  ! add sync waypoints into outer list
+  call WaypointListMerge(simulation%waypoint_list_outer,sync_waypoint_list, &
+                         option)
+  ! add in periodic time waypoints for checkpointing. these will not appear
+  ! in the outer list
+  call CheckpointPeriodicTimeWaypoints(simulation%checkpoint_option, &
+                                       simulation%waypoint_list_subsurface)
+ 
   ! clean up waypoints
   if (.not.option%steady_state) then
-    ! create sync waypoint list to be used a few lines below
-    sync_waypoint_list => &
-      WaypointCreateSyncWaypointList(simulation%waypoint_list_subsurface)
-    ! merge in outer waypoints (e.g. checkpoint times)
-    call WaypointListCopyAndMerge(simulation%waypoint_list_subsurface, &
-                                  simulation%waypoint_list_outer,option)
-    ! add sync waypoints into outer list
-    call WaypointListMerge(simulation%waypoint_list_outer,sync_waypoint_list, &
-                           option)
-    ! add in periodic time waypoints for checkpointing. these will not appear
-    ! in the outer list
-    call CheckpointPeriodicTimeWaypoints(simulation%checkpoint_option, &
-                                         simulation%waypoint_list_subsurface)
-    ! fill in holes in waypoint data
+   ! fill in holes in waypoint data
     call WaypointListFillIn(simulation%waypoint_list_subsurface,option)
     call WaypointListRemoveExtraWaypnts(simulation%waypoint_list_subsurface, &
                                         option)
@@ -1052,6 +1053,7 @@ subroutine SubsurfaceSetupRealization(simulation)
   use Reaction_Database_module
   use EOS_Water_module
   use Dataset_module
+  use Patch_module
   
   implicit none
 
@@ -1108,6 +1110,10 @@ subroutine SubsurfaceSetupRealization(simulation)
   call RealizationLocalizeRegions(realization)
   call RealizationPassPtrsToPatches(realization)
   call RealizationProcessDatasets(realization)
+  if (realization%output_option%mass_balance_region_flag) then
+    call PatchGetCompMassInRegionAssign(realization%patch%region_list, &
+         realization%output_option%mass_balance_region_list,option)
+  endif
   ! link conditions with regions through couplers and generate connectivity
   call RealProcessMatPropAndSatFunc(realization)
   ! must process conditions before couplers in order to determine dataset types

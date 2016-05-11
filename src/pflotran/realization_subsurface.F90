@@ -772,6 +772,22 @@ subroutine RealProcessMatPropAndSatFunc(realization)
           call printErrMsg(option)
       end select
     endif
+    if (associated(cur_material_property%tortuosity_dataset)) then
+      string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
+               '),TORTUOSITY'
+      dataset => &
+        DatasetBaseGetPointer(realization%datasets, &
+                              cur_material_property%tortuosity_dataset%name, &
+                              string,option)
+      call DatasetDestroy(cur_material_property%tortuosity_dataset)
+      select type(dataset)
+        class is (dataset_common_hdf5_type)
+          cur_material_property%tortuosity_dataset => dataset
+        class default
+          option%io_buffer = 'Incorrect dataset type for tortuosity.'
+          call printErrMsg(option)
+      end select
+    endif
     if (associated(cur_material_property%permeability_dataset)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),PERMEABILITY or PERMEABILITY X'
@@ -1823,7 +1839,9 @@ subroutine RealizationUpdatePropertiesTS(realization)
   ! since it is calculated as 1.d-sum_volfrac, it cannot be > 1
   call MaterialGetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                POROSITY,POROSITY_MINERAL)
-  call VecMin(field%work_loc,ivalue,min_value,ierr);CHKERRQ(ierr)
+  call DiscretizationLocalToGlobal(discretization,field%work_loc, &
+                                  field%work,ONEDOF)
+  call VecMin(field%work,ivalue,min_value,ierr);CHKERRQ(ierr)
   if (min_value < 0.d0) then
     write(option%io_buffer,*) 'Sum of mineral volume fractions has ' // &
       'exceeded 1.d0 at cell (note PETSc numbering): ', ivalue

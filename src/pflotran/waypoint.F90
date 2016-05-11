@@ -53,7 +53,8 @@ module Waypoint_module
             WaypointForceMatchToTime, &
             WaypointListPrint, &
             WaypointListGetFinalTime, &
-            WaypointCreateSyncWaypointList
+            WaypointCreateSyncWaypointList, &
+            WaypointInputRecord
 
 contains
 
@@ -865,39 +866,65 @@ end subroutine WaypointPrint
 
 ! ************************************************************************** !
 
-subroutine WaypointListDestroy(waypoint_list)
-  ! 
-  ! Destroys a simulation waypoint list
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 11/07/07
-  ! 
-
+subroutine WaypointInputRecord(output_option,waypoint_list)
+  !
+  ! Prints ingested time information to the input record file.
+  !
+  ! Author: Jenn Frederick
+  ! Date: 05/09/2016
+  !
+  use Output_Aux_module
+  
   implicit none
   
+  type(output_option_type), pointer :: output_option
   type(waypoint_list_type), pointer :: waypoint_list
   
-  type(waypoint_type), pointer :: cur_waypoint, next_waypoint
+  type(waypoint_type), pointer :: cur_waypoint
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal :: final_time
+  PetscReal :: max_dt
+  PetscReal :: prev_time
+  PetscInt :: id = INPUT_RECORD_UNIT
+  character(len=10) :: Format
   
-  if (.not.associated(waypoint_list)) return
+  Format = '(ES14.7)'
+  
+  write(id,'(a)') ' '
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'TIME'
+  
+  final_time = 0.d0
+  prev_time = 0.d0
+  max_dt = 0.d0
   
   cur_waypoint => waypoint_list%first
   do
     if (.not.associated(cur_waypoint)) exit
-    next_waypoint => cur_waypoint%next
-    call WaypointDestroy(cur_waypoint)
-    cur_waypoint => next_waypoint
+    if (cur_waypoint%final .or. cur_waypoint%time > final_time) then
+      final_time = cur_waypoint%time
+    endif
+    if (cur_waypoint%dt_max /= max_dt) then
+      write(id,'(a29)',advance='no') 'max. timestep: '
+      write(word1,Format) cur_waypoint%dt_max/output_option%tconv
+      write(word2,Format) prev_time/output_option%tconv
+      write(id,'(a)') adjustl(trim(word1)) // ' ' // &
+        trim(output_option%tunit) // ' at time ' // adjustl(trim(word2)) &
+        // ' ' // trim(output_option%tunit)
+    endif
+    max_dt = cur_waypoint%dt_max
+    prev_time = cur_waypoint%time
+    cur_waypoint => cur_waypoint%next
   enddo
   
-  nullify(waypoint_list%first)
-  nullify(waypoint_list%last)
-  if (associated(waypoint_list%array)) deallocate(waypoint_list%array)
-  nullify(waypoint_list%array)
+  write(id,'(a29)',advance='no') 'final time: '
+  write(word1,Format) final_time/output_option%tconv
+  write(id,'(a)') adjustl(trim(word1)) // ' ' // trim(output_option%tunit)
 
-  deallocate(waypoint_list)
-  nullify(waypoint_list)
-  
-end subroutine WaypointListDestroy 
+end subroutine WaypointInputRecord
 
 ! ************************************************************************** !
 
@@ -931,6 +958,42 @@ function WaypointListGetFinalTime(waypoint_list)
   enddo
   
 end function WaypointListGetFinalTime 
+
+! ************************************************************************** !
+
+subroutine WaypointListDestroy(waypoint_list)
+  ! 
+  ! Destroys a simulation waypoint list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/07/07
+  ! 
+
+  implicit none
+  
+  type(waypoint_list_type), pointer :: waypoint_list
+  
+  type(waypoint_type), pointer :: cur_waypoint, next_waypoint
+  
+  if (.not.associated(waypoint_list)) return
+  
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    next_waypoint => cur_waypoint%next
+    call WaypointDestroy(cur_waypoint)
+    cur_waypoint => next_waypoint
+  enddo
+  
+  nullify(waypoint_list%first)
+  nullify(waypoint_list%last)
+  if (associated(waypoint_list%array)) deallocate(waypoint_list%array)
+  nullify(waypoint_list%array)
+
+  deallocate(waypoint_list)
+  nullify(waypoint_list)
+  
+end subroutine WaypointListDestroy 
 
 ! ************************************************************************** !
 

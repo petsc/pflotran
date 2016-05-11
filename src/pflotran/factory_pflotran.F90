@@ -164,6 +164,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   
   input => InputCreate(IN_UNIT,option%input_filename,option)
 
+  simulation_type = ''
   string = 'SIMULATION'
   call InputFindStringInFile(input,option,string)
   call InputFindStringErrorMsg(input,option,string)
@@ -287,7 +288,12 @@ subroutine PFLOTRANReadSimulation(simulation,option)
     case('GEOMECHANICS_SUBSURFACE')
       simulation => GeomechanicsSimulationCreate(option)
     case default
-      call InputKeywordUnrecognized(word, &
+      if (len_trim(simulation_type) == 0) then
+        option%io_buffer = 'A SIMULATION_TYPE (e.g. "SIMULATION_TYPE &
+          &SUBSURFACE") must be specified within the SIMULATION block.'
+        call printErrMsg(option)
+      endif
+      call InputKeywordUnrecognized(simulation_type, &
                      'SIMULATION,SIMULATION_TYPE',option)            
   end select
   simulation%process_model_list => pm_master

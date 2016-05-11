@@ -707,12 +707,20 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
             word = adjustl(word)
             select case(this%data_dim)
               case(DIM_X)
-                option%io_buffer = 'Out of x bounds, i = ' // trim(word)
+                write(option%io_buffer,*) 'X value (', xx, &
+                  ') outside of X bounds (', this%origin(1), this%extent(1), &
+                  '), i =' 
               case(DIM_Y)
-                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+                write(option%io_buffer,*) 'Y value (', yy, &
+                  ') outside of Y bounds (', this%origin(2), this%extent(2), &
+                  '), j =' 
               case(DIM_Z)
-                option%io_buffer = 'Out of z bounds, k = ' // trim(word)
+                write(option%io_buffer,*) 'Z value (', zz, &
+                  ') outside of Z bounds (', this%origin(3), this%extent(3), &
+                  '), k =' 
             end select
+            option%io_buffer = trim(option%io_buffer) // ' ' // &
+              trim(word) // ' for gridded dataset "' // trim(this%name) // '".'
             call printErrMsgByRank(option)
           endif
           index = i
@@ -737,10 +745,15 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
             word = adjustl(word)
             select case(this%data_dim)
               case(DIM_XY,DIM_XZ)
-                option%io_buffer = 'Out of x bounds, i = ' // trim(word)
+                write(option%io_buffer,*) 'X value (', xx, &
+                  ') outside of X bounds (', this%origin(1), this%extent(1), &
+                  '), i =' 
               case(DIM_YZ)
-                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+                write(option%io_buffer,*) 'Y value (', yy, &
+                  ') outside of Y bounds (', this%origin(2), this%extent(2), &
+                  '), j =' 
             end select
+            option%io_buffer = trim(option%io_buffer) // ' ' // word
             call printMsgByRank(option)
           endif
           if (j < 1 .or. j_upper > this%dims(2)) then
@@ -749,15 +762,20 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
             word = adjustl(word)
             select case(this%data_dim)
               case(DIM_XY)
-                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+                write(option%io_buffer,*) 'Y value (', yy, &
+                  ') outside of Y bounds (', this%origin(2), this%extent(2), &
+                  '), j =' 
               case(DIM_YZ,DIM_XZ)
-                option%io_buffer = 'Out of z bounds, k = ' // trim(word)
+                write(option%io_buffer,*) 'Z value (', zz, &
+                  ') outside of Z bounds (', this%origin(3), this%extent(3), &
+                  '), k =' 
             end select
+            option%io_buffer = trim(option%io_buffer) // ' ' // word
             call printMsgByRank(option)
           endif
           if (lerr) then
             word = this%name
-            option%io_buffer = 'Gridded dataset "' // trim(word) // &
+            option%io_buffer = 'gridded dataset "' // trim(word) // &
                                '" out of bounds.'
             call printErrMsgByRank(option)
           endif
@@ -791,26 +809,32 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
             lerr = PETSC_TRUE
             write(word,*) i
             word = adjustl(word)
-            option%io_buffer = 'Out of x bounds, i = ' // trim(word)
+            write(option%io_buffer,*) 'X value (', xx, &
+              ') outside of X bounds (', this%origin(1), this%extent(1), &
+              '), i = ' // trim(word)
             call printMsgByRank(option)
           endif
           if (j < 1 .or. j_upper > this%dims(2)) then
             lerr = PETSC_TRUE
             write(word,*) j
             word = adjustl(word)
-            option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+            write(option%io_buffer,*) 'Y value (', yy, &
+              ') outside of Y bounds (', this%origin(2), this%extent(2), &
+              '), j = ' // trim(word)
             call printMsgByRank(option)
           endif
           if (k < 1 .or. k_upper > this%dims(3)) then
             lerr = PETSC_TRUE
             write(word,*) k
             word = adjustl(word)
-            option%io_buffer = 'Out of z bounds, k = ' // trim(word)
+            write(option%io_buffer,*) 'Z value (', zz, &
+              ') outside of Z bounds (', this%origin(3), this%extent(3), &
+              '), k = ' // trim(word)
             call printMsgByRank(option)
           endif
           if (lerr) then
             word = this%name
-            option%io_buffer = 'Gridded dataset "' // trim(word) // &
+            option%io_buffer = 'gridded dataset "' // trim(word) // &
                                '" out of bounds.'
             call printErrMsgByRank(option)
           endif
@@ -847,12 +871,20 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
             word = adjustl(word)
             select case(this%data_dim)
               case(DIM_X)
-                option%io_buffer = 'Out of x bounds, i = ' // trim(word)
+                write(option%io_buffer,*) 'X value (', xx, &
+                  ') outside of X bounds (', this%origin(1), this%extent(1), &
+                  '), i =' 
               case(DIM_Y)
-                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+                write(option%io_buffer,*) 'Y value (', yy, &
+                  ') outside of Y bounds (', this%origin(2), this%extent(2), &
+                  '), j =' 
               case(DIM_Z)
-                option%io_buffer = 'Out of z bounds, k = ' // trim(word)
+                write(option%io_buffer,*) 'Z value (', zz, &
+                  ') outside of Z bounds (', this%origin(3), this%extent(3), &
+                  '), k =' 
             end select
+            option%io_buffer = trim(option%io_buffer) // ' ' // &
+              trim(word) // ' for gridded dataset "' // trim(this%name) // '".'
             call printErrMsgByRank(option)
           endif
           dx = this%discretization(1)
@@ -867,10 +899,16 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
             word = adjustl(word)
             select case(this%data_dim)
               case(DIM_XY,DIM_XZ)
-                option%io_buffer = 'Out of x bounds, i = ' // trim(word)
+                write(option%io_buffer,*) 'X value (', xx, &
+                  ') outside of X bounds (', this%origin(1), this%extent(1), &
+                  '), i =' 
               case(DIM_YZ)
-                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+                write(option%io_buffer,*) 'Y value (', yy, &
+                  ') outside of Y bounds (', this%origin(2), this%extent(2), &
+                  '), j =' 
             end select
+            option%io_buffer = trim(option%io_buffer) // ' ' // &
+              trim(word) // ' for gridded dataset "' // trim(this%name) // '".'
             call printErrMsgByRank(option)
           endif
           if (j < 1 .or. j+1 > this%dims(2)) then
@@ -878,10 +916,16 @@ subroutine DatasetGriddedHDF5InterpolateReal(this,xx,yy,zz,real_value,option)
             word = adjustl(word)
             select case(this%data_dim)
               case(DIM_XY)
-                option%io_buffer = 'Out of y bounds, j = ' // trim(word)
+                write(option%io_buffer,*) 'Y value (', yy, &
+                  ') outside of Y bounds (', this%origin(2), this%extent(2), &
+                  '), j =' 
               case(DIM_YZ,DIM_XZ)
-                option%io_buffer = 'Out of z bounds, k = ' // trim(word)
+                write(option%io_buffer,*) 'Z value (', zz, &
+                  ') outside of Z bounds (', this%origin(3), this%extent(3), &
+                  '), k =' 
             end select
+            option%io_buffer = trim(option%io_buffer) // ' ' // &
+              trim(word) // ' for gridded dataset "' // trim(this%name) // '".'
             call printErrMsgByRank(option)
           endif
           dx = this%discretization(1)

@@ -268,6 +268,11 @@ FLUID_PROPERTY
 END
 
 #=========================== datasets =========================================
+DATASET Tortuosity
+  HDF5_DATASET_NAME Tortuosity
+  FILENAME parameters-543.h5
+END
+
 DATASET initial_U
   HDF5_DATASET_NAME U
   FILENAME parameters-543.h5
@@ -307,7 +312,7 @@ END
 MATERIAL_PROPERTY soil2
   ID 2
   POROSITY 0.25d0
-  TORTUOSITY 1.d0
+  TORTUOSITY DATASET Tortuosity
   CHARACTERISTIC_CURVES sf2
   PERMEABILITY
     DATASET Permeability
