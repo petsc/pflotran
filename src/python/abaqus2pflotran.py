@@ -18,6 +18,34 @@ import time
 # 2. Hex elements (8 nodes per elements)
 # 3. Node and element IDs are in ascending order
 
+def print_boundary_region_card(infilename, nodes):
+  mins = min(nodes)
+  maxs = max(nodes)
+  minmax = mins + maxs
+  #  0 1 2 3 4 5
+  # [0 0 0 1 1 1]
+  out_filename = infilename.split('.')[0] + '_boundary.txt'
+  fid = open(out_filename,'w+')
+  faces = ['WEST', 'NORTH', 'EAST', 'SOUTH', 'TOP', 'BOTTOM']
+  index = [[0, 1, 2, 0, 4, 5],  # west
+           [0, 4, 2, 3, 4, 5],  # north
+           [3, 1, 2, 3, 4, 5],  # east
+           [0, 1, 2, 3, 1, 5],  # south
+           [0, 1, 5, 3, 4, 5],  # top
+           [0, 1, 2, 3, 4, 2]]  # bottom
+
+  fid.write('\n')
+  fid.write('!======== boundary regions  ========\n')
+  for i in range(6):
+    fid.write('\n')
+    fid.write('REGION %s\n  FACE %s\n  COORDINATES\n  '
+            '  %.6f %.6f %.6f\n'
+            '    %.6f %.6f %.6f\n  /\n/\n\n'
+            % (faces[i].lower(), faces[i], minmax[index[i][0]], minmax[index[i][1]],
+               minmax[index[i][2]], minmax[index[i][3]], minmax[index[i][4]],
+               minmax[index[i][5]]))
+  fid.close()
+
 def abaqus_to_pflotran_mesh():
   start_time = time.time()
 #  infilename = sys.argv[1]
