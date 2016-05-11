@@ -98,8 +98,6 @@ subroutine TimestepperSteadyCreateFromBE(timestepper_BE)
   stepper%dt = timestepper_BE%dt
   stepper%dt_init = timestepper_BE%dt_init
   stepper%dt_max = timestepper_BE%dt_max
-  stepper%cfl_limiter = timestepper_BE%cfl_limiter
-  stepper%cfl_limiter_ts = timestepper_BE%cfl_limiter_ts
   
   stepper%time_step_cut_flag = timestepper_BE%time_step_cut_flag
   

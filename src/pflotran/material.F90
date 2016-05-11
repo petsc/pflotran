@@ -28,6 +28,7 @@ module Material_module
     PetscReal :: porosity
 !    character(len=MAXWORDLENGTH) :: porosity_dataset_name
     class(dataset_base_type), pointer :: porosity_dataset
+    class(dataset_base_type), pointer :: tortuosity_dataset
     PetscReal :: tortuosity
     PetscInt :: saturation_function_id
     character(len=MAXWORDLENGTH) :: saturation_function_name
@@ -151,6 +152,7 @@ function MaterialPropertyCreate()
   material_property%porosity = UNINITIALIZED_DOUBLE
 !  material_property%porosity_dataset_name = ''
   nullify(material_property%porosity_dataset)
+  nullify(material_property%tortuosity_dataset)
   material_property%tortuosity = 1.d0
   material_property%tortuosity_pwr = 0.d0
   material_property%saturation_function_id = 0
@@ -382,8 +384,9 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                         material_property%porosity_dataset, &
                                         'porosity','MATERIAL_PROPERTY',option)
       case('TORTUOSITY')
-        call InputReadDouble(input,option,material_property%tortuosity)
-        call InputErrorMsg(input,option,'tortuosity','MATERIAL_PROPERTY')
+        call DatasetReadDoubleOrDataset(input,material_property%tortuosity, &
+                                        material_property%tortuosity_dataset, &
+                                        'tortuosity','MATERIAL_PROPERTY',option)
       case('WIPP-FRACTURE')
         ! Calculates permeability and porosity induced by fracture,
         ! which is described by pressure within certain range of pressure
@@ -1952,6 +1955,16 @@ subroutine MaterialPropInputRecord(material_property_list)
       write(id,'(a)') adjustl(trim(word1))
     endif
     
+    write(id,'(a29)',advance='no') 'tortuosity: '
+    if (associated(cur_matprop%tortuosity_dataset)) then
+      write(id,'(a)') adjustl(trim(cur_matprop%tortuosity_dataset%name))
+      write(id,'(a29)',advance='no') 'from file: '
+      write(id,'(a)') adjustl(trim(cur_matprop%tortuosity_dataset%filename))
+    else
+      write(word1,*) cur_matprop%tortuosity
+      write(id,'(a)') adjustl(trim(word1))
+    endif
+
     if (Initialized(cur_matprop%specific_heat)) then
       write(id,'(a29)',advance='no') 'specific heat capacity: '
       write(word1,*) cur_matprop%specific_heat
@@ -2036,6 +2049,7 @@ recursive subroutine MaterialPropertyDestroy(material_property)
   nullify(material_property%permeability_dataset_y)
   nullify(material_property%permeability_dataset_z)
   nullify(material_property%porosity_dataset)
+  nullify(material_property%tortuosity_dataset)
   nullify(material_property%compressibility_dataset)
     
   deallocate(material_property)

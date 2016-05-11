@@ -267,7 +267,8 @@ subroutine InitSubsurfAssignMatProperties(realization)
   PetscReal, pointer :: compress_p(:)
   
   character(len=MAXSTRINGLENGTH) :: string, string2
-  type(material_property_type), pointer :: material_property, null_material_property
+  type(material_property_type), pointer :: material_property
+  type(material_property_type), pointer :: null_material_property
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
@@ -349,9 +350,8 @@ subroutine InitSubsurfAssignMatProperties(realization)
         adjustl(trim(option%io_buffer))
       call printErrMsgByRank(option)
     else
-      option%io_buffer = 'Something messed up with material ids. ' // &
-        ' Possibly material ids not assigned to all grid cells. ' // &
-        ' Contact Glenn!'
+      option%io_buffer = 'Something messed up with material ids. Possibly &
+        &material ids not assigned to all grid cells. Contact Glenn!'
       call printErrMsgByRank(option)
     endif
     if (option%nflowdof > 0) then
@@ -399,7 +399,6 @@ subroutine InitSubsurfAssignMatProperties(realization)
         call SubsurfReadPermsFromFile(realization,material_property)
       endif
       if (associated(material_property%compressibility_dataset)) then
-!        call SubsurfReadCompressFromFile(realization,material_property)
         call SubsurfReadDatasetToVecWithMask(realization, &
                material_property%compressibility_dataset, &
                material_property%internal_id,PETSC_FALSE,field%compressibility0)
@@ -408,6 +407,11 @@ subroutine InitSubsurfAssignMatProperties(realization)
         call SubsurfReadDatasetToVecWithMask(realization, &
                material_property%porosity_dataset, &
                material_property%internal_id,PETSC_FALSE,field%porosity0)
+      endif
+      if (associated(material_property%tortuosity_dataset)) then
+        call SubsurfReadDatasetToVecWithMask(realization, &
+               material_property%tortuosity_dataset, &
+               material_property%internal_id,PETSC_FALSE,field%tortuosity0)
       endif
     endif
   enddo
@@ -465,9 +469,9 @@ subroutine InitSubsurfAssignMatProperties(realization)
     call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     call VecMin(field%work,tempint,tempreal,ierr)
     if (Uninitialized(tempreal)) then
-      option%io_buffer = 'Incorrect assignment of soil properties. ' // &
-        'Please send this error message and your input file to ' // &
-        'pflotran-dev@googlegroups.com.'
+      option%io_buffer = 'Incorrect assignment of soil properties. Please &
+        &send this error message and your input file to &
+        &pflotran-dev@googlegroups.com.'
         call printErrMsg(option)
     endif
     call DiscretizationGlobalToLocal(discretization,field%work, &
@@ -652,11 +656,15 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   if (material_property%isotropic_permeability .or. &
       (.not.material_property%isotropic_permeability .and. &
        Initialized(material_property%vertical_anisotropy_ratio))) then
-!    material_property%permeability_dataset%name = 'Permeability'
-    !geh: Pass in -1 so that entire dataset is read. The mask is applied below.
+    ! Although the mask of material ID is applied below, we must only read
+    ! in the permeabilities that apply to this material so that small, 
+    ! localized gridded datasets (that only apply to a subset of the domain)
+    ! can be used.
+    call VecZeroEntries(global_vec,ierr);CHKERRQ(ierr)
     call SubsurfReadDatasetToVecWithMask(realization, &
                                     material_property%permeability_dataset, &
-                                    UNINITIALIZED_INTEGER,PETSC_TRUE,global_vec)
+                                    material_property%internal_id, &
+                                    PETSC_FALSE,global_vec)
     call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
     ratio = 1.d0
     scale = 1.d0
@@ -691,12 +699,15 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
           dataset_common_hdf5_ptr => &
              DatasetCommonHDF5Cast(material_property%permeability_dataset_z)
       end select
-      !geh: Pass in -1 so that entire dataset is read. The mask is applied 
-      !     below.
+      ! Although the mask of material ID is applied below, we must only read
+      ! in the permeabilities that apply to this material so that small, 
+      ! localized gridded datasets (that only apply to a subset of the domain)
+      ! can be used.
+      call VecZeroEntries(global_vec,ierr);CHKERRQ(ierr)
       call SubsurfReadDatasetToVecWithMask(realization, &
                                            dataset_common_hdf5_ptr,&
-                                           UNINITIALIZED_INTEGER,PETSC_TRUE, &
-                                           global_vec)
+                                           material_property%internal_id, &
+                                           PETSC_FALSE,global_vec)
       call VecGetArrayF90(global_vec,vec_p,ierr);CHKERRQ(ierr)
       select case(idirection)
         case(X_DIRECTION)
@@ -788,7 +799,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset, &
   option => realization%option
 
   call VecGetArrayF90(vec,vec_p,ierr);CHKERRQ(ierr)
-  
+
   if (index(dataset%filename,'.h5') > 0) then
     group_name = ''
     dataset_name = dataset%name
@@ -830,8 +841,8 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset, &
         endif
         call VecRestoreArrayF90(field%work,work_p,ierr);CHKERRQ(ierr)
       class default
-        option%io_buffer = 'Dataset "' // trim(dataset%name) // '" is of ' // &
-          'the wrong type for SubsurfReadDatasetToVecWithMask()'
+        option%io_buffer = 'Dataset "' // trim(dataset%name) // '" is of the &
+          &wrong type for SubsurfReadDatasetToVecWithMask()'
         call printErrMsg(option)
     end select
   else
@@ -979,14 +990,14 @@ subroutine InitSubsurfaceSetupZeroArrays(realization)
       case(G_MODE)
         call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
                       realization%patch%aux%General%inactive_rows_local, &
-                      realization%patch%aux%General%inactive_rows_local_ghosted, &
+                    realization%patch%aux%General%inactive_rows_local_ghosted, &
                       realization%patch%aux%General%n_inactive_rows, &
                       realization%patch%aux%General%inactive_cells_exist, &
                       option)
       case(TOIL_IMS_MODE)
         call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
                       realization%patch%aux%TOil_ims%inactive_rows_local, &
-                      realization%patch%aux%TOil_ims%inactive_rows_local_ghosted, &
+                   realization%patch%aux%TOil_ims%inactive_rows_local_ghosted, &
                       realization%patch%aux%TOil_ims%n_inactive_rows, &
                       realization%patch%aux%TOil_ims%inactive_cells_exist, &
                       option)
