@@ -19,11 +19,10 @@ import time
 # 3. Node and element IDs are in ascending order
 
 def print_boundary_region_card(infilename, nodes):
+  """This function prints out snippit of boundary regions to a txt file """
   mins = min(nodes)
   maxs = max(nodes)
   minmax = mins + maxs
-  #  0 1 2 3 4 5
-  # [0 0 0 1 1 1]
   out_filename = infilename.split('.')[0] + '_boundary.txt'
   fid = open(out_filename,'w+')
   faces = ['WEST', 'NORTH', 'EAST', 'SOUTH', 'TOP', 'BOTTOM']
