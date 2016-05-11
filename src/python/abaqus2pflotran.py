@@ -44,10 +44,13 @@ def abaqus_to_pflotran_mesh():
         if line.startswith('*'):
           break
         w = line.split(',')
+        node_id = int(w[0])
         node_coordinates = [0.]*3
         for icoord in range(3):
           node_coordinates[icoord] = float(w[icoord+1])
         nodes.append(node_coordinates)
+        if node_id != len(nodes):
+          sys.exit('Non-contiguous node ids.')
         if len(nodes) % 10000 == 0:
           print('Node %d' % len(nodes))
     elif line.startswith('*ELEMENT'):
@@ -91,6 +94,7 @@ def abaqus_to_pflotran_mesh():
   float_array = numpy.zeros((len(nodes),3),'f8')
   for inode in range(len(nodes)):
     float_array[inode][:] = nodes[inode][:]
+  print_boundary_region_card(infilename, nodes)
   # create node data set
   h5_file.create_dataset('Domain/Vertices',data=float_array)
 
@@ -102,6 +106,10 @@ def abaqus_to_pflotran_mesh():
   for i in range(len(elements)):
     element_nodes = elements[mapping[i]][1]
     int_array[i][1:9] = element_nodes
+    if i+1 != elements[mapping[i]][0][0]:
+      sys.exit('Non-contiguous element ids.')
+  if numpy.amax(int_array) > len(nodes):
+    sys.exit('Node ids do not match elements.')
   # create element data set
   h5_file.create_dataset('Domain/Cells',data=int_array)
 
@@ -119,6 +127,7 @@ def abaqus_to_pflotran_mesh():
   #geh: added mapping[i] to ensure ascending order
   #geh: removed num_elements_in_mat[] as it is not needed
   print ('Creating regions from materials.')
+
   for i in range(num_materials):
     elements_in_mat = []
     for j in range(len(elements)):
