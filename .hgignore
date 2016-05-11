@@ -12,8 +12,6 @@ syntax: glob
 *.bst
 *.synctex.gz
 *.old
-*.h5
-*.chk
 .DS_Store
 ._.DS_Store
 .hgignore.orig
