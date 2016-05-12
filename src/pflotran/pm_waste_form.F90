@@ -1905,6 +1905,12 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
     return
   endif
   
+  !==================
+  this%frac_dissolution_rate = &    ! 1/sec
+    this%dissolution_rate * &       ! kg-matrix/m^2/sec
+    this%specific_surface_area      ! m^2/kg-matrix
+  !==================
+  
   ! kg-matrix / sec
   waste_form%eff_dissolution_rate = &
      this%dissolution_rate * &         ! kg-matrix/m^2/sec
