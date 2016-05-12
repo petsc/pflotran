@@ -1662,6 +1662,11 @@ subroutine PMWFSolve(this,time,ierr)
         (cur_waste_form%canister_vitality <= 1.d-40)) then
       ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]
       call cur_waste_form%mechanism%Dissolution(cur_waste_form,this,ierr)
+      ! count the number of time FMDM was called
+      select type(cwfm => cur_waste_form%mechanism)
+        type is(wf_mechanism_fmdm_type)
+          fmdm_count_local = fmdm_count_local + 1
+      end select
       ! mol/sec
       do j = 1,num_species
         i = i + 1
@@ -1677,10 +1682,6 @@ subroutine PMWFSolve(this,time,ierr)
       cur_waste_form%eff_dissolution_rate = 0.d0
       cur_waste_form%instantaneous_mass_rate = 0.d0
     endif
-    select type(cwfm => cur_waste_form%mechanism)
-      type is(wf_mechanism_fmdm_type)
-        fmdm_count_local = fmdm_count_local + 1
-    end select
     cur_waste_form => cur_waste_form%next
   enddo
   
@@ -1758,7 +1759,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
     this%specific_surface_area * &     ! m^2/kg glass
     this%matrix_density * &            ! kg-glass/m^3-glass
     waste_form%volume * &              ! m^3-glass
-    waste_form%exposure_factor * &     ! [-]
+    waste_form%exposure_factor         ! [-]
 
 end subroutine WFMechGlassDissolution
 
