@@ -47,7 +47,7 @@ module PM_Waste_Form_class
   end type wf_mechanism_base_type
 
   type, public, extends(wf_mechanism_base_type) :: wf_mechanism_glass_type
-    PetscReal :: specific_surface_area    ! m^2/m^3
+    PetscReal :: specific_surface_area    ! m^2/kg
     PetscReal :: dissolution_rate         ! kg-glass/m^2/sec
   contains
     procedure, public :: Dissolution => WFMechGlassDissolution
@@ -60,7 +60,7 @@ module PM_Waste_Form_class
   end type wf_mechanism_dsnf_type
 
   type, public, extends(wf_mechanism_base_type) :: wf_mechanism_fmdm_type
-    PetscReal :: specific_surface_area    ! m^2/m^3
+    PetscReal :: specific_surface_area    ! m^2/kg
     PetscReal :: dissolution_rate         ! kg-matrix/m^2/sec
     PetscReal :: frac_dissolution_rate    ! 1/sec
     PetscReal :: burnup                   ! GWd/MTHM (kg-matrix/m^2/sec)
@@ -88,7 +88,7 @@ module PM_Waste_Form_class
   end type wf_mechanism_fmdm_type
   
   type, public, extends(wf_mechanism_base_type) :: wf_mechanism_custom_type
-    PetscReal :: specific_surface_area    ! m^2/m^3
+    PetscReal :: specific_surface_area    ! m^2/kg
     PetscReal :: dissolution_rate         ! kg-matrix/m^2/sec
     PetscReal :: frac_dissolution_rate    ! 1/sec
   contains
@@ -194,7 +194,7 @@ function MechanismGlassCreate()
   
   allocate(MechanismGlassCreate)
   call MechanismInit(MechanismGlassCreate)
-  MechanismGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  MechanismGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/kg
   MechanismGlassCreate%dissolution_rate = 0.d0  ! kg/m^2/sec
 
 end function MechanismGlassCreate
@@ -234,7 +234,7 @@ function MechanismFMDMCreate()
   allocate(MechanismFMDMCreate)
   call MechanismInit(MechanismFMDMCreate)
   
-  MechanismFMDMCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  MechanismFMDMCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/kg
   MechanismFMDMCreate%dissolution_rate = UNINITIALIZED_DOUBLE       ! kg/m^2/sec
   MechanismFMDMCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
   MechanismFMDMCreate%burnup = UNINITIALIZED_DOUBLE     ! GWd/MTHM or (kg/m^2/sec)
@@ -291,7 +291,7 @@ function MechanismCustomCreate()
   
   allocate(MechanismCustomCreate)
   call MechanismInit(MechanismCustomCreate)
-  MechanismCustomCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  MechanismCustomCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/kg
   MechanismCustomCreate%dissolution_rate = UNINITIALIZED_DOUBLE    ! kg/m^2/sec
   MechanismCustomCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE    ! 1/sec
 
@@ -1360,8 +1360,6 @@ end subroutine PMWFSetup
       enddo
       cur_waste_form => cur_waste_form%next
     enddo                             ! zero-based indexing
-    !write(*,*) species_indices_in_residual(:)
-    !stop
     species_indices_in_residual(:) = species_indices_in_residual(:) - 1
     ! set to global petsc index
     species_indices_in_residual(:) = species_indices_in_residual(:) + &
@@ -1441,6 +1439,17 @@ subroutine PMWFInitializeTimestep(this)
     num_species = cwfm%num_species
     allocate(Coeff(num_species))
     allocate(concentration_old(num_species))
+    ! ------ update mass balances after transport step ---------------------
+    cur_waste_form%cumulative_mass = cur_waste_form%cumulative_mass + &
+                                     cur_waste_form%instantaneous_mass_rate*dt
+    ! ------ update matrix volume ------------------------------------------
+    dV = cur_waste_form%eff_dissolution_rate / &      ! kg-matrix/sec
+         cwfm%matrix_density * &                      ! kg-matrix/m^3-matrix
+         dt                                           ! sec
+    cur_waste_form%volume = cur_waste_form%volume - dV
+    if (cur_waste_form%volume <= 1.d-10) then
+      cur_waste_form%volume = 0.d0
+    endif
     
     ! ------ get species concentrations from mass fractions ----------------
     do k = 1,num_species
@@ -1637,9 +1646,11 @@ subroutine PMWFSolve(this,time,ierr)
   PetscInt :: i, j
   PetscInt :: num_species
   PetscReal, pointer :: vec_p(:)  
-  PetscReal :: dt
+  PetscInt :: fmdm_count_global, fmdm_count_local
+  character(len=MAXWORDLENGTH) :: word
   
-  dt = this%realization%option%tran_dt
+  fmdm_count_global = 0
+  fmdm_count_local = 0
 
   call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   cur_waste_form => this%waste_form_list
@@ -1649,16 +1660,20 @@ subroutine PMWFSolve(this,time,ierr)
     num_species = cur_waste_form%mechanism%num_species    
     if ((cur_waste_form%volume > 0.d0) .and. &
         (cur_waste_form%canister_vitality <= 1.d-40)) then
-      ! calculate the mechanism-specific eff_dissolution_rate [kg-bulk/sec]
-      ! which is a corrected linear rate
+      ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]
       call cur_waste_form%mechanism%Dissolution(cur_waste_form,this,ierr)
+      ! count the number of time FMDM was called
+      select type(cwfm => cur_waste_form%mechanism)
+        type is(wf_mechanism_fmdm_type)
+          fmdm_count_local = fmdm_count_local + 1
+      end select
       ! mol/sec
       do j = 1,num_species
         i = i + 1
-        cur_waste_form%instantaneous_mass_rate(j) = &         ! mol/sec
-          (cur_waste_form%eff_dissolution_rate / &            ! kg-bulk/sec
+        cur_waste_form%instantaneous_mass_rate(j) = &
+          (cur_waste_form%eff_dissolution_rate / &            ! kg-matrix/sec
            cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kg-rad/kmol-rad
-           cur_waste_form%rad_mass_fraction(j) * &            ! kg-rad/kg-bulk
+           cur_waste_form%rad_mass_fraction(j) * &            ! kg-rad/kg-matrix
            1.d3)                                              ! kmol -> mol
         vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)  ! mol/sec
       enddo
@@ -1667,11 +1682,18 @@ subroutine PMWFSolve(this,time,ierr)
       cur_waste_form%eff_dissolution_rate = 0.d0
       cur_waste_form%instantaneous_mass_rate = 0.d0
     endif
-    ! ------ update mass balances after transport step ---------------------
-    cur_waste_form%cumulative_mass = cur_waste_form%cumulative_mass + &
-                                     cur_waste_form%instantaneous_mass_rate*dt
     cur_waste_form => cur_waste_form%next
   enddo
+  
+  ! ideally, this print statement would go inside the dissolution subroutine
+  call MPI_Allreduce(fmdm_count_local,fmdm_count_global,ONE_INTEGER_MPI, &
+                     MPI_INTEGER,MPI_SUM,this%realization%option%mycomm,ierr)
+  if ((fmdm_count_global > 0) .and. &
+      this%realization%option%print_screen_flag) then
+    write(word,'(i5)') fmdm_count_global
+    write(*,'(/,2("=")," FMDM ",72("="))')
+    write(*,'(a)') '== ' // adjustl(trim(word)) // ' calls to FMDM.'
+  endif
   
   call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   
@@ -1694,6 +1716,8 @@ subroutine WFMechBaseDissolution(this,waste_form,pm,ierr)
   PetscErrorCode :: ierr
 
   ! This routine must be extended.
+  print *, 'subroutine WFMechBaseDissolution must be extended!'
+  stop
 
 end subroutine WFMechBaseDissolution
 
@@ -1717,45 +1741,25 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   PetscErrorCode :: ierr
 
   type(grid_type), pointer :: grid
-  type(global_auxvar_type), pointer :: global_auxvars(:)
-  PetscReal :: frac_diss_rate
-  PetscReal :: mass_dissolved
-  PetscReal :: new_volume
-  PetscReal :: dt
+  type(global_auxvar_type), pointer :: global_auxvars(:)                                                                    ! 1/day -> 1/sec
+  PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
 
   grid => pm%realization%patch%grid
   global_auxvars => pm%realization%patch%aux%Global%auxvars
-  dt = pm%realization%option%tran_dt
   
   ierr = 0
 
-  ! kg glass/m^2/day
-  this%dissolution_rate = 560.d0*exp(-7397.d0/ &
+  ! kg-glass/m^2/sec
+  this%dissolution_rate = time_conversion * 560.d0*exp(-7397.d0/ &
     (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))
-    
-  frac_diss_rate = &                   ! 1/sec
-    this%dissolution_rate * &          ! kg-glass/m^2/day
-    this%specific_surface_area / &     ! m^2/kg-glass
-    (24.0*3600.0) * &                  ! sec/day
+
+  ! kg-glass/sec
+  waste_form%eff_dissolution_rate = &
+    this%dissolution_rate * &          ! kg-glass/m^2/sec
+    this%specific_surface_area * &     ! m^2/kg glass
+    this%matrix_density * &            ! kg-glass/m^3-glass
+    waste_form%volume * &              ! m^3-glass
     waste_form%exposure_factor         ! [-]
-    
-  ! update volume and calculate mass dissolved
-  ! use an exponential form here because of changing specific surface area
-  new_volume = waste_form%volume*exp(-1.0d0*frac_diss_rate*dt)
-  mass_dissolved = &                      ! m^3-glass
-    (waste_form%volume - new_volume) * &  ! m^3-glass (dV)
-    this%matrix_density                   ! kg-glass/m^3-glass
-  waste_form%volume = new_volume          ! m^3-glass
-  
-  ! since volume will never actually reach zero, trucate the value
-  if (waste_form%volume <= 1.d-10) then
-      waste_form%volume = 0.d0
-  endif
-  
-  ! get corrected linear dissolution rate from the mass dissolved
-  waste_form%eff_dissolution_rate = &      ! kg-glass/sec
-                   mass_dissolved / &      ! kg-glass
-                   dt                      ! sec (in timestep)
 
 end subroutine WFMechGlassDissolution
 
@@ -1778,37 +1782,17 @@ subroutine WFMechDSNFDissolution(this,waste_form,pm,ierr)
   class(pm_waste_form_type) :: pm  
   PetscErrorCode :: ierr
   
-  PetscReal :: mass_dissolved
-  PetscReal :: new_volume
-  PetscReal :: dt
-  
-  dt = pm%realization%option%tran_dt
-  
   ierr = 0
   
-  ! assume entire dsnf waste form dissolves in 10 years:
-  this%frac_dissolution_rate = &    ! 1/sec
-    (1.0/10.0) / &                  ! 1/yr
-    (365.0*24.0*3600.0) * &         ! sec/yr
-    waste_form%exposure_factor      ! [-]
-    
-  ! update volume and calculate bulk mass dissolved
-  ! use an exponential form here because of changing specific surface area
-  new_volume = waste_form%volume*exp(-1.0d0*this%frac_dissolution_rate*dt)
-  mass_dissolved = &                      ! m^3-bulk
-    (waste_form%volume - new_volume) * &  ! m^3-bulk (dV)
-    this%matrix_density                   ! kg-bulk/m^3-bulk
-  waste_form%volume = new_volume          ! m^3-bulk
-    
-  ! since volume will never actually reach zero, trucate the value
-  if (waste_form%volume <= 1.d-10) then
-      waste_form%volume = 0.d0
-  endif
-  
-  ! get corrected linear dissolution rate from the mass dissolved
-  waste_form%eff_dissolution_rate = &      ! kg-bulk/sec
-                   mass_dissolved / &      ! kg-bulk
-                   dt                      ! sec (in timestep)
+  ! 91% of waste form dissolves in first timestep after breach:
+  this%frac_dissolution_rate = 1.d0 / (1.1d0*pm%realization%option%tran_dt) 
+
+  ! kg-matrix/sec
+  waste_form%eff_dissolution_rate = &
+    this%frac_dissolution_rate * &           ! 1/sec
+    this%matrix_density * &                  ! kg matrix/m^3 matrix
+    waste_form%volume * &                    ! m^3 matrix
+    waste_form%exposure_factor               ! [-]
 
 end subroutine WFMechDSNFDissolution
 
@@ -1856,16 +1840,10 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   
   type(grid_type), pointer :: grid
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
-  type(global_auxvar_type), pointer :: global_auxvars(:)
-  type(option_type), pointer :: option
   PetscInt :: i
   PetscInt :: icomp_fmdm
   PetscInt :: icomp_pflotran
   PetscInt :: ghosted_id
-  PetscReal :: frac_diss_rate
-  PetscReal :: mass_dissolved
-  PetscReal :: new_volume
-  PetscReal :: dt
   
  ! FMDM model: 
  !=======================================================
@@ -1873,13 +1851,14 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   logical ( kind = 4) :: initialRun
   PetscReal :: time
   PetscReal :: Usource
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(option_type), pointer :: option
  !========================================================
   
   grid => pm%realization%patch%grid
   rt_auxvars => pm%realization%patch%aux%RT%auxvars
   global_auxvars => pm%realization%patch%aux%Global%auxvars
   option => pm%realization%option
-  dt = pm%realization%option%tran_dt
 
   ierr = 0
   
@@ -1902,9 +1881,6 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
 #ifdef FMDM_MODEL  
  ! FMDM model calculates this%dissolution_rate and Usource [g/m^2/yr]:
  !====================================================================
-  if (option%print_screen_flag) then
-    write(*,'(/,2("=")," FMDM ",72("="))')
-  endif
   time = option%time
   call AMP_step(this%burnup, time, &
        global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp, &
@@ -1918,7 +1894,7 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   Usource = Usource / (1000.0*24.0*3600.0*365)
 #else
   ! if no FMDM model, use the burnup as this%dissolution_rate:
-  ! if no FMDM model, the units of burnup should already be kg-bulk/m^2/sec:
+  ! if no FMDM model, the units of burnup should already be kg-matrix/m^2/sec:
   success = 1
   this%dissolution_rate = this%burnup
   Usource = this%burnup
@@ -1929,28 +1905,13 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
     return
   endif
   
-  frac_diss_rate = &                   ! 1/sec
-    this%dissolution_rate * &          ! kg-bulk/m^2/sec
-    this%specific_surface_area * &     ! m^2/kg-bulk
-    waste_form%exposure_factor         ! [-] 
-    
-  ! update volume and calculate bulk mass dissolved
-  ! use an exponential form here because of changing specific surface area
-  new_volume = waste_form%volume*exp(-1.0d0*frac_diss_rate*dt)
-  mass_dissolved = &                      ! m^3-bulk
-    (waste_form%volume - new_volume) * &  ! m^3-bulk (dV)
-    this%matrix_density                   ! kg-bulk/m^3-bulk
-  waste_form%volume = new_volume          ! m^3-bulk
-  
-  ! since volume will never actually reach zero, trucate the value
-  if (waste_form%volume <= 1.d-10) then
-      waste_form%volume = 0.d0
-  endif
-  
-  ! get corrected linear dissolution rate from the mass dissolved
-  waste_form%eff_dissolution_rate = &      ! kg-bulk/sec
-                   mass_dissolved / &      ! kg-bulk
-                   dt                      ! sec (in timestep)
+  ! kg-matrix / sec
+  waste_form%eff_dissolution_rate = &
+     this%dissolution_rate * &         ! kg-matrix/m^2/sec
+     this%specific_surface_area * &    ! m^2/kg-matrix
+     this%matrix_density * &           ! kg-matrix/m^3-matrix
+     waste_form%volume * &             ! m^3-matrix
+     waste_form%exposure_factor        ! [-]
   
 end subroutine WFMechFMDMDissolution
 
@@ -1972,47 +1933,28 @@ subroutine WFMechCustomDissolution(this,waste_form,pm,ierr)
   class(waste_form_base_type) :: waste_form
   class(pm_waste_form_type) :: pm
   PetscErrorCode :: ierr
-  
-  PetscReal :: frac_diss_rate
-  PetscReal :: mass_dissolved
-  PetscReal :: new_volume
-  PetscReal :: dt
 
   ! Note: Units for dissolution rates have already been converted to
-  ! internal units (kg-bulk/m^2/sec) within the PMWFRead routine.
-
-  dt = pm%realization%option%tran_dt
-
+  ! internal units within the PMWFRead routine.
+  
   ierr = 0
 
   if (uninitialized(this%frac_dissolution_rate)) then
-    frac_diss_rate = &                   ! 1/sec
-      this%dissolution_rate * &          ! kg-bulk/m^2/sec
-      this%specific_surface_area * &     ! m^2/kg-bulk
-      waste_form%exposure_factor         ! [-] 
+    ! kg-matrix / sec
+    waste_form%eff_dissolution_rate = &
+       this%dissolution_rate * &         ! kg-matrix/m^2/sec
+       this%specific_surface_area * &    ! m^2/kg-matrix
+       this%matrix_density * &           ! kg-matrix/m^3-matrix
+       waste_form%volume * &             ! m^3-matrix
+       waste_form%exposure_factor        ! [-]
   else
-    frac_diss_rate = &                  ! 1/sec
-      this%frac_dissolution_rate * &    ! [-]/sec
-      waste_form%exposure_factor        ! [-]
+    ! kg-matrix / sec
+    waste_form%eff_dissolution_rate = &
+       this%frac_dissolution_rate * &     ! [-]/sec
+       this%matrix_density * &            ! kg-matrix/m^3-matrix
+       waste_form%volume * &              ! m^3 matrix
+       waste_form%exposure_factor         ! [-]
   endif
-  
-  ! update volume and calculate bulk mass dissolved
-  ! use an exponential form here because of changing specific surface area
-  new_volume = waste_form%volume*exp(-1.0d0*frac_diss_rate*dt)
-  mass_dissolved = &                      ! m^3-bulk
-    (waste_form%volume - new_volume) * &  ! m^3-bulk (dV)
-    this%matrix_density                   ! kg-bulk/m^3-bulk
-  waste_form%volume = new_volume          ! m^3-bulk
-    
-  ! since volume will never actually reach zero, trucate the value
-  if (waste_form%volume <= 1.d-10) then
-      waste_form%volume = 0.d0
-  endif
-  
-  ! get corrected linear dissolution rate from the mass dissolved
-  waste_form%eff_dissolution_rate = &      ! kg-bulk/sec
-                   mass_dissolved / &      ! kg-bulk
-                   dt                      ! sec (in timestep)
 
 end subroutine WFMechCustomDissolution
 
