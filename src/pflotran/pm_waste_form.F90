@@ -1691,8 +1691,8 @@ subroutine PMWFSolve(this,time,ierr)
   if ((fmdm_count_global > 0) .and. &
       this%realization%option%print_screen_flag) then
     write(word,'(i5)') fmdm_count_global
-    write(*,'(/,2("=")," FMDM ",60("="))')
-    write(*,'(a)') '    (' // trim(word) // ' calls)'
+    write(*,'(/,2("=")," FMDM ",72("="))')
+    write(*,'(a)') '== ' // adjustl(trim(word)) // ' calls to FMDM.'
   endif
   
   call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
