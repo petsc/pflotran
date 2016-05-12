@@ -47,7 +47,7 @@ module PM_Waste_Form_class
   end type wf_mechanism_base_type
 
   type, public, extends(wf_mechanism_base_type) :: wf_mechanism_glass_type
-    PetscReal :: specific_surface_area    ! m^2/m^3
+    PetscReal :: specific_surface_area    ! m^2/kg
     PetscReal :: dissolution_rate         ! kg-glass/m^2/sec
   contains
     procedure, public :: Dissolution => WFMechGlassDissolution
@@ -60,7 +60,7 @@ module PM_Waste_Form_class
   end type wf_mechanism_dsnf_type
 
   type, public, extends(wf_mechanism_base_type) :: wf_mechanism_fmdm_type
-    PetscReal :: specific_surface_area    ! m^2/m^3
+    PetscReal :: specific_surface_area    ! m^2/kg
     PetscReal :: dissolution_rate         ! kg-matrix/m^2/sec
     PetscReal :: frac_dissolution_rate    ! 1/sec
     PetscReal :: burnup                   ! GWd/MTHM (kg-matrix/m^2/sec)
@@ -88,7 +88,7 @@ module PM_Waste_Form_class
   end type wf_mechanism_fmdm_type
   
   type, public, extends(wf_mechanism_base_type) :: wf_mechanism_custom_type
-    PetscReal :: specific_surface_area    ! m^2/m^3
+    PetscReal :: specific_surface_area    ! m^2/kg
     PetscReal :: dissolution_rate         ! kg-matrix/m^2/sec
     PetscReal :: frac_dissolution_rate    ! 1/sec
   contains
@@ -194,7 +194,7 @@ function MechanismGlassCreate()
   
   allocate(MechanismGlassCreate)
   call MechanismInit(MechanismGlassCreate)
-  MechanismGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  MechanismGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/kg
   MechanismGlassCreate%dissolution_rate = 0.d0  ! kg/m^2/sec
 
 end function MechanismGlassCreate
@@ -234,7 +234,7 @@ function MechanismFMDMCreate()
   allocate(MechanismFMDMCreate)
   call MechanismInit(MechanismFMDMCreate)
   
-  MechanismFMDMCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  MechanismFMDMCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/kg
   MechanismFMDMCreate%dissolution_rate = UNINITIALIZED_DOUBLE       ! kg/m^2/sec
   MechanismFMDMCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
   MechanismFMDMCreate%burnup = UNINITIALIZED_DOUBLE     ! GWd/MTHM or (kg/m^2/sec)
@@ -291,7 +291,7 @@ function MechanismCustomCreate()
   
   allocate(MechanismCustomCreate)
   call MechanismInit(MechanismCustomCreate)
-  MechanismCustomCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
+  MechanismCustomCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/kg
   MechanismCustomCreate%dissolution_rate = UNINITIALIZED_DOUBLE    ! kg/m^2/sec
   MechanismCustomCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE    ! 1/sec
 
@@ -1360,8 +1360,6 @@ end subroutine PMWFSetup
       enddo
       cur_waste_form => cur_waste_form%next
     enddo                             ! zero-based indexing
-    !write(*,*) species_indices_in_residual(:)
-    !stop
     species_indices_in_residual(:) = species_indices_in_residual(:) - 1
     ! set to global petsc index
     species_indices_in_residual(:) = species_indices_in_residual(:) + &
@@ -1667,7 +1665,6 @@ subroutine PMWFSolve(this,time,ierr)
       ! mol/sec
       do j = 1,num_species
         i = i + 1
-        ! Do an exponential equation here instead?
         cur_waste_form%instantaneous_mass_rate(j) = &
           (cur_waste_form%eff_dissolution_rate / &            ! kg-matrix/sec
            cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kg-rad/kmol-rad
@@ -1694,7 +1691,7 @@ subroutine PMWFSolve(this,time,ierr)
       this%realization%option%print_screen_flag) then
     write(word,'(i5)') fmdm_count_global
     write(*,'(/,2("=")," FMDM ",60("="))')
-    write(*,'(a)') '   (' // trim(word) // ' calls)'
+    write(*,'(a)') '    (' // trim(word) // ' calls)'
   endif
   
   call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
@@ -1718,6 +1715,8 @@ subroutine WFMechBaseDissolution(this,waste_form,pm,ierr)
   PetscErrorCode :: ierr
 
   ! This routine must be extended.
+  print *, 'subroutine WFMechBaseDissolution must be extended!'
+  stop
 
 end subroutine WFMechBaseDissolution
 
@@ -1749,18 +1748,17 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   
   ierr = 0
 
-  ! kg glass/m^2/day
-  this%dissolution_rate = 560.d0*exp(-7397.d0/ &
+  ! kg-glass/m^2/sec
+  this%dissolution_rate = time_conversion * 560.d0*exp(-7397.d0/ &
     (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))
-  
-  ! kg glass / sec
+
+  ! kg-glass/sec
   waste_form%eff_dissolution_rate = &
-    this%dissolution_rate * &          ! kg-glass/m^2/day
+    this%dissolution_rate * &          ! kg-glass/m^2/sec
     this%specific_surface_area * &     ! m^2/kg glass
     this%matrix_density * &            ! kg-glass/m^3-glass
     waste_form%volume * &              ! m^3-glass
     waste_form%exposure_factor * &     ! [-]
-    time_conversion                    ! day/sec
 
 end subroutine WFMechGlassDissolution
 
@@ -1882,9 +1880,6 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
 #ifdef FMDM_MODEL  
  ! FMDM model calculates this%dissolution_rate and Usource [g/m^2/yr]:
  !====================================================================
-  if (option%print_screen_flag) then
-    write(*,'(/,2("=")," FMDM ",72("="))')
-  endif
   time = option%time
   call AMP_step(this%burnup, time, &
        global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp, &
