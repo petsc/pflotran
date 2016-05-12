@@ -64,7 +64,6 @@ module PM_Waste_Form_class
     PetscReal :: dissolution_rate         ! kg-matrix/m^2/sec
     PetscReal :: frac_dissolution_rate    ! 1/sec
     PetscReal :: burnup                   ! GWd/MTHM (kg-matrix/m^2/sec)
-    PetscBool :: initialized
     PetscInt :: num_grid_cells_in_waste_form  ! hardwired to 40
     ! mapping of fmdm species into fmdm concentration array:
     PetscInt, pointer :: mapping_fmdm(:)
@@ -100,8 +99,9 @@ module PM_Waste_Form_class
     PetscInt :: id
     PetscInt :: local_cell_id
     type(point3d_type) :: coordinate
-    PetscReal :: volume
-    PetscReal :: exposure_factor
+    PetscReal :: init_volume                            ! m^3
+    PetscReal :: volume                                 ! m^3
+    PetscReal :: exposure_factor                        ! unitless 
     PetscReal :: eff_dissolution_rate                   ! kg-matrix/sec
     PetscReal, pointer :: instantaneous_mass_rate(:)    ! mol/sec
     PetscReal, pointer :: cumulative_mass(:)            ! mol
@@ -109,9 +109,10 @@ module PM_Waste_Form_class
     PetscReal, pointer :: rad_concentration(:)          ! mol-rad/g-matrix
     PetscReal, pointer :: inst_release_amount(:)        ! of rad
     PetscBool :: canister_degradation_flag
-    PetscReal :: canister_vitality
+    PetscReal :: canister_vitality                      ! %
     PetscReal :: canister_vitality_rate
     PetscReal :: eff_canister_vit_rate
+    PetscReal :: breach_time                            ! sec
     PetscBool :: breached
     character(len=MAXWORDLENGTH) :: mech_name
     class(wf_mechanism_base_type), pointer :: mechanism
@@ -238,7 +239,6 @@ function MechanismFMDMCreate()
   MechanismFMDMCreate%dissolution_rate = UNINITIALIZED_DOUBLE       ! kg/m^2/sec
   MechanismFMDMCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
   MechanismFMDMCreate%burnup = UNINITIALIZED_DOUBLE     ! GWd/MTHM or (kg/m^2/sec)
-  MechanismFMDMCreate%initialized = PETSC_FALSE
   
   MechanismFMDMCreate%num_grid_cells_in_waste_form = 40  ! hardwired
   
@@ -341,6 +341,7 @@ function WasteFormCreate()
   WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
+  WasteFormCreate%init_volume = UNINITIALIZED_DOUBLE
   WasteFormCreate%volume = UNINITIALIZED_DOUBLE
   WasteFormCreate%exposure_factor = 1.0d0
   WasteFormCreate%eff_dissolution_rate = UNINITIALIZED_DOUBLE
@@ -355,6 +356,7 @@ function WasteFormCreate()
  !------- canister degradation model -----------------
   WasteFormCreate%canister_degradation_flag = PETSC_FALSE
   WasteFormCreate%breached = PETSC_FALSE
+  WasteFormCreate%breach_time = UNINITIALIZED_DOUBLE
   WasteFormCreate%canister_vitality = 0.d0
   WasteFormCreate%canister_vitality_rate = UNINITIALIZED_DOUBLE
   WasteFormCreate%eff_canister_vit_rate = UNINITIALIZED_DOUBLE
@@ -1013,6 +1015,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
               new_waste_form%volume = UnitsConvertToInternal(word, &
                    internal_units,option) * new_waste_form%volume
             endif
+            new_waste_form%init_volume = new_waste_form%volume
         !-----------------------------
           case('COORDINATE')
             call GeometryReadCoordinate(input,option, &
@@ -1447,7 +1450,7 @@ subroutine PMWFInitializeTimestep(this)
          cwfm%matrix_density * &                      ! kg-matrix/m^3-matrix
          dt                                           ! sec
     cur_waste_form%volume = cur_waste_form%volume - dV
-    if (cur_waste_form%volume <= 1.d-10) then
+    if (cur_waste_form%volume <= 1.d-8) then
       cur_waste_form%volume = 0.d0
     endif
     
@@ -1516,6 +1519,7 @@ subroutine PMWFInitializeTimestep(this)
         xx_p(idof) = xx_p(idof) + inst_release_molality
       enddo
       cur_waste_form%breached = PETSC_TRUE 
+      cur_waste_form%breach_time = option%time
       call VecRestoreArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
     endif
     
@@ -1871,12 +1875,11 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
       rt_auxvars(ghosted_id)%total(icomp_pflotran,LIQUID_PHASE)
   enddo
   
-  if (this%initialized) then
+  if (waste_form%volume /= waste_form%init_volume) then
     initialRun = PETSC_FALSE
   else
     initialRun = PETSC_TRUE
-    this%initialized = PETSC_TRUE
-  endif
+  endif 
   
 #ifdef FMDM_MODEL  
  ! FMDM model calculates this%dissolution_rate and Usource [g/m^2/yr]:
@@ -1887,7 +1890,7 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
        this%concentration, initialRun, this%dissolution_rate, &
        Usource, success) 
  !====================================================================
- 
+  
   ! convert this%dissolution_rate from fmdm to pflotran units:
   ! g/m^2/yr => kg/m^2/sec
   this%dissolution_rate = this%dissolution_rate / (1000.0*24.0*3600.0*365)
