@@ -1289,7 +1289,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   dden_dp = TH_auxvar%dden_dp
   dden_dt = TH_auxvar%dden_dt
   dsat_dp = TH_auxvar%dsat_dp
-  dsat_dt = TH_auxvar%ice%dsat_dt
+  dsat_dt = TH_auxvar%dsat_dt
   u = TH_auxvar%u
   du_dt = TH_auxvar%du_dt
   du_dp = TH_auxvar%du_dp
@@ -1349,7 +1349,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
                                            sat_i   *den_i        )*dcompressed_porosity_dp*vol
 
      J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) = J(TH_PRESSURE_DOF,TH_TEMPERATURE_DOF) + &
-                            (TH_auxvar%ice%dsat_dt*global_auxvar%den(1) + &
+                            (TH_auxvar%dsat_dt*global_auxvar%den(1) + &
                              dsatg_dt * den_g    * mol_g            + &
                              sat_g    * ddeng_dt * mol_g            + &
                              sat_g    * den_g    * dmolg_dt         + &
@@ -1364,7 +1364,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
                       sat_i    * den_i    * u_i )*dcompressed_porosity_dp*vol
 
      J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) + &
-                (TH_auxvar%ice%dsat_dt*global_auxvar%den(1)*TH_auxvar%u + &
+                (TH_auxvar%dsat_dt*global_auxvar%den(1)*TH_auxvar%u + &
                   dsatg_dt * den_g    * u_g                         + &
                   sat_g    * ddeng_dt * u_g                         + &
                   sat_g    * den_g    * dug_dt                      + &
@@ -1592,7 +1592,6 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   PetscReal :: dq_dp_up, dq_dp_dn, dq_dt_up, dq_dt_dn
   
   PetscReal :: Dk_eff_up, Dk_eff_dn
-  PetscReal :: Ke_up,Ke_dn   ! unfrozen soil Kersten numbers 
   PetscReal, parameter :: epsilon = 1.d-6
   PetscReal :: dKe_dt_up, dKe_dp_up
   PetscReal :: dKe_dt_dn, dKe_dp_dn
@@ -1899,12 +1898,8 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
         
   if (option%use_th_freezing) then
             
-    ! conduction term
-    Ke_up = auxvar_up%ice%Ke
-    Ke_dn = auxvar_dn%ice%Ke
-
-    dKe_dp_up = auxvar_up%ice%dKe_dp
-    dKe_dp_dn = auxvar_dn%ice%dKe_dp
+    dKe_dp_up = auxvar_up%dKe_dp
+    dKe_dp_dn = auxvar_dn%dKe_dp
 
     Dk_eff_up = auxvar_up%Dk_eff
     Dk_eff_dn = auxvar_dn%Dk_eff
@@ -1912,8 +1907,8 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
     Ke_fr_up = auxvar_up%ice%Ke_fr
     Ke_fr_dn = auxvar_dn%ice%Ke_fr
 
-    dKe_dt_up = auxvar_up%ice%dKe_dt
-    dKe_dt_dn = auxvar_dn%ice%dKe_dt
+    dKe_dt_up = auxvar_up%dKe_dt
+    dKe_dt_dn = auxvar_dn%dKe_dt
 
     dKe_fr_dt_up = auxvar_up%ice%dKe_fr_dt
     dKe_fr_dt_dn = auxvar_dn%ice%dKe_fr_dt
@@ -1925,8 +1920,8 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
     Dk_eff_up = auxvar_up%Dk_eff
     Dk_eff_dn = auxvar_dn%Dk_eff
 
-    dKe_dt_up = auxvar_up%ice%dKe_dt
-    dKe_dt_dn = auxvar_dn%ice%dKe_dt
+    dKe_dt_up = auxvar_up%dKe_dt
+    dKe_dt_dn = auxvar_dn%dKe_dt
 
   endif
  
@@ -2166,7 +2161,6 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   PetscReal :: v_darcy,area
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: dist(-1:3)
-  PetscReal :: Ke_up,Ke_dn   ! unfrozen soil Kersten numbers
   PetscInt :: ispec
   PetscReal :: fluxm,fluxe,q
   PetscReal :: uh,ukvr,DK,Dq
@@ -2300,10 +2294,6 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   endif ! if (use_th_freezing)
 
   if (option%use_th_freezing) then
-
-    ! conduction term  
-    Ke_up = auxvar_up%ice%Ke
-    Ke_dn = auxvar_dn%ice%Ke
 
     Ke_fr_up = auxvar_up%ice%Ke_fr
     Ke_fr_dn = auxvar_dn%ice%Ke_fr
@@ -2463,7 +2453,10 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   dq_dp_dn = 0.d0
   dq_dt_dn = 0.d0
 
-  hw_present = auxvar_dn%surface%surf_wat
+  hw_present = PETSC_FALSE
+  if (associated(auxvar_dn%surface)) then
+    hw_present = auxvar_dn%surface%surf_wat
+  endif
         
   dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
   dd_dn = dist(0)
@@ -2785,8 +2778,8 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
 
       if (option%use_th_freezing) then
         Dk_eff_dn    = auxvar_dn%Dk_eff
-        dKe_dp_dn    = auxvar_dn%ice%dKe_dp
-        dKe_dt_dn    = auxvar_dn%ice%dKe_dt
+        dKe_dp_dn    = auxvar_dn%dKe_dp
+        dKe_dt_dn    = auxvar_dn%dKe_dt
         dKe_fr_dt_dn = auxvar_dn%ice%dKe_fr_dt
         dKe_fr_dp_dn = auxvar_dn%ice%dKe_fr_dp
         Dk           = Dk_eff_dn/dd_dn
@@ -2801,8 +2794,8 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
       else
 
         Dk_eff_dn = auxvar_dn%Dk_eff
-        dKe_dp_dn = auxvar_dn%ice%dKe_dp
-        dKe_dt_dn = auxvar_dn%ice%dKe_dt
+        dKe_dp_dn = auxvar_dn%dKe_dp
+        dKe_dt_dn = auxvar_dn%dKe_dt
         Dk        = Dk_eff_dn/dd_dn
 
         dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dt_dn
@@ -3114,7 +3107,10 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   fluxe_bulk = 0.d0
   fluxe_cond = 0.d0
 
-  hw_present = auxvar_dn%surface%surf_wat
+  hw_present = PETSC_FALSE
+  if (associated(auxvar_dn%surface)) then
+    hw_present = auxvar_dn%surface%surf_wat
+  endif
 
   dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
   dd_dn = dist(0)
