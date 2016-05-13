@@ -32,6 +32,13 @@ module TH_Aux_module
     PetscReal :: du_dt
     PetscReal :: transient_por
     PetscReal :: Dk_eff
+    ! for ice
+    type(th_ice_type), pointer :: ice
+    ! For surface-flow
+    type(th_surface_flow_type), pointer :: surface
+  end type TH_auxvar_type
+
+  type, public :: th_ice_type
     PetscReal :: Ke
     PetscReal :: Ke_fr
     PetscReal :: dKe_dp
@@ -61,7 +68,9 @@ module TH_Aux_module
     PetscReal :: pres_fh2o
     PetscReal :: dpres_fh2o_dp
     PetscReal :: dpres_fh2o_dt
-    ! For surface-flow
+  end type th_ice_type
+  
+  type, public :: th_surface_flow_type
     PetscBool :: surf_wat
     PetscReal :: P_min
     PetscReal :: P_max
@@ -70,8 +79,7 @@ module TH_Aux_module
     PetscReal :: range_for_linear_approx(4)
     PetscReal :: dlinear_slope_dT
     PetscBool :: bcflux_default_scheme
-
-  end type TH_auxvar_type
+  end type th_surface_flow_type
 
   type, public :: TH_parameter_type
     PetscReal, pointer :: dencpr(:)
@@ -201,43 +209,53 @@ subroutine THAuxVarInit(auxvar,option)
   auxvar%du_dt     = uninit_value    
   auxvar%transient_por = uninit_value
   auxvar%Dk_eff    = uninit_value
-  auxvar%Ke        = uninit_value
-  auxvar%Ke_fr     = uninit_value
-  auxvar%dKe_dp    = uninit_value
-  auxvar%dKe_dt    = uninit_value
-  auxvar%dKe_fr_dp = uninit_value
-  auxvar%dKe_fr_dt = uninit_value
-  ! NOTE(bja, 2013-12) always initialize ice variables to zero, even if not used!
-  auxvar%sat_ice       = uninit_value
-  auxvar%sat_gas       = uninit_value
-  auxvar%dsat_dt       = uninit_value
-  auxvar%dsat_ice_dp   = uninit_value
-  auxvar%dsat_gas_dp   = uninit_value
-  auxvar%dsat_ice_dt   = uninit_value
-  auxvar%dsat_gas_dt   = uninit_value
-  auxvar%den_ice       = uninit_value
-  auxvar%dden_ice_dp   = uninit_value
-  auxvar%dden_ice_dt   = uninit_value
-  auxvar%u_ice         = uninit_value
-  auxvar%du_ice_dt     = uninit_value
-  auxvar%den_gas       = uninit_value
-  auxvar%dden_gas_dt   = uninit_value
-  auxvar%u_gas         = uninit_value
-  auxvar%du_gas_dt     = uninit_value
-  auxvar%mol_gas       = uninit_value
-  auxvar%dmol_gas_dt   = uninit_value
-  auxvar%pres_fh2o     = uninit_value
-  auxvar%dpres_fh2o_dp = uninit_value
-  auxvar%dpres_fh2o_dt = uninit_value
-  auxvar%surf_wat      = PETSC_FALSE
-  auxvar%P_min         = uninit_value
-  auxvar%P_max         = uninit_value
-  auxvar%coeff_for_cubic_approx(:)       = uninit_value
-  auxvar%coeff_for_deriv_cubic_approx(:) = uninit_value
-  auxvar%range_for_linear_approx(:)      = uninit_value
-  auxvar%dlinear_slope_dT                = uninit_value
-  auxvar%bcflux_default_scheme           = PETSC_FALSE
-
+  if (option%use_th_freezing) then
+    allocate(auxvar%ice)
+    auxvar%ice%Ke        = uninit_value
+    auxvar%ice%Ke_fr     = uninit_value
+    auxvar%ice%dKe_dp    = uninit_value
+    auxvar%ice%dKe_dt    = uninit_value
+    auxvar%ice%dKe_fr_dp = uninit_value
+    auxvar%ice%dKe_fr_dt = uninit_value
+    ! NOTE(bja, 2013-12) always initialize ice variables to zero, even if not used!
+    auxvar%ice%sat_ice       = uninit_value
+    auxvar%ice%sat_gas       = uninit_value
+    auxvar%ice%dsat_dt       = uninit_value
+    auxvar%ice%dsat_ice_dp   = uninit_value
+    auxvar%ice%dsat_gas_dp   = uninit_value
+    auxvar%ice%dsat_ice_dt   = uninit_value
+    auxvar%ice%dsat_gas_dt   = uninit_value
+    auxvar%ice%den_ice       = uninit_value
+    auxvar%ice%dden_ice_dp   = uninit_value
+    auxvar%ice%dden_ice_dt   = uninit_value
+    auxvar%ice%u_ice         = uninit_value
+    auxvar%ice%du_ice_dt     = uninit_value
+    auxvar%ice%den_gas       = uninit_value
+    auxvar%ice%dden_gas_dt   = uninit_value
+    auxvar%ice%u_gas         = uninit_value
+    auxvar%ice%du_gas_dt     = uninit_value
+    auxvar%ice%mol_gas       = uninit_value
+    auxvar%ice%dmol_gas_dt   = uninit_value
+    auxvar%ice%pres_fh2o     = uninit_value
+    auxvar%ice%dpres_fh2o_dp = uninit_value
+    auxvar%ice%dpres_fh2o_dt = uninit_value
+  else
+    nullify(auxvar%ice)
+  endif
+  if (option%surf_flow_on) then
+    allocate(auxvar%surface)
+    auxvar%surface%surf_wat      = PETSC_FALSE
+    auxvar%surface%P_min         = uninit_value
+    auxvar%surface%P_max         = uninit_value
+    auxvar%surface%coeff_for_cubic_approx(:)       = uninit_value
+    auxvar%surface%coeff_for_deriv_cubic_approx(:) = uninit_value
+    auxvar%surface%range_for_linear_approx(:)      = uninit_value
+    auxvar%surface%dlinear_slope_dT                = uninit_value
+    auxvar%surface%bcflux_default_scheme           = PETSC_FALSE
+  else
+    nullify(auxvar%surface)
+  endif
+  
 end subroutine THAuxVarInit
 
 ! ************************************************************************** !
@@ -282,43 +300,49 @@ subroutine THAuxVarCopy(auxvar,auxvar2,option)
   auxvar2%du_dt = auxvar%du_dt  
   auxvar2%transient_por = auxvar%transient_por
   auxvar2%Dk_eff = auxvar%Dk_eff
-  auxvar2%Ke = auxvar%Ke
-  auxvar2%Ke_fr = auxvar%Ke_fr
-  auxvar2%dKe_dp = auxvar%dKe_dp
-  auxvar2%dKe_fr_dp = auxvar%dKe_fr_dp
-  auxvar2%dKe_dt = auxvar%dKe_dt
-  auxvar2%dKe_fr_dt = auxvar%dKe_fr_dt
-  if (option%use_th_freezing) then
-     auxvar2%sat_ice = auxvar%sat_ice 
-     auxvar2%sat_gas = auxvar%sat_gas
-     auxvar2%dsat_dt = auxvar%dsat_dt
-     auxvar2%dsat_ice_dp = auxvar%dsat_ice_dp
-     auxvar2%dsat_gas_dp = auxvar%dsat_gas_dp
-     auxvar2%dsat_ice_dt = auxvar%dsat_ice_dt
-     auxvar2%dsat_gas_dt = auxvar%dsat_gas_dt
-     auxvar2%den_ice = auxvar%den_ice
-     auxvar2%dden_ice_dp = auxvar%dden_ice_dp
-     auxvar2%dden_ice_dt = auxvar%dden_ice_dt
-     auxvar2%u_ice = auxvar%u_ice
-     auxvar2%du_ice_dt = auxvar%du_ice_dt
-     auxvar2%pres_fh2o = auxvar%pres_fh2o
-     auxvar2%dpres_fh2o_dp = auxvar%dpres_fh2o_dp
-     auxvar2%dpres_fh2o_dt = auxvar%dpres_fh2o_dt
-     auxvar2%den_gas = auxvar%den_gas
-     auxvar2%dden_gas_dt = auxvar%dden_gas_dt
-     auxvar2%u_gas = auxvar%u_gas
-     auxvar2%du_gas_dt = auxvar%du_gas_dt
-     auxvar2%mol_gas = auxvar%mol_gas
-     auxvar2%dmol_gas_dt = auxvar%dmol_gas_dt
+  if (associated(auxvar%ice)) then
+    auxvar2%ice%Ke = auxvar%ice%Ke
+    auxvar2%ice%Ke_fr = auxvar%ice%Ke_fr
+    auxvar2%ice%dKe_dp = auxvar%ice%dKe_dp
+    auxvar2%ice%dKe_fr_dp = auxvar%ice%dKe_fr_dp
+    auxvar2%ice%dKe_dt = auxvar%ice%dKe_dt
+    auxvar2%ice%dKe_fr_dt = auxvar%ice%dKe_fr_dt
+    auxvar2%ice%sat_ice = auxvar%ice%sat_ice 
+    auxvar2%ice%sat_gas = auxvar%ice%sat_gas
+    auxvar2%ice%dsat_dt = auxvar%ice%dsat_dt
+    auxvar2%ice%dsat_ice_dp = auxvar%ice%dsat_ice_dp
+    auxvar2%ice%dsat_gas_dp = auxvar%ice%dsat_gas_dp
+    auxvar2%ice%dsat_ice_dt = auxvar%ice%dsat_ice_dt
+    auxvar2%ice%dsat_gas_dt = auxvar%ice%dsat_gas_dt
+    auxvar2%ice%den_ice = auxvar%ice%den_ice
+    auxvar2%ice%dden_ice_dp = auxvar%ice%dden_ice_dp
+    auxvar2%ice%dden_ice_dt = auxvar%ice%dden_ice_dt
+    auxvar2%ice%u_ice = auxvar%ice%u_ice
+    auxvar2%ice%du_ice_dt = auxvar%ice%du_ice_dt
+    auxvar2%ice%pres_fh2o = auxvar%ice%pres_fh2o
+    auxvar2%ice%dpres_fh2o_dp = auxvar%ice%dpres_fh2o_dp
+    auxvar2%ice%dpres_fh2o_dt = auxvar%ice%dpres_fh2o_dt
+    auxvar2%ice%den_gas = auxvar%ice%den_gas
+    auxvar2%ice%dden_gas_dt = auxvar%ice%dden_gas_dt
+    auxvar2%ice%u_gas = auxvar%ice%u_gas
+    auxvar2%ice%du_gas_dt = auxvar%ice%du_gas_dt
+    auxvar2%ice%mol_gas = auxvar%ice%mol_gas
+    auxvar2%ice%dmol_gas_dt = auxvar%ice%dmol_gas_dt
   endif
-  auxvar2%surf_wat = auxvar%surf_wat
-  auxvar2%P_min = auxvar%P_min
-  auxvar2%P_max = auxvar%P_max
-  auxvar2%coeff_for_cubic_approx(:) = auxvar%coeff_for_cubic_approx(:)
-  auxvar2%coeff_for_deriv_cubic_approx(:) = auxvar%coeff_for_deriv_cubic_approx(:)
-  auxvar2%range_for_linear_approx(:) = auxvar%range_for_linear_approx(:)
-  auxvar2%dlinear_slope_dT = auxvar%dlinear_slope_dT
-  auxvar2%bcflux_default_scheme = auxvar%bcflux_default_scheme
+  if (associated(auxvar%surface)) then
+    auxvar2%surface%surf_wat = auxvar%surface%surf_wat
+    auxvar2%surface%P_min = auxvar%surface%P_min
+    auxvar2%surface%P_max = auxvar%surface%P_max
+    auxvar2%surface%coeff_for_cubic_approx(:) = &
+      auxvar%surface%coeff_for_cubic_approx(:)
+    auxvar2%surface%coeff_for_deriv_cubic_approx(:) = &
+      auxvar%surface%coeff_for_deriv_cubic_approx(:)
+    auxvar2%surface%range_for_linear_approx(:) = &
+      auxvar%surface%range_for_linear_approx(:)
+    auxvar2%surface%dlinear_slope_dT = auxvar%surface%dlinear_slope_dT
+    auxvar2%surface%bcflux_default_scheme = &
+      auxvar%surface%bcflux_default_scheme
+  endif
 
 end subroutine THAuxVarCopy
 
@@ -480,14 +504,14 @@ subroutine THAuxVarComputeNoFreezing(x,auxvar,global_auxvar, &
 
   !unfrozen soil Kersten number
   Ke = (global_auxvar%sat(1) + epsilon)**(alpha)
-  auxvar%Ke = Ke
+  auxvar%ice%Ke = Ke
 
   ! Effective thermal conductivity
   auxvar%Dk_eff = Dk_dry + (Dk - Dk_dry)*Ke
 
   ! Derivative of soil Kersten number
-  auxvar%dKe_dp = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dp
-  auxvar%dKe_dt = 0.d0
+  auxvar%ice%dKe_dp = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dp
+  auxvar%ice%dKe_dt = 0.d0
 
 end subroutine THAuxVarComputeNoFreezing
 
@@ -630,9 +654,9 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
       ! Model from Dall'Amico (2010) and Dall' Amico et al. (2011)
       call SatFuncComputeIceDallAmico(global_auxvar%pres(1), &
                                       global_auxvar%temp, &
-                                      auxvar%pres_fh2o, &
-                                      auxvar%dpres_fh2o_dp, &
-                                      auxvar%dpres_fh2o_dt, &
+                                      auxvar%ice%pres_fh2o, &
+                                      auxvar%ice%dpres_fh2o_dp, &
+                                      auxvar%ice%dpres_fh2o_dt, &
                                       ice_saturation, &
                                       global_auxvar%sat(1), gas_saturation, &
                                       kr, ds_dp, dsl_temp, dsg_pl, dsg_temp, &
@@ -689,13 +713,13 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   auxvar%dh_dt = hw_dt
   auxvar%du_dt = hw_dt + pw/(dw_mol*dw_mol)*option%scale*dw_dt
 
-  auxvar%sat_ice = ice_saturation
-  auxvar%sat_gas = gas_saturation
-  auxvar%dsat_dt = dsl_temp
-  auxvar%dsat_ice_dp = dsi_pl
-  auxvar%dsat_gas_dp = dsg_pl
-  auxvar%dsat_ice_dt = dsi_temp
-  auxvar%dsat_gas_dt = dsg_temp
+  auxvar%ice%sat_ice = ice_saturation
+  auxvar%ice%sat_gas = gas_saturation
+  auxvar%ice%dsat_dt = dsl_temp
+  auxvar%ice%dsat_ice_dp = dsi_pl
+  auxvar%ice%dsat_gas_dp = dsg_pl
+  auxvar%ice%dsat_ice_dt = dsi_temp
+  auxvar%ice%dsat_gas_dt = dsg_temp
   
   ! Calculate the density, internal energy and derivatives for ice
   call EOSWaterDensityIce(global_auxvar%temp, global_auxvar%pres(1), &
@@ -703,27 +727,27 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
 
   call EOSWaterInternalEnergyIce(global_auxvar%temp, u_ice, du_ice_dT)
 
-  auxvar%den_ice = den_ice
-  auxvar%dden_ice_dt = dden_ice_dT
-  auxvar%dden_ice_dp = dden_ice_dP
-  auxvar%u_ice = u_ice*1.d-3                  !kJ/kmol --> MJ/kmol
-  auxvar%du_ice_dt = du_ice_dT*1.d-3          !kJ/kmol/K --> MJ/kmol/K 
+  auxvar%ice%den_ice = den_ice
+  auxvar%ice%dden_ice_dt = dden_ice_dT
+  auxvar%ice%dden_ice_dp = dden_ice_dP
+  auxvar%ice%u_ice = u_ice*1.d-3                  !kJ/kmol --> MJ/kmol
+  auxvar%ice%du_ice_dt = du_ice_dT*1.d-3          !kJ/kmol/K --> MJ/kmol/K 
 
   ! Calculate the values and derivatives for density and internal energy
   call EOSWaterSaturationPressure(global_auxvar%temp, p_sat, ierr)
 
   p_g            = option%reference_pressure
-  auxvar%den_gas = p_g/(IDEAL_GAS_CONSTANT*(global_auxvar%temp + 273.15d0))*1.d-3 !in kmol/m3
+  auxvar%ice%den_gas = p_g/(IDEAL_GAS_CONSTANT*(global_auxvar%temp + 273.15d0))*1.d-3 !in kmol/m3
   mol_g          = p_sat/p_g
   C_g            = C_wv*mol_g*FMWH2O + C_a*(1.d0 - mol_g)*FMWAIR ! in MJ/kmol/K
-  auxvar%u_gas   = C_g*(global_auxvar%temp + 273.15d0)           ! in MJ/kmol
-  auxvar%mol_gas = mol_g
+  auxvar%ice%u_gas   = C_g*(global_auxvar%temp + 273.15d0)           ! in MJ/kmol
+  auxvar%ice%mol_gas = mol_g
 
-  auxvar%dden_gas_dt = - p_g/(IDEAL_GAS_CONSTANT*(global_auxvar%temp + 273.15d0)**2)*1.d-3
+  auxvar%ice%dden_gas_dt = - p_g/(IDEAL_GAS_CONSTANT*(global_auxvar%temp + 273.15d0)**2)*1.d-3
   dmolg_dt           = dpsat_dt/p_g
-  auxvar%du_gas_dt   = C_g + (C_wv*dmolg_dt*FMWH2O - C_a*dmolg_dt*FMWAIR)* &
+  auxvar%ice%du_gas_dt   = C_g + (C_wv*dmolg_dt*FMWH2O - C_a*dmolg_dt*FMWAIR)* &
                        (global_auxvar%temp + 273.15d0)
-  auxvar%dmol_gas_dt = dmolg_dt
+  auxvar%ice%dmol_gas_dt = dmolg_dt
 
   ! Parameters for computation of effective thermal conductivity
   alpha = th_parameter%alpha(ithrm)
@@ -734,36 +758,36 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
 
   !Soil Kersten number
   Ke = (global_auxvar%sat(1) + epsilon)**(alpha)
-  Ke_fr = (auxvar%sat_ice + epsilon)**(alpha_fr)
-  auxvar%Ke = Ke
-  auxvar%Ke_fr = Ke_fr
+  Ke_fr = (auxvar%ice%sat_ice + epsilon)**(alpha_fr)
+  auxvar%ice%Ke = Ke
+  auxvar%ice%Ke_fr = Ke_fr
 
   ! Effective thermal conductivity
   auxvar%Dk_eff = Dk*Ke + Dk_ice*Ke_fr + (1.d0 - Ke - Ke_fr)*Dk_dry
 
   ! Derivative of Kersten number
-  auxvar%dKe_dp = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dp
-  auxvar%dKe_dt = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dt
-  auxvar%dKe_fr_dt = alpha_fr*(auxvar%sat_ice + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_ice_dt
-  auxvar%dKe_fr_dp = alpha_fr*(auxvar%sat_ice + epsilon)**(alpha_fr - 1.d0)*auxvar%dsat_ice_dp
+  auxvar%ice%dKe_dp = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%dsat_dp
+  auxvar%ice%dKe_dt = alpha*(global_auxvar%sat(1) + epsilon)**(alpha - 1.d0)*auxvar%ice%dsat_dt
+  auxvar%ice%dKe_fr_dt = alpha_fr*(auxvar%ice%sat_ice + epsilon)**(alpha_fr - 1.d0)*auxvar%ice%dsat_ice_dt
+  auxvar%ice%dKe_fr_dp = alpha_fr*(auxvar%ice%sat_ice + epsilon)**(alpha_fr - 1.d0)*auxvar%ice%dsat_ice_dp
 
   if (option%ice_model == DALL_AMICO) then
-    auxvar%den_ice = dw_mol
-    auxvar%dden_ice_dt = auxvar%dden_dt
-    auxvar%dden_ice_dp = auxvar%dden_dp
-!    auxvar%u_ice = auxvar%u  ! commented out by S.Karra 06/02/14. setting
+    auxvar%ice%den_ice = dw_mol
+    auxvar%ice%dden_ice_dt = auxvar%dden_dt
+    auxvar%ice%dden_ice_dp = auxvar%dden_dp
+!    auxvar%ice%u_ice = auxvar%u  ! commented out by S.Karra 06/02/14. setting
 !    internal energy of ice and water might not be correct.
-!    auxvar%du_ice_dt = auxvar%du_dt
+!    auxvar%ice%du_ice_dt = auxvar%du_dt
 
-    auxvar%sat_gas       = 0.d0
-    auxvar%dsat_gas_dp   = 0.d0
-    auxvar%dsat_gas_dt   = 0.d0
-    auxvar%den_gas       = 0.d0
-    auxvar%dden_gas_dt   = 0.d0
-    auxvar%u_gas         = 0.d0
-    auxvar%du_gas_dt     = 0.d0
-    auxvar%mol_gas       = 0.d0
-    auxvar%dmol_gas_dt   = 0.d0
+    auxvar%ice%sat_gas       = 0.d0
+    auxvar%ice%dsat_gas_dp   = 0.d0
+    auxvar%ice%dsat_gas_dt   = 0.d0
+    auxvar%ice%den_gas       = 0.d0
+    auxvar%ice%dden_gas_dt   = 0.d0
+    auxvar%ice%u_gas         = 0.d0
+    auxvar%ice%du_gas_dt     = 0.d0
+    auxvar%ice%mol_gas       = 0.d0
+    auxvar%ice%dmol_gas_dt   = 0.d0
   endif
 
 end subroutine THAuxVarComputeFreezing
@@ -781,6 +805,11 @@ subroutine THAuxVarDestroy(auxvar)
   implicit none
 
   type(TH_auxvar_type) :: auxvar
+  
+  if (associated(auxvar%ice)) deallocate(auxvar%ice)
+  nullify(auxvar%ice)
+  if (associated(auxvar%surface)) deallocate(auxvar%surface)
+  nullify(auxvar%surface)
   
 end subroutine THAuxVarDestroy
 
