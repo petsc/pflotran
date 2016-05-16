@@ -1753,6 +1753,12 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   
   ierr = 0
 
+  ! Glass dissolution equation: Kienzler et al. (2012) Eq. 6 pg. 17
+  ! Kienzler, B., M. Altmaier, et al. (2012) Radionuclide Source Term form
+  ! HLW Glass, Spent Nuclear Fuel, and Compacted Hulls and End Pieces
+  ! (CSD-C Waste). KIT Scientific Reports 7624. Karlsruhe Institute of
+  ! Technology, Baden-Wurttemberg, Germany.
+  
   ! kg-glass/m^2/sec
   this%dissolution_rate = time_conversion * 560.d0*exp(-7397.d0/ &
     (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))

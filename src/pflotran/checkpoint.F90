@@ -1680,26 +1680,28 @@ subroutine CheckpointInputRecord(checkpoint_option,waypoint_list)
   write(id,'(a29)',advance='no') '---------------------------: '
   write(id,'(a)') 'CHECKPOINTS'
 
-  write(id,'(a29)',advance='no') 'periodic timestep: '
-  if (checkpoint_option%periodic_ts_incr == 0) then
-    write(id,'(a)') 'OFF'
-  else
-    write(id,'(a)') 'ON'
-    write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,*) checkpoint_option%periodic_ts_incr
-    write(id,'(a)') adjustl(trim(word))
-  endif
+  if (associated(checkpoint_option)) then
+    write(id,'(a29)',advance='no') 'periodic timestep: '
+    if (checkpoint_option%periodic_ts_incr == 0) then
+      write(id,'(a)') 'OFF'
+    else
+      write(id,'(a)') 'ON'
+      write(id,'(a29)',advance='no') 'timestep increment: '
+      write(word,*) checkpoint_option%periodic_ts_incr
+      write(id,'(a)') adjustl(trim(word))
+    endif
 
-  write(id,'(a29)',advance='no') 'periodic time: '
-  if (checkpoint_option%periodic_time_incr <= 0) then
-    write(id,'(a)') 'OFF'
-  else
-    write(id,'(a)') 'ON'
-    write(id,'(a29)',advance='no') 'time increment: '
-    write(word,*) checkpoint_option%periodic_time_incr * &
-                  checkpoint_option%tconv
-    write(id,'(a)') adjustl(trim(word)) // &
-                    adjustl(trim(checkpoint_option%tunit))
+    write(id,'(a29)',advance='no') 'periodic time: '
+    if (checkpoint_option%periodic_time_incr <= 0) then
+      write(id,'(a)') 'OFF'
+    else
+      write(id,'(a)') 'ON'
+      write(id,'(a29)',advance='no') 'time increment: '
+      write(word,*) checkpoint_option%periodic_time_incr * &
+                    checkpoint_option%tconv
+      write(id,'(a)') adjustl(trim(word)) // &
+                      adjustl(trim(checkpoint_option%tunit))
+    endif
   endif
 
   string = ''
