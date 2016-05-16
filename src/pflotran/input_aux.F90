@@ -92,6 +92,11 @@ module Input_Aux_module
     module procedure InputFindStringInFile1
     module procedure InputFindStringInFile2
   end interface
+
+  interface InputKeywordUnrecognized
+    module procedure InputKeywordUnrecognized1
+    module procedure InputKeywordUnrecognized2
+  end interface
   
   public :: InputCreate, InputDestroy, InputReadPflotranString, &
             InputReadWord, InputReadDouble, InputReadInt, InputCheckExit, &
@@ -1909,7 +1914,8 @@ subroutine DbaseLookupDouble(keyword,value,ierr)
 end subroutine DbaseLookupDouble
 
 ! ************************************************************************** !
-subroutine InputKeywordUnrecognized(keyword,string,option)
+
+subroutine InputKeywordUnrecognized1(keyword,string,option)
   ! 
   ! Looks up double precision value in database
   ! 
@@ -1923,14 +1929,43 @@ subroutine InputKeywordUnrecognized(keyword,string,option)
   character(len=*) :: keyword
   character(len=*) :: string
   type(option_type) :: option
+
+  character(len=1) :: null_string
+
+  null_string = '' 
+  call InputKeywordUnrecognized2(keyword,string,null_string,option)
+  
+end subroutine InputKeywordUnrecognized1
+
+! ************************************************************************** !
+
+subroutine InputKeywordUnrecognized2(keyword,string,string2,option)
+  ! 
+  ! Looks up double precision value in database
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/19/14
+  ! 
+  use Option_module
+  
+  implicit none
+  
+  character(len=*) :: keyword
+  character(len=*) :: string
+  character(len=*) :: string2
+  type(option_type) :: option
   
   option%io_buffer = 'Keyword "' // &
                      trim(keyword) // &
                      '" not recognized in ' // &
                      trim(string) // '.'
+  if (len_trim(string2) > 0) then
+    option%io_buffer = trim(option%io_buffer) // ' ' // &
+                     trim(string2) // '.'
+  endif
   call printErrMsg(option)
   
-end subroutine InputKeywordUnrecognized
+end subroutine InputKeywordUnrecognized2
 
 ! ************************************************************************** !
 

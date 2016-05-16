@@ -1462,6 +1462,10 @@ subroutine DiscretizationInputRecord(discretization)
   type(grid_type), pointer :: grid
   character(len=MAXWORDLENGTH) :: word, word1, word2
   PetscInt :: id = INPUT_RECORD_UNIT
+  character(len=10) :: Format, iFormat
+  
+  Format = '(ES14.7)'
+  iFormat = '(I10)'
 
   grid => discretization%grid
 
@@ -1478,13 +1482,13 @@ subroutine DiscretizationInputRecord(discretization)
       write(id,'(a29)',advance='no') ': '
       write(id,'(a)') trim(grid%structured_grid%ctype)
       write(id,'(a29)',advance='no') 'number grid cells X: '
-      write(word,*) grid%structured_grid%nx
+      write(word,iFormat) grid%structured_grid%nx
       write(id,'(a)') adjustl(trim(word)) 
       write(id,'(a29)',advance='no') 'number grid cells Y: '
-      write(word,*) grid%structured_grid%ny
+      write(word,iFormat) grid%structured_grid%ny
       write(id,'(a)') adjustl(trim(word)) 
       write(id,'(a29)',advance='no') 'number grid cells Z: '
-      write(word,*) grid%structured_grid%nz
+      write(word,iFormat) grid%structured_grid%nz
       write(id,'(a)') adjustl(trim(word)) 
       write(id,'(a29)',advance='no') 'delta-X (m): '
       write(id,'(1p10e12.4)') grid%structured_grid%dx_global
@@ -1498,26 +1502,26 @@ subroutine DiscretizationInputRecord(discretization)
   end select
 
   write(id,'(a29)',advance='no') 'bounds X: '
-  write(word1,*) grid%structured_grid%bounds(X_DIRECTION,LOWER)
-  write(word2,*) grid%structured_grid%bounds(X_DIRECTION,UPPER)
+  write(word1,Format) grid%structured_grid%bounds(X_DIRECTION,LOWER)
+  write(word2,Format) grid%structured_grid%bounds(X_DIRECTION,UPPER)
   write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
   write(id,'(a29)',advance='no') 'bounds Y: '
-  write(word1,*) grid%structured_grid%bounds(Y_DIRECTION,LOWER)
-  write(word2,*) grid%structured_grid%bounds(Y_DIRECTION,UPPER)
+  write(word1,Format) grid%structured_grid%bounds(Y_DIRECTION,LOWER)
+  write(word2,Format) grid%structured_grid%bounds(Y_DIRECTION,UPPER)
   write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
   write(id,'(a29)',advance='no') 'bounds Z: '
-  write(word1,*) grid%structured_grid%bounds(Z_DIRECTION,LOWER)
-  write(word2,*) grid%structured_grid%bounds(Z_DIRECTION,UPPER)
+  write(word1,Format) grid%structured_grid%bounds(Z_DIRECTION,LOWER)
+  write(word2,Format) grid%structured_grid%bounds(Z_DIRECTION,UPPER)
   write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
 
   write(id,'(a29)',advance='no') 'global origin: '
-  write(word,*) discretization%origin_global(X_DIRECTION)
+  write(word,Format) discretization%origin_global(X_DIRECTION)
   write(id,'(a)') '(x) ' // adjustl(trim(word)) // ' m'
   write(id,'(a29)',advance='no') ': '
-  write(word,*) discretization%origin_global(Y_DIRECTION)
+  write(word,Format) discretization%origin_global(Y_DIRECTION)
   write(id,'(a)') '(y) ' // adjustl(trim(word)) // ' m'
   write(id,'(a29)',advance='no') ': '
-  write(word,*) discretization%origin_global(Z_DIRECTION)
+  write(word,Format) discretization%origin_global(Z_DIRECTION)
   write(id,'(a)') '(z) ' // adjustl(trim(word)) // ' m'
 
 end subroutine DiscretizationInputRecord

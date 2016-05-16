@@ -1561,9 +1561,9 @@ subroutine CheckpointRead(input,option,checkpoint_option,waypoint_list)
         call InputReadWord(input,option,default_time_units,PETSC_TRUE)
         call InputErrorMsg(input,option,'time units','CHECKPOINT')
       case default
-          call InputErrorMsg(input,option,'checkpoint option type', &
-                              'CHECKPOINT: Must specify PERIODIC TIME, &
-                              &PERIODIC TIMESTEP, TIMES, or FORMAT')
+        temp_string = 'Must specify PERIODIC TIME, PERIODIC TIMESTEP, &
+                      &TIMES, or FORMAT'
+        call InputKeywordUnrecognized(word,'CHECKPOINT',temp_string,option)
     end select
   enddo
   if (len_trim(default_time_units) > 0) then

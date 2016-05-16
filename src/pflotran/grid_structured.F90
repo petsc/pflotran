@@ -1325,8 +1325,9 @@ subroutine StructGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
       do local_id=1, structured_grid%nlmax
         ghosted_id = nL2G(local_id)
         ! volume = 2 pi r dr dz
-        !        = pi * (r2-r1) * (r2+r1) * dz where dr = r2-r1 and 2 r = r2 + r1
-        volume_p(local_id) = 2.d0 * pi * radius(ghosted_id) * structured_grid%dx(ghosted_id) * &
+        !       = pi * (r2-r1) * (r2+r1) * dz where dr = r2-r1 and 2 r = r2 + r1
+        volume_p(local_id) = 2.d0 * pi * radius(ghosted_id) * &
+                             structured_grid%dx(ghosted_id) * &
                              structured_grid%dz(ghosted_id)
       enddo
     case(SPHERICAL_GRID)

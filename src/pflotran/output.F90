@@ -86,6 +86,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
 
   use Option_module
   use Input_Aux_module
+  use Output_Aux_module
   use String_module
   use Realization_Subsurface_class
   use Waypoint_module
@@ -93,6 +94,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
   use Utility_module
   use Grid_module
   use Patch_module
+  use Region_module
 
   implicit none
 
@@ -106,6 +108,8 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(waypoint_type), pointer :: waypoint
+  type(mass_balance_region_type), pointer :: new_massbal_region
+  type(mass_balance_region_type), pointer :: cur_mbr
   PetscReal, pointer :: temp_real_array(:)
 
   character(len=MAXWORDLENGTH) :: word
@@ -114,6 +118,7 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
   PetscReal :: temp_real,temp_real2
   PetscReal :: units_conversion
   PetscInt :: k
+  PetscBool :: added
   PetscBool :: vel_cent, vel_face
   PetscBool :: fluxes
   PetscBool :: mass_flowrate, energy_flowrate
@@ -173,6 +178,51 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
             output_option%print_initial_snap = PETSC_FALSE
           case('MASS_BALANCE_FILE')
             output_option%print_initial_massbal = PETSC_FALSE
+        end select
+        
+!...............................
+      case('TOTAL_MASS_REGIONS')
+        select case(trim(block_name))
+          case('OBSERVATION_FILE')
+            option%io_buffer = 'TOTAL_MASS_REGIONS cannot be specified for &
+                               &OUTPUT,OBSERVATION_FILE block.'
+            call printErrMsg(option)
+          case('SNAPSHOT_FILE')
+            option%io_buffer = 'TOTAL_MASS_REGIONS cannot be specified for &
+                               &OUTPUT,SNAPSHOT_FILE block.'
+            call printErrMsg(option)
+          case('MASS_BALANCE_FILE')
+            string = 'OUTPUT,' // trim(block_name) // ',TOTAL_MASS_REGIONS'
+            output_option%mass_balance_region_flag = PETSC_TRUE
+            do
+              ! Read region name:
+              call InputReadPflotranString(input,option)
+              call InputReadStringErrorMsg(input,option,string)
+              if (InputCheckExit(input,option)) exit
+              ! Region name found; read the region name
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'keyword',string) 
+              ! Create a new mass balance region
+              new_massbal_region => OutputMassBalRegionCreate()
+              new_massbal_region%region_name = trim(word)
+              ! Add the new mass balance region to the list
+              added = PETSC_FALSE
+              if (.not.associated(output_option%mass_balance_region_list)) then
+                output_option%mass_balance_region_list => new_massbal_region
+              else
+                cur_mbr => output_option%mass_balance_region_list
+                do
+                  if (.not.associated(cur_mbr)) exit
+                  if (.not.associated(cur_mbr%next)) then
+                    cur_mbr%next => new_massbal_region
+                    added = PETSC_TRUE
+                  endif
+                  if (added) exit
+                  cur_mbr => cur_mbr%next
+                enddo
+              endif
+              nullify(new_massbal_region)
+            enddo ! Read loop
         end select
 
 !..................
@@ -350,8 +400,10 @@ subroutine OutputFileRead(realization,output_option,waypoint_list,block_name)
             string = trim(string) // ',HDF5'
             output_option%print_hdf5 = PETSC_TRUE
             call InputReadWord(input,option,word,PETSC_TRUE)
-            call InputDefaultMsg(input,option,string)
-            if (input%ierr == 0) then
+            if (input%ierr /= 0) then
+              call InputDefaultMsg(input,option,string)
+              output_option%print_single_h5_file = PETSC_TRUE
+            else
               call StringToUpper(word)
               select case(trim(word))
               !....................
@@ -1008,14 +1060,8 @@ subroutine Output(realization_base,snapshot_plot_flag,observation_plot_flag, &
       if (realization_base%discretization%itype == UNSTRUCTURED_GRID) then
         select case (realization_base%discretization%grid%itype)
           case (EXPLICIT_UNSTRUCTURED_GRID)
-            if (option%print_explicit_primal_grid) then
-              call OutputHDF5UGridXDMFExplicit(realization_base, &
-                   INSTANTANEOUS_VARS)
-            else
-              call printErrMsg(option,'HDF5 output requested for an &
-                   &explicit unstructured grid, but primal grid information &
-                   &is unavailable in input mesh')
-            endif
+             call OutputHDF5UGridXDMFExplicit(realization_base, &
+                  INSTANTANEOUS_VARS)
           case (IMPLICIT_UNSTRUCTURED_GRID)
             call OutputHDF5UGridXDMF(realization_base,INSTANTANEOUS_VARS)
           case (POLYHEDRA_UNSTRUCTURED_GRID)
@@ -1161,7 +1207,10 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: snap_string,obs_string,msbl_string
   PetscBool :: snap_output_found,obs_output_found,msbl_output_found
-  PetscInt :: id = INPUT_RECORD_UNIT
+  PetscInt :: id = INPUT_RECORD_UNIT  
+  character(len=10) :: Format
+  
+  Format = '(ES14.7)'
 
   write(id,'(a)') ' '
     write(id,'(a)') '---------------------------------------------------------&
@@ -1193,17 +1242,17 @@ subroutine OutputInputRecord(output_option,waypoint_list)
     if (.not.associated(cur_waypoint)) exit
     if (cur_waypoint%print_snap_output) then
       snap_output_found = PETSC_TRUE
-      write(word,*) cur_waypoint%time / output_option%tconv
+      write(word,Format) cur_waypoint%time / output_option%tconv
       snap_string = trim(snap_string) // adjustl(trim(word)) // ','
     endif
     if (cur_waypoint%print_obs_output) then
       obs_output_found = PETSC_TRUE
-      write(word,*) cur_waypoint%time / output_option%tconv
+      write(word,Format) cur_waypoint%time / output_option%tconv
       obs_string = trim(obs_string) // adjustl(trim(word)) // ','
     endif
     if (cur_waypoint%print_msbl_output) then
       msbl_output_found = PETSC_TRUE
-      write(word,*) cur_waypoint%time / output_option%tconv
+      write(word,Format) cur_waypoint%time / output_option%tconv
       msbl_string = trim(msbl_string) // adjustl(trim(word)) // ','
     endif
     cur_waypoint => cur_waypoint%next
@@ -1287,7 +1336,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,*) output_option%periodic_snap_output_ts_imod
+    write(word,Format) output_option%periodic_snap_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
@@ -1296,7 +1345,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'time increment: '
-    write(word,*) output_option%periodic_snap_output_time_incr / &
+    write(word,Format) output_option%periodic_snap_output_time_incr / &
                   output_option%tconv
     write(id,'(a)') adjustl(trim(word)) // &
                     adjustl(trim(output_option%tunit))
@@ -1347,7 +1396,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,*) output_option%periodic_obs_output_ts_imod
+    write(word,Format) output_option%periodic_obs_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
@@ -1356,7 +1405,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'time increment: '
-    write(word,*) output_option%periodic_obs_output_time_incr / &
+    write(word,Format) output_option%periodic_obs_output_time_incr / &
                   output_option%tconv
     write(id,'(a)') adjustl(trim(word)) // &
                     adjustl(trim(output_option%tunit))
@@ -1406,7 +1455,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,*) output_option%periodic_msbl_output_ts_imod
+    write(word,Format) output_option%periodic_msbl_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
@@ -1415,7 +1464,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'time increment: '
-    write(word,*) output_option%periodic_msbl_output_time_incr / &
+    write(word,Format) output_option%periodic_msbl_output_time_incr / &
                   output_option%tconv
     write(id,'(a)') adjustl(trim(word)) // &
                     adjustl(trim(output_option%tunit))

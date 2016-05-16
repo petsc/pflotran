@@ -34,8 +34,6 @@ module Timestepper_Base_class
     PetscReal :: dt_init
     PetscReal :: dt_min
     PetscReal :: dt_max
-    PetscReal :: cfl_limiter
-    PetscReal :: cfl_limiter_ts
     PetscBool :: revert_dt
     PetscInt :: num_contig_revert_due_to_sync
     
@@ -158,8 +156,6 @@ subroutine TimestepperBaseInit(this)
   this%dt_init = 1.d0
   this%dt_min = 1.d-20   ! Ten zeptoseconds.
   this%dt_max = 3.1536d6 ! One-tenth of a year.  
-  this%cfl_limiter = UNINITIALIZED_DOUBLE
-  this%cfl_limiter_ts = 1.d20
   
   this%time_step_cut_flag = PETSC_FALSE
   
@@ -263,10 +259,6 @@ subroutine TimestepperBaseProcessKeyword(this,input,option,keyword)
       call InputReadInt(input,option,this%max_time_step_cuts)
       call InputDefaultMsg(input,option,'max_time_step_cuts')
         
-    case('CFL_LIMITER')
-      call InputReadDouble(input,option,this%cfl_limiter)
-      call InputDefaultMsg(input,option,'cfl limiter')
-
     case('INITIALIZE_TO_STEADY_STATE')
       this%init_to_steady_state = PETSC_TRUE
       call InputReadDouble(input,option,this%steady_state_rel_tol)

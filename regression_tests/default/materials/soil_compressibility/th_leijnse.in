@@ -1,0 +1,172 @@
+#Description: 1D Calcite dissolution problem
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE TH
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 5
+END
+
+#=========================== flow mode ========================================
+
+#=========================== solver options ===================================
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 1 1 100
+  BOUNDS
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 10.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.8E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 0.5
+  THERMAL_CONDUCTIVITY_WET 0.5
+  SOIL_COMPRESSIBILITY_FUNCTION LEIJNSE
+  SOIL_COMPRESSIBILITY 1.d-7
+  SOIL_REFERENCE_PRESSURE 1.d5
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+  CHARACTERISTIC_CURVES sf1
+END
+
+#========================= saturation functions ===============================
+SATURATION_FUNCTION sf1
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.1d0
+  LAMBDA 0.5d0
+  ALPHA  1.d-4
+END
+
+skip
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES sf1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.5d0
+    ALPHA  1.d-4
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    MAX_CAPILLARY_PRESSURE 1.d8
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+END
+noskip
+
+#=========================== output options ===================================
+OUTPUT
+#  TIMES y 5. 10. 15. 20.
+# FORMAT HDF5
+#  FORMAT TECPLOT POINT
+#  VELOCITY_AT_CENTER
+  VARIABLES
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+    POROSITY
+    MINERAL_POROSITY
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 25.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 10.d0
+  /
+END
+
+REGION top
+  FACE top
+  COORDINATES
+    0.d0 0.d0 10.d0
+    1.d0 1.d0 10.d0
+  /
+END
+
+REGION bottom
+  FACE bottom
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 0.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+    TEMPERATURE dirichlet
+  /
+  DATUM 0.d0 0.d0 1.d0
+  PRESSURE 101325.d0
+  TEMPERATURE 10.D0
+END
+
+FLOW_CONDITION recharge
+  TYPE
+    FLUX neumann
+    TEMPERATURE dirichlet
+  /
+  FLUX 10 cm/y
+  TEMPERATURE 25.D0
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION outlet
+  FLOW_CONDITION initial
+  REGION bottom
+END
+
+BOUNDARY_CONDITION inlet
+  FLOW_CONDITION recharge
+  REGION top
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+
+END_SUBSURFACE

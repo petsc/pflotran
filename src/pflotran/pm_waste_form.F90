@@ -39,7 +39,7 @@ module PM_Waste_Form_class
     PetscReal :: vitality_rate_stdev
     PetscReal :: vitality_rate_trunc
     PetscReal :: canister_material_constant
-    PetscReal :: matrix_density ! kg/m^3
+    PetscReal :: matrix_density                 ! kg/m^3
     character(len=MAXWORDLENGTH) :: name
     class(wf_mechanism_base_type), pointer :: next
   contains
@@ -47,30 +47,49 @@ module PM_Waste_Form_class
   end type wf_mechanism_base_type
 
   type, public, extends(wf_mechanism_base_type) :: wf_mechanism_glass_type
-    PetscReal :: specific_surface_area   
-    PetscReal :: dissolution_rate         ! kg-glass/m^2/day
+    PetscReal :: specific_surface_area    ! m^2/kg
+    PetscReal :: dissolution_rate         ! kg-glass/m^2/sec
   contains
     procedure, public :: Dissolution => WFMechGlassDissolution
   end type wf_mechanism_glass_type
 
   type, public, extends(wf_mechanism_base_type) :: wf_mechanism_dsnf_type
-    PetscReal :: frac_dissolution_rate    ! 1/day
+    PetscReal :: frac_dissolution_rate    ! 1/sec
   contains
     procedure, public :: Dissolution => WFMechDSNFDissolution
   end type wf_mechanism_dsnf_type
 
   type, public, extends(wf_mechanism_base_type) :: wf_mechanism_fmdm_type
-    PetscReal :: specific_surface_area 
-    PetscReal :: dissolution_rate         ! kg-matrix/m^2/day
-    PetscReal :: frac_dissolution_rate    ! 1/day
+    PetscReal :: specific_surface_area    ! m^2/kg
+    PetscReal :: dissolution_rate         ! kg-matrix/m^2/sec
+    PetscReal :: frac_dissolution_rate    ! 1/sec
+    PetscReal :: burnup                   ! GWd/MTHM (kg-matrix/m^2/sec)
+    PetscInt :: num_grid_cells_in_waste_form  ! hardwired to 40
+    ! mapping of fmdm species into fmdm concentration array:
+    PetscInt, pointer :: mapping_fmdm(:)
+    ! mapping of species in fmdm concentration array to pflotran:
+    PetscInt, pointer :: mapping_fmdm_to_pflotran(:)
+    PetscReal, pointer :: concentration(:,:)
+    PetscInt :: num_concentrations            ! hardwired to 11
+    PetscInt :: iUO2_2p
+    PetscInt :: iUCO3_2n
+    PetscInt :: iUO2
+    PetscInt :: iCO3_2n
+    PetscInt :: iO2
+    PetscInt :: iH2O2
+    PetscInt :: iFe_2p
+    PetscInt :: iH2
+    PetscInt :: iUO2_sld
+    PetscInt :: iUO3_sld
+    PetscInt :: iUO4_sld
   contains
     procedure, public :: Dissolution => WFMechFMDMDissolution
   end type wf_mechanism_fmdm_type
   
   type, public, extends(wf_mechanism_base_type) :: wf_mechanism_custom_type
-    PetscReal :: specific_surface_area 
-    PetscReal :: dissolution_rate         ! kg-matrix/m^2/day
-    PetscReal :: frac_dissolution_rate    ! 1/day
+    PetscReal :: specific_surface_area    ! m^2/kg
+    PetscReal :: dissolution_rate         ! kg-matrix/m^2/sec
+    PetscReal :: frac_dissolution_rate    ! 1/sec
   contains
     procedure, public :: Dissolution => WFMechCustomDissolution
   end type wf_mechanism_custom_type
@@ -80,8 +99,9 @@ module PM_Waste_Form_class
     PetscInt :: id
     PetscInt :: local_cell_id
     type(point3d_type) :: coordinate
-    PetscReal :: volume
-    PetscReal :: exposure_factor
+    PetscReal :: init_volume                            ! m^3
+    PetscReal :: volume                                 ! m^3
+    PetscReal :: exposure_factor                        ! unitless 
     PetscReal :: eff_dissolution_rate                   ! kg-matrix/sec
     PetscReal, pointer :: instantaneous_mass_rate(:)    ! mol/sec
     PetscReal, pointer :: cumulative_mass(:)            ! mol
@@ -89,9 +109,10 @@ module PM_Waste_Form_class
     PetscReal, pointer :: rad_concentration(:)          ! mol-rad/g-matrix
     PetscReal, pointer :: inst_release_amount(:)        ! of rad
     PetscBool :: canister_degradation_flag
-    PetscReal :: canister_vitality
+    PetscReal :: canister_vitality                      ! %
     PetscReal :: canister_vitality_rate
     PetscReal :: eff_canister_vit_rate
+    PetscReal :: breach_time                            ! sec
     PetscBool :: breached
     character(len=MAXWORDLENGTH) :: mech_name
     class(wf_mechanism_base_type), pointer :: mechanism
@@ -174,8 +195,8 @@ function MechanismGlassCreate()
   
   allocate(MechanismGlassCreate)
   call MechanismInit(MechanismGlassCreate)
-  MechanismGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
-  MechanismGlassCreate%dissolution_rate = 0.d0  ! kg / sec
+  MechanismGlassCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/kg
+  MechanismGlassCreate%dissolution_rate = 0.d0  ! kg/m^2/sec
 
 end function MechanismGlassCreate
 
@@ -194,7 +215,7 @@ function MechanismDSNFCreate()
   
   allocate(MechanismDSNFCreate)
   call MechanismInit(MechanismDSNFCreate)
-  MechanismDSNFCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
+  MechanismDSNFCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/sec
 
 end function MechanismDSNFCreate
 
@@ -213,9 +234,45 @@ function MechanismFMDMCreate()
   
   allocate(MechanismFMDMCreate)
   call MechanismInit(MechanismFMDMCreate)
-  MechanismFMDMCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
-  MechanismFMDMCreate%dissolution_rate = UNINITIALIZED_DOUBLE  ! kg/sec
+  
+  MechanismFMDMCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/kg
+  MechanismFMDMCreate%dissolution_rate = UNINITIALIZED_DOUBLE       ! kg/m^2/sec
   MechanismFMDMCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
+  MechanismFMDMCreate%burnup = UNINITIALIZED_DOUBLE     ! GWd/MTHM or (kg/m^2/sec)
+  
+  MechanismFMDMCreate%num_grid_cells_in_waste_form = 40  ! hardwired
+  
+  nullify(MechanismFMDMCreate%concentration)
+  MechanismFMDMCreate%num_concentrations = 11         
+  MechanismFMDMCreate%iUO2_2p = 1
+  MechanismFMDMCreate%iUCO3_2n = 2
+  MechanismFMDMCreate%iUO2 = 3
+  MechanismFMDMCreate%iCO3_2n = 4
+  MechanismFMDMCreate%iO2 = 5
+  MechanismFMDMCreate%iH2O2 = 6
+  MechanismFMDMCreate%iFe_2p = 7
+  MechanismFMDMCreate%iH2 = 8
+  MechanismFMDMCreate%iUO2_sld = 9
+  MechanismFMDMCreate%iUO3_sld = 10
+  MechanismFMDMCreate%iUO4_sld = 11
+  
+  allocate(MechanismFMDMCreate%mapping_fmdm_to_pflotran( &
+           MechanismFMDMCreate%num_concentrations))
+  MechanismFMDMCreate%mapping_fmdm_to_pflotran = UNINITIALIZED_INTEGER
+  
+  ! concentration can be allocated here because we hardwired
+  ! the num_grid_cells_in_waste_form value, but if it becomes
+  ! user defined, then allocation must be delayed until PMWFSetup
+  allocate(MechanismFMDMCreate%concentration( &
+             MechanismFMDMCreate%num_concentrations, &
+             MechanismFMDMCreate%num_grid_cells_in_waste_form))
+  MechanismFMDMCreate%concentration = 1.d-20
+  
+  allocate(MechanismFMDMCreate%mapping_fmdm(4))
+  MechanismFMDMCreate%mapping_fmdm = [MechanismFMDMCreate%iO2, &
+                                      MechanismFMDMCreate%iCO3_2n, &
+                                      MechanismFMDMCreate%iH2, &
+                                      MechanismFMDMCreate%iFe_2p]
 
 end function MechanismFMDMCreate
 
@@ -234,9 +291,9 @@ function MechanismCustomCreate()
   
   allocate(MechanismCustomCreate)
   call MechanismInit(MechanismCustomCreate)
-  MechanismCustomCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/m^3
-  MechanismCustomCreate%dissolution_rate = UNINITIALIZED_DOUBLE  ! kg/sec
-  MechanismCustomCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
+  MechanismCustomCreate%specific_surface_area = UNINITIALIZED_DOUBLE  ! m^2/kg
+  MechanismCustomCreate%dissolution_rate = UNINITIALIZED_DOUBLE    ! kg/m^2/sec
+  MechanismCustomCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE    ! 1/sec
 
 end function MechanismCustomCreate
 
@@ -284,6 +341,7 @@ function WasteFormCreate()
   WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
+  WasteFormCreate%init_volume = UNINITIALIZED_DOUBLE
   WasteFormCreate%volume = UNINITIALIZED_DOUBLE
   WasteFormCreate%exposure_factor = 1.0d0
   WasteFormCreate%eff_dissolution_rate = UNINITIALIZED_DOUBLE
@@ -298,6 +356,7 @@ function WasteFormCreate()
  !------- canister degradation model -----------------
   WasteFormCreate%canister_degradation_flag = PETSC_FALSE
   WasteFormCreate%breached = PETSC_FALSE
+  WasteFormCreate%breach_time = UNINITIALIZED_DOUBLE
   WasteFormCreate%canister_vitality = 0.d0
   WasteFormCreate%canister_vitality_rate = UNINITIALIZED_DOUBLE
   WasteFormCreate%eff_canister_vit_rate = UNINITIALIZED_DOUBLE
@@ -393,6 +452,7 @@ subroutine PMWFRead(this,input)
     end select
   enddo
 
+  ! Assign chosen mechanism to each waste form
   cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit
@@ -543,12 +603,20 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
           new_mechanism => MechanismDSNFCreate()
       !---------------------------------
         case('FMDM')
-          option%io_buffer = 'FMDM waste form not yet implemented. Sorry! ' &
-                             // trim(error_string)
-          call printErrMsg(option)
-          !error_string = trim(error_string) // ' FMDM'
-          !allocate(new_mechanism)
-          !new_mechanism => MechanismFMDMCreate()
+          ! for now, set bypass_warning_message = TRUE so we can run 
+          ! the fmdm model even though its not included/linked 
+          bypass_warning_message = PETSC_TRUE
+#ifndef FMDM_MODEL
+          this%option%io_buffer = 'Preprocessing statement FMDM_MODEL must &
+            &be defined and the ANL FMDM library must be linked to PFLOTRAN &
+            &to employ the fuel matrix degradation model.'
+          if (.not.bypass_warning_message) then
+            call printErrMsg(this%option)
+          endif
+#endif
+          error_string = trim(error_string) // ' FMDM'
+          allocate(new_mechanism)
+          new_mechanism => MechanismFMDMCreate()
       !---------------------------------
         case('CUSTOM')
           error_string = trim(error_string) // ' CUSTOM'
@@ -583,7 +651,7 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                                error_string)
             call InputReadWord(input,option,word,PETSC_TRUE)
             if (input%ierr == 0) then
-              internal_units = 'm^2/m^3'
+              internal_units = 'm^2/kg'
               double = UnitsConvertToInternal(word,internal_units,option) * &
                        double
             endif
@@ -624,11 +692,7 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                     UnitsConvertToInternal(word,internal_units,option) * &
                     new_mechanism%frac_dissolution_rate
                 endif
-              type is(wf_mechanism_glass_type)
-                option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE cannot be &
-                                   &specified for ' // trim(error_string)
-                call printErrMsg(option)
-              type is(wf_mechanism_dsnf_type)
+              class default
                 option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE cannot be &
                                    &specified for ' // trim(error_string)
                 call printErrMsg(option)
@@ -647,13 +711,36 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                     UnitsConvertToInternal(word,internal_units,option) * &
                     new_mechanism%dissolution_rate
                 endif
-              type is(wf_mechanism_glass_type)
+              class default
                 option%io_buffer = 'DISSOLUTION_RATE cannot be specified for ' &
                                    // trim(error_string)
                 call printErrMsg(option)
-              type is(wf_mechanism_dsnf_type)
-                option%io_buffer = 'DISSOLUTION_RATE cannot be specified for ' &
-                                   // trim(error_string)
+            end select
+        !--------------------------
+          case('BURNUP')
+            select type(new_mechanism)
+              type is(wf_mechanism_fmdm_type)
+                call InputReadDouble(input,option,new_mechanism%burnup)
+                call InputErrorMsg(input,option,'burnup',error_string)
+#ifndef FMDM_MODEL
+                ! if fmdm model is not on, then burnup is dissolution rate
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                if (input%ierr == 0) then
+                  internal_units = 'kg/m^2-sec'
+                  new_mechanism%burnup = UnitsConvertToInternal(word, &
+                    internal_units,option) * new_mechanism%burnup
+                endif
+                option%io_buffer = 'Warning: FMDM is not linked, but an &
+                                   &FMDM mechanism was defined. BURNUP &
+                                   &will be used for fuel dissolution rate.'
+                call printMsg(option)
+#else
+                option%io_buffer = 'FMDM is linked.'
+                call printMsg(option)
+#endif
+              class default
+                option%io_buffer = 'BURNUP cannot be &
+                                   &specified for ' // trim(error_string)
                 call printErrMsg(option)
             end select
         !--------------------------
@@ -807,6 +894,19 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                                // ' ' // trim(new_mechanism%name) // ' block.'
             call printErrMsg(option)
           endif
+        type is(wf_mechanism_fmdm_type)
+          if (uninitialized(new_mechanism%burnup)) then
+            option%io_buffer = 'BURNUP must be specified in ' &
+                               // trim(error_string) // ' ' // &
+                               trim(new_mechanism%name) // ' block.'
+            call printErrMsg(option)
+          endif
+          if (uninitialized(new_mechanism%specific_surface_area)) then
+            option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' &
+                               // trim(error_string) // ' ' // &
+                               trim(new_mechanism%name) // ' block.'
+            call printErrMsg(option)
+          endif
       end select
       if (uninitialized(new_mechanism%matrix_density)) then
         option%io_buffer = 'MATRIX_DENSITY must be specified in ' // &
@@ -915,6 +1015,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
               new_waste_form%volume = UnitsConvertToInternal(word, &
                    internal_units,option) * new_waste_form%volume
             endif
+            new_waste_form%init_volume = new_waste_form%volume
         !-----------------------------
           case('COORDINATE')
             call GeometryReadCoordinate(input,option, &
@@ -1022,6 +1123,7 @@ subroutine PMWFSetup(this)
   use Grid_Structured_module
   use Grid_Unstructured_module
   use Option_module
+  use Reaction_Aux_module
 
   implicit none
   
@@ -1029,9 +1131,12 @@ subroutine PMWFSetup(this)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
   class(waste_form_base_type), pointer :: cur_waste_form, prev_waste_form
   class(waste_form_base_type), pointer :: next_waste_form
+  class(wf_mechanism_base_type), pointer :: cur_mechanism
   character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: species_name
   PetscInt :: i, j, k, local_id
   PetscReal :: x, y, z
   PetscInt :: waste_form_id
@@ -1040,6 +1145,7 @@ subroutine PMWFSetup(this)
   
   grid => this%realization%patch%grid
   option => this%realization%option
+  reaction => this%realization%reaction
   
   waste_form_id = 0
   nullify(prev_waste_form)
@@ -1105,7 +1211,30 @@ subroutine PMWFSetup(this)
                            ') is defined more than once within domain.'
       endif
       call printErrMsg(option)
-    endif    
+    endif
+  enddo
+  
+  ! check if the mechanism list includes fmdm mechanisms:
+  cur_mechanism => this%mechanism_list
+  do
+    if (.not.associated(cur_mechanism)) exit
+    select type(cur_mechanism)
+      ! set up indexing of solute concentrations for fmdm model:
+      type is(wf_mechanism_fmdm_type)
+        species_name = 'O2(aq)'
+        cur_mechanism%mapping_fmdm_to_pflotran(cur_mechanism%iO2) = &
+          GetPrimarySpeciesIDFromName(species_name,reaction,option)
+        species_name = 'HCO3-'
+        cur_mechanism%mapping_fmdm_to_pflotran(cur_mechanism%iCO3_2n) = &
+          GetPrimarySpeciesIDFromName(species_name,reaction,option)
+        species_name = 'H2(aq)'
+        cur_mechanism%mapping_fmdm_to_pflotran(cur_mechanism%iH2) = &
+          GetPrimarySpeciesIDFromName(species_name,reaction,option)
+        species_name = 'Fe++'
+        cur_mechanism%mapping_fmdm_to_pflotran(cur_mechanism%iFe_2p) = &
+          GetPrimarySpeciesIDFromName(species_name,reaction,option)
+    end select
+    cur_mechanism => cur_mechanism%next
   enddo
   
 end subroutine PMWFSetup
@@ -1234,8 +1363,6 @@ end subroutine PMWFSetup
       enddo
       cur_waste_form => cur_waste_form%next
     enddo                             ! zero-based indexing
-    !write(*,*) species_indices_in_residual(:)
-    !stop
     species_indices_in_residual(:) = species_indices_in_residual(:) - 1
     ! set to global petsc index
     species_indices_in_residual(:) = species_indices_in_residual(:) + &
@@ -1323,7 +1450,7 @@ subroutine PMWFInitializeTimestep(this)
          cwfm%matrix_density * &                      ! kg-matrix/m^3-matrix
          dt                                           ! sec
     cur_waste_form%volume = cur_waste_form%volume - dV
-    if (cur_waste_form%volume <= 1.d-10) then
+    if (cur_waste_form%volume <= 1.d-8) then
       cur_waste_form%volume = 0.d0
     endif
     
@@ -1392,6 +1519,7 @@ subroutine PMWFInitializeTimestep(this)
         xx_p(idof) = xx_p(idof) + inst_release_molality
       enddo
       cur_waste_form%breached = PETSC_TRUE 
+      cur_waste_form%breach_time = option%time
       call VecRestoreArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
     endif
     
@@ -1481,8 +1609,8 @@ subroutine PMWFInitializeTimestep(this)
 
       ! ------ update species mass fractions ---------------------------------
       do k = 1,num_species
-        cur_waste_form%rad_mass_fraction(k) = &
-        cur_waste_form%rad_concentration(k) * &
+        cur_waste_form%rad_mass_fraction(k) = &       ! [g-rad/g-wf]
+        cur_waste_form%rad_concentration(k) * &       ! [mol-rad/g-wf]
           cur_waste_form%mechanism%rad_species_list(k)%formula_weight
         ! to avoid errors in plotting data when conc is very very low:  
         if (cur_waste_form%rad_mass_fraction(k) <= 1e-40) then
@@ -1507,7 +1635,7 @@ subroutine PMWFSolve(this,time,ierr)
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
-  !
+  ! Updated/modified by Jenn Frederick 04/2016
   
   implicit none
 
@@ -1522,6 +1650,11 @@ subroutine PMWFSolve(this,time,ierr)
   PetscInt :: i, j
   PetscInt :: num_species
   PetscReal, pointer :: vec_p(:)  
+  PetscInt :: fmdm_count_global, fmdm_count_local
+  character(len=MAXWORDLENGTH) :: word
+  
+  fmdm_count_global = 0
+  fmdm_count_local = 0
 
   call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   cur_waste_form => this%waste_form_list
@@ -1532,13 +1665,18 @@ subroutine PMWFSolve(this,time,ierr)
     if ((cur_waste_form%volume > 0.d0) .and. &
         (cur_waste_form%canister_vitality <= 1.d-40)) then
       ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]
-      call cur_waste_form%mechanism%Dissolution(cur_waste_form,this)
+      call cur_waste_form%mechanism%Dissolution(cur_waste_form,this,ierr)
+      ! count the number of time FMDM was called
+      select type(cwfm => cur_waste_form%mechanism)
+        type is(wf_mechanism_fmdm_type)
+          fmdm_count_local = fmdm_count_local + 1
+      end select
       ! mol/sec
       do j = 1,num_species
         i = i + 1
         cur_waste_form%instantaneous_mass_rate(j) = &
-          (cur_waste_form%eff_dissolution_rate * &            ! kg-matrix/sec
-           cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kmol-rad/kg-rad
+          (cur_waste_form%eff_dissolution_rate / &            ! kg-matrix/sec
+           cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kg-rad/kmol-rad
            cur_waste_form%rad_mass_fraction(j) * &            ! kg-rad/kg-matrix
            1.d3)                                              ! kmol -> mol
         vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)  ! mol/sec
@@ -1551,13 +1689,23 @@ subroutine PMWFSolve(this,time,ierr)
     cur_waste_form => cur_waste_form%next
   enddo
   
+  ! ideally, this print statement would go inside the dissolution subroutine
+  call MPI_Allreduce(fmdm_count_local,fmdm_count_global,ONE_INTEGER_MPI, &
+                     MPI_INTEGER,MPI_SUM,this%realization%option%mycomm,ierr)
+  if ((fmdm_count_global > 0) .and. &
+      this%realization%option%print_screen_flag) then
+    write(word,'(i5)') fmdm_count_global
+    write(*,'(/,2("=")," FMDM ",72("="))')
+    write(*,'(a)') '== ' // adjustl(trim(word)) // ' calls to FMDM.'
+  endif
+  
   call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   
 end subroutine PMWFSolve
 
 ! ************************************************************************** !
 
-subroutine WFMechBaseDissolution(this,waste_form,pm) 
+subroutine WFMechBaseDissolution(this,waste_form,pm,ierr) 
   ! 
   ! Calculates the waste form dissolution rate; must be extended
   ! 
@@ -1569,14 +1717,17 @@ subroutine WFMechBaseDissolution(this,waste_form,pm)
   class(wf_mechanism_base_type) :: this
   class(waste_form_base_type) :: waste_form
   class(pm_waste_form_type) :: pm
+  PetscErrorCode :: ierr
 
   ! This routine must be extended.
+  print *, 'subroutine WFMechBaseDissolution must be extended!'
+  stop
 
 end subroutine WFMechBaseDissolution
 
 ! ************************************************************************** !
 
-subroutine WFMechGlassDissolution(this,waste_form,pm) 
+subroutine WFMechGlassDissolution(this,waste_form,pm,ierr) 
   ! 
   ! Calculates the glass waste form dissolution rate
   ! 
@@ -1591,6 +1742,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm)
   class(wf_mechanism_glass_type) :: this
   class(waste_form_base_type) :: waste_form
   class(pm_waste_form_type) :: pm
+  PetscErrorCode :: ierr
 
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_auxvars(:)                                                                    ! 1/day -> 1/sec
@@ -1598,25 +1750,26 @@ subroutine WFMechGlassDissolution(this,waste_form,pm)
 
   grid => pm%realization%patch%grid
   global_auxvars => pm%realization%patch%aux%Global%auxvars
-
-  ! kg glass/m^2/day
-  this%dissolution_rate = 560.d0*exp(-7397.d0/ &
-    (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))
   
-  ! kg glass / sec
+  ierr = 0
+
+  ! kg-glass/m^2/sec
+  this%dissolution_rate = time_conversion * 560.d0*exp(-7397.d0/ &
+    (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))
+
+  ! kg-glass/sec
   waste_form%eff_dissolution_rate = &
-    this%dissolution_rate * &          ! kg-glass/m^2/day
+    this%dissolution_rate * &          ! kg-glass/m^2/sec
     this%specific_surface_area * &     ! m^2/kg glass
     this%matrix_density * &            ! kg-glass/m^3-glass
     waste_form%volume * &              ! m^3-glass
-    waste_form%exposure_factor * &     ! [-]
-    time_conversion                    ! day/sec
+    waste_form%exposure_factor         ! [-]
 
 end subroutine WFMechGlassDissolution
 
 ! ************************************************************************** !
 
-subroutine WFMechDSNFDissolution(this,waste_form,pm) 
+subroutine WFMechDSNFDissolution(this,waste_form,pm,ierr) 
   ! 
   ! Calculates the DSNF waste form dissolution rate
   ! 
@@ -1631,12 +1784,14 @@ subroutine WFMechDSNFDissolution(this,waste_form,pm)
   class(wf_mechanism_dsnf_type) :: this
   class(waste_form_base_type) :: waste_form
   class(pm_waste_form_type) :: pm  
-                                           ! day/sec
-  PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
+  PetscErrorCode :: ierr
   
+  ierr = 0
+  
+  ! 91% of waste form dissolves in first timestep after breach:
   this%frac_dissolution_rate = 1.d0 / (1.1d0*pm%realization%option%tran_dt) 
 
-  ! kg matrix/sec
+  ! kg-matrix/sec
   waste_form%eff_dissolution_rate = &
     this%frac_dissolution_rate * &           ! 1/sec
     this%matrix_density * &                  ! kg matrix/m^3 matrix
@@ -1647,31 +1802,131 @@ end subroutine WFMechDSNFDissolution
 
 ! ************************************************************************** !
 
-subroutine WFMechFMDMDissolution(this,waste_form,pm)
+subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   !
-  ! Calculates the FMDM waste form dissolution rate
+  ! Calculates the FMDM waste form dissolution rate using the FMDM model
   !
-  ! Author: Jenn Frederick
-  ! Date: 03/28/2016
+  ! Author: Jenn Frederick (with old code by Glenn Hammond)
+  ! Date: 05/05/2016
 
   use Grid_module
+  use Reactive_Transport_Aux_module
   use Global_Aux_module
+  use Option_module
 
   implicit none
+  
+ ! FMDM model:
+ !=================================================================== 
+  interface
+    subroutine AMP_step ( burnup, sTme, temperature_C, conc, &
+                          initialRun, fuelDisRate, Usource, success )
+      real ( kind = 8), intent( in ) :: burnup   
+      real ( kind = 8), intent( in ) :: sTme   
+      real ( kind = 8), intent( in ) :: temperature_C   
+      real ( kind = 8), intent( inout ),  dimension (:,:) :: conc
+      logical ( kind = 4), intent( in ) :: initialRun
+      ! sum of fluxes of 3 uranium compounds (UO2,2+;UCO3,2+;UO2)
+      ! units: g/m^2/yr where g = sum of uranium compound mass
+      real ( kind = 8), intent(out) :: fuelDisRate 
+      ! flux of just the uranium from the 3 uranium compounds 
+      ! units: g/m^2/yr where g = uranium mass
+      real ( kind = 8), intent(out) :: Usource
+      integer ( kind = 4), intent(out) :: success
+    end subroutine
+  end interface  
+ !===================================================================
 
   class(wf_mechanism_fmdm_type) :: this
   class(waste_form_base_type) :: waste_form
   class(pm_waste_form_type) :: pm
-
-  ! This is a placeholder routine!!!
-
+  PetscErrorCode :: ierr
   
+  type(grid_type), pointer :: grid
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  PetscInt :: i
+  PetscInt :: icomp_fmdm
+  PetscInt :: icomp_pflotran
+  PetscInt :: ghosted_id
+  
+ ! FMDM model: 
+ !=======================================================
+  integer ( kind = 4) :: success
+  logical ( kind = 4) :: initialRun
+  PetscReal :: time
+  PetscReal :: Usource
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(option_type), pointer :: option
+ !========================================================
+  
+  grid => pm%realization%patch%grid
+  rt_auxvars => pm%realization%patch%aux%RT%auxvars
+  global_auxvars => pm%realization%patch%aux%Global%auxvars
+  option => pm%realization%option
 
+  ierr = 0
+  
+  ghosted_id = grid%nL2G(waste_form%local_cell_id)
+  ! overwrite the components in mapping_pflotran array
+  do i = 1, size(this%mapping_fmdm)
+    icomp_fmdm = this%mapping_fmdm(i)
+    icomp_pflotran = this%mapping_fmdm_to_pflotran(icomp_fmdm)
+    this%concentration(icomp_fmdm,1) = &
+      rt_auxvars(ghosted_id)%total(icomp_pflotran,LIQUID_PHASE)
+  enddo
+  
+  if (waste_form%volume /= waste_form%init_volume) then
+    initialRun = PETSC_FALSE
+  else
+    initialRun = PETSC_TRUE
+  endif 
+  
+#ifdef FMDM_MODEL  
+ ! FMDM model calculates this%dissolution_rate and Usource [g/m^2/yr]:
+ !====================================================================
+  time = option%time
+  call AMP_step(this%burnup, time, &
+       global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp, &
+       this%concentration, initialRun, this%dissolution_rate, &
+       Usource, success) 
+ !====================================================================
+  
+  ! convert this%dissolution_rate from fmdm to pflotran units:
+  ! g/m^2/yr => kg/m^2/sec
+  this%dissolution_rate = this%dissolution_rate / (1000.0*24.0*3600.0*365)
+  Usource = Usource / (1000.0*24.0*3600.0*365)
+#else
+  ! if no FMDM model, use the burnup as this%dissolution_rate:
+  ! if no FMDM model, the units of burnup should already be kg-matrix/m^2/sec:
+  success = 1
+  this%dissolution_rate = this%burnup
+  Usource = this%burnup
+#endif
+
+  if (success == 0) then
+    ierr = 1
+    return
+  endif
+  
+  !==================
+  this%frac_dissolution_rate = &    ! 1/sec
+    this%dissolution_rate * &       ! kg-matrix/m^2/sec
+    this%specific_surface_area      ! m^2/kg-matrix
+  !==================
+  
+  ! kg-matrix / sec
+  waste_form%eff_dissolution_rate = &
+     this%dissolution_rate * &         ! kg-matrix/m^2/sec
+     this%specific_surface_area * &    ! m^2/kg-matrix
+     this%matrix_density * &           ! kg-matrix/m^3-matrix
+     waste_form%volume * &             ! m^3-matrix
+     waste_form%exposure_factor        ! [-]
+  
 end subroutine WFMechFMDMDissolution
 
 ! ************************************************************************** !
 
-subroutine WFMechCustomDissolution(this,waste_form,pm) 
+subroutine WFMechCustomDissolution(this,waste_form,pm,ierr) 
   ! 
   ! Calculates the "custom" waste form dissolution rate
   ! 
@@ -1686,12 +1941,15 @@ subroutine WFMechCustomDissolution(this,waste_form,pm)
   class(wf_mechanism_custom_type) :: this
   class(waste_form_base_type) :: waste_form
   class(pm_waste_form_type) :: pm
+  PetscErrorCode :: ierr
 
   ! Note: Units for dissolution rates have already been converted to
   ! internal units within the PMWFRead routine.
+  
+  ierr = 0
 
   if (uninitialized(this%frac_dissolution_rate)) then
-    ! kg glass / sec
+    ! kg-matrix / sec
     waste_form%eff_dissolution_rate = &
        this%dissolution_rate * &         ! kg-matrix/m^2/sec
        this%specific_surface_area * &    ! m^2/kg-matrix
@@ -1699,10 +1957,10 @@ subroutine WFMechCustomDissolution(this,waste_form,pm)
        waste_form%volume * &             ! m^3-matrix
        waste_form%exposure_factor        ! [-]
   else
-    ! kg matrix/sec
+    ! kg-matrix / sec
     waste_form%eff_dissolution_rate = &
        this%frac_dissolution_rate * &     ! [-]/sec
-       this%matrix_density * &            ! kg matrix/m^3 matrix
+       this%matrix_density * &            ! kg-matrix/m^3-matrix
        waste_form%volume * &              ! m^3 matrix
        waste_form%exposure_factor         ! [-]
   endif
@@ -2091,6 +2349,8 @@ subroutine PMWFMechanismStrip(this)
   ! Author: Jenn Frederick
   ! Date: 03/28/2016
   !
+  use Utility_module, only : DeallocateArray
+  
   implicit none
   
   class(pm_waste_form_type) :: this
@@ -2104,6 +2364,12 @@ subroutine PMWFMechanismStrip(this)
     cur_mechanism => cur_mechanism%next
     deallocate(prev_mechanism%rad_species_list)
     nullify(prev_mechanism%rad_species_list)
+    select type(prev_mechanism)
+      type is(wf_mechanism_fmdm_type)
+        call DeallocateArray(prev_mechanism%concentration)
+        call DeallocateArray(prev_mechanism%mapping_fmdm)
+        call DeallocateArray(prev_mechanism%mapping_fmdm_to_pflotran)
+    end select
     deallocate(prev_mechanism)
     nullify(prev_mechanism)
   enddo
@@ -2128,6 +2394,6 @@ subroutine PMWFDestroy(this)
   
 end subroutine PMWFDestroy
 
-
+! ************************************************************************** !
   
 end module PM_Waste_Form_class

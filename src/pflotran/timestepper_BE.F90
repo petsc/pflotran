@@ -978,14 +978,6 @@ subroutine TimestepperBEInputRecord(this)
   write(word,*) this%dt_init
   write(id,'(a)') trim(adjustl(word)) // ' sec'
 
-  write(id,'(a29)',advance='no') 'min timestep size: '
-  write(word,*) this%dt_min
-  write(id,'(a)') trim(adjustl(word)) // ' sec'
-
-  write(id,'(a29)',advance='no') 'max timestep size: '
-  write(word,*) this%dt_max
-  write(id,'(a)') trim(adjustl(word)) // ' sec'
-
 end subroutine TimestepperBEInputRecord
 
 ! ************************************************************************** !

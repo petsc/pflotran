@@ -128,7 +128,8 @@ module EOS_Oil_module
             EOSOilViscosity, &
             EOSOilDensity, &
             EOSOilEnthalpy, & 
-            EOSOilDensityEnergy
+            EOSOilDensityEnergy, &
+            EOSOilInputRecord
 
   public :: EOSOilSetFMWConstant, &
             EOSOilGetFMW, &
@@ -1086,6 +1087,34 @@ subroutine EOSOilDenEnergyNoDerive(T,P,Rho,H,U,ierr)
  
 
 end subroutine EOSOilDenEnergyNoDerive
+
+! **************************************************************************** !
+
+subroutine EOSOilInputRecord()
+  ! 
+  ! Prints ingested equation of state information to the input record file.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 05/04/2016
+  ! 
+  
+  implicit none
+  
+  character(len=MAXWORDLENGTH) :: word1, word2
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: id = INPUT_RECORD_UNIT
+
+  write(id,'(a29)',advance='no') '---------------------------: '
+  write(id,'(a)') 'OIL'
+  
+  write(id,'(a)') 'EOSOilInputRecord not implemented: &
+                  &Email jmfrede@sandia.gov for more information if using &
+                  &OIL modes and EOS information is wanted.'
+  
+  write(id,'(a)') '---------------------------------------------------------&
+                  &-----------------------'
+  
+end subroutine EOSOilInputRecord
 
 ! ************************************************************************** !
 subroutine EOSOilDBaseDestroy()
