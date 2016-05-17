@@ -26,6 +26,7 @@ module Coupler_module
     character(len=MAXWORDLENGTH) :: flow_condition_name ! character string defining name of condition to be applied
     character(len=MAXWORDLENGTH) :: tran_condition_name ! character string defining name of condition to be applied
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
+    character(len=MAXWORDLENGTH) :: well_spec_name      ! character string defining name of well_spec to be applied 
     PetscInt :: iflow_condition                         ! id of condition in condition array/list
     PetscInt :: itran_condition                         ! id of condition in condition array/list
     PetscInt :: iregion                                 ! id of region in region array/list
@@ -95,6 +96,7 @@ function CouplerCreate1()
   coupler%flow_condition_name = ""
   coupler%tran_condition_name = ""
   coupler%region_name = ""
+  coupler%well_spec_name = "" 
   coupler%iflow_condition = 0
   coupler%itran_condition = 0
   coupler%iregion = 0
@@ -172,6 +174,7 @@ function CouplerCreateFromCoupler(coupler)
   new_coupler%flow_condition_name = coupler%flow_condition_name
   new_coupler%tran_condition_name = coupler%tran_condition_name
   new_coupler%region_name = coupler%region_name
+  new_coupler%well_spec_name = coupler%well_spec_name
   new_coupler%iflow_condition = coupler%iflow_condition
   new_coupler%itran_condition = coupler%itran_condition
   new_coupler%iregion = coupler%iregion
@@ -254,6 +257,8 @@ subroutine CouplerRead(coupler,input,option)
         call InputReadWord(input,option,coupler%flow_condition_name,PETSC_TRUE)
       case('TRANSPORT_CONDITION')
         call InputReadWord(input,option,coupler%tran_condition_name,PETSC_TRUE)
+      case('WELL_SPEC')
+        call InputReadWord(input,option,coupler%well_spec_name,PETSC_TRUE)
       case default
         call InputKeywordUnrecognized(word,'coupler ',option)
     end select 
