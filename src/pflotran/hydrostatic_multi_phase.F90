@@ -324,7 +324,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
       call PhaseHydrostaticPressure(one_d_grid,option%gravity, &
                 HYDRO_LIQ_PHASE,press_start, &
                 ipress_start,xm_nacl,temperature_array, &
-                oil_pressure_array,oil_density_array)   
+                wat_pressure_array,wat_density_array) 
     end if
   end if
   
