@@ -40,7 +40,7 @@ for ieos in range(4):
   ax = fig.add_subplot(2,2,ieos+1,projection='3d')
   ax.set_title(column_headings[ieos+2])
   ax.set_xlabel('Temperature [C]')
-  ax.set_ylabel('Pressure [C]')
+  ax.set_ylabel('Pressure [Pa]')
   ax.set_zlabel('Density [kg/m^3]')
   surf = ax.plot_surface(X, Y, Z[ieos][:][:], rstride=2, cstride=2, 
                          cmap=cm.coolwarm,
