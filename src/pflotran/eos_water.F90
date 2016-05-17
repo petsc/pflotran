@@ -2779,7 +2779,7 @@ subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
   write(IUNIT_TEMP,'(100i9)') ntemp, npres, neos
   do itemp = 1, ntemp
     do ipres = 1, npres
-      write(IUNIT_TEMP,'(100es12.4)') temp(itemp), pres(ipres), &
+      write(IUNIT_TEMP,'(100es20.8)') temp(itemp), pres(ipres), &
                                       density_kg(ipres,itemp,:)
     enddo
   enddo
