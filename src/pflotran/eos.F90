@@ -53,6 +53,9 @@ subroutine EOSRead(input,option)
   PetscReal :: rks_omegab = UNINITIALIZED_DOUBLE
   PetscBool :: rks_hydrogen = PETSC_TRUE
   PetscReal :: temparray(10)
+  PetscReal :: test_t_high, test_t_low, test_p_high, test_p_low
+  PetscInt :: test_n_temp, test_n_pres
+  PetscBool :: test_uniform_temp, test_uniform_pres
   PetscErrorCode :: ierr
 
   input%ierr = 0
@@ -153,6 +156,54 @@ subroutine EOSRead(input,option)
                        'EOS,WATER,STEAM_ENTHALPY',option)
             end select
             call EOSWaterSetSteamEnthalpy(keyword,temparray)             
+          case('TEST')
+            if (option%global_rank == 0) then
+              call InputReadDouble(input,option,test_t_low)
+              call InputErrorMsg(input,option,'T_low', &
+                                 'EOS,WATER,TEST,')
+              call InputReadDouble(input,option,test_t_high)
+              call InputErrorMsg(input,option,'T_high', &
+                                 'EOS,WATER,TEST,')
+              call InputReadDouble(input,option,test_p_low)
+              call InputErrorMsg(input,option,'P_low', &
+                                 'EOS,WATER,TEST,')
+              call InputReadDouble(input,option,test_p_high)
+              call InputErrorMsg(input,option,'P_high', &
+                                 'EOS,WATER,TEST,')
+              call InputReadInt(input,option,test_n_temp)
+              call InputErrorMsg(input,option,'num_temperatures', &
+                                 'EOS,WATER,TEST,')
+              call InputReadInt(input,option,test_n_pres)
+              call InputErrorMsg(input,option,'num_pressures', &
+                                 'EOS,WATER,TEST,')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'temperature distribution type', &
+                                 'EOS,WATER,TEST,')
+              if (StringCompareIgnoreCase(word,'uniform')) then
+                test_uniform_temp = PETSC_TRUE
+              else if (StringCompareIgnoreCase(word,'log')) then
+                test_uniform_temp = PETSC_FALSE
+              else
+                option%io_buffer = 'Temperature distribution type "' // &
+                  trim(word) // '" for EOS Water not recognized.'
+                call printErrMsg(option)
+              endif 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'pressure distribution type', &
+                                 'EOS,WATER,TEST,')
+              if (StringCompareIgnoreCase(word,'uniform')) then
+                test_uniform_pres = PETSC_TRUE
+              else if (StringCompareIgnoreCase(word,'log')) then
+                test_uniform_pres = PETSC_FALSE
+              else
+                option%io_buffer = 'Pressure distribution type "' // &
+                  trim(word) // '" for EOS Water not recognized.'
+                call printErrMsg(option)
+              endif 
+              call EOSWaterTest(test_t_low,test_t_high,test_p_low,test_p_high, &
+                                test_n_temp, test_n_pres, &
+                                test_uniform_temp, test_uniform_pres)
+            endif
           case default
             call InputKeywordUnrecognized(keyword,'EOS,WATER',option)
         end select
