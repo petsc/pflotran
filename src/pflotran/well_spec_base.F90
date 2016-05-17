@@ -73,7 +73,8 @@ module WellSpec_Base_class
     class(well_spec_base_type), pointer :: array(:)
   end type well_spec_list_type
 
-  !public :: WellSpecBaseCreate, WellSpecBaseDestroy !, WellSpecBaseInit
+  public :: WellSpecBaseCreate, WellSpecInitList, WellSpecDestroyList
+            ! WellSpecBaseDestroy !, WellSpecBaseInit
 
 contains
 
