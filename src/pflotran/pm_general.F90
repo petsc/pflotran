@@ -141,9 +141,15 @@ subroutine PMGeneralRead(this,input)
         call InputDefaultMsg(input,option,'general_itol_rel_update')
         this%check_post_convergence = PETSC_TRUE        
       case('TOUGH2_ITOL_SCALED_RESIDUAL')
+        ! since general_tough2_itol_scaled_res_e1 is an array, we must read
+        ! the tolerance into a double and copy it to the array.
+        tempreal = UNINITIALIZED_DOUBLE
         call InputReadDouble(input,option,tempreal)
+        ! tempreal will remain uninitialized if the read fails.
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e1')
-        general_tough2_itol_scaled_res_e1 = tempreal
+        if (Initialized(tempreal)) then
+          general_tough2_itol_scaled_res_e1 = tempreal
+        endif
         call InputReadDouble(input,option,general_tough2_itol_scaled_res_e2)
         call InputDefaultMsg(input,option,'tough_itol_scaled_residual_e2')
         general_tough2_conv_criteria = PETSC_TRUE
