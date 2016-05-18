@@ -590,7 +590,7 @@ factory_subsurface.o : characteristic_curves.o checkpoint.o condition.o \
                        srcsink_sandbox.o strata.o string.o timestepper_BE.o \
                        timestepper_base.o timestepper_steady.o \
                        transport_constraint.o uniform_velocity.o units.o \
-                       utility.o waypoint.o wipp.o
+                       utility.o waypoint.o well_spec_base.o wipp.o
 factory_surface.o : checkpoint.o checkpoint_surface.o condition.o \
                     condition_control.o coupler.o dataset.o dataset_base.o \
                     dataset_common_hdf5.o debug.o discretization.o grid.o \
@@ -1118,7 +1118,8 @@ realization_subsurface.o : characteristic_curves.o communicator_structured.o \
                            reactive_transport_aux.o realization_base.o \
                            region.o saturation_function.o strata.o string.o \
                            time_storage.o transport_constraint.o \
-                           uniform_velocity.o variables.o waypoint.o
+                           uniform_velocity.o variables.o waypoint.o \
+                           well_spec_base.o
 realization_surface.o : condition.o coupler.o dataset.o dataset_base.o debug.o \
                         discretization.o dm_kludge.o field.o grid.o \
                         grid_unstructured.o grid_unstructured_aux.o \

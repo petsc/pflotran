@@ -62,7 +62,7 @@ module WellSpec_Base_class
       class(well_spec_base_type), pointer :: next ! points to next link in the list
   contains  ! add here type-bound procedure 
     procedure, public :: Init => WellSpecBaseInit
-    !procedure, public :: Read => WellSpecBaseRead
+    procedure, public :: Read => WellSpecBaseRead
     procedure, public :: Clear => WellSpecBaseClear
   end type well_spec_base_type
 
@@ -73,7 +73,8 @@ module WellSpec_Base_class
     class(well_spec_base_type), pointer :: array(:)
   end type well_spec_list_type
 
-  public :: WellSpecBaseCreate, WellSpecInitList, WellSpecDestroyList
+  public :: WellSpecBaseCreate, WellSpecInitList, WellSpecDestroyList, &
+            WellSpecAddToList
             ! WellSpecBaseDestroy !, WellSpecBaseInit
 
 contains
