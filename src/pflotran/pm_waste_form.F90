@@ -1435,6 +1435,9 @@ subroutine PMWFInitializeTimestep(this)
     write(*,'(/,2("=")," WASTE FORM MODEL ",60("="))')
   endif
 
+  ! zero entries from previous time step
+  call VecZeroEntries(this%data_mediator%vec,ierr);CHKERRQ(ierr)
+
   cur_waste_form => this%waste_form_list
   do 
     if (.not.associated(cur_waste_form)) exit
