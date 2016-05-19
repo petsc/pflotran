@@ -2713,21 +2713,39 @@ subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
 
   PetscReal, allocatable :: temp(:)
   PetscReal, allocatable :: pres(:)
-  PetscReal, allocatable :: density_kg(:,:,:)
+  PetscReal, allocatable :: density_kg(:,:)
+  PetscReal, allocatable :: enthalpy(:,:)
+  PetscReal, allocatable :: viscosity(:,:)
+  PetscReal, allocatable :: saturation_pressure_array(:)
   PetscReal :: dum1, dum2, dum3, dum4
-  PetscInt :: itemp, ipres, ieos
+  PetscInt :: itemp, ipres
   PetscReal :: ln_low, ln_high
-
-  PetscInt, parameter :: neos = 4
+  PetscReal :: saturation_pressure
+  PetscReal :: NaN
+  character(len=MAXWORDLENGTH) :: eos_density_name
+  character(len=MAXWORDLENGTH) :: eos_enthalpy_name
+  character(len=MAXWORDLENGTH) :: eos_viscosity_name
+  character(len=MAXWORDLENGTH) :: eos_saturation_pressure_name
+  character(len=MAXSTRINGLENGTH) :: header
 
   PetscErrorCode :: ierr
+
+  NaN = 0.d0
+  NaN = 1.d0/NaN
+  NaN = 0.d0*NaN
 
   allocate(temp(ntemp))
   temp = UNINITIALIZED_DOUBLE
   allocate(pres(ntemp))
   pres = UNINITIALIZED_DOUBLE
-  allocate(density_kg(npres,ntemp,neos))
+  allocate(density_kg(npres,ntemp))
   density_kg = UNINITIALIZED_DOUBLE
+  allocate(viscosity(npres,ntemp))
+  viscosity = UNINITIALIZED_DOUBLE
+  allocate(enthalpy(npres,ntemp))
+  enthalpy = UNINITIALIZED_DOUBLE
+  allocate(saturation_pressure_array(ntemp))
+  saturation_pressure_array = UNINITIALIZED_DOUBLE
 
   if (uniform_pres) then
     do ipres = 1, npres
@@ -2753,37 +2771,96 @@ subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
     enddo
   endif
 
-  do ieos = 1, 4
-    select case(ieos)
-      case(1)
-        EOSWaterDensityPtr => EOSWaterDensityIFC67
-      case(2)
-        EOSWaterDensityPtr => EOSWaterDensityTGDPB01
-      case(3)
-        EOSWaterDensityPtr => EOSWaterDensityPainter
-      case(4)
-        EOSWaterDensityPtr => EOSWaterDensityBatzleAndWang
-    end select
-    do itemp = 1, ntemp
-      do ipres = 1, npres
-        call EOSWaterDensityPtr(temp(itemp),pres(ipres),PETSC_FALSE, &
-                                density_kg(ipres,itemp,ieos), &
-                                dum1,dum2,dum3,ierr)
-      enddo
+  ! density
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityConstant)) then
+    eos_density_name = 'Constant'
+  else if (associated(EOSWaterDensityPtr,EOSWaterDensityExponential)) then
+    eos_density_name = 'Exponential'
+  else if (associated(EOSWaterDensityPtr,EOSWaterDensityIFC67)) then
+    eos_density_name = 'IFC67'
+  else if (associated(EOSWaterDensityPtr,EOSWaterDensityTGDPB01)) then
+    eos_density_name = 'TGDPB01'
+  else if (associated(EOSWaterDensityPtr,EOSWaterDensityPainter)) then
+    eos_density_name = 'Painter'
+  else if (associated(EOSWaterDensityPtr,EOSWaterDensityBatzleAndWang)) then
+    eos_density_name = 'Batzle and Wang'
+  else 
+    eos_density_name = 'Unknown'
+  endif
+
+  ! enthalpy
+  if (associated(EOSWaterEnthalpyPtr,EOSWaterEnthalpyConstant)) then
+    eos_enthalpy_name = 'Constant'
+  else if (associated(EOSWaterEnthalpyPtr,EOSWaterEnthalpyIFC67)) then
+    eos_enthalpy_name = 'IFC67'
+  else if (associated(EOSWaterEnthalpyPtr,EOSWaterEnthalpyPainter)) then
+    eos_enthalpy_name = 'Painter'
+  else
+    eos_enthalpy_name = 'Unknown'
+  endif
+
+  ! viscosity
+  if (associated(EOSWaterViscosityPtr,EOSWaterViscosityConstant)) then
+    eos_viscosity_name = 'Constant'
+  else if (associated(EOSWaterViscosityPtr,EOSWaterViscosity1)) then
+    eos_viscosity_name = 'Default'
+  else if (associated(EOSWaterViscosityPtr,EOSWaterViscosityBatzleAndWang)) then
+    eos_viscosity_name = 'Batzle and Wang'
+  else
+    eos_viscosity_name = 'Unknown'
+  endif
+
+  ! saturation pressure
+  if (associated(EOSWaterSaturationPressurePtr, &
+                 EOSWaterSaturationPressureIFC67)) then
+    eos_saturation_pressure_name = 'IFC67'
+  else
+    eos_saturation_pressure_name = 'Unknown'
+  endif
+
+  do itemp = 1, ntemp
+    do ipres = 1, npres
+      ! EOSWaterSaturationPressurePtr() must come before call to 
+      ! EOSWaterViscosityPtr()
+      call EOSWaterSaturationPressurePtr(temp(itemp),PETSC_FALSE, &
+                                         saturation_pressure,dum1,ierr)
+      if (ipres == 1) &
+        saturation_pressure_array(itemp) = saturation_pressure
+      call EOSWaterDensityPtr(temp(itemp),pres(ipres),PETSC_FALSE, &
+                              density_kg(ipres,itemp), &
+                              dum1,dum2,dum3,ierr)
+      call EOSWaterEnthalpyPtr(temp(itemp),pres(ipres),PETSC_FALSE, &
+                               enthalpy(ipres,itemp),dum1,dum2,ierr)
+      call EOSWaterViscosityPtr(temp(itemp),pres(ipres),saturation_pressure, &
+                                dum1,PETSC_FALSE,viscosity(ipres,itemp), &
+                                dum2,dum3,dum4,ierr)
     enddo
   enddo
 
-  open(unit=IUNIT_TEMP,file='eos_water_density_test.txt')
-  write(IUNIT_TEMP,'("T[C] P[Pa] rho_IFC67 rho_TGDPB01 rho_Painter &
-        &rho_Batzle_and_Wang")')
-  write(IUNIT_TEMP,'(100i9)') ntemp, npres, neos
+100 format(100es16.8)
+  open(unit=IUNIT_TEMP,file='eos_water_test.txt')
+  header = 'T[C], P[Pa], &
+    &Density (' // trim(eos_density_name) // ') [kg/m^3], &
+    &Enthalpy (' // trim(eos_enthalpy_name) // ') [J/kmol], &
+    &Viscosity (' // trim(eos_viscosity_name) // ') [Pa-s], &
+    &Saturation Pressure (' // trim(eos_saturation_pressure_name) // ') [Pa]'
+  write(IUNIT_TEMP,'(a)') trim(header)
+  write(IUNIT_TEMP,'(100i9)') ntemp, npres
   do itemp = 1, ntemp
     do ipres = 1, npres
-      write(IUNIT_TEMP,'(100es20.8)') temp(itemp), pres(ipres), &
-                                      density_kg(ipres,itemp,:)
+      write(IUNIT_TEMP,100) temp(itemp), pres(ipres), &
+            density_kg(ipres,itemp), enthalpy(ipres,itemp), &
+            viscosity(ipres,itemp), saturation_pressure_array(itemp)
     enddo
   enddo
   close(IUNIT_TEMP)
+
+  deallocate(temp)
+  deallocate(pres)
+  deallocate(density_kg)
+  deallocate(enthalpy)
+  deallocate(viscosity)
+  deallocate(saturation_pressure_array)
 
 end subroutine EOSWaterTest
 
