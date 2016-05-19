@@ -15,6 +15,7 @@ module Well_TOilIms_class
   type, public, extends(well_flow_energy_type) :: well_toil_ims_type
     ! .................
   contains  ! add here type-bound procedure 
+    procedure, public :: PrintMsg => PrintTOilIms
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
     !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
@@ -28,6 +29,8 @@ module Well_TOilIms_class
 
   type, public, extends(well_toil_ims_type) :: well_toil_ims_wat_inj_type
     ! ......................
+    contains
+      procedure, public :: PrintMsg => PrintTOilImsWatInj
   end type
 
   type, public, extends(well_toil_ims_type) :: well_toil_ims_oil_inj_type
@@ -45,6 +48,30 @@ module Well_TOilIms_class
   public :: CreateTOilImsWell
 
 contains
+
+! ************************************************************************** !
+
+subroutine PrintTOilIms(this)
+
+  implicit none
+
+  class(well_toil_ims_type) :: this
+
+  write(*,*) "Well TOilIms Printing message"
+
+end subroutine PrintTOilIms
+
+! ************************************************************************** !
+
+subroutine PrintTOilImsWatInj(this)
+
+  implicit none
+
+  class(well_toil_ims_wat_inj_type) :: this
+
+  write(*,*) "Well TOilImsWatInj Printing message"
+
+end subroutine PrintTOilImsWatInj
 
 ! ************************************************************************** !
 

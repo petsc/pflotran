@@ -501,13 +501,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     if ( associated(well_spec) ) then
       coupler%well => CreateWell(well_spec,option)
     end if  
-    !  WellSpecGetPtrFromList WellSpecGetPtrFromList(well_spec_name,well_spec_list)
-    !define local well_spec 
-    ! get the well_spec from well_spec_lists passed to this routines together with flow conditions
-    ! if the pointer is not nill, i.e. there is a well, create well
-    ! here is where we decide if ther eis a well or not 
-    ! (a well_spec card was available in the input deck 
-    ! coupler%well => CreateTOilImsWell ! must be general, cannot be for toil_ims!!!
+    nullify(well_spec)
    
     ! pointer to flow condition
     if (option%nflowdof > 0) then    

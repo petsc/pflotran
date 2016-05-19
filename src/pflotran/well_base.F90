@@ -30,6 +30,7 @@ module Well_Base_class
     PetscReal, pointer :: w_conn_z(:)          ! all well connection elevations ordered by ascending z
     class(well_spec_base_type), pointer :: spec  !well_spec pointer
   contains  ! add here type-bound procedure 
+    procedure, public :: PrintMsg => PrintBase
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
     !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
@@ -44,6 +45,18 @@ module Well_Base_class
   public :: WellBaseInit
 
 contains
+
+! ************************************************************************** !
+
+subroutine PrintBase(this)
+
+  implicit none
+
+  class(well_base_type) :: this
+
+  write(*,*) "Well Base Printing message"
+
+end subroutine PrintBase
 
 ! ************************************************************************** !
 

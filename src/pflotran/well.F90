@@ -47,6 +47,26 @@ function CreateWell(well_spec,option)
 
   CreateWell%spec => well_spec
 
+  !Debug printing 
+  write(*,*) "well_factor type = ", CreateWell%spec%well_fact_itype 
+  write(*,*) "well type = ", CreateWell%spec%ctype
+  write(*,*) "radius = ", CreateWell%spec%radius
+
+  select type(CreateWell)
+    class is(well_toil_ims_type)
+      write(*,*) "temp", CreateWell%tw_ref
+      write(*,*) "well_press", CreateWell%pw_ref
+  end select 
+
+  call CreateWell%PrintMsg(); 
+  !perform here well domain decompotion
+
+ 
+  !Initialise well_factor (required grid paramters are already available is already available)  
+
+  !to be moved to later on 
+  !Create well outfile and write its header 
+
 end function CreateWell
 
 

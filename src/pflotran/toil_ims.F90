@@ -2696,6 +2696,11 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
       else
         scale = 1.d0
       endif
+      
+      if ( associated(source_sink%well) ) then
+         ! use the if well to decide if to call TOilImsSrcSink or the WellRes
+         !call source_sink%well%PrintMsg(); 
+      end if
 
       call TOilImsSrcSink(option,source_sink%flow_condition%toil_ims, &
                                 toil_auxvars(ZERO_INTEGER,ghosted_id), &

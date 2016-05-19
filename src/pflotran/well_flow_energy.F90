@@ -13,6 +13,7 @@ module Well_FlowEnergy_class
       PetscReal :: tw_ref                        ! [°C] well temperature at reference elevation
       PetscReal, pointer :: ent_ref(:)           ! ent_ref(iphase) MJ/kmol, well fluid enthalpy of iphase
   contains  ! add here type-bound procedure 
+    procedure, public :: PrintMsg => PrintFlowEnergy
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
     !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
@@ -27,6 +28,18 @@ module Well_FlowEnergy_class
   public :: WellFlowEnergyInit
 
 contains
+
+! ************************************************************************** !
+
+subroutine PrintFlowEnergy(this)
+
+  implicit none
+
+  class(well_flow_energy_type) :: this
+
+  write(*,*) "Well FlowEnergy Printing message"
+
+end subroutine PrintFlowEnergy
 
 ! ************************************************************************** !
 

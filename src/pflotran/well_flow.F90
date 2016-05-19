@@ -17,6 +17,7 @@ module Well_Flow_class
     PetscReal, pointer :: conn_h(:)            ! connection hydrostatic pressure corrections
     !PetscReal, pointer :: conn_mobs(:,:)       ! well connection mobilities ! TO REMOVE - computed when needed flight
   contains  ! add here type-bound procedure 
+    procedure, public :: PrintMsg => PrintFlow
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
     !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
@@ -34,6 +35,18 @@ contains
 
 ! ************************************************************************** !
 
+subroutine PrintFlow(this)
+
+  implicit none
+
+  class(well_flow_type) :: this
+
+  write(*,*) "Well Flow Printing message"
+
+end subroutine PrintFlow
+
+! ************************************************************************** !
+
 subroutine WellFlowInit(this,option)
   ! 
   ! Initializes variables/objects in flow well class
@@ -48,6 +61,8 @@ subroutine WellFlowInit(this,option)
 
   class(well_flow_type) :: this
   type(option_type) :: option
+
+  this%pw_ref = 0.0d0;
 
   allocate( this%dw_ref(option%nphase) );
   this%dw_ref = 0.0d0;
