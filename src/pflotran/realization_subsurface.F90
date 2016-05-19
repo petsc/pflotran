@@ -594,6 +594,7 @@ subroutine RealizationProcessCouplers(realization)
   
   call PatchProcessCouplers( realization%patch,realization%flow_conditions, &
                              realization%transport_conditions, &
+                             realization%well_specs, &
                              realization%option)
   
 end subroutine RealizationProcessCouplers

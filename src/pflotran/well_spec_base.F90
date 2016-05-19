@@ -10,9 +10,11 @@ module WellSpec_Base_class
 #include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: WATER_PROD_WELL_TYPE = 1
-  PetscInt, parameter, public :: GAS_PROD_WELL_TYPE = 2
-  PetscInt, parameter, public :: WATER_INJ_WELL_TYPE = 3
-  PetscInt, parameter, public :: GAS_INJ_WELL_TYPE = 4
+  PetscInt, parameter, public :: OIL_PROD_WELL_TYPE = 2
+  PetscInt, parameter, public :: GAS_PROD_WELL_TYPE = 3
+  PetscInt, parameter, public :: WATER_INJ_WELL_TYPE = 4
+  PetscInt, parameter, public :: OIL_INJ_WELL_TYPE = 5
+  PetscInt, parameter, public :: GAS_INJ_WELL_TYPE = 6
 
   ! well control variables
   PetscInt, parameter, public :: CNTRL_VAR_BHP = 1
@@ -74,7 +76,7 @@ module WellSpec_Base_class
   end type well_spec_list_type
 
   public :: WellSpecBaseCreate, WellSpecInitList, WellSpecDestroyList, &
-            WellSpecAddToList
+            WellSpecAddToList, WellSpecGetPtrFromList
             ! WellSpecBaseDestroy !, WellSpecBaseInit
 
 contains

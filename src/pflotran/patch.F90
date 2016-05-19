@@ -326,7 +326,7 @@ end subroutine PatchLocalizeRegions
 ! ************************************************************************** !
 
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
-                                option)
+                                well_specs, option)
   ! 
   ! Assigns conditions and regions to couplers
   ! 
@@ -339,12 +339,15 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   use Condition_module
   use Transport_Constraint_module
   use Connection_module
+  use Well_module
+  use WellSpec_Base_class
 
   implicit none
   
   type(patch_type) :: patch
   type(condition_list_type) :: flow_conditions
   type(tran_condition_list_type) :: transport_conditions
+  type(well_spec_list_type), pointer :: well_specs
   type(option_type) :: option
   
   type(coupler_type), pointer :: coupler
@@ -352,7 +355,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(strata_type), pointer :: strata
   type(observation_type), pointer :: observation, next_observation
   type(integral_flux_type), pointer :: integral_flux
-  
+  class(well_spec_base_type), pointer :: well_spec 
+
   PetscInt :: temp_int, isub
   PetscErrorCode :: ierr
   
@@ -491,6 +495,20 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                  '" not found in region list'
       call printErrMsg(option)
     endif
+    !Create a well only if a well_spec is associated with the source_sink coupler 
+    nullify(well_spec)
+    well_spec => WellSpecGetPtrFromList(coupler%well_spec_name,well_specs) 
+    if ( associated(well_spec) ) then
+      coupler%well => CreateWell(well_spec,option)
+    end if  
+    !  WellSpecGetPtrFromList WellSpecGetPtrFromList(well_spec_name,well_spec_list)
+    !define local well_spec 
+    ! get the well_spec from well_spec_lists passed to this routines together with flow conditions
+    ! if the pointer is not nill, i.e. there is a well, create well
+    ! here is where we decide if ther eis a well or not 
+    ! (a well_spec card was available in the input deck 
+    ! coupler%well => CreateTOilImsWell ! must be general, cannot be for toil_ims!!!
+   
     ! pointer to flow condition
     if (option%nflowdof > 0) then    
       if (len_trim(coupler%flow_condition_name) > 0) then

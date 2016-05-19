@@ -348,11 +348,17 @@ misc_obj = \
 	${common_src}timestepper_BE.o \
 	${common_src}transport.o \
 	${common_src}uniform_velocity.o \
-	${common_src}well_base.o \
-	${common_src}well_spec_base.o \
 	${common_src}waypoint.o \
 	${common_src}wipp.o \
 	${common_src}wrapper_hydrogeophysics.o
+
+well_obj = \
+	${common_src}well_spec_base.o \
+	${common_src}well_base.o \
+	${common_src}well_flow.o \
+	${common_src}well_flow_energy.o \
+	${common_src}well_toil_ims.o \
+	${common_src}well.o
 
 surface_obj = \
 	${common_src}checkpoint_surface.o \
@@ -403,7 +409,7 @@ geomech_obj = \
 # End Source Block
 
 pflotran_obj = $(util_obj) $(eos_obj) $(mode_aux_obj) $(mode_obj) \
-	$(shared_mode_aux_obj) $(chem_obj) $(geomech_obj) $(grid_obj) \
+	$(shared_mode_aux_obj) $(chem_obj) $(geomech_obj) $(well_obj) $(grid_obj) \
 	$(relations_obj) $(properties_obj) $(dataset_obj) $(srcsink_obj) \
 	$(io_obj) $(misc_obj) $(surface_obj) ${pflotran_src}pflotran.o
 
@@ -488,7 +494,7 @@ convergence.o : grid.o option.o pflotran_constants.o solver.o
 coupler.o : condition.o connection.o dataset_base.o dataset_gridded_hdf5.o \
             grid.o grid_unstructured_aux.o grid_unstructured_explicit.o \
             input_aux.o option.o pflotran_constants.o region.o string.o \
-            utility.o
+            utility.o well.o well_base.o
 data_mediator.o : data_mediator_base.o option.o
 data_mediator_base.o : dataset_global_hdf5.o option.o pflotran_constants.o
 data_mediator_dataset.o : data_mediator_base.o dataset_base.o \
@@ -870,7 +876,8 @@ patch.o : auxiliary.o characteristic_curves.o condition.o connection.o \
           reaction_surf_complex_aux.o reactive_transport_aux.o region.o \
           richards_aux.o saturation.o saturation_function.o strata.o string.o \
           surface_auxiliary.o surface_field.o surface_material.o th_aux.o \
-          toil_ims_aux.o transport_constraint.o utility.o variables.o
+          toil_ims_aux.o transport_constraint.o utility.o variables.o well.o \
+          well_spec_base.o
 pflotran.o : factory_geomechanics.o factory_hydrogeophysics.o \
              factory_pflotran.o factory_subsurface.o factory_surface.o \
              factory_surfsubsurface.o multisimulation.o option.o output_aux.o \
@@ -1128,7 +1135,7 @@ realization_surface.o : condition.o coupler.o dataset.o dataset_base.o debug.o \
                         reaction_aux.o realization_base.o \
                         realization_subsurface.o region.o strata.o string.o \
                         surface_field.o surface_material.o time_storage.o \
-                        waypoint.o
+                        waypoint.o well_spec_base.o
 region.o : geometry.o grid_structured.o grid_unstructured_cell.o input_aux.o \
            logging.o option.o pflotran_constants.o string.o utility.o
 regression.o : discretization.o grid.o input_aux.o option.o output.o \
@@ -1283,9 +1290,15 @@ units.o : option.o pflotran_constants.o
 utility.o : input_aux.o option.o pflotran_constants.o string.o
 variables.o :
 waypoint.o : option.o output_aux.o pflotran_constants.o utility.o
+well.o : option.o pflotran_constants.o well_base.o well_flow.o \
+         well_flow_energy.o well_spec_base.o well_toil_ims.o
 well_base.o : pflotran_constants.o well_spec_base.o
+well_flow.o : option.o pflotran_constants.o well_base.o
+well_flow_energy.o : option.o pflotran_constants.o well_flow.o
 well_spec_base.o : input_aux.o option.o pflotran_constants.o string.o units.o \
                    utility.o
+well_toil_ims.o : option.o pflotran_constants.o well_base.o well_flow.o \
+                  well_flow_energy.o well_spec_base.o
 wipp.o : input_aux.o lookup_table.o material_aux.o option.o \
          pflotran_constants.o string.o units.o utility.o
 wrapper_hydrogeophysics.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \

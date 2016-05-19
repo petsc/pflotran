@@ -28,18 +28,6 @@ module Well_Base_class
     PetscInt, pointer  :: w_conn_order(:)      ! connection order for ascending elevation
     PetscInt, pointer  :: conn_l2w(:)          ! map the list of local well conns to well conns 
     PetscReal, pointer :: w_conn_z(:)          ! all well connection elevations ordered by ascending z
-    !well_flow_type
-      !PetscReal :: pw_ref                        ! [Pa] well pressure at reference elevation
-      !PetscReal, pointer :: dw_ref(:)            ! dw_ref(iphase) [kg/m3] well fluid density of iphase at reference elevation
-      !PetscReal, pointer :: q_fld(:)             ! q_fld(iphase)  [m3/s] well fluid flow rates of iphase
-      !PetscReal, pointer :: mr_fld(:)            ! mr_fld(iphase) [kg/s] well fluid mass rates of iphase
-      !PetscReal, pointer :: conn_h(:)            ! connection hydrostatic pressure corrections
-      !PetscReal, pointer :: conn_mobs(:,:)       ! well connection mobilities ! TO REMOVE - computed when needed flight
-    !well_flow_type end
-    !well_flow_energy_type
-      !PetscReal :: tw_ref                        ! [°C] well temperature at reference elevation
-      !!PetscReal, pointer :: ent_ref(:)          ! MJ/kmol 
-    !well_flow_energy_type
     class(well_spec_base_type), pointer :: spec  !well_spec pointer
   contains  ! add here type-bound procedure 
     !procedure, public :: Init => WellAuxVarBaseInit
@@ -53,6 +41,46 @@ module Well_Base_class
     !procedure  :: WellConnSort
   end type  well_base_type
 
+  public :: WellBaseInit
+
+contains
+
+! ************************************************************************** !
+
+subroutine WellBaseInit(this)
+  ! 
+  ! Initializes variables/objects in base well class
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 05/18/16
+  ! 
+
+  implicit none
+
+  class(well_base_type) :: this
+
+  this%comm=0;                         
+  this%group=0;
+  this%cntr_rank=0;                       
+  this%z_pw_ref = 0.0;
+  this%iwconn_ref = -111
+  this%well_num_conns = 0;
+  this%cntrl_conn = PETSC_FALSE 
+  this%cntrl_lcell_id = -999
+
+  nullify(this%w_rank_conn);   
+  nullify(this%disp_rank_conn);
+  nullify(this%conn_factors);  
+  nullify(this%conn_drill_dir); 
+  nullify(this%conn_status); 
+  nullify(this%w_conn_order); 
+  nullify(this%conn_l2w); 
+  nullify(this%w_conn_z);
+  nullify(this%spec);
+
+end subroutine WellBaseInit
+
+! ************************************************************************** !
 
 end module Well_Base_class
 

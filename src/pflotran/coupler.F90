@@ -3,6 +3,8 @@ module Coupler_module
   use Condition_module
   use Connection_module
   use Region_module
+  use Well_Base_class
+  use Well_module
  
   use PFLOTRAN_Constants_module
 
@@ -38,6 +40,7 @@ module Coupler_module
     type(flow_condition_type), pointer :: flow_condition     ! pointer to condition in condition array/list
     type(tran_condition_type), pointer :: tran_condition     ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
+    class(well_base_type), pointer :: well              ! pointer to well model
     type(connection_set_type), pointer :: connection_set ! pointer to an array/list of connections
     PetscInt :: numfaces_set
     type(coupler_type), pointer :: next                 ! pointer to next coupler
@@ -106,6 +109,7 @@ function CouplerCreate1()
   nullify(coupler%flow_aux_int_var)
   nullify(coupler%flow_aux_real_var)
   nullify(coupler%flow_condition)
+  nullify(coupler%well)
   nullify(coupler%tran_condition)
   nullify(coupler%region)
   nullify(coupler%connection_set)
@@ -182,6 +186,7 @@ function CouplerCreateFromCoupler(coupler)
 
   ! these must remain null  
   nullify(coupler%flow_condition)
+  nullify(coupler%well)
   nullify(coupler%tran_condition)
   nullify(coupler%region)
   nullify(coupler%flow_aux_mapping)
@@ -573,6 +578,7 @@ subroutine CouplerDestroy(coupler)
   ! or will be deallocated from the list, nullify instead of destroying
   
   nullify(coupler%flow_condition)     ! since these are simply pointers to 
+  nullify(coupler%well)               ! since these are simply pointers to
   nullify(coupler%tran_condition)     ! since these are simply pointers to 
   nullify(coupler%region)        ! conditoins in list, nullify
 
