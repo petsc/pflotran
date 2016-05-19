@@ -207,7 +207,8 @@ module EOS_Water_module
             EOSWaterSetSteamEnthalpy
             
             
-  public :: TestEOSWaterBatzleAndWang
+  public :: TestEOSWaterBatzleAndWang, &
+            EOSWaterTest
  
   contains
 
@@ -2695,4 +2696,97 @@ subroutine EOSWaterInputRecord()
 end subroutine EOSWaterInputRecord
 
 ! ************************************************************************** !
+
+subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
+                        ntemp,npres,uniform_temp,uniform_pres)
+
+  implicit none
+
+  PetscReal :: temp_low
+  PetscReal :: temp_high
+  PetscReal :: pres_low
+  PetscReal :: pres_high
+  PetscInt :: npres
+  PetscInt :: ntemp
+  PetscBool :: uniform_temp
+  PetscBool :: uniform_pres
+
+  PetscReal, allocatable :: temp(:)
+  PetscReal, allocatable :: pres(:)
+  PetscReal, allocatable :: density_kg(:,:,:)
+  PetscReal :: dum1, dum2, dum3, dum4
+  PetscInt :: itemp, ipres, ieos
+  PetscReal :: ln_low, ln_high
+
+  PetscInt, parameter :: neos = 4
+
+  PetscErrorCode :: ierr
+
+  allocate(temp(ntemp))
+  temp = UNINITIALIZED_DOUBLE
+  allocate(pres(ntemp))
+  pres = UNINITIALIZED_DOUBLE
+  allocate(density_kg(npres,ntemp,neos))
+  density_kg = UNINITIALIZED_DOUBLE
+
+  if (uniform_pres) then
+    do ipres = 1, npres
+      pres(ipres) = (pres_high-pres_low)/dble(npres-1) * (ipres-1) + pres_low
+    enddo
+  else
+    ln_high = log(pres_high)
+    ln_low = log(pres_low)
+    do ipres = 1, npres
+      pres(ipres) = exp((ln_high-ln_low)/dble(npres-1) * (ipres-1) + ln_low)
+    enddo
+  endif
+
+  if (uniform_temp) then
+    do itemp = 1, ntemp
+      temp(itemp) = (temp_high-temp_low)/dble(ntemp-1) * (itemp-1) + temp_low
+    enddo
+  else
+    ln_high = log(temp_high)
+    ln_low = log(temp_low)
+    do itemp = 1, ntemp
+      temp(itemp) = exp((ln_high-ln_low)/dble(ntemp-1) * (itemp-1) + ln_low)
+    enddo
+  endif
+
+  do ieos = 1, 4
+    select case(ieos)
+      case(1)
+        EOSWaterDensityPtr => EOSWaterDensityIFC67
+      case(2)
+        EOSWaterDensityPtr => EOSWaterDensityTGDPB01
+      case(3)
+        EOSWaterDensityPtr => EOSWaterDensityPainter
+      case(4)
+        EOSWaterDensityPtr => EOSWaterDensityBatzleAndWang
+    end select
+    do itemp = 1, ntemp
+      do ipres = 1, npres
+        call EOSWaterDensityPtr(temp(itemp),pres(ipres),PETSC_FALSE, &
+                                density_kg(ipres,itemp,ieos), &
+                                dum1,dum2,dum3,ierr)
+      enddo
+    enddo
+  enddo
+
+  open(unit=IUNIT_TEMP,file='eos_water_density_test.txt')
+  write(IUNIT_TEMP,'("T[C] P[Pa] rho_IFC67 rho_TGDPB01 rho_Painter &
+        &rho_Batzle_and_Wang")')
+  write(IUNIT_TEMP,'(100i9)') ntemp, npres, neos
+  do itemp = 1, ntemp
+    do ipres = 1, npres
+      write(IUNIT_TEMP,'(100es20.8)') temp(itemp), pres(ipres), &
+                                      density_kg(ipres,itemp,:)
+    enddo
+  enddo
+  close(IUNIT_TEMP)
+
+end subroutine EOSWaterTest
+
+! ************************************************************************** !
+
 end module EOS_Water_module
