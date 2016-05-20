@@ -39,8 +39,8 @@ module Patch_module
 
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
-    PetscReal, pointer :: internal_tran_coefs(:,:)
-    PetscReal, pointer :: boundary_tran_coefs(:,:)
+    PetscReal, pointer :: internal_tran_coefs(:,:,:)
+    PetscReal, pointer :: boundary_tran_coefs(:,:,:)
     PetscReal, pointer :: internal_flow_fluxes(:,:)    
     PetscReal, pointer :: boundary_flow_fluxes(:,:)  
     ! fluid fluxes in moles/sec
@@ -700,7 +700,16 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   
   ! transport
   if (option%ntrandof > 0) then
-    allocate(patch%internal_tran_coefs(option%nphase,temp_int))
+    if (associated(patch%reaction)) then
+      if (associated(patch%reaction%primary_spec_diff_coef)) then
+        allocate(patch%internal_tran_coefs(patch%reaction%naqcomp, &
+                                           option%nphase,temp_int))
+      else
+        allocate(patch%internal_tran_coefs(1,option%nphase,temp_int))
+      endif
+    else
+      allocate(patch%internal_tran_coefs(1,option%nphase,temp_int))
+    endif
     patch%internal_tran_coefs = 0.d0
     if (option%transport%store_fluxes) then
       allocate(patch%internal_tran_fluxes(option%ntrandof,temp_int))
@@ -728,7 +737,16 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     endif
     ! transport
     if (option%ntrandof > 0) then
-      allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
+      if (associated(patch%reaction)) then
+        if (associated(patch%reaction%primary_spec_diff_coef)) then
+          allocate(patch%boundary_tran_coefs(patch%reaction%naqcomp, &
+                                             option%nphase,temp_int))
+        else
+          allocate(patch%boundary_tran_coefs(1,option%nphase,temp_int))
+        endif
+      else
+        allocate(patch%boundary_tran_coefs(1,option%nphase,temp_int))
+      endif    
       patch%boundary_tran_coefs = 0.d0
       if (option%transport%store_fluxes) then
         allocate(patch%boundary_tran_fluxes(option%ntrandof,temp_int))

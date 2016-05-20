@@ -1576,6 +1576,9 @@ subroutine BasisInit(reaction,option)
   allocate(reaction%primary_spec_a0(reaction%naqcomp))
   reaction%primary_spec_a0 = 0.d0
 
+  allocate(reaction%primary_spec_diff_coef(reaction%naqcomp))
+  reaction%primary_spec_diff_coef = UNINITIALIZED_INTEGER
+
   allocate(reaction%kd_print(reaction%naqcomp))
   reaction%kd_print = PETSC_FALSE
   if (reaction%nsorb > 0) then
@@ -1592,6 +1595,8 @@ subroutine BasisInit(reaction,option)
     reaction%primary_spec_Z(ispec) = cur_pri_aq_spec%Z
     reaction%primary_spec_molar_wt(ispec) = cur_pri_aq_spec%molar_weight
     reaction%primary_spec_a0(ispec) = cur_pri_aq_spec%a0
+    reaction%primary_spec_diff_coef(ispec) = &
+      cur_pri_aq_spec%diffusion_coefficient
     reaction%primary_species_print(ispec) = cur_pri_aq_spec%print_me .or. &
                                             reaction%print_all_primary_species
     reaction%kd_print(ispec) = (cur_pri_aq_spec%print_me .or. &
@@ -1606,6 +1611,21 @@ subroutine BasisInit(reaction,option)
     cur_pri_aq_spec => cur_pri_aq_spec%next
   enddo
   nullify(cur_pri_aq_spec)
+  
+  found = PETSC_FALSE
+  do ispec = 1, reaction%naqcomp
+    if (Initialized(reaction%primary_spec_diff_coef(ispec))) then
+      found = PETSC_TRUE
+    endif
+  enddo
+  ! if no species dependend diffusion coefficients destroy array
+  if (.not.found) then
+    option%transport%num_diffusion_coefficients = 1
+    call DeallocateArray(reaction%primary_spec_diff_coef)
+  else
+    option%transport%num_diffusion_coefficients = reaction%naqcomp
+  endif
+  
   ispec = -1 ! to catch bugs
   
   ! secondary aqueous complexes

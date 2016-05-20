@@ -76,7 +76,7 @@ module Reactive_Transport_Aux_module
     PetscInt :: offset_immobile
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
-    PetscReal, pointer :: diffusion_coefficient(:)
+    PetscReal, pointer :: diffusion_coefficient(:,:)
     PetscReal, pointer :: diffusion_activation_energy(:)
 #ifdef OS_STATISTICS
 ! use PetscReal for large counts
@@ -165,7 +165,8 @@ function RTAuxCreate(option)
   aux%inactive_cells_exist = PETSC_FALSE
 
   allocate(aux%rt_parameter)
-  allocate(aux%rt_parameter%diffusion_coefficient(option%nphase))
+!geh: moved to RTSetup() so that the reaction object does have to be passed in.
+!  allocate(aux%rt_parameter%diffusion_coefficient(option%nphase))
   allocate(aux%rt_parameter%diffusion_activation_energy(option%nphase))
   aux%rt_parameter%diffusion_coefficient = 1.d-9
   aux%rt_parameter%diffusion_activation_energy = 0.d0

@@ -297,18 +297,36 @@ subroutine RTSetup(realization)
   patch%aux%RT%num_aux_ss = sum_connection
   option%iflag = 0
 
+  
+  if (associated(reaction%primary_spec_diff_coef)) then
+    allocate(patch%aux%RT%rt_parameter% &
+      diffusion_coefficient(reaction%naqcomp,option%nphase))
+  else
+    allocate(patch%aux%RT%rt_parameter%diffusion_coefficient(1,option%nphase))
+  endif
+  
   ! initialize parameters
   cur_fluid_property => realization%fluid_properties
   do 
     if (.not.associated(cur_fluid_property)) exit
     iphase = cur_fluid_property%phase_id
-    patch%aux%RT%rt_parameter%diffusion_coefficient(iphase) = &
+    patch%aux%RT%rt_parameter%diffusion_coefficient(:,iphase) = &
       cur_fluid_property%diffusion_coefficient
+    ! overwrite liquid phase species dependent diffusion coefficients
+    if (iphase == LIQUID_PHASE .and. &
+        associated(reaction%primary_spec_diff_coef)) then
+      do i = 1, reaction%naqcomp
+        if (Initialized(reaction%primary_spec_diff_coef(i))) then
+          patch%aux%RT%rt_parameter%diffusion_coefficient(i,iphase) = &
+            reaction%primary_spec_diff_coef(i)
+        endif
+      enddo
+    endif
     patch%aux%RT%rt_parameter%diffusion_activation_energy(iphase) = &
       cur_fluid_property%diffusion_activation_energy
     cur_fluid_property => cur_fluid_property%next
   enddo
- 
+  
   list => realization%output_option%output_snap_variable_list
   call RTSetPlotVariables(realization,list)
   if (.not.associated(realization%output_option%output_snap_variable_list, &
@@ -948,7 +966,7 @@ subroutine RTUpdateTransportCoefs(realization)
                       cur_connection_set%dist(:,iconn), &
                       rt_parameter,option, &
                       patch%internal_velocities(:,sum_connection), &
-                      patch%internal_tran_coefs(:,sum_connection))
+                      patch%internal_tran_coefs(:,:,sum_connection))
                                            
     enddo
     cur_connection_set => cur_connection_set%next
@@ -979,7 +997,7 @@ subroutine RTUpdateTransportCoefs(realization)
                         cur_connection_set%dist(:,iconn), &
                         rt_parameter,option, &
                         patch%boundary_velocities(:,sum_connection), &
-                        patch%boundary_tran_coefs(:,sum_connection))
+                        patch%boundary_tran_coefs(:,:,sum_connection))
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -1208,7 +1226,7 @@ subroutine RTCalculateRHS_t1(realization)
 
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
-                     patch%boundary_tran_coefs(:,sum_connection), &
+                     patch%boundary_tran_coefs(:,:,sum_connection), &
                      0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                      coef_up,coef_dn)
 
@@ -1418,7 +1436,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
 
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%internal_velocities(:,sum_connection), &
-                     patch%internal_tran_coefs(:,sum_connection), &
+                     patch%internal_tran_coefs(:,:,sum_connection), &
                      cur_connection_set%dist(-1,iconn), &
                      coef_up,coef_dn)
 
@@ -1463,7 +1481,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
 
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
-                     patch%boundary_tran_coefs(:,sum_connection), &
+                     patch%boundary_tran_coefs(:,:,sum_connection), &
                      0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                      coef_up,coef_dn)
 
@@ -1852,7 +1870,7 @@ subroutine RTComputeBCMassBalanceOS(realization)
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
-                     patch%boundary_tran_coefs(:,sum_connection), &
+                     patch%boundary_tran_coefs(:,:,sum_connection), &
                      0.5d0, &
                      coef_up,coef_dn)
       ! TFlux accomplishes the same as what TBCFlux would
@@ -2243,7 +2261,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
 #ifndef CENTRAL_DIFFERENCE        
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                 patch%internal_velocities(:,sum_connection), &
-                patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                patch%internal_tran_coefs(:,:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 coef_up,coef_dn)
                       
@@ -2275,7 +2293,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
                  patch%internal_velocities(:,sum_connection), &
-                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                 patch%internal_tran_coefs(:,:,sum_connection)*vol_frac_prim, &
                  cur_connection_set%dist(-1,iconn), &
                  T_11,T_12,T_21,T_22)
       call TFlux_CD(rt_parameter, &
@@ -2329,7 +2347,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                   patch%boundary_velocities(:,sum_connection), &
-                  patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                  patch%boundary_tran_coefs(:,:,sum_connection)*vol_frac_prim, &
                   0.5d0, &
                   coef_up,coef_dn)
       ! TFlux accomplishes the same as what TBCFlux would
@@ -2356,7 +2374,8 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
                 patch%boundary_velocities(:,sum_connection), &
-                patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                patch%boundary_tran_coefs(:,:,sum_connection)* &
+                vol_frac_prim, &
                 0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                 T_11,T_12,T_21,T_22)
       call TFlux_CD(rt_parameter, &
@@ -3057,7 +3076,8 @@ subroutine RTJacobianFlux(snes,xx,A,B,realization,ierr)
 #ifndef CENTRAL_DIFFERENCE
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                 patch%internal_velocities(:,sum_connection), &
-                patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                patch%internal_tran_coefs(:,:,sum_connection)* &
+                vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 coef_up,coef_dn)
       call TFluxDerivative(rt_parameter, &
@@ -3085,7 +3105,8 @@ subroutine RTJacobianFlux(snes,xx,A,B,realization,ierr)
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
                 patch%internal_velocities(:,sum_connection), &
-                patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                patch%internal_tran_coefs(:,:,sum_connection)* &
+                vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
                 T_11,T_12,T_21,T_22)
       call TFluxDerivative_CD(rt_parameter, &
@@ -3145,7 +3166,8 @@ subroutine RTJacobianFlux(snes,xx,A,B,realization,ierr)
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                 patch%boundary_velocities(:,sum_connection), &
-                patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                patch%boundary_tran_coefs(:,:,sum_connection)* &
+                vol_frac_prim, &
                 0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                 coef_up,coef_dn)
       ! TFluxDerivative accomplishes the same as what TBCFluxDerivative would
@@ -3165,7 +3187,8 @@ subroutine RTJacobianFlux(snes,xx,A,B,realization,ierr)
 #else
       call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
                  patch%boundary_velocities(:,sum_connection), &
-                 patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
+                 patch%boundary_tran_coefs(:,:,sum_connection)* &
+                 vol_frac_prim, &
                  0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                  T_11,T_12,T_21,T_22)
       call TFluxDerivative_CD(rt_parameter, &

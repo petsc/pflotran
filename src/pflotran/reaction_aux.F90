@@ -45,6 +45,7 @@ module Reaction_Aux_module
     PetscReal :: a0
     PetscReal :: molar_weight
     PetscReal :: Z
+    PetscReal :: diffusion_coefficient
     PetscBool :: print_me
     PetscBool :: is_redox
     type(database_rxn_type), pointer :: dbaserxn
@@ -56,6 +57,7 @@ module Reaction_Aux_module
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: molar_volume
     PetscReal :: molar_weight
+    PetscReal :: diffusion_coefficient
     PetscBool :: print_me
     type(database_rxn_type), pointer :: dbaserxn
     type(gas_species_type), pointer :: next    
@@ -229,6 +231,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: primary_spec_a0(:)
     PetscReal, pointer :: primary_spec_Z(:)
     PetscReal, pointer :: primary_spec_molar_wt(:)
+    PetscReal, pointer :: primary_spec_diff_coef(:)
     
     ! aqueous complexes
     PetscInt :: neqcplx
@@ -404,7 +407,8 @@ module Reaction_Aux_module
             IonExchangeCationCreate, &
             ReactionInputRecord, &
             ReactionDestroy, &
-            LogKeh
+            LogKeh, &
+            AqueousSpeciesListDestroy
              
 contains
 
@@ -518,6 +522,7 @@ function ReactionCreate()
   nullify(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_Z)
   nullify(reaction%primary_spec_molar_wt)
+  nullify(reaction%primary_spec_diff_coef)
 
   reaction%ngas = 0
   nullify(reaction%eqgasspecid)
@@ -674,6 +679,7 @@ function AqueousSpeciesCreate()
   species%a0 = 0.d0
   species%molar_weight = 0.d0
   species%Z = 0.d0
+  species%diffusion_coefficient = UNINITIALIZED_DOUBLE
   species%print_me = PETSC_FALSE
   species%is_redox = PETSC_FALSE
   nullify(species%dbaserxn)
@@ -706,6 +712,7 @@ function GasSpeciesCreate()
   species%name = ''
   species%molar_volume = 0.d0
   species%molar_weight = 0.d0
+  species%diffusion_coefficient = UNINITIALIZED_DOUBLE
   species%print_me = PETSC_FALSE
   nullify(species%dbaserxn)
   nullify(species%next)
@@ -2277,6 +2284,7 @@ subroutine ReactionDestroy(reaction,option)
   call DeallocateArray(reaction%primary_spec_a0)
   call DeallocateArray(reaction%primary_spec_Z)
   call DeallocateArray(reaction%primary_spec_molar_wt)
+  call DeallocateArray(reaction%primary_spec_diff_coef)
   
   call DeallocateArray(reaction%eqcplxspecid)
   call DeallocateArray(reaction%eqcplxstoich)
