@@ -44,6 +44,7 @@ subroutine EOSRead(input,option)
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword, word, subkeyword
+  character(len=MAXWORDLENGTH) :: test_filename
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal :: tempreal, tempreal2
   PetscReal :: rks_tc = UNINITIALIZED_DOUBLE
@@ -200,9 +201,15 @@ subroutine EOSRead(input,option)
                   trim(word) // '" for EOS Water not recognized.'
                 call printErrMsg(option)
               endif 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              test_filename = ''
+              if (input%ierr == 0) then
+                test_filename = word
+              endif
               call EOSWaterTest(test_t_low,test_t_high,test_p_low,test_p_high, &
                                 test_n_temp, test_n_pres, &
-                                test_uniform_temp, test_uniform_pres)
+                                test_uniform_temp, test_uniform_pres, &
+                                test_filename)
             endif
           case default
             call InputKeywordUnrecognized(keyword,'EOS,WATER',option)
@@ -382,9 +389,15 @@ subroutine EOSRead(input,option)
                   trim(word) // '" for EOS Gas not recognized.'
                 call printErrMsg(option)
               endif 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              test_filename = ''
+              if (input%ierr == 0) then
+                test_filename = word
+              endif
               call EOSGasTest(test_t_low,test_t_high,test_p_low,test_p_high, &
                               test_n_temp, test_n_pres, &
-                              test_uniform_temp, test_uniform_pres)
+                              test_uniform_temp, test_uniform_pres, &
+                              test_filename)
             endif
           case default
             call InputKeywordUnrecognized(keyword,'EOS,GAS',option)

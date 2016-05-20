@@ -2698,7 +2698,7 @@ end subroutine EOSWaterInputRecord
 ! ************************************************************************** !
 
 subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
-                        ntemp,npres,uniform_temp,uniform_pres)
+                        ntemp,npres,uniform_temp,uniform_pres,filename)
 
   implicit none
 
@@ -2710,6 +2710,7 @@ subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
   PetscInt :: ntemp
   PetscBool :: uniform_temp
   PetscBool :: uniform_pres
+  character(len=MAXWORDLENGTH) :: filename
 
   PetscReal, allocatable :: temp(:)
   PetscReal, allocatable :: pres(:)
@@ -2838,7 +2839,8 @@ subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
   enddo
 
 100 format(100es16.8)
-  open(unit=IUNIT_TEMP,file='eos_water_test.txt')
+  if (len_trim(filename) == 0) filename = 'eos_water_test.txt'
+  open(unit=IUNIT_TEMP,file=filename)
   header = 'T[C], P[Pa], &
     &Density (' // trim(eos_density_name) // ') [kg/m^3], &
     &Enthalpy (' // trim(eos_enthalpy_name) // ') [J/kmol], &
