@@ -135,7 +135,8 @@ module EOS_Gas_module
             EOSGasEnergy, &
             EOSGasDensityEnergy, &
             EOSGasHenry, &
-            EOSGasInputRecord
+            EOSGasInputRecord, &
+            EOSGasTest
             
   public :: EOSGasSetDensityIdeal, &
             EOSGasSetEnergyIdeal, &
@@ -1212,5 +1213,193 @@ subroutine EOSGasInputRecord()
                   &-----------------------'
   
 end subroutine EOSGasInputRecord
+
+! ************************************************************************** !
+
+subroutine EOSGasTest(temp_low,temp_high,pres_low,pres_high, &
+                        ntemp,npres,uniform_temp,uniform_pres)
+
+  use EOS_Water_module, only : EOSWaterSaturationPressure
+
+  implicit none
+
+  PetscReal :: temp_low
+  PetscReal :: temp_high
+  PetscReal :: pres_low
+  PetscReal :: pres_high
+  PetscInt :: npres
+  PetscInt :: ntemp
+  PetscBool :: uniform_temp
+  PetscBool :: uniform_pres
+
+  PetscReal, allocatable :: temp(:)
+  PetscReal, allocatable :: pres(:)
+  PetscReal, allocatable :: density_kg(:,:)
+  PetscReal, allocatable :: enthalpy(:,:)
+  PetscReal, allocatable :: internal_energy(:,:)
+  PetscReal, allocatable :: viscosity(:,:)
+  PetscReal, allocatable :: saturation_pressure_array(:)
+  PetscReal, allocatable :: henry(:)
+  PetscReal :: dum1, dum2, dum3, dum4
+  PetscInt :: itemp, ipres
+  PetscReal :: ln_low, ln_high
+  PetscReal :: saturation_pressure
+  PetscReal :: air_pressure
+  PetscReal :: NaN
+  character(len=MAXWORDLENGTH) :: eos_density_name
+  character(len=MAXWORDLENGTH) :: eos_energy_name
+  character(len=MAXWORDLENGTH) :: eos_viscosity_name
+  character(len=MAXWORDLENGTH) :: eos_saturation_pressure_name
+  character(len=MAXWORDLENGTH) :: eos_henry_name
+  character(len=MAXSTRINGLENGTH) :: header
+
+  PetscErrorCode :: ierr
+
+  NaN = 0.d0
+  NaN = 1.d0/NaN
+  NaN = 0.d0*NaN
+
+  allocate(temp(ntemp))
+  temp = UNINITIALIZED_DOUBLE
+  allocate(pres(ntemp))
+  pres = UNINITIALIZED_DOUBLE
+  allocate(density_kg(npres,ntemp))
+  density_kg = UNINITIALIZED_DOUBLE
+  allocate(viscosity(npres,ntemp))
+  viscosity = UNINITIALIZED_DOUBLE
+  allocate(enthalpy(npres,ntemp))
+  enthalpy = UNINITIALIZED_DOUBLE
+  allocate(internal_energy(npres,ntemp))
+  internal_energy = UNINITIALIZED_DOUBLE
+  allocate(saturation_pressure_array(ntemp))
+  saturation_pressure_array = UNINITIALIZED_DOUBLE
+  allocate(henry(ntemp))
+  henry = UNINITIALIZED_DOUBLE
+
+  if (uniform_pres) then
+    do ipres = 1, npres
+      pres(ipres) = (pres_high-pres_low)/dble(npres-1) * (ipres-1) + pres_low
+    enddo
+  else
+    ln_high = log(pres_high)
+    ln_low = log(pres_low)
+    do ipres = 1, npres
+      pres(ipres) = exp((ln_high-ln_low)/dble(npres-1) * (ipres-1) + ln_low)
+    enddo
+  endif
+
+  if (uniform_temp) then
+    do itemp = 1, ntemp
+      temp(itemp) = (temp_high-temp_low)/dble(ntemp-1) * (itemp-1) + temp_low
+    enddo
+  else
+    ln_high = log(temp_high)
+    ln_low = log(temp_low)
+    do itemp = 1, ntemp
+      temp(itemp) = exp((ln_high-ln_low)/dble(ntemp-1) * (itemp-1) + ln_low)
+    enddo
+  endif
+
+  ! density
+  if (associated(EOSGasDensityPtr,EOSGasDensityConstant)) then
+    eos_density_name = 'Constant'
+  else if (associated(EOSGasDensityPtr,EOSGasDensityIdeal)) then
+    eos_density_name = 'Ideal Gas Law'
+  else if (associated(EOSGasDensityPtr,EOSGasDensityRKS)) then
+    eos_density_name = 'Redlich-Kwong-Soave'
+  else if (associated(EOSGasDensityPtr,EOSGasDensityPRMethane)) then
+    eos_density_name = 'Peng-Robinson Methane'
+  else 
+    eos_density_name = 'Unknown'
+  endif
+
+  ! energy
+  if (associated(EOSGasEnergyPtr,EOSGasEnergyConstant)) then
+    eos_energy_name = 'Constant'
+  else if (associated(EOSGasEnergyPtr,EOSGasEnergyIdeal)) then
+    eos_energy_name = 'Ideal Gas Law'
+  else if (associated(EOSGasEnergyPtr,EOSGasEnergyIdealMethane)) then
+    eos_energy_name = 'Ideal Gas Law - Methane'
+  else
+    eos_energy_name = 'Unknown'
+  endif
+
+  ! viscosity
+  if (associated(EOSGasViscosityPtr,EOSGasViscosityConstant)) then
+    eos_viscosity_name = 'Constant'
+  else if (associated(EOSGasViscosityPtr,EOSGasViscosity1)) then
+    eos_viscosity_name = 'Default'
+  else
+    eos_viscosity_name = 'Unknown'
+  endif
+
+  ! Henry's constant
+  if (associated(EOSGasHenryPtr,EOSGasHenryConstant)) then
+    eos_henry_name = 'Constant'
+  else if (associated(EOSGasHenryPtr,EOSGasHenry_air_noderiv)) then
+    eos_henry_name = 'Default'
+  else
+    eos_henry_name = 'Unknown'
+  endif
+
+  ! saturation pressure
+  eos_saturation_pressure_name = 'Unknown'
+
+  do itemp = 1, ntemp
+    ! Need saturation pressure to calculate air partial pressure
+    call EOSWaterSaturationPressure(temp(itemp),saturation_pressure,ierr)
+    saturation_pressure_array(itemp) = saturation_pressure
+    call EOSGasHenryPtr(temp(itemp),saturation_pressure,henry(itemp))
+    do ipres = 1, npres
+      call EOSGasDensityPtr(temp(itemp),pres(ipres), &
+                            density_kg(ipres,itemp), &
+                            dum1,dum2,ierr)
+      call EOSGasEnergyPtr(temp(itemp),pres(ipres),&
+                           enthalpy(ipres,itemp),dum1,dum2, &
+                           internal_energy(ipres,itemp),dum3,dum4,ierr)
+      air_pressure = pres(ipres) - saturation_pressure
+      if (air_pressure > 0.d0) then
+        call EOSGasViscosityPtr(temp(itemp),air_pressure,pres(ipres), &
+                                density_kg(ipres,itemp), &
+                                viscosity(ipres,itemp),ierr)
+      else
+        viscosity(ipres,itemp) = NaN
+      endif
+    enddo
+  enddo
+
+100 format(100es16.8)
+  open(unit=IUNIT_TEMP,file='eos_gas_test.txt')
+  header = 'T[C], P[Pa], &
+    &Density (' // trim(eos_density_name) // ') [kg/m^3], &
+    &Enthalpy (' // trim(eos_energy_name) // ') [J/kmol], &
+    &Internal Energy (' // trim(eos_energy_name) // ') [J/kmol], &
+    &Viscosity (' // trim(eos_viscosity_name) // ') [Pa-s], &
+    &Saturation Pressure (' // trim(eos_saturation_pressure_name) // ") [Pa], &
+    &Henry's Constant (" // trim(eos_henry_name) // ') [-]'
+  write(IUNIT_TEMP,'(a)') trim(header)
+  write(IUNIT_TEMP,'(100i9)') ntemp, npres
+  do itemp = 1, ntemp
+    do ipres = 1, npres
+      write(IUNIT_TEMP,100) temp(itemp), pres(ipres), &
+            density_kg(ipres,itemp), enthalpy(ipres,itemp), &
+            internal_energy(ipres,itemp), viscosity(ipres,itemp), &
+            saturation_pressure_array(itemp), henry(itemp)
+    enddo
+  enddo
+  close(IUNIT_TEMP)
+
+  deallocate(temp)
+  deallocate(pres)
+  deallocate(density_kg)
+  deallocate(enthalpy)
+  deallocate(internal_energy)
+  deallocate(viscosity)
+  deallocate(saturation_pressure_array)
+  deallocate(henry)
+
+end subroutine EOSGasTest
+
+! ************************************************************************** !
 
 end module EOS_Gas_module

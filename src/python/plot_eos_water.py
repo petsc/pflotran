@@ -29,12 +29,12 @@ for itemp in range(ntemp):
     for ivar in range(nvar):
       word = w[ivar+2]
       if word.startswith('NaN'):
-        Z[ivar][itemp][ipres] = -999.
+        Z[ivar][itemp][ipres] = 999.e-10
       else:
         Z[ivar][itemp][ipres] = float(word)
 
 fig = plt.figure(figsize=(20,16))
-fig.suptitle('EOS Constitutive Relations vs. Temperature/Pressure',fontsize=24)
+fig.suptitle('Water EOS Constitutive Relations vs. Temperature/Pressure',fontsize=24)
 for ivar in range(nvar-1):
   ax = fig.add_subplot(2,2,ivar+1,projection='3d')
   ax.set_title(column_headings[ivar+2].split(' [')[0])
