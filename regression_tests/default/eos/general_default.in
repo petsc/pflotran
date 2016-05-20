@@ -1,0 +1,162 @@
+#Description: Unit test problem for testing EOS
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 1
+END
+
+#=========================== flow mode ========================================
+
+#=========================== solver options ===================================
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 1 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
+  /
+END
+
+#=========================== EOS ==============================================
+EOS WATER
+  DENSITY DEFAULT
+  ENTHALPY DEFAULT
+  VISCOSITY DEFAULT
+  TEST 10.d0 400.d0 1.d4 1.d8 10 10 uniform uniform
+  TEST 10.d0 400.d0 1.d4 1.d8 10 10 log log eos_water_test_log_log.dat
+END
+
+EOS GAS
+  DENSITY DEFAULT
+  ENTHALPY DEFAULT
+  VISCOSITY DEFAULT
+  TEST 10.d0 500.d0 1.d4 1.d8 10 10 uniform uniform
+  TEST 10.d0 500.d0 1.d4 1.d8 10 10 log log eos_gas_test_log_log.dat
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2650.d0 kg/m^3
+  THERMAL_CONDUCTIVITY_DRY 0.5d0 W/m-C
+  THERMAL_CONDUCTIVITY_WET 2.d0 W/m-C
+  HEAT_CAPACITY 1010.d0 J/kg-C
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+  CHARACTERISTIC_CURVES cc1
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    ALPHA 1.d-4
+    M 0.5d0
+    MAX_CAPILLARY_PRESSURE 1.d6
+  /
+  PERMEABILITY_FUNCTION MUALEM
+    PHASE LIQUID
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_GAS
+    PHASE GAS
+    LIQUID_RESIDUAL_SATURATION 0.d0
+    GAS_RESIDUAL_SATURATION 1.d-40
+    M 0.5d0
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  VARIABLES
+    GAS_PRESSURE
+    GAS_SATURATION
+    GAS_DENSITY
+    GAS_MOBILITY
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+    LIQUID_DENSITY
+    LIQUID_MOBILITY
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 1.d0 d
+  INITIAL_TIMESTEP_SIZE 1.d-3 d
+  MAXIMUM_TIMESTEP_SIZE 1.d0 d
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    GAS_PRESSURE dirichlet
+    GAS_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 106325.d0
+  GAS_SATURATION 0.9d0
+  TEMPERATURE 20.d0
+/
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+# west boundary condition
+BOUNDARY_CONDITION west
+  FLOW_CONDITION initial
+  REGION west
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil1
+  REGION all
+END
+
+END_SUBSURFACE
