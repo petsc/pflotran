@@ -16,6 +16,7 @@ module Well_TOilIms_class
     ! .................
   contains  ! add here type-bound procedure 
     procedure, public :: PrintMsg => PrintTOilIms
+    procedure, public :: ConnInit => WellTOilImsConnInit
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
     !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
@@ -91,6 +92,7 @@ function CreateTOilImsWell(well_spec,option)
 
   class(well_spec_base_type), pointer :: well_spec
   type(option_type) :: option
+
   class(well_toil_ims_type), pointer :: CreateTOilImsWell
 
   class(well_toil_ims_wat_inj_type), pointer :: well_toil_ims_wat_inj
@@ -114,19 +116,35 @@ function CreateTOilImsWell(well_spec,option)
       call printErrMsg(option)
   end select
 
-
   !initialise different well components 
-
-  !call WellBaseInit(well_toil_ims);
-  !call WellFlowInit(well_toil_ims,option);
-  !call WellFlowEnergyInit(well_toil_ims,option);
-
-  call WellBaseInit(CreateTOilImsWell);
+  call WellBaseInit(CreateTOilImsWell,well_spec,option);
   call WellFlowInit(CreateTOilImsWell,option);
   call WellFlowEnergyInit(CreateTOilImsWell,option);
 
 !end subroutine CreateTOilImsWell
 end function CreateTOilImsWell
+
+! ************************************************************************** !
+
+subroutine WellTOilImsConnInit(this,num_connections,option)
+  ! 
+  ! Allocate and initilize well_base connections arrays
+  ! 
+  ! Author: Paolo Orsini - OpenGoSim
+  ! Date: 5/20/2016
+
+  use Option_module
+
+  implicit none
+
+  class(well_toil_ims_type) :: this
+  PetscInt, intent(in) :: num_connections 
+  type(option_type) :: option  
+
+  call WellBaseConnInit(this,num_connections,option);
+  call WellFlowConnInit(this,num_connections,option);
+
+end subroutine WellTOilImsConnInit
 
 ! ************************************************************************** !
 

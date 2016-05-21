@@ -28,13 +28,17 @@ function CreateWell(well_spec,option)
   ! Date: 05/18/16
   ! 
 
+  use Connection_module
   use Option_module
 
   implicit none
 
   class(well_spec_base_type), pointer :: well_spec
+  character(len=MAXWORDLENGTH) :: coupler_name
   type(option_type) :: option
   class(well_base_type), pointer :: CreateWell
+
+  character(len=MAXWORDLENGTH) :: wfile_name
   
   select case(option%iflowmode)
     case(TOIL_IMS_MODE)
@@ -44,8 +48,6 @@ function CreateWell(well_spec,option)
       option%io_buffer = 'Well model supported supported for TOIL_IMS only'
       call printErrMsg(option)
   end select
-
-  CreateWell%spec => well_spec
 
   !Debug printing 
   write(*,*) "well_factor type = ", CreateWell%spec%well_fact_itype 
@@ -59,16 +61,10 @@ function CreateWell(well_spec,option)
   end select 
 
   call CreateWell%PrintMsg(); 
-  !perform here well domain decompotion
 
- 
-  !Initialise well_factor (required grid paramters are already available is already available)  
-
-  !to be moved to later on 
   !Create well outfile and write its header 
 
 end function CreateWell
-
 
 ! ************************************************************************** !
 

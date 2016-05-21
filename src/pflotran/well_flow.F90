@@ -18,6 +18,7 @@ module Well_Flow_class
     !PetscReal, pointer :: conn_mobs(:,:)       ! well connection mobilities ! TO REMOVE - computed when needed flight
   contains  ! add here type-bound procedure 
     procedure, public :: PrintMsg => PrintFlow
+    procedure, public :: ConnInit => WellFlowConnInit
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
     !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
@@ -29,7 +30,7 @@ module Well_Flow_class
     !procedure  :: WellConnSort
   end type  well_flow_type
 
-  public :: WellFlowInit
+  public :: WellFlowInit, WellFlowConnInit
 
 contains
 
@@ -60,6 +61,7 @@ subroutine WellFlowInit(this,option)
   implicit none
 
   class(well_flow_type) :: this
+
   type(option_type) :: option
 
   this%pw_ref = 0.0d0;
@@ -69,11 +71,33 @@ subroutine WellFlowInit(this,option)
   allocate( this%q_fld(option%nphase) );
   this%q_fld = 0.0d0;
   allocate( this%mr_fld(option%nphase) );
-  this%mr_fld = 0.0d0
-  nullify(this%conn_h);
-  !nullify(this%conn_mobs);
-
+  this%mr_fld = 0.0d0;
+  
 end subroutine WellFlowInit
+
+! ************************************************************************** !
+
+subroutine WellFlowConnInit(this,num_connections,option)
+  ! 
+  ! Allocate and initilize well_base connections arrays
+  ! 
+  ! Author: Paolo Orsini - OpenGoSim
+  ! Date: 5/20/2016
+  !
+
+  use Option_module
+
+  implicit none
+
+  class(well_flow_type) :: this
+  PetscInt, intent(in) :: num_connections 
+  type(option_type) :: option  
+
+  nullify(this%conn_h);
+  allocate(this%conn_h(num_connections));
+  this%conn_h = 0.0d0; 
+
+end subroutine WellFlowConnInit
 
 ! ************************************************************************** !
 

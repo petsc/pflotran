@@ -110,6 +110,10 @@ ifdef provenance
   UPDATE_PROVENANCE=1
 endif
 
+ifdef well_debug
+  MYFLAGS += ${FC_DEFINE_FLAG}WELL_DEBUG
+endif
+
 CFLAGS   = 
 FFLAGS   =
 CPPFLAGS = ${MYFLAGS}
@@ -1290,9 +1294,10 @@ units.o : option.o pflotran_constants.o
 utility.o : input_aux.o option.o pflotran_constants.o string.o
 variables.o :
 waypoint.o : option.o output_aux.o pflotran_constants.o utility.o
-well.o : option.o pflotran_constants.o well_base.o well_flow.o \
+well.o : connection.o option.o pflotran_constants.o well_base.o well_flow.o \
          well_flow_energy.o well_spec_base.o well_toil_ims.o
-well_base.o : pflotran_constants.o well_spec_base.o
+well_base.o : connection.o grid.o option.o pflotran_constants.o \
+              well_spec_base.o
 well_flow.o : option.o pflotran_constants.o well_base.o
 well_flow_energy.o : option.o pflotran_constants.o well_flow.o
 well_spec_base.o : input_aux.o option.o pflotran_constants.o string.o units.o \

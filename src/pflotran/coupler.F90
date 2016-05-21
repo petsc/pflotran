@@ -578,9 +578,16 @@ subroutine CouplerDestroy(coupler)
   ! or will be deallocated from the list, nullify instead of destroying
   
   nullify(coupler%flow_condition)     ! since these are simply pointers to 
-  nullify(coupler%well)               ! since these are simply pointers to
   nullify(coupler%tran_condition)     ! since these are simply pointers to 
   nullify(coupler%region)        ! conditoins in list, nullify
+
+  !need to add add function that destroy the well here - since the well
+  !memory address is saved (tracked) only from this pointer   
+  !call WellDestroy(coupler%well) 
+  ! only need to nullify coupler%well%well_spec, 
+  ! since well_specs are realization members (defined-destroyed in realization)
+  nullify(coupler%well)               ! since these are simply pointers to
+
 
   call DeallocateArray(coupler%flow_aux_mapping)
   call DeallocateArray(coupler%flow_bc_type)

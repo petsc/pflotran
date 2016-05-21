@@ -48,7 +48,7 @@ subroutine WellFlowEnergyInit(this,option)
   ! Initializes variables/objects in flow and energy well class
   ! 
   ! Author: Paolo Orsini (OGS)
-  ! Date: 05/18/16
+  ! Date: 5/20/2016
   ! 
 
   use Option_module
