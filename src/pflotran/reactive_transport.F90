@@ -162,7 +162,7 @@ subroutine RTSetup(realization)
   reaction => realization%reaction
   sec_tran_constraint => realization%sec_transport_constraint
 
-  patch%aux%RT => RTAuxCreate(option)
+  patch%aux%RT => RTAuxCreate(reaction,option)
   patch%aux%RT%rt_parameter%ncomp = reaction%ncomp
   patch%aux%RT%rt_parameter%naqcomp = reaction%naqcomp
   patch%aux%RT%rt_parameter%offset_aqueous = reaction%offset_aqueous
@@ -297,14 +297,6 @@ subroutine RTSetup(realization)
   patch%aux%RT%num_aux_ss = sum_connection
   option%iflag = 0
 
-  
-  if (associated(reaction%primary_spec_diff_coef)) then
-    allocate(patch%aux%RT%rt_parameter% &
-      diffusion_coefficient(reaction%naqcomp,option%nphase))
-  else
-    allocate(patch%aux%RT%rt_parameter%diffusion_coefficient(1,option%nphase))
-  endif
-  
   ! initialize parameters
   cur_fluid_property => realization%fluid_properties
   do 

@@ -1619,12 +1619,7 @@ subroutine BasisInit(reaction,option)
     endif
   enddo
   ! if no species dependend diffusion coefficients destroy array
-  if (.not.found) then
-    option%transport%num_diffusion_coefficients = 1
-    call DeallocateArray(reaction%primary_spec_diff_coef)
-  else
-    option%transport%num_diffusion_coefficients = reaction%naqcomp
-  endif
+  if (.not.found) call DeallocateArray(reaction%primary_spec_diff_coef)
   
   ispec = -1 ! to catch bugs
   

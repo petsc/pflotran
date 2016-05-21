@@ -949,22 +949,13 @@ subroutine ReactionReadPass1(reaction,input,option)
   enddo
   
   ! if species dependent diffusion defined, set coefficients for listed species
-  species => diffusion_species_list
-  do 
-    if (.not.associated(species)) exit
-    found = PETSC_FALSE
-    cur_species => reaction%primary_species_list
-    do
-      if (.not.associated(cur_species)) exit
-      if (StringCompare(species%name,cur_species%name)) then
-        cur_species%diffusion_coefficient = species%diffusion_coefficient
-        found = PETSC_TRUE
-        exit
-      endif
-      cur_species => cur_species%next     
-    enddo
-    if (.not.found) then
-      cur_species => reaction%secondary_species_list
+  if (associated(diffusion_species_list)) then
+    reaction%use_full_geochemistry = PETSC_TRUE
+    species => diffusion_species_list
+    do 
+      if (.not.associated(species)) exit
+      found = PETSC_FALSE
+      cur_species => reaction%primary_species_list
       do
         if (.not.associated(cur_species)) exit
         if (StringCompare(species%name,cur_species%name)) then
@@ -974,16 +965,28 @@ subroutine ReactionReadPass1(reaction,input,option)
         endif
         cur_species => cur_species%next     
       enddo
-    endif
-    if (.not.found) then
-      option%io_buffer = 'A species dependent diffusion coefficient is &
-        &defined for species "' // trim(species%name) // '" but this species &
-        &is not listed among primary or secondary species.'
-      call printErrMsg(option)
-    endif
-    species => species%next
-  enddo
-  call AqueousSpeciesListDestroy(diffusion_species_list)
+      if (.not.found) then
+        cur_species => reaction%secondary_species_list
+        do
+          if (.not.associated(cur_species)) exit
+          if (StringCompare(species%name,cur_species%name)) then
+            cur_species%diffusion_coefficient = species%diffusion_coefficient
+            found = PETSC_TRUE
+            exit
+          endif
+          cur_species => cur_species%next     
+        enddo
+      endif
+      if (.not.found) then
+        option%io_buffer = 'A species dependent diffusion coefficient is &
+          &defined for species "' // trim(species%name) // '" but this &
+          &species is not listed among primary or secondary species.'
+        call printErrMsg(option)
+      endif
+      species => species%next
+    enddo
+    call AqueousSpeciesListDestroy(diffusion_species_list)
+  endif
   
   reaction%neqsorb = reaction%neqionxrxn + &
                      reaction%neqkdrxn + &
@@ -1075,7 +1078,7 @@ subroutine ReactionReadPass2(reaction,input,option)
       case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
             'MINERALS','COLLOIDS','GENERAL_REACTION', &
             'IMMOBILE_SPECIES','RADIOACTIVE_DECAY_REACTION', &
-            'IMMOBILE_DECAY_REACTION')
+            'IMMOBILE_DECAY_REACTION','SPECIES_DEPENDENT_DIFFUSION')
         call InputSkipToEND(input,option,card)
       case('REDOX_SPECIES')
         call ReactionReadRedoxSpecies(reaction,input,option)

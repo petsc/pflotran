@@ -18,7 +18,6 @@ module Option_Transport_module
     PetscInt :: tvd_flux_limiter
     PetscBool :: store_fluxes
     PetscReal :: tran_weight_t0, tran_weight_t1
-    PetscInt :: num_diffusion_coefficients
     
     PetscReal :: inf_rel_update_tol
     PetscReal :: inf_scaled_res_tol
@@ -109,7 +108,6 @@ subroutine OptionTransportInitRealization(option)
   option%tvd_flux_limiter = 1
   option%rt_idof = UNINITIALIZED_INTEGER
   option%store_fluxes = PETSC_FALSE
-  option%num_diffusion_coefficients = 1
   
   option%reactive_transport_coupling = GLOBAL_IMPLICIT
   

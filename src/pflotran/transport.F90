@@ -87,7 +87,7 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
   PetscReal :: qdarcy(*)
   type(option_type) :: option
   type(reactive_transport_param_type) :: rt_parameter
-  PetscReal :: dispersion(option%transport%num_diffusion_coefficients,option%nphase)
+  PetscReal :: dispersion(rt_parameter%ndiffcoef,option%nphase)
   
   PetscInt :: iphase
   PetscReal :: stp_ave_over_dist, disp_ave_over_dist
@@ -262,7 +262,7 @@ subroutine TDispersionBC(ibndtype, &
   PetscReal :: qdarcy(1)
   type(reactive_transport_param_type) :: rt_parameter
   type(option_type) :: option
-  PetscReal :: dispersion(option%transport%num_diffusion_coefficients,option%nphase)
+  PetscReal :: dispersion(rt_parameter%ndiffcoef,option%nphase)
   
   PetscInt :: icomp
   PetscInt :: iphase
