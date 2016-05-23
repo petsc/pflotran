@@ -24,7 +24,6 @@ module PM_Subsurface_Flow_class
   type, public, extends(pm_base_type) :: pm_subsurface_flow_type
     class(realization_subsurface_type), pointer :: realization
     class(communicator_type), pointer :: comm1
-    PetscBool :: transient_permeability
     PetscBool :: store_porosity_for_ts_cut
     PetscBool :: store_porosity_for_transport
     PetscBool :: check_post_convergence
@@ -101,7 +100,6 @@ subroutine PMSubsurfaceFlowCreate(this)
   
   nullify(this%realization)
   nullify(this%comm1)
-  this%transient_permeability = PETSC_FALSE
   this%store_porosity_for_ts_cut = PETSC_FALSE
   this%store_porosity_for_transport = PETSC_FALSE
   this%check_post_convergence = PETSC_FALSE
@@ -365,22 +363,6 @@ subroutine PMSubsurfaceFlowInitializeTimestepA(this)
   class(pm_subsurface_flow_type) :: this
 
   this%option%flow_dt = this%option%dt
-
-  if (this%transient_permeability) then
-  !geh:remove
-    call MaterialAuxVarCommunicate(this%comm1, &
-                                   this%realization%patch%aux%Material, &
-                                   this%realization%field%work_loc, &
-                                   PERMEABILITY_X,ZERO_INTEGER)
-    call MaterialAuxVarCommunicate(this%comm1, &
-                                   this%realization%patch%aux%Material, &
-                                   this%realization%field%work_loc, &
-                                   PERMEABILITY_Y,ZERO_INTEGER)
-    call MaterialAuxVarCommunicate(this%comm1, &
-                                   this%realization%patch%aux%Material, &
-                                   this%realization%field%work_loc, &
-                                   PERMEABILITY_Z,ZERO_INTEGER)
-  endif
 
   if (this%store_porosity_for_ts_cut) then
     ! store base properties for reverting at time step cut
