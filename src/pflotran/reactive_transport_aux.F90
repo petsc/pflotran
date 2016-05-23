@@ -74,10 +74,9 @@ module Reactive_Transport_Aux_module
     PetscInt :: offset_colloid
     PetscInt :: offset_collcomp
     PetscInt :: offset_immobile
-    PetscInt :: ndiffcoef
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
-    PetscReal, pointer :: diffusion_coefficient(:,:)
+    PetscReal, pointer :: diffusion_coefficient(:)
     PetscReal, pointer :: diffusion_activation_energy(:)
 #ifdef OS_STATISTICS
 ! use PetscReal for large counts
@@ -135,7 +134,7 @@ contains
 
 ! ************************************************************************** !
 
-function RTAuxCreate(reaction,option)
+function RTAuxCreate(option)
   ! 
   ! Allocate and initialize auxiliary object
   ! 
@@ -143,14 +142,11 @@ function RTAuxCreate(reaction,option)
   ! Date: 02/14/08
   ! 
 
-  use Reaction_Aux_module
   use Option_module
 
   implicit none
   
-  type(reaction_type) :: reaction
   type(option_type) :: option
-
   type(reactive_transport_type), pointer :: RTAuxCreate
   
   type(reactive_transport_type), pointer :: aux
@@ -169,15 +165,9 @@ function RTAuxCreate(reaction,option)
   aux%inactive_cells_exist = PETSC_FALSE
 
   allocate(aux%rt_parameter)
-  if (associated(reaction%primary_spec_diff_coef)) then
-    aux%rt_parameter%ndiffcoef = reaction%naqcomp
-  else
-    aux%rt_parameter%ndiffcoef = 1
-  endif
-  allocate(aux%rt_parameter%diffusion_coefficient(aux%rt_parameter%ndiffcoef, &
-                                                  option%nphase))
-  aux%rt_parameter%diffusion_coefficient = 1.d-9
+  allocate(aux%rt_parameter%diffusion_coefficient(option%nphase))
   allocate(aux%rt_parameter%diffusion_activation_energy(option%nphase))
+  aux%rt_parameter%diffusion_coefficient = 1.d-9
   aux%rt_parameter%diffusion_activation_energy = 0.d0
   aux%rt_parameter%ncomp = 0
   aux%rt_parameter%naqcomp = 0

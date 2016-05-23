@@ -138,7 +138,6 @@ subroutine ReactionReadPass1(reaction,input,option)
   character(len=MAXWORDLENGTH) :: internal_units
   character(len=MAXWORDLENGTH) :: kd_units
   type(aq_species_type), pointer :: species, prev_species
-  type(aq_species_type), pointer :: cur_species
   type(gas_species_type), pointer :: gas, prev_gas
   type(immobile_species_type), pointer :: immobile_species
   type(immobile_species_type), pointer :: prev_immobile_species
@@ -150,7 +149,6 @@ subroutine ReactionReadPass1(reaction,input,option)
   type(radioactive_decay_rxn_type), pointer :: prev_radioactive_decay_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
   type(kd_rxn_type), pointer :: sec_cont_kd_rxn, sec_cont_prev_kd_rxn
-  type(aq_species_type), pointer :: diffusion_species_list
   PetscInt :: i, temp_int
   PetscReal :: temp_real
   PetscInt :: srfcplx_count
@@ -168,7 +166,6 @@ subroutine ReactionReadPass1(reaction,input,option)
   nullify(prev_radioactive_decay_rxn)
   nullify(prev_kd_rxn)
   nullify(prev_ionx_rxn)
-  nullify(diffusion_species_list)
   
   if (option%use_mc) then
     nullify(sec_cont_prev_kd_rxn)
@@ -920,73 +917,10 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('MINIMUM_POROSITY')
         call InputReadDouble(input,option,reaction%minimum_porosity)
         call InputErrorMsg(input,option,'minimim porosity','CHEMISTRY')
-      case('SPECIES_DEPENDENT_DIFFUSION')
-        nullify(prev_species)
-        do
-          call InputReadPflotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit
-          species => AqueousSpeciesCreate()
-          call InputReadWord(input,option,species%name,PETSC_TRUE)  
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,&
-                             &SPECIES_DEPENDENT_DIFFUSION,SPECIES_NAME')    
-          call InputReadDouble(input,option,species%diffusion_coefficient)  
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,SPECIES_&
-                             &DEPENDENT_DIFFUSION,DIFFUSION_COEFFICIENT')
-          if (.not.associated(diffusion_species_list)) then
-            diffusion_species_list => species
-          endif
-          if (associated(prev_species)) then
-            prev_species%next => species
-            species%id = prev_species%id + 1
-          endif
-          prev_species => species
-          nullify(species)
-        enddo
       case default
         call InputKeywordUnrecognized(word,'CHEMISTRY',option)
     end select
   enddo
-  
-  ! if species dependent diffusion defined, set coefficients for listed species
-  if (associated(diffusion_species_list)) then
-    reaction%use_full_geochemistry = PETSC_TRUE
-    species => diffusion_species_list
-    do 
-      if (.not.associated(species)) exit
-      found = PETSC_FALSE
-      cur_species => reaction%primary_species_list
-      do
-        if (.not.associated(cur_species)) exit
-        if (StringCompare(species%name,cur_species%name)) then
-          cur_species%diffusion_coefficient = species%diffusion_coefficient
-          found = PETSC_TRUE
-          exit
-        endif
-        cur_species => cur_species%next     
-      enddo
-      if (.not.found) then
-        cur_species => reaction%secondary_species_list
-        do
-          if (.not.associated(cur_species)) exit
-          if (StringCompare(species%name,cur_species%name)) then
-            cur_species%diffusion_coefficient = species%diffusion_coefficient
-            found = PETSC_TRUE
-            exit
-          endif
-          cur_species => cur_species%next     
-        enddo
-      endif
-      if (.not.found) then
-        option%io_buffer = 'A species dependent diffusion coefficient is &
-          &defined for species "' // trim(species%name) // '" but this &
-          &species is not listed among primary or secondary species.'
-        call printErrMsg(option)
-      endif
-      species => species%next
-    enddo
-    call AqueousSpeciesListDestroy(diffusion_species_list)
-  endif
   
   reaction%neqsorb = reaction%neqionxrxn + &
                      reaction%neqkdrxn + &
@@ -1078,7 +1012,7 @@ subroutine ReactionReadPass2(reaction,input,option)
       case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
             'MINERALS','COLLOIDS','GENERAL_REACTION', &
             'IMMOBILE_SPECIES','RADIOACTIVE_DECAY_REACTION', &
-            'IMMOBILE_DECAY_REACTION','SPECIES_DEPENDENT_DIFFUSION')
+            'IMMOBILE_DECAY_REACTION')
         call InputSkipToEND(input,option,card)
       case('REDOX_SPECIES')
         call ReactionReadRedoxSpecies(reaction,input,option)
