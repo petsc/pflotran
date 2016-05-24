@@ -3,3 +3,5 @@ PERMEABILITY_X::SOIL4 0.d0 0.d0 1.d-9 0.d0
 ALPHA-sf3 0.d0 0.d0 1.0211d-4 0.d0
 NORTH_MAX_Z 0.d0 0.d0 60.d0 0.d0
 RIVER_TRACER2 0.d0 0.d0 1.d-7 0.d0
+soil2_id 0 0 2 0
+sf1 blank blank VAN_GENUCHTEN blank

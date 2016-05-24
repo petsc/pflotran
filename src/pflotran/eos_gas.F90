@@ -1052,14 +1052,20 @@ end subroutine EOSGasHenryNoDerive
 ! ************************************************************************** !
 
 subroutine EOSGasHenry_air_noderiv(tc,ps,Henry)
-! Calculate Henry Coefficient for N2
-! t in K
-! Henry have the same unit as p and ps, then make it dimensionless by
-! devide it with p
+! 
+!   Calculates Henry's constant as a function of temperature [C], 
+!   and saturation pressure [Pa].  
+!
+!   Fernandez-Prini, F., J. Alvarez and A. Harvey (2003) Henry's Constants and
+!   Vapor-Liquid Distribution Constants for Gaseous Solutes in H2O and D2O at
+!   High Temperatures, J. Phys. Chem. Ref. Data, Vol. 32, No. 2, Equation 15
+!   with coefficients A,B,C from Table 3 for N2(g)
 
     implicit none
-    PetscReal,intent(in) :: tc,ps
-    PetscReal,intent(out) :: Henry
+    
+    PetscReal, intent(in) :: tc
+    PetscReal, intent(in) :: ps
+    PetscReal, intent(out) :: Henry
 
     PetscReal  Tr,tao,tmp,t
     PetscReal, parameter :: a=-9.67578d0, b=4.72162d0, c=11.70585d0
@@ -1076,10 +1082,21 @@ end subroutine EOSGasHenry_air_noderiv
 ! ************************************************************************** !
 
 subroutine EOSGasHenry_air(tc,ps,ps_p,ps_t,Henry,Henry_p,Henry_t)
-   implicit none
-    PetscReal,intent(in) :: tc,ps,ps_p,ps_t
+! 
+!   Calculates Henry's constant as a function of temperature [C], 
+!   and saturation pressure [Pa].  
+!
+!   Fernandez-Prini, F., J. Alvarez and A. Harvey (2003) Henry's Constants and
+!   Vapor-Liquid Distribution Constants for Gaseous Solutes in H2O and D2O at
+!   High Temperatures, J. Phys. Chem. Ref. Data, Vol. 32, No. 2, Equation 15
+!   with coefficients A,B,C from Table 3 for N2(g)
+
+    implicit none
+    
+    PetscReal, intent(in) :: tc       ! [C]
+    PetscReal, intent(in) :: ps       ! [Pa]
+    PetscReal, intent(in) :: ps_p,ps_t
     PetscReal,intent(out) :: Henry,Henry_p,Henry_t
-! note t/K, p/Pa, Henry/Pa 
 
     PetscReal  Tr,tao,tmp,t
     PetscReal, parameter :: a=-9.67578d0, b=4.72162d0, c=11.70585d0
