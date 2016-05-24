@@ -441,7 +441,9 @@ subroutine CharacteristicCurvesRead(this,input,option)
       
     select case(trim(keyword))
       case('SATURATION_FUNCTION')
-        call InputReadWord(input,option,word,PETSC_TRUE)
+! replacing read word that is capable of database lookup
+!        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputReadWordDbaseCompatible(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'saturation_function_type', &
                            error_string)
         call StringToUpper(word)
@@ -467,7 +469,9 @@ subroutine CharacteristicCurvesRead(this,input,option)
       case('PERMEABILITY_FUNCTION')
         nullify(rel_perm_function_ptr)
         phase_keyword = 'NONE'
-        call InputReadWord(input,option,word,PETSC_TRUE)
+! replacing read word that is capable of database lookup
+!        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputReadWordDbaseCompatible(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'permeability_function_type', &
                            error_string)
         call StringToUpper(word)
