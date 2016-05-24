@@ -90,6 +90,8 @@ recursive subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
   use Option_module
   use PM_Base_class
   use Output_Geomechanics_module
+  use Output_Aux_module
+
 
   implicit none
 
@@ -162,6 +164,7 @@ recursive subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
           periodic_msbl_output_ts_imod) == 0) then
     massbal_plot_flag = PETSC_TRUE
   endif
+  
   call OutputGeomechanics(this%geomech_realization,snapshot_plot_flag, &
                           observation_plot_flag,massbal_plot_flag)
      
