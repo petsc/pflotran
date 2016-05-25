@@ -16,7 +16,7 @@ module Characteristic_Curves_module
     PetscReal :: coefficients(4)
   end type polynomial_type
  
-  ! Begin Saturation Functions -------------------------------------------------------
+  ! Begin Saturation Functions ------------------------------------------------
   type :: sat_func_base_type
     type(polynomial_type), pointer :: sat_poly
     type(polynomial_type), pointer :: pres_poly
@@ -98,9 +98,9 @@ module Characteristic_Curves_module
     procedure, public :: Verify => SF_BF_KRP12_Verify
     procedure, public :: CapillaryPressure => SF_BF_KRP12_CapillaryPressure
   end type sat_func_BF_KRP12_type 
-  ! End Saturation Functions -------------------------------------------------------
+  ! End Saturation Functions --------------------------------------------------
 
-  ! Begin Relative Permeability Functions ------------------------------------------
+  ! Begin Relative Permeability Functions -------------------------------------
   type :: rel_perm_func_base_type
     type(polynomial_type), pointer :: poly
     PetscReal :: Sr
@@ -304,7 +304,14 @@ module Characteristic_Curves_module
   contains
     procedure, public :: RelativePermeability => RPF_Mod_BC_Oil_RelPerm
   end type RPF_Mod_BC_oil_type
-  ! End Relative Permeability Functions -------------------------------------------
+  ! Constant: for running tests with a fixed relative permeability
+  type, public, extends(rel_perm_func_base_type) :: rel_perm_func_constant_type
+    PetscReal :: kr
+  contains
+    procedure, public :: Verify => RPFConstantVerify
+    procedure, public :: RelativePermeability => RPF_ConstantRelPerm
+  end type rel_perm_func_constant_type
+  ! End Relative Permeability Functions ---------------------------------------
  
   type, public :: characteristic_curves_type
     character(len=MAXWORDLENGTH) :: name
@@ -434,7 +441,9 @@ subroutine CharacteristicCurvesRead(this,input,option)
       
     select case(trim(keyword))
       case('SATURATION_FUNCTION')
-        call InputReadWord(input,option,word,PETSC_TRUE)
+! replacing read word that is capable of database lookup
+!        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputReadWordDbaseCompatible(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'saturation_function_type', &
                            error_string)
         call StringToUpper(word)
@@ -460,7 +469,9 @@ subroutine CharacteristicCurvesRead(this,input,option)
       case('PERMEABILITY_FUNCTION')
         nullify(rel_perm_function_ptr)
         phase_keyword = 'NONE'
-        call InputReadWord(input,option,word,PETSC_TRUE)
+! replacing read word that is capable of database lookup
+!        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputReadWordDbaseCompatible(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'permeability_function_type', &
                            error_string)
         call StringToUpper(word)
@@ -528,6 +539,8 @@ subroutine CharacteristicCurvesRead(this,input,option)
           case('MOD_BC_OIL')
             rel_perm_function_ptr => RPF_Mod_BC_Oil_Create()
             phase_keyword = 'OIL'
+          case('CONSTANT')
+            rel_perm_function_ptr => RPF_Constant_Create()
           case default
             call InputKeywordUnrecognized(word,'PERMEABILITY_FUNCTION',option)
         end select
@@ -812,6 +825,8 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
       error_string = trim(error_string) // 'Mod_BC_LIQ'
     class is(rpf_mod_BC_oil_type)
       error_string = trim(error_string) // 'Mod_BC_OIL'
+    class is(rel_perm_func_constant_type)
+      error_string = trim(error_string) // 'CONSTANT'
   end select
 
   do
@@ -1126,6 +1141,19 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
               'Mod BC oil relative permeability function', &
               option)
         end select
+      class is(rel_perm_func_constant_type)
+        select case(keyword)
+          case('RESIDUAL_SATURATION')
+            call InputReadDouble(input,option,rpf%Sr)
+            call InputErrorMsg(input,option,'Sr',error_string)
+          case('RELATIVE_PERMEABILITY') 
+            call InputReadDouble(input,option,rpf%kr)
+            call InputErrorMsg(input,option,'kr',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+              'Constant relative permeability function', &
+              option)
+        end select
       class default
         option%io_buffer = 'Read routine not implemented for relative ' // &
                            'permeability function class.'
@@ -1298,6 +1326,10 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
         CharCurvesGetGetResidualSats(2) = rpf%Sr
       class is(rpf_mod_BC_oil_type)
         CharCurvesGetGetResidualSats(2) = rpf%Sro
+      class is(rel_perm_func_constant_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Sr
+      class is(rel_perm_func_default_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Sr
       class default
         option%io_buffer = 'Relative permeability class not supported in ' // &
           'CharCurvesGetGetResidualSats.'
@@ -2151,11 +2183,14 @@ subroutine RPF_DefaultRelPerm(this,liquid_saturation,relative_permeability, &
   PetscReal, intent(out) :: dkr_Se
   type(option_type), intent(inout) :: option
   
-  option%io_buffer = 'RPF_Default_RelPerm must be extended.'
-  option%io_buffer = 'RPF_Default_RelPerm is a dummy routine used ' // &
-    'for saturated flow only.  The user must specify a valid ' // &
-    'PERMEABILITY_FUNCTION.'
-  call printErrMsg(option)
+  if (liquid_saturation < 1.d0) then
+    option%io_buffer = 'RPF_Default_RelPerm must be extended.'
+    option%io_buffer = 'RPF_Default_RelPerm is a dummy routine used ' // &
+      'for saturated flow only.  The user must specify a valid ' // &
+      'PERMEABILITY_FUNCTION.'
+    call printErrMsg(option)
+  endif
+  relative_permeability = 1.d0
   
 end subroutine RPF_DefaultRelPerm
 ! End Default Routines
@@ -5789,6 +5824,69 @@ end subroutine RPF_Mod_BC_Oil_RelPerm
 
 ! ************************************************************************** !
 
+function RPF_Constant_Create()
+
+  ! Creates the constant relative permeability function object
+
+  implicit none
+  
+  class(rel_perm_func_constant_type), pointer :: RPF_Constant_Create
+  
+  allocate(RPF_Constant_Create)
+  call RPFBaseInit(RPF_Constant_Create)
+  ! set Sr = 0. to avoid uninitialized failure
+  RPF_Constant_Create%Sr = 0.d0
+  RPF_Constant_Create%kr = 0.d0
+  
+end function RPF_Constant_Create
+
+! ************************************************************************** !
+
+subroutine RPFConstantVerify(this,name,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(rel_perm_func_constant_type) :: this  
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option  
+
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  if (index(name,'PERMEABILITY_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'PERMEABILITY_FUNCTION,CONSTANT'
+  endif  
+  call RPFBaseVerify(this,string,option)
+  if (Uninitialized(this%kr)) then
+    option%io_buffer = UninitializedMessage('RELATIVE_PERMEABILITY',string)
+    call printErrMsg(option)
+  endif   
+
+end subroutine RPFConstantVerify
+
+! ************************************************************************** !
+
+subroutine RPF_ConstantRelPerm(this,liquid_saturation,relative_permeability, &
+                            dkr_Se,option)
+  use Option_module
+
+  implicit none
+  
+  class(rel_perm_func_constant_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: relative_permeability
+  PetscReal, intent(out) :: dkr_Se
+  type(option_type), intent(inout) :: option
+  
+  relative_permeability = this%kr
+  dkr_Se = 0.d0
+  
+end subroutine RPF_ConstantRelPerm
+
+! ************************************************************************** !
 
 subroutine PolynomialDestroy(poly)
   ! 

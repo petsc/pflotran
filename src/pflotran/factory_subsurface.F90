@@ -1651,20 +1651,6 @@ subroutine SubsurfaceReadInput(simulation)
       case ('PRINT_DUAL_GRID')
         option%print_explicit_dual_grid = PETSC_TRUE
 
-!geh: remove after 2/25/2016
-#if 0        
-!....................
-      case ('MAX_CHANGE')
-        call InputReadDouble(input,option,option%dpmxe)
-        call InputErrorMsg(input,option,'dpmxe','MAX_CHANGE')
-        call InputReadDouble(input,option,option%dtmpmxe)
-        call InputErrorMsg(input,option,'dtmpmxe','MAX_CHANGE')
-        call InputReadDouble(input,option,option%dsmxe)
-        call InputErrorMsg(input,option,'dsmxe','MAX_CHANGE')
-        call InputReadDouble(input,option,option%dcmxe)
-        call InputErrorMsg(input,option,'dcmxe','MAX_CHANGE')
-#endif
-
 !....................
       case ('PROC')
       
@@ -2018,14 +2004,6 @@ subroutine SubsurfaceReadInput(simulation)
         select case(word)
           case('FLOW')
             call SolverReadNewton(flow_timestepper%solver,input,option)
-!TODO(geh): remove after 11/30/15 as inf_scaled_res_tol is no longer used
-!            if (flow_timestepper%solver%check_post_convergence) then
-!              option%flow%check_post_convergence = PETSC_TRUE
-!            option%flow%inf_scaled_res_tol = &
-!              flow_timestepper%solver%newton_inf_scaled_res_tol
-!              option%flow%inf_rel_update_tol = &
-!                flow_timestepper%solver%newton_inf_rel_update_tol
-!            endif
           case('TRAN','TRANSPORT')
             call SolverReadNewton(tran_timestepper%solver,input,option)
             if (tran_timestepper%solver%check_post_convergence) then

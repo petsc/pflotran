@@ -76,7 +76,8 @@ subroutine initialize_span_wagner(itable,myrank,option)
       tab = char(9)
       q = '","'
 
-      allocate(co2_prop_spwag(0:ntab_p,0:ntab_t,1:15))
+      if (.not. allocated(co2_prop_spwag)) &
+        allocate(co2_prop_spwag(0:ntab_p,0:ntab_t,1:15))
       
       iitable = 0      
       if (present(itable)) iitable=itable
@@ -633,6 +634,8 @@ subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
 ! print *,'sp:tab: ', p,t,rho,ent, factor
     return 
     endif     
+    
+    
   endif tablelookup
 
 
@@ -718,6 +721,9 @@ subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
       visc = visc*1d-6
       dvdt = dvdt*1d-6
       dvdp = dvdp*1d-6
+      
+      if (allocated(co2_prop_spwag)) deallocate(co2_prop_spwag)
+
       
 end subroutine co2_span_wagner
 

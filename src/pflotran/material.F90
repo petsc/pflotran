@@ -268,7 +268,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('INACTIVE')
         material_property%active = PETSC_FALSE
       case('SATURATION_FUNCTION','CHARACTERISTIC_CURVES') 
-        call InputReadWord(input,option, &
+        call InputReadWordDbaseCompatible(input,option, &
                            material_property%saturation_function_name, &
                            PETSC_TRUE)
         call InputErrorMsg(input,option,'saturation function name', &

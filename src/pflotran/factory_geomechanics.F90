@@ -1,3 +1,4 @@
+
 module Factory_Geomechanics_module
 
   use Simulation_Geomechanics_class
@@ -61,6 +62,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
   use Timestepper_Steady_class
   use Input_Aux_module
   use Logging_module
+  use Output_Aux_module
 
   implicit none
 #include "petsc/finclude/petscvec.h"
@@ -109,11 +111,15 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
   if (option%geomech_on) then
     simulation%geomech_realization => GeomechRealizCreate(option)
     geomech_realization => simulation%geomech_realization
-    geomech_realization%output_option => simulation%output_option
+    geomech_realization%output_option => OutputOptionDuplicate(simulation%output_option)
+    nullify(geomech_realization%output_option%output_snap_variable_list)
+    nullify(geomech_realization%output_option%output_obs_variable_list)    
+    geomech_realization%output_option%output_snap_variable_list => OutputVariableListCreate()
+    geomech_realization%output_option%output_obs_variable_list => OutputVariableListCreate()
     subsurf_realization => simulation%realization
     geomech_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
     call GeomechicsInitReadRequiredCards(geomech_realization)
-    pm_geomech%output_option => simulation%output_option
+    pm_geomech%output_option => geomech_realization%output_option
     pmc_geomech => PMCGeomechanicsCreate()
     pmc_geomech%name = 'PMCGeomech'
     simulation%geomech_process_model_coupler => pmc_geomech

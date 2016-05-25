@@ -528,7 +528,7 @@ eos.o : eos_gas.o eos_oil.o eos_water.o input_aux.o option.o \
         pflotran_constants.o string.o
 eos_database.o : input_aux.o lookup_table.o option.o pflotran_constants.o \
                  string.o utility.o
-eos_gas.o : pflotran_constants.o
+eos_gas.o : eos_water.o pflotran_constants.o
 eos_oil.o : eos_database.o option.o pflotran_constants.o
 eos_water.o : pflotran_constants.o
 factory_geomechanics.o : condition_control.o convergence.o discretization.o \
@@ -925,9 +925,9 @@ pm_subsurface_flow.o : checkpoint.o communicator_base.o \
                        communicator_structured.o communicator_unstructured.o \
                        condition.o condition_control.o discretization.o \
                        global.o grid.o input_aux.o integral_flux.o material.o \
-                       material_aux.o option.o pflotran_constants.o pm_base.o \
-                       realization_subsurface.o solver.o srcsink_sandbox.o \
-                       string.o variables.o
+                       material_aux.o option.o output_aux.o \
+                       pflotran_constants.o pm_base.o realization_subsurface.o \
+                       solver.o srcsink_sandbox.o string.o variables.o
 pm_surface.o : checkpoint_surface.o communicator_base.o \
                communicator_unstructured.o condition.o discretization.o \
                global.o grid.o input_aux.o option.o pflotran_constants.o \
