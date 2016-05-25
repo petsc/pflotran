@@ -516,7 +516,7 @@ subroutine PMWFRead(this,input)
       if ( (uninitialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
             uninitialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
             uninitialized(cur_waste_form%mechanism%vitality_rate_trunc) ) .and. &
-          uninitialized(cur_waste_form%canister_vitality_rate) .and.
+          uninitialized(cur_waste_form%canister_vitality_rate) .and. &
           uninitialized(cur_waste_form%breach_time)                 )  then 
         option%io_buffer = 'CANISTER_VITALITY_RATE within the WASTE_FORM &
           &blocks -or- CANISTER_BREACH_TIME within the WASTE_FORM blocks &
@@ -529,7 +529,7 @@ subroutine PMWFRead(this,input)
       if ( (initialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
             initialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
             initialized(cur_waste_form%mechanism%vitality_rate_trunc) ) .and. &
-          initialized(cur_waste_form%canister_vitality_rate) .and.
+          initialized(cur_waste_form%canister_vitality_rate) .and. &
           initialized(cur_waste_form%breach_time)                 )  then 
         option%io_buffer = 'CANISTER_VITALITY_RATE within the WASTE_FORM &
           &blocks -or- CANISTER_BREACH_TIME within the WASTE_FORM blocks &
