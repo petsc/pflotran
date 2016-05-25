@@ -573,21 +573,21 @@ implicit none
   ! an issue if a region (e.g. point is located on the upper global bound.
   ! to present this, we set the maximum extend (at the global upper 
   ! boundary) to the non-summed value
-  if (structured_grid%iend < structured_grid%nx-1) then
+  if (structured_grid%lxe < structured_grid%nx) then
     do i=structured_grid%istart,structured_grid%iend
       x_max = x_max + structured_grid%dxg_local(i+1)
     enddo
   else 
     x_max = structured_grid%bounds(X_DIRECTION,UPPER) 
   endif
-  if (structured_grid%jend < structured_grid%ny-1) then
+  if (structured_grid%lye < structured_grid%ny) then
     do j=structured_grid%jstart,structured_grid%jend
       y_max = y_max + structured_grid%dyg_local(j+1)
     enddo
   else 
     y_max = structured_grid%bounds(Y_DIRECTION,UPPER) 
   endif
-  if (structured_grid%kend < structured_grid%nz-1) then
+  if (structured_grid%lze < structured_grid%nz) then
     do k=structured_grid%kstart,structured_grid%kend
       z_max = z_max + structured_grid%dzg_local(k+1)
     enddo
