@@ -1328,6 +1328,8 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
         CharCurvesGetGetResidualSats(2) = rpf%Sro
       class is(rel_perm_func_constant_type)
         CharCurvesGetGetResidualSats(2) = rpf%Sr
+      class is(rel_perm_func_default_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Sr
       class default
         option%io_buffer = 'Relative permeability class not supported in ' // &
           'CharCurvesGetGetResidualSats.'
@@ -2181,11 +2183,14 @@ subroutine RPF_DefaultRelPerm(this,liquid_saturation,relative_permeability, &
   PetscReal, intent(out) :: dkr_Se
   type(option_type), intent(inout) :: option
   
-  option%io_buffer = 'RPF_Default_RelPerm must be extended.'
-  option%io_buffer = 'RPF_Default_RelPerm is a dummy routine used ' // &
-    'for saturated flow only.  The user must specify a valid ' // &
-    'PERMEABILITY_FUNCTION.'
-  call printErrMsg(option)
+  if (liquid_saturation < 1.d0) then
+    option%io_buffer = 'RPF_Default_RelPerm must be extended.'
+    option%io_buffer = 'RPF_Default_RelPerm is a dummy routine used ' // &
+      'for saturated flow only.  The user must specify a valid ' // &
+      'PERMEABILITY_FUNCTION.'
+    call printErrMsg(option)
+  endif
+  relative_permeability = 1.d0
   
 end subroutine RPF_DefaultRelPerm
 ! End Default Routines
