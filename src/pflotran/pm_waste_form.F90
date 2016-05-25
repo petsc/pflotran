@@ -1066,13 +1066,12 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
           case('CANISTER_BREACH_TIME')
             call InputReadDouble(input,option, &
                                  new_waste_form%breach_time)
-            call InputErrorMsg(input,option,'canister breach time',error_string)
+            call InputErrorMsg(input,option,'CANISTER_BREACH_TIME',error_string)
             call InputReadWord(input,option,word,PETSC_TRUE)
             if (input%ierr == 0) then
               internal_units = 'sec'
-              new_waste_form%canister_vitality_rate = UnitsConvertToInternal(word, &
-                   internal_units,option) * &
-                   new_waste_form%canister_breach_time
+              new_waste_form%breach_time = UnitsConvertToInternal(word, &
+                   internal_units,option) * new_waste_form%breach_time
             endif
         !-----------------------------    
           case default
@@ -1512,8 +1511,8 @@ subroutine PMWFInitializeTimestep(this)
     enddo
 
     !---------------- vitality degradation function ------------------------
-    if (cur_waste_form%canister_degradation_flag .and.
-        cur_waste_form%canister_vitality > 1.d-3) then
+    if (cur_waste_form%canister_degradation_flag .and. &
+        (cur_waste_form%canister_vitality > 1.d-3)) then
       if (.not.cur_waste_form%breached .and. &
           initialized(cur_waste_form%breach_time)) then
         ! do not modify eff_canister_vit_rate from what it was set to
