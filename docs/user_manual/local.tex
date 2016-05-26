@@ -1,6 +1,16 @@
-\usepackage{times}
+%\usepackage{times}
 %\usepackage{palatino}
 %\usepackage{fourier}  % Looks nice but isn't present in many LaTeX distros.
+
+\usepackage{mathptmx}
+\usepackage[scaled=.90]{helvet}
+\usepackage{courier}
+
+%greek \chi does not work in below
+
+%\usepackage[T1]{eulervm}
+%\usepackage{mathpazo}%\usepackage[scaled=.95]{helvet}%\usepackage{courier}
+
 \usepackage[T1]{fontenc}
 \usepackage{amsmath,amsbsy,amssymb}
 \usepackage{deflist}
@@ -54,9 +64,10 @@ splittopskip = \topskip,roundcorner=12]{mdframed}
 \oddsidemargin 0.in
 \evensidemargin 0.in
 \headheight 0.25in
-\lhead{\sl PFLOTRAN User Manual}
+\lhead{\textsl{PFLOTRAN User Manual}}
 \chead{\sl DRAFT}
-\chead{\S\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
+%\chead{\S\arabic{section}.\arabic{subsection}.\arabic{subsubsection}}
+\chead{\S\arabic{section}.\arabic{subsection}}
 %\rhead{DRAFT \qquad \qquad \ \today}
 \rhead{\today}
 %\rfoot{\today--[\thepage]}
@@ -66,7 +77,7 @@ splittopskip = \topskip,roundcorner=12]{mdframed}
 %\footrulewidth 0.4pt
 
 %\newcommand\keyend{{END \, [/ \, .]}}
-\newcommand\keyend{{END \, [~/~]}}
+\newcommand\keyend{{\textbf{END} \, [~/~]}}
 \newcommand\return{{\hfill$\hookrightarrow$ Return to List of Keywords}}
 \newcommand\returnb{{\hfill$\nearrow$ Return to List of Keywords}}
 %\newcommand\return{{\hfill\bf Return to List of Keywords}}
@@ -87,7 +98,7 @@ splittopskip = \topskip,roundcorner=12]{mdframed}
 \newcommand\secsp{\vspace{-3 mm}}
 \newcommand\secspb{\vspace{-2 mm}}
 \newcommand\subsecsp{\vspace{-0.0 mm}}
-\newcommand\pflotran{{\bf\sl PFLOTRAN}}
+\newcommand\pflotran{\textbf{\textsl{PFLOTRAN}}}
 \newcommand\pflow{{\bf\sl PFLOW}}
 \newcommand\ptran{{\bf\sl PTRAN}}
 \renewcommand{\baselinestretch}{1.01}

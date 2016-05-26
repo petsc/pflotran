@@ -99,15 +99,15 @@ For users looking for an open-source compiler, we recommend the gcc and
 gfortran compilers that are part of the GNU Compiler Collection (GCC), version 
 4.7.x or later.
 Users may also wish to install MPI and other libraries from source or via a 
-package manager, but the PETSc {\tt ./configure} script can be used not only 
+package manager, but the PETSc \texttt{./configure} script can be used not only 
 to install PETSc but also MPI, HDF5, ParMETIS/METIS, and various solver 
 libraries such as MUMPS for sparse direct solvers, Hypre for a variety of 
 preconditioners and multi-level solvers, and the Trilinos multilevel solver ML. 
 For systems that do not provide specially optimized versions of these 
-libraries, we recommend using PETSc's {\tt configure} to install these 
+libraries, we recommend using PETSc's \texttt{configure} to install these 
 third-party libraries.
 If you do wish to install any of these third-party libraries yourself, you 
-will need to do so {\it before} installing PETSc to that the necessary PETSc 
+will need to do so \textit{before} installing PETSc to that the necessary PETSc 
 interfaces to these packages can be built.
 
 The development branch of PFLOTRAN tracks the main development branch of 
@@ -148,8 +148,8 @@ Note that ParMETIS/METIS is only needed for using the unstructured grid capabili
 \paragraph{Yosemite (Mac OS X 10.10.x)} Special considerations are required to install PETSc and PFLOTRAN on Yosemite (MacOSX 10.10.x). It is necessary to install gcc-4.9 from Homebrew [other installations such as HPC MacOS X are not bug free at the time of this writing (10.23.14)]. The following steps are required:
 \begin{enumerate}
 \item install Homebrew (standard location /usr/local must be clean to avoid collisions)
-\item install gcc (need version 4.9.x): {\tt brew install gcc}
-\item install cmake (need version 3.0.x): {\tt brew install cmake}
+\item install gcc (need version 4.9.x): \texttt{brew install gcc}
+\item install cmake (need version 3.0.x): \texttt{brew install cmake}
 \item configure PETSc using the Mac c and c++ compilers clang, clang++ and gfortran installed from Homebrew: 
 
 $\verb|cd petsc-dev|$\\
@@ -167,7 +167,7 @@ Notes: At the time of this writing (10.23.14) openmpi did not compile. HDF5 did 
 
 \subsubsection{Windows}
 
-To install PETSc and PFLOTRAN on Windows see instructions on the PFLOTRAN wiki \linebreak ({\tt https://bitbucket.org/pflotran/pflotran-dev/wiki/Home}).
+To install PETSc and PFLOTRAN on Windows see instructions on the PFLOTRAN wiki \linebreak ({\url{https://bitbucket.org/pflotran/pflotran-dev/wiki/Home}).
 
 \begin{comment}
 \subsubsection{MacOSX}
@@ -287,11 +287,10 @@ Compile Option & \multicolumn{1}{c}{Description}\\
 \end{tabular}
 
 \noindent
-Thus for compiling with the supercritical CO$_2$ option use: {\tt make ssco2=1 pflotran}.
 See the PFLOTRAN \verb|makefile| for additional options.
 
 \noindent
-Compiling in parallel can be achieved using the modified {\tt make} command:
+Compiling in parallel can be achieved using the modified \texttt{make} command:
 
 \verb|make -j # pflotran|
 
@@ -309,15 +308,15 @@ where \# denotes the number of cores. A comparison of the speedup possible on Li
 To update the PFLOTRAN source code
 type: 
 
-{\tt hg pull -u} 
+\texttt{hg pull -u} 
 
 \noindent
 from within the PFLOTRAN source repository.
 Recompile PFLOTRAN using:
 
-{\tt make clean}\\
+\texttt{make clean}\\
 \indent
-{\tt make [options] pflotran}
+\texttt{make [options] pflotran}
 
 \subsection{Parallel I/O using Sarat Sreepathi's SCORPIO library with PFLOTRAN}
 \label{parallelio}
@@ -325,13 +324,13 @@ Recompile PFLOTRAN using:
 The SCORPIO (parallel I/O library) enables a scalable general purpose parallel I/O capability for HPC by taking advantage of existing parallel I/O libraries, such as HDF5 which are being widely used by scientific applications, and modifying these algorithms to better scale to larger number of processors. The library has been tested with MPICH-3.0.2 and OpenMPI-1.6.
 
 \normalsize
-It is recommended that values for the variables {\footnotesize\tt HDF5\_READ\_GROUP\_SIZE} and \linebreak {\footnotesize\tt HDF5\_WRITE\_GROUP\_SIZE} be set in the input file. 
-If they are unset, {\footnotesize\tt HDF5\_READ\_GROUP\_SIZE} is set to total MPI ranks and {\footnotesize\tt HDF5\_WRITE\_GROUP\_SIZE} is set to 1 by default.
+It is recommended that values for the variables {\footnotesize\tt HDF5\_READ\_GROUP\_SIZE} and \linebreak {\footnotesize\texttt{HDF5\_WRITE\_GROUP\_SIZE}} be set in the input file. 
+If they are not set, {\footnotesize\texttt{HDF5\_READ\_GROUP\_SIZE}} is set to total MPI ranks and {\footnotesize\texttt{HDF5\_WRITE\_GROUP\_SIZE}} is set to 1 by default.
 
 Typical values are to set the write group size equal to the number of processes on a compute node (typically 16 or 32). 
 %If that still results in a penalty, decrease it further. 
 A much higher read group size is preferred, e.g. use 512 when running on 512 cores so that one process reads the input file and broadcasts relevant sections.
-Put {\footnotesize\tt HDF5\_WRITE\_GROUP\_SIZE} under the {\footnotesize\tt OUTPUT} keyword:
+Put {\footnotesize\texttt{HDF5\_WRITE\_GROUP\_SIZE}} under the {\footnotesize\texttt{OUTPUT}} keyword:
 \footnotesize
 \begin{Verbatim}
 :=========================== output options ===================================
@@ -357,16 +356,16 @@ Instructions for downloading and installing the SCORPIO library for use with PFL
 
 \item Download source code for building the SCORPIO library:
 
-{\small\tt svn co http://ascem-io.secure-water.org/ascem-io/scorpio DIRNAME}
+{\small\texttt{svn co http://ascem-io.secure-water.org/ascem-io/scorpio DIRNAME}}
 
-where {\footnotesize\tt DIRNAME} is the installation directory (Default: {\footnotesize\tt scorpio}). 
+where {\footnotesize\texttt{DIRNAME}} is the installation directory (Default: {\footnotesize\texttt{scorpio}}). 
 
 The username and password are:
 %\href{https://bitbucket.org/pflotran/pflotran-dev/wiki/Documentation/Strata}{Strata}
 
-username: {\footnotesize\tt pflotran\_dev}
+username: {\footnotesize\texttt{pflotran\_dev}}
 
-password: {\footnotesize\tt gr0undw@t3r}
+password: {\footnotesize\texttt{gr0undw@t3r}}
 
 \item Compile SCORPIO library:
 First, set the environment variable {\footnotesize\tt SCORPIO\_DIR} to a directory where you wish to install the library files. 
@@ -504,7 +503,7 @@ PFLOTRAN can be run from the command line as
 
 A number of command line options are available:
 
-\begin{tabular}{lp{8cm}}
+\begin{tabular}{lp{9cm}}
 \toprule
 Option & \multicolumn{1}{c}{Description}\\
 \midrule
@@ -523,6 +522,7 @@ Option & \multicolumn{1}{c}{Description}\\
 {\tt -log\_summary} & print out run performance\\
 {\tt -snes\_converged\_reason} & print the reason for convergence/divergence after each solve\\
 {\tt -on\_error\_abort} & aborts run on hitting NaNs\\
+\texttt{-no\_signal\_handler} & turn off PETSc error handling\\
 {\tt -v} & <int> verbose\\
 {\tt -options\_left} & for debugging: lists any PETSc objects that have not been freed\\
 {\tt -snes\_monitor} & print to screen function norm with each iteration\\
@@ -538,7 +538,7 @@ Option & \multicolumn{1}{c}{Description}\\
 \end{tabular}
 
 \begin{mdframed}
-{\bf Examples:}
+\textbf{Examples:}
 
 \verb|mpirun -np 1 ./pflotran -output_prefix ./path_to/prefix|\\
 \end{mdframed}
@@ -549,37 +549,37 @@ Option & \multicolumn{1}{c}{Description}\\
 To launch 1000 realizations on 100 processor groups using 10,000 processor cores:
 
 \noindent
-{\tt mpirun -np 10000 pflotran -stochastic -num\_realizations 1000 
-
+\texttt{mpirun -np 10000 pflotran -stochastic -num\_realizations 1000 \linebreak 
 -num\_groups 100}
 
 \noindent
-Each processor group will utilize 100 processor cores and run 10 realizations apiece \linebreak ({\tt num\_realizations/num\_groups}), one after another. Thus, 100 realizations are executed simultaneously with each processor group simulating a single realization on 100 processor cores at a time. Each processor group continues to run realizations until its allocation of 10 is completed.
+Each processor group will utilize 100 processor cores and run 10 realizations apiece \linebreak (\texttt{num\_realizations/num\_groups}), one after another. Thus, 100 realizations are executed simultaneously with each processor group simulating a single realization on 100 processor cores at a time. Each processor group continues to run realizations until its allocation of 10 is completed.
 
 \noindent
 To simulate a specific realization without running in multi-realization stochastic mode use:
 
-{\tt mpirun -np 10000 pflotran -realization\_id <integer>}
+\texttt{mpirun -np 10000 pflotran -realization\_id <integer>}
 
 \noindent
 where <integer> specifies the realization id.
 
 \subsection{Multiple Simulation Mode}
 
-To run multiple input decks simultaneously, create a file e.g. {\tt filenames.in}, containing the list of filenames that are to be run:
+To run multiple input decks simultaneously, create a file e.g. \texttt{filenames.in}, containing the list of filenames that are to be run:
 \begin{Verbatim}
                              sim1.in
                              sim2.in
                              ...
                              sim100.in
 \end{Verbatim}
-where {\tt simn.in} is the usual PFLOTRAN input file. The names may be arbitrarily chosen. Then, launch the run as:
+where \texttt{simn.in} is the usual PFLOTRAN input file. The names may be arbitrarily chosen. Then, launch the run as:
 
 \verb|mpirun -n XXX pflotran -pflotranin filenames.in -multisimulation| 
 
 \noindent  
-Note that all simulations run at once. The same logic used to allow a processor group to run multiple simulations with {\tt multirealization} is {\em not} implemented. {\bf Choose the number of cores to be a multiple of the number of input filenames listed in the input file (i.e. filenames.in).} All output files have {\tt Gn} appended to the file name, e.g. {\tt sim10G10-001.tec}.
+Note that all simulations run at once. The same logic used to allow a processor group to run multiple simulations with \texttt{multirealization} is {\em not} implemented. \textbf{Choose the number of cores to be a multiple of the number of input filenames listed in the input file (i.e. filenames.in).} All output files have \texttt{Gn} appended to the file name, e.g. \texttt{sim10G10-001.tec}.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{comment}
 \subsection{Building SAMRAI Version 2.4.4}
 
@@ -776,7 +776,9 @@ At this point you should have an executable \verb|SAMRAIDriver|.
 %This should run the coupled flow (richards) and transport (15 species).
 
 \end{comment}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{comment}
 The following instructions should aid in installing openmpi, PETSc, HDF5 and PFLOTRAN on a UNIX or Mac computer running MacOSX 10.4 or later.
 
@@ -924,17 +926,18 @@ ML options are given in the manual page for PCML (not tested).
 
 Since the preconditioned matrix is not explicitly computed, it is necessary to estimate the condition number of the preconditioned Jacobian matrix using PETSc during a PFLOTRAN run. To do this specify a KSP type of GMRES (the Hessenberg matrix is needed that is constructed as part of the Arnoldi process), and then specify
 
- {\tt -ksp\_monitor\_singular\_value}
+ \texttt{-ksp\_monitor\_singular\_value}
 
 The ratio of the largest to smallest singular values gives the condition number estimate for the preconditioned operator.  Note that this flag will also cause the 2-norm of the true residual (as opposed to the preconditioned residual) to be printed.
 
 If you are doing this in the current version of PFLOTRAN, you need
 
- {\tt -flow\_ksp\_type gmres -flow\_ksp\_monitor\_singular\_value}
+ \texttt{-flow\_ksp\_type gmres -flow\_ksp\_monitor\_singular\_value}
 
 The estimates will get better the closer one is to the GMRES restart.  (When restart occurs, the Hessenberg matrix from which the eigenvalue estimates are obtained gets discarded along with everything else.)  The frequency can be changed via the option
 
- {\tt -flow\_ksp\_gmres\_restart <positive integer>}
+ \texttt{-flow\_ksp\_gmres\_restart <positive integer>}
 
 The default restart frequency is 30.
 \end{comment}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

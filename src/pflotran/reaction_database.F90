@@ -2025,6 +2025,24 @@ subroutine BasisInit(reaction,option)
       endif
     endif
     
+    ! Determine whether mineral scale factor is used in any TST reactions
+    cur_mineral => mineral%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (Initialized(cur_mineral%tstrxn%min_scale_factor)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(mineral%kinmnrl_min_scale_factor(mineral%nkinmnrl))
+      mineral%kinmnrl_min_scale_factor = 1.d0
+    endif
+
     ! Determine whether Temkin's constant is used in any TST reactions
     cur_mineral => mineral%mineral_list
     found = PETSC_FALSE
@@ -2311,6 +2329,10 @@ subroutine BasisInit(reaction,option)
             mineral%kinmnrl_rate(ikinmnrl) = tstrxn%rate
             mineral%kinmnrl_activation_energy(ikinmnrl) = &
               tstrxn%activation_energy
+          endif
+          if (Initialized(tstrxn%min_scale_factor)) then
+            mineral%kinmnrl_min_scale_factor(ikinmnrl) = &
+              tstrxn%min_scale_factor
           endif
           if (Initialized(tstrxn%affinity_factor_sigma)) then
             mineral%kinmnrl_Temkin_const(ikinmnrl) = &

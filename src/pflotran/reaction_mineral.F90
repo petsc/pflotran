@@ -178,6 +178,11 @@ subroutine MineralReadKinetics(mineral,input,option)
 !             reads exponent on affinity term
               call InputReadDouble(input,option,tstrxn%affinity_factor_beta)
               call InputErrorMsg(input,option,'affinity power',error_string)
+            case('MINERAL_SCALE_FACTOR')
+!             read mineral scale factor term
+              call InputReadDouble(input,option,tstrxn%min_scale_factor)
+              call InputErrorMsg(input,option,"Mineral scale fac", &
+                                 error_string)
             case('TEMKIN_CONSTANT')
 !             reads exponent on affinity term
               call InputReadDouble(input,option,tstrxn%affinity_factor_sigma)
@@ -690,8 +695,17 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     if (associated(mineral%kinmnrl_Temkin_const)) then
-      affinity_factor = 1.d0-QK**(1.d0/ &
+      if (associated(mineral%kinmnrl_min_scale_factor)) then
+        affinity_factor = 1.d0-QK**(1.d0/ &
+          (mineral%kinmnrl_min_scale_factor(imnrl)* &
+           mineral%kinmnrl_Temkin_const(imnrl)))
+      else
+        affinity_factor = 1.d0-QK**(1.d0/ &
                                  mineral%kinmnrl_Temkin_const(imnrl))
+      endif
+    else if (associated(mineral%kinmnrl_min_scale_factor)) then
+        affinity_factor = 1.d0-QK**(1.d0/ &
+          mineral%kinmnrl_min_scale_factor(imnrl))
     else
       affinity_factor = 1.d0-QK
     endif
@@ -774,6 +788,9 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       ! area: m^2 mnrl/m^3 bulk
       ! volume: m^3 bulk
       Im_const = -rt_auxvar%mnrl_area(imnrl)
+      if (associated(mineral%kinmnrl_min_scale_factor)) then
+        Im_const = Im_const/mineral%kinmnrl_min_scale_factor(imnrl)
+      endif
       
       ! units: mol/sec/m^3 bulk
       if (associated(mineral%kinmnrl_affinity_power)) then
@@ -819,7 +836,16 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     endif
     
     if (associated(mineral%kinmnrl_Temkin_const)) then
-      dIm_dQK = dIm_dQK*(1.d0/mineral%kinmnrl_Temkin_const(imnrl))/QK*(1.d0-affinity_factor)
+      if (associated(mineral%kinmnrl_min_scale_factor)) then
+        dIm_dQK = dIm_dQK*(1.d0/(mineral%kinmnrl_min_scale_factor(imnrl)* &
+                  mineral%kinmnrl_Temkin_const(imnrl)))/QK*(1.d0-affinity_factor)
+      else
+        dIm_dQK = dIm_dQK*(1.d0/mineral%kinmnrl_Temkin_const(imnrl))/QK* &
+                  (1.d0-affinity_factor)
+      endif
+    else if (associated(mineral%kinmnrl_min_scale_factor)) then
+      dIm_dQK = dIm_dQK*(1.d0/mineral%kinmnrl_min_scale_factor(imnrl))/QK* &
+                (1.d0-affinity_factor)
     endif
     
     ! derivatives with respect to primary species in reaction quotient
