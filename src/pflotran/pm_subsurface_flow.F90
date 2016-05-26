@@ -66,6 +66,7 @@ module PM_Subsurface_Flow_class
     procedure, public :: RestartHDF5 => PMSubsurfaceFlowRestartHDF5
 #endif
     procedure, public :: InputRecord => PMSubsurfaceFlowInputRecord
+    procedure  :: AllWellsInit
 !    procedure, public :: Destroy => PMSubsurfaceFlowDestroy
   end type pm_subsurface_flow_type
   
@@ -344,8 +345,72 @@ recursive subroutine PMSubsurfaceFlowInitializeRun(this)
   call this%PreSolve()
   call this%UpdateAuxVars()
   call this%UpdateSolution() 
+  call this%AllWellsInit()
     
 end subroutine PMSubsurfaceFlowInitializeRun
+
+! ************************************************************************** !
+
+subroutine AllWellsInit(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/25/16
+
+  !use Well_Base_class
+  use Coupler_module
+  implicit none
+
+  class(pm_subsurface_flow_type) :: this
+
+  type(coupler_type), pointer :: source_sink
+
+  PetscMPIInt :: cur_w_myrank
+  character(len=MAXWORDLENGTH) :: wfile_name
+  PetscInt :: ierr 
+
+  source_sink => this%realization%patch%source_sink_list%first
+
+  do
+    if (.not.associated(source_sink)) exit
+    if( associated(source_sink%well) ) then
+      !exlude empty wells - not included in well comms
+      if(source_sink%connection_set%num_connections > 0) then
+      
+#ifdef WELL_DEBUG
+        print *,"AllWellsInit - cntrl_lcell_id", source_sink%well%cntrl_lcell_id
+        print *, "perm_yy", this%realization%patch%aux%Material% &
+                                  auxvars(1)%permeability(2)
+#endif   
+        
+        call source_sink%well%WellFactorUpdate(this%realization%patch%grid, &
+                                        source_sink%connection_set, &
+                                this%realization%patch%aux%Material%auxvars, &
+                                           this%realization%option)
+       
+       ! create well outputfile
+       ! For now open files to print the well variables by default 
+       ! TODO: add to well_spec user options to control well printing
+       call MPI_Comm_rank(source_sink%well%comm, cur_w_myrank, ierr )  
+       if(source_sink%well%cntr_rank == cur_w_myrank ) then
+         !w_file_id = source_sink%id 
+         wfile_name = trim(this%realization%option%global_prefix) // "_" // &
+                      trim(source_sink%name) // ".tec" 
+         !open(unit=w_file_id,file=wfile_name)
+         !can close the file, and reopen it in appending mode later??
+         open(unit=IUNIT_TEMP,file=wfile_name)
+         call source_sink%well%PrintOutputHeader(this%realization% &
+                                                 output_option,IUNIT_TEMP)
+         close(unit=IUNIT_TEMP)
+       end if
+
+      end if
+    end if
+    source_sink => source_sink%next 
+  end do 
+
+
+
+end subroutine AllWellsInit
 
 ! ************************************************************************** !
 

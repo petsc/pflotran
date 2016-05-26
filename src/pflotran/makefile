@@ -936,11 +936,12 @@ pm_rt.o : checkpoint.o communicator_base.o communicator_structured.o \
           secondary_continuum.o string.o variables.o
 pm_subsurface_flow.o : checkpoint.o communicator_base.o \
                        communicator_structured.o communicator_unstructured.o \
-                       condition.o condition_control.o discretization.o \
-                       global.o grid.o input_aux.o integral_flux.o material.o \
-                       material_aux.o option.o output_aux.o \
-                       pflotran_constants.o pm_base.o realization_subsurface.o \
-                       solver.o srcsink_sandbox.o string.o variables.o
+                       condition.o condition_control.o coupler.o \
+                       discretization.o global.o grid.o input_aux.o \
+                       integral_flux.o material.o material_aux.o option.o \
+                       output_aux.o pflotran_constants.o pm_base.o \
+                       realization_subsurface.o solver.o srcsink_sandbox.o \
+                       string.o variables.o
 pm_surface.o : checkpoint_surface.o communicator_base.o \
                communicator_unstructured.o condition.o discretization.o \
                global.o grid.o input_aux.o option.o pflotran_constants.o \
@@ -1296,14 +1297,14 @@ variables.o :
 waypoint.o : option.o output_aux.o pflotran_constants.o utility.o
 well.o : connection.o option.o pflotran_constants.o well_base.o well_flow.o \
          well_flow_energy.o well_spec_base.o well_toil_ims.o
-well_base.o : connection.o grid.o option.o pflotran_constants.o \
-              well_spec_base.o
+well_base.o : connection.o grid.o material_aux.o option.o output_aux.o \
+              pflotran_constants.o well_spec_base.o
 well_flow.o : option.o pflotran_constants.o well_base.o
 well_flow_energy.o : option.o pflotran_constants.o well_flow.o
 well_spec_base.o : input_aux.o option.o pflotran_constants.o string.o units.o \
                    utility.o
-well_toil_ims.o : option.o pflotran_constants.o well_base.o well_flow.o \
-                  well_flow_energy.o well_spec_base.o
+well_toil_ims.o : option.o output_aux.o pflotran_constants.o well_base.o \
+                  well_flow.o well_flow_energy.o well_spec_base.o
 wipp.o : input_aux.o lookup_table.o material_aux.o option.o \
          pflotran_constants.o string.o units.o utility.o
 wrapper_hydrogeophysics.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \

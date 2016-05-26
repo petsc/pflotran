@@ -40,6 +40,8 @@ module Well_Base_class
     !procedure, public :: Output
     !procedure  WellConnInit ! init all vars related to well connections
     procedure, public  :: Setup
+    procedure, public :: WellFactorUpdate
+    procedure, public  :: PrintOutputHeader => PrintOutputHeaderWellBase
     procedure  :: InitWellZRefCntrlConn
     procedure  :: WellConnSort
   end type  well_base_type
@@ -59,6 +61,24 @@ subroutine PrintBase(this)
   write(*,*) "Well Base Printing message"
 
 end subroutine PrintBase
+
+! ************************************************************************** !
+
+subroutine PrintOutputHeaderWellBase(this,output_option,file_unit)
+
+  use Output_Aux_module
+
+  implicit none
+
+  class(well_base_type) :: this
+  type(output_option_type), intent(in) :: output_option
+  PetscInt, intent(in) :: file_unit
+
+
+  write(*,*) "PrintOutputHeaderWellBase must be extended"
+  stop
+ 
+end subroutine PrintOutputHeaderWellBase
 
 ! ************************************************************************** !
 
@@ -461,6 +481,101 @@ subroutine WellConnSort(this,grid,connection_set,option)
 
 end subroutine WellConnSort
 
+! *************************************************************************** !
+
+subroutine WellFactorUpdate(this,grid,connection_set,material_auxvars,option)
+  ! 
+  ! Computes the well factor for each well connection
+  !
+  ! Author: Paolo Orsini - OpenGoSim
+  ! Date: 05/25/2016
+  ! 
+
+  use Connection_module
+  use Grid_module
+  use Option_module
+  use Material_Aux_class, only : material_auxvar_type, perm_xx_index, &
+                                 perm_yy_index, perm_zz_index  
+
+  implicit none
+
+  class(well_base_type) :: this
+  type(connection_set_type), pointer :: connection_set
+  type(grid_type), pointer :: grid 
+  ! material_auxvars(:) should be declared as a class, because material_auxvar_type
+  ! is a class (it has bound-procedure, and it is designed to be extendable)
+  ! however, there is a bug reported in for gfortran <= 4.9 for which 
+  ! class arrays transfers do not behave corretly (array values differ between the 
+  ! calling program and the called functions). See link below   
+  ! https://wiki.ucar.edu/display/ccsm/Fortran+Compiler+Bug+List#FortranCompilerBugList-Fortran2003
+  ! The work around suggested is: 
+  ! "if possible, declare the offending variable using 'type' rather than 'class'"
+  ! In here it seems to work, however id the intel compiler won't accept this, there
+  ! a second option: passing a scalar object "material_auxvar" 
+  ! instead of "material_auxvars(:)". This will requiring taking the connection 
+  ! loop outside.
+  !class(material_auxvar_type), intent(in) :: material_auxvars(:)
+  type(material_auxvar_type), intent(in) :: material_auxvars(:)
+  !class(material_auxvar_type) :: material_auxvars(:)
+  !class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(option_type) :: option
+
+  PetscInt :: iconn, local_id, ghosted_id
+
+  PetscReal :: dx,dy,dz
+  PetscReal :: dx1,dx2,dh,k1,k2,r0  
+
+  do iconn=1,connection_set%num_connections
+    local_id = connection_set%id_dn(iconn);
+    ghosted_id = grid%nL2G(local_id);
+    dx = grid%structured_grid%dx(ghosted_id)
+    dy = grid%structured_grid%dy(ghosted_id)
+    dz = grid%structured_grid%dz(ghosted_id)
+
+    select case(this%conn_drill_dir(iconn))
+      case(X_DIRECTION) 
+        dx1 = dy
+        dx2 = dz
+        dh = dx
+        k1 = material_auxvars(ghosted_id)%permeability(perm_yy_index)
+        k2 = material_auxvars(ghosted_id)%permeability(perm_zz_index)
+      case(Y_DIRECTION)
+        dx1 = dx
+        dx2 = dz
+        dh = dy
+        k1 = material_auxvars(ghosted_id)%permeability(perm_xx_index)        
+        k2 = material_auxvars(ghosted_id)%permeability(perm_zz_index)
+      case(Z_DIRECTION)
+        dx1 = dx
+        dx2 = dy
+        dh = dz
+        k1 = material_auxvars(ghosted_id)%permeability(perm_xx_index)        
+        k2 = material_auxvars(ghosted_id)%permeability(perm_yy_index)
+    end select
+
+#ifdef WELL_DEBUG
+    print *,"permx idx = ", perm_xx_index
+    print *,"permx idy = ", perm_yy_index
+    print *,"permx idz = ", perm_zz_index
+    print *,  material_auxvars(ghosted_id)%permeability(perm_xx_index)
+    print *,  material_auxvars(ghosted_id)%permeability(perm_yy_index)
+    print *,  material_auxvars(ghosted_id)%permeability(perm_zz_index)
+#endif     
+
+    r0 = (dx1**2.d0 * (k2/k1)**0.5d0 + dx2**2.d0 * (k1/k2)**0.5d0)**0.5d0 * &
+         0.28d0 / ((k2/k1)**0.25d0 + (k1/k2)**0.25d0)
+
+    this%conn_factors(iconn) = 2.0d0 * PI * dh * dsqrt(k1*k2) * &
+                       this%spec%theta_frac / &
+                       ( dlog(r0/this%spec%radius) + this%spec%skin_factor )
+
+#ifdef WELL_DEBUG
+    print *,"conn_id = ", iconn," conn fact = ", this%conn_factors(iconn)
+#endif
+
+  end do 
+
+end subroutine WellFactorUpdate
 
 ! *************************************************************************** !
 

@@ -34,12 +34,9 @@ function CreateWell(well_spec,option)
   implicit none
 
   class(well_spec_base_type), pointer :: well_spec
-  character(len=MAXWORDLENGTH) :: coupler_name
   type(option_type) :: option
   class(well_base_type), pointer :: CreateWell
 
-  character(len=MAXWORDLENGTH) :: wfile_name
-  
   select case(option%iflowmode)
     case(TOIL_IMS_MODE)
       CreateWell => CreateTOilImsWell(well_spec,option)
@@ -63,6 +60,9 @@ function CreateWell(well_spec,option)
   call CreateWell%PrintMsg(); 
 
   !Create well outfile and write its header 
+  !not here - otherwise will attempt to create a file for each process
+  !at this stage a well is created in each process - even if empty   
+
 
 end function CreateWell
 

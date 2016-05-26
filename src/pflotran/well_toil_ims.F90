@@ -17,6 +17,7 @@ module Well_TOilIms_class
   contains  ! add here type-bound procedure 
     procedure, public :: PrintMsg => PrintTOilIms
     procedure, public :: ConnInit => WellTOilImsConnInit
+    procedure, public  :: PrintOutputHeader => PrintOutputHeaderWellTOilIms
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
     !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
@@ -61,6 +62,50 @@ subroutine PrintTOilIms(this)
   write(*,*) "Well TOilIms Printing message"
 
 end subroutine PrintTOilIms
+
+! ************************************************************************** !
+
+subroutine PrintOutputHeaderWellTOilIms(this,output_option,file_unit)
+  ! 
+  ! Write header for well_TOilIms output file
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 05/18/16
+  ! 
+  use Output_Aux_module
+
+  implicit none
+
+  class(well_toil_ims_type) :: this
+  type(output_option_type), intent(in) :: output_option
+  PetscInt, intent(in) :: file_unit
+
+  character(len=MAXWORDLENGTH) :: tunit
+
+  tunit = trim(output_option%tunit)
+
+  !write(IUNIT_TEMP,*) " VARIABLES = " // &
+  !    '"Time [' // trim(output_option%tunit) // ']", ' // &
+  !              """Pw[Pa]"", " // &
+  !      """Tw[C]"", ""dh2o[kg/m3]"", ""doil[kg/[t]]"", "// &
+  !      """Qwat[m3/[t]]"", ""Qoil[m3/[t]]"", " // &
+  !      """Mwat[kg/[t]]"", ""Moil[kg/[t]]""" 
+
+  !TODO: can do something more clever than this: 
+  !      e.g. small loop to add well vars
+  write(IUNIT_TEMP,*) " VARIABLES = " // &
+      '"Time [' // trim(tunit) // ']", ' // &
+                '""Pw[Pa]"", ' // &
+        '"Tw[C]", "dh2o[kg/m3]", ' // &
+        '"doil[kg/' // trim(tunit) // ']", ' // &
+        '"Qwat[m3/' // trim(tunit) // ']", ' // &
+        '"Qoil[m3/' // trim(tunit) //  ']", ' // &
+        '"Mwat[kg/' // trim(tunit) // ']", ' // &
+        '"Moil[kg/' // trim(tunit) // ']"' 
+
+
+end subroutine PrintOutputHeaderWellTOilIms
+
 
 ! ************************************************************************** !
 
