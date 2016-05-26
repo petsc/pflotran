@@ -2107,11 +2107,13 @@ subroutine SFDefaultCapillaryPressure(this,liquid_saturation, &
   PetscReal, intent(out) :: capillary_pressure
   type(option_type), intent(inout) :: option
   
-  option%io_buffer = 'SFDefaultCapillaryPressure is a dummy routine used ' // &
-    'for saturated flow only.  The user must specify a valid ' // &
-    'SATURATION_FUNCTION.'
-  call printErrMsg(option)
-  
+  if (liquid_saturation < 1.d0) then
+    option%io_buffer = 'SFDefaultCapillaryPressure is a dummy routine used &
+      &for saturated flow only.  The user must specify a valid &
+      &SATURATION_FUNCTION.'
+    call printErrMsgByRank(option)
+  endif
+
 end subroutine SFDefaultCapillaryPressure
 
 ! ************************************************************************** !
@@ -2128,11 +2130,11 @@ subroutine SFDefaultSaturation(this,capillary_pressure,liquid_saturation, &
   PetscReal, intent(out) :: dsat_dpres
   type(option_type), intent(inout) :: option
   
-  option%io_buffer = 'SFDefaultSaturation is a dummy routine used ' // &
-    'for saturated flow only.  The user must specify a valid ' // &
-    'SATURATION_FUNCTION.'
-  call printErrMsg(option)
-  
+  option%io_buffer = 'SFDefaultSaturation is a dummy routine used &
+    &for saturated flow only.  The user must specify a valid &
+    &SATURATION_FUNCTION.'
+  call printErrMsgByRank(option)
+
 end subroutine SFDefaultSaturation
 
 ! ************************************************************************** !
@@ -2184,11 +2186,10 @@ subroutine RPF_DefaultRelPerm(this,liquid_saturation,relative_permeability, &
   type(option_type), intent(inout) :: option
   
   if (liquid_saturation < 1.d0) then
-    option%io_buffer = 'RPF_Default_RelPerm must be extended.'
-    option%io_buffer = 'RPF_Default_RelPerm is a dummy routine used ' // &
-      'for saturated flow only.  The user must specify a valid ' // &
-      'PERMEABILITY_FUNCTION.'
-    call printErrMsg(option)
+    option%io_buffer = 'RPF_Default_RelPerm is a dummy routine used &
+      &for saturated flow only.  The user must specify a valid &
+      &PERMEABILITY_FUNCTION.'
+    call printErrMsgByRank(option)
   endif
   relative_permeability = 1.d0
   
