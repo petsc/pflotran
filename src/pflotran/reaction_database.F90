@@ -2093,7 +2093,7 @@ subroutine BasisInit(reaction,option)
       endif
       cur_mineral => cur_mineral%next
     enddo
-    if (found) then
+    if (reaction%update_mineral_surface_area .or. found) then
       allocate(mineral%kinmnrl_surf_area_vol_frac_pwr(mineral%nkinmnrl))
       mineral%kinmnrl_surf_area_vol_frac_pwr = 0.d0    
     endif
