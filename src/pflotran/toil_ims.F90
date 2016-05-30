@@ -2,7 +2,10 @@ module TOilIms_module
 ! Brief description for the module
 ! Pimary variables for ToilIms: oil_pressure, oil_saturation, temperature
 
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module
+  use AuxVars_TOilIms_module 
+
   use Global_Aux_module
 
   use PFLOTRAN_Constants_module
@@ -74,13 +77,20 @@ subroutine TOilImsSetup(realization)
   type(output_variable_list_type), pointer :: list
 
   PetscInt :: ghosted_id, iconn, sum_connection, local_id
+  PetscInt :: num_bc_connection, num_ss_connection
   PetscInt :: i, idof, count
   PetscBool :: error_found
   PetscInt :: flag(10)
                                                 ! extra index for derivatives
-  type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
-  type(toil_ims_auxvar_type), pointer :: toil_auxvars_bc(:)
-  type(toil_ims_auxvar_type), pointer :: toil_auxvars_ss(:)
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars_bc(:)
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars_ss(:)
+  !switch to polymorphic auxvars - needed for bloc enclosed in #if 0
+  !class(auxvar_toil_ims_type), pointer :: toil_auxvars(:,:)
+  !class(auxvar_toil_ims_type), pointer :: toil_auxvars_bc(:)
+  !class(auxvar_toil_ims_type), pointer :: toil_auxvars_ss(:)
+
+
   class(material_auxvar_type), pointer :: material_auxvars(:)
   !type(fluid_property_type), pointer :: cur_fluid_property
   
@@ -89,6 +99,8 @@ subroutine TOilImsSetup(realization)
   grid => patch%grid
   
   patch%aux%TOil_ims => TOilImsAuxCreate(option)
+  !patch%aux%TOil_ims => TOilImsAuxCreate(option)
+
 
   ! ensure that material properties specific to this module are properly
   ! initialized
@@ -153,44 +165,83 @@ subroutine TOilImsSetup(realization)
     call printErrMsg(option)
   endif
 
-  ! allocate auxvar data structures for all grid cells  
-  allocate(toil_auxvars(0:option%nflowdof,grid%ngmax))
-  do ghosted_id = 1, grid%ngmax
-    do idof = 0, option%nflowdof
-      !call GeneralAuxVarInit(gen_auxvars(idof,ghosted_id),option)
-      call TOilImsAuxVarInit(toil_auxvars(idof,ghosted_id),option)
-    enddo
-  enddo
-  patch%aux%TOil_ims%auxvars => toil_auxvars
-  patch%aux%TOil_ims%num_aux = grid%ngmax
+  num_bc_connection = &
+               CouplerGetNumConnectionsInList(patch%boundary_condition_list)
 
-  ! count the number of boundary connections and allocate
-  ! auxvar data structures for them 
-  sum_connection = CouplerGetNumConnectionsInList(patch%boundary_condition_list)
-  if (sum_connection > 0) then
-    allocate(toil_auxvars_bc(sum_connection))
-    do iconn = 1, sum_connection
-      call TOilImsAuxVarInit(toil_auxvars_bc(iconn),option)
-    enddo
-    patch%aux%TOil_ims%auxvars_bc => toil_auxvars_bc
-  endif
-  patch%aux%TOil_ims%num_aux_bc = sum_connection
+  num_ss_connection = CouplerGetNumConnectionsInList(patch%source_sink_list)
 
-  ! count the number of source/sink connections and allocate
-  ! auxvar data structures for them  
-  sum_connection = CouplerGetNumConnectionsInList(patch%source_sink_list)
-  if (sum_connection > 0) then
-    allocate(toil_auxvars_ss(sum_connection))
-    do iconn = 1, sum_connection
-      call TOilImsAuxVarInit(toil_auxvars_ss(iconn),option)
-    enddo
-    patch%aux%TOil_ims%auxvars_ss => toil_auxvars_ss
-  endif
-  patch%aux%TOil_ims%num_aux_ss = sum_connection
+  call patch%aux%TOil_ims%Init(grid,num_bc_connection,num_ss_connection,option)
 
-  ! create array for zeroing Jacobian entries if isothermal
-  allocate(patch%aux%TOil_ims%row_zeroing_array(grid%nlmax))
-  patch%aux%TOil_ims%row_zeroing_array = 0
+
+! the three instructions above cut the code between if 0
+#if 0
+  !all part indended below can be shared by all flow modes
+  !AuxVarInit => TOilImsAuxVarInit
+  !define pm_aux%Init() in pm_base_auxvars_type,  !no need to pass the array down
+  ! pm_aux%Init(grid,option) 
+  ! this solve also the pointer problem - allocate done internally
+    ! allocate auxvar data structures for all grid cells  
+    allocate(toil_auxvars(0:option%nflowdof,grid%ngmax))
+    do ghosted_id = 1, grid%ngmax
+      do idof = 0, option%nflowdof
+        call TOilImsAuxVarInit(toil_auxvars(idof,ghosted_id),option)
+      enddo
+    enddo
+
+    !patch%aux%TOil_ims%auxvars => toil_auxvars
+    !patch%aux%TOil_ims%num_aux = grid%ngmax
+    !THIS IS A DANGEROUS OPERATION - to be checked!!! Possible compiler bug
+    !pointing to an array of classes 
+    patch%aux%pm_auvars%auxvars => toil_auxvars
+    patch%aux%pm_auvars%num_aux = grid%ngmax
+
+    !if issues here I should operate withoout pointer as follows
+    !allocate(patch%aux%pm_auvars%auxvars(0:option%nflowdof,grid%ngmax))
+    !do ghosted_id = 1, grid%ngmax
+    !  do idof = 0, option%nflowdof
+    !    call TOilImsAuxVarInit(patch%aux%pm_auvars%auxvars(idof,ghosted_id), &
+    !                            option)
+    !  enddo
+    !enddo
+
+    ! count the number of boundary connections and allocate
+    ! auxvar data structures for them 
+    sum_connection = CouplerGetNumConnectionsInList(patch%boundary_condition_list)
+    if (sum_connection > 0) then
+      allocate(toil_auxvars_bc(sum_connection))
+      do iconn = 1, sum_connection
+        call TOilImsAuxVarInit(toil_auxvars_bc(iconn),option)
+      enddo
+      !patch%aux%TOil_ims%auxvars_bc => toil_auxvars_bc
+      !DANGER - if issues avoid pointer
+      patch%aux%pm_aux%auxvars_bc => toil_auxvars_bc
+    endif
+    !patch%aux%TOil_ims%num_aux_bc = sum_connection
+    patch%aux%pm_aux%num_aux_bc = sum_connection
+
+    ! count the number of source/sink connections and allocate
+    ! auxvar data structures for them  
+    sum_connection = CouplerGetNumConnectionsInList(patch%source_sink_list)
+    if (sum_connection > 0) then
+      allocate(toil_auxvars_ss(sum_connection))
+      do iconn = 1, sum_connection
+        call TOilImsAuxVarInit(toil_auxvars_ss(iconn),option)
+      enddo
+      !patch%aux%TOil_ims%auxvars_ss => toil_auxvars_ss
+      !DANGER pointer to an array of classes
+      patch%aux%pm_aux%auxvars_ss => toil_auxvars_ss
+    endif
+    !patch%aux%TOil_ims%num_aux_ss = sum_connection
+    patch%aux%pm_aux%num_aux_ss = sum_connection
+
+    ! create array for zeroing Jacobian entries if isothermal
+    !allocate(patch%aux%TOil_ims%row_zeroing_array(grid%nlmax))
+    !patch%aux%TOil_ims%row_zeroing_array = 0
+
+    allocate(patch%aux%pm_aux%row_zeroing_array(grid%nlmax))
+    patch%aux%pm_aux%row_zeroing_array = 0
+  !end common-part
+#endif
 
   list => realization%output_option%output_snap_variable_list
   call TOilImsSetPlotVariables(list)
@@ -226,308 +277,6 @@ subroutine TOilImsInitializeTimestep(realization)
   
 
 end subroutine TOilImsInitializeTimestep
-
-! ************************************************************************** !
-! this is now defined in pm_toil_ims 
-!subroutine TOilImsCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
-!  ! 
-!  ! Checks update prior to update
-!  ! 
-!  ! Author: Paolo Orsini (OGS)
-!  ! Date: 10/22/15
-!  !
-!
-!  use Realization_Subsurface_class
-!  use Grid_module
-!  use Field_module
-!  use Option_module
-!  !use Saturation_Function_module
-!  use Patch_module
-! 
-!  implicit none
-!  
-!  SNESLineSearch :: line_search
-!  Vec :: X
-!  Vec :: dX
-!  PetscBool :: changed
-!  type(realization_subsurface_type) :: realization
-!  PetscReal, pointer :: X_p(:)
-!  PetscReal, pointer :: dX_p(:)
-!  PetscErrorCode :: ierr
-!
-!  type(grid_type), pointer :: grid
-!  type(option_type), pointer :: option
-!  type(patch_type), pointer :: patch
-!  type(field_type), pointer :: field
-!
-!  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
-!  !type(global_auxvar_type), pointer :: global_auxvars(:)  
-!
-!  PetscInt :: local_id, ghosted_id
-!  PetscInt :: offset
-!
-!  PetscInt :: pressure_index, saturation_index, temperature_index
-!
-!  PetscReal :: pressure0, pressure1, del_pressure
-!  PetscReal :: temperature0, temperature1, del_temperature
-!  PetscReal :: saturation0, saturation1, del_saturation
-!
-!  PetscReal :: max_saturation_change = 0.125d0
-!  PetscReal :: max_temperature_change = 10.d0
-!  PetscReal :: scale, temp_scale, temp_real
-!  PetscReal, parameter :: tolerance = 0.99d0
-!  PetscReal, parameter :: initial_scale = 1.d0
-!  SNES :: snes
-!  PetscInt :: newton_iteration
-!
-!  
-!  grid => realization%patch%grid
-!  option => realization%option
-!  field => realization%field
-!  !toil_auxvars => realization%patch%aux%TOil_ims%auxvars
-!  !global_auxvars => realization%patch%aux%Global%auxvars
-!
-!  patch => realization%patch
-!
-!  call SNESLineSearchGetSNES(line_search,snes,ierr)
-!  call SNESGetIterationNumber(snes,newton_iteration,ierr)
-!
-!  call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
-!  call VecGetArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
-!
-!  changed = PETSC_TRUE
-!
-!  scale = initial_scale
-!  if (toil_ims_max_it_before_damping > 0 .and. &
-!      newton_iteration > toil_ims_max_it_before_damping) then
-!    scale = toil_ims_damping_factor
-!  endif
-!
-!#define LIMIT_MAX_PRESSURE_CHANGE
-!#define LIMIT_MAX_SATURATION_CHANGE
-!!!#define LIMIT_MAX_TEMPERATURE_CHANGE
-!!! TRUNCATE_PRESSURE is needed for times when the solve wants
-!!! to pull them negative.
-!!!#define TRUNCATE_PRESSURE
-!
-!  ! scaling
-!  do local_id = 1, grid%nlmax
-!    ghosted_id = grid%nL2G(local_id)
-!    offset = (local_id-1)*option%nflowdof
-!    temp_scale = 1.d0
-!
-!    pressure_index = offset + TOIL_IMS_PRESSURE_DOF
-!    saturation_index = offset + TOIL_IMS_SATURATION_DOF
-!    temperature_index  = offset + TOIL_IMS_ENERGY_DOF
-!    dX_p(pressure_index) = dX_p(pressure_index) * &
-!                             toil_ims_pressure_scale
-!    temp_scale = 1.d0
-!    del_pressure = dX_p(pressure_index)
-!    pressure0 = X_p(pressure_index)
-!    pressure1 = pressure0 - del_pressure
-!    del_saturation = dX_p(saturation_index)
-!    saturation0 = X_p(saturation_index)
-!    saturation1 = saturation0 - del_saturation
-!#ifdef LIMIT_MAX_PRESSURE_CHANGE
-!    if (dabs(del_pressure) > toil_ims_max_pressure_change) then
-!      temp_real = dabs(toil_ims_max_pressure_change/del_pressure)
-!      temp_scale = min(temp_scale,temp_real)
-!     endif
-!#endif
-!#ifdef TRUNCATE_PRESSURE
-!    if (pressure1 <= 0.d0) then
-!      if (dabs(del_pressure) > 1.d-40) then
-!        temp_real = tolerance * dabs(pressure0 / del_pressure)
-!        temp_scale = min(temp_scale,temp_real)
-!      endif
-!    endif
-!#endif !TRUNCATE_PRESSURE
-!
-!#ifdef LIMIT_MAX_SATURATION_CHANGE
-!    if (dabs(del_saturation) > max_saturation_change) then
-!       temp_real = dabs(max_saturation_change/del_saturation)
-!       temp_scale = min(temp_scale,temp_real)
-!    endif
-!#endif !LIMIT_MAX_SATURATION_CHANGE        
-!    scale = min(scale,temp_scale) 
-!  enddo
-!
-!  temp_scale = scale
-!  call MPI_Allreduce(temp_scale,scale,ONE_INTEGER_MPI, &
-!                     MPI_DOUBLE_PRECISION, &
-!                     MPI_MIN,option%mycomm,ierr)
-!
-!  ! it performs an homogenous scaling using the smallest scaling factor
-!  ! over all subdomains domains
-!  if (scale < 0.9999d0) then
-!    dX_p = scale*dX_p
-!  endif
-!
-!  call VecRestoreArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
-!  call VecRestoreArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
-!
-!end subroutine TOilImsCheckUpdatePre
-
-! ************************************************************************** !
-! this is now defined in pm_toil_ims 
-!subroutine TOilImsCheckUpdatePost(line_search,X0,dX,X1,dX_changed, &
-!                                   X1_changed,realization,ierr)
-!  ! 
-!  ! Checks update after to update
-!  ! 
-!  ! Author: Paolo Orsini
-!  ! Date: 11/07/15
-!  ! 
-!
-!  use Realization_Subsurface_class
-!  use Grid_module
-!  use Field_module
-!  use Patch_module
-!  use Option_module
-!  use Material_Aux_class
-! 
-!  implicit none
-!  
-!  SNESLineSearch :: line_search
-!  Vec :: X0
-!  Vec :: dX
-!  Vec :: X1
-!  type(realization_subsurface_type) :: realization
-!  ! ignore changed flag for now.
-!  PetscBool :: dX_changed
-!  PetscBool :: X1_changed
-!  
-!  PetscReal, pointer :: X0_p(:)
-!  PetscReal, pointer :: X1_p(:)
-!  PetscReal, pointer :: dX_p(:)
-!  PetscReal, pointer :: r_p(:)
-!  PetscReal, pointer :: accum_p(:), accum_p2(:)
-!  type(grid_type), pointer :: grid
-!  type(option_type), pointer :: option
-!  type(field_type), pointer :: field
-!  type(patch_type), pointer :: patch
-!  class(material_auxvar_type), pointer :: material_auxvars(:)  
-!  PetscInt :: local_id, ghosted_id
-!  PetscInt :: offset , ival, idof
-!  PetscReal :: dX_X0, R_A, R
-!
-!  PetscReal :: inf_norm_rel_update(3), global_inf_norm_rel_update(3)
-!  PetscReal :: inf_norm_scaled_residual(3), global_inf_norm_scaled_residual(3)
-!  PetscReal :: inf_norm_update(3), global_inf_norm_update(3)
-!  PetscReal :: inf_norm_residual(3), global_inf_norm_residual(3)
-!  PetscReal :: two_norm_residual(3), global_two_norm_residual(3)
-!  PetscReal, parameter :: inf_pres_tol = 1.d-1
-!  PetscReal, parameter :: inf_temp_tol = 1.d-5
-!  PetscReal, parameter :: inf_sat_tol = 1.d-6
-!  !geh: note the scaling by 0.d0 several lines down which prevent false 
-!  !     convergence 
-!  ! PO scaling by 0 kill the inf_norm_update convergence criteria
-!  PetscReal, parameter :: inf_norm_update_tol(3) = &
-!    reshape([inf_pres_tol,inf_sat_tol,inf_temp_tol], &
-!            shape(inf_norm_update_tol)) * &
-!            0.d0
-!  PetscReal :: temp(12), global_temp(12)
-!  PetscMPIInt :: mpi_int
-!  PetscBool :: converged_abs_update
-!  PetscBool :: converged_rel_update
-!  PetscBool :: converged_scaled_residual
-!  PetscReal :: t_over_v
-!  PetscErrorCode :: ierr
-! 
-!  grid => realization%patch%grid 
-!  option => realization%option
-!  field => realization%field
-!  patch => realization%patch ! in patch imat for active/inactive cells
-!  material_auxvars => patch%aux%Material%auxvars 
-! 
-!  ! it indicates that neither dX of the updated solution are modified 
-!  dX_changed = PETSC_FALSE
-!  X1_changed = PETSC_FALSE
-!  
-!  option%converged = PETSC_FALSE
-!  if (option%flow%check_post_convergence) then
-!    call VecGetArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
-!    call VecGetArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
-!    call VecGetArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-!    call VecGetArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
-!    call VecGetArrayReadF90(field%flow_accum2,accum_p2,ierr);CHKERRQ(ierr)
-!
-!    inf_norm_update(:) = -1.d20
-!    inf_norm_rel_update(:) = -1.d20
-!    inf_norm_scaled_residual(:) = -1.d20
-!    inf_norm_residual(:) = -1.d20
-!    two_norm_residual(:) = 0.d0
-!    do local_id = 1, grid%nlmax
-!      offset = (local_id-1)*option%nflowdof
-!      ghosted_id = grid%nL2G(local_id)
-!      if (realization%patch%imat(ghosted_id) <= 0) cycle
-!      do idof = 1, option%nflowdof
-!        ival = offset+idof
-!        R = r_p(ival)
-!        inf_norm_residual(idof) = max(inf_norm_residual(idof),dabs(R))
-!        if (toil_ims_tough2_conv_criteria) then
-!          !geh: scale by t_over_v to match TOUGH2 residual units. see equation
-!          !     B.5 of TOUGH2 user manual (LBNL-43134)
-!          t_over_v = option%flow_dt/material_auxvars(ghosted_id)%volume
-!          if (accum_p2(ival)*t_over_v < toil_ims_tgh2_itol_scld_res_e2) then
-!            R_A = dabs(R*t_over_v)
-!          else
-!            R_A = dabs(R/accum_p2(ival))
-!          endif
-!        else
-!          R_A = dabs(R/accum_p(ival))
-!        endif
-!        dX_X0 = dabs(dX_p(ival)/X0_p(ival))
-!        inf_norm_update(idof) = max(inf_norm_update(idof),dabs(dX_p(ival)))
-!        if (inf_norm_rel_update(idof) < dX_X0) then
-!          inf_norm_rel_update(idof) = dX_X0
-!        endif
-!        if (inf_norm_scaled_residual(idof) < R_A) then
-!          inf_norm_scaled_residual(idof) = R_A
-!        endif
-!      enddo
-!    enddo
-!    temp(1:3) = inf_norm_update(:)
-!    temp(4:6) = inf_norm_rel_update(:)
-!    temp(7:9) = inf_norm_scaled_residual(:)
-!    temp(10:12) = inf_norm_residual(:)
-!    mpi_int = 12
-!    call MPI_Allreduce(temp,global_temp,mpi_int, &
-!                       MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-!    global_inf_norm_update(:) = global_temp(1:3)
-!    global_inf_norm_rel_update(:) = global_temp(4:6)
-!    global_inf_norm_scaled_residual(:) = global_temp(7:9)
-!    global_inf_norm_residual(:) = global_temp(10:12)
-!
-!    converged_abs_update = PETSC_TRUE
-!    do idof = 1, option%nflowdof
-!      ! imposing inf_norm_update <= inf_norm_update_tol for convergence
-!      if (global_inf_norm_update(idof) > inf_norm_update_tol(idof)) then
-!        converged_abs_update = PETSC_FALSE
-!      endif
-!    enddo  
-!    converged_rel_update = maxval(global_inf_norm_rel_update) < &
-!                           option%flow%inf_rel_update_tol
-!    if (toil_ims_tough2_conv_criteria) then
-!      converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
-!                                  toil_ims_tgh2_itol_scld_res_e1
-!    else
-!      converged_scaled_residual = maxval(global_inf_norm_scaled_residual) < &
-!                                  option%flow%inf_scaled_res_tol
-!    endif
-!    option%converged = PETSC_FALSE
-!    if (converged_abs_update .or. converged_rel_update .or. &
-!        converged_scaled_residual) then
-!      option%converged = PETSC_TRUE
-!    endif
-!    call VecRestoreArrayReadF90(dX,dX_p,ierr);CHKERRQ(ierr)
-!    call VecRestoreArrayReadF90(X0,X0_p,ierr);CHKERRQ(ierr)
-!    call VecRestoreArrayReadF90(field%flow_r,r_p,ierr);CHKERRQ(ierr)
-!    call VecRestoreArrayReadF90(field%flow_accum,accum_p,ierr);CHKERRQ(ierr)
-!    call VecRestoreArrayReadF90(field%flow_accum2,accum_p2,ierr);CHKERRQ(ierr)
-!  endif
-!
-!end subroutine TOilImsCheckUpdatePost
 
 ! ************************************************************************** !
 
@@ -670,7 +419,7 @@ subroutine TOilImsUpdateAuxVars(realization)
   ! Updates the auxiliary variables associated with the TOilIms problem
   ! 
   ! Author: Paolo Orsini
-  ! Date: 10/21/15
+  ! Date: 10/21/15 - 28/05/2016
   ! 
 
   use Realization_Subsurface_class
@@ -697,8 +446,10 @@ subroutine TOilImsUpdateAuxVars(realization)
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
 
-  type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:), toil_auxvars_bc(:)  
-
+  !commented for new auxvars data structure
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:), toil_auxvars_bc(:)   
+  !class(pm_toil_ims_aux_type), pointer :: toil_aux
+ 
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)  
 
   class(material_auxvar_type), pointer :: material_auxvars(:)
@@ -723,8 +474,24 @@ subroutine TOilImsUpdateAuxVars(realization)
   grid => patch%grid
   field => realization%field
 
-  toil_auxvars => patch%aux%TOil_ims%auxvars
-  toil_auxvars_bc => patch%aux%TOil_ims%auxvars_bc
+  !toil_auxvars => patch%aux%TOil_ims%auxvars
+  !toil_auxvars_bc => patch%aux%TOil_ims%auxvars_bc
+  !
+  ! the statement below compile, but the pointer return garbage: 
+  ! seems to be a gfrotran bug compiler - to verify
+
+  ! toil_aux => patch%aux%pm_aux would require:
+  !  select type(patch%aux%pm_aux) 
+  !    class is (pm_toil_ims_aux_type)
+  !       toil_aux => patch%aux%pm_aux
+  ! without this select type - (which could be computationally inefficient)
+  ! the code does not see the pm_aux's members that belong to pm_toil_ims_aux_type
+  ! only the base members defined in pm_toil_ims_aux_type
+  ! probably another select type class is () is needed to 
+  ! access class(auxvar_toil_ims_type) :: auxvars, otherwise only auxvar_base
+  ! would be seen. TO avoid this, use class members without components       
+  ! e.g. patch%aux%pm_aux%auxvars, patch%aux%pm_aux%auxvars_bc 
+
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   material_auxvars => patch%aux%Material%auxvars
@@ -742,14 +509,30 @@ subroutine TOilImsUpdateAuxVars(realization)
     option%iflag = TOIL_IMS_UPDATE_FOR_ACCUM
     natural_id = grid%nG2A(ghosted_id)
     call TOilImsAuxVarCompute(xx_loc_p(ghosted_start:ghosted_end), &
-                       toil_auxvars(ZERO_INTEGER,ghosted_id), &
+                       patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id), & 
+                       !toil_auxvars(ZERO_INTEGER,ghosted_id), &
                        global_auxvars(ghosted_id), &
                        material_auxvars(ghosted_id), &
                        patch%characteristic_curves_array( &
                          patch%sat_func_id(ghosted_id))%ptr, &
                        natural_id, &
                        option)
-
+   ! if TOilImsAuxVarCompute becomes a member function of auxvar_toil_ims
+   ! call patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)%compute( &
+   !                   xx_loc_p(ghosted_start:ghosted_end), &
+   !                   global_auxvars(ghosted_id), &
+   !                   material_auxvars(ghosted_id), &
+   !                   patch%characteristic_curves_array( &
+   !                   patch%sat_func_id(ghosted_id))%ptr, &
+   !                   natural_id, &
+   !                   option)
+   ! we will be forced to have a Compute member common to all modes
+   ! where even in auxvar_base we must have the same list of dummy arguments
+   ! in this case: xx_loc_p, global_auxvar, material_auxvar, characteristic_curves
+   ! natural_id, option
+   ! basically forced to reuse as much code as possible
+   ! an example is auxvars()%Init already implemented
+   
   enddo
   
   ! compute auxiliary variables for boundary cells
@@ -787,7 +570,9 @@ subroutine TOilImsUpdateAuxVars(realization)
       !toil_auxvars_bc(sum_connection)%istate = istate
       ! TOIL_IMS_UPDATE_FOR_BOUNDARY indicates call from non-perturbation
       option%iflag = TOIL_IMS_UPDATE_FOR_BOUNDARY
-      call TOilImsAuxVarCompute(xxbc,toil_auxvars_bc(sum_connection), &
+      !call TOilImsAuxVarCompute(xxbc,toil_auxvars_bc(sum_connection), &
+      call TOilImsAuxVarCompute(xxbc, &
+                                patch%aux%TOil_ims%auxvars_bc(sum_connection), &
                                 global_auxvars_bc(sum_connection), &
                                 material_auxvars(ghosted_id), &
                                 patch%characteristic_curves_array( &
@@ -800,7 +585,8 @@ subroutine TOilImsUpdateAuxVars(realization)
 
   call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
 
-  patch%aux%TOil_ims%auxvars_up_to_date = PETSC_TRUE
+  !patch%aux%TOil_ims%auxvars_up_to_date = PETSC_TRUE
+  patch%aux%TOil_ims%auxvars_up_to_date = PETSC_TRUE 
 
 end subroutine TOilImsUpdateAuxVars
 
@@ -830,7 +616,7 @@ subroutine TOilImsUpdateFixedAccum(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
 
   type(global_auxvar_type), pointer :: global_auxvars(:)
 
@@ -849,7 +635,8 @@ subroutine TOilImsUpdateFixedAccum(realization)
   patch => realization%patch
   grid => patch%grid
 
-  toil_auxvars => patch%aux%TOil_ims%auxvars
+  !new auxvar data strucutre
+  !toil_auxvars => patch%aux%TOil_ims%auxvars
 
   global_auxvars => patch%aux%Global%auxvars
 
@@ -875,17 +662,20 @@ subroutine TOilImsUpdateFixedAccum(realization)
     ! TOIL_IMS_UPDATE_FOR_FIXED_ACCUM indicates call from non-perturbation
     option%iflag = TOIL_IMS_UPDATE_FOR_FIXED_ACCUM ! not currently used
     call TOilImsAuxVarCompute(xx_p(local_start:local_end), &
-                              toil_auxvars(ZERO_INTEGER,ghosted_id), &
+                              !toil_auxvars(ZERO_INTEGER,ghosted_id), &
+                              patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
                               patch%characteristic_curves_array( &
                                 patch%sat_func_id(ghosted_id))%ptr, &
                               ghosted_id, &
                               option)
-    call TOilImsAccumulation(toil_auxvars(ZERO_INTEGER,ghosted_id), &
-                             material_auxvars(ghosted_id), &
-                             material_parameter%soil_heat_capacity(imat), &
-                             option,accum_p(local_start:local_end) )
+    !call TOilImsAccumulation(toil_auxvars(ZERO_INTEGER,ghosted_id), &
+    call TOilImsAccumulation( &
+                          patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id), &
+                          material_auxvars(ghosted_id), &
+                          material_parameter%soil_heat_capacity(imat), &
+                          option,accum_p(local_start:local_end) )
   enddo
   
   !Tough2 conv. creteria: initialize accumulation term for every iteration
@@ -977,7 +767,7 @@ subroutine TOilImsComputeMassBalance(realization,mass_balance)
   type(patch_type), pointer :: patch
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
-  type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
 
   PetscErrorCode :: ierr
@@ -991,7 +781,7 @@ subroutine TOilImsComputeMassBalance(realization,mass_balance)
   grid => patch%grid
   field => realization%field
 
-  toil_auxvars => patch%aux%TOil_ims%auxvars
+  !toil_auxvars => patch%aux%TOil_ims%auxvars
   material_auxvars => patch%aux%Material%auxvars
 
   mass_balance = 0.d0
@@ -1003,14 +793,14 @@ subroutine TOilImsComputeMassBalance(realization,mass_balance)
     if (patch%imat(ghosted_id) <= 0) cycle
     do iphase = 1, option%nphase
       ! volume_phase = saturation*porosity*volume
-      vol_phase = &
-        toil_auxvars(ZERO_INTEGER,ghosted_id)%sat(iphase)* &
-        toil_auxvars(ZERO_INTEGER,ghosted_id)%effective_porosity* &
+      vol_phase = & 
+        patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)%sat(iphase)* &
+        patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)%effective_porosity* &
         material_auxvars(ghosted_id)%volume
       ! mass = volume_phase*density
 
         mass_balance(iphase,1) = mass_balance(iphase,1) + &
-          toil_auxvars(ZERO_INTEGER,ghosted_id)%den(iphase)* &
+          patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)%den(iphase)* &
           toil_ims_fmw_comp(iphase)*vol_phase
 
     enddo
@@ -1146,7 +936,7 @@ subroutine TOilImsMapBCAuxVarsToGlobal(realization)
   type(patch_type), pointer :: patch
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
-  type(toil_ims_auxvar_type), pointer :: toil_auxvars_bc(:)  
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars_bc(:)  
   type(global_auxvar_type), pointer :: global_auxvars_bc(:)  
 
   PetscInt :: sum_connection, iconn
@@ -1156,8 +946,9 @@ subroutine TOilImsMapBCAuxVarsToGlobal(realization)
 
   !NOTE: this is called only if cpoupling to RT
   if (option%ntrandof == 0) return ! no need to update
-  
-  toil_auxvars_bc => patch%aux%TOil_ims%auxvars_bc
+
+  !new auxvar data structure  
+  !toil_auxvars_bc => patch%aux%TOil_ims%auxvars_bc
   global_auxvars_bc => patch%aux%Global%auxvars_bc
   
   boundary_condition => patch%boundary_condition_list%first
@@ -1168,11 +959,14 @@ subroutine TOilImsMapBCAuxVarsToGlobal(realization)
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       global_auxvars_bc(sum_connection)%sat = &
-        toil_auxvars_bc(sum_connection)%sat
+        !toil_auxvars_bc(sum_connection)%sat
+        patch%aux%TOil_ims%auxvars_bc(sum_connection)%sat 
       global_auxvars_bc(sum_connection)%den_kg = &
-        toil_auxvars_bc(sum_connection)%den_kg
+        !toil_auxvars_bc(sum_connection)%den_kg
+        patch%aux%TOil_ims%auxvars_bc(sum_connection)%den_kg
       global_auxvars_bc(sum_connection)%temp = &
-        toil_auxvars_bc(sum_connection)%temp
+        !toil_auxvars_bc(sum_connection)%temp
+        patch%aux%TOil_ims%auxvars_bc(sum_connection)%temp
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -1197,7 +991,8 @@ subroutine TOilImsAccumulation(toil_auxvar,material_auxvar, &
   
   implicit none
 
-  type(toil_ims_auxvar_type) :: toil_auxvar
+  !type(toil_ims_auxvar_type) :: toil_auxvar
+  class(auxvar_toil_ims_type) :: toil_auxvar
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: soil_heat_capacity
   type(option_type) :: option
@@ -1282,7 +1077,8 @@ subroutine TOilImsFlux(toil_auxvar_up,global_auxvar_up, &
   
   implicit none
   
-  type(toil_ims_auxvar_type) :: toil_auxvar_up, toil_auxvar_dn
+  !type(toil_ims_auxvar_type) :: toil_auxvar_up, toil_auxvar_dn
+  class(auxvar_toil_ims_type) :: toil_auxvar_up, toil_auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   type(option_type) :: option
@@ -1573,7 +1369,8 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
   
   implicit none
   
-  type(toil_ims_auxvar_type) :: toil_auxvar_up, toil_auxvar_dn
+  !type(toil_ims_auxvar_type) :: toil_auxvar_up, toil_auxvar_dn
+  class(auxvar_toil_ims_type) :: toil_auxvar_up, toil_auxvar_dn 
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   class(material_auxvar_type) :: material_auxvar_dn
   type(option_type) :: option
@@ -1917,7 +1714,8 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
 
   type(option_type) :: option
   type(flow_toil_ims_condition_type), pointer :: src_sink_condition
-  type(toil_ims_auxvar_type) :: toil_auxvar
+  !type(toil_ims_auxvar_type) :: toil_auxvar
+  class(auxvar_toil_ims_type) :: toil_auxvar
   type(global_auxvar_type) :: global_auxvar !keep global_auxvar for salinity
   PetscReal :: ss_flow_vol_flux(option%nphase)
   PetscReal :: scale  
@@ -2099,6 +1897,26 @@ subroutine TOilImsSrcSink(option,src_sink_condition, toil_auxvar, &
 end subroutine TOilImsSrcSink
 
 ! ************************************************************************** !
+subroutine TOilImsDerivativePassTest(toil_auxvar,option)
+
+  use Option_module
+  use AuxVars_Flow_module
+  
+  implicit none
+
+  type(auxvar_flow_type) :: toil_auxvar(0:)
+  !class(auxvar_flow_type) :: toil_auxvar(0:)
+  type(option_type) :: option
+
+  write(*,"('acc sat01 derivTest = ',e10.4)"), toil_auxvar(0)%den(2)
+  write(*,"('acc sat11 derivTest = ',e10.4)"), toil_auxvar(1)%den(2) 
+  write(*,"('acc sat21 derivTest = ',e10.4)"), toil_auxvar(2)%den(2) 
+  write(*,"('acc sat31 derivTest = ',e10.4)"), toil_auxvar(3)%den(2) 
+     
+
+end subroutine TOilImsDerivativePassTest
+
+! ************************************************************************** !
 
 subroutine TOilImsAccumDerivative(toil_auxvar,material_auxvar, &
                                   soil_heat_capacity,option,J)
@@ -2116,7 +1934,9 @@ subroutine TOilImsAccumDerivative(toil_auxvar,material_auxvar, &
   
   implicit none
 
-  type(toil_ims_auxvar_type) :: toil_auxvar(0:)
+  !type(toil_ims_auxvar_type) :: toil_auxvar(0:)
+  type(auxvar_toil_ims_type) :: toil_auxvar(0:)
+  !class(auxvar_toil_ims_type) :: toil_auxvar(0:)
   class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: soil_heat_capacity
@@ -2138,6 +1958,15 @@ subroutine TOilImsAccumDerivative(toil_auxvar,material_auxvar, &
       !print *, irow, idof, J(irow,idof), toil_auxvar(idof)%pert
     enddo !irow
   enddo ! idof
+
+
+  !write(*,"('acc sat01 deriv = ',e10.4)"), toil_auxvar(0)%den(2)
+  !write(*,"('acc sat11 deriv = ',e10.4)"), toil_auxvar(1)%den(2) 
+  !write(*,"('acc sat21 deriv = ',e10.4)"), toil_auxvar(2)%den(2) 
+  !write(*,"('acc sat31 deriv = ',e10.4)"), toil_auxvar(3)%den(2) 
+
+!  write(*,"('acc sat derivative = ',(4(e10.4,1x)))"), &
+!        toil_auxvar(0:3)%sat(1)
 
   if (toil_ims_isothermal) then
     J(TOIL_IMS_ENERGY_EQUATION_INDEX,:) = 0.d0
@@ -2177,7 +2006,9 @@ subroutine ToilImsFluxDerivative(toil_auxvar_up,global_auxvar_up, &
   
   implicit none
   
-  type(toil_ims_auxvar_type) :: toil_auxvar_up(0:), toil_auxvar_dn(0:)
+  !type(toil_ims_auxvar_type) :: toil_auxvar_up(0:), toil_auxvar_dn(0:)
+  !class(auxvar_toil_ims_type) :: toil_auxvar_up(0:), toil_auxvar_dn(0:)
+  type(auxvar_toil_ims_type) :: toil_auxvar_up(0:), toil_auxvar_dn(0:)
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   type(option_type) :: option
@@ -2280,7 +2111,9 @@ subroutine ToilImsBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
   implicit none
 
   PetscReal :: auxvars(:) ! from aux_real_var array
-  type(toil_ims_auxvar_type) :: toil_auxvar_up, toil_auxvar_dn(0:)
+  !type(toil_ims_auxvar_type) :: toil_auxvar_up, toil_auxvar_dn(0:) 
+  !class(auxvar_toil_ims_type) :: toil_auxvar_up, toil_auxvar_dn(0:)
+  type(auxvar_toil_ims_type) :: toil_auxvar_up, toil_auxvar_dn(0:) 
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   class(material_auxvar_type) :: material_auxvar_dn
   type(option_type) :: option
@@ -2358,7 +2191,9 @@ subroutine ToilImsSrcSinkDerivative(option,src_sink_condition, toil_auxvar, &
 
   type(option_type) :: option
   type(flow_toil_ims_condition_type), pointer :: src_sink_condition
-  type(toil_ims_auxvar_type) :: toil_auxvar(0:)
+  !type(toil_ims_auxvar_type) :: toil_auxvar(0:)
+  !class(auxvar_toil_ims_type) :: toil_auxvar(0:)
+  type(auxvar_toil_ims_type) :: toil_auxvar(0:)
   type(global_auxvar_type) :: global_auxvar
   PetscReal :: scale
   PetscReal :: Jac(option%nflowdof,option%nflowdof)
@@ -2444,8 +2279,9 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
   
   type(toil_ims_parameter_type), pointer :: toil_parameter
 
+  ! new auxvar deta strucutre
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:), toil_auxvars_bc(:)
 
-  type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:), toil_auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(global_auxvar_type), pointer :: global_auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars_ss(:)
@@ -2483,11 +2319,11 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
   grid => patch%grid
   field => realization%field
   material_parameter => patch%aux%Material%material_parameter
-  toil_auxvars => patch%aux%TOil_ims%auxvars
-  toil_auxvars_bc => patch%aux%TOil_ims%auxvars_bc
-
-  ! for toil_ims specific paramters - currently not used 
-  toil_parameter => patch%aux%Toil_ims%parameter
+  !New auxvar data structure
+  !toil_auxvars => patch%aux%TOil_ims%auxvars
+  !toil_auxvars_bc => patch%aux%TOil_ims%auxvars_bc
+  !toil_parameter => patch%aux%Toil_ims%parameter
+  toil_parameter => patch%aux%TOil_ims%parameter
 
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
@@ -2538,10 +2374,11 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
     if (imat <= 0) cycle
     local_end = local_id * option%nflowdof
     local_start = local_end - option%nflowdof + 1
-    call TOilImsAccumulation(toil_auxvars(ZERO_INTEGER,ghosted_id), &
-                              material_auxvars(ghosted_id), &
-                              material_parameter%soil_heat_capacity(imat), &
-                              option,Res) 
+    call TOilImsAccumulation( &
+                          patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id), &
+                          material_auxvars(ghosted_id), &
+                          material_parameter%soil_heat_capacity(imat), &
+                          option,Res) 
     r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
     
     !TOUGH2 conv. creteria: update p+1 accumulation term
@@ -2579,19 +2416,19 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
 
-      call TOilImsFlux(toil_auxvars(ZERO_INTEGER,ghosted_id_up), &
-                       global_auxvars(ghosted_id_up), &
-                       material_auxvars(ghosted_id_up), &
-                       material_parameter%soil_residual_saturation(:,icap_up), &
-                       material_parameter%soil_thermal_conductivity(:,imat_up), &
-                       toil_auxvars(ZERO_INTEGER,ghosted_id_dn), &
-                       global_auxvars(ghosted_id_dn), &
-                       material_auxvars(ghosted_id_dn), &
-                       material_parameter%soil_residual_saturation(:,icap_dn), &
-                       material_parameter%soil_thermal_conductivity(:,imat_dn), &
-                       cur_connection_set%area(iconn), &
-                       cur_connection_set%dist(:,iconn), &
-                       toil_parameter,option,v_darcy,Res)
+      call TOilImsFlux(patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id_up), &
+                     global_auxvars(ghosted_id_up), &
+                     material_auxvars(ghosted_id_up), &
+                     material_parameter%soil_residual_saturation(:,icap_up), &
+                     material_parameter%soil_thermal_conductivity(:,imat_up), &
+                     patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id_dn), &
+                     global_auxvars(ghosted_id_dn), &
+                     material_auxvars(ghosted_id_dn), &
+                     material_parameter%soil_residual_saturation(:,icap_dn), &
+                     material_parameter%soil_thermal_conductivity(:,imat_dn), &
+                     cur_connection_set%area(iconn), &
+                     cur_connection_set%dist(:,iconn), &
+                     toil_parameter,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy
       if (associated(patch%internal_flow_fluxes)) then
@@ -2641,9 +2478,9 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
       call TOilImsBCFlux(boundary_condition%flow_bc_type, &
                      boundary_condition%flow_aux_mapping, &
                      boundary_condition%flow_aux_real_var(:,iconn), &
-                     toil_auxvars_bc(sum_connection), &
+                     patch%aux%TOil_ims%auxvars_bc(sum_connection), &
                      global_auxvars_bc(sum_connection), &
-                     toil_auxvars(ZERO_INTEGER,ghosted_id), &
+                     patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id), &
                      global_auxvars(ghosted_id), &
                      material_auxvars(ghosted_id), &
                      material_parameter%soil_residual_saturation(:,icap_dn), &
@@ -2703,9 +2540,9 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
       end if
 
       call TOilImsSrcSink(option,source_sink%flow_condition%toil_ims, &
-                                toil_auxvars(ZERO_INTEGER,ghosted_id), &
-                                global_auxvars(ghosted_id),ss_flow_vol_flux, &
-                                scale,Res)
+                         patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id), &
+                         global_auxvars(ghosted_id),ss_flow_vol_flux, &
+                         scale,Res)
 
       r_p(local_start:local_end) =  r_p(local_start:local_end) - Res(:)
 
@@ -2796,6 +2633,8 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
   use Debug_module
   use Material_Aux_class
 
+  use AuxVars_Flow_module
+
   implicit none
 
   SNES :: snes
@@ -2835,9 +2674,11 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
   type(field_type), pointer :: field 
   type(material_parameter_type), pointer :: material_parameter
   type(toil_ims_parameter_type), pointer :: toil_parameter
-  type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:), toil_auxvars_bc(:)
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:), toil_auxvars_bc(:)
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:) 
   class(material_auxvar_type), pointer :: material_auxvars(:)
+
+  class(auxvar_flow_type), pointer :: toil_auxvar_p(:)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -2847,8 +2688,10 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
   option => realization%option
   field => realization%field
   material_parameter => patch%aux%Material%material_parameter
-  toil_auxvars => patch%aux%TOil_ims%auxvars
-  toil_auxvars_bc => patch%aux%TOil_ims%auxvars_bc
+  !New auxvar data structure
+  !toil_auxvars => patch%aux%TOil_ims%auxvars
+  !toil_auxvars_bc => patch%aux%TOil_ims%auxvars_bc
+  !toil_parameter => patch%aux%TOil_ims%parameter
   toil_parameter => patch%aux%TOil_ims%parameter
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
@@ -2886,12 +2729,25 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
   do ghosted_id = 1, grid%ngmax  ! For each local node do...
     if (patch%imat(ghosted_id) <= 0) cycle
 
-    call TOilImsAuxVarPerturb(toil_auxvars(:,ghosted_id), &
+    !call TOilImsAuxVarPerturb(toil_auxvars(:,ghosted_id), &
+    ! here there could be issues, since I am passing a class arrays - to verify
+    ! otherwise pass the whole TOil_ims, or external loop on dof and 
+    ! TOilImsAuxVarPerturb to auxvar_toil_ims 
+    call TOilImsAuxVarPerturb(patch%aux%TOil_ims%auxvars(:,ghosted_id), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
                               patch%characteristic_curves_array( &
                                patch%sat_func_id(ghosted_id))%ptr, &
                               ghosted_id,option)
+    !write(*,"('after perturb = ',(4(e10.4,1x)))"), patch%aux%TOil_ims%auxvars(0:3,ghosted_id)%pert
+    ! if issues as expected above - exploit class member
+    !call patch%aux%Perturb(ghosted_id, &
+    !                       global_auxvars(ghosted_id), &
+    !                       material_auxvars(ghosted_id), &
+    !                       patch%characteristic_curves_array( &
+    !                       patch%sat_func_id(ghosted_id))%ptr, &
+    !                       ghosted_id,option)
+
   enddo
   
 !#ifdef DEBUG_GENERAL_LOCAL
@@ -2904,11 +2760,27 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
     !geh - Ignore inactive cells with inactive materials
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
+    !write(*,"('acc sat before = ',(4(e10.4,1x)))"), &
+    !     patch%aux%TOil_ims%auxvars(0:3,ghosted_id)%sat(1)
+    !write(*,"('acc sat01 before = ',e10.4)"), patch%aux%TOil_ims%auxvars(0,ghosted_id)%den(2)
+    !write(*,"('acc sat11 before = ',e10.4)"), patch%aux%TOil_ims%auxvars(1,ghosted_id)%den(2) 
+    !write(*,"('acc sat21 before = ',e10.4)"), patch%aux%TOil_ims%auxvars(2,ghosted_id)%den(2) 
+    !write(*,"('acc sat31 before = ',e10.4)"), patch%aux%TOil_ims%auxvars(3,ghosted_id)%den(2) 
 
-    call TOilImsAccumDerivative(toil_auxvars(:,ghosted_id), &
+    call TOilImsAccumDerivative(patch%aux%TOil_ims%auxvars(:,ghosted_id), &
                                 material_auxvars(ghosted_id), &
                                 material_parameter%soil_heat_capacity(imat), & 
                                 option,Jup)
+    !toil_auxvar_p => patch%aux%TOil_ims%auxvars(:,ghosted_id)
+    !call TOilImsDerivativePassTest(patch%aux%TOil_ims%auxvars(:,ghosted_id),option)
+    !call TOilImsDerivativePassTest(toil_auxvar_p,option)
+
+    !write(*,"('acc sat after = ',(4(e10.4,1x)))"), &
+    !     patch%aux%TOil_ims%auxvars(0:3,ghosted_id)%sat(1)
+    !write(*,"('acc sat01 after = ',e10.4)"), patch%aux%TOil_ims%auxvars(0,ghosted_id)%den(2)
+    !write(*,"('acc sat11 after = ',e10.4)"), patch%aux%TOil_ims%auxvars(1,ghosted_id)%den(2) 
+    !write(*,"('acc sat21 after = ',e10.4)"), patch%aux%TOil_ims%auxvars(2,ghosted_id)%den(2) 
+    !write(*,"('acc sat31 after = ',e10.4)"), patch%aux%TOil_ims%auxvars(3,ghosted_id)%den(2) 
 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                                   ADD_VALUES,ierr);CHKERRQ(ierr)
@@ -2945,13 +2817,14 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
    
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
-                              
-      call TOilImsFluxDerivative(toil_auxvars(:,ghosted_id_up), &
+      ! if issues in passing auxvars, pass the entire TOil_ims and 
+      ! ghosted_id_up, ghosted_id_dn
+      call TOilImsFluxDerivative(patch%aux%TOil_ims%auxvars(:,ghosted_id_up), &
                        global_auxvars(ghosted_id_up), &
                        material_auxvars(ghosted_id_up), &
                        material_parameter%soil_residual_saturation(:,icap_up), &
                        material_parameter%soil_thermal_conductivity(:,imat_up), &
-                       toil_auxvars(:,ghosted_id_dn), &
+                       patch%aux%TOil_ims%auxvars(:,ghosted_id_dn), &
                        global_auxvars(ghosted_id_dn), &
                        material_auxvars(ghosted_id_dn), &
                        material_parameter%soil_residual_saturation(:,icap_dn), &
@@ -3015,9 +2888,9 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
       call TOilImsBCFluxDerivative(boundary_condition%flow_bc_type, &
                      boundary_condition%flow_aux_mapping, &
                      boundary_condition%flow_aux_real_var(:,iconn), &
-                     toil_auxvars_bc(sum_connection), &
+                     patch%aux%TOil_ims%auxvars_bc(sum_connection), &
                      global_auxvars_bc(sum_connection), &
-                     toil_auxvars(:,ghosted_id), &
+                     patch%aux%TOil_ims%auxvars(:,ghosted_id), &
                      global_auxvars(ghosted_id), &
                      material_auxvars(ghosted_id), &
                      material_parameter%soil_residual_saturation(:,icap_dn), &
@@ -3065,7 +2938,7 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
 
       call TOilImsSrcSinkDerivative(option, &
                         source_sink%flow_condition%toil_ims, &
-                        toil_auxvars(:,ghosted_id), &
+                        patch%aux%TOil_ims%auxvars(:,ghosted_id), &
                         global_auxvars(ghosted_id), &
                         scale,Jup)
 
@@ -3182,257 +3055,6 @@ subroutine TOilImsDestroy(realization)
 end subroutine TOilImsDestroy
 
 ! ************************************************************************** !
-
-! ************************************************************************** !
-! PO rewritten again by mistake!!!! need comment it out
-!    in this version the write statements for debugging from General 
-!    appear commented 
-!subroutine ToilImsCheckUpdatePre(line_search,X,dX,changed,realization,ierr)
-!  ! 
-!  ! Checks update prior to update
-!  ! 
-!  ! Author: Paolo Orsini
-!  ! Date: 11/05/15
-!  ! 
-!
-!  use Realization_Subsurface_class
-!  use Grid_module
-!  use Field_module
-!  use Option_module
-!  use Saturation_Function_module
-!  use Patch_module
-! 
-!  implicit none
-!  
-!  SNESLineSearch :: line_search
-!  Vec :: X
-!  Vec :: dX
-!  PetscBool :: changed
-!  type(realization_subsurface_type) :: realization
-!  
-!  PetscReal, pointer :: X_p(:)
-!  PetscReal, pointer :: dX_p(:)
-!  PetscReal, pointer :: r_p(:)
-!  type(grid_type), pointer :: grid
-!  type(option_type), pointer :: option
-!  type(patch_type), pointer :: patch
-!  type(field_type), pointer :: field
-!  type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
-!  type(global_auxvar_type), pointer :: global_auxvars(:)  
-!
-!  PetscInt :: local_id, ghosted_id
-!  PetscInt :: offset
-!
-!  PetscInt :: pressure_index, saturation_index, temperature_index 
-!  PetscReal :: pressure0, pressure1, del_pressure
-!  PetscReal :: temperature0, temperature1, del_temperature
-!  PetscReal :: saturation0, saturation1, del_saturation
-
-!  PetscReal :: max_saturation_change = 0.125d0
-!  PetscReal :: max_temperature_change = 10.d0
-!  PetscReal :: min_pressure
-!  PetscReal :: scale, temp_scale, temp_real
-!  PetscReal, parameter :: tolerance = 0.99d0
-!  PetscReal, parameter :: initial_scale = 1.d0
-!  SNES :: snes
-!  PetscInt :: newton_iteration
-!  PetscErrorCode :: ierr
-!  
-!  grid => realization%patch%grid
-!  option => realization%option
-!  field => realization%field
-!  toil_auxvars => realization%patch%aux%TOil_Ims%auxvars
-!  global_auxvars => realization%patch%aux%Global%auxvars
-!
-!  patch => realization%patch
-!
-!  call SNESLineSearchGetSNES(line_search,snes,ierr)
-!  call SNESGetIterationNumber(snes,newton_iteration,ierr)
-!
-!  call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
-!  call VecGetArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
-!
-!  changed = PETSC_TRUE
-!
-!  scale = initial_scale
-!      
-!  if (toil_ims_max_it_before_damping > 0 .and. &
-!      newton_iteration > toil_ims_max_it_before_damping) then
-!    scale = toil_ims_damping_factor
-!  endif
-!
-!#define LIMIT_MAX_PRESSURE_CHANGE
-!#define LIMIT_MAX_SATURATION_CHANGE
-!!#define TRUNCATE_PRESSURE
-
-!!!#define LIMIT_MAX_TEMPERATURE_CHANGE
-!!#define TRUNCATE_LIQUID_PRESSURE
-!!! TRUNCATE_GAS/AIR_PRESSURE is needed for times when the solve wants
-!!! to pull them negative.
-!!#define TRUNCATE_GAS_PRESSURE
-!!#define TRUNCATE_AIR_PRESSURE
-!
-!  ! scaling
-!  do local_id = 1, grid%nlmax
-!    ghosted_id = grid%nL2G(local_id)
-!    offset = (local_id-1)*option%nflowdof
-!    temp_scale = 1.d0
-!
-!!#ifdef DEBUG_GENERAL_INFO
-!!    cell_id = grid%nG2A(ghosted_id)
-!!    write(cell_id_word,*) cell_id
-!!    cell_id_word = '(Cell ' // trim(adjustl(cell_id_word)) // '): '
-!!#endif
-!
-!    pressure_index = offset + TOIL_IMS_PRESSURE_DOF
-!    saturation_index = offset + TOIL_IMS_SATURATION_DOF
-!    temperature_index  = offset + TOIL_IMS_ENERGY_DOF
-!    dX_p(pressure_index) = dX_p(pressure_index) * &
-!                                toil_ims_pressure_scale
-!    temp_scale = 1.d0
-!    del_pressure = dX_p(pressure_index)
-!    pressure0 = X_p(pressure_index)
-!    pressure1 = pressure0 - del_pressure
-!    del_saturation = dX_p(saturation_index)
-!    saturation0 = X_p(saturation_index)
-!    saturation1 = saturation0 - del_saturation
-!
-!#ifdef LIMIT_MAX_PRESSURE_CHANGE
-!    if (dabs(del_pressure) > toil_ims_max_pressure_change) then
-!      temp_real = dabs(toil_ims_max_pressure_change/del_pressure)
-!!#ifdef DEBUG_GENERAL_INFO
-!!          if (cell_locator(0) < max_cell_id) then
-!!            cell_locator(0) = cell_locator(0) + 1
-!!            cell_locator(cell_locator(0)) = ghosted_id
-!!          endif
-!!          string = trim(cell_id_word) // &
-!!            'Gas pressure change scaled to truncate at max_pressure_change: '
-!!          call printMsg(option,string)
-!!          write(string2,*) gas_pressure0
-!!          string = '  Gas Pressure 0    : ' // adjustl(string2)
-!!          call printMsg(option,string)
-!!          write(string2,*) gas_pressure1
-!!          string = '  Gas Pressure 1    : ' // adjustl(string2)
-!!          call printMsg(option,string)
-!!          write(string2,*) -1.d0*del_gas_pressure
-!!          string = 'Gas Pressure change : ' // adjustl(string2)
-!!          call printMsg(option,string)
-!!          write(string2,*) temp_real
-!!          string = '          scaling  : ' // adjustl(string2)
-!!          call printMsg(option,string)
-!!#endif
-!      temp_scale = min(temp_scale,temp_real)
-!    endif
-!#endif !LIMIT_MAX_PRESSURE_CHANGE
-!
-!#ifdef TRUNCATE_PRESSURE
-!    if (pressure1 <= 0.d0) then
-!      if (dabs(del_pressure) > 1.d-40) then
-!        temp_real = tolerance * dabs(pressure0 / del_pressure)
-!!#ifdef DEBUG_GENERAL_INFO
-!!            if (cell_locator(0) < max_cell_id) then
-!!              cell_locator(0) = cell_locator(0) + 1
-!!              cell_locator(cell_locator(0)) = ghosted_id
-!!            endif
-!!            string = trim(cell_id_word) // &
-!!              'Gas pressure change scaled to prevent gas ' // &
-!!              'pressure from dropping below zero: '
-!!            call printMsg(option,string)
-!!            write(string2,*) gas_pressure0
-!!            string = '  Gas pressure 0   : ' // adjustl(string2)
-!!            call printMsg(option,string)
-!!            write(string2,*) gas_pressure1
-!!            string = '  Gas pressure 1   : ' // adjustl(string2)
-!!            call printMsg(option,string)
-!!            write(string2,*) -1.d0*del_gas_pressure
-!!            string = '  pressure change  : ' // adjustl(string2)
-!!            call printMsg(option,string)
-!!            write(string2,*) temp_real
-!!            string = '          scaling  : ' // adjustl(string2)
-!!            call printMsg(option,string)
-!!#endif
-!        temp_scale = min(temp_scale,temp_real)
-!      endif
-!    endif
-!#endif !TRUNCATE_PRESSURE
-!
-!#ifdef LIMIT_MAX_SATURATION_CHANGE
-!    if (dabs(del_saturation) > max_saturation_change) then
-!      temp_real = dabs(max_saturation_change/del_saturation)
-!!#ifdef DEBUG_GENERAL_INFO
-!!          if (cell_locator(0) < max_cell_id) then
-!!            cell_locator(0) = cell_locator(0) + 1
-!!            cell_locator(cell_locator(0)) = ghosted_id
-!!          endif
-!!          string = trim(cell_id_word) // &
-!!            'Gas saturation change scaled to truncate at ' // &
-!!            'max_saturation_change: '
-!!          call printMsg(option,string)
-!!          write(string2,*) saturation0
-!!          string = '  Saturation 0    : ' // adjustl(string2)
-!!          call printMsg(option,string)
-!!          write(string2,*) saturation1
-!!          string = '  Saturation 1    : ' // adjustl(string2)
-!!          call printMsg(option,string)
-!!          write(string2,*) -1.d0*del_saturation
-!!          string = 'Saturation change : ' // adjustl(string2)
-!!          call printMsg(option,string)
-!!          write(string2,*) temp_real
-!!          string = '          scaling  : ' // adjustl(string2)
-!!          call printMsg(option,string)
-!!#endif
-!      temp_scale = min(temp_scale,temp_real)
-!    endif
-!#endif !LIMIT_MAX_SATURATION_CHANGE        
-!
-!    scale = min(scale,temp_scale) 
-!  enddo
-!
-!  temp_scale = scale
-!  call MPI_Allreduce(temp_scale,scale,ONE_INTEGER_MPI, &
-!                     MPI_DOUBLE_PRECISION, &
-!                     MPI_MIN,option%mycomm,ierr)
-!
-!
-!  if (scale < 0.9999d0) then
-!!#ifdef DEBUG_GENERAL_INFO
-!!    string  = '++++++++++++++++++++++++++++++++++++++++++++++++++++++'
-!!    call printMsg(option,string)
-!!    write(string2,*) scale, (grid%nG2A(cell_locator(i)),i=1,cell_locator(0))
-!!    string = 'Final scaling: : ' // adjustl(string2)
-!!    call printMsg(option,string)
-!!    do i = 1, cell_locator(0)
-!!      ghosted_id = cell_locator(i)
-!!      offset = (ghosted_id-1)*option%nflowdof
-!!      write(string2,*) grid%nG2A(ghosted_id)
-!!      string = 'Cell ' // trim(adjustl(string2))
-!!      write(string2,*) global_auxvars(ghosted_id)%istate
-!!      string = trim(string) // ' (State = ' // trim(adjustl(string2)) // ') '
-!!      call printMsg(option,string)
-!!      ! for some reason cannot perform array operation on dX_p(:)
-!!      write(string2,*) (X_p(offset+ii),ii=1,3)
-!!      string = '   Orig. Solution: ' // trim(adjustl(string2))
-!!      call printMsg(option,string)
-!!      write(string2,*) (X_p(offset+ii)-dX_p(offset+ii),ii=1,3)
-!!      string = '  Solution before: ' // trim(adjustl(string2))
-!!      call printMsg(option,string)
-!!      write(string2,*) (X_p(offset+ii)-scale*dX_p(offset+ii),ii=1,3)
-!!      string = '   Solution after: ' // trim(adjustl(string2))
-!!      call printMsg(option,string)
-!!    enddo
-!!    string  = '++++++++++++++++++++++++++++++++++++++++++++++++++++++'
-!!    call printMsg(option,string)
-!!#endif
-!    dX_p = scale*dX_p
-!  endif
-!
-!  call VecRestoreArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
-!  call VecRestoreArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
-!
-!end subroutine ToilImsCheckUpdatePre
-!
-!! ************************************************************************** !
-
 
 ! ************************************************************************** !
 

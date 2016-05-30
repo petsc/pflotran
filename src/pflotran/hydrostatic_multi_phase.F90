@@ -90,8 +90,12 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   use Dataset_Gridded_HDF5_class
   use Dataset_Ascii_class
   
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module 
+    ! to use constant paramters such as TOIL_IMS_PRESSURE_DOF
+    ! could work something out to eliminate this dependency here 
   
+
   implicit none
 
   type(coupler_type) :: coupler

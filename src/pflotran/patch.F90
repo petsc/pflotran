@@ -1087,8 +1087,12 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   use Condition_module
   use Transport_Constraint_module
   use General_Aux_module
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module 
+    ! to use constant paramters such as TOIL_IMS_MAX_INDEX
+    ! could work something out to eliminate this dependency here 
   
+
   implicit none
   
   type(coupler_list_type), pointer :: coupler_list
@@ -1791,7 +1795,9 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
   use HydrostaticMultiPhase_module  
   use Saturation_module
   
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module 
+
   use Grid_module
   use Dataset_Common_HDF5_class
   use Dataset_Gridded_HDF5_class
@@ -3474,7 +3480,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
   use Output_Aux_module
   use Variables_module
   use Material_Aux_class
-  
+
   implicit none
 
 #include "petsc/finclude/petscvec.h"
@@ -3502,9 +3508,10 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
   PetscInt :: ivar_temp
   PetscErrorCode :: ierr
 
+  
   grid => patch%grid
   material_auxvars => patch%aux%Material%auxvars
-  
+
   call VecGetArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
 
   iphase = 1
@@ -4141,40 +4148,47 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
             enddo
         end select 
 
-      else if (associated(patch%aux%TOil_ims)) then
+      !new auvar data structure
+      !else if (associated(patch%aux%TOil_ims)) then
+      else if (associated(patch%aux%TOil_ims)) then 
 
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%TOil_ims% &
-                auxvars(ZERO_INTEGER,grid%nL2G(local_id))%temp
+              !vec_ptr(local_id) = patch%aux%TOil_ims% &
+               vec_ptr(local_id) = patch%aux%TOil_ims% &
+                 auxvars(ZERO_INTEGER,grid%nL2G(local_id))%temp
             enddo
           case(MAXIMUM_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               vec_ptr(local_id) = &
-                  maxval(patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                  !maxval(patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                  maxval(patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% & 
                            pres(option%liquid_phase:option%oil_phase))
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               vec_ptr(local_id) = &
-                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                !patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                 patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
                   pres(option%liquid_phase)
             enddo
           case(OIL_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               vec_ptr(local_id) = &
-                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                !patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% & 
                   pres(option%oil_phase)
             enddo
           case(CAPILLARY_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               vec_ptr(local_id) = &
-                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                !patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% & 
                   pres(option%capillary_pressure_id)
             enddo
           case(LIQUID_SATURATION)
@@ -4743,7 +4757,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   PetscErrorCode :: ierr
 
   grid => patch%grid
-  material_auxvars => patch%aux%Material%auxvars
+  material_auxvars => patch%aux%Material%auxvars  
   
   value = UNINITIALIZED_DOUBLE
 

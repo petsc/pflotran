@@ -1,0 +1,98 @@
+module PM_Base_Aux_module
+
+  use AuxVars_Base_module
+  use PFLOTRAN_Constants_module
+
+  implicit none
+
+  private
+
+#include "petsc/finclude/petscsys.h"
+
+  type, public :: pm_base_aux_type 
+    PetscInt :: n_inactive_rows
+    PetscInt, pointer :: inactive_rows_local(:), inactive_rows_local_ghosted(:)
+    PetscInt, pointer :: row_zeroing_array(:)
+
+    PetscBool :: auxvars_up_to_date
+    PetscBool :: inactive_cells_exist
+    PetscInt :: num_aux, num_aux_bc, num_aux_ss
+
+    !if required to operate with auxvar_base objects use pointers below
+    !to be pointed to doughter classes auxvars passed down as dummy arguments
+    !class(auxvar_base_type), pointer :: auxvars_base(:,:)
+    !class(auxvar_base_type), pointer :: auxvars_bc_base(:)
+    !class(auxvar_base_type), pointer :: auxvars_ss_base(:)
+    !gfrotran 4.8.4 bugs. class arrays cannot be passed corretly
+    ! covert type ouside calling fucntion using a class pointer, and pass
+    ! and use compatible "type()" to declair the dummy arguments. 
+  contains
+    !add here type-bound-procedure
+    ! procedure, public :: Init => InitBaseAuxVars
+  end type pm_base_aux_type
+
+ 
+  public :: PM_Base_AuxInit, InitBaseAuxVars ! , &
+  !          AuxDestroy
+  ! create only the base part of the aux_vars   
+
+contains
+
+! ************************************************************************** !
+
+subroutine PM_Base_AuxInit(this)
+  ! 
+  ! Initialize pm auvars 
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 5/27/16
+  ! 
+
+  implicit none
+
+  class(pm_base_aux_type) :: this
+
+  this%auxvars_up_to_date = PETSC_FALSE
+  this%inactive_cells_exist = PETSC_FALSE
+  this%num_aux = 0
+  this%num_aux_bc = 0
+  this%num_aux_ss = 0
+  !nullify(this%auxvars_base)
+  !nullify(this%auxvars_bc_base)
+  !nullify(this%auxvars_ss_base)
+  this%n_inactive_rows = 0
+  nullify(this%inactive_rows_local)
+  nullify(this%inactive_rows_local_ghosted)
+  nullify(this%row_zeroing_array)
+
+end subroutine PM_Base_AuxInit
+
+! ************************************************************************** !
+
+subroutine InitBaseAuxVars(this,grid,option)
+  ! 
+  ! Initialize pm_aux  
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 5/27/16
+  ! 
+
+  use Option_module
+  use Grid_module 
+
+  implicit none
+
+  class(pm_base_aux_type) :: this
+  PetscInt :: num_bc_connection
+  PetscInt :: num_ss_connection  
+  type(grid_type) :: grid
+  type(option_type) :: option
+
+  allocate(this%row_zeroing_array(grid%nlmax))
+  this%row_zeroing_array = 0
+
+end subroutine InitBaseAuxVars
+
+! ************************************************************************** !
+
+end module PM_Base_Aux_module

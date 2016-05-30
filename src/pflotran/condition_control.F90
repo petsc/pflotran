@@ -51,8 +51,11 @@ subroutine CondControlAssignFlowInitCond(realization)
   use Global_module
   use Global_Aux_module
   use General_Aux_module
-  use TOilIms_Aux_module
-  
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module 
+    ! to use constant paramters such as TOIL_IMS_PRESSURE_DOF
+    ! could work something out to eliminate this dependency here 
+
   implicit none
 
 #include "petsc/finclude/petscvec.h"

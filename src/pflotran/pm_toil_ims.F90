@@ -106,7 +106,8 @@ subroutine PMTOilImsRead(this,input)
   ! Date: Date: 9/9/15
   !
   ! use TOilIms_module ! shouldn't need this... 
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module 
   use Input_Aux_module
   use String_module
   use Option_module
@@ -459,7 +460,8 @@ subroutine PMTOilImsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! 
   !use Realization_Subsurface_class
   use Grid_module
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module
   !use Global_Aux_module
   use Field_module
   use Option_module
@@ -642,7 +644,8 @@ subroutine PMTOilImsCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   ! Date: 11/09/15
   ! 
   !use Global_Aux_module
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module
   use Grid_module
   use Option_module
   !use Realization_Subsurface_class
@@ -846,7 +849,7 @@ end subroutine PMTOilImsTimeCut
 
 subroutine PMTOilImsMaxChange(this)
   ! 
-  ! Not needed given GeneralMaxChange is called in PostSolve
+  ! Not needed given ToilImsMaxChange is called in PostSolve
   ! 
   ! Author: Paolo Orsini
   ! Date: 11/09/15
