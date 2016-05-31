@@ -32,7 +32,8 @@ module PM_Base_Aux_module
   end type pm_base_aux_type
 
  
-  public :: PM_Base_AuxInit, InitBaseAuxVars ! , &
+  public :: PM_Base_AuxInit, InitBaseAuxVars , &
+            PMBaseAuxStrip 
   !          AuxDestroy
   ! create only the base part of the aux_vars   
 
@@ -83,15 +84,39 @@ subroutine InitBaseAuxVars(this,grid,option)
   implicit none
 
   class(pm_base_aux_type) :: this
-  PetscInt :: num_bc_connection
-  PetscInt :: num_ss_connection  
   type(grid_type) :: grid
   type(option_type) :: option
 
   allocate(this%row_zeroing_array(grid%nlmax))
   this%row_zeroing_array = 0
 
+  !note
+  !inactive_rows_local and inactive_rows_local_ghosted
+  ! are allocated in InitSubsurfaceCreateZeroArray 
+
 end subroutine InitBaseAuxVars
+
+! ************************************************************************** !
+
+subroutine PMBaseAuxStrip(this)
+  ! 
+  ! destroy pm_base_aux  
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 5/30/16
+  ! 
+
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+
+  class(pm_base_aux_type) :: this
+
+  call DeallocateArray(this%inactive_rows_local)
+  call DeallocateArray(this%inactive_rows_local_ghosted)
+  call DeallocateArray(this%row_zeroing_array)
+ 
+end subroutine PMBaseAuxStrip
 
 ! ************************************************************************** !
 

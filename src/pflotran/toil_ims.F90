@@ -1935,8 +1935,8 @@ subroutine TOilImsAccumDerivative(toil_auxvar,material_auxvar, &
   implicit none
 
   !type(toil_ims_auxvar_type) :: toil_auxvar(0:)
-  type(auxvar_toil_ims_type) :: toil_auxvar(0:)
   !class(auxvar_toil_ims_type) :: toil_auxvar(0:)
+  type(auxvar_toil_ims_type) :: toil_auxvar(0:)
   class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: soil_heat_capacity
@@ -1947,8 +1947,18 @@ subroutine TOilImsAccumDerivative(toil_auxvar,material_auxvar, &
 
   !print *, 'ToilImsAccumDerivative'
 
+  !write(*,"('acc sat01 derivB = ',e10.4)"), toil_auxvar(0)%den(2)
+  !write(*,"('acc sat11 derivB = ',e10.4)"), toil_auxvar(1)%den(2) 
+  !write(*,"('acc sat21 derivB = ',e10.4)"), toil_auxvar(2)%den(2) 
+  !write(*,"('acc sat31 derivB = ',e10.4)"), toil_auxvar(3)%den(2) 
+
   call TOilImsAccumulation(toil_auxvar(ZERO_INTEGER), &
                            material_auxvar,soil_heat_capacity,option,Res)
+
+  !write(*,"('acc sat01 derivM = ',e10.4)"), toil_auxvar(0)%den(2)
+  !write(*,"('acc sat11 derivM = ',e10.4)"), toil_auxvar(1)%den(2) 
+  !write(*,"('acc sat21 derivM = ',e10.4)"), toil_auxvar(2)%den(2) 
+  !write(*,"('acc sat31 derivM = ',e10.4)"), toil_auxvar(3)%den(2) 
 
   do idof = 1, option%nflowdof
     call TOilImsAccumulation(toil_auxvar(idof), &

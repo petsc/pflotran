@@ -16,7 +16,10 @@ module AuxVars_TOilIms_module
     ! no data at the moment
   contains
     procedure, public :: Init => TOilImsAuxVarInit
+    procedure, public :: Strip => StripTOilImsAuxVar
   end type auxvar_toil_ims_type
+
+  public :: StripTOilImsAuxVar
 
 contains
 
@@ -71,7 +74,33 @@ subroutine TOilImsAuxVarInit(this,option)
 
 end subroutine TOilImsAuxVarInit
 
+! ************************************************************************** !
 
+subroutine StripTOilImsAuxVar(this)
+  ! 
+  ! TOilImsAuxVarDestroy: Deallocates a toil_ims auxiliary object
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/30/16
+  ! 
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+
+  class(auxvar_toil_ims_type) :: this
+
+    !write(*,*) this%pres(1), this%pres(2)
+    call DeallocateArray(this%pres)  
+    call DeallocateArray(this%sat)  
+    call DeallocateArray(this%den)  
+    call DeallocateArray(this%den_kg)  
+    call DeallocateArray(this%mobility)  
+
+  ! this should be moved to auxvar_flow_energy class
+    call DeallocateArray(this%H)  
+    call DeallocateArray(this%U)  
+
+end subroutine StripTOilImsAuxVar
 ! ************************************************************************** !
 
 end module AuxVars_TOilIms_module

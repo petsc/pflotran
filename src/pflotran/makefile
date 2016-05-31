@@ -464,7 +464,7 @@ auxvars_base.o : option.o pflotran_constants.o
 auxvars_flow.o : auxvars_base.o option.o pflotran_constants.o
 auxvars_flow_energy.o : auxvars_base.o auxvars_flow.o pflotran_constants.o
 auxvars_toil_ims.o : auxvars_base.o auxvars_flow.o auxvars_flow_energy.o \
-                     option.o pflotran_constants.o
+                     option.o pflotran_constants.o utility.o
 block_solve.o :
 block_tridiag.o : pflotran_constants.o
 characteristic_curves.o : input_aux.o option.o pflotran_constants.o string.o \
@@ -903,7 +903,7 @@ pm_auxiliary.o : communicator_base.o global_aux.o init_subsurface.o \
                  realization_subsurface.o string.o
 pm_base.o : input_aux.o option.o output_aux.o pflotran_constants.o \
             realization_base.o solver.o
-pm_base_aux.o : auxvars_base.o grid.o option.o pflotran_constants.o
+pm_base_aux.o : auxvars_base.o grid.o option.o pflotran_constants.o utility.o
 pm_base_pointer.o : option.o pflotran_constants.o pm_base.o \
                     realization_subsurface.o
 pm_flash2.o : eos_water.o flash2.o flash2_aux.o input_aux.o option.o \
@@ -976,7 +976,7 @@ pm_toil_ims.o : checkpoint.o field.o global.o global_aux.o grid.o input_aux.o \
                 string.o toil_ims.o variables.o
 pm_toil_ims_aux.o : auxvars_toil_ims.o characteristic_curves.o eos_oil.o \
                     eos_water.o global_aux.o grid.o material_aux.o option.o \
-                    pflotran_constants.o pm_base_aux.o
+                    pflotran_constants.o pm_base_aux.o utility.o
 pm_ufd_decay.o : field.o global.o global_aux.o grid.o input_aux.o \
                  material_aux.o option.o patch.o pflotran_constants.o \
                  pm_base.o reaction_aux.o reaction_mineral_aux.o \

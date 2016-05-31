@@ -94,9 +94,14 @@ module PM_TOilIms_Aux_module
     !procedure, public :: Perturb => PerturbTOilIms
   end type pm_toil_ims_aux_type
 
+  interface TOilImsAuxVarStrip
+    module procedure TOilImsAuxVarArray1Strip
+    module procedure TOilImsAuxVarArray2Strip
+  end interface TOilImsAuxVarStrip
  
   public :: TOilImsAuxCreate, TOilImsAuxVarCompute, &
-            TOilImsAuxVarPerturb
+            TOilImsAuxVarPerturb, TOilImsAuxDestroy, &
+            TOilImsAuxVarStrip
   !          AuxDestroy
   ! create only the base part of the aux_vars   
 
@@ -120,11 +125,12 @@ function TOilImsAuxCreate(option)
   type(option_type) :: option
     
   !type(toil_ims_type), pointer :: TOilImsAuxCreate
-  type(pm_toil_ims_aux_type), pointer :: TOilImsAuxCreate
-    
+  !type(pm_toil_ims_aux_type), pointer :: TOilImsAuxCreate
+  class(pm_toil_ims_aux_type), pointer :: TOilImsAuxCreate  
 
   !type(toil_ims_type), pointer :: aux
-  type(pm_toil_ims_aux_type), pointer :: aux
+  !type(pm_toil_ims_aux_type), pointer :: aux
+  class(pm_toil_ims_aux_type), pointer :: aux
 
   ! there is no variable switch, but this map can be used 
   ! to change the primary variable set 
@@ -140,6 +146,10 @@ function TOilImsAuxCreate(option)
     allocate(aux) 
 
     call PM_Base_AuxInit(aux) 
+
+    nullify(aux%auxvars)
+    nullify(aux%auxvars_bc)
+    nullify(aux%auxvars_ss)
 
     !this is all common part - done in PM_Base_AuxvarsInit   
       !aux%auxvars_up_to_date = PETSC_FALSE
@@ -188,7 +198,7 @@ subroutine InitTOilImsAuxVars(this,grid,num_bc_connection, &
   !type(option_type), pointer :: option
   !type(grid_type), pointer :: grid
 
-  PetscInt :: ghosted_id, iconn, sum_connection, local_id
+  PetscInt :: ghosted_id, iconn, local_id
   PetscInt :: idof 
   !PetscInt :: i, idof , count
   !PetscBool :: error_found
@@ -642,6 +652,201 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
  
 end subroutine TOilImsAuxVarPerturb
 
+
+! ************************************************************************** !
+
+subroutine TOilImsAuxDestroy(aux)
+  ! 
+  ! Deallocates a toil_ims auxiliary object
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 05/30/16
+  ! 
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+
+  !type(TOil_ims_type), pointer :: aux
+  class(pm_toil_ims_aux_type), pointer :: aux
+  !class(pm_toil_ims_aux_type) :: aux
+  PetscInt :: iaux, idof
+  
+  if (.not.associated(aux)) return
+  
+!debug testing 
+#if 0  
+  if (associated(aux%auxvars_bc)) then
+    do iaux = 1, size(aux%auxvars_bc(:))
+      !print *, "i am in TOilImsAuxVarArray1Destroy iaux loop", iaux
+      !call TOilImsAuxVarStrip(auxvars(iaux))
+      call aux%auxvars_bc(iaux)%Strip()
+    enddo  
+    !print *, "i am in TOilImsAuxVarArray1Destroy after auxvars loop"
+    deallocate(aux%auxvars_bc)
+    !print *, "after deallocation 1D auxvars"
+  endif
+  nullify(aux%auxvars_bc)  
+  !print *, "after 1D nullify auxvars"
+
+
+  if (associated(aux%auxvars_ss)) then
+    do iaux = 1, size(aux%auxvars_ss(:))
+      !print *, "i am in TOilImsAuxVarArray1Destroy iaux loop", iaux
+      !call TOilImsAuxVarStrip(auxvars(iaux))
+      call aux%auxvars_ss(iaux)%Strip()
+    enddo  
+    !print *, "i am in TOilImsAuxVarArray1Destroy after auxvars loop"
+    deallocate(aux%auxvars_ss)
+    !print *, "after deallocation 1D auxvars"
+  endif
+  nullify(aux%auxvars_ss)  
+  !print *, "after 1D nullify auxvars"
+
+
+  if (associated(aux%auxvars)) then
+    do iaux = 1, size(aux%auxvars,2)
+      do idof = 1, size(aux%auxvars,1)
+        !print *, "i am before TOilImsAuxVarStrip"
+        !call TOilImsAuxVarStrip(aux%auxvars(idof-1,iaux))
+        call aux%auxvars(idof-1,iaux)%Strip()
+      enddo
+    enddo  
+    deallocate(aux%auxvars)
+  endif
+  nullify(aux%auxvars)  
+#endif
+
+  !debug printing  
+  !print *, "den oil 01 int = ", aux%auxvars(0,1)%den(2)
+  !print *, "den oil 11 int = ", aux%auxvars(1,1)%den(2)
+  !print *, "den oil 21 int = ", aux%auxvars(2,1)%den(2)
+  !print *, "den oil 31 int = ", aux%auxvars(3,1)%den(2)
+  if (associated(aux%auxvars) ) then
+    call TOilImsAuxVarStrip(aux%auxvars)
+    !call TOilImsAuxVarArray2Strip(aux%auxvars)
+    deallocate(aux%auxvars)
+  end if 
+  nullify(aux%auxvars) 
+
+  !print *, "den oil bc = ", aux%auxvars_bc(1)%den(2)
+  if (associated(aux%auxvars_bc) ) then
+    call TOilImsAuxVarStrip(aux%auxvars_bc)
+    deallocate(aux%auxvars_bc)
+  end if
+  nullify(aux%auxvars_bc)
+
+  !print *, "den oil bc = ", aux%auxvars_ss(1)%den(2)
+  if ( associated(aux%auxvars_ss) ) then
+    call TOilImsAuxVarStrip(aux%auxvars_ss)
+    deallocate(aux%auxvars_ss)
+  end if
+  nullify(aux%auxvars_ss)
+
+  !moved to PmBaseAuxStrip
+  !call DeallocateArray(aux%inactive_rows_local)
+  !call DeallocateArray(aux%inactive_rows_local_ghosted)
+  !call DeallocateArray(aux%row_zeroing_array)
+  call PMBaseAuxStrip(aux)
+
+  if (associated(aux%parameter)) then
+    deallocate(aux%parameter) 
+  end if
+  nullify(aux%parameter)
+  
+  deallocate(aux)
+  nullify(aux)
+  
+end subroutine TOilImsAuxDestroy
+
+! ************************************************************************** !
+
+subroutine  TOilImsAuxVarArray1Strip(auxvars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! this could be generalised for different modes 
+  ! using class(*) (unlimited polymorphic)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/20/15
+  ! 
+
+  use AuxVars_TOilIms_module
+
+  implicit none
+
+  !can't use class due to gfortran (4.8.4) bug (values passed are not correct)
+  !class(auxvar_toil_ims_type), pointer :: auxvars(:)
+  !here we can pass by pointer, we could destroy the array within the routine
+  !but we don't to be consistent with TOilImsAuxVarArray2Strip 
+  type(auxvar_toil_ims_type), pointer :: auxvars(:)
+
+  PetscInt :: iaux
+
+  !print *, "den oil bc/ss pass = ", auxvars(1)%den(2)
+  
+  !if (associated(auxvars)) then
+    do iaux = 1, size(auxvars)
+      !print *, "i am in TOilImsAuxVarArray1Destroy iaux loop", iaux
+      !call TOilImsAuxVarStrip(auxvars(iaux))
+      !print *, "den oil = ", auxvars(iaux)%den(2) 
+      call auxvars(iaux)%Strip
+    enddo  
+    !print *, "i am in TOilImsAuxVarArray1Destroy after auxvars loop"
+    !deallocate(auxvars)
+    !print *, "after deallocation 1D auxvars"
+  !endif
+  !nullify(auxvars)  
+  !print *, "after 1D nullify auxvars"
+
+end subroutine TOilImsAuxVarArray1Strip
+
+! ************************************************************************** !
+
+subroutine TOilImsAuxVarArray2Strip(auxvars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! this could be generalised for different modes 
+  ! using class(*) (unlimited polymorphic)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/20/15
+  ! 
+
+  use AuxVars_TOilIms_module
+
+  implicit none
+
+  !can't use class due to gfortran (4.8.4) bug (values passed are not correct)
+  !class(auxvar_toil_ims_type) :: auxvars(0:,:)
+  !cannot use type(...) with pointer attribute.
+  !because the compiler does not allow to specify lower 0-bound in auxvar
+  !type(auxvar_toil_ims_type), pointer :: auxvars(:,:)
+  type(auxvar_toil_ims_type) :: auxvars(0:,:)
+
+  PetscInt :: iaux, idof
+
+  !print *, "i am in TOilImsAuxVarArray2Destroy"
+
+  !print *, "den oil 01 int pass = ", auxvars(0,1)%den(2)
+  !print *, "den oil 11 int pass= ", auxvars(1,1)%den(2)
+  !print *, "den oil 21 int pass= ", auxvars(2,1)%den(2)
+  !print *, "den oil 31 int pass= ", auxvars(3,1)%den(2)
+  
+  !if (associated(auxvars)) then
+    do iaux = 1, size(auxvars,2)
+      do idof = 1, size(auxvars,1)
+        !print *, "i am before TOilImsAuxVarStrip"
+        !call TOilImsAuxVarStrip(auxvars(idof-1,iaux))
+        call auxvars(idof-1,iaux)%Strip()
+      enddo
+    enddo  
+    !deallocate(auxvars)
+  !endif
+  !nullify(auxvars)  
+
+end subroutine TOilImsAuxVarArray2Strip
+
+! ************************************************************************** !
 
 ! ************************************************************************** !
 ! this has been moved to auxvar_toil_ims_type
