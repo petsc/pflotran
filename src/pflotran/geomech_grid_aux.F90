@@ -650,23 +650,22 @@ subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
     case(MATAIJ)
       d_nnz = d_nnz*gmdm%ndof
       o_nnz = o_nnz*gmdm%ndof
-      call MatCreateAIJ(option%mycomm,ndof_local,ndof_local, &
-                        PETSC_DETERMINE,PETSC_DETERMINE, &
-                        PETSC_NULL_INTEGER,d_nnz, &
-                        PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
-      call MatSetLocalToGlobalMapping(J,gmdm%mapping_ltog, &
-                                      gmdm%mapping_ltog,ierr);CHKERRQ(ierr)
     case(MATBAIJ)
-      call MatCreateBAIJ(option%mycomm,gmdm%ndof,ndof_local,ndof_local, &
-                         PETSC_DETERMINE,PETSC_DETERMINE, &
-                         PETSC_NULL_INTEGER,d_nnz, &
-                         PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
-      call MatSetLocalToGlobalMapping(J,gmdm%mapping_ltog, &
-                                      gmdm%mapping_ltog,ierr);CHKERRQ(ierr)
     case default
       option%io_buffer = 'MatType not recognized in GMGridDMCreateJacobian'
       call printErrMsg(option)
   end select 
+  
+  call MatCreate(option%mycomm,J,ierr);CHKERRQ(ierr)
+  call MatSetType(J,mat_type,ierr);CHKERRQ(ierr)
+  call MatSetSizes(J,ndof_local,ndof_local,PETSC_DETERMINE,PETSC_DETERMINE, &
+                   ierr);CHKERRQ(ierr)
+  call MatSetFromOptions(J,ierr);CHKERRQ(ierr)  
+  call MatXAIJSetPreallocation(J,gmdm%ndof,d_nnz,o_nnz, &
+                               PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                               ierr); CHKERRQ(ierr)
+  call MatSetLocalToGlobalMapping(J,gmdm%mapping_ltog, &
+                                  gmdm%mapping_ltog,ierr);CHKERRQ(ierr)
   
                         
   deallocate(d_nnz)

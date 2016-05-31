@@ -1563,7 +1563,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
                         ierr);CHKERRQ(ierr)
   call MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE, &
                     ierr);CHKERRQ(ierr)
-
+                    
   deallocate(rows)
 
 end subroutine GeomechForceJacobianPatch  
