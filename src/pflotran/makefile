@@ -386,7 +386,6 @@ geomech_obj = \
 	${common_src}geomechanics_force.o \
 	${common_src}geomechanics_global.o \
 	${common_src}geomechanics_global_aux.o\
-	${common_src}geomechanics_logging.o \
 	${common_src}geomechanics_material.o \
 	${common_src}geomechanics_patch.o \
 	${common_src}geomechanics_region.o \
@@ -643,7 +642,7 @@ geomech_grid_aux.o : gauss.o grid_unstructured_cell.o option.o \
                      pflotran_constants.o utility.o
 geomechanics_auxiliary.o : geomechanics_global_aux.o pflotran_constants.o
 geomechanics_condition.o : condition.o dataset.o dataset_ascii.o \
-                           dataset_base.o geomechanics_logging.o input_aux.o \
+                           dataset_base.o input_aux.o \
                            option.o pflotran_constants.o string.o \
                            time_storage.o
 geomechanics_coupler.o : geomechanics_condition.o geomechanics_region.o \
@@ -656,7 +655,7 @@ geomechanics_force.o : discretization.o field.o geomech_grid.o \
                        geomech_grid_aux.o geomechanics_auxiliary.o \
                        geomechanics_coupler.o geomechanics_debug.o \
                        geomechanics_discretization.o geomechanics_field.o \
-                       geomechanics_global_aux.o geomechanics_logging.o \
+                       geomechanics_global_aux.o \
                        geomechanics_material.o geomechanics_patch.o \
                        geomechanics_realization.o geomechanics_region.o grid.o \
                        grid_unstructured_cell.o material.o material_aux.o \
@@ -669,7 +668,6 @@ geomechanics_global.o : geomech_grid.o geomech_grid_aux.o \
                         geomechanics_patch.o geomechanics_realization.o \
                         option.o pflotran_constants.o variables.o
 geomechanics_global_aux.o : option.o pflotran_constants.o utility.o
-geomechanics_logging.o : pflotran_constants.o
 geomechanics_material.o : input_aux.o option.o pflotran_constants.o string.o
 geomechanics_patch.o : dataset_base.o geomech_grid.o geomech_grid_aux.o \
                        geomechanics_auxiliary.o geomechanics_condition.o \
@@ -819,7 +817,7 @@ output_common.o : connection.o coupler.o field.o global_aux.o grid.o \
 output_ekg.o : option.o output_aux.o pflotran_constants.o
 output_geomechanics.o : geomech_grid.o geomech_grid_aux.o \
                         geomechanics_discretization.o geomechanics_field.o \
-                        geomechanics_logging.o geomechanics_patch.o \
+                        geomechanics_patch.o \
                         geomechanics_realization.o grid_unstructured_cell.o \
                         hdf5.o hdf5_aux.o logging.o option.o output_aux.o \
                         output_common.o output_hdf5.o output_tecplot.o \
