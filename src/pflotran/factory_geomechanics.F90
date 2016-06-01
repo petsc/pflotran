@@ -313,6 +313,11 @@ subroutine GeomechanicsJumpStart(simulation)
   
   call OutputGeomechInit(master_timestepper%steps)
 
+  ! pushed in INIT_STAGE()
+  call PetscLogStagePop(ierr);CHKERRQ(ierr)
+
+  ! popped in TS_STAGE()
+  call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
 
 end subroutine GeomechanicsJumpStart
 
