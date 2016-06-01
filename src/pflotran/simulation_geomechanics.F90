@@ -241,8 +241,6 @@ subroutine GeomechanicsSimulationStrip(this)
   
   call SubsurfaceSimulationStrip(this)
   call GeomechRealizDestroy(this%geomech_realization)
-  deallocate(this%geomech_realization)
-  nullify(this%geomech_realization)
   call RegressionDestroy(this%regression)
   call WaypointListDestroy(this%waypoint_list_geomechanics)  
   

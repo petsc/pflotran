@@ -776,7 +776,7 @@ subroutine GeomechDiscretizationDestroy(geomech_discretization)
   
   PetscErrorCode :: ierr
   PetscInt :: i
-    
+
   if (.not.associated(geomech_discretization)) return
       
   if (associated(geomech_discretization%dm_1dof%gmdm)) &
