@@ -19,6 +19,7 @@ module PMC_Geomechanics_class
     procedure, public :: RunToTime => PMCGeomechanicsRunToTime
     procedure, public :: GetAuxData => PMCGeomechanicsGetAuxData
     procedure, public :: SetAuxData => PMCGeomechanicsSetAuxData
+    procedure, public :: Destroy => PMCGeomechanicsDestroy
   end type pmc_geomechanics_type
 
   public :: PMCGeomechanicsCreate
@@ -329,5 +330,60 @@ subroutine PMCGeomechanicsGetAuxData(this)
   end select
 
 end subroutine PMCGeomechanicsGetAuxData
+
+! ************************************************************************** !
+
+subroutine PMCGeomechanicsStrip(this)
+  !
+  ! Deallocates members of PMC Geomechanics.
+  !
+  ! Author: Satish Karra
+  ! Date: 06/01/16
+  
+  implicit none
+  
+  class(pmc_geomechanics_type) :: this
+
+  call PMCBaseStrip(this)
+  ! realizations destroyed elsewhere
+  nullify(this%subsurf_realization)
+  nullify(this%geomech_realization)
+
+end subroutine PMCGeomechanicsStrip
+
+! ************************************************************************** !
+
+recursive subroutine PMCGeomechanicsDestroy(this)
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/01/16
+  ! 
+  use Option_module
+
+  implicit none
+  
+  class(pmc_geomechanics_type) :: this
+  
+#ifdef DEBUG
+  call printMsg(this%option,'PMCGeomechanics%Destroy()')
+#endif
+
+  if (associated(this%child)) then
+    call this%child%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%child)
+    nullify(this%child)
+  endif 
+  
+  if (associated(this%peer)) then
+    call this%peer%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%peer)
+    nullify(this%peer)
+  endif
+  
+  call PMCGeomechanicsStrip(this)
+
+end subroutine PMCGeomechanicsDestroy
 
 end module PMC_Geomechanics_class
