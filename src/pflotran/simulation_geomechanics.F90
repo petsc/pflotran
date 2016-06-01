@@ -240,7 +240,6 @@ subroutine GeomechanicsSimulationStrip(this)
   call printMsg(this%option,'GeomechanicsSimulationStrip()')
   
   call SubsurfaceSimulationStrip(this)
-  call GeomechRealizDestroy(this%geomech_realization)
   call RegressionDestroy(this%regression)
   call WaypointListDestroy(this%waypoint_list_geomechanics)  
   

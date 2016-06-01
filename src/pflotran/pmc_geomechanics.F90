@@ -347,6 +347,7 @@ subroutine PMCGeomechanicsStrip(this)
   call PMCBaseStrip(this)
   ! realizations destroyed elsewhere
   nullify(this%subsurf_realization)
+  nullify(this%geomech_realization)
 
 end subroutine PMCGeomechanicsStrip
 
