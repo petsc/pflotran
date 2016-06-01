@@ -445,8 +445,8 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
   type(geomech_field_type), pointer :: field
   type(option_type), pointer :: option
   
-  call PetscLogEventBegin(geomech_logging%event_geomech_residual, &
-                          ierr);CHKERRQ(ierr)
+!  call PetscLogEventBegin(geomech_logging%event_geomech_residual, &
+!                          ierr);CHKERRQ(ierr)
   
   field => geomech_realization%geomech_field
   geomech_discretization => geomech_realization%geomech_discretization
@@ -475,8 +475,8 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
-  call PetscLogEventEnd(geomech_logging%event_geomech_residual, &
-                        ierr);CHKERRQ(ierr)
+!  call PetscLogEventEnd(geomech_logging%event_geomech_residual, &
+!                        ierr);CHKERRQ(ierr)
 
 end subroutine GeomechForceResidual
 
@@ -1305,8 +1305,8 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
   type(option_type), pointer :: option
   PetscReal :: norm
   
-  call PetscLogEventBegin(geomech_logging%event_geomech_jacobian, &
-                          ierr);CHKERRQ(ierr)
+!  call PetscLogEventBegin(geomech_logging%event_geomech_jacobian, &
+!                          ierr);CHKERRQ(ierr)
 
   option => geomech_realization%option
 
@@ -1344,8 +1344,8 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
     call printMsg(option) 
   endif
 
-  call PetscLogEventEnd(geomech_logging%event_geomech_jacobian, &
-                        ierr);CHKERRQ(ierr)
+!  call PetscLogEventEnd(geomech_logging%event_geomech_jacobian, &
+!                        ierr);CHKERRQ(ierr)
 !  call printErrMsg(option)
 
 end subroutine GeomechForceJacobian

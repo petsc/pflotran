@@ -249,8 +249,8 @@ subroutine GeomechConditionRead(condition,input,option)
   !geh: may not need default_time_storage
   type(time_storage_type), pointer :: default_time_storage
 
-  call PetscLogEventBegin(geomech_logging%event_geomech_condition_read, &
-                          ierr);CHKERRQ(ierr)
+!  call PetscLogEventBegin(geomech_logging%event_geomech_condition_read, &
+!                          ierr);CHKERRQ(ierr)
 
   default_time = 0.d0
   default_iphase = 0
@@ -540,8 +540,8 @@ subroutine GeomechConditionRead(condition,input,option)
   
   condition%default_time_storage => default_time_storage
     
-  call PetscLogEventEnd(geomech_logging%event_geomech_condition_read, &
-                        ierr);CHKERRQ(ierr)
+!  call PetscLogEventEnd(geomech_logging%event_geomech_condition_read, &
+!                        ierr);CHKERRQ(ierr)
 
 end subroutine GeomechConditionRead
 
