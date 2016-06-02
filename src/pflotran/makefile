@@ -1165,7 +1165,8 @@ simulation_geomechanics.o : geomechanics_realization.o option.o output.o \
                             pmc_subsurface.o realization_subsurface.o \
                             regression.o simulation_base.o \
                             simulation_subsurface.o timestepper_base.o \
-                            waypoint.o
+                            waypoint.o simulation_aux.o checkpoint.o \
+                            output_aux.o 
 simulation_hydrogeophysics.o : option.o pflotran_constants.o \
                                pmc_hydrogeophysics.o simulation_base.o \
                                simulation_subsurface.o \

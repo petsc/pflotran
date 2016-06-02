@@ -893,7 +893,7 @@ subroutine GMDMDestroy(gmdm)
   PetscErrorCode :: ierr
   
   if (.not.associated(gmdm)) return
-  
+
   call ISDestroy(gmdm%is_ghosted_local,ierr);CHKERRQ(ierr)
   call ISDestroy(gmdm%is_local_local,ierr);CHKERRQ(ierr)
   call ISDestroy(gmdm%is_ghosted_petsc,ierr);CHKERRQ(ierr)

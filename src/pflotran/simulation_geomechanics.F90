@@ -10,6 +10,8 @@ module Simulation_Geomechanics_class
   use Geomechanics_Realization_class
   use PFLOTRAN_Constants_module
   use Waypoint_module
+  use Simulation_Aux_module
+  use Output_Aux_module 
   
   implicit none
 
@@ -230,9 +232,13 @@ subroutine GeomechanicsSimulationStrip(this)
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 01/01/14
+  ! Modified by Satish Karra, 06/01/16
   ! 
 
-
+  use Input_Aux_module
+  use Waypoint_module
+  use EOS_module
+   
   implicit none
   
   class(simulation_geomechanics_type) :: this
@@ -242,6 +248,18 @@ subroutine GeomechanicsSimulationStrip(this)
   call SubsurfaceSimulationStrip(this)
   call RegressionDestroy(this%regression)
   call WaypointListDestroy(this%waypoint_list_geomechanics)  
+  call SimAuxDestroy(this%sim_aux)
+  call CheckpointOptionDestroy(this%checkpoint_option)
+  call OutputOptionDestroy(this%output_option)
+  if (associated(this%process_model_coupler_list)) then
+    call this%process_model_coupler_list%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%process_model_coupler_list)
+    nullify(this%process_model_coupler_list)
+  endif
+  call InputDbaseDestroy()
+
+  call AllEOSDBaseDestroy()
   
 end subroutine GeomechanicsSimulationStrip
 

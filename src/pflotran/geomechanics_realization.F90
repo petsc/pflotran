@@ -573,7 +573,8 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
 
   call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
                       ierr);CHKERRQ(ierr)
-  
+ 
+  call VecScatterDestroy(scatter,ierr);CHKERRQ(ierr) 
   call ISDestroy(is_geomech,ierr);CHKERRQ(ierr)
   call ISDestroy(is_subsurf,ierr);CHKERRQ(ierr)
   call ISDestroy(is_subsurf_natural,ierr);CHKERRQ(ierr)

@@ -60,6 +60,7 @@ TIME
 END
 
 #=========================== output options ===================================
+skip
 OUTPUT
   MASS_BALANCE
   PERIODIC TIMESTEP 1
@@ -67,6 +68,7 @@ OUTPUT
   FORMAT HDF5
   FORMAT VTK
 END
+noskip
 
 #=========================== fluid properties =================================
 FLUID_PROPERTY 
