@@ -3864,8 +3864,9 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
       it = it + 1
       
       if (it > 50) then
-        print *,' too many iterations in computing activity coefficients-stop',it,f,I
-        stop
+        write(option%io_buffer,*) &
+          ' too many iterations in computing activity coefficients-stop',it,f,I
+        call printErrMsgByRank(option)
       endif
     
   ! add secondary species contribution to ionic strength
