@@ -246,20 +246,6 @@ subroutine GeomechanicsSimulationStrip(this)
   call printMsg(this%option,'GeomechanicsSimulationStrip()')
   
   call SubsurfaceSimulationStrip(this)
-  call RegressionDestroy(this%regression)
-  call WaypointListDestroy(this%waypoint_list_geomechanics)  
-  call SimAuxDestroy(this%sim_aux)
-  call CheckpointOptionDestroy(this%checkpoint_option)
-  call OutputOptionDestroy(this%output_option)
-  if (associated(this%process_model_coupler_list)) then
-    call this%process_model_coupler_list%Destroy()
-    ! destroy does not currently destroy; it strips
-    deallocate(this%process_model_coupler_list)
-    nullify(this%process_model_coupler_list)
-  endif
-  call InputDbaseDestroy()
-
-  call AllEOSDBaseDestroy()
   
 end subroutine GeomechanicsSimulationStrip
 
