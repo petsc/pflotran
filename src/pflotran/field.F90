@@ -183,6 +183,8 @@ subroutine FieldDestroy(field)
   PetscInt :: ivar
   PetscInt :: num_vecs
 
+  if (.not.associated(field)) return
+
   ! Destroy PetscVecs
   if (field%porosity0 /= 0) then
     call VecDestroy(field%porosity0,ierr);CHKERRQ(ierr)

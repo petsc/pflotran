@@ -174,6 +174,8 @@ subroutine DebugDestroy(debug)
   implicit none
   
   type(debug_type), pointer :: debug
+
+  if (.not.associated(debug)) return
   
   deallocate(debug)
   nullify(debug)
