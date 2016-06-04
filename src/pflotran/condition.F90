@@ -45,6 +45,7 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: displacement_z
     type(flow_general_condition_type), pointer :: general
     type(flow_toil_ims_condition_type), pointer :: toil_ims  
+    type(flow_well_condition_type), pointer :: flow_well  ! flow_well to avoid conflict with well
     type(sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
     type(flow_condition_type), pointer :: next ! pointer to next condition_type for linked-lists
   end type flow_condition_type
@@ -79,6 +80,13 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: owc   ! oil water contact 
     type(flow_sub_condition_type), pointer :: liq_press_grad ! water piezometric head gradient
   end type flow_toil_ims_condition_type
+
+  type, public :: flow_well_condition_type
+    type(flow_sub_condition_type), pointer :: pressure
+    type(flow_sub_condition_type), pointer :: rate
+    type(flow_sub_condition_type), pointer :: temperature
+    !when needed add here other variables such as WOR, WGR, etc 
+  end type flow_well_condition_type
     
   type, public :: flow_sub_condition_type
     PetscInt :: itype                  ! integer describing type of condition
@@ -184,6 +192,7 @@ function FlowConditionCreate(option)
   nullify(condition%sub_condition_ptr)
   nullify(condition%general)
   nullify(condition%toil_ims)
+  nullify(condition%flow_well)
   nullify(condition%itype)
   nullify(condition%next)
   nullify(condition%datum)
@@ -300,6 +309,35 @@ function FlowTOilImsConditionCreate(option)
   FlowTOilImsConditionCreate => toil_ims_condition
 
 end function FlowTOilImsConditionCreate
+
+! ************************************************************************** !
+
+function FlowWellConditionCreate(option)
+  ! 
+  ! Creates a condition for toil_ims mode
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 6/03/2016
+  ! 
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(flow_well_condition_type), pointer :: FlowWellConditionCreate
+  
+  type(flow_well_condition_type), pointer :: flow_well_condition
+
+  allocate(flow_well_condition)
+  nullify(flow_well_condition%pressure)
+  nullify(flow_well_condition%rate)
+  nullify(flow_well_condition%temperature)
+
+  FlowWellConditionCreate => flow_well_condition
+
+end function FlowWellConditionCreate
+
 
 ! ************************************************************************** !
 
@@ -476,7 +514,6 @@ function FlowTOilImsSubConditionPtr(sub_condition_name,toil_ims, &
       if (associated(toil_ims%owc)) then
         sub_condition_ptr => toil_ims%owc
       else
-        ! energy rate is loaded in the third record
         sub_condition_ptr => FlowSubConditionCreate(THREE_INTEGER)
         toil_ims%owc => sub_condition_ptr
       endif
@@ -484,10 +521,10 @@ function FlowTOilImsSubConditionPtr(sub_condition_name,toil_ims, &
       if (associated(toil_ims%liq_press_grad)) then
         sub_condition_ptr => toil_ims%liq_press_grad
       else
-        ! energy rate is loaded in the third record
         sub_condition_ptr => FlowSubConditionCreate(THREE_INTEGER)
         toil_ims%liq_press_grad => sub_condition_ptr
       endif
+    !a condition can have either RATE or WELL_RATE (target/limits)
     case('RATE')
       if (associated(toil_ims%rate)) then
         sub_condition_ptr => toil_ims%rate
@@ -496,7 +533,14 @@ function FlowTOilImsSubConditionPtr(sub_condition_name,toil_ims, &
         sub_condition_ptr => FlowSubConditionCreate(THREE_INTEGER)
         toil_ims%rate => sub_condition_ptr
       endif
-    ! to add well for multiple 
+    !a condition can have either RATE or WELL_RATE (target/limits)  
+    case('WELL_RATE')
+      if (associated(toil_ims%rate)) then
+        sub_condition_ptr => toil_ims%rate
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        toil_ims%rate => sub_condition_ptr
+      endif
     case default
       call InputKeywordUnrecognized(sub_condition_name, &
                                     'toil_ims condition,type',option)
@@ -505,6 +549,61 @@ function FlowTOilImsSubConditionPtr(sub_condition_name,toil_ims, &
   FlowTOilImsSubConditionPtr => sub_condition_ptr
 
 end function FlowTOilImsSubConditionPtr
+
+! ************************************************************************** !
+
+function FlowWellSubConditionPtr(sub_condition_name,flow_well, &
+                                    option)
+  ! 
+  ! Returns a pointer to a subcondition, creating
+  ! them if necessary for flow_well 
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 6/03/2016
+  ! 
+
+  use Option_module
+  use Input_Aux_module, only : InputKeywordUnrecognized
+
+  implicit none
+
+  character(len=MAXWORDLENGTH) :: sub_condition_name
+  type(flow_well_condition_type) :: flow_well
+  type(option_type) :: option
+
+  type(flow_sub_condition_type), pointer :: FlowWellSubConditionPtr
+  type(flow_sub_condition_type), pointer :: sub_condition_ptr
+
+  select case(sub_condition_name)
+    case('WELL_PRESSURE')
+      if (associated(flow_well%pressure)) then
+        sub_condition_ptr => flow_well%pressure
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        flow_well%pressure => sub_condition_ptr
+      endif
+    !a condition can have either RATE or WELL_RATE (target/limits)  
+    case('WELL_RATE')
+      if (associated(flow_well%rate)) then
+        sub_condition_ptr => flow_well%rate
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        flow_well%rate => sub_condition_ptr
+      endif
+    case('WELL_TEMPERATURE')
+      if (associated(flow_well%temperature)) then
+        sub_condition_ptr => flow_well%temperature
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        flow_well%temperature => sub_condition_ptr
+      endif
+
+  end select
+
+  FlowWellSubConditionPtr => sub_condition_ptr
+
+end function FlowWellSubConditionPtr
+
 
 ! ************************************************************************** !
 
@@ -1959,6 +2058,7 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   character(len=MAXWORDLENGTH) :: rate_string, internal_units
   character(len=MAXWORDLENGTH) :: word
   type(flow_toil_ims_condition_type), pointer :: toil_ims
+  type(flow_well_condition_type), pointer :: flow_well
   type(flow_sub_condition_type), pointer :: sub_condition_ptr
   PetscReal :: default_time
   PetscInt :: default_iphase
@@ -1983,13 +2083,19 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   default_time_storage%is_cyclic = PETSC_FALSE
   default_time_storage%time_interpolation_method = INTERPOLATION_STEP
   
-  select case(option%iflowmode)
-    ! do we really need this select case??
-    case(TOIL_IMS_MODE)
-      toil_ims => FlowTOilImsConditionCreate(option)
-      condition%toil_ims => toil_ims
-  end select
-  
+  !select case(option%iflowmode)
+  !  ! do we really need this select case??
+  !  case(TOIL_IMS_MODE)
+  !    toil_ims => FlowTOilImsConditionCreate(option)
+  !    condition%toil_ims => toil_ims
+  !end select
+
+  toil_ims => FlowTOilImsConditionCreate(option)
+  condition%toil_ims => toil_ims
+
+  flow_well => FlowWellConditionCreate(option)  
+  condition%flow_well => flow_well 
+
   ! read the condition
   input%ierr = 0
   do
@@ -2032,15 +2138,31 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
           call StringToUpper(word)
-          select case(option%iflowmode)
-            ! do we need this select case?
-            case(TOIL_IMS_MODE)
+          !select case(option%iflowmode)
+          !  ! do we need this select case?
+          !  case(TOIL_IMS_MODE)
+          !    sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
+          !                                                    option)
+          !end select
+          select case(word)
+            case('PRESSURE','OIL_PRESSURE','WATER_PRESSURE', &
+                 'LIQUID_SATURATION', 'OIL_SATURATION','TEMPERATURE','RATE', &
+                 'LIQUID_FLUX','OIL_FLUX', 'ENERGY_FLUX','ENTHALPY','OWC', &
+                 'WATER_PRESSURE_GRAD')
+              
               sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
                                                               option)
+            case('WELL_PRESSURE','WELL_RATE','WELL_TEMPERATURE')
+              sub_condition_ptr => FlowWellSubConditionPtr(word,flow_well, &
+                                                           option)
+            case default
+              call InputKeywordUnrecognized(word,'flow condition',option)                                          
           end select
+                                                                                                              
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'TYPE','CONDITION')   
           call StringToLower(word)
+                                                                                         
           sub_condition_ptr%ctype = word
           select case(word)
             case('dirichlet')
@@ -2058,26 +2180,25 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
             case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS 
               rate_string = 'kg/sec'                               
-            !case('mass_rate_enthalpy')
-            !  sub_condition_ptr%itype = MASS_RATE_ENTHALPY_SS
             case('scaled_mass_rate')
               sub_condition_ptr%itype = SCALED_MASS_RATE_SS
               rate_string = 'kg/sec'                                  
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToLower(word)
-                sub_condition_ptr%ctype = trim(sub_condition_ptr%ctype) // word
+                sub_condition_ptr%ctype = &
+                      trim(sub_condition_ptr%ctype) // word
                 select case(word)
                   case('neighbor_perm')
                     sub_condition_ptr%isubtype = SCALE_BY_NEIGHBOR_PERM
                   case('volume')
                     sub_condition_ptr%isubtype = SCALE_BY_VOLUME
-                  case('perm')
-                    sub_condition_ptr%isubtype = SCALE_BY_PERM
-                  case default
-                    string = 'flow condition "' // trim(condition%name) // &
-                      '" scaled_mass_rate type'
-                    call InputKeywordUnrecognized(word,string,option)
+                case('perm')
+                  sub_condition_ptr%isubtype = SCALE_BY_PERM
+                case default
+                  string = 'flow condition "' // trim(condition%name) // &
+                    '" scaled_mass_rate type'
+                  call InputKeywordUnrecognized(word,string,option)
                 end select
               else
                 option%io_buffer = 'Specify one of NEIGHBOR_PERM, ' // &
@@ -2125,10 +2246,35 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
               sub_condition_ptr%itype = HET_DIRICHLET
             case('heterogeneous_surface_seepage')
               sub_condition_ptr%itype = HET_SURF_SEEPAGE_BC
+            case('mass_rate_target')
+              sub_condition_ptr%itype = WELL_MASS_RATE_TARGET 
+              rate_string = 'kg/sec'                               
+            case('mass_rate_max')
+              sub_condition_ptr%itype = WELL_MASS_RATE_MAX
+              rate_string = 'kg/sec'               
+            case('mass_rate_min')
+              sub_condition_ptr%itype = WELL_MASS_RATE_MIN
+              rate_string = 'kg/sec'               
+            case('vol_rate_target')
+              sub_condition_ptr%itype = WELL_VOL_RATE_TARGET
+              rate_string = 'm^3/sec'               
+            case('vol_rate_max')
+              sub_condition_ptr%itype = WELL_VOL_RATE_MAX
+              rate_string = 'm^3/sec'               
+            case('vol_rate_min')
+              sub_condition_ptr%itype = WELL_VOL_RATE_MIN
+              rate_string = 'm^3/sec'               
+            case('bhp')
+              sub_condition_ptr%itype = WELL_BHP
+            case('bhp_min')
+              sub_condition_ptr%itype = WELL_BHP_MIN
+            case('bhp_max')
+              sub_condition_ptr%itype = WELL_BHP_MAX                
             case default
               call InputKeywordUnrecognized(word,'flow condition,type',option)
           end select
         enddo
+
       case('DATUM')
         dataset_ascii => DatasetAsciiCreate()
         call DatasetAsciiInit(dataset_ascii)
@@ -2178,13 +2324,25 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         call InputErrorMsg(input,option,'LIQUID_CONDUCTANCE','CONDITION')   
       case('PRESSURE','OIL_PRESSURE','WATER_PRESSURE','LIQUID_SATURATION', &
            'OIL_SATURATION','TEMPERATURE','RATE', 'LIQUID_FLUX','OIL_FLUX', &
-           'ENERGY_FLUX','ENTHALPY','OWC','WATER_PRESSURE_GRAD')
-        select case(option%iflowmode)
-          case(TOIL_IMS_MODE)
-            sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
-                                                            option)
+           'ENERGY_FLUX','ENTHALPY','OWC','WATER_PRESSURE_GRAD','WELL_RATE', &
+           'WELL_PRESSURE','WELL_TEMPERATURE')
+        !select case(option%iflowmode)
+        !  case(TOIL_IMS_MODE)
+        !    sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
+        !                                                    option)
+        !end select
+        select case(word)
+	  case('PRESSURE','OIL_PRESSURE','WATER_PRESSURE', &
+               'LIQUID_SATURATION', 'OIL_SATURATION','TEMPERATURE','RATE', &
+               'LIQUID_FLUX','OIL_FLUX', 'ENERGY_FLUX','ENTHALPY','OWC', &
+                'WATER_PRESSURE_GRAD')
+	    sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
+		                                            option)
+	  case('WELL_RATE','WELL_PRESSURE','WELL_TEMPERATURE')
+            sub_condition_ptr => FlowWellSubConditionPtr(word,flow_well, &
+                                                         option)
         end select
-
+        
         select case(trim(word))
         !give a type to pass FlowSubConditionVerify.
           case('OWC','WATER_PRESSURE_GRAD')
@@ -2208,7 +2366,7 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
             input%err_buf = word
             internal_units = trim(rate_string) // ',' // trim(rate_string) //&
                              ',MJ/sec|MW'
-          case('LIQUID_FLUX','GAS_FLUX')
+          case('LIQUID_FLUX','OIL_FLUX')
             internal_units = 'meter/sec'
           case('ENERGY_FLUX')
             input%force_units = PETSC_TRUE
@@ -2216,6 +2374,14 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
             internal_units = 'MW/m^2|MJ/sec-m^2'
           case('ENTHALPY')
             internal_units = 'MJ/mol'
+          case('WELL_RATE')
+            input%force_units = PETSC_TRUE
+            input%err_buf = word
+            internal_units = trim(rate_string)
+          case('WELL_PRESSURE')
+            internal_units = 'Pa'
+          case('WELL_TEMPERATURE')
+            internal_units = 'C'
         end select
         call ConditionReadValues(input,option,word, &
                                  sub_condition_ptr%dataset, &
@@ -2242,12 +2408,16 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   ! phase condition should never be used in TOilIms
   condition%iphase = ZERO_INTEGER
 
-  ! unless the coondtion is rate:
+  ! unless the coondtion is a rate or pressure bhp (i.e. a bhp controlled well)
   ! - pressure is required
   ! - water or oil saturation is required
   ! - temperature is required
-  if (.not.associated(toil_ims%rate)) then
-    ! this branch is executed for sub_conditions that are not a rate
+  !if (.not.associated(toil_ims%rate)) then
+  if ( (.not.associated(toil_ims%rate)) .and. &
+       ( .not.( associated(flow_well%rate).or. &
+                associated(flow_well%pressure) ) ) & 
+     ) then
+    ! this branch is executed for sub_conditions that are not a rate or well
     ! some sort of dirichlet-based pressure, temperature, etc.
     if (.not.associated(toil_ims%pressure)) then
       option%io_buffer = 'TOilIms Phase non-rate condition must ' // &
@@ -2308,6 +2478,9 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
     !end if
   end if ! end if rate
 
+  !TODO- in case of well_rate and/or well_pressure, well_temp must be present  
+  !     
+
 
   ! verify the datasets
   word = 'pressure'
@@ -2350,6 +2523,18 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   call FlowSubConditionVerify(option,condition,word,toil_ims%rate, &
                               default_time_storage, &
                               PETSC_TRUE)
+  word = 'well pressure'
+  call FlowSubConditionVerify(option,condition,word,flow_well%pressure, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'well rate'
+  call FlowSubConditionVerify(option,condition,word,flow_well%rate, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'well temperature'
+  call FlowSubConditionVerify(option,condition,word,flow_well%temperature, &
+                              default_time_storage, &
+                              PETSC_TRUE)
 
   condition%num_sub_conditions = 0
   i = 0
@@ -2372,6 +2557,12 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   if (associated(toil_ims%liq_press_grad)) &
     i = i + 1
   if (associated(toil_ims%rate)) &
+    i = i + 1
+  if (associated(flow_well%pressure)) &
+    i = i + 1
+  if (associated(flow_well%rate)) &
+    i = i + 1
+  if (associated(flow_well%temperature)) &
     i = i + 1
   ! assing number of sub_condition
   condition%num_sub_conditions = i
@@ -2419,6 +2610,18 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   if (associated(toil_ims%rate)) then
     i = i + 1
     condition%sub_condition_ptr(i)%ptr => toil_ims%rate
+  endif
+  if (associated(flow_well%pressure)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => flow_well%pressure
+  endif
+  if (associated(flow_well%rate)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => flow_well%rate
+  endif
+  if (associated(flow_well%temperature)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => flow_well%temperature
   endif
 
   ! set condition types
@@ -3740,7 +3943,8 @@ subroutine FlowConditionDestroy(condition)
   call TimeStorageDestroy(condition%default_time_storage)
   call FlowGeneralConditionDestroy(condition%general)
   call FlowToilConditionDestroy(condition%toil_ims)
-  
+  call FlowWellConditionDestroy(condition%flow_well)  
+
   nullify(condition%next)  
   
   deallocate(condition)
@@ -3814,6 +4018,33 @@ subroutine FlowToilConditionDestroy(toil_ims_condition)
   nullify(toil_ims_condition)
 
 end subroutine FlowToilConditionDestroy
+
+! ************************************************************************** !
+
+subroutine FlowWellConditionDestroy(flow_well_condition)
+  ! 
+  ! Destroys a toil_ims mode condition
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/06/15
+  ! 
+
+  use Option_module
+  
+  implicit none
+  
+  type(flow_well_condition_type), pointer :: flow_well_condition
+
+  if (.not.associated(flow_well_condition)) return
+
+  call FlowSubConditionDestroy(flow_well_condition%pressure)
+  call FlowSubConditionDestroy(flow_well_condition%rate)
+  call FlowSubConditionDestroy(flow_well_condition%temperature)
+
+  deallocate(flow_well_condition)
+  nullify(flow_well_condition)
+
+end subroutine FlowWellConditionDestroy
 
 ! ************************************************************************** !
 

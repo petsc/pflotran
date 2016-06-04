@@ -2,7 +2,7 @@ module Well_Flow_class
 
   use PFLOTRAN_Constants_module
   use Well_Base_class
-
+  use Condition_module
   implicit none
 
   private
@@ -15,10 +15,12 @@ module Well_Flow_class
     PetscReal, pointer :: q_fld(:)             ! q_fld(iphase)  [m3/s] well fluid flow rates of iphase
     PetscReal, pointer :: mr_fld(:)            ! mr_fld(iphase) [kg/s] well fluid mass rates of iphase
     PetscReal, pointer :: conn_h(:)            ! connection hydrostatic pressure corrections
+    type(flow_condition_type), pointer :: flow_condition ! pointer to flow_condition associated with the well
     !PetscReal, pointer :: conn_mobs(:,:)       ! well connection mobilities ! TO REMOVE - computed when needed flight
   contains  ! add here type-bound procedure 
     procedure, public :: PrintMsg => PrintFlow
     procedure, public :: ConnInit => WellFlowConnInit
+    procedure, public :: ExplUpdate => FlowExplUpdate
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
     !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
@@ -98,6 +100,32 @@ subroutine WellFlowConnInit(this,num_connections,option)
   this%conn_h = 0.0d0; 
 
 end subroutine WellFlowConnInit
+
+! ************************************************************************** !
+
+subroutine FlowExplUpdate(this,grid,option)
+  ! 
+  ! - Update FlowEnergy well vars
+  ! - Perform a limit on well checks 
+  ! - Update well control variable in case of switch when a limit is reached
+  !
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 6/03/2016
+  ! 
+
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_flow_type) :: this
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
+
+  print *, "Well => FlowExplUpdate must be extended"
+  stop  
+
+end subroutine FlowExplUpdate
 
 ! ************************************************************************** !
 

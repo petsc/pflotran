@@ -58,7 +58,7 @@ module WellSpec_Base_class
       PetscInt :: status                         ! well status (can be open, closed or auto)
       PetscInt :: cntrl_var                       ! controlling variable (e.g. vol/mass rate)
       PetscInt :: num_limits                     ! number of limiting parameter
-      PetscBool, pointer :: lmt_var(:)          ! limiting variables (e.g. pressure ) - not yet used 
+      PetscBool, pointer :: lmt_var(:)          ! limiting variables (e.g. pressure )   
       PetscBool :: input_z_pw_ref                ! true if the z_pw_ref has been read from input
       PetscReal :: input_val_z_pw_ref            ! eevation input for z_pw_ref 
       class(well_spec_base_type), pointer :: next ! points to next link in the list

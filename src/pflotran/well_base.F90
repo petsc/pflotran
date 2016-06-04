@@ -3,6 +3,8 @@ module Well_Base_class
   use PFLOTRAN_Constants_module
   use WellSpec_Base_class
 
+  use Connection_module
+
   implicit none
 
   private
@@ -29,16 +31,12 @@ module Well_Base_class
     PetscInt, pointer  :: conn_l2w(:)          ! map the list of local well conns to well conns 
     PetscReal, pointer :: w_conn_z(:)          ! all well connection elevations ordered by ascending z
     class(well_spec_base_type), pointer :: spec  !well_spec pointer
+    type(connection_set_type), pointer :: connection_set !pointer to well connection_set
   contains  ! add here type-bound procedure 
     procedure, public :: PrintMsg => PrintBase
     procedure, public :: ConnInit => WellBaseConnInit
-    !procedure, public :: Init => WellAuxVarBaseInit
-    !procedure, public :: Read => WellAuxVarBaseRead
-    !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
-    !procedure, public :: WellInit => WellBaseInit
-    !procedure, public :: UpdateConnFactor
+    procedure, public :: ExplUpdate => BaseExplUpdate
     !procedure, public :: Output
-    !procedure  WellConnInit ! init all vars related to well connections
     procedure, public  :: Setup
     procedure, public :: WellFactorUpdate
     procedure, public  :: PrintOutputHeader => PrintOutputHeaderWellBase
@@ -118,6 +116,8 @@ subroutine WellBaseInit(this,well_spec,option)
   nullify(this%w_conn_order); 
   nullify(this%conn_l2w); 
   nullify(this%w_conn_z);
+
+  nullify(this%connection_set);
 
 end subroutine WellBaseInit
 
@@ -578,6 +578,32 @@ subroutine WellFactorUpdate(this,grid,connection_set,material_auxvars,option)
 end subroutine WellFactorUpdate
 
 ! *************************************************************************** !
+
+subroutine BaseExplUpdate(this,grid,option)
+  ! 
+  ! - Update FlowEnergy well vars
+  ! - Perform a limit on well checks 
+  ! - Update well control variable in case of switch when a limit is reached
+  !
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 6/03/2016
+  ! 
+
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_base_type) :: this
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
+
+  print *, "Well => BaseExplUpdate must be extended"
+  stop  
+
+end subroutine BaseExplUpdate
+
+! ************************************************************************** !
 
 end module Well_Base_class
 

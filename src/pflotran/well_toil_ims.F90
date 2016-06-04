@@ -13,26 +13,20 @@ module Well_TOilIms_class
 #include "petsc/finclude/petscsys.h"
 
   type, public, extends(well_flow_energy_type) :: well_toil_ims_type
+    !class(auxvar_toil_ims_type), pointer :: toil_ims_auxvars(:,:)
     ! .................
   contains  ! add here type-bound procedure 
     procedure, public :: PrintMsg => PrintTOilIms
     procedure, public :: ConnInit => WellTOilImsConnInit
     procedure, public  :: PrintOutputHeader => PrintOutputHeaderWellTOilIms
-    !procedure, public :: Init => WellAuxVarBaseInit
-    !procedure, public :: Read => WellAuxVarBaseRead
-    !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
-    !procedure, public :: WellInit => WellBaseInit
-    !procedure, public :: UpdateConnFactor
-    !procedure, public :: Output
-    !procedure  WellConnInit ! init all vars related to well connections
-    !procedure  :: InitWellZRefCntrlConn
-    !procedure  :: WellConnSort
+    procedure, public :: VarsExplUpdate => TOilImsVarsExplUpdate
   end type  well_toil_ims_type
 
   type, public, extends(well_toil_ims_type) :: well_toil_ims_wat_inj_type
     ! ......................
     contains
       procedure, public :: PrintMsg => PrintTOilImsWatInj
+      procedure, public :: VarsExplUpdate => TOilImsWatInjVarsExplUpdate
   end type
 
   type, public, extends(well_toil_ims_type) :: well_toil_ims_oil_inj_type
@@ -192,6 +186,52 @@ subroutine WellTOilImsConnInit(this,num_connections,option)
 end subroutine WellTOilImsConnInit
 
 ! ************************************************************************** !
+
+subroutine TOilImsVarsExplUpdate(this,grid,option)
+
+  use Grid_module
+  use Option_module
+
+  class(well_toil_ims_type) :: this
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
+
+  print *, "TOilImsVarsExplUpdate must be extended"
+  stop
+
+end subroutine TOilImsVarsExplUpdate
+
+! ************************************************************************** !
+
+subroutine TOilImsWatInjVarsExplUpdate(this,grid,option)
+
+  use Grid_module
+  use Option_module
+
+  class(well_toil_ims_wat_inj_type) :: this
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
+
+  write(*,"('TOilImsWatInj d11 before = ',e10.4)"), this%auxvar_flow_energy(0,1)%den(1)
+  write(*,"('TOilImsWatInj d12 before = ',e10.4)"), this%auxvar_flow_energy(0,1)%den(2) 
+  write(*,"('TOilImsWatInj p11 before = ',e10.4)"), this%auxvar_flow_energy(0,1)%pres(1) 
+  write(*,"('TOilImsWatInj t1 before = ',e10.4)"), this%auxvar_flow_energy(0,1)%temp 
+
+  write(*,"('TOilImsWatInj rate = ',e10.4)"), &
+          !this%flow_condition%toil_ims%rate%dataset%rarray(1)
+          this%flow_condition%flow_well%rate%dataset%rarray(1)
+  write(*,"('TOilImsWatInj temp = ',e10.4)"), &
+          !this%flow_condition%toil_ims%temperature%dataset%rarray(1)
+          this%flow_condition%flow_well%temperature%dataset%rarray(1) 
+
+  write(*,"('TOilImsWatInj press = ',e10.4)"), &
+          !this%flow_condition%toil_ims%pressure%dataset%rarray(1)
+          this%flow_condition%flow_well%pressure%dataset%rarray(1) 
+
+end subroutine TOilImsWatInjVarsExplUpdate
+
+! ************************************************************************** !
+
 
 end module Well_TOilIms_class
 

@@ -386,7 +386,20 @@ subroutine AllWellsInit(this)
                                         source_sink%connection_set, &
                                 this%realization%patch%aux%Material%auxvars, &
                                            this%realization%option)
-       
+
+       call source_sink%well%ExplUpdate(this%realization%patch%grid, &
+                                        this%realization%option)
+  
+       ! can be done in here because this%realization%patch%aux%TOil_ims 
+       ! this TOil_ims should be more general!!!
+       ! class(auxvar_flow_energy_type), pointer :: auxvar_flow_energy_p
+       ! auxvar_flow_energy_p => this%realization%patch%aux%TOil_ims%auxvars
+       ! if well has a pointer to its own auxvars, can just 
+       ! - call well%VarUpdate() 
+       ! if this work I could use it for Material%auxvars too
+       ! add here WellsVarUpdate(auxvar_flow_energy_p)
+       ! add here WellHydroCorrUpdate(auxvar_flow_energy_p)       
+       !  
        ! create well outputfile
        ! For now open files to print the well variables by default 
        ! TODO: add to well_spec user options to control well printing

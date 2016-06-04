@@ -242,6 +242,8 @@ recursive subroutine PMTOilImsInitializeRun(this)
   ! call parent implementation
   call PMSubsurfaceFlowInitializeRun(this)
 
+  !need to call here TOilImsAllWellUpdate ?? 
+
 end subroutine PMTOilImsInitializeRun
 
 ! ************************************************************************** !

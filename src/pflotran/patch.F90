@@ -530,6 +530,13 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
               temp_int = 1
             endif
           end if
+          if (associated(coupler%flow_condition%flow_well)) then          
+            if ( associated(coupler%flow_condition%flow_well%rate) .or. &
+                 associated(coupler%flow_condition%flow_well%pressure) &
+               ) then
+              temp_int = 1
+            endif
+          end if
           if (temp_int == 0) then
             option%io_buffer = 'FLOW_CONDITIONs associated with ' // &
               'SOURCE_SINKs must have a RATE or WELL expression within them.'

@@ -14,7 +14,7 @@ module Well_module
 
 #include "petsc/finclude/petscsys.h"
 
-  public :: CreateWell
+  public :: CreateWell, WellSetUp
 
 contains
 
@@ -65,6 +65,50 @@ function CreateWell(well_spec,option)
 
 
 end function CreateWell
+
+! ************************************************************************** !
+subroutine WellSetUp(well,connection_set,flow_condition,aux,option)
+  ! 
+  ! Create a toil ims well object based on type specified in the well_spec
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 06/03/16
+  ! 
+
+  use Option_module
+  use Auxiliary_module
+  use Condition_module
+  use Connection_module
+
+  implicit none
+
+  class(well_base_type), pointer :: well
+  type(connection_set_type), pointer :: connection_set 
+  type(flow_condition_type), pointer :: flow_condition
+  type(auxiliary_type) :: aux  
+  type(option_type) :: option
+
+  write(*,"('WS d11 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%den(1)
+  write(*,"('WS d12 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%den(2) 
+  write(*,"('WS p11 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%pres(1) 
+  write(*,"('WS t1 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%temp 
+
+  select type(well)
+    class is(well_toil_ims_type)
+      well%auxvar_flow_energy => aux%TOil_ims%auxvars     
+    !when well implmented for other flow modes - add below
+  end select 
+
+  select type(well)
+    class is(well_flow_type)
+      well%flow_condition => flow_condition
+  end select
+
+  !for wel base
+  well%connection_set => connection_set
+
+
+end subroutine WellSetUp
 
 ! ************************************************************************** !
 
