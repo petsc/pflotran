@@ -160,9 +160,9 @@ subroutine AllWellsSetup(realization)
     if( associated(source_sink%well) ) then
       !exlude empty wells - not included in well comms
       if(source_sink%connection_set%num_connections > 0) then
-        call WellSetUp(source_sink%well,source_sink%connection_set, &
-                       source_sink%flow_condition,realization%patch%aux, &
-                       realization%option)
+        call WellAuxVarSetUp(source_sink%well,source_sink%connection_set, &
+                         source_sink%flow_condition,realization%patch%aux, &
+                         realization%option)
         !could point also to connection set and to flow_condition
       end if
     end if

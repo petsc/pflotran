@@ -366,6 +366,7 @@ well_obj = \
 	${common_src}well_base.o \
 	${common_src}well_flow.o \
 	${common_src}well_flow_energy.o \
+	${common_src}well_water_injector.o \
 	${common_src}well_toil_ims.o \
 	${common_src}well.o
 
@@ -1308,16 +1309,21 @@ variables.o :
 waypoint.o : option.o output_aux.o pflotran_constants.o utility.o
 well.o : auxiliary.o condition.o connection.o option.o pflotran_constants.o \
          well_base.o well_flow.o well_flow_energy.o well_spec_base.o \
-         well_toil_ims.o
+         well_toil_ims.o well_water_injector.o
 well_base.o : connection.o grid.o material_aux.o option.o output_aux.o \
               pflotran_constants.o well_spec_base.o
-well_flow.o : condition.o grid.o option.o pflotran_constants.o well_base.o
+well_flow.o : auxvars_flow.o condition.o grid.o option.o pflotran_constants.o \
+              well_base.o well_spec_base.o
 well_flow_energy.o : auxvars_flow_energy.o grid.o option.o \
                      pflotran_constants.o well_flow.o
 well_spec_base.o : input_aux.o option.o pflotran_constants.o string.o units.o \
                    utility.o
-well_toil_ims.o : grid.o option.o output_aux.o pflotran_constants.o \
-                  well_base.o well_flow.o well_flow_energy.o well_spec_base.o
+well_toil_ims.o : option.o output_aux.o pflotran_constants.o well_base.o \
+                  well_flow.o well_flow_energy.o well_spec_base.o \
+                  well_water_injector.o
+well_water_injector.o : eos_water.o grid.o option.o output_aux.o \
+                        pflotran_constants.o well_base.o well_flow.o \
+                        well_flow_energy.o well_spec_base.o
 wipp.o : input_aux.o lookup_table.o material_aux.o option.o \
          pflotran_constants.o string.o units.o utility.o
 wrapper_hydrogeophysics.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \

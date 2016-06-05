@@ -13,11 +13,13 @@ module Well_FlowEnergy_class
   type, public, extends(well_flow_type) :: well_flow_energy_type
       PetscReal :: tw_ref                        ! [°C] well temperature at reference elevation
       PetscReal, pointer :: ent_ref(:)           ! ent_ref(iphase) MJ/kmol, well fluid enthalpy of iphase
-      class(auxvar_flow_energy_type), pointer :: auxvar_flow_energy(:,:)
+      class(auxvar_flow_energy_type), pointer :: flow_energy_auxvars(:,:)
   contains  ! add here type-bound procedure 
     procedure, public :: PrintMsg => PrintFlowEnergy
-    procedure, public :: ExplUpdate => FlowEnergyExplUpdate
+    procedure, public :: ExplUpdate => FlowEnergyExplUpdate !could move this to flow
     procedure, public :: VarsExplUpdate => FlowEnergyVarsExplUpdate
+    !procedure, public :: QPhase => FlowEnergyQPhase
+    procedure, public :: ConnMob => WellFlowEnergyConnMob
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
     !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
@@ -67,7 +69,7 @@ subroutine WellFlowEnergyInit(this,option)
   allocate( this%ent_ref(option%nphase) );
   this%ent_ref = 0.0d0;
 
-  nullify(this%auxvar_flow_energy);
+  nullify(this%flow_energy_auxvars);
 
 end subroutine WellFlowEnergyInit
 
@@ -92,13 +94,60 @@ subroutine FlowEnergyExplUpdate(this,grid,option)
   type(grid_type), pointer :: grid
   type(option_type) :: option
 
-  write(*,"('FlowEnergyExpl d11 before = ',e10.4)"), this%auxvar_flow_energy(0,1)%den(1)
-  write(*,"('FlowEnergyExpl d12 before = ',e10.4)"), this%auxvar_flow_energy(0,1)%den(2) 
-  write(*,"('FlowEnergyExpl p11 before = ',e10.4)"), this%auxvar_flow_energy(0,1)%pres(1) 
-  write(*,"('FlowEnergyExpl t1 before = ',e10.4)"), this%auxvar_flow_energy(0,1)%temp 
+  PetscBool :: pass
+
+  write(*,"('FlowEnergyExpl d11 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%den(1)
+  write(*,"('FlowEnergyExpl d12 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%den(2) 
+  write(*,"('FlowEnergyExpl p11 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%pres(1) 
+  write(*,"('FlowEnergyExpl t1 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%temp 
+
+  if(this%connection_set%num_connections == 0 ) return
+
+  pass = PETSC_FALSE
+
+  !cntrl_var = this%cntrl_var ! initialise well control variable
+  do
+    if(pass) exit ! the well limits are satisfied
+
+    call this%VarsExplUpdate(grid,option)
+
+    ! NOW IMPLEMENT CHECK
+    !call this%ExplIPRMphase(grid,cur_connection_set, &
+    !                 flow_condition,auxvars, pw_ref,tw_ref, q_liq,q_gas, &
+    !                 m_liq, m_gas, dw_ref, cntrl_var,ivar)
+
+    !print *, "pw_ref = ", pw_ref," ivar = ", ivar
+    !pass = PETSC_TRUE ! at the moment no checks
+    ! at the moment only checks for gas producer 
+    !call this%WellMphaseCheck(flow_condition,pw_ref,q_liq,q_gas,m_liq,m_gas, &
+    !                          dw_ref,cntrl_var,ivar,pass)
+
+    ! call this%CheckLimits(pass,cntrl_var,pw_ref,q_liq,q_gas)
+    ! during the well checks limits, cntrl_var,pw_ref,q_liq,q_gas can change    
+
+    ! end IPR computation
+ 
+    ! well check - is pw admissible? volumtric rates needed for VFPs
+    ! if updates might change the well control variable, those repeating 
+    ! the previous operations
+
+  !if well check ok, ends IPR iterative computation
+  end do
+
+  ! update well variables 
+  !if(wellvar_update) then
+  !  this%pw_ref = pw_ref
+  !  this%tw_ref = tw_ref
+  !  this%q_fld(LIQUID_PHASE) = q_liq
+  !  this%q_fld(GAS_PHASE) = q_gas
+  !  this%mr_fld(LIQUID_PHASE) = m_liq
+  !  this%mr_fld(GAS_PHASE) = m_gas
+  !  this%dw_ref(LIQUID_PHASE) = dw_ref(LIQUID_PHASE)
+  !  this%dw_ref(GAS_PHASE) = dw_ref(GAS_PHASE)
+  !  this%cntrl_var = cntrl_var
+  !end if
 
 
-  call this%VarsExplUpdate(grid,option)
 
 end subroutine FlowEnergyExplUpdate
 
@@ -120,7 +169,25 @@ subroutine FlowEnergyVarsExplUpdate(this,grid,option)
 
 end subroutine FlowEnergyVarsExplUpdate
 
-! ************************************************************************** !
+
+!*****************************************************************************!
+
+function WellFlowEnergyConnMob(this,mobility,iphase)
+
+  implicit none
+
+  class(well_flow_energy_type) :: this
+  PetscInt :: iphase  
+  PetscReal :: mobility(:)
+
+  PetscReal :: WellFlowEnergyConnMob
+
+  print *, "WellFlowEnergyConnMob must be extended"
+  stop
+
+end function WellFlowEnergyConnMob
+!*****************************************************************************!
+
 
 end module Well_FlowEnergy_class
 

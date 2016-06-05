@@ -2149,7 +2149,7 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
                  'LIQUID_SATURATION', 'OIL_SATURATION','TEMPERATURE','RATE', &
                  'LIQUID_FLUX','OIL_FLUX', 'ENERGY_FLUX','ENTHALPY','OWC', &
                  'WATER_PRESSURE_GRAD')
-              
+
               sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
                                                               option)
             case('WELL_PRESSURE','WELL_RATE','WELL_TEMPERATURE')
@@ -2332,13 +2332,13 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
         !                                                    option)
         !end select
         select case(word)
-	  case('PRESSURE','OIL_PRESSURE','WATER_PRESSURE', &
+          case('PRESSURE','OIL_PRESSURE','WATER_PRESSURE', &
                'LIQUID_SATURATION', 'OIL_SATURATION','TEMPERATURE','RATE', &
                'LIQUID_FLUX','OIL_FLUX', 'ENERGY_FLUX','ENTHALPY','OWC', &
                 'WATER_PRESSURE_GRAD')
-	    sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
-		                                            option)
-	  case('WELL_RATE','WELL_PRESSURE','WELL_TEMPERATURE')
+            sub_condition_ptr => FlowTOilImsSubConditionPtr(word,toil_ims, &
+                                                            option)
+          case('WELL_RATE','WELL_PRESSURE','WELL_TEMPERATURE')
             sub_condition_ptr => FlowWellSubConditionPtr(word,flow_well, &
                                                          option)
         end select

@@ -1,10 +1,11 @@
 module Well_module
 
   use PFLOTRAN_Constants_module
+  use WellSpec_Base_class
   use Well_Base_class
   use Well_Flow_class
   use Well_FlowEnergy_class
-  use WellSpec_Base_class
+  use Well_WaterInjector_class
   use Well_TOilIms_class
   !add here other well classes, e.g. Wells_XXXX_class
 
@@ -14,7 +15,7 @@ module Well_module
 
 #include "petsc/finclude/petscsys.h"
 
-  public :: CreateWell, WellSetUp
+  public :: CreateWell, WellAuxVarSetUp
 
 contains
 
@@ -52,7 +53,7 @@ function CreateWell(well_spec,option)
   write(*,*) "radius = ", CreateWell%spec%radius
 
   select type(CreateWell)
-    class is(well_toil_ims_type)
+    class is(well_toil_ims_wat_inj_type)
       write(*,*) "temp", CreateWell%tw_ref
       write(*,*) "well_press", CreateWell%pw_ref
   end select 
@@ -67,7 +68,7 @@ function CreateWell(well_spec,option)
 end function CreateWell
 
 ! ************************************************************************** !
-subroutine WellSetUp(well,connection_set,flow_condition,aux,option)
+subroutine WellAuxVarSetUp(well,connection_set,flow_condition,aux,option)
   ! 
   ! Create a toil ims well object based on type specified in the well_spec
   ! 
@@ -94,8 +95,10 @@ subroutine WellSetUp(well,connection_set,flow_condition,aux,option)
   write(*,"('WS t1 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%temp 
 
   select type(well)
-    class is(well_toil_ims_type)
-      well%auxvar_flow_energy => aux%TOil_ims%auxvars     
+    !if only auxvar_flow_energy needed can use class is(well_flow_energy_type)
+    class is(well_toil_ims_wat_inj_type)
+      well%flow_energy_auxvars => aux%TOil_ims%auxvars   
+      well%flow_auxvars => aux%TOil_ims%auxvars
     !when well implmented for other flow modes - add below
   end select 
 
@@ -104,11 +107,11 @@ subroutine WellSetUp(well,connection_set,flow_condition,aux,option)
       well%flow_condition => flow_condition
   end select
 
-  !for wel base
+  !for well base
   well%connection_set => connection_set
 
 
-end subroutine WellSetUp
+end subroutine WellAuxVarSetUp
 
 ! ************************************************************************** !
 
