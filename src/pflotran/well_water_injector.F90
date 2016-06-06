@@ -19,6 +19,7 @@ module Well_WaterInjector_class
     !procedure, public :: ConnInit => WellTOilImsConnInit !should go in parent classes 
     procedure, public  :: PrintOutputHeader => WellWatInjPrintOutputHeader
     procedure, public :: VarsExplUpdate => WellWatInjVarsExplUpdate
+    procedure, public :: LimitCheck => WellWatInjLimitCheck
     procedure, public :: ConnMob => WellWatInjConnMob
   end type  well_water_injector_type
 
@@ -140,6 +141,51 @@ end subroutine WellWatInjVarsExplUpdate
 
 ! ************************************************************************** !
 
+subroutine WellWatInjLimitCheck(this,pass)
+  ! 
+  !
+  ! Perform limit check for a water injector
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/06/2016
+  !
+
+  implicit none
+
+  class(well_water_injector_type) :: this
+  PetscBool :: pass
+
+  PetscInt :: cntrl_var_tmp 
+  PetscReal :: press_max
+
+  pass = PETSC_TRUE
+  !if no changes cntrl_var mantains its initial value
+  cntrl_var_tmp = this%spec%cntrl_var
+
+  select case(this%spec%cntrl_var)
+ 
+    case(CNTRL_VAR_MASS_RATE)
+      if(this%spec%lmt_var(LMT_PRESS_MAX)) then
+        press_max = this%flow_condition%flow_well%pressure%dataset%rarray(1) 
+        if(this%pw_ref > press_max) then
+          print *, "water_injector control switch: " // &
+                   "MASS_RATE -> BHP, pw_ref/pw_max= ",&
+                    & this%pw_ref, press_max
+          ! updates after check pw_ref after check
+          this%pw_ref = press_max 
+          cntrl_var_tmp = CNTRL_VAR_BHP
+          pass = PETSC_FALSE
+        end if
+      end if 
+
+  end select
+
+  ! update control variable
+  this%spec%cntrl_var = cntrl_var_tmp
+
+end subroutine WellWatInjLimitCheck
+! ************************************************************************** !
+
 function WellWatInjConnMob(this,mobility,iphase)
   !  
   ! Compute well connection mobility for mphase mode 
@@ -149,6 +195,10 @@ function WellWatInjConnMob(this,mobility,iphase)
   ! example of a function common to all injectors 
   ! (should create an injector class)
   ! otherwise use select case a move this to flow
+  !
+  ! for efficieny - ConnMob can be extended to well_xxx_mode. 
+  ! Instead of performing a loop, a simplue sum can be used 
+  ! E.g. WellWatInjConnMob = mobility(liquid_phase) + mobility(oil_phase)
   !
   ! Author: Paolo Orsini (OpenGoSim)  
   ! Date : 1/07/2015

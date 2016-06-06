@@ -24,10 +24,13 @@ module Well_Flow_class
     procedure, public :: PrintMsg => PrintFlow
     procedure, public :: ConnInit => WellFlowConnInit
     procedure, public :: ExplUpdate => FlowExplUpdate
+    procedure, public :: VarsExplUpdate => FlowVarsExplUpdate
     procedure, public :: ConnMob => WellFlowConnMob
     procedure, public :: PressRef => FlowPressRef  
     procedure, public :: QPhase => FlowQPhase
     procedure, public :: MRPhase => FlowMRPhase
+    procedure, public :: LimitCheck => WellFlowLimitCheck
+    !------------------------------------------------
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
     !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
@@ -133,10 +136,66 @@ subroutine FlowExplUpdate(this,grid,option)
   type(grid_type), pointer :: grid
   type(option_type) :: option
 
-  print *, "Well => FlowExplUpdate must be extended"
-  stop  
+  PetscBool :: pass
+
+  write(*,"('FlowExpl d11 before = ',e10.4)"), this%flow_auxvars(0,1)%den(1)
+  write(*,"('FlowExpl d12 before = ',e10.4)"), this%flow_auxvars(0,1)%den(2) 
+  write(*,"('FlowExpl p11 before = ',e10.4)"), this%flow_auxvars(0,1)%pres(1) 
+  !write(*,"('FlowExpl t1 before = ',e10.4)"), this%flow_auxvars(0,1)%temp 
+
+  if(this%connection_set%num_connections == 0 ) return
+
+  pass = PETSC_FALSE
+
+  !cntrl_var = this%cntrl_var ! initialise well control variable
+  do
+    if(pass) exit ! the well limits are satisfied
+
+    call this%VarsExplUpdate(grid,option)
+
+    call this%LimitCheck(pass)
+    ! NOW IMPLEMENT CHECK
+
+    !print *, "pw_ref = ", pw_ref," ivar = ", ivar
+    !pass = PETSC_TRUE ! at the moment no checks
+    ! at the moment only checks for gas producer 
+    !call this%WellMphaseCheck(flow_condition,pw_ref,q_liq,q_gas,m_liq,m_gas, &
+    !                          dw_ref,cntrl_var,ivar,pass)
+
+    ! call this%CheckLimits(pass,cntrl_var,pw_ref,q_liq,q_gas)
+    ! during the well checks limits, cntrl_var,pw_ref,q_liq,q_gas can change    
+
+    ! end IPR computation
+ 
+    ! well check - is pw admissible? volumtric rates needed for VFPs
+    ! if updates might change the well control variable, those repeating 
+    ! the previous operations
+
+  !if well check ok, ends IPR iterative computation
+  end do
+
+  !print *, "Well => FlowExplUpdate must be extended"
+  !stop  
 
 end subroutine FlowExplUpdate
+
+! ************************************************************************** !
+
+subroutine FlowVarsExplUpdate(this,grid,option)
+
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_flow_type) :: this
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
+
+  print *, "FlowVarsExplUpdate must be extended"
+  stop
+
+end subroutine FlowVarsExplUpdate
 
 !*****************************************************************************!
 subroutine FlowPressRef(this,grid,phase,option)
@@ -331,6 +390,27 @@ subroutine FlowMRPhase(this,grid,phase,option)
   this%mr_fld(phase) = mass_rate
 
 end subroutine FlowMRPhase
+
+!*****************************************************************************!
+
+subroutine WellFlowLimitCheck(this,pass)
+  ! 
+  !
+  ! Perform limit check for a water injector
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/06/2016
+  !
+
+  implicit none
+
+  class(well_flow_type) :: this
+  PetscBool :: pass
+
+  print *, "WellFlowLimitCheck must be extended"
+  stop  
+
+end subroutine WellFlowLimitCheck
 
 !*****************************************************************************!
 

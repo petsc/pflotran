@@ -16,7 +16,7 @@ module Well_FlowEnergy_class
       class(auxvar_flow_energy_type), pointer :: flow_energy_auxvars(:,:)
   contains  ! add here type-bound procedure 
     procedure, public :: PrintMsg => PrintFlowEnergy
-    procedure, public :: ExplUpdate => FlowEnergyExplUpdate !could move this to flow
+    !procedure, public :: ExplUpdate => FlowEnergyExplUpdate !could move this to flow
     procedure, public :: VarsExplUpdate => FlowEnergyVarsExplUpdate
     !procedure, public :: QPhase => FlowEnergyQPhase
     procedure, public :: ConnMob => WellFlowEnergyConnMob
@@ -75,7 +75,7 @@ end subroutine WellFlowEnergyInit
 
 ! ************************************************************************** !
 
-subroutine FlowEnergyExplUpdate(this,grid,option)
+!subroutine FlowEnergyExplUpdate(this,grid,option)
   ! 
   ! - Update FlowEnergy well vars
   ! - Perform a limit on well checks 
@@ -84,56 +84,56 @@ subroutine FlowEnergyExplUpdate(this,grid,option)
   ! Author: Paolo Orsini (OGS)
   ! Date: 6/03/2016
   ! 
-
-  use Grid_module
-  use Option_module
-
-  implicit none
-
-  class(well_flow_energy_type) :: this
-  type(grid_type), pointer :: grid
-  type(option_type) :: option
-
-  PetscBool :: pass
-
-  write(*,"('FlowEnergyExpl d11 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%den(1)
-  write(*,"('FlowEnergyExpl d12 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%den(2) 
-  write(*,"('FlowEnergyExpl p11 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%pres(1) 
-  write(*,"('FlowEnergyExpl t1 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%temp 
-
-  if(this%connection_set%num_connections == 0 ) return
-
-  pass = PETSC_FALSE
-
-  !cntrl_var = this%cntrl_var ! initialise well control variable
-  do
-    if(pass) exit ! the well limits are satisfied
-
-    call this%VarsExplUpdate(grid,option)
-
-    ! NOW IMPLEMENT CHECK
-    !call this%ExplIPRMphase(grid,cur_connection_set, &
-    !                 flow_condition,auxvars, pw_ref,tw_ref, q_liq,q_gas, &
-    !                 m_liq, m_gas, dw_ref, cntrl_var,ivar)
-
-    !print *, "pw_ref = ", pw_ref," ivar = ", ivar
-    !pass = PETSC_TRUE ! at the moment no checks
-    ! at the moment only checks for gas producer 
-    !call this%WellMphaseCheck(flow_condition,pw_ref,q_liq,q_gas,m_liq,m_gas, &
-    !                          dw_ref,cntrl_var,ivar,pass)
-
-    ! call this%CheckLimits(pass,cntrl_var,pw_ref,q_liq,q_gas)
-    ! during the well checks limits, cntrl_var,pw_ref,q_liq,q_gas can change    
-
-    ! end IPR computation
- 
-    ! well check - is pw admissible? volumtric rates needed for VFPs
-    ! if updates might change the well control variable, those repeating 
-    ! the previous operations
-
-  !if well check ok, ends IPR iterative computation
-  end do
-
+!
+!  use Grid_module
+!  use Option_module
+!
+!  implicit none
+!
+!  class(well_flow_energy_type) :: this
+!  type(grid_type), pointer :: grid
+!  type(option_type) :: option
+!
+!  PetscBool :: pass
+!
+!  write(*,"('FlowEnergyExpl d11 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%den(1)
+!  write(*,"('FlowEnergyExpl d12 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%den(2) 
+!  write(*,"('FlowEnergyExpl p11 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%pres(1) 
+!  write(*,"('FlowEnergyExpl t1 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%temp 
+!
+!  if(this%connection_set%num_connections == 0 ) return
+!
+!  pass = PETSC_FALSE
+!
+!  !cntrl_var = this%cntrl_var ! initialise well control variable
+!  do
+!    if(pass) exit ! the well limits are satisfied
+!
+!    call this%VarsExplUpdate(grid,option)
+!
+!    ! NOW IMPLEMENT CHECK
+!    !call this%ExplIPRMphase(grid,cur_connection_set, &
+!    !                 flow_condition,auxvars, pw_ref,tw_ref, q_liq,q_gas, &
+!    !                 m_liq, m_gas, dw_ref, cntrl_var,ivar)
+!
+!    !print *, "pw_ref = ", pw_ref," ivar = ", ivar
+!    !pass = PETSC_TRUE ! at the moment no checks
+!    ! at the moment only checks for gas producer 
+!    !call this%WellMphaseCheck(flow_condition,pw_ref,q_liq,q_gas,m_liq,m_gas, &
+!    !                          dw_ref,cntrl_var,ivar,pass)
+!
+!    ! call this%CheckLimits(pass,cntrl_var,pw_ref,q_liq,q_gas)
+!    ! during the well checks limits, cntrl_var,pw_ref,q_liq,q_gas can change    
+!
+!    ! end IPR computation
+! 
+!    ! well check - is pw admissible? volumtric rates needed for VFPs
+!    ! if updates might change the well control variable, those repeating 
+!    ! the previous operations
+!
+!  !if well check ok, ends IPR iterative computation
+!  end do
+!
   ! update well variables 
   !if(wellvar_update) then
   !  this%pw_ref = pw_ref
@@ -146,10 +146,10 @@ subroutine FlowEnergyExplUpdate(this,grid,option)
   !  this%dw_ref(GAS_PHASE) = dw_ref(GAS_PHASE)
   !  this%cntrl_var = cntrl_var
   !end if
-
-
-
-end subroutine FlowEnergyExplUpdate
+!
+!
+!
+!end subroutine FlowEnergyExplUpdate
 
 ! ************************************************************************** !
 
