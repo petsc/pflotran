@@ -20,6 +20,7 @@ module Well_WaterInjector_class
     procedure, public  :: PrintOutputHeader => WellWatInjPrintOutputHeader
     procedure, public :: VarsExplUpdate => WellWatInjVarsExplUpdate
     procedure, public :: LimitCheck => WellWatInjLimitCheck
+    procedure, public :: ConnDenUpdate => WellWatInjConnDenUpdate
     procedure, public :: ConnMob => WellWatInjConnMob
   end type  well_water_injector_type
 
@@ -69,6 +70,12 @@ end subroutine WellWatInjPrintOutputHeader
 ! ************************************************************************** !
 
 subroutine WellWatInjVarsExplUpdate(this,grid,option)
+  !
+  ! Explicit update of well variable for a water injector
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/04/2016
+  !
 
   use Grid_module
   use Option_module
@@ -132,9 +139,9 @@ subroutine WellWatInjVarsExplUpdate(this,grid,option)
 
   !can load modlar density as well - 
   !might be worth computing the enthalpy as well?? Required in the Res comp later..
-  this%dw_ref(option%liquid_phase) = dw_h2o_kg
+  this%dw_kg_ref(option%liquid_phase) = dw_h2o_kg
   ! should not be required, this is already initialised to zero
-  !this%dw_ref(option%oil_phase) = 0.0d0
+  !this%dw_kg_ref(option%oil_phase) = 0.0d0
 
 
 end subroutine WellWatInjVarsExplUpdate
@@ -142,7 +149,6 @@ end subroutine WellWatInjVarsExplUpdate
 ! ************************************************************************** !
 
 subroutine WellWatInjLimitCheck(this,pass)
-  ! 
   !
   ! Perform limit check for a water injector
   !
@@ -184,6 +190,44 @@ subroutine WellWatInjLimitCheck(this,pass)
   this%spec%cntrl_var = cntrl_var_tmp
 
 end subroutine WellWatInjLimitCheck
+
+! ************************************************************************** !
+
+subroutine WellWatInjConnDenUpdate(this,grid,ss_fluxes,option)
+  !
+  ! Compute connection densities for a water injector 
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/06/2016
+  !
+  use Grid_module
+  use Option_module
+
+  use EOS_Water_module
+
+  implicit none
+
+  class(well_water_injector_type) :: this
+  type(grid_type), pointer :: grid !not currently used
+  PetscReal :: ss_fluxes(:,:)      !not currently used
+  type(option_type) :: option
+
+  PetscReal :: dw_kg_injw, dw_mol_injw   
+  PetscInt :: ierr
+
+  if( this%connection_set%num_connections == 0 ) return
+
+  call EOSWaterDensity(this%tw_ref,this%pw_ref, &
+                       dw_kg_injw,dw_mol_injw,ierr) 
+
+  ! all well conns are assigned the same density
+  ! a more accurate iterative model could be implemented 
+  ! (e.g. hydrostatic coupler)
+
+  this%conn_den_kg = dw_kg_injw !conn_densities is an array
+
+end subroutine WellWatInjConnDenUpdate
+
 ! ************************************************************************** !
 
 function WellWatInjConnMob(this,mobility,iphase)

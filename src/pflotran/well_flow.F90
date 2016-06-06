@@ -12,11 +12,14 @@ module Well_Flow_class
 #include "petsc/finclude/petscsys.h"
 
   type, public, extends(well_base_type) :: well_flow_type
-    PetscReal :: pw_ref                        ! [Pa] well pressure at reference elevation
-    PetscReal, pointer :: dw_ref(:)            ! dw_ref(iphase) [kg/m3] well fluid density of iphase at reference elevation
-    PetscReal, pointer :: q_fld(:)             ! q_fld(iphase)  [m3/s] well fluid flow rates of iphase
-    PetscReal, pointer :: mr_fld(:)            ! mr_fld(iphase) [kg/s] well fluid mass rates of iphase
-    PetscReal, pointer :: conn_h(:)            ! connection hydrostatic pressure corrections
+    PetscReal :: pw_ref                          ! [Pa] well pressure at reference elevation
+    PetscReal, pointer :: dw_kg_ref(:)           ! dw_kg_ref(iphase) [kg/m3] well fluid density of iphase at reference elevation
+    PetscReal, pointer :: q_fld(:)               ! q_fld(iphase)  [m3/s] well fluid flow rates of iphase
+    PetscReal, pointer :: mr_fld(:)              ! mr_fld(iphase) [kg/s] well fluid mass rates of iphase
+    PetscReal, pointer :: conn_h(:)              ! connection hydrostatic pressure corrections (local)
+    PetscReal, pointer :: conn_den_kg(:)         ! connection densities (local)
+    PetscReal, pointer :: well_conn_den_kg(:) ! connection densities (entire well)
+    PetscReal, pointer :: well_conn_h_sorted(:)  ! connection hydrostatic pressure corrections sorted by ascending elevation (entire well)
     class(auxvar_flow_type), pointer :: flow_auxvars(:,:) !pointer to flow auxvars
     type(flow_condition_type), pointer :: flow_condition ! pointer to flow_condition associated with the well
     !PetscReal, pointer :: conn_mobs(:,:)       ! well connection mobilities ! TO REMOVE - computed when needed flight
@@ -30,6 +33,8 @@ module Well_Flow_class
     procedure, public :: QPhase => FlowQPhase
     procedure, public :: MRPhase => FlowMRPhase
     procedure, public :: LimitCheck => WellFlowLimitCheck
+    procedure, public :: HydroCorrUpdates => FlowHydroCorrUpdate
+    procedure, public :: ConnDenUpdate => WellFlowConnDenUpdate
     !------------------------------------------------
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
@@ -42,7 +47,7 @@ module Well_Flow_class
     !procedure  :: WellConnSort
   end type  well_flow_type
 
-  public :: WellFlowInit, WellFlowConnInit
+  public :: WellFlowInit !, WellFlowConnInit
 
 contains
 
@@ -78,13 +83,13 @@ subroutine WellFlowInit(this,option)
 
   this%pw_ref = 0.0d0;
 
-  allocate( this%dw_ref(option%nphase) );
-  this%dw_ref = 0.0d0;
+  allocate( this%dw_kg_ref(option%nphase) );
+  this%dw_kg_ref = 0.0d0;
   allocate( this%q_fld(option%nphase) );
   this%q_fld = 0.0d0;
   allocate( this%mr_fld(option%nphase) );
   this%mr_fld = 0.0d0;
-
+  
   nullify(this%flow_auxvars) 
  
 end subroutine WellFlowInit
@@ -113,7 +118,11 @@ subroutine WellFlowConnInit(this,num_connections,option)
   allocate(this%conn_h(num_connections));
   this%conn_h = 0.0d0; 
 
-end subroutine WellFlowConnInit
+  nullify(this%conn_den_kg);
+  allocate( this%conn_den_kg(num_connections) )  
+  this%conn_den_kg =0.0d0
+
+end subroutine wellFlowConnInit
 
 ! ************************************************************************** !
 
@@ -160,7 +169,7 @@ subroutine FlowExplUpdate(this,grid,option)
     !pass = PETSC_TRUE ! at the moment no checks
     ! at the moment only checks for gas producer 
     !call this%WellMphaseCheck(flow_condition,pw_ref,q_liq,q_gas,m_liq,m_gas, &
-    !                          dw_ref,cntrl_var,ivar,pass)
+    !                          dw_kg_ref,cntrl_var,ivar,pass)
 
     ! call this%CheckLimits(pass,cntrl_var,pw_ref,q_liq,q_gas)
     ! during the well checks limits, cntrl_var,pw_ref,q_liq,q_gas can change    
@@ -411,6 +420,134 @@ subroutine WellFlowLimitCheck(this,pass)
   stop  
 
 end subroutine WellFlowLimitCheck
+
+!*****************************************************************************!
+
+subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
+  !
+  ! Updtae well hydrostatic correction for each well connection
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/06/2016
+  !
+
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_flow_type) :: this
+  type(grid_type), pointer :: grid
+  PetscReal :: ss_fluxes(:,:)
+  type(option_type) :: option
+
+  PetscInt, pointer :: ord(:), l2w(:)
+  PetscReal, pointer :: zcn(:) 
+  PetscInt :: iconn, ierr
+  PetscReal :: rho_up, rho_dn, p_up, p_dn, delta_z
+  !for debugging
+  PetscInt :: w_myrank
+
+  if( this%connection_set%num_connections == 0 ) return
+
+  call this%ConnDenUpdate(grid,ss_fluxes,option) 
+
+  ! concatanate densities from different ranks
+  call MPI_Allgatherv(this%conn_den_kg,this%connection_set%num_connections, &
+              MPI_DOUBLE_PRECISION, this%well_conn_den_kg, this%w_rank_conn, &
+              this%disp_rank_conn,MPI_DOUBLE_PRECISION, this%comm)  
+
+!#ifdef WELL_DEBUG
+!  print *,"After HUpdate MPI_Allgatherv" 
+!#endif
+
+  ord => this%w_conn_order
+  l2w => this%conn_l2w      
+  zcn => this%w_conn_z !already sorted for acending z     
+
+!#ifdef WELL_DEBUG
+!  call MPI_Comm_rank(this%comm, w_myrank, ierr )
+!  print *,"ConnHUpdate - Well_myrank", w_myrank
+!#endif
+
+!#ifdef WELL_DEBUG
+!    print *,"ConnHUpdate - iwconn_ref", this%iwconn_ref
+!#endif
+
+
+  !initialize cumulative well pressure to pw_ref
+  p_up = this%pw_ref
+  do iconn=1,this%well_num_conns
+    if(iconn > this%iwconn_ref) then
+    ! hydrostatic press corrections above z_ref
+      delta_z = zcn(iconn) - zcn(iconn-1)
+      rho_up = this%well_conn_den_kg(ord(iconn))
+      rho_dn = this%well_conn_den_kg(ord(iconn - 1))
+      p_up = p_up + 0.5d0*(rho_up+rho_dn) * option%gravity(Z_DIRECTION) * &
+             delta_z
+                                      ! this is a negative value 
+      this%well_conn_h_sorted(iconn) = p_up - this%pw_ref   
+    end if 
+  end do  
+
+  !initialize cumulative well pressure to pw_ref
+  p_dn = this%pw_ref   
+  do iconn=this%well_num_conns,1,-1
+    if(iconn < this%iwconn_ref) then
+    ! hydrostatic press corrections below z_ref
+      delta_z = zcn(iconn + 1) - zcn(iconn)
+      rho_up = this%well_conn_den_kg(ord(iconn + 1))
+      rho_dn = this%well_conn_den_kg(ord(iconn))
+      p_dn = p_dn - 0.5d0*(rho_up+rho_dn) * option%gravity(Z_DIRECTION) * &
+             delta_z 
+                                       ! this is a positive value
+      this%well_conn_h_sorted(iconn) = p_dn - this%pw_ref 
+    end if 
+  end do
+
+  ! load hydrostatic correction into the the well segment belonging 
+  ! to the current well rank
+  do iconn=1,this%connection_set%num_connections
+     this%conn_h(iconn) = this%well_conn_h_sorted( ord(l2w(iconn)) )
+  end do
+
+#ifdef WELL_DEBUG
+  do iconn=1,this%connection_set%num_connections
+     print *, "conn i/h = ", iconn, this%conn_h(iconn)
+  end do
+#endif
+
+  nullify(ord)
+  nullify(l2w)
+  nullify(zcn)
+
+end subroutine FlowHydroCorrUpdate
+
+!*****************************************************************************!
+
+subroutine WellFlowConnDenUpdate(this,grid,ss_fluxes,option)
+  !
+  ! Compute connection densities for a water injector 
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/06/2016
+  !
+  use Grid_module
+  use Option_module
+
+  use EOS_Water_module
+
+  implicit none
+
+  class(well_flow_type) :: this
+  type(grid_type), pointer :: grid !not currently used
+  PetscReal :: ss_fluxes(:,:)      !not currently used
+  type(option_type) :: option
+
+  print *, "WellFlowConnDenUpdate must be extended"
+  stop  
+
+end subroutine WellFlowConnDenUpdate
 
 !*****************************************************************************!
 

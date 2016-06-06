@@ -1312,8 +1312,8 @@ well.o : auxiliary.o condition.o connection.o option.o pflotran_constants.o \
          well_toil_ims.o well_water_injector.o
 well_base.o : connection.o grid.o material_aux.o option.o output_aux.o \
               pflotran_constants.o well_spec_base.o
-well_flow.o : auxvars_flow.o condition.o grid.o option.o pflotran_constants.o \
-              well_base.o well_spec_base.o
+well_flow.o : auxvars_flow.o condition.o eos_water.o grid.o option.o \
+              pflotran_constants.o well_base.o well_spec_base.o
 well_flow_energy.o : auxvars_flow_energy.o grid.o option.o \
                      pflotran_constants.o well_flow.o
 well_spec_base.o : input_aux.o option.o pflotran_constants.o string.o units.o \

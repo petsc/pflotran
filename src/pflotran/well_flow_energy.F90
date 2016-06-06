@@ -20,6 +20,7 @@ module Well_FlowEnergy_class
     procedure, public :: VarsExplUpdate => FlowEnergyVarsExplUpdate
     !procedure, public :: QPhase => FlowEnergyQPhase
     procedure, public :: ConnMob => WellFlowEnergyConnMob
+    !------------------------------------------------------------
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
     !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear

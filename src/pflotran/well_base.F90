@@ -36,10 +36,11 @@ module Well_Base_class
     procedure, public :: PrintMsg => PrintBase
     procedure, public :: ConnInit => WellBaseConnInit
     procedure, public :: ExplUpdate => BaseExplUpdate
+    procedure, public :: HydroCorrUpdates => BaseHydroCorrUpdate
+    procedure, public  :: PrintOutputHeader => PrintOutputHeaderWellBase
     !procedure, public :: Output
     procedure, public  :: Setup
     procedure, public :: WellFactorUpdate
-    procedure, public  :: PrintOutputHeader => PrintOutputHeaderWellBase
     procedure  :: InitWellZRefCntrlConn
     procedure  :: WellConnSort
   end type  well_base_type
@@ -576,6 +577,31 @@ subroutine WellFactorUpdate(this,grid,connection_set,material_auxvars,option)
   end do 
 
 end subroutine WellFactorUpdate
+
+! *************************************************************************** !
+
+subroutine BaseHydroCorrUpdate(this,grid,ss_fluxes,option)
+  !
+  ! Updtae well hydrostatic correction for each well connection
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/06/2016
+  !
+
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_base_type) :: this
+  type(grid_type), pointer :: grid
+  PetscReal :: ss_fluxes(:,:)
+  type(option_type) :: option
+
+  print *, "Well => BaseHydroCorrUpdate must be extended"
+  stop  
+
+end subroutine BaseHydroCorrUpdate
 
 ! *************************************************************************** !
 

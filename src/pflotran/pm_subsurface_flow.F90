@@ -366,15 +366,21 @@ subroutine AllWellsInit(this)
 
   PetscMPIInt :: cur_w_myrank
   character(len=MAXWORDLENGTH) :: wfile_name
+  PetscInt :: beg_cpl_conns, end_cpl_conns
   PetscInt :: ierr 
 
   source_sink => this%realization%patch%source_sink_list%first
 
+  beg_cpl_conns = 1
   do
     if (.not.associated(source_sink)) exit
     if( associated(source_sink%well) ) then
       !exlude empty wells - not included in well comms
       if(source_sink%connection_set%num_connections > 0) then
+
+        end_cpl_conns = beg_cpl_conns + &
+                        source_sink%connection_set%num_connections - 1  
+
       
 #ifdef WELL_DEBUG
         print *,"AllWellsInit - cntrl_lcell_id", source_sink%well%cntrl_lcell_id
@@ -387,9 +393,15 @@ subroutine AllWellsInit(this)
                                 this%realization%patch%aux%Material%auxvars, &
                                            this%realization%option)
 
-       call source_sink%well%ExplUpdate(this%realization%patch%grid, &
-                                        this%realization%option)
+        call source_sink%well%ExplUpdate(this%realization%patch%grid, &
+                                         this%realization%option)
   
+        call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
+                      this%realization%patch% &
+                      ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
+                      this%realization%option)
+       ! CALL HERE the well hydrostatic correction computation 
+
        ! can be done in here because this%realization%patch%aux%TOil_ims 
        ! this TOil_ims should be more general!!!
        ! class(auxvar_flow_energy_type), pointer :: auxvar_flow_energy_p

@@ -105,6 +105,14 @@ subroutine WellAuxVarSetUp(well,connection_set,flow_condition,aux,option)
   select type(well)
     class is(well_flow_type)
       well%flow_condition => flow_condition
+
+      nullify(well%well_conn_den_kg)
+      allocate(well%well_conn_den_kg(well%well_num_conns))
+      well%well_conn_den_kg = 0.0d0
+      nullify(well%well_conn_h_sorted)
+      allocate(well%well_conn_h_sorted(well%well_num_conns))
+      well%well_conn_h_sorted = 0.0d0
+
   end select
 
   !for well base
