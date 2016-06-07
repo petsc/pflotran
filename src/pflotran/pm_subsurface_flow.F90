@@ -67,6 +67,7 @@ module PM_Subsurface_Flow_class
 #endif
     procedure, public :: InputRecord => PMSubsurfaceFlowInputRecord
     procedure  :: AllWellsInit
+    procedure :: AllWellsUpdate
 !    procedure, public :: Destroy => PMSubsurfaceFlowDestroy
   end type pm_subsurface_flow_type
   
@@ -345,15 +346,17 @@ recursive subroutine PMSubsurfaceFlowInitializeRun(this)
   call this%PreSolve()
   call this%UpdateAuxVars()
   call this%UpdateSolution() 
-  call this%AllWellsInit()
+  call this%AllWellsInit() !does nothing if no well exist
     
 end subroutine PMSubsurfaceFlowInitializeRun
 
 ! ************************************************************************** !
 
 subroutine AllWellsInit(this)
+  !
+  ! Initialise all wells - does nothing if no well exist
   ! 
-  ! Author: Glenn Hammond
+  ! Author: Paolo Orsini
   ! Date: 05/25/16
 
   !use Well_Base_class
@@ -381,7 +384,7 @@ subroutine AllWellsInit(this)
         end_cpl_conns = beg_cpl_conns + &
                         source_sink%connection_set%num_connections - 1  
 
-      
+        ! TO DO - move all this code chunk into well.F90
 #ifdef WELL_DEBUG
         print *,"AllWellsInit - cntrl_lcell_id", source_sink%well%cntrl_lcell_id
         print *, "perm_yy", this%realization%patch%aux%Material% &
@@ -400,19 +403,8 @@ subroutine AllWellsInit(this)
                       this%realization%patch% &
                       ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
                       this%realization%option)
-       ! CALL HERE the well hydrostatic correction computation 
-
-       ! can be done in here because this%realization%patch%aux%TOil_ims 
-       ! this TOil_ims should be more general!!!
-       ! class(auxvar_flow_energy_type), pointer :: auxvar_flow_energy_p
-       ! auxvar_flow_energy_p => this%realization%patch%aux%TOil_ims%auxvars
-       ! if well has a pointer to its own auxvars, can just 
-       ! - call well%VarUpdate() 
-       ! if this work I could use it for Material%auxvars too
-       ! add here WellsVarUpdate(auxvar_flow_energy_p)
-       ! add here WellHydroCorrUpdate(auxvar_flow_energy_p)       
-       !  
-       ! create well outputfile
+        
+       ! create well outputfile - should be moved into a well class
        ! For now open files to print the well variables by default 
        ! TODO: add to well_spec user options to control well printing
        call MPI_Comm_rank(source_sink%well%comm, cur_w_myrank, ierr )  
@@ -432,8 +424,6 @@ subroutine AllWellsInit(this)
     end if
     source_sink => source_sink%next 
   end do 
-
-
 
 end subroutine AllWellsInit
 
@@ -521,8 +511,66 @@ subroutine PMSubsurfaceFlowInitializeTimestepB(this)
       call RealizationUpdatePropertiesTS(this%realization)
     endif
   endif
+
+  call this%AllWellsUpdate()
   
 end subroutine PMSubsurfaceFlowInitializeTimestepB
+
+! ************************************************************************** !
+
+subroutine AllWellsUpdate(this)
+  !
+  ! Update all wells at the beginning of each time step
+  !  - is permeability changes updates well factor 
+  !  - update hydrostatic corrections
+  !  - 
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 06/06/16
+
+  use Coupler_module
+  implicit none
+
+  class(pm_subsurface_flow_type) :: this
+
+  type(coupler_type), pointer :: source_sink
+
+  PetscInt :: beg_cpl_conns, end_cpl_conns
+
+  source_sink => this%realization%patch%source_sink_list%first
+
+  beg_cpl_conns = 1
+  do
+    if (.not.associated(source_sink)) exit
+    if( associated(source_sink%well) ) then
+      !exlude empty wells - not included in well comms
+      if(source_sink%connection_set%num_connections > 0) then
+        
+        if(this%realization%option%update_flow_perm) then
+          call source_sink%well%WellFactorUpdate(this%realization%patch%grid, &
+                                         source_sink%connection_set, &
+                                 this%realization%patch%aux%Material%auxvars, &
+                                            this%realization%option)
+        end if
+
+        end_cpl_conns = beg_cpl_conns + &
+                        source_sink%connection_set%num_connections - 1  
+
+        ! for fully explicit well - or extra coupling
+        !call source_sink%well%ExplUpdate(this%realization%patch%grid, &
+        !                                 this%realization%option)
+
+        call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
+                      this%realization%patch% &
+                      ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
+                      this%realization%option)
+
+      end if
+    end if
+    source_sink => source_sink%next 
+  end do 
+
+end subroutine AllWellsUpdate
 
 ! ************************************************************************** !
 

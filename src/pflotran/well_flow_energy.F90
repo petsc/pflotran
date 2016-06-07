@@ -20,6 +20,7 @@ module Well_FlowEnergy_class
     procedure, public :: VarsExplUpdate => FlowEnergyVarsExplUpdate
     !procedure, public :: QPhase => FlowEnergyQPhase
     procedure, public :: ConnMob => WellFlowEnergyConnMob
+    procedure, public :: ExplJDerivative => WellFlowEnergyExplJDerivative
     !------------------------------------------------------------
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
@@ -75,82 +76,79 @@ subroutine WellFlowEnergyInit(this,option)
 end subroutine WellFlowEnergyInit
 
 ! ************************************************************************** !
+subroutine WellFlowEnergyExplJDerivative(this,iconn,ghosted_id,isothermal, &
+                                         energy_equation_index,option,Jac)
+  ! 
+  ! Computes the well derivatives terms for the jacobian
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 6/06/16
+  ! 
 
-!subroutine FlowEnergyExplUpdate(this,grid,option)
-  ! 
-  ! - Update FlowEnergy well vars
-  ! - Perform a limit on well checks 
-  ! - Update well control variable in case of switch when a limit is reached
-  !
-  ! Author: Paolo Orsini (OGS)
-  ! Date: 6/03/2016
-  ! 
-!
-!  use Grid_module
-!  use Option_module
-!
-!  implicit none
-!
-!  class(well_flow_energy_type) :: this
-!  type(grid_type), pointer :: grid
-!  type(option_type) :: option
-!
-!  PetscBool :: pass
-!
-!  write(*,"('FlowEnergyExpl d11 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%den(1)
-!  write(*,"('FlowEnergyExpl d12 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%den(2) 
-!  write(*,"('FlowEnergyExpl p11 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%pres(1) 
-!  write(*,"('FlowEnergyExpl t1 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%temp 
-!
-!  if(this%connection_set%num_connections == 0 ) return
-!
-!  pass = PETSC_FALSE
-!
-!  !cntrl_var = this%cntrl_var ! initialise well control variable
-!  do
-!    if(pass) exit ! the well limits are satisfied
-!
-!    call this%VarsExplUpdate(grid,option)
-!
-!    ! NOW IMPLEMENT CHECK
-!    !call this%ExplIPRMphase(grid,cur_connection_set, &
-!    !                 flow_condition,auxvars, pw_ref,tw_ref, q_liq,q_gas, &
-!    !                 m_liq, m_gas, dw_ref, cntrl_var,ivar)
-!
-!    !print *, "pw_ref = ", pw_ref," ivar = ", ivar
-!    !pass = PETSC_TRUE ! at the moment no checks
-!    ! at the moment only checks for gas producer 
-!    !call this%WellMphaseCheck(flow_condition,pw_ref,q_liq,q_gas,m_liq,m_gas, &
-!    !                          dw_ref,cntrl_var,ivar,pass)
-!
-!    ! call this%CheckLimits(pass,cntrl_var,pw_ref,q_liq,q_gas)
-!    ! during the well checks limits, cntrl_var,pw_ref,q_liq,q_gas can change    
-!
-!    ! end IPR computation
-! 
-!    ! well check - is pw admissible? volumtric rates needed for VFPs
-!    ! if updates might change the well control variable, those repeating 
-!    ! the previous operations
-!
-!  !if well check ok, ends IPR iterative computation
-!  end do
-!
-  ! update well variables 
-  !if(wellvar_update) then
-  !  this%pw_ref = pw_ref
-  !  this%tw_ref = tw_ref
-  !  this%q_fld(LIQUID_PHASE) = q_liq
-  !  this%q_fld(GAS_PHASE) = q_gas
-  !  this%mr_fld(LIQUID_PHASE) = m_liq
-  !  this%mr_fld(GAS_PHASE) = m_gas
-  !  this%dw_ref(LIQUID_PHASE) = dw_ref(LIQUID_PHASE)
-  !  this%dw_ref(GAS_PHASE) = dw_ref(GAS_PHASE)
-  !  this%cntrl_var = cntrl_var
-  !end if
-!
-!
-!
-!end subroutine FlowEnergyExplUpdate
+  use Option_module
+  !use Condition_module
+
+  implicit none
+
+  class(well_flow_energy_type) :: this
+  PetscInt :: iconn 
+  PetscInt :: ghosted_id
+  PetscBool :: isothermal
+  PetscInt :: energy_equation_index
+  type(option_type) :: option
+  PetscReal :: Jac(option%nflowdof,option%nflowdof)
+
+  !type(flow_toil_ims_condition_type), pointer :: src_sink_condition
+  !type(toil_ims_auxvar_type) :: toil_auxvar(0:)
+  !class(auxvar_toil_ims_type) :: toil_auxvar(0:)
+  !type(auxvar_toil_ims_type) :: toil_auxvar(0:)
+  !type(global_auxvar_type) :: global_auxvar
+  !PetscReal :: scale
+  
+  
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscReal :: dummy_real(option%nphase)
+  PetscInt :: idof, irow
+
+  option%iflag = -3
+
+  !call TOilImsSrcSink(option,src_sink_condition,toil_auxvar(ZERO_INTEGER), &
+  !                        global_auxvar,dummy_real,scale,Res)
+
+#ifdef WELL_DEBUG
+  write(*,"('ExplJDerivative p011 = ',e16.10)"), this%flow_energy_auxvars(0,1)%pres(1)
+  write(*,"('ExplJDerivative p111 = ',e16.10)"), this%flow_energy_auxvars(1,1)%pres(1)
+  write(*,"('ExplJDerivative p211 = ',e16.10)"), this%flow_energy_auxvars(2,1)%pres(1)
+  write(*,"('ExplJDerivative p311 = ',e16.10)"), this%flow_energy_auxvars(3,1)%pres(1) 
+#endif
+
+
+  call this%ExplRes(iconn,dummy_real,isothermal,ghosted_id,ZERO_INTEGER,&
+                    option,res)
+
+  ! downgradient derivatives
+  do idof = 1, option%nflowdof
+
+    !call TOilImsSrcSink(option,src_sink_condition,toil_auxvar(idof), &
+    !                    global_auxvar,dummy_real,scale,res_pert)
+    call this%ExplRes(iconn,dummy_real,isothermal,ghosted_id,idof, &
+                      option,res_pert)
+
+    do irow = 1, option%nflowdof
+      !Jac(irow,idof) = (res_pert(irow)-res(irow))/toil_auxvar(idof)%pert
+      Jac(irow,idof) = (res_pert(irow)-res(irow)) / &
+                         this%flow_energy_auxvars(idof,ghosted_id)%pert
+    enddo !irow
+  enddo ! idof
+  
+  if (isothermal) then
+    !Jac(TOIL_IMS_ENERGY_EQUATION_INDEX,:) = 0.d0
+    !Jac(:,TOIL_IMS_ENERGY_EQUATION_INDEX) = 0.d0
+    Jac(energy_equation_index,:) = 0.d0
+    Jac(:,energy_equation_index) = 0.d0
+  endif   
+
+end subroutine WellFlowEnergyExplJDerivative
 
 ! ************************************************************************** !
 

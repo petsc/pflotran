@@ -2526,7 +2526,21 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     cur_connection_set => source_sink%connection_set
-    
+
+#ifdef WELL_DEBUG
+  print *,'my rank = ',option%myrank,' just before ExplUpdate'
+#endif
+
+    if ( associated(source_sink%well) ) then
+      if (cur_connection_set%num_connections > 0 ) then
+        call source_sink%well%ExplUpdate(grid,option)
+      end if
+    end if 
+
+#ifdef WELL_DEBUG
+  print *,'my rank = ',option%myrank,' just after ExplUpdate'
+#endif
+ 
     do iconn = 1, cur_connection_set%num_connections      
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
@@ -2544,15 +2558,19 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
         scale = 1.d0
       endif
       
-      if ( associated(source_sink%well) ) then
+      !if ( associated(source_sink%well) ) then
          ! use the if well to decide if to call TOilImsSrcSink or the WellRes
          !call source_sink%well%PrintMsg(); 
+      !end if
+      if ( associated(source_sink%well) ) then
+        call source_sink%well%ExplRes(iconn,ss_flow_vol_flux, &
+                       toil_ims_isothermal,ghosted_id,ZERO_INTEGER,option,Res)
+      else
+        call TOilImsSrcSink(option,source_sink%flow_condition%toil_ims, &
+                           patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id), &
+                           global_auxvars(ghosted_id),ss_flow_vol_flux, &
+                           scale,Res)
       end if
-
-      call TOilImsSrcSink(option,source_sink%flow_condition%toil_ims, &
-                         patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id), &
-                         global_auxvars(ghosted_id),ss_flow_vol_flux, &
-                         scale,Res)
 
       r_p(local_start:local_end) =  r_p(local_start:local_end) - Res(:)
 
@@ -2749,7 +2767,9 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
                               patch%characteristic_curves_array( &
                                patch%sat_func_id(ghosted_id))%ptr, &
                               ghosted_id,option)
-    !write(*,"('after perturb = ',(4(e10.4,1x)))"), patch%aux%TOil_ims%auxvars(0:3,ghosted_id)%pert
+!#ifdef WELL_DEBUG    
+!  write(*,"('after perturb = ',(4(e10.4,1x)))"), patch%aux%TOil_ims%auxvars(0:3,ghosted_id)%pert
+!#endif 
     ! if issues as expected above - exploit class member
     !call patch%aux%Perturb(ghosted_id, &
     !                       global_auxvars(ghosted_id), &
@@ -2759,6 +2779,14 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
     !                       ghosted_id,option)
 
   enddo
+
+#ifdef WELL_DEBUG    
+  write(*,"('AP p011 before = ',e10.4)") patch%aux%TOil_ims%auxvars(0,1)%pres(1)
+  write(*,"('AP p111 before = ',e10.4)") patch%aux%TOil_ims%auxvars(1,1)%pres(1)
+  write(*,"('AP p211 before = ',e10.4)") patch%aux%TOil_ims%auxvars(2,1)%pres(1)
+  write(*,"('AP p311 before = ',e10.4)") patch%aux%TOil_ims%auxvars(3,1)%pres(1)
+#endif 
+
   
 !#ifdef DEBUG_GENERAL_LOCAL
 !  call GeneralOutputAuxVars(gen_auxvars,global_auxvars,option)
@@ -2945,13 +2973,17 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
       endif
       
       Jup = 0.d0
-
-      call TOilImsSrcSinkDerivative(option, &
-                        source_sink%flow_condition%toil_ims, &
-                        patch%aux%TOil_ims%auxvars(:,ghosted_id), &
-                        global_auxvars(ghosted_id), &
-                        scale,Jup)
-
+      if (associated(source_sink%well) ) then
+        call source_sink%well%ExplJDerivative(iconn,ghosted_id, &
+                        toil_ims_isothermal,TOIL_IMS_ENERGY_EQUATION_INDEX, &
+                         option,Jup)
+      else 
+        call TOilImsSrcSinkDerivative(option, &
+                          source_sink%flow_condition%toil_ims, &
+                          patch%aux%TOil_ims%auxvars(:,ghosted_id), &
+                          global_auxvars(ghosted_id), &
+                          scale,Jup)
+      end if
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                                     ADD_VALUES,ierr);CHKERRQ(ierr)
 

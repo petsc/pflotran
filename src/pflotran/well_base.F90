@@ -38,7 +38,9 @@ module Well_Base_class
     procedure, public :: ExplUpdate => BaseExplUpdate
     procedure, public :: HydroCorrUpdates => BaseHydroCorrUpdate
     procedure, public  :: PrintOutputHeader => PrintOutputHeaderWellBase
-    !procedure, public :: Output
+    procedure, public :: ExplRes => WellBaseExplRes
+    procedure, public :: ExplJDerivative => WellBaseExplJDerivative
+    procedure, public :: Output => BaseOutput  
     procedure, public  :: Setup
     procedure, public :: WellFactorUpdate
     procedure  :: InitWellZRefCntrlConn
@@ -526,55 +528,60 @@ subroutine WellFactorUpdate(this,grid,connection_set,material_auxvars,option)
   PetscReal :: dx,dy,dz
   PetscReal :: dx1,dx2,dh,k1,k2,r0  
 
-  do iconn=1,connection_set%num_connections
-    local_id = connection_set%id_dn(iconn);
-    ghosted_id = grid%nL2G(local_id);
-    dx = grid%structured_grid%dx(ghosted_id)
-    dy = grid%structured_grid%dy(ghosted_id)
-    dz = grid%structured_grid%dz(ghosted_id)
-
-    select case(this%conn_drill_dir(iconn))
-      case(X_DIRECTION) 
-        dx1 = dy
-        dx2 = dz
-        dh = dx
-        k1 = material_auxvars(ghosted_id)%permeability(perm_yy_index)
-        k2 = material_auxvars(ghosted_id)%permeability(perm_zz_index)
-      case(Y_DIRECTION)
-        dx1 = dx
-        dx2 = dz
-        dh = dy
-        k1 = material_auxvars(ghosted_id)%permeability(perm_xx_index)        
-        k2 = material_auxvars(ghosted_id)%permeability(perm_zz_index)
-      case(Z_DIRECTION)
-        dx1 = dx
-        dx2 = dy
-        dh = dz
-        k1 = material_auxvars(ghosted_id)%permeability(perm_xx_index)        
-        k2 = material_auxvars(ghosted_id)%permeability(perm_yy_index)
-    end select
+  if (this%spec%well_fact_itype == WELL_FACTOR_CONST) then
+    this%conn_factors = this%spec%const_well_fact
+  else  
+    do iconn=1,connection_set%num_connections
+      local_id = connection_set%id_dn(iconn);
+      ghosted_id = grid%nL2G(local_id);
+      dx = grid%structured_grid%dx(ghosted_id)
+      dy = grid%structured_grid%dy(ghosted_id)
+      dz = grid%structured_grid%dz(ghosted_id)
+  
+      select case(this%conn_drill_dir(iconn))
+        case(X_DIRECTION) 
+          dx1 = dy
+          dx2 = dz
+          dh = dx
+          k1 = material_auxvars(ghosted_id)%permeability(perm_yy_index)
+          k2 = material_auxvars(ghosted_id)%permeability(perm_zz_index)
+        case(Y_DIRECTION)
+          dx1 = dx
+          dx2 = dz
+          dh = dy
+          k1 = material_auxvars(ghosted_id)%permeability(perm_xx_index)        
+          k2 = material_auxvars(ghosted_id)%permeability(perm_zz_index)
+        case(Z_DIRECTION)
+          dx1 = dx
+          dx2 = dy
+          dh = dz
+          k1 = material_auxvars(ghosted_id)%permeability(perm_xx_index)        
+          k2 = material_auxvars(ghosted_id)%permeability(perm_yy_index)
+      end select
 
 #ifdef WELL_DEBUG
-    print *,"permx idx = ", perm_xx_index
-    print *,"permx idy = ", perm_yy_index
-    print *,"permx idz = ", perm_zz_index
-    print *,  material_auxvars(ghosted_id)%permeability(perm_xx_index)
-    print *,  material_auxvars(ghosted_id)%permeability(perm_yy_index)
-    print *,  material_auxvars(ghosted_id)%permeability(perm_zz_index)
+      print *,"permx idx = ", perm_xx_index
+      print *,"permx idy = ", perm_yy_index
+      print *,"permx idz = ", perm_zz_index
+      print *,  material_auxvars(ghosted_id)%permeability(perm_xx_index)
+      print *,  material_auxvars(ghosted_id)%permeability(perm_yy_index)
+      print *,  material_auxvars(ghosted_id)%permeability(perm_zz_index)
 #endif     
 
-    r0 = (dx1**2.d0 * (k2/k1)**0.5d0 + dx2**2.d0 * (k1/k2)**0.5d0)**0.5d0 * &
-         0.28d0 / ((k2/k1)**0.25d0 + (k1/k2)**0.25d0)
-
-    this%conn_factors(iconn) = 2.0d0 * PI * dh * dsqrt(k1*k2) * &
-                       this%spec%theta_frac / &
-                       ( dlog(r0/this%spec%radius) + this%spec%skin_factor )
+      r0 = (dx1**2.d0 * (k2/k1)**0.5d0 + dx2**2.d0 * (k1/k2)**0.5d0)**0.5d0 * &
+           0.28d0 / ((k2/k1)**0.25d0 + (k1/k2)**0.25d0)
+  
+      this%conn_factors(iconn) = 2.0d0 * PI * dh * dsqrt(k1*k2) * &
+                         this%spec%theta_frac / &
+                         ( dlog(r0/this%spec%radius) + this%spec%skin_factor )
 
 #ifdef WELL_DEBUG
-    print *,"conn_id = ", iconn," conn fact = ", this%conn_factors(iconn)
+      print *,"conn_id = ", iconn," conn fact = ", this%conn_factors(iconn)
 #endif
+    end do !end loop on well connections
 
-  end do 
+  end if !end if well factor type
+
 
 end subroutine WellFactorUpdate
 
@@ -628,6 +635,86 @@ subroutine BaseExplUpdate(this,grid,option)
   stop  
 
 end subroutine BaseExplUpdate
+
+! ************************************************************************** !
+
+subroutine WellBaseExplJDerivative(this,iconn,ghosted_id,isothermal, &
+                                   energy_equation_index,option,Jac)
+  ! 
+  ! Computes the well derivatives terms for the jacobian
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 6/06/16
+  ! 
+
+  use Option_module
+
+  implicit none
+
+  class(well_base_type) :: this
+  PetscInt :: iconn
+  PetscInt :: ghosted_id 
+  PetscBool :: isothermal
+  PetscInt :: energy_equation_index
+  type(option_type) :: option
+  PetscReal :: Jac(option%nflowdof,option%nflowdof)
+
+  print *, "WellFlowEnergyExplJDerivative must be extended"
+  stop  
+  
+end subroutine WellBaseExplJDerivative
+
+! ************************************************************************** !
+
+subroutine WellBaseExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
+                                ghosted_id, dof,option,res)
+  ! 
+  ! Compute residual term for a TOilIms Water injector
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 06/06/16
+  ! 
+  use Option_module
+  
+  implicit none
+
+  class(well_base_type) :: this
+  PetscInt :: iconn
+  PetscReal :: ss_flow_vol_flux(:)
+  PetscBool :: isothermal
+  PetscInt :: ghosted_id, dof
+  type(option_type) :: option
+  PetscReal :: Res(1:option%nflowdof)
+
+  print *, "WellBaseExplRes must be extended"
+  stop  
+
+
+end subroutine  WellBaseExplRes
+
+! ************************************************************************** !
+
+subroutine BaseOutput(this,output_file_unit,output_option,option)
+  ! 
+  ! Write output file for TOilImsWatInj
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 05/18/16
+  ! 
+  use Option_module
+  use Output_Aux_module
+
+  implicit none
+
+  class(well_base_type) :: this
+  PetscInt, intent(in) :: output_file_unit
+  type(output_option_type), intent(in) :: output_option
+  type(option_type) :: option
+
+  print *, "Well BaseOutput must be extended"
+  stop  
+
+end subroutine BaseOutput
 
 ! ************************************************************************** !
 

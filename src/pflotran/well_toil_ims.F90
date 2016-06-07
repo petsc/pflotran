@@ -27,8 +27,10 @@ module Well_TOilIms_class
     ! ......................
     contains
       procedure, public :: PrintMsg => PrintTOilImsWatInj
+      procedure, public :: ExplRes => TOilImsWatInjExplRes
       !procedure, public :: VarsExplUpdate => TOilImsWatInjVarsExplUpdate ! to go on parent classes
       procedure, public  :: PrintOutputHeader => TOilImsWatInjOutputHeader
+      procedure, public :: Output => TOilImsWatInjOutput
       !procedure, public :: ConnInit => WellTOilImsConnInit !to go on parents level
   end type well_toil_ims_wat_inj_type
 
@@ -82,28 +84,78 @@ subroutine TOilImsWatInjOutputHeader(this,output_option,file_unit)
 
   tunit = trim(output_option%tunit)
 
-  !write(IUNIT_TEMP,*) " VARIABLES = " // &
-  !    '"Time [' // trim(output_option%tunit) // ']", ' // &
-  !              """Pw[Pa]"", " // &
-  !      """Tw[C]"", ""dh2o[kg/m3]"", ""doil[kg/[t]]"", "// &
-  !      """Qwat[m3/[t]]"", ""Qoil[m3/[t]]"", " // &
-  !      """Mwat[kg/[t]]"", ""Moil[kg/[t]]""" 
-
   !TODO: can do something more clever than this: 
   !      e.g. small loop to add well vars
   write(IUNIT_TEMP,*) " VARIABLES = " // &
       '"Time [' // trim(tunit) // ']", ' // &
                 '""Pw[Pa]"", ' // &
         '"Tw[C]", "dh2o[kg/m3]", ' // &
-        '"doil[kg/' // trim(tunit) // ']", ' // &
         '"Qwat[m3/' // trim(tunit) // ']", ' // &
-        '"Qoil[m3/' // trim(tunit) //  ']", ' // &
-        '"Mwat[kg/' // trim(tunit) // ']", ' // &
-        '"Moil[kg/' // trim(tunit) // ']"' 
+        '"Mwat[kg/' // trim(tunit) // ']" ' 
+
+!below to print all vars - 
+!  write(IUNIT_TEMP,*) " VARIABLES = " // &
+!      '"Time [' // trim(tunit) // ']", ' // &
+!                '""Pw[Pa]"", ' // &
+!        '"Tw[C]", "dh2o[kg/m3]", ' // &
+!        '"doil[kg/' // trim(tunit) // ']", ' // &
+!        '"Qwat[m3/' // trim(tunit) // ']", ' // &
+!        '"Qoil[m3/' // trim(tunit) //  ']", ' // &
+!        '"Mwat[kg/' // trim(tunit) // ']", ' // &
+!        '"Moil[kg/' // trim(tunit) // ']"' 
+
 
 
 end subroutine TOilImsWatInjOutputHeader
 
+! ************************************************************************** !
+
+subroutine TOilImsWatInjOutput(this,output_file_unit,output_option,option)
+  ! 
+  ! Write output file for TOilImsWatInj
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 05/18/16
+  ! 
+  use Option_module
+  use Output_Aux_module
+
+  implicit none
+
+  !class(well_toil_ims_type) :: this
+  class(well_toil_ims_wat_inj_type) :: this
+  PetscInt, intent(in) :: output_file_unit
+  type(output_option_type), intent(in) :: output_option
+  type(option_type) :: option
+
+  !character(len=MAXWORDLENGTH) :: src_name
+  !type(output_option_type), intent(in) :: output_option
+
+  !character(len=MAXWORDLENGTH) :: wfile_name
+  !PetscMPIInt :: cur_w_myrank
+  !PetscInt :: ios, ierr
+
+  !if( this%connection_set%num_connections > 0 ) then
+  !  call MPI_Comm_rank(this%comm, cur_w_myrank, ierr )  
+  !  if(this%cntr_rank == cur_w_myrank ) then
+  !    wfile_name = trim(option%global_prefix) // "_" // &
+  !                      trim(src_name) // ".tec" 
+  !    open(unit=IUNIT_TEMP,file=wfile_name,action="write", &
+  !         position="append",status="old",iostat=ios)
+
+  write(output_file_unit,"(6(E10.4,1x))") option%time/output_option%tconv , &
+                                          this%pw_ref, &
+                                          this%tw_ref, &
+                                          this%dw_kg_ref(LIQUID_PHASE), &
+                                          this%q_fld(LIQUID_PHASE) * &
+                                          output_option%tconv, &
+                                          this%mr_fld(LIQUID_PHASE) * &
+                                          output_option%tconv
+
+  !  end if
+  !end if 
+
+end subroutine TOilImsWatInjOutput
 
 ! ************************************************************************** !
 
@@ -154,6 +206,84 @@ function CreateTOilImsWell(well_spec,option)
   !anything to initialise at injector/producer level?
 
 end function CreateTOilImsWell
+
+! ************************************************************************** !
+subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
+                                ghosted_id, dof,option,res)
+  ! 
+  ! Compute residual term for a TOilIms Water injector
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 06/06/16
+  ! 
+  use PM_TOilIms_Aux_module
+  use EOS_Water_module
+  use Option_module
+  
+  implicit none
+
+  class(well_toil_ims_wat_inj_type) :: this
+  PetscInt :: iconn
+  PetscReal :: ss_flow_vol_flux(:)
+  PetscBool :: isothermal
+  PetscInt :: ghosted_id, dof
+  type(option_type) :: option
+  PetscReal :: Res(1:option%nflowdof)
+
+  !why not using a pointer to avoid the copy?
+  PetscReal :: dw_kg, dw_h2o_mol
+  PetscReal :: dphi, vol_flux, cfact, mob, hc 
+  PetscReal :: enth_src_h2o
+  PetscInt :: ierr
+
+  Res = 0.0d0
+
+  hc = this%conn_h(iconn)
+  cfact = this%conn_factors(iconn)
+
+  mob = this%ConnMob(this%flow_auxvars(dof,ghosted_id)%mobility, &
+                                       option%liquid_phase)
+  
+  dphi = this%pw_ref + hc - & 
+            this%flow_auxvars(dof,ghosted_id)%pres(option%liquid_phase)
+
+  if ( dphi < 0.0d0 ) &
+    write(*,"('TOilImsWatInj reverse flow at gh = ',I5,' dp = ',e10.4)") &
+          ghosted_id, dphi
+
+#ifdef WELL_DEBUG
+  write(*,*) 'ExplRes dof = ', dof
+  write(*,*) 'ExplRes gh = ', ghosted_id
+  write(*,"('ExplRes gh press = ',e10.4)") &
+      this%flow_auxvars(dof,ghosted_id)%pres(option%liquid_phase)
+  write(*,"('ExplRes dphi = ',e10.4)") dphi
+  write(*,"('ExplRes hc = ',e10.4)") hc
+  write(*,"('ExplRes pw_ref = ',e10.4)") this%pw_ref 
+#endif
+
+  ! it is assumed that the temperature is uniform throughout the well
+  call EOSWaterDensity(this%tw_ref,this%pw_ref+hc, &
+                       dw_kg,dw_h2o_mol,ierr) 
+
+  if (.not.isothermal) then  
+    call EOSWaterEnthalpy(this%tw_ref,this%pw_ref+hc,enth_src_h2o,ierr)     
+    !enth_src_h2o = enth_src_h2o * option%scale
+    enth_src_h2o = enth_src_h2o * 1.d-6 ! J/kmol -> MJ/kmol 
+   end if
+
+  if(cfact * mob > wfloweps) then
+    !         m^3 * 1/(Pa.s) * Pa = m^3/s
+    vol_flux = cfact * mob * dphi
+    ss_flow_vol_flux(option%liquid_phase) = vol_flux
+    !no cross-flow allowed with this model
+    ss_flow_vol_flux(option%oil_phase) = 0.0d0
+    ! H2O equation       !m^3/s * kmol/m^3 = Kmol/sec 
+    Res(option%water_id) = vol_flux* dw_h2o_mol 
+    ! energy equation             !m^3/s * kmol/m^3 * MJ/Kmol = MJ/s
+    if (.not.isothermal) Res(3) = vol_flux*dw_h2o_mol * enth_src_h2o
+   end if
+
+end subroutine TOilImsWatInjExplRes
 
 ! ************************************************************************** !
 

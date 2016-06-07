@@ -832,7 +832,7 @@ output.o : connection.o coupler.o debug.o discretization.o field.o \
            output_observation.o output_tecplot.o output_vtk.o patch.o \
            pflotran_constants.o reaction_aux.o realization_base.o \
            realization_subsurface.o region.o string.o units.o utility.o \
-           variables.o waypoint.o
+           variables.o waypoint.o well.o
 output_aux.o : option.o pflotran_constants.o variables.o
 output_common.o : connection.o coupler.o field.o global_aux.o grid.o \
                   grid_unstructured_aux.o grid_unstructured_cell.o hdf5.o \
@@ -1307,9 +1307,9 @@ units.o : option.o pflotran_constants.o
 utility.o : input_aux.o option.o pflotran_constants.o string.o
 variables.o :
 waypoint.o : option.o output_aux.o pflotran_constants.o utility.o
-well.o : auxiliary.o condition.o connection.o option.o pflotran_constants.o \
-         well_base.o well_flow.o well_flow_energy.o well_spec_base.o \
-         well_toil_ims.o well_water_injector.o
+well.o : auxiliary.o condition.o connection.o option.o output_aux.o \
+         pflotran_constants.o well_base.o well_flow.o well_flow_energy.o \
+         well_spec_base.o well_toil_ims.o well_water_injector.o
 well_base.o : connection.o grid.o material_aux.o option.o output_aux.o \
               pflotran_constants.o well_spec_base.o
 well_flow.o : auxvars_flow.o condition.o eos_water.o grid.o option.o \
@@ -1318,9 +1318,9 @@ well_flow_energy.o : auxvars_flow_energy.o grid.o option.o \
                      pflotran_constants.o well_flow.o
 well_spec_base.o : input_aux.o option.o pflotran_constants.o string.o units.o \
                    utility.o
-well_toil_ims.o : option.o output_aux.o pflotran_constants.o well_base.o \
-                  well_flow.o well_flow_energy.o well_spec_base.o \
-                  well_water_injector.o
+well_toil_ims.o : eos_water.o option.o output_aux.o pflotran_constants.o \
+                  pm_toil_ims_aux.o well_base.o well_flow.o well_flow_energy.o \
+                  well_spec_base.o well_water_injector.o
 well_water_injector.o : eos_water.o grid.o option.o output_aux.o \
                         pflotran_constants.o well_base.o well_flow.o \
                         well_flow_energy.o well_spec_base.o

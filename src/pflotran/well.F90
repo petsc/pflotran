@@ -15,7 +15,7 @@ module Well_module
 
 #include "petsc/finclude/petscsys.h"
 
-  public :: CreateWell, WellAuxVarSetUp
+  public :: CreateWell, WellAuxVarSetUp, WellOutput
 
 contains
 
@@ -48,6 +48,7 @@ function CreateWell(well_spec,option)
   end select
 
   !Debug printing 
+#ifdef WELL_DEBUG
   write(*,*) "well_factor type = ", CreateWell%spec%well_fact_itype 
   write(*,*) "well type = ", CreateWell%spec%ctype
   write(*,*) "radius = ", CreateWell%spec%radius
@@ -59,6 +60,7 @@ function CreateWell(well_spec,option)
   end select 
 
   call CreateWell%PrintMsg(); 
+#endif
 
   !Create well outfile and write its header 
   !not here - otherwise will attempt to create a file for each process
@@ -89,10 +91,16 @@ subroutine WellAuxVarSetUp(well,connection_set,flow_condition,aux,option)
   type(auxiliary_type) :: aux  
   type(option_type) :: option
 
-  write(*,"('WS d11 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%den(1)
-  write(*,"('WS d12 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%den(2) 
-  write(*,"('WS p11 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%pres(1) 
-  write(*,"('WS t1 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%temp 
+#ifdef WELL_DEBUG
+  !write(*,"('WS d11 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%den(1)
+  !write(*,"('WS d12 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%den(2) 
+  !write(*,"('WS p11 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%pres(1) 
+  !write(*,"('WS t1 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%temp 
+  write(*,"('WS p011 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%pres(1)
+  write(*,"('WS p111 before = ',e10.4)"), aux%TOil_ims%auxvars(1,1)%pres(1)
+  write(*,"('WS p211 before = ',e10.4)"), aux%TOil_ims%auxvars(2,1)%pres(1)
+  write(*,"('WS p311 before = ',e10.4)"), aux%TOil_ims%auxvars(3,1)%pres(1)
+#endif
 
   select type(well)
     !if only auxvar_flow_energy needed can use class is(well_flow_energy_type)
@@ -120,6 +128,46 @@ subroutine WellAuxVarSetUp(well,connection_set,flow_condition,aux,option)
 
 
 end subroutine WellAuxVarSetUp
+
+! ************************************************************************** !
+
+subroutine WellOutput(well,output_option,src_name,option)
+  ! 
+  ! Handle the well output part common to all type of wells
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 06/07/16
+  ! 
+
+  use Option_module
+  use Output_Aux_module
+
+  implicit none
+
+  class(well_base_type), pointer :: well
+  type(output_option_type), pointer :: output_option
+  character(len=MAXWORDLENGTH) :: src_name
+  type(option_type) :: option
+
+  character(len=MAXWORDLENGTH) :: wfile_name
+  PetscMPIInt :: cur_w_myrank
+  PetscInt :: ios, ierr
+
+  if( well%connection_set%num_connections > 0 ) then
+    call MPI_Comm_rank(well%comm, cur_w_myrank, ierr )  
+    if(well%cntr_rank == cur_w_myrank ) then
+      wfile_name = trim(option%global_prefix) // "_" // &
+                        trim(src_name) // ".tec" 
+      open(unit=IUNIT_TEMP,file=wfile_name,action="write", &
+           position="append",status="old",iostat=ios)
+
+      call well%output(IUNIT_TEMP,output_option,option)
+
+      close(IUNIT_TEMP)
+    end if
+  end if 
+
+end subroutine WellOutput
 
 ! ************************************************************************** !
 
