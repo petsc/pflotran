@@ -1151,7 +1151,7 @@ subroutine OptionInitPetsc(option)
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr);CHKERRQ(ierr)    !fmy: tiny memory leak here (don't know why)
   
   if (option%verbosity > 0) then 
-    call PetscLogBegin(ierr);CHKERRQ(ierr)
+    call PetscLogDefaultBegin(ierr);CHKERRQ(ierr)
     string = '-log_summary'
     call PetscOptionsInsertString(string, ierr);CHKERRQ(ierr)
   endif 
