@@ -220,6 +220,7 @@ subroutine TimestepperSurfaceStepDT(this,process_model,stop_flag)
 #include "petsc/finclude/petscvec.h"
 #include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscts.h"  
 
   class(timestepper_surface_type) :: this
   class(pm_base_type) :: process_model
@@ -238,6 +239,8 @@ subroutine TimestepperSurfaceStepDT(this,process_model,stop_flag)
   call process_model%PreSolve()
 
   call TSSetTimeStep(solver%ts,option%surf_flow_dt,ierr);CHKERRQ(ierr)
+  call TSSetExactFinalTime(solver%ts,TS_EXACTFINALTIME_MATCHSTEP, &
+                           ierr);CHKERRQ(ierr)
   call TSSolve(solver%ts,process_model%solution_vec,ierr);CHKERRQ(ierr)
   call TSGetTime(solver%ts,time,ierr);CHKERRQ(ierr)
   call TSGetTimeStep(solver%ts,dtime,ierr);CHKERRQ(ierr)

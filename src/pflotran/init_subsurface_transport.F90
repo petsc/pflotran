@@ -162,7 +162,8 @@ subroutine InitSubsurfTranSetupSolvers(realization,convergence_context,solver)
     ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
     if (option%verbosity >= 2) then
       string = '-tran_snes_view'
-      call PetscOptionsInsertString(string, ierr);CHKERRQ(ierr)
+      call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
+                                    string, ierr);CHKERRQ(ierr)
     endif
 
   endif
