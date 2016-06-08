@@ -380,11 +380,12 @@ subroutine AllWellsInit(this)
     if( associated(source_sink%well) ) then
       !exlude empty wells - not included in well comms
       if(source_sink%connection_set%num_connections > 0) then
-
+        !TO DO - move all of this chunk of code into (well_base.F90) 
+        !        well%InitRun(Material%auxvars,grid,option,source_sink%name) 
+  
         end_cpl_conns = beg_cpl_conns + &
                         source_sink%connection_set%num_connections - 1  
 
-        ! TO DO - move all this code chunk into well.F90
 #ifdef WELL_DEBUG
         print *,"AllWellsInit - cntrl_lcell_id", source_sink%well%cntrl_lcell_id
         print *, "perm_yy", this%realization%patch%aux%Material% &
@@ -395,7 +396,9 @@ subroutine AllWellsInit(this)
                                         source_sink%connection_set, &
                                 this%realization%patch%aux%Material%auxvars, &
                                            this%realization%option)
-
+        !need to initialize pressure and well densities for injectectors
+        call source_sink%well%InitDensity(this%realization%patch%grid, &
+                                          this%realization%option )
         call source_sink%well%ExplUpdate(this%realization%patch%grid, &
                                          this%realization%option)
   
@@ -403,6 +406,11 @@ subroutine AllWellsInit(this)
                       this%realization%patch% &
                       ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
                       this%realization%option)
+        !update the pressure again after H correction, 
+        ! only to print the right value at t=0
+        call source_sink%well%ExplUpdate(this%realization%patch%grid, &
+                                         this%realization%option)
+
         
        ! create well outputfile - should be moved into a well class
        ! For now open files to print the well variables by default 

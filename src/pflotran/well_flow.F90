@@ -31,7 +31,10 @@ module Well_Flow_class
     procedure, public :: ExplUpdate => FlowExplUpdate
     procedure, public :: VarsExplUpdate => FlowVarsExplUpdate
     procedure, public :: ConnMob => WellFlowConnMob
-    procedure, public :: PressRef => FlowPressRef  
+    procedure, public :: PressRef => FlowPressRef
+    procedure, public :: PressRefQ => FlowPressRef  
+    procedure, public :: PressRefMRInj => FlowPressRefMRInj
+    procedure, public :: PressRefMRProd => FlowPressRefMRProd 
     procedure, public :: QPhase => FlowQPhase
     procedure, public :: MRPhase => FlowMRPhase
     procedure, public :: LimitCheck => WellFlowLimitCheck
@@ -311,10 +314,268 @@ subroutine FlowPressRef(this,grid,phase,option)
 #ifdef WELL_DEBUG
   write(*,"('FlowPressRef pw_ref = ',e10.4)"), this%pw_ref 
 #endif
-  
+  write(*,"('FlowPressRef pw_ref = ',e16.10)"), this%pw_ref
 
 end subroutine FlowPressRef
 
+
+! ************************************************************************** !
+
+!*****************************************************************************!
+subroutine FlowPressRefQ(this,grid,phase,option)
+  !  
+  ! Compute well p_ref given the volumetric rate of one phase 
+  ! IPR sign convention: rate > 0 for fluid being produced
+  ! Tested for production well only but should work also for injectors
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 25/06/2015
+  !
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_flow_type) :: this
+  type(grid_type), pointer :: grid
+  PetscInt :: phase
+  type(option_type) :: option
+  
+  !PetscInt :: phase, cntrl_var, ivar
+  !type(connection_set_type), pointer :: connection_set
+  !type(mphase_auxvar_type), pointer :: auxvars(:)
+
+  PetscReal :: rate 
+
+  PetscReal :: press_div_loc, press_div
+  PetscReal :: conn_loc, conn_tot
+  !PetscReal :: p_well_lc, p_well
+  PetscInt :: iconn, local_id, ghosted_id, iph, ierr 
+  PetscReal :: mob
+ 
+  if(this%connection_set%num_connections > 0 ) then
+  
+    rate =  this%flow_condition%flow_well%rate%dataset%rarray(1)
+
+    conn_tot = 0.0d0 
+    ! divisor computation
+    press_div_loc = 0.0d0
+    do iconn = 1, this%connection_set%num_connections
+      local_id = this%connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
+                         phase)
+
+      press_div_loc = press_div_loc + this%conn_factors(iconn) * mob  
+
+    end do
+
+    call MPI_ALLREDUCE(press_div_loc, press_div, 1, MPI_DOUBLE_PRECISION, &
+                       MPI_SUM,this%comm, ierr)
+
+    ! compute local well connection flux contribution
+    conn_loc = 0.0d0 
+    do iconn = 1, this%connection_set%num_connections      
+      local_id = this%connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
+                         phase)
+      if(this%conn_status(iconn) == CONN_STATUS_OPEN ) then
+        ! vol_rate > 0 for fluid entering the well  
+        conn_loc = conn_loc + this%conn_factors(iconn) * mob * &
+                 ( this%flow_auxvars(ZERO_INTEGER,ghosted_id)%pres(phase) - &
+                 this%conn_h(iconn) )
+      end if
+    end do ! end loop on well connections
+    ! connection fluxes contibutions from well_segments in other ranks
+    call MPI_ALLREDUCE(conn_loc, conn_tot, 1, MPI_DOUBLE_PRECISION, &
+                       MPI_SUM,this%comm, ierr)
+
+  end if
+ 
+  ! rate can be volume or mass rate depending on the control variable
+  this%pw_ref = (conn_tot - rate) / press_div
+
+#ifdef WELL_DEBUG
+  write(*,"('FlowPressRefQ pw_ref = ',e10.4)"), this%pw_ref 
+#endif
+
+end subroutine FlowPressRefQ
+
+! ************************************************************************** !
+
+!*****************************************************************************!
+subroutine FlowPressRefMRInj(this,grid,phase,option)
+  !  
+  ! Compute well p_ref given the volumetric rate of one phase 
+  ! IPR sign convention: rate > 0 for fluid being produced
+  ! Tested for production well only but should work also for injectors
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 25/06/2015
+  !
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_flow_type) :: this
+  type(grid_type), pointer :: grid
+  PetscInt :: phase
+  type(option_type) :: option
+  
+  !PetscInt :: phase, cntrl_var, ivar
+  !type(connection_set_type), pointer :: connection_set
+  !type(mphase_auxvar_type), pointer :: auxvars(:)
+
+  PetscReal :: rate 
+
+  PetscReal :: press_div_loc, press_div
+  PetscReal :: conn_loc, conn_tot
+  !PetscReal :: p_well_lc, p_well
+  PetscInt :: iconn, local_id, ghosted_id, iph, ierr 
+  PetscReal :: mob
+ 
+  if(this%connection_set%num_connections > 0 ) then
+ 
+    rate =  this%flow_condition%flow_well%rate%dataset%rarray(1)
+
+    conn_tot = 0.0d0 
+    ! divisor computation
+    press_div_loc = 0.0d0
+    do iconn = 1, this%connection_set%num_connections
+      local_id = this%connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
+                         phase)
+
+      press_div_loc = press_div_loc + this%conn_factors(iconn) * mob 
+
+    end do
+    press_div_loc = press_div_loc * this%dw_kg_ref(phase) 
+
+    call MPI_ALLREDUCE(press_div_loc, press_div, 1, MPI_DOUBLE_PRECISION, &
+                       MPI_SUM,this%comm, ierr)
+
+    ! compute local well connection flux contribution
+    conn_loc = 0.0d0 
+    do iconn = 1, this%connection_set%num_connections      
+      local_id = this%connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
+                         phase)
+      if(this%conn_status(iconn) == CONN_STATUS_OPEN ) then
+        ! vol_rate > 0 for fluid entering the well  
+        conn_loc = conn_loc + this%conn_factors(iconn) * mob * &
+                 ( this%flow_auxvars(ZERO_INTEGER,ghosted_id)%pres(phase) - &
+                   this%conn_h(iconn) )
+      end if
+    end do ! end loop on well connections
+  
+    conn_loc = conn_loc * this%dw_kg_ref(phase)
+    
+    
+    ! connection fluxes contibutions from well_segments in other ranks
+    call MPI_ALLREDUCE(conn_loc, conn_tot, 1, MPI_DOUBLE_PRECISION, &
+                       MPI_SUM,this%comm, ierr)
+
+  end if
+ 
+  ! rate can be volume or mass rate depending on the control variable
+  this%pw_ref = (conn_tot - rate) / press_div
+
+#ifdef WELL_DEBUG
+  write(*,"('FlowPressRefMRInj pw_ref = ',e10.4)"), this%pw_ref 
+#endif
+  write(*,"('FlowPressRefMRInj pw_ref = ',e10.4)"), this%pw_ref
+
+end subroutine FlowPressRefMRInj
+
+
+! ************************************************************************** !
+
+!*****************************************************************************!
+subroutine FlowPressRefMRProd(this,grid,phase,option)
+  !  
+  ! Compute well p_ref given the volumetric rate of one phase 
+  ! IPR sign convention: rate > 0 for fluid being produced
+  ! Tested for production well only but should work also for injectors
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 25/06/2015
+  !
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_flow_type) :: this
+  type(grid_type), pointer :: grid
+  PetscInt :: phase
+  type(option_type) :: option
+  
+  !PetscInt :: phase, cntrl_var, ivar
+  !type(connection_set_type), pointer :: connection_set
+  !type(mphase_auxvar_type), pointer :: auxvars(:)
+
+  PetscReal :: rate 
+
+  PetscReal :: press_div_loc, press_div
+  PetscReal :: conn_loc, conn_tot
+  !PetscReal :: p_well_lc, p_well
+  PetscInt :: iconn, local_id, ghosted_id, iph, ierr 
+  PetscReal :: mob
+ 
+  if(this%connection_set%num_connections > 0 ) then
+   
+    rate =  this%flow_condition%flow_well%rate%dataset%rarray(1)
+
+    conn_tot = 0.0d0 
+    ! divisor computation
+    press_div_loc = 0.0d0
+    do iconn = 1, this%connection_set%num_connections
+      local_id = this%connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
+                         phase)
+
+      press_div_loc = press_div_loc + this%conn_factors(iconn) * mob * &
+                  this%flow_auxvars(ZERO_INTEGER,ghosted_id)%den_kg(phase)
+
+    end do
+
+    call MPI_ALLREDUCE(press_div_loc, press_div, 1, MPI_DOUBLE_PRECISION, &
+                       MPI_SUM,this%comm, ierr)
+
+    ! compute local well connection flux contribution
+    conn_loc = 0.0d0 
+    do iconn = 1, this%connection_set%num_connections      
+      local_id = this%connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
+                         phase)
+      if(this%conn_status(iconn) == CONN_STATUS_OPEN ) then
+        ! vol_rate > 0 for fluid entering the well  
+         conn_loc = conn_loc + this%conn_factors(iconn) * mob * &
+               this%flow_auxvars(ZERO_INTEGER,ghosted_id)%den_kg(phase) * &
+               ( this%flow_auxvars(ZERO_INTEGER,ghosted_id)%pres(phase) - &
+                this%conn_h(iconn) )
+      end if
+    end do ! end loop on well connections
+    ! connection fluxes contibutions from well_segments in other ranks
+    call MPI_ALLREDUCE(conn_loc, conn_tot, 1, MPI_DOUBLE_PRECISION, &
+                       MPI_SUM,this%comm, ierr)
+
+  end if
+ 
+  ! rate can be volume or mass rate depending on the control variable
+  this%pw_ref = (conn_tot - rate) / press_div
+
+#ifdef WELL_DEBUG
+  write(*,"('FlowPressRefMRProd pw_ref = ',e10.4)"), this%pw_ref 
+#endif
+
+end subroutine FlowPressRefMRProd
 
 ! ************************************************************************** !
 
@@ -598,5 +859,6 @@ function WellFlowConnMob(this,mobility,iphase)
 end function WellFlowConnMob
 
 !*****************************************************************************!
+
 
 end module Well_Flow_class

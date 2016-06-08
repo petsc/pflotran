@@ -2322,7 +2322,9 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
   PetscInt :: icap_up, icap_dn
   PetscReal :: Res(realization%option%nflowdof)
   PetscReal :: v_darcy(realization%option%nphase)
-  
+
+  PetscInt :: beg_cpl_conns, end_cpl_conns 
+ 
   discretization => realization%discretization
   option => realization%option
   patch => realization%patch
@@ -2522,6 +2524,7 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sink_list%first 
   sum_connection = 0
+  beg_cpl_conns = 1
   do 
     if (.not.associated(source_sink)) exit
     
@@ -2534,6 +2537,11 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
     if ( associated(source_sink%well) ) then
       if (cur_connection_set%num_connections > 0 ) then
         call source_sink%well%ExplUpdate(grid,option)
+        !end_cpl_conns = beg_cpl_conns + &
+        !                source_sink%connection_set%num_connections - 1  
+        !call source_sink%well%HydroCorrUpdates(grid, patch% &
+        !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
+        !              option)
       end if
     end if 
 

@@ -22,6 +22,7 @@ module Well_WaterInjector_class
     procedure, public :: LimitCheck => WellWatInjLimitCheck
     procedure, public :: ConnDenUpdate => WellWatInjConnDenUpdate
     procedure, public :: ConnMob => WellWatInjConnMob
+    procedure, public :: InitDensity => WatInjInitDensity
   end type  well_water_injector_type
 
   !public :: CreateTOilImsWell
@@ -66,6 +67,55 @@ subroutine WellWatInjPrintOutputHeader(this,output_option,file_unit)
 
 end subroutine WellWatInjPrintOutputHeader
 
+! ************************************************************************** !
+
+subroutine WatInjInitDensity(this,grid,option)
+  !
+  ! Init well water density using the pressure at the reference grid block
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/08/2016
+  !
+
+  use Grid_module
+  use Option_module
+  use EOS_Water_module
+
+  implicit none
+
+  class(well_water_injector_type) :: this
+  type(grid_type), pointer :: grid  
+  type(option_type) :: option
+
+  PetscMPIInt :: cur_w_myrank
+  PetscInt :: ghost_cntrl_id,ierr
+  PetscReal :: pw_ref_init,tw_ref_init 
+  PetscReal :: dw_h2o_kg,dw_h2o_mol
+
+  !TO DO - this should be generalised - leavign only the density calculation
+  ! specific to the injector
+
+  call MPI_Comm_rank(this%comm, cur_w_myrank, ierr )  
+
+  if(this%cntr_rank == cur_w_myrank ) then
+    ghost_cntrl_id = grid%nL2G(this%cntrl_lcell_id); 
+    pw_ref_init = &
+      this%flow_auxvars(ZERO_INTEGER,ghost_cntrl_id)%pres(option%liquid_phase)
+    !for the temperature can also use injection temp 
+    !the control grid block temp is used for consistency
+    tw_ref_init = &
+      this%flow_energy_auxvars(ZERO_INTEGER,ghost_cntrl_id)%temp
+
+    call EOSWaterDensity(tw_ref_init,pw_ref_init, &
+                          dw_h2o_kg,dw_h2o_mol,ierr) 
+    this%dw_kg_ref(option%liquid_phase) = dw_h2o_kg
+  end if
+
+  call MPI_Bcast ( this%dw_kg_ref(option%liquid_phase),1, &
+                   MPI_DOUBLE_PRECISION, this%cntr_rank, this%comm, ierr )
+
+
+end subroutine WatInjInitDensity
 
 ! ************************************************************************** !
 
@@ -116,7 +166,8 @@ subroutine WellWatInjVarsExplUpdate(this,grid,option)
       call this%MRPhase(grid,option%liquid_phase,option)
 
     case(CNTRL_VAR_MASS_RATE)      
-      call this%PressRef(grid,option%liquid_phase,option)
+      !call this%PressRef(grid,option%liquid_phase,option)
+      call this%PressRefMRInj(grid,option%liquid_phase,option)
       this%mr_fld(option%liquid_phase) = &
                   this%flow_condition%flow_well%rate%dataset%rarray(1)
       call this%QPhase(grid,option%liquid_phase,option)
@@ -124,7 +175,8 @@ subroutine WellWatInjVarsExplUpdate(this,grid,option)
     case(CNTRL_VAR_VOL_RATE)
       this%q_fld(option%liquid_phase) = &
                 this%flow_condition%flow_well%rate%dataset%rarray(1)
-      call this%PressRef(grid,option%liquid_phase,option)
+      !call this%PressRef(grid,option%liquid_phase,option)
+      call this%PressRefQ(grid,option%liquid_phase,option)
       call this%MRPhase(grid,option%liquid_phase,option)
   end select
   ! should not be required, they are initialised to zero 
@@ -229,6 +281,7 @@ subroutine WellWatInjConnDenUpdate(this,grid,ss_fluxes,option)
 end subroutine WellWatInjConnDenUpdate
 
 ! ************************************************************************** !
+
 
 function WellWatInjConnMob(this,mobility,iphase)
   !  

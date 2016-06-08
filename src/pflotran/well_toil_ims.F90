@@ -251,16 +251,6 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
     write(*,"('TOilImsWatInj reverse flow at gh = ',I5,' dp = ',e10.4)") &
           ghosted_id, dphi
 
-#ifdef WELL_DEBUG
-  write(*,*) 'ExplRes dof = ', dof
-  write(*,*) 'ExplRes gh = ', ghosted_id
-  write(*,"('ExplRes gh press = ',e10.4)") &
-      this%flow_auxvars(dof,ghosted_id)%pres(option%liquid_phase)
-  write(*,"('ExplRes dphi = ',e10.4)") dphi
-  write(*,"('ExplRes hc = ',e10.4)") hc
-  write(*,"('ExplRes pw_ref = ',e10.4)") this%pw_ref 
-#endif
-
   ! it is assumed that the temperature is uniform throughout the well
   call EOSWaterDensity(this%tw_ref,this%pw_ref+hc, &
                        dw_kg,dw_h2o_mol,ierr) 
@@ -282,6 +272,19 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
     ! energy equation             !m^3/s * kmol/m^3 * MJ/Kmol = MJ/s
     if (.not.isothermal) Res(3) = vol_flux*dw_h2o_mol * enth_src_h2o
    end if
+
+#ifdef WELL_DEBUG
+  write(*,*) 'ExplRes dof = ', dof
+  write(*,*) 'ExplRes gh = ', ghosted_id
+  write(*,"('ExplRes gh press = ',e10.4)") &
+      this%flow_auxvars(dof,ghosted_id)%pres(option%liquid_phase)
+  write(*,"('ExplRes dphi = ',e10.4)") dphi
+  write(*,"('ExplRes hc = ',e10.4)") hc
+  write(*,"('ExplRes pw_ref = ',e10.4)") this%pw_ref 
+  write(*,"('ExplRes vol_flux = ',e10.4)") vol_flux
+  write(*,"('ExplRes dw_h2o_mol = ',e10.4)") dw_h2o_mol
+  write(*,"('ExplRes Res(water_id) = ',e10.4)") Res(option%water_id)
+#endif
 
 end subroutine TOilImsWatInjExplRes
 

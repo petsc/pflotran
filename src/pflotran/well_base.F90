@@ -23,7 +23,7 @@ module Well_Base_class
     PetscInt  :: iwconn_ref                    ! index of reference connection in w_conn_z(:)
     PetscInt :: well_num_conns                 ! number of connection for the entire well - not only portion local to the rank
     PetscBool :: cntrl_conn                    ! true if the local well sgment coontains the control connection  
-    PetscInt  :: cntrl_lcell_id                ! if(cntrl_conn) = local cell id of control connection, otherwise -999  
+    PetscInt  :: cntrl_lcell_id                ! if(cntrl_conn) = local (non-ghosted) cell id of control connection, otherwise -999  
     PetscReal, pointer :: conn_factors(:)      ! well connection factors
     PetscInt, pointer  :: conn_drill_dir(:)    ! connection drilling directions
     PetscInt, pointer  :: conn_status(:)       ! connection status (can be open, closed or auto)
@@ -40,6 +40,7 @@ module Well_Base_class
     procedure, public  :: PrintOutputHeader => PrintOutputHeaderWellBase
     procedure, public :: ExplRes => WellBaseExplRes
     procedure, public :: ExplJDerivative => WellBaseExplJDerivative
+    procedure, public :: InitDensity => BaseInitDensity
     procedure, public :: Output => BaseOutput  
     procedure, public  :: Setup
     procedure, public :: WellFactorUpdate
@@ -696,8 +697,6 @@ end subroutine  WellBaseExplRes
 
 subroutine BaseOutput(this,output_file_unit,output_option,option)
   ! 
-  ! Write output file for TOilImsWatInj
-  ! 
   ! Author: Paolo Orsini (OGS)
   ! Date: 05/18/16
   ! 
@@ -717,6 +716,28 @@ subroutine BaseOutput(this,output_file_unit,output_option,option)
 end subroutine BaseOutput
 
 ! ************************************************************************** !
+
+subroutine BaseInitDensity(this,grid,option)
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/08/2016
+  !
+
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_base_type) :: this
+  type(grid_type), pointer :: grid  
+  type(option_type) :: option
+
+  print *, "Well BaseInitDensity must be extended"
+  stop
+
+end subroutine BaseInitDensity
+
+!*****************************************************************************!
 
 end module Well_Base_class
 
