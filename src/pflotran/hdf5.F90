@@ -1391,6 +1391,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
+  PetscMPIInt :: ndims
   PetscMPIInt :: rank_mpi
   ! seeting to MPIInt to ensure i4
   integer, allocatable :: indices_i4(:)
@@ -1419,6 +1420,13 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
   ! should be a rank=1 data space
+  call h5sget_simple_extent_ndims_f(file_space_id,ndims,hdf5_err)
+  if (ndims /= 1) then
+    write(option%io_buffer, &
+          '(a," data space dimension (",i2,"D) must be 1D.")') &
+          trim(dataset_name), ndims
+    call printErrMsg(option)
+  endif
   call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
   if (dataset_size > 0 .and. num_data_in_file /= dataset_size) then
     write(option%io_buffer, &
@@ -1638,6 +1646,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi
+  PetscMPIInt :: ndims
   integer(HSIZE_T) :: num_data_in_file
   integer(SIZE_T) :: string_size
   Vec :: natural_vec
@@ -1661,6 +1670,13 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
   ! should be a rank=1 data space
+  call h5sget_simple_extent_ndims_f(file_space_id,ndims,hdf5_err)
+  if (ndims /= 1) then
+    write(option%io_buffer, &
+          '(a," data space dimension (",i2,"D) must be 1D.")') &
+          trim(dataset_name), ndims
+    call printErrMsg(option)
+  endif
   call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
 
   if (dataset_size > 0 .and. num_data_in_file /= dataset_size) then

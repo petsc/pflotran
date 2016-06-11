@@ -3835,6 +3835,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: sum_molality
   PetscReal :: ln_conc(reaction%naqcomp)
   PetscReal :: ln_act(reaction%naqcomp)
+  PetscReal :: NaN
 
   if (reaction%use_activity_h2o) then
     sum_pri_molal = 0.d0
@@ -3864,8 +3865,16 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
       it = it + 1
       
       if (it > 50) then
-        print *,' too many iterations in computing activity coefficients-stop',it,f,I
-        stop
+        write(option%io_buffer,*) &
+          ' too many iterations in computing activity coefficients-stop',it,f,I, &
+          ' setting all activity coefficients to NaNs to crash the code.'
+        call printErrMsgNoStopByRank(option)
+        NaN = 0.d0
+        NaN = 1.d0/NaN
+        NaN = 0.d0*NaN
+        rt_auxvar%pri_molal = NaN
+        rt_auxvar%pri_act_coef = NaN
+        rt_auxvar%sec_act_coef = NaN
       endif
     
   ! add secondary species contribution to ionic strength

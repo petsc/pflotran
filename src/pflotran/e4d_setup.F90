@@ -1339,6 +1339,9 @@ contains
     if (allocated(poles)) then
       deallocate(poles)
     endif
+    if (allocated(pf_porosity)) then
+      deallocate(pf_porosity)
+    endif
     if (allocated(pf_tracer)) then
       deallocate(pf_tracer)
     endif
@@ -1347,6 +1350,9 @@ contains
     endif
     if (allocated(pf_saturation_0)) then
       deallocate(pf_saturation_0)
+    endif
+    if (allocated(pf_temperature)) then
+      deallocate(pf_temperature)
     endif
     if (allocated(sigma)) then
       deallocate(sigma)

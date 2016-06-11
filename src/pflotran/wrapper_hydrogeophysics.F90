@@ -23,6 +23,8 @@ subroutine HydrogeophysicsWrapperInit(option, &
                                       pflotran_tracer_vec_seq_, &
                                       pflotran_saturation_vec_mpi_, &
                                       pflotran_saturation_vec_seq_, &
+                                      pflotran_temperature_vec_mpi_, &
+                                      pflotran_temperature_vec_seq_, &
                                       pflotran_scatter_, &
                                       pf_e4d_master_comm)
   ! 
@@ -37,6 +39,7 @@ subroutine HydrogeophysicsWrapperInit(option, &
   use vars, only : E4D_COMM, my_rank, n_rank, PFE4D_MASTER_COMM, &
                    pflotran_tracer_vec_mpi, pflotran_tracer_vec_seq, &
                    pflotran_saturation_vec_mpi, pflotran_saturation_vec_seq, &
+                   pflotran_temperature_vec_mpi, pflotran_temperature_vec_seq, &
                    pflotran_scatter, pflotran_vec_size, &
                    pflotran_group_prefix
   use e4d_setup, only : setup_e4d, destroy_e4d
@@ -52,6 +55,8 @@ subroutine HydrogeophysicsWrapperInit(option, &
   Vec :: pflotran_tracer_vec_seq_
   Vec :: pflotran_saturation_vec_mpi_
   Vec :: pflotran_saturation_vec_seq_
+  Vec :: pflotran_temperature_vec_mpi_
+  Vec :: pflotran_temperature_vec_seq_
   VecScatter :: pflotran_scatter_
   PetscMPIInt :: pf_e4d_master_comm
   PetscErrorCode :: ierr
@@ -67,6 +72,8 @@ subroutine HydrogeophysicsWrapperInit(option, &
   pflotran_tracer_vec_seq = pflotran_tracer_vec_seq_
   pflotran_saturation_vec_mpi = pflotran_saturation_vec_mpi_
   pflotran_saturation_vec_seq = pflotran_saturation_vec_seq_
+  pflotran_temperature_vec_mpi = pflotran_temperature_vec_mpi_
+  pflotran_temperature_vec_seq = pflotran_temperature_vec_seq_
   pflotran_scatter = pflotran_scatter_
   pflotran_group_prefix = option%group_prefix
   ! pflotran_tracer_vec_seq only defined on master E4D process
@@ -110,6 +117,8 @@ subroutine HydrogeophysicsWrapperStep(time, &
                                       tracer_seq, &
                                       saturation_mpi, &
                                       saturation_seq, &
+                                      temperature_mpi, &
+                                      temperature_seq, &
                                       scatter,comm,option)
   ! 
   ! Performs a forward simulation
@@ -129,6 +138,8 @@ subroutine HydrogeophysicsWrapperStep(time, &
   Vec :: tracer_seq
   Vec :: saturation_mpi
   Vec :: saturation_seq
+  Vec :: temperature_mpi
+  Vec :: temperature_seq
   VecScatter :: scatter
   PetscMPIInt :: comm
   type(option_type) :: option
@@ -154,6 +165,12 @@ subroutine HydrogeophysicsWrapperStep(time, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(scatter,saturation_mpi,saturation_seq, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  if (temperature_mpi /= 0) then
+    call VecScatterBegin(scatter,temperature_mpi,temperature_seq, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+    call VecScatterEnd(scatter,temperature_mpi,temperature_seq, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+  endif
   
 end subroutine HydrogeophysicsWrapperStep
 
