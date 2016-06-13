@@ -19,8 +19,9 @@ module Well_FlowEnergy_class
     !procedure, public :: ExplUpdate => FlowEnergyExplUpdate !could move this to flow
     procedure, public :: VarsExplUpdate => FlowEnergyVarsExplUpdate
     !procedure, public :: QPhase => FlowEnergyQPhase
-    procedure, public :: ConnMob => WellFlowEnergyConnMob
+    !procedure, public :: ConnMob => WellFlowEnergyConnMob
     procedure, public :: ExplJDerivative => WellFlowEnergyExplJDerivative
+    procedure, public :: AverageTemp => WellFlowEnergyAverageTemp
     !------------------------------------------------------------
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
@@ -148,11 +149,94 @@ subroutine WellFlowEnergyExplJDerivative(this,iconn,ghosted_id,isothermal, &
     Jac(:,energy_equation_index) = 0.d0
   endif   
 
+    !Jac =  0.0d0
+
 end subroutine WellFlowEnergyExplJDerivative
 
 ! ************************************************************************** !
 
-subroutine FlowEnergyVarsExplUpdate(this,grid,option)
+subroutine WellFlowEnergyAverageTemp(this,grid,ss_fluxes,option)
+  !
+  ! Compute connection densities for producers
+  ! to be overwritten for injectors 
+  ! Compute well fluid average density from the well segment phase densities 
+  ! using grid-blocks/well fluxes as weights 
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/12/2016
+  !
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_flow_energy_type) :: this
+  type(grid_type), pointer :: grid 
+  PetscReal :: ss_fluxes(:,:)      
+  type(option_type) :: option
+
+  PetscReal :: q_sum
+  PetscReal :: q_ph(option%nphase)
+
+  PetscInt :: iconn, local_id, ghosted_id, ierr
+  PetscInt :: i_ph
+
+  PetscReal :: q_sum_lc, q_sum_well 
+  PetscReal :: temp_q_lc, temp_q_well
+  PetscReal :: temp_lc, temp_well
+ 
+  q_sum_lc = 0.0d0
+  q_sum_well = 0.0d0
+  temp_q_lc = 0.0d0
+  temp_q_well = 0.0d0
+  temp_lc = 0.0d0
+  temp_well = 0.0d0
+
+  do iconn = 1,this%connection_set%num_connections
+    local_id = this%connection_set%id_dn(iconn)
+    ghosted_id = grid%nL2G(local_id)
+    ! need to change signs because in the PFLOTRAN convention
+    ! producing wells have ss_fluxes < 0
+    q_sum = 0.0d0
+    do i_ph = 1,option%nphase
+      q_ph(i_ph) = 0.0d0
+      if( ss_fluxes(i_ph,iconn) < 0.0d0) then
+        !should not have ss_fluxes > 0.0d0, this reverse flow situation
+        ! should be detected in Res computation 
+        q_ph(i_ph) = -1.0d0 * ss_fluxes(i_ph,iconn)
+      end if
+      q_sum = q_sum + q_ph(i_ph)
+    end do
+
+    q_sum_lc = q_sum_lc + q_sum     
+    temp_q_lc = temp_q_lc + &
+       q_sum * this%flow_energy_auxvars(ZERO_INTEGER,ghosted_id)%temp 
+    temp_lc = temp_lc + &
+       this%flow_energy_auxvars(ZERO_INTEGER,ghosted_id)%temp
+  end do
+
+  call MPI_ALLREDUCE(q_sum_lc, q_sum_well, 1, MPI_DOUBLE_PRECISION, &
+                     MPI_SUM,this%comm, ierr)
+
+  call MPI_ALLREDUCE(temp_q_lc, temp_q_well, 1, MPI_DOUBLE_PRECISION, &
+                     MPI_SUM,this%comm, ierr)
+
+  call MPI_ALLREDUCE(temp_lc, temp_well, 1, MPI_DOUBLE_PRECISION, &
+                     MPI_SUM,this%comm, ierr)
+  
+  if ( q_sum_well > wfloweps ) then
+    this%tw_ref = temp_q_well / q_sum_well
+  else
+    this%tw_ref = temp_well / dble(this%connection_set%num_connections)
+  end if
+
+
+end subroutine WellFlowEnergyAverageTemp
+
+
+! ************************************************************************** !
+
+subroutine FlowEnergyVarsExplUpdate(this,grid,ss_fluxes,option)
 
   use Grid_module
   use Option_module
@@ -161,6 +245,7 @@ subroutine FlowEnergyVarsExplUpdate(this,grid,option)
 
   class(well_flow_energy_type) :: this
   type(grid_type), pointer :: grid
+  PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   print *, "FlowEnergyVarsExplUpdate must be extended"
@@ -171,20 +256,20 @@ end subroutine FlowEnergyVarsExplUpdate
 
 !*****************************************************************************!
 
-function WellFlowEnergyConnMob(this,mobility,iphase)
-
-  implicit none
-
-  class(well_flow_energy_type) :: this
-  PetscInt :: iphase  
-  PetscReal :: mobility(:)
-
-  PetscReal :: WellFlowEnergyConnMob
-
-  print *, "WellFlowEnergyConnMob must be extended"
-  stop
-
-end function WellFlowEnergyConnMob
+!function WellFlowEnergyConnMob(this,mobility,iphase)
+!
+!  implicit none
+!
+!  class(well_flow_energy_type) :: this
+!  PetscInt :: iphase  
+!  PetscReal :: mobility(:)
+!
+!  PetscReal :: WellFlowEnergyConnMob
+!
+!  print *, "WellFlowEnergyConnMob must be extended"
+!  stop
+!
+!end function WellFlowEnergyConnMob
 !*****************************************************************************!
 
 

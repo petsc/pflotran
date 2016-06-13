@@ -119,7 +119,7 @@ end subroutine WatInjInitDensity
 
 ! ************************************************************************** !
 
-subroutine WellWatInjVarsExplUpdate(this,grid,option)
+subroutine WellWatInjVarsExplUpdate(this,grid,ss_fluxes,option)
   !
   ! Explicit update of well variable for a water injector
   !
@@ -133,6 +133,7 @@ subroutine WellWatInjVarsExplUpdate(this,grid,option)
 
   class(well_water_injector_type) :: this
   type(grid_type), pointer :: grid
+  PetscReal :: ss_fluxes(:,:)      !not curently used 
   type(option_type) :: option
 
   PetscReal :: enth_src_h2o, dw_h2o_kg,dw_h2o_mol
@@ -200,7 +201,7 @@ end subroutine WellWatInjVarsExplUpdate
 
 ! ************************************************************************** !
 
-subroutine WellWatInjLimitCheck(this,pass)
+subroutine WellWatInjLimitCheck(this,pass,option)
   !
   ! Perform limit check for a water injector
   !
@@ -208,10 +209,13 @@ subroutine WellWatInjLimitCheck(this,pass)
   ! Date : 6/06/2016
   !
 
+  use Option_module
+
   implicit none
 
   class(well_water_injector_type) :: this
   PetscBool :: pass
+  type(option_type) :: option
 
   PetscInt :: cntrl_var_tmp 
   PetscReal :: press_max
@@ -292,9 +296,11 @@ function WellWatInjConnMob(this,mobility,iphase)
   ! example of a function common to all injectors 
   ! (should create an injector class)
   ! otherwise use select case a move this to flow
+  ! Other option: define different routines for injector and producers in
+  !               well_flow 
   !
   ! for efficieny - ConnMob can be extended to well_xxx_mode. 
-  ! Instead of performing a loop, a simplue sum can be used 
+  ! Instead of performing a loop, a simple sum can be used 
   ! E.g. WellWatInjConnMob = mobility(liquid_phase) + mobility(oil_phase)
   !
   ! Author: Paolo Orsini (OpenGoSim)  

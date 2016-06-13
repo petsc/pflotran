@@ -2536,9 +2536,11 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
 
     if ( associated(source_sink%well) ) then
       if (cur_connection_set%num_connections > 0 ) then
-        call source_sink%well%ExplUpdate(grid,option)
-        !end_cpl_conns = beg_cpl_conns + &
-        !                source_sink%connection_set%num_connections - 1  
+        end_cpl_conns = beg_cpl_conns + &
+                        source_sink%connection_set%num_connections - 1  
+        call source_sink%well%ExplUpdate(grid, patch% &
+                       ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
+                       option)
         !call source_sink%well%HydroCorrUpdates(grid, patch% &
         !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
         !              option)

@@ -229,6 +229,9 @@ subroutine WellSpecBaseRead(this,input,option)
           case('GAS_INJECTOR','GAS_INJ')
             this%itype = GAS_INJ_WELL_TYPE;
             this%ctype="gas_injector"
+          case('OIL_PRODUCER','OIL_PROD')
+            this%itype = OIL_PROD_WELL_TYPE;
+            this%ctype="oil_producer"
           case default
             option%io_buffer = 'WELL_SPEC keyword: '//trim(keyword)//' not recognized'
             call printErrMsg(option)

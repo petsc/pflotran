@@ -368,7 +368,7 @@ subroutine AllWellsInit(this)
   type(coupler_type), pointer :: source_sink
 
   PetscMPIInt :: cur_w_myrank
-  character(len=MAXWORDLENGTH) :: wfile_name
+  character(len=MAXSTRINGLENGTH) :: wfile_name
   PetscInt :: beg_cpl_conns, end_cpl_conns
   PetscInt :: ierr 
 
@@ -400,6 +400,8 @@ subroutine AllWellsInit(this)
         call source_sink%well%InitDensity(this%realization%patch%grid, &
                                           this%realization%option )
         call source_sink%well%ExplUpdate(this%realization%patch%grid, &
+                      this%realization%patch% &
+                      ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
                                          this%realization%option)
   
         call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
@@ -409,6 +411,8 @@ subroutine AllWellsInit(this)
         !update the pressure again after H correction, 
         ! only to print the right value at t=0
         call source_sink%well%ExplUpdate(this%realization%patch%grid, &
+                      this%realization%patch% &
+                      ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
                                          this%realization%option)
 
         
@@ -553,7 +557,8 @@ subroutine AllWellsUpdate(this)
     if( associated(source_sink%well) ) then
       !exlude empty wells - not included in well comms
       if(source_sink%connection_set%num_connections > 0) then
-        
+        !TO DO: move this chunk of code in well_base class
+        !       well%InitTimeStep() 
         if(this%realization%option%update_flow_perm) then
           call source_sink%well%WellFactorUpdate(this%realization%patch%grid, &
                                          source_sink%connection_set, &
@@ -566,6 +571,8 @@ subroutine AllWellsUpdate(this)
 
         ! for fully explicit well - or extra coupling
         !call source_sink%well%ExplUpdate(this%realization%patch%grid, &
+        !              this%realization%patch% &
+        !             ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
         !                                 this%realization%option)
 
         call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &

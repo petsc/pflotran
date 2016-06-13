@@ -6,6 +6,7 @@ module Well_TOilIms_class
   use Well_Flow_class
   use Well_FlowEnergy_class
   use Well_WaterInjector_class
+  use Well_OilProducer_class
 
   implicit none
 
@@ -25,14 +26,23 @@ module Well_TOilIms_class
 
   type, public, extends(well_water_injector_type) :: well_toil_ims_wat_inj_type
     ! ......................
-    contains
-      procedure, public :: PrintMsg => PrintTOilImsWatInj
-      procedure, public :: ExplRes => TOilImsWatInjExplRes
-      !procedure, public :: VarsExplUpdate => TOilImsWatInjVarsExplUpdate ! to go on parent classes
-      procedure, public  :: PrintOutputHeader => TOilImsWatInjOutputHeader
-      procedure, public :: Output => TOilImsWatInjOutput
-      !procedure, public :: ConnInit => WellTOilImsConnInit !to go on parents level
+  contains
+    procedure, public :: PrintMsg => PrintTOilImsWatInj
+    procedure, public :: ExplRes => TOilImsWatInjExplRes
+    !procedure, public :: VarsExplUpdate => TOilImsWatInjVarsExplUpdate ! to go on parent classes
+    procedure, public  :: PrintOutputHeader => TOilImsWatInjOutputHeader
+    procedure, public :: Output => TOilImsWatInjOutput
+    !procedure, public :: ConnInit => WellTOilImsConnInit !to go on parents level
   end type well_toil_ims_wat_inj_type
+
+  type, public, extends(well_oil_producer_type) :: well_toil_ims_oil_prod_type
+    ! ......................
+  contains
+    procedure, public :: ExplRes => TOilImsOilProdExplRes
+    procedure, public  :: PrintOutputHeader => TOilImsOilProdOutputHeader
+    procedure, public :: Output => TOilImsOilProdOutput
+  end type well_toil_ims_oil_prod_type
+
 
   !type, public, extends(well_toil_ims_type) :: well_toil_ims_oil_inj_type
   !  ! ......................
@@ -80,7 +90,7 @@ subroutine TOilImsWatInjOutputHeader(this,output_option,file_unit)
   type(output_option_type), intent(in) :: output_option
   PetscInt, intent(in) :: file_unit
 
-  character(len=MAXWORDLENGTH) :: tunit
+  character(len=MAXSTRINGLENGTH) :: tunit
 
   tunit = trim(output_option%tunit)
 
@@ -107,6 +117,41 @@ subroutine TOilImsWatInjOutputHeader(this,output_option,file_unit)
 
 
 end subroutine TOilImsWatInjOutputHeader
+
+! ************************************************************************** !
+
+subroutine TOilImsOilProdOutputHeader(this,output_option,file_unit)
+  ! 
+  ! Write header for TOilIms_oil_producer output file
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 06/12/16
+  ! 
+  use Output_Aux_module
+
+  implicit none
+
+  class(well_toil_ims_oil_prod_type) :: this
+  type(output_option_type), intent(in) :: output_option
+  PetscInt, intent(in) :: file_unit
+
+  character(len=MAXSTRINGLENGTH) :: tunit
+
+  tunit = trim(output_option%tunit)
+
+  !TODO: can do something more clever than this: 
+  !      e.g. small loop to add well vars
+  write(IUNIT_TEMP,*) " VARIABLES = " // &
+      '"Time [' // trim(tunit) // ']", ' // &
+                '"Pw[Pa]", ' // &
+        '"Tw[C]", "den_well_fluid[kg/m3]", ' // &
+        '"Qwat[m3/' // trim(tunit) // ']", ' // &
+        '"Mwat[kg/' // trim(tunit) // ']" '  // &
+        '"Qoil[m3/' // trim(tunit) // ']", ' // &
+        '"Moil[kg/' // trim(tunit) // ']" '  // &
+        '"vol_WOR[-]" '
+
+end subroutine TOilImsOilProdOutputHeader
 
 ! ************************************************************************** !
 
@@ -143,7 +188,7 @@ subroutine TOilImsWatInjOutput(this,output_file_unit,output_option,option)
   !    open(unit=IUNIT_TEMP,file=wfile_name,action="write", &
   !         position="append",status="old",iostat=ios)
 
-  write(output_file_unit,"(6(E10.4,1x))") option%time/output_option%tconv , &
+  write(output_file_unit,"(9(E10.4,1x))") option%time/output_option%tconv , &
                                           this%pw_ref, &
                                           this%tw_ref, &
                                           this%dw_kg_ref(LIQUID_PHASE), &
@@ -156,6 +201,47 @@ subroutine TOilImsWatInjOutput(this,output_file_unit,output_option,option)
   !end if 
 
 end subroutine TOilImsWatInjOutput
+
+! ************************************************************************** !
+
+subroutine TOilImsOilProdOutput(this,output_file_unit,output_option,option)
+  ! 
+  ! Write output file for TOilImsWatInj
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 05/18/16
+  ! 
+  use Option_module
+  use Output_Aux_module
+
+  implicit none
+
+  class(well_toil_ims_oil_prod_type) :: this
+  PetscInt, intent(in) :: output_file_unit
+  type(output_option_type), intent(in) :: output_option
+  type(option_type) :: option
+
+  PetscReal :: vol_WOR
+
+  vol_WOR = this%q_fld(option%liquid_phase) / &
+            ( this%q_fld(option%liquid_phase) + this%q_fld(option%oil_phase) )
+
+  write(output_file_unit,"(9(E10.4,1x))") option%time/output_option%tconv , &
+                                          this%pw_ref, &
+                                          this%tw_ref, &
+                                          this%dw_kg_ref(option%liquid_phase),&
+                                          this%q_fld(option%liquid_phase) * &
+                                          output_option%tconv, &
+                                          this%mr_fld(option%liquid_phase) * &
+                                          output_option%tconv, &
+                                          this%q_fld(option%oil_phase) * &
+                                          output_option%tconv, &
+                                          this%mr_fld(option%oil_phase) * &
+                                          output_option%tconv, &
+                                          vol_WOR 
+
+
+end subroutine TOilImsOilProdOutput
 
 ! ************************************************************************** !
 
@@ -180,17 +266,16 @@ function CreateTOilImsWell(well_spec,option)
   class(well_flow_energy_type), pointer :: CreateTOilImsWell
 
   class(well_toil_ims_wat_inj_type), pointer :: well_toil_ims_wat_inj
-  ! to uncomment when defining oil_producers
-  !class(well_toil_ims_oil_prod_type), pointer :: well_toil_ims_oil_prod
+  class(well_toil_ims_oil_prod_type), pointer :: well_toil_ims_oil_prod
 
 
   select case(well_spec%itype)
     case( WATER_INJ_WELL_TYPE )
       allocate(well_toil_ims_wat_inj);
       CreateTOilImsWell => well_toil_ims_wat_inj;
-    !case( OIL_PROD_WELL_TYPE )
-    !  allocate(well_toil_ims_oil_prod);
-    !  CreateTOilImsWell => well_toil_ims_oil_prod
+    case( OIL_PROD_WELL_TYPE )
+      allocate(well_toil_ims_oil_prod);
+      CreateTOilImsWell => well_toil_ims_oil_prod
 
     ! need to add water producer and oil injector
     case default
@@ -243,7 +328,7 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
 
   mob = this%ConnMob(this%flow_auxvars(dof,ghosted_id)%mobility, &
                                        option%liquid_phase)
-  
+  !mob = 1754.0d0
   dphi = this%pw_ref + hc - & 
             this%flow_auxvars(dof,ghosted_id)%pres(option%liquid_phase)
 
@@ -264,6 +349,7 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
   if(cfact * mob > wfloweps) then
     !         m^3 * 1/(Pa.s) * Pa = m^3/s
     vol_flux = cfact * mob * dphi
+    !vol_flux = 0.00015
     ss_flow_vol_flux(option%liquid_phase) = vol_flux
     !no cross-flow allowed with this model
     ss_flow_vol_flux(option%oil_phase) = 0.0d0
@@ -278,7 +364,8 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
   write(*,*) 'ExplRes gh = ', ghosted_id
   write(*,"('ExplRes gh press = ',e10.4)") &
       this%flow_auxvars(dof,ghosted_id)%pres(option%liquid_phase)
-  write(*,"('ExplRes dphi = ',e10.4)") dphi
+  write(*,"('ExplRes mob = ',e16.10)") mob
+  write(*,"('ExplRes dphi = ',e16.10)") dphi
   write(*,"('ExplRes hc = ',e10.4)") hc
   write(*,"('ExplRes pw_ref = ',e10.4)") this%pw_ref 
   write(*,"('ExplRes vol_flux = ',e10.4)") vol_flux
@@ -287,6 +374,102 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
 #endif
 
 end subroutine TOilImsWatInjExplRes
+
+! ************************************************************************** !
+
+subroutine TOilImsOilProdExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
+                                ghosted_id, dof,option,res)
+  ! 
+  ! Compute residual term for a TOilIms Oil Producer
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 06/12/16
+  ! 
+  use PM_TOilIms_Aux_module
+  use Option_module
+  
+  implicit none
+
+  class(well_toil_ims_oil_prod_type) :: this
+  PetscInt :: iconn
+  PetscReal :: ss_flow_vol_flux(:)
+  PetscBool :: isothermal
+  PetscInt :: ghosted_id, dof
+  type(option_type) :: option
+  PetscReal :: Res(1:option%nflowdof)
+
+  call TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
+                               ghosted_id, dof,option,res)
+
+end subroutine TOilImsOilProdExplRes
+
+! ************************************************************************** !
+
+subroutine TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
+                                  ghosted_id,dof,option,res)
+
+  ! 
+  ! Compute residual term for a TOilIms Producers
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 06/12/16
+  ! 
+
+  use PM_TOilIms_Aux_module
+  use Option_module
+
+  implicit none
+
+  !using well_flow_energy_type to pass whaterver type of producer 
+  class(well_flow_energy_type) :: this
+  PetscInt :: iconn
+  PetscReal :: ss_flow_vol_flux(:)
+  PetscBool :: isothermal
+  PetscInt :: ghosted_id, dof
+  type(option_type) :: option
+  PetscReal :: Res(1:option%nflowdof)
+
+
+  PetscInt :: i_ph
+  PetscReal :: dphi, vol_flux, cfact, mob, hc
+
+  hc = this%conn_h(iconn)
+  cfact = this%conn_factors(iconn)
+  
+  Res = 0.d0 
+  ss_flow_vol_flux = 0.0d0
+  
+  do i_ph = 1, option%nphase
+    !pressure gradient positive for flow entering the well
+    dphi = this%flow_auxvars(dof,ghosted_id)%pres(i_ph) - &
+           this%pw_ref - hc 
+    if ( dphi < 0.0d0 ) &
+      write(*,"('TOilImsWellProd reverse flow at gh = ',I5,' dp = ',e10.4)") &
+      ghosted_id, dphi
+
+    mob = this%ConnMob(this%flow_auxvars(dof,ghosted_id)%mobility,i_ph)
+     
+    if(cfact * mob > wfloweps) then
+      !!         m^3 * 1/(Pa.s) * Pa = m^3/s 
+      vol_flux = cfact * mob * dphi
+
+      ! the minus sign indicate component fluxes out the reservoir
+      ss_flow_vol_flux(i_ph) = -1.d0 * vol_flux
+      !oss: can use Res(i_ph) here because i_ph conicide with equation indices
+      !the minus sign indicate component fluxes out the reservoir
+      Res(i_ph) = - vol_flux * this%flow_auxvars(dof,ghosted_id)%den(i_ph)
+      
+      if (.not.isothermal) then
+        Res(TOIL_IMS_ENERGY_EQUATION_INDEX) = &
+              Res(TOIL_IMS_ENERGY_EQUATION_INDEX) - &
+              vol_flux * this%flow_auxvars(dof,ghosted_id)%den(i_ph) * &
+              this%flow_energy_auxvars(dof,ghosted_id)%H(i_ph)          
+      end if
+    end if  
+
+  end do
+
+end subroutine TOilImsProducerExplRes
 
 ! ************************************************************************** !
 

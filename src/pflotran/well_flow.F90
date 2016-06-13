@@ -32,7 +32,7 @@ module Well_Flow_class
     procedure, public :: VarsExplUpdate => FlowVarsExplUpdate
     procedure, public :: ConnMob => WellFlowConnMob
     procedure, public :: PressRef => FlowPressRef
-    procedure, public :: PressRefQ => FlowPressRef  
+    procedure, public :: PressRefQ => FlowPressRefQ  
     procedure, public :: PressRefMRInj => FlowPressRefMRInj
     procedure, public :: PressRefMRProd => FlowPressRefMRProd 
     procedure, public :: QPhase => FlowQPhase
@@ -131,7 +131,7 @@ end subroutine wellFlowConnInit
 
 ! ************************************************************************** !
 
-subroutine FlowExplUpdate(this,grid,option)
+subroutine FlowExplUpdate(this,grid,ss_fluxes,option)
   ! 
   ! - Update FlowEnergy well vars
   ! - Perform a limit on well checks 
@@ -148,6 +148,7 @@ subroutine FlowExplUpdate(this,grid,option)
 
   class(well_flow_type) :: this
   type(grid_type), pointer :: grid
+  PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   PetscBool :: pass
@@ -167,9 +168,9 @@ subroutine FlowExplUpdate(this,grid,option)
   do
     if(pass) exit ! the well limits are satisfied
 
-    call this%VarsExplUpdate(grid,option)
+    call this%VarsExplUpdate(grid,ss_fluxes,option)
 
-    call this%LimitCheck(pass)
+    call this%LimitCheck(pass,option)
     ! NOW IMPLEMENT CHECK
 
     !print *, "pw_ref = ", pw_ref," ivar = ", ivar
@@ -197,7 +198,7 @@ end subroutine FlowExplUpdate
 
 ! ************************************************************************** !
 
-subroutine FlowVarsExplUpdate(this,grid,option)
+subroutine FlowVarsExplUpdate(this,grid,ss_fluxes,option)
 
   use Grid_module
   use Option_module
@@ -206,6 +207,7 @@ subroutine FlowVarsExplUpdate(this,grid,option)
 
   class(well_flow_type) :: this
   type(grid_type), pointer :: grid
+  PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   print *, "FlowVarsExplUpdate must be extended"
@@ -407,7 +409,7 @@ end subroutine FlowPressRefQ
 !*****************************************************************************!
 subroutine FlowPressRefMRInj(this,grid,phase,option)
   !  
-  ! Compute well p_ref given the volumetric rate of one phase 
+  ! Compute well p_ref given the mass rate of one phase 
   ! IPR sign convention: rate > 0 for fluid being produced
   ! Tested for production well only but should work also for injectors
   !
@@ -688,7 +690,7 @@ end subroutine FlowMRPhase
 
 !*****************************************************************************!
 
-subroutine WellFlowLimitCheck(this,pass)
+subroutine WellFlowLimitCheck(this,pass,option)
   ! 
   !
   ! Perform limit check for a water injector
@@ -697,10 +699,13 @@ subroutine WellFlowLimitCheck(this,pass)
   ! Date : 6/06/2016
   !
 
+  use Option_module
+
   implicit none
 
   class(well_flow_type) :: this
   PetscBool :: pass
+  type(option_type) :: option
 
   print *, "WellFlowLimitCheck must be extended"
   stop  
@@ -819,31 +824,110 @@ end subroutine FlowHydroCorrUpdate
 
 subroutine WellFlowConnDenUpdate(this,grid,ss_fluxes,option)
   !
-  ! Compute connection densities for a water injector 
+  ! Compute connection densities for producers
+  ! to be overwritten for injectors 
+  ! Compute well fluid average density from the well segment phase densities 
+  ! using grid-blocks/well fluxes as weights 
   !
   ! Author: Paolo Orsini (OpenGoSim)  
-  ! Date : 6/06/2016
+  ! Date : 6/12/2016
   !
   use Grid_module
   use Option_module
 
-  use EOS_Water_module
-
   implicit none
 
   class(well_flow_type) :: this
-  type(grid_type), pointer :: grid !not currently used
-  PetscReal :: ss_fluxes(:,:)      !not currently used
+  type(grid_type), pointer :: grid 
+  PetscReal :: ss_fluxes(:,:)      
   type(option_type) :: option
 
-  print *, "WellFlowConnDenUpdate must be extended"
-  stop  
+  PetscReal :: q_sum
+  PetscReal :: q_ph(option%nphase)
+  PetscReal :: den_ph(option%nphase)
+  PetscReal :: den_ph_w(option%nphase)
+  PetscInt :: i_ph
+
+  PetscReal :: q_sum_lc, q_sum_well 
+  PetscReal :: den_q_lc, den_q_well
+  PetscReal :: den_sum_well
+
+  PetscInt :: iconn, local_id, ghosted_id, ierr
+
+  q_sum_lc = 0.0d0
+  q_sum_well = 0.0d0
+  den_q_lc = 0.0d0
+  den_q_well = 0.0d0
+  den_sum_well = 0.0d0
+
+  do iconn = 1,this%connection_set%num_connections
+    local_id = this%connection_set%id_dn(iconn)
+    ghosted_id = grid%nL2G(local_id)
+    ! need to change signs because in the PFLOTRAN convention
+    ! producing wells have ss_fluxes < 0
+    q_sum = 0.0d0
+    do i_ph = 1,option%nphase
+      q_ph(i_ph) = 0.0d0
+      if( ss_fluxes(i_ph,iconn) < 0.0d0) then
+        !should not have ss_fluxes > 0.0d0, this reverse flow situation
+        ! should be detected in Res computation 
+        q_ph(i_ph) = -1.0d0 * ss_fluxes(i_ph,iconn)
+      end if
+      q_sum = q_sum + q_ph(i_ph)
+      den_ph(i_ph) = this%flow_auxvars(ZERO_INTEGER,ghosted_id)%den_kg(i_ph)
+    end do
+    if( q_sum > wfloweps ) then
+      do i_ph = 1,option%nphase
+        den_ph_w(i_ph) = q_ph(i_ph) / q_sum  
+      end do
+    else ! OK for nill fluxes 
+         ! not accurate for back flow (should get warning in Res computation)
+      do i_ph = 1,option%nphase
+        den_ph_w(i_ph) = this%flow_auxvars(ZERO_INTEGER,ghosted_id)%sat(i_ph)
+      end do
+    end if   
+    !compute fluid averga density 
+    this%conn_den_kg(iconn) = 0.0d0
+    do i_ph = 1,option%nphase
+      this%conn_den_kg(iconn) = this%conn_den_kg(iconn) + &
+                                den_ph(i_ph) * den_ph_w(i_ph)
+    end do
+     
+    q_sum_lc = q_sum_lc + q_sum
+    den_q_lc = den_q_lc + this%conn_den_kg(iconn) * q_sum
+    den_sum_well = den_sum_well + this%conn_den_kg(iconn)
+
+  end do
+
+  call MPI_ALLREDUCE(q_sum_lc, q_sum_well, 1, MPI_DOUBLE_PRECISION, &
+                     MPI_SUM,this%comm, ierr)
+
+  call MPI_ALLREDUCE(den_q_lc, den_q_well, 1, MPI_DOUBLE_PRECISION, &
+                     MPI_SUM,this%comm, ierr)
+
+  !write(*,*) "rank = ", option%myrank, "WellFlowConnDenUpdate, den_q_well, q_sum_well", den_q_well, q_sum_well
+  !same well average density for all phase - assuming perfect mix
+  do i_ph = 1,option%nphase
+    if ( q_sum_well > wfloweps ) then
+      this%dw_kg_ref(i_ph) = den_q_well / q_sum_well
+    else
+      this%dw_kg_ref(i_ph) = den_sum_well / &
+                          dble(this%connection_set%num_connections)
+    end if 
+  end do
 
 end subroutine WellFlowConnDenUpdate
 
 !*****************************************************************************!
 
 function WellFlowConnMob(this,mobility,iphase)
+
+  ! mobilty computation for producers
+  ! to be overwritten (or replaced) for injectors
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 1/07/2015
+  !
 
   implicit none
 
@@ -853,8 +937,10 @@ function WellFlowConnMob(this,mobility,iphase)
 
   PetscReal :: WellFlowConnMob
 
-  print *, "WellFlowConnMob must be extended"
-  stop
+  WellFlowConnMob = mobility(iphase)
+
+  !print *, "WellFlowConnMob must be extended"
+  !stop
 
 end function WellFlowConnMob
 

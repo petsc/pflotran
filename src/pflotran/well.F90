@@ -6,6 +6,7 @@ module Well_module
   use Well_Flow_class
   use Well_FlowEnergy_class
   use Well_WaterInjector_class
+  use Well_OilProducer_class
   use Well_TOilIms_class
   !add here other well classes, e.g. Wells_XXXX_class
 
@@ -107,6 +108,9 @@ subroutine WellAuxVarSetUp(well,connection_set,flow_condition,aux,option)
     class is(well_toil_ims_wat_inj_type)
       well%flow_energy_auxvars => aux%TOil_ims%auxvars   
       well%flow_auxvars => aux%TOil_ims%auxvars
+    class is(well_toil_ims_oil_prod_type)
+      well%flow_energy_auxvars => aux%TOil_ims%auxvars   
+      well%flow_auxvars => aux%TOil_ims%auxvars
     !when well implmented for other flow modes - add below
   end select 
 
@@ -149,7 +153,7 @@ subroutine WellOutput(well,output_option,src_name,option)
   character(len=MAXWORDLENGTH) :: src_name
   type(option_type) :: option
 
-  character(len=MAXWORDLENGTH) :: wfile_name
+  character(len=MAXSTRINGLENGTH) :: wfile_name
   PetscMPIInt :: cur_w_myrank
   PetscInt :: ios, ierr
 

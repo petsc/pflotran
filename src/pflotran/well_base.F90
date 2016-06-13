@@ -613,7 +613,7 @@ end subroutine BaseHydroCorrUpdate
 
 ! *************************************************************************** !
 
-subroutine BaseExplUpdate(this,grid,option)
+subroutine BaseExplUpdate(this,grid,ss_fluxes,option)
   ! 
   ! - Update FlowEnergy well vars
   ! - Perform a limit on well checks 
@@ -630,6 +630,7 @@ subroutine BaseExplUpdate(this,grid,option)
 
   class(well_base_type) :: this
   type(grid_type), pointer :: grid
+  PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   print *, "Well => BaseExplUpdate must be extended"

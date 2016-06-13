@@ -63,6 +63,7 @@ module Option_module
     PetscInt :: nflowspec
     PetscInt :: nmechdof
     PetscInt :: nsec_cells
+    PetscInt :: nwells
     PetscBool :: use_th_freezing
 
     PetscBool :: surf_flow_on
@@ -413,6 +414,7 @@ subroutine OptionInitRealization(option)
   option%nflowdof = 0
   option%nmechdof = 0
   option%nsec_cells = 0
+  option%nwells = 0
   option%use_th_freezing = PETSC_FALSE
 
   option%nsurfflowdof = 0

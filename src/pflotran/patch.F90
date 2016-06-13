@@ -500,6 +500,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     well_spec => WellSpecGetPtrFromList(coupler%well_spec_name,well_specs) 
     if ( associated(well_spec) ) then
       coupler%well => CreateWell(well_spec,option)
+      option%nwells = option%nwells + 1
     end if  
     nullify(well_spec)
    
@@ -762,6 +763,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     if (option%nflowdof > 0) then
       allocate(patch%ss_flow_fluxes(option%nflowdof,temp_int))
       patch%ss_flow_fluxes = 0.d0
+      if (option%nwells > 0) then
+        ! needed by wells
+        allocate(patch%ss_flow_vol_fluxes(option%nphase,temp_int))
+        patch%ss_flow_vol_fluxes = 0.d0
+      end if 
     endif
     ! transport
     if (option%ntrandof > 0) then
