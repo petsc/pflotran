@@ -1487,13 +1487,25 @@ subroutine PMWFInitializeTimestep(this)
     allocate(Coeff(num_species))
     allocate(concentration_old(num_species))
     ! ------ update mass balances after transport step ---------------------
-    cur_waste_form%cumulative_mass = cur_waste_form%cumulative_mass + &
-                                     cur_waste_form%instantaneous_mass_rate*dt
+    select type(cwfm => cur_waste_form%mechanism)
+      type is(wf_mechanism_dsnf_type)
+        ! note: do nothing here because the cumulative mass update for dsnf
+        ! mechanisms has already occured (if breached)
+      class default
+        cur_waste_form%cumulative_mass = cur_waste_form%cumulative_mass + &
+          cur_waste_form%instantaneous_mass_rate*dt
+    end select
     ! ------ update matrix volume ------------------------------------------
-    dV = cur_waste_form%eff_dissolution_rate / &      ! kg-matrix/sec
-         cwfm%matrix_density * &                      ! kg-matrix/m^3-matrix
-         dt                                           ! sec
-    cur_waste_form%volume = cur_waste_form%volume - dV
+    select type(cwfm => cur_waste_form%mechanism)
+      type is(wf_mechanism_dsnf_type)
+        ! note: do nothing here because the volume update for dsnf
+        ! mechanisms has already occured (if breached)
+      class default
+         dV = cur_waste_form%eff_dissolution_rate / &   ! kg-matrix/sec
+           cwfm%matrix_density * &                      ! kg-matrix/m^3-matrix
+           dt                                           ! sec
+         cur_waste_form%volume = cur_waste_form%volume - dV
+    end select
     if (cur_waste_form%volume <= 1.d-8) then
       cur_waste_form%volume = 0.d0
     endif
@@ -1551,9 +1563,9 @@ subroutine PMWFInitializeTimestep(this)
            cwfm%rad_species_list(k)%formula_weight
         ! update transport solution vector with mass injection molality
         ! as an alternative to a source term (issue with tran_dt changing)
-        idof = cwfm%rad_species_list(k)%ispecies + &
-               ((cur_waste_form%local_cell_id - 1) * option%ntrandof) 
         cell_id = cur_waste_form%local_cell_id
+        idof = cwfm%rad_species_list(k)%ispecies + &
+               ((cell_id - 1) * option%ntrandof) 
         inst_release_molality = &                    ! [mol-rad/kg-water]
            ! [mol-rad]
           (cur_waste_form%inst_release_amount(k) * & ! [mol-rad/g-matrix]
@@ -1573,9 +1585,7 @@ subroutine PMWFInitializeTimestep(this)
     endif
     
     ! Save the concentration after inst. release for the decay step
-    do k = 1,num_species
-      concentration_old(k) = cur_waste_form%rad_concentration(k)
-    enddo
+    concentration_old = cur_waste_form%rad_concentration
 
     if (cur_waste_form%volume >= 0.d0) then
       !------- decay the radionuclide species --------------------------------
@@ -1686,6 +1696,9 @@ subroutine PMWFSolve(this,time,ierr)
   ! Date: 08/26/15
   ! Updated/modified by Jenn Frederick 04/2016
   
+  use Global_Aux_module
+  use Material_Aux_class
+  
   implicit none
 
 #include "petsc/finclude/petscvec.h"
@@ -1698,14 +1711,24 @@ subroutine PMWFSolve(this,time,ierr)
   class(waste_form_base_type), pointer :: cur_waste_form
   PetscInt :: i, j
   PetscInt :: num_species
+  PetscInt :: cell_id
+  PetscInt :: idof
+  PetscReal :: inst_diss_molality
   PetscReal, pointer :: vec_p(:)  
+  PetscReal, pointer :: xx_p(:)
   PetscInt :: fmdm_count_global, fmdm_count_local
   character(len=MAXWORDLENGTH) :: word
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   
   fmdm_count_global = 0
   fmdm_count_local = 0
+  global_auxvars => this%realization%patch%aux%Global%auxvars
+  material_auxvars => this%realization%patch%aux%Material%auxvars
 
   call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(this%realization%field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+  
   cur_waste_form => this%waste_form_list
   i = 0
   do 
@@ -1713,14 +1736,9 @@ subroutine PMWFSolve(this,time,ierr)
     num_species = cur_waste_form%mechanism%num_species    
     if ((cur_waste_form%volume > 0.d0) .and. &
         (cur_waste_form%canister_vitality <= 1.d-40)) then
-      ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]
+      ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]:
       call cur_waste_form%mechanism%Dissolution(cur_waste_form,this,ierr)
-      ! count the number of time FMDM was called
-      select type(cwfm => cur_waste_form%mechanism)
-        type is(wf_mechanism_fmdm_type)
-          fmdm_count_local = fmdm_count_local + 1
-      end select
-      ! mol/sec
+      ! calculate the instantaneous mass rate [mol/sec]:
       do j = 1,num_species
         i = i + 1
         cur_waste_form%instantaneous_mass_rate(j) = &
@@ -1728,8 +1746,42 @@ subroutine PMWFSolve(this,time,ierr)
            cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kg-rad/kmol-rad
            cur_waste_form%rad_mass_fraction(j) * &            ! kg-rad/kg-matrix
            1.d3)                                              ! kmol -> mol
-        vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)  ! mol/sec
+        select type(cwfm => cur_waste_form%mechanism)
+          ! ignore source term if dsnf type, and directly update the
+          ! solution vector instead (see note in WFMechDSNFDissolution):
+          type is(wf_mechanism_dsnf_type)
+            vec_p(i) = 0.d0                                  ! mol/sec
+            inst_diss_molality = 0.d0                        ! mol-rad/kg-water
+            cell_id = cur_waste_form%local_cell_id
+            idof = cwfm%rad_species_list(j)%ispecies + &
+               ((cell_id - 1) * this%option%ntrandof)
+            inst_diss_molality = &                           ! mol-rad/kg-water
+              cur_waste_form%instantaneous_mass_rate(j) * &  ! mol-rad/sec
+              this%realization%option%tran_dt / &            ! sec
+              ! [kg-water]
+              (material_auxvars(cell_id)%porosity * &        ! [-]
+               global_auxvars(cell_id)%sat(LIQUID_PHASE) * & ! [-]
+               material_auxvars(cell_id)%volume * &          ! [m^3]
+               global_auxvars(cell_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
+            xx_p(idof) = xx_p(idof) + inst_diss_molality     ! mol-rad/kg-water
+            ! update the cumulative mass now, not at next timestep:
+            cur_waste_form%cumulative_mass(j) = &
+              cur_waste_form%cumulative_mass(j) + &          ! mol-rad
+              cur_waste_form%instantaneous_mass_rate(j) * &  ! mol-rad/sec
+              this%realization%option%tran_dt                ! sec
+            ! update the volume now, not at next timestep:
+            cur_waste_form%volume = 0.d0                     ! m^3
+          ! for all other waste form types, load the source term, and update
+          ! the cumulative mass and volume at next timestep:
+          class default
+            vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)  ! mol/sec
+        end select
       enddo
+      ! count the number of times FMDM was called:
+      select type(cwfm => cur_waste_form%mechanism)
+        type is(wf_mechanism_fmdm_type)
+          fmdm_count_local = fmdm_count_local + 1
+      end select
     else ! (canister not breached, or all waste form has dissolved already)
       i = i + num_species
       cur_waste_form%eff_dissolution_rate = 0.d0
@@ -1737,7 +1789,7 @@ subroutine PMWFSolve(this,time,ierr)
     endif
     cur_waste_form => cur_waste_form%next
   enddo
-  
+ 
   ! ideally, this print statement would go inside the dissolution subroutine
   call MPI_Allreduce(fmdm_count_local,fmdm_count_global,ONE_INTEGER_MPI, &
                      MPI_INTEGER,MPI_SUM,this%realization%option%mycomm,ierr)
@@ -1745,9 +1797,12 @@ subroutine PMWFSolve(this,time,ierr)
       this%realization%option%print_screen_flag) then
     write(word,'(i5)') fmdm_count_global
     write(*,'(/,2("=")," FMDM ",72("="))')
+  ! ** START (this can be removed after FMDM profiling is finished) **
     write(*,'(a)') '== ' // adjustl(trim(word)) // ' calls to FMDM.'
+  ! ** END (this can be removed after FMDM profiling is finished) **
   endif
   
+  call VecRestoreArrayF90(this%realization%field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   
 end subroutine PMWFSolve
@@ -1831,9 +1886,6 @@ subroutine WFMechDSNFDissolution(this,waste_form,pm,ierr)
   ! Author: Jenn Frederick
   ! Date: 03/28/2016
 
-  use Grid_module  
-  use Global_Aux_module
-
   implicit none
 
   class(wf_mechanism_dsnf_type) :: this
@@ -1843,8 +1895,17 @@ subroutine WFMechDSNFDissolution(this,waste_form,pm,ierr)
   
   ierr = 0
   
-  ! 91% of waste form dissolves in first timestep after breach:
-  this%frac_dissolution_rate = 1.d0 / (1.1d0*pm%realization%option%tran_dt) 
+  ! Because the DSNF dissolution rate is instantaneous, the amount of
+  ! released isotopes gets updated directly in the solution vector after
+  ! this routine is called, within PMWFSolve.
+  ! Doing the direct update to the solution vector resolves the potential
+  ! error that may occur if the next timestep size is different from the
+  ! current timestep size, when the dissolution rate would have been
+  ! calculated. This potential error is greatly reduced in magnitude for
+  ! the other dissolution models, so we only do the direct update for DSNF.
+  
+  ! the entire waste form dissolves in the current timestep:
+  this%frac_dissolution_rate = 1.d0 / pm%realization%option%tran_dt
 
   ! kg-matrix/sec
   waste_form%eff_dissolution_rate = &

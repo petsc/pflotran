@@ -3855,9 +3855,9 @@ subroutine MphaseMaxChange(realization,dpmax,dtmpmax,dsmax,dcmax)
 
   call MphaseMaxChangePatch(realization, dcmax, dsmax)
 
-  call MPI_Allreduce(dcmax,MPI_IN_PLACE,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+  call MPI_Allreduce(MPI_IN_PLACE,dcmax,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                      MPI_MAX,option%mycomm,ierr)
-  call MPI_Allreduce(dsmax,MPI_IN_PLACE,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+  call MPI_Allreduce(MPI_IN_PLACE,dsmax,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                      MPI_MAX,option%mycomm,ierr)
 
 end subroutine MphaseMaxChange

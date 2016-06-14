@@ -925,7 +925,7 @@ subroutine PMRTCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
     call VecRestoreArrayReadF90(dX,dC_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayReadF90(X0,C0_p,ierr);CHKERRQ(ierr)
     mpi_int = option%ntrandof
-    call MPI_Allreduce(max_relative_change_by_dof,MPI_IN_PLACE,mpi_int, &
+    call MPI_Allreduce(MPI_IN_PLACE,max_relative_change_by_dof,mpi_int, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,this%option%mycomm,ierr)
     if (OptionPrintToFile(option)) then
 100 format("REACTIVE TRANSPORT  NEWTON_ITERATION ",30es16.8)
@@ -1023,10 +1023,12 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
   if (this%realization%option%compute_mass_balance_new) then
     call RTUpdateMassBalance(this%realization)
   endif
-  call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
-                          this%realization%patch%internal_tran_fluxes, &
-                          this%realization%patch%boundary_tran_fluxes, &
-                          INTEGRATE_TRANSPORT,this%option)
+  if (this%option%transport%store_fluxes) then
+    call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
+                            this%realization%patch%internal_tran_fluxes, &
+                            this%realization%patch%boundary_tran_fluxes, &
+                            INTEGRATE_TRANSPORT,this%option)
+  endif
 
 end subroutine PMRTUpdateSolution2     
 
