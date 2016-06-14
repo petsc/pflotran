@@ -577,33 +577,41 @@ subroutine OptionCheckCommandLine(option)
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-buffer_matrix", & 
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-buffer_matrix", & 
                            option%use_matrix_buffer, ierr);CHKERRQ(ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-snes_mf", & 
                            option%use_matrix_free, ierr);CHKERRQ(ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isothermal", &
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-use_isothermal", &
                            option%use_isothermal, ierr);CHKERRQ(ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mc", &
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-use_mc", &
                            option%use_mc, ierr);CHKERRQ(ierr)
                            
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', &
-                             option%restart_filename, &
+  call PetscOptionsGetString(PETSC_NULL_OBJECT,PETSC_NULL_CHARACTER, &
+                             '-restart', option%restart_filename, &
                              option%restart_flag, ierr);CHKERRQ(ierr)
   ! check on possible modes                                                     
   option_found = PETSC_FALSE
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-use_richards", &
                            option_found, ierr);CHKERRQ(ierr)
   if (option_found) option%flowmode = "richards"                           
   option_found = PETSC_FALSE
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thc", &
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-use_thc", &
                            option_found, ierr);CHKERRQ(ierr)
   if (option_found) option%flowmode = "thc"     
   option_found = PETSC_FALSE
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-use_mph", &
                            option_found, ierr);CHKERRQ(ierr)
   if (option_found) option%flowmode = "mph"                           
   option_found = PETSC_FALSE
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_flash2", &
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-use_flash2", &
                            option_found, ierr);CHKERRQ(ierr)
   if (option_found) option%flowmode = "flash2"                           
  
@@ -1151,9 +1159,10 @@ subroutine OptionInitPetsc(option)
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr);CHKERRQ(ierr)    !fmy: tiny memory leak here (don't know why)
   
   if (option%verbosity > 0) then 
-    call PetscLogBegin(ierr);CHKERRQ(ierr)
+    call PetscLogDefaultBegin(ierr);CHKERRQ(ierr)
     string = '-log_summary'
-    call PetscOptionsInsertString(string, ierr);CHKERRQ(ierr)
+    call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
+                                  string, ierr);CHKERRQ(ierr)
   endif 
 
   call LoggingCreate()
@@ -1329,9 +1338,11 @@ subroutine OptionFinalize(option)
   PetscErrorCode :: ierr
   
   call LoggingDestroy()
-  call PetscOptionsSetValue('-options_left','no',ierr);CHKERRQ(ierr)
+  call PetscOptionsSetValue(PETSC_NULL_OBJECT, &
+                            '-options_left','no',ierr);CHKERRQ(ierr)
   ! list any PETSc objects that have not been freed - for debugging
-  call PetscOptionsSetValue('-objects_left','yes',ierr);CHKERRQ(ierr)
+  call PetscOptionsSetValue(PETSC_NULL_OBJECT, &
+                            '-objects_left','yes',ierr);CHKERRQ(ierr)
   call MPI_Barrier(option%global_comm,ierr)
   iflag = option%successful_exit_code
   call OptionDestroy(option)

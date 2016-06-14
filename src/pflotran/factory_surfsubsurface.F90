@@ -768,11 +768,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
   PetscInt :: vertex_id
   PetscOffset :: iia,jja,iicol
   PetscBool :: done
-#ifdef USE_MATSEQAIJ_FIX
   PetscScalar, pointer :: aa_v(:)
-#else
-  PetscScalar, pointer :: aa_v(:,:)
-#endif
   PetscInt :: row, col
 
   PetscErrorCode :: ierr
@@ -807,22 +803,10 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
   do ii = 1,nrow
     max_value = 0.d0
     do jj = ia_p(ii),ia_p(ii + 1) - 1
-#if USE_MATSEQAIJ_FIX
       if (aa_v(jj) > max_value) then
         corr_v2_ids(ii) = ja_p(jj)
         max_value = aa_v(jj)
       endif
-#else
-      col = col + 1
-      if (col > nrow) then
-        row = row + 1
-        col = 1
-      endif
-      if (aa_v(col,row) > max_value) then
-        corr_v2_ids(ii) = ja_p(jj)
-        max_value = aa_v(col,row)
-      endif
-#endif
     enddo
     if (max_value<3) then
       option%io_buffer = 'Atleast three vertices need to form a face'
