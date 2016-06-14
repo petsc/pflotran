@@ -626,10 +626,12 @@ subroutine PMSubsurfaceFlowUpdateSolution(this)
   if (associated(this%realization%uniform_velocity_dataset)) then
     call RealizUpdateUniformVelocity(this%realization)
   endif
-  call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
-                          this%realization%patch%internal_flow_fluxes, &
-                          this%realization%patch%boundary_flow_fluxes, &
-                          INTEGRATE_FLOW,this%option)
+  if (this%option%flow%store_fluxes) then
+    call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
+                            this%realization%patch%internal_flow_fluxes, &
+                            this%realization%patch%boundary_flow_fluxes, &
+                            INTEGRATE_FLOW,this%option)
+  endif
   ! end from RealizationUpdate()
 
 end subroutine PMSubsurfaceFlowUpdateSolution  

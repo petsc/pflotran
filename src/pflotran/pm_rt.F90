@@ -1023,10 +1023,12 @@ subroutine PMRTUpdateSolution2(this, update_kinetics)
   if (this%realization%option%compute_mass_balance_new) then
     call RTUpdateMassBalance(this%realization)
   endif
-  call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
-                          this%realization%patch%internal_tran_fluxes, &
-                          this%realization%patch%boundary_tran_fluxes, &
-                          INTEGRATE_TRANSPORT,this%option)
+  if (this%option%transport%store_fluxes) then
+    call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
+                            this%realization%patch%internal_tran_fluxes, &
+                            this%realization%patch%boundary_tran_fluxes, &
+                            INTEGRATE_TRANSPORT,this%option)
+  endif
 
 end subroutine PMRTUpdateSolution2     
 
