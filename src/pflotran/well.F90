@@ -16,7 +16,7 @@ module Well_module
 
 #include "petsc/finclude/petscsys.h"
 
-  public :: CreateWell, WellAuxVarSetUp, WellOutput
+  public :: CreateWell, WellAuxVarSetUp, WellOutput, WellDestroy
 
 contains
 
@@ -172,6 +172,31 @@ subroutine WellOutput(well,output_option,src_name,option)
   end if 
 
 end subroutine WellOutput
+
+! ************************************************************************** !
+
+subroutine WellDestroy(well)
+  ! 
+  ! Destroy well
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 06/07/16
+  ! 
+
+  class(well_base_type), pointer :: well 
+
+  select type(well)
+    class is(well_flow_energy_type)
+      call FlowEnergyWellStrip(well)
+    !for now data/data pointer present in well_flow_energy_type only
+    !to be reviewed if data/data pointer also in doughter classes
+    !in such case should include last extension, e.g.
+    ! class is(well_toil_ims_wat_inj_type), etc 
+  end select
+
+  deallocate(well) 
+
+end subroutine WellDestroy
 
 ! ************************************************************************** !
 

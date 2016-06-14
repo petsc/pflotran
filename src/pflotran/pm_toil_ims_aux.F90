@@ -559,6 +559,7 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
   ! MPHASE uses 1.d-8 for Press, Sat and Temp  
   ! GENERAL uses 1.d-8 for Press, Sat and Temp
   PetscReal, parameter :: perturbation_tolerance = 1.d-8
+  PetscReal, parameter :: sat_perturb_tolerance = 1.d-8
   !PetscReal, parameter :: perturbation_tolerance = 1.d-5
 
   !PetscReal, parameter :: min_mole_fraction_pert = 1.d-12
@@ -586,9 +587,11 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
 
   ! always perturb toward 0.5 (0.9 is used in ims and mphase
   if (x(TOIL_IMS_SATURATION_DOF) > 0.5d0) then 
-      pert(TOIL_IMS_SATURATION_DOF) = -1.d0 * perturbation_tolerance
+      !pert(TOIL_IMS_SATURATION_DOF) = -1.d0 * perturbation_tolerance
+      pert(TOIL_IMS_SATURATION_DOF) = -1.d0 * sat_perturb_tolerance
   else
-     pert(TOIL_IMS_SATURATION_DOF) = perturbation_tolerance
+     !pert(TOIL_IMS_SATURATION_DOF) = perturbation_tolerance
+     pert(TOIL_IMS_SATURATION_DOF) = sat_perturb_tolerance
   endif
 
 ! below constrains from ims and mphase - might not be needed is post-solve checks

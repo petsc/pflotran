@@ -34,7 +34,7 @@ module Well_FlowEnergy_class
     !procedure  :: WellConnSort
   end type  well_flow_energy_type
 
-  public :: WellFlowEnergyInit
+  public :: WellFlowEnergyInit, FlowEnergyWellStrip
 
 contains
 
@@ -272,6 +272,31 @@ end subroutine FlowEnergyVarsExplUpdate
 !end function WellFlowEnergyConnMob
 !*****************************************************************************!
 
+subroutine FlowEnergyWellStrip(well)
+  !
+  ! Strip well_flow_energy and all parent members
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/14/2016
+  !
+
+  use Utility_module, only : DeallocateArray 
+
+  implicit none
+
+  class(well_flow_energy_type) :: well
+
+  call DeallocateArray(well%ent_ref)
+  !only pointers to auxvars 
+  nullify(well%flow_energy_auxvars)
+
+  ! this will strip all its parents too
+  call FlowWellStrip(well) 
+
+
+end subroutine FlowEnergyWellStrip
+
+!*****************************************************************************!
 
 end module Well_FlowEnergy_class
 

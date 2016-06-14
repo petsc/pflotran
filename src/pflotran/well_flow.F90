@@ -52,7 +52,7 @@ module Well_Flow_class
     !procedure  :: WellConnSort
   end type  well_flow_type
 
-  public :: WellFlowInit !, WellFlowConnInit
+  public :: WellFlowInit, FlowWellStrip !, WellFlowConnInit
 
 contains
 
@@ -946,5 +946,38 @@ end function WellFlowConnMob
 
 !*****************************************************************************!
 
+subroutine FlowWellStrip(well)
+  !
+  ! Strip well_flow and all its parent members
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/14/2016
+  !
+
+  use Utility_module, only : DeallocateArray 
+
+  implicit none
+
+  class(well_flow_type) :: well
+
+  call DeallocateArray(well%dw_kg_ref)
+  call DeallocateArray(well%q_fld)
+  call DeallocateArray(well%mr_fld)
+  call DeallocateArray(well%conn_h)
+  call DeallocateArray(well%conn_den_kg)
+  call DeallocateArray(well%well_conn_den_kg)
+  call DeallocateArray(well%well_conn_h_sorted)
+
+  !these are pointer only
+  nullify(well%flow_auxvars)
+  nullify(well%flow_condition)
+
+  !this will strip all its parents
+  call BaseWellStrip(well)
+
+
+end subroutine FlowWellStrip
+
+!*****************************************************************************!
 
 end module Well_Flow_class

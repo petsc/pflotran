@@ -567,12 +567,21 @@ subroutine CouplerDestroy(coupler)
   ! Date: 10/23/07
   ! 
   use Utility_module, only : DeallocateArray
+  use Well_module
   
   implicit none
   
   type(coupler_type), pointer :: coupler
   
   if (.not.associated(coupler)) return
+
+  !well destroy here since its memory address is tracked only by this pointer 
+  !within WellDestroy only nullify coupler%well%well_spec
+  !since well_specs are realization members (defined-destroyed in realization)
+  if (associated(coupler%well)) then 
+    call WellDestroy(coupler%well) 
+    nullify(coupler%well)               ! since these are simply pointers to 
+  end if
   
   ! since the below are simply pointers to objects in list that have already
   ! or will be deallocated from the list, nullify instead of destroying
@@ -580,14 +589,6 @@ subroutine CouplerDestroy(coupler)
   nullify(coupler%flow_condition)     ! since these are simply pointers to 
   nullify(coupler%tran_condition)     ! since these are simply pointers to 
   nullify(coupler%region)        ! conditoins in list, nullify
-
-  !need to add add function that destroy the well here - since the well
-  !memory address is saved (tracked) only from this pointer   
-  !call WellDestroy(coupler%well) 
-  ! only need to nullify coupler%well%well_spec, 
-  ! since well_specs are realization members (defined-destroyed in realization)
-  nullify(coupler%well)               ! since these are simply pointers to
-
 
   call DeallocateArray(coupler%flow_aux_mapping)
   call DeallocateArray(coupler%flow_bc_type)

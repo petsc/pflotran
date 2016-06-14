@@ -48,7 +48,7 @@ module Well_Base_class
     procedure  :: WellConnSort
   end type  well_base_type
 
-  public :: WellBaseInit, WellBaseConnInit
+  public :: WellBaseInit, WellBaseConnInit, BaseWellStrip
 
 contains
 
@@ -737,6 +737,37 @@ subroutine BaseInitDensity(this,grid,option)
   stop
 
 end subroutine BaseInitDensity
+
+!*****************************************************************************!
+
+subroutine BaseWellStrip(well)
+  !
+  ! Strip well_flow and all its parent members
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/14/2016
+  !
+
+  use Utility_module, only : DeallocateArray 
+
+  implicit none
+
+  class(well_base_type) :: well
+
+  call DeallocateArray(well%w_rank_conn)
+  call DeallocateArray(well%disp_rank_conn)
+  call DeallocateArray(well%conn_factors)
+  call DeallocateArray(well%conn_drill_dir)
+  call DeallocateArray(well%conn_status)
+  call DeallocateArray(well%w_conn_order)
+  call DeallocateArray(well%conn_l2w)
+  call DeallocateArray(well%w_conn_z)
+
+  !these are pointer only 
+  nullify(well%spec)
+  nullify(well%connection_set)  
+ 
+end subroutine BaseWellStrip
 
 !*****************************************************************************!
 
