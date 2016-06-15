@@ -1213,7 +1213,8 @@ subroutine SubsurfaceJumpStart(simulation)
   
   option => realization%option
 
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr);CHKERRQ(ierr)
 
 #if 0
@@ -2094,7 +2095,8 @@ subroutine SubsurfaceReadInput(simulation)
         option%use_touch_options = PETSC_TRUE
 
       case ('MPI_IO')
-!        call PetscOptionsInsertString('-viewer_binary_mpiio')
+!        call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
+!                                       '-viewer_binary_mpiio')
 
       case ('HANDSHAKE_IO')
         call InputReadInt(input,option,option%io_handshake_buffer_size)

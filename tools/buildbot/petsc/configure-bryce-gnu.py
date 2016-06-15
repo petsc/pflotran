@@ -5,6 +5,9 @@ if __name__ == '__main__':
   sys.path.insert(0, os.path.abspath('config'))
   import configure
   configure_options = [
+    '--CFLAGS=-g -O0',
+    '--CXXFLAGS=-g -O0',
+    '--FFLAGS=-g -O0',
     '--download-fblaslapack=yes',
     '--download-metis=yes',
     '--download-parmetis=yes',

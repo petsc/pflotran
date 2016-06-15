@@ -118,7 +118,8 @@ subroutine SurfaceJumpStart(simulation)
   
   option => surf_realization%option
 
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr);CHKERRQ(ierr)
                              
   if (option%steady_state) then
