@@ -1140,11 +1140,11 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
   option => realization_base%option
   field => realization_base%field
 
-  ! Create UGDM for
-  call UGridCreateUGDM(grid%unstructured_grid,ugdm, &
-                       (option%nflowdof*MAX_FACE_PER_CELL + 1),option)
-
   if (save_velocity) then
+
+    ! Create UGDM for
+    call UGridCreateUGDM(grid%unstructured_grid,ugdm, &
+                         (option%nflowspec*MAX_FACE_PER_CELL + 1),option)
 
     ! Create vectors in natural order for velocity in x/y/z direction
     call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_vx_vec, &
@@ -1154,23 +1154,23 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
     call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_vz_vec, &
                              NATURAL,option)
 
-    allocate(vx(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
-    allocate(vy(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
-    allocate(vz(option%nflowdof,MAX_FACE_PER_CELL,ugrid%nlmax))
+    allocate(vx(option%nflowspec,MAX_FACE_PER_CELL,ugrid%nlmax))
+    allocate(vy(option%nflowspec,MAX_FACE_PER_CELL,ugrid%nlmax))
+    allocate(vz(option%nflowspec,MAX_FACE_PER_CELL,ugrid%nlmax))
 
     vx = 0.d0
     vy = 0.d0
     vz = 0.d0
 
     call VecGetArrayF90(field%vx_face_inst,vx_ptr,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(field%vx_face_inst,vy_ptr,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(field%vx_face_inst,vz_ptr,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%vy_face_inst,vy_ptr,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%vz_face_inst,vz_ptr,ierr);CHKERRQ(ierr)
 
     vx_ptr = 0.d0
     vy_ptr = 0.d0
     vz_ptr = 0.d0
 
-    offset = 1 + option%nflowdof*MAX_FACE_PER_CELL
+    offset = 1 + option%nflowspec*MAX_FACE_PER_CELL
     ! Save the number of faces of all cell
     do local_id = 1,grid%nlmax
       ghosted_id = grid%nL2G(local_id)
@@ -1182,6 +1182,10 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
     enddo
 
   else
+
+    ! Create UGDM for
+    call UGridCreateUGDM(grid%unstructured_grid,ugdm, &
+                         (option%nflowdof*MAX_FACE_PER_CELL + 1),option)
 
     ! Create a flowrate vector in natural order
     call UGridDMCreateVector(grid%unstructured_grid,ugdm,natural_flowrates_vec, &
@@ -1226,9 +1230,9 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
         enddo
       endif
       
-      do dof=1,option%nflowdof
+      if (save_velocity) then
 
-        if (save_velocity) then
+        do dof=1,option%nflowspec
 
           ! Save velocity for iface_up of local_id_up cell using flowrate up-->dn
           vel_vector = cur_connection_set%dist(1:3,iconn)* &
@@ -1260,7 +1264,11 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
 
           endif
 
-        else
+        enddo
+
+      else
+
+        do dof=1,option%nflowdof
 
           ! Save flowrate for iface_up of local_id_up cell using flowrate up-->dn
           flowrates(dof,iface_up,local_id_up) = &
@@ -1277,8 +1285,9 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
             vec_ptr(idx) = -patch%internal_flow_fluxes(dof,sum_connection)
           endif
 
-        endif
-      enddo
+        enddo
+
+      endif
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
@@ -1300,8 +1309,9 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
         if (face_id==ugrid%cell_to_face_ghosted(iface_dn,local_id_dn)) exit
       enddo
 
-      do dof=1,option%nflowdof
-        if (save_velocity) then
+      if (save_velocity) then
+
+        do dof=1,option%nflowspec
 
           ! Save velocity for iface_dn of local_id_dn cell using -ve flowrate up-->dn
           vel_vector = cur_connection_set%dist(1:3,iconn)* &
@@ -1317,7 +1327,11 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
           vx_ptr(idx) = -vel_vector(2)
           vx_ptr(idx) = -vel_vector(3)
 
-        else
+        enddo
+
+      else
+
+        do dof=1,option%nflowspec
 
           ! Save flowrate for iface_dn of local_id_dn cell using -ve flowrate up-->dn
           idx = (local_id_dn-1)*offset + (dof-1)*MAX_FACE_PER_CELL + iface_dn + 1
@@ -1325,8 +1339,8 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
             -patch%boundary_flow_fluxes(dof,sum_connection)
           vec_ptr(idx) = &
             -patch%boundary_flow_fluxes(dof,sum_connection)
-        endif
-      enddo
+        enddo
+      endif
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -1338,8 +1352,8 @@ subroutine OutputGetFaceVelOrFlowrateUGrid(realization_base, save_velocity)
     deallocate(vz)
 
     call VecRestoreArrayF90(field%vx_face_inst,vx_ptr,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%vx_face_inst,vy_ptr,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%vx_face_inst,vz_ptr,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%vy_face_inst,vy_ptr,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%vz_face_inst,vz_ptr,ierr);CHKERRQ(ierr)
 
     ! Scatter flowrate from Global --> Natural order
     call VecScatterBegin(ugdm%scatter_gton,field%vx_face_inst,natural_vx_vec, &
