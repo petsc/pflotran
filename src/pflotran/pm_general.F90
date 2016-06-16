@@ -343,6 +343,11 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   ! Date: 03/14/13
   ! 
 
+  use Realization_Base_class, only : RealizationGetVariable
+  use Field_module
+  use Global_module, only : GlobalSetAuxVarVecLoc
+  use Variables_module, only : LIQUID_SATURATION, GAS_SATURATION
+
   implicit none
   
   class(pm_general_type) :: this
@@ -356,6 +361,7 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   PetscInt :: ifac
   PetscReal :: up, ut, ux, us, umin
   PetscReal :: dtt
+  type(field_type), pointer :: field
   
 #ifdef PM_GENERAL_DEBUG  
   call printMsg(this%option,'PMGeneral%UpdateTimestep()')
@@ -377,7 +383,23 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   dt = min(dtt,tfac(ifac)*dt,dt_max)
   dt = max(dt,dt_min)
 
-  call PMSubsurfaceFlowLimitDTByCFL(this,dt)
+  if (Initialized(this%cfl_governor)) then
+    ! Since saturations are not stored in global_auxvar for general mode, we
+    ! must copy them over for the CFL check
+    ! liquid saturation
+    field => this%realization%field
+    call RealizationGetVariable(this%realization,field%work, &
+                                LIQUID_SATURATION,ZERO_INTEGER)
+    call this%realization%comm1%GlobalToLocal(field%work,field%work_loc)
+    call GlobalSetAuxVarVecLoc(this%realization,field%work_loc, &
+                               LIQUID_SATURATION,TIME_NULL)
+    call RealizationGetVariable(this%realization,field%work, &
+                                GAS_SATURATION,ZERO_INTEGER)
+    call this%realization%comm1%GlobalToLocal(field%work,field%work_loc)
+    call GlobalSetAuxVarVecLoc(this%realization,field%work_loc, &
+                               GAS_SATURATION,TIME_NULL)
+    call PMSubsurfaceFlowLimitDTByCFL(this,dt)
+  endif
 
 end subroutine PMGeneralUpdateTimestep
 

@@ -6153,6 +6153,9 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
       distance = cur_connection_set%dist(0,iconn)
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       do iphase = 1, option%nphase
+        ! if the phase is not present in either cell, skip the connection
+        if (.not.(global_auxvars(ghosted_id_up)%sat(iphase) > 0.d0 .and. &
+                  global_auxvars(ghosted_id_dn)%sat(iphase) > 0.d0)) cycle
         por_sat_min = min(material_auxvars(ghosted_id_up)%porosity* &
                           global_auxvars(ghosted_id_up)%sat(iphase), &
                           material_auxvars(ghosted_id_dn)%porosity* &
