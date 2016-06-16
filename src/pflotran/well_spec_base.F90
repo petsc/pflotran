@@ -26,8 +26,8 @@ module WellSpec_Base_class
   ! limiting vars not yet used
   !PetscInt, parameter, public :: LMT_VAR_NO_LMT = -1
   PetscInt, parameter, public :: num_well_limits = 5
-  PetscInt, parameter, public :: LMT_PRESS_MAX = 1
-  PetscInt, parameter, public :: LMT_PRESS_MIN = 2
+  PetscInt, parameter, public :: LMT_BHP_MAX = 1
+  PetscInt, parameter, public :: LMT_BHP_MIN = 2
   PetscInt, parameter, public :: LMT_MASS_RATE_MAX = 3
   PetscInt, parameter, public :: LMT_VOL_RATE_MAX = 4
   PetscInt, parameter, public :: LMT_WGR_MAX = 5
@@ -262,9 +262,9 @@ subroutine WellSpecBaseRead(this,input,option)
         ! VFP (vertical flow performance) can be defined using tables
          select case(sub_keyword)
             case("BHP_MIN")
-              this%lmt_var(LMT_PRESS_MIN) = PETSC_TRUE
+              this%lmt_var(LMT_BHP_MIN) = PETSC_TRUE
             case("BHP_MAX")
-              this%lmt_var(LMT_PRESS_MAX) = PETSC_TRUE
+              this%lmt_var(LMT_BHP_MAX) = PETSC_TRUE
             case("MASS_RATE_MAX")
               this%lmt_var(LMT_MASS_RATE_MAX) = PETSC_TRUE
             case("VOL_RATE_MAX") 

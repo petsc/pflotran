@@ -196,6 +196,7 @@ subroutine WellOilProdLimitCheck(this,pass,option)
 
   PetscInt :: cntrl_var_tmp 
   PetscReal :: rate_max
+  PetscReal :: bhp_min
 
   pass = PETSC_TRUE
   !if no changes cntrl_var mantains its initial value
@@ -207,13 +208,65 @@ subroutine WellOilProdLimitCheck(this,pass,option)
         rate_max = this%flow_condition%flow_well%rate%dataset%rarray(1)
         if( this%mr_fld(option%oil_phase) > rate_max ) then
           print *, "oil_producer control switch: " // &
-                   "BHP -> MASS_RATE, pw_ref/rate_max= ",&
+                   "BHP -> MASS_RATE, mass_rate - rate_max = ",&
                     & this%mr_fld(option%oil_phase), rate_max
           this%mr_fld(option%oil_phase) = rate_max
           cntrl_var_tmp = CNTRL_VAR_MASS_RATE   
           pass = PETSC_FALSE   
+          !add limit on BHP min
+          this%spec%lmt_var(LMT_BHP_MIN) = PETSC_TRUE
+          !turn off control on max mass rate
+          this%spec%lmt_var(LMT_MASS_RATE_MAX) = PETSC_FALSE
         end if 
       end if
+      if(this%spec%lmt_var(LMT_VOL_RATE_MAX)) then
+        rate_max = this%flow_condition%flow_well%rate%dataset%rarray(1)
+        if( this%q_fld(option%oil_phase) > rate_max ) then
+          print *, "oil_producer control switch: " // &
+                   "BHP -> VOL_RATE, vol_rate - rate_max = ",&
+                    & this%q_fld(option%oil_phase), rate_max
+          this%q_fld(option%oil_phase) = rate_max
+          cntrl_var_tmp = CNTRL_VAR_VOL_RATE   
+          pass = PETSC_FALSE
+          !add limit on BHP min
+          this%spec%lmt_var(LMT_BHP_MIN) = PETSC_TRUE
+          !turn off control on max_vol_rate
+          this%spec%lmt_var(LMT_VOL_RATE_MAX) = PETSC_FALSE
+        end if 
+      end if
+    case(CNTRL_VAR_MASS_RATE)
+      if(this%spec%lmt_var(LMT_BHP_MIN)) then
+        bhp_min = this%flow_condition%flow_well%pressure%dataset%rarray(1)
+        if( this%pw_ref < bhp_min ) then
+          print *, "oil_producer control switch: " // &
+                   "LMT_MASS_RATE -> BHP, pw_well - bhp_min = ",&
+                    & this%pw_ref, bhp_min
+          this%pw_ref = bhp_min
+          cntrl_var_tmp = CNTRL_VAR_BHP
+          pass = PETSC_FALSE   
+          !activate back the control on mass_rate
+          this%spec%lmt_var(LMT_MASS_RATE_MAX) = PETSC_TRUE
+          !turn off control on min pressure  
+          this%spec%lmt_var(LMT_BHP_MIN) = PETSC_FALSE
+        end if 
+      end if
+    case(CNTRL_VAR_VOL_RATE)
+      if(this%spec%lmt_var(LMT_BHP_MIN)) then
+        bhp_min = this%flow_condition%flow_well%pressure%dataset%rarray(1)
+        if( this%pw_ref < bhp_min ) then
+          print *, "oil_producer control switch: " // &
+                   "LMT_VOL_RATE -> BHP, pw_well - bhp_min = ",&
+                    & this%pw_ref, bhp_min
+          this%pw_ref = bhp_min
+          cntrl_var_tmp = CNTRL_VAR_BHP
+          pass = PETSC_FALSE   
+          !activate back the control on mass_rate
+          this%spec%lmt_var(LMT_VOL_RATE_MAX) = PETSC_TRUE
+          !turn off control on min pressure  
+          this%spec%lmt_var(LMT_BHP_MIN) = PETSC_FALSE
+        end if 
+      end if
+
     !add here control on OWR (water cut) 
 
   end select

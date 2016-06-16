@@ -467,7 +467,22 @@ subroutine TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
       end if
     end if  
 
+#ifdef WELL_DEBUG
+  write(*,*) 'ExplRes dof = ', dof
+  write(*,*) 'ExplRes gh = ', ghosted_id
+  write(*,*) 'ExplRes i_ph = ', i_ph
+  write(*,"('ExplRes gh i_ph press = ',e10.4)") &
+      this%flow_auxvars(dof,ghosted_id)%pres(i_ph)
+  write(*,"('ExplRes mob i_ph = ',e16.10)") mob
+  write(*,"('ExplRes dphi = ',e16.10)") dphi
+  write(*,"('ExplRes hc = ',e10.4)") hc
+  write(*,"('ExplRes pw_ref = ',e10.4)") this%pw_ref 
+  write(*,"('ExplRes vol_flux = ',e10.4)") vol_flux
+  write(*,"('ExplRes Res(i_ph) = ',e10.4)") Res(i_ph)
+#endif
+
   end do
+
 
 end subroutine TOilImsProducerExplRes
 

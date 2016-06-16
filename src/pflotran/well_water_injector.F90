@@ -227,7 +227,7 @@ subroutine WellWatInjLimitCheck(this,pass,option)
   select case(this%spec%cntrl_var)
  
     case(CNTRL_VAR_MASS_RATE)
-      if(this%spec%lmt_var(LMT_PRESS_MAX)) then
+      if(this%spec%lmt_var(LMT_BHP_MAX)) then
         press_max = this%flow_condition%flow_well%pressure%dataset%rarray(1) 
         if(this%pw_ref > press_max) then
           print *, "water_injector control switch: " // &
