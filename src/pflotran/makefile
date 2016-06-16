@@ -324,6 +324,7 @@ misc_obj = \
 	${common_src}field.o \
 	${common_src}geometry.o \
 	${common_src}hydrostatic.o \
+	${common_src}hydrostatic_common.o \
 	${common_src}hydrostatic_multi_phase.o \
 	${common_src}init_common.o \
 	${common_src}init_subsurface.o \
@@ -749,11 +750,13 @@ hydrostatic.o : condition.o connection.o coupler.o dataset_ascii.o \
                 dataset_gridded_hdf5.o eos_water.o general_aux.o grid.o \
                 grid_structured.o option.o pflotran_constants.o \
                 pm_toil_ims_aux.o region.o utility.o
+hydrostatic_common.o : connection.o eos_gas.o eos_oil.o eos_water.o grid.o \
+                       option.o pflotran_constants.o utility.o
 hydrostatic_multi_phase.o : characteristic_curves.o condition.o connection.o \
                             coupler.o dataset_ascii.o dataset_gridded_hdf5.o \
-                            eos_gas.o eos_oil.o eos_water.o grid.o option.o \
-                            pflotran_constants.o pm_toil_ims_aux.o region.o \
-                            utility.o
+                            eos_gas.o eos_oil.o eos_water.o grid.o \
+                            hydrostatic_common.o option.o pflotran_constants.o \
+                            pm_toil_ims_aux.o region.o utility.o
 immis.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
           connection.o coupler.o debug.o discretization.o eos_water.o field.o \
           global_aux.o grid.o immis_aux.o material.o material_aux.o option.o \

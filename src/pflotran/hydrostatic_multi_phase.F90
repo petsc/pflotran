@@ -1,6 +1,7 @@
 module HydrostaticMultiPhase_module
  
   use PFLOTRAN_Constants_module
+  use Hydrostatic_Common_module
 
   implicit none
 
@@ -8,11 +9,11 @@ module HydrostaticMultiPhase_module
 
 #include "petsc/finclude/petscsys.h"
 
+#if 0
   !LIQ = water to be consistent with the remainder fo the code
   PetscInt, parameter :: HYDRO_LIQ_PHASE = 1  
   PetscInt, parameter :: HYDRO_GAS_PHASE = 2
   PetscInt, parameter :: HYDRO_OIL_PHASE = 3 
-
 
   type :: one_dim_grid_type
     PetscReal :: delta_z
@@ -23,7 +24,7 @@ module HydrostaticMultiPhase_module
   contains 
     procedure :: ElevationIdLoc
   end type one_dim_grid_type
-
+#endif
 
   public :: TOIHydrostaticUpdateCoupler
   !          HydrostaticTest 
@@ -89,7 +90,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   use Utility_module
   use Dataset_Gridded_HDF5_class
   use Dataset_Ascii_class
-  
+ 
   !use TOilIms_Aux_module
   use PM_TOilIms_Aux_module 
     ! to use constant paramters such as TOIL_IMS_PRESSURE_DOF
@@ -253,7 +254,9 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   end if
 
   ghosted_id_min_dist = &
-      GetCouplerCellOnPhaseConact(coupler,grid,imat,owc(Z_DIRECTION),option)
+      !GetCouplerCellOnPhaseConact(coupler,grid,imat,owc(Z_DIRECTION),option)
+       GetCellOnPhaseConact(coupler%connection_set,grid, &
+                            imat,owc(Z_DIRECTION),option)
 
   !write(*,*) "my_rank", option%myrank, "min_ghost", ghosted_id_min_dist, &
   !           "sat_fun_id", sat_func_id(ghosted_id_min_dist)
@@ -454,6 +457,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
 
 end subroutine TOIHydrostaticUpdateCoupler
 
+#if 0
 ! ************************************************************************** !
 
 function GetCouplerCellOnPhaseConact(coupler,grid,imat,z_phase_contact,option)
@@ -868,6 +872,7 @@ subroutine DestroyOneDimGrid(one_d_grid)
 end subroutine DestroyOneDimGrid
 
 ! ************************************************************************** !
+#endif
 
 end module HydrostaticMultiPhase_module
 
