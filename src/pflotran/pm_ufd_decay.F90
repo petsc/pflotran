@@ -442,6 +442,14 @@ subroutine PMUFDDecayInit(this)
       this%element_Kd(element%ielement,material_property%internal_id) = &
         element%Kd(icount)
     enddo
+    do icount = 1, size(material_property_array)
+      if (UnInitialized(this%element_Kd(element%ielement,icount))) then
+        option%io_buffer = 'Uninitialized KD in UFD Decay element "' // &
+          trim(element%name) // '" for material "' // &
+          trim(material_property_array(icount)%ptr%name) // '".'
+        call printErrMsg(option)
+      endif
+    enddo
     element => element%next
   enddo  
   
