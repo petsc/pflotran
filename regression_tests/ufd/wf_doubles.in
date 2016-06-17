@@ -140,6 +140,18 @@ MATERIAL_PROPERTY soil1
   /
 END
 
+MATERIAL_PROPERTY soil2
+  ID 2
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+END
+
 #=========================== characteristic curves ============================
 CHARACTERISTIC_CURVES sf1
   SATURATION_FUNCTION VAN_GENUCHTEN
@@ -172,6 +184,13 @@ END
 REGION all
   COORDINATES
     0.d0 0.d0 0.d0
+    1.d0 1.d0 3.d0
+  /
+END
+
+REGION 3
+  COORDINATES
+    0.d0 0.d0 2.d0
     1.d0 1.d0 3.d0
   /
 END
@@ -233,6 +252,11 @@ END
 STRATA
   MATERIAL soil1
   REGION all
+END
+
+STRATA
+  MATERIAL soil2
+  REGION 3
 END
 
 #=========================== checkpoint / restart =============================
@@ -339,35 +363,59 @@ END_WASTE_FORM_GENERAL
 UFD_DECAY
   ELEMENT I
     SOLUBILITY 1.d4
-    KD 0.d0 #kg water/m^3 bulk
+    KD
+      soil1 0.d0 #kg water/m^3 bulk
+      soil2 0.d0 #kg water/m^3 bulk
+    /
   /
   ELEMENT Am
     SOLUBILITY 3.39d-7
-    KD 6.d6
+    KD
+      soil1 6.d6
+      soil2 6.d6
+    /
   /
   ELEMENT Np
     SOLUBILITY 4.07d-9
-    KD 3.5d5
+    KD
+      soil1 3.5d5
+      soil2 4.5d5
+    /
   /
   ELEMENT U
     SOLUBILITY 3.16d-14
-    KD 6.1d5
+    KD
+      soil1 6.1d5
+      soil2 6.1d5
+    /
   /
   ELEMENT Th
     SOLUBILITY 7.94d-11
-    KD 2.5d6
+    KD
+      soil1 2.5d6
+      soil2 2.5d6
+    /
   /
   ELEMENT Tc
     SOLUBILITY 7.94d-11
-    KD 2.5d6
+    KD
+      soil1 2.5d6
+      soil2 2.5d6
+    /
   /
   ELEMENT Pu
     SOLUBILITY 7.94d-11
-    KD 2.5d6
+    KD
+      soil1 2.5d6
+      soil2 2.5d6
+    /
   /
   ELEMENT C
     SOLUBILITY 1.d4
-    KD 0.d0
+    KD
+      soil1 0.d0
+      soil2 0.d0
+    /
   /
   ISOTOPE I-129
     ELEMENT I

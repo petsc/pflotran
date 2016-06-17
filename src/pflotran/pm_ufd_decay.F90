@@ -23,7 +23,7 @@ module PM_UFD_Decay_class
     PetscInt, pointer :: isotope_daughters(:,:)
     PetscInt, pointer :: isotope_parents(:,:)
     PetscReal, pointer :: element_solubility(:)
-    PetscReal, pointer :: element_Kd(:)
+    PetscReal, pointer :: element_Kd(:,:)
     PetscInt :: num_elements
     PetscInt :: num_isotopes
     PetscInt, pointer :: num_isotopes_per_element(:)
@@ -72,7 +72,8 @@ module PM_UFD_Decay_class
     character(len=MAXWORDLENGTH) :: name
     PetscInt :: ielement
     PetscReal :: solubility
-    PetscReal :: Kd
+    PetscReal, pointer :: Kd(:)
+    character(len=MAXWORDLENGTH), pointer :: Kd_material_name(:)
     type(element_type), pointer :: next
   end type
   
@@ -148,6 +149,9 @@ subroutine PMUFDDecayRead(this,input)
   type(isotope_type), pointer :: isotope, prev_isotope
   type(daughter_type), pointer :: daughter, prev_daughter
   type(element_type), pointer :: element, prev_element
+  PetscInt :: i
+  character(len=MAXWORDLENGTH) :: Kd_material_name(20)
+  PetscReal :: Kd(20)
 
   option => this%option
   
@@ -185,8 +189,36 @@ subroutine PMUFDDecayRead(this,input)
               call InputReadDouble(input,option,element%solubility)
               call InputErrorMsg(input,option,'solubility',error_string)
             case('KD')
-              call InputReadDouble(input,option,element%Kd)
-              call InputErrorMsg(input,option,'Kd',error_string)
+              i = 0
+              Kd(:) = UNINITIALIZED_DOUBLE
+              Kd_material_name(:) = ''
+              do
+                call InputReadPflotranString(input,option)
+                if (InputError(input)) exit
+                if (InputCheckExit(input,option)) exit
+                i = i + 1
+                if (i > 20) then
+                  write(word,*) i-1
+                  option%io_buffer = 'Kd array in PMUFDDecayRead() must be &
+                    &allocated larger than ' // trim(adjustl(word)) // '.'
+                  call printErrMsg(option)
+                endif
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'Kd material name', &
+                                   error_string)
+                Kd_material_name(i) = word
+                call InputReadDouble(input,option,Kd(i))
+                call InputErrorMsg(input,option,'Kd',error_string)
+              enddo
+              if (i == 0) then
+                option%io_buffer = 'No KD/material combinations specified &
+                  &under ' // trim(error_string) // '.'
+                call printErrMsg(option)
+              endif
+              allocate(element%Kd(i))
+              element%Kd = Kd(1:i)
+              allocate(element%Kd_material_name(i))
+              element%Kd_material_name = Kd_material_name(1:i)
             case default
               call InputKeywordUnrecognized(word,error_string,option)
           end select
@@ -269,7 +301,8 @@ function ElementCreate()
   ElementCreate%name = ''
   ElementCreate%ielement = UNINITIALIZED_INTEGER
   ElementCreate%solubility = UNINITIALIZED_DOUBLE
-  ElementCreate%Kd = UNINITIALIZED_DOUBLE
+  nullify(ElementCreate%Kd)
+  nullify(ElementCreate%Kd_material_name)
   nullify(ElementCreate%next)
   
 end function ElementCreate
@@ -333,6 +366,7 @@ subroutine PMUFDDecayInit(this)
   use Reaction_Aux_module
   use Reaction_Mineral_Aux_module
   use Reactive_Transport_Aux_module
+  use Material_module
   
   implicit none
   
@@ -347,6 +381,8 @@ subroutine PMUFDDecayInit(this)
   type(element_type), pointer :: element
   PetscInt, allocatable :: num_isotopes_per_element(:)
   character(len=MAXWORDLENGTH) :: word
+  type(material_property_ptr_type), pointer :: material_property_array(:)
+  type(material_property_type), pointer :: material_property
   
   PetscInt :: icount
   PetscInt :: ghosted_id
@@ -359,6 +395,7 @@ subroutine PMUFDDecayInit(this)
   grid => this%realization%patch%grid
   reaction => this%realization%reaction
   rt_auxvars => this%realization%patch%aux%RT%auxvars
+  material_property_array => this%realization%patch%material_property_array
   
   do ghosted_id = 1, grid%ngmax
     allocate(rt_auxvars(ghosted_id)%total_sorb_eq(reaction%naqcomp))
@@ -382,14 +419,37 @@ subroutine PMUFDDecayInit(this)
   allocate(num_isotopes_per_element(this%num_elements))
   num_isotopes_per_element = 0
   allocate(this%element_solubility(this%num_elements))
-  this%element_solubility = 0.d0  
-  allocate(this%element_Kd(this%num_elements))
-  this%element_Kd = 0.d0  
+  this%element_solubility = 0.d0
+  allocate(this%element_Kd(this%num_elements,size(material_property_array)))
+  this%element_Kd = UNINITIALIZED_DOUBLE
   element => this%element_list
   do
     if (.not.associated(element)) exit
     this%element_solubility(element%ielement) = element%solubility
-    this%element_Kd(element%ielement) = element%Kd
+    if (size(element%Kd) /= size(material_property_array)) then
+      write(word,*) size(element%Kd)
+      option%io_buffer = 'Incorrect number of Kds (' // &
+        trim(adjustl(word)) // ') specified for number of materials ('
+      write(word,*) size(material_property_array)
+      option%io_buffer = trim(option%io_buffer) // &
+        trim(adjustl(word)) // ') for UFD Decay element "' // &
+        trim(element%name) // '".'
+    endif
+    do icount = 1, size(element%Kd_material_name)
+      material_property => &
+        MaterialPropGetPtrFromArray(element%Kd_material_name(icount), &
+                                    material_property_array)
+      this%element_Kd(element%ielement,material_property%internal_id) = &
+        element%Kd(icount)
+    enddo
+    do icount = 1, size(material_property_array)
+      if (UnInitialized(this%element_Kd(element%ielement,icount))) then
+        option%io_buffer = 'Uninitialized KD in UFD Decay element "' // &
+          trim(element%name) // '" for material "' // &
+          trim(material_property_array(icount)%ptr%name) // '".'
+        call printErrMsg(option)
+      endif
+    enddo
     element => element%next
   enddo  
   
@@ -573,7 +633,7 @@ recursive subroutine PMUFDDecayInitializeRun(this)
   
   PetscReal :: kd_kgw_m3b
   PetscInt :: local_id, ghosted_id
-  PetscInt :: iele, iiso, ipri, i
+  PetscInt :: iele, iiso, ipri, i, imat
   
   patch => this%realization%patch
   grid => patch%grid
@@ -582,9 +642,10 @@ recursive subroutine PMUFDDecayInitializeRun(this)
   ! set initial sorbed concentration in equilibrium with aqueous phase
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) cycle
+    imat = patch%imat(ghosted_id) 
+    if (imat <= 0) cycle
     do iele = 1, this%num_elements
-      kd_kgw_m3b = this%element_Kd(iele)
+      kd_kgw_m3b = this%element_Kd(iele,imat)
       do i = 1, this%element_isotopes(0,iele)
         iiso = this%element_isotopes(i,iele)
         ipri = this%isotope_to_primary_species(iiso)
@@ -678,7 +739,7 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: local_id
   PetscInt :: ghosted_id
-  PetscInt :: iele, i, p, g, ip, ig, iiso, ipri, imnrl
+  PetscInt :: iele, i, p, g, ip, ig, iiso, ipri, imnrl, imat
   PetscReal :: dt
   PetscReal :: vol, por, sat, den_w_kg, vps
   PetscReal :: conc_iso_aq0, conc_iso_sorb0, conc_iso_ppt0
@@ -711,7 +772,8 @@ subroutine PMUFDDecaySolve(this,time,ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    if (patch%imat(ghosted_id) <= 0) cycle
+    imat = patch%imat(ghosted_id)
+    if (imat <= 0) cycle
     vol = material_auxvars(ghosted_id)%volume
     den_w_kg = global_auxvars(ghosted_id)%den_kg(1)
     por = material_auxvars(ghosted_id)%porosity
@@ -806,7 +868,7 @@ subroutine PMUFDDecaySolve(this,time,ierr)
         mol_fraction_iso(i) = mass_iso_tot1(iiso) / mass_ele_tot1
       enddo
       ! split mass between phases
-      kd_kgw_m3b = this%element_Kd(iele)
+      kd_kgw_m3b = this%element_Kd(iele,imat)
       conc_ele_aq1 = mass_ele_tot1 / (1.d0+kd_kgw_m3b/(den_w_kg*por*sat)) / &
                          (vps*1.d3)
       above_solubility = conc_ele_aq1 > this%element_solubility(iele)
@@ -1091,6 +1153,8 @@ subroutine PMUFDDecayDestroy(this)
     if (.not.associated(cur_element)) exit
     prev_element => cur_element
     cur_element => cur_element%next
+    call DeallocateArray(prev_element%Kd)
+    call DeallocateArray(prev_element%Kd_material_name)
     nullify(prev_element%next)
     deallocate(prev_element)
     nullify(prev_element)
