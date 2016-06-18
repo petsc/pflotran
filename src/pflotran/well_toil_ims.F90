@@ -309,11 +309,11 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
 
   class(well_toil_ims_wat_inj_type) :: this
   PetscInt :: iconn
-  PetscReal :: ss_flow_vol_flux(:)
   PetscBool :: isothermal
   PetscInt :: ghosted_id, dof
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof)
+  PetscReal :: ss_flow_vol_flux(1:option%nphase)
 
   !why not using a pointer to avoid the copy?
   PetscReal :: dw_kg, dw_h2o_mol
@@ -322,6 +322,7 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
   PetscInt :: ierr
 
   Res = 0.0d0
+  vol_flux = 0.0d0
 
   hc = this%conn_h(iconn)
   cfact = this%conn_factors(iconn)
@@ -392,11 +393,11 @@ subroutine TOilImsOilProdExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
 
   class(well_toil_ims_oil_prod_type) :: this
   PetscInt :: iconn
-  PetscReal :: ss_flow_vol_flux(:)
   PetscBool :: isothermal
   PetscInt :: ghosted_id, dof
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof)
+  PetscReal :: ss_flow_vol_flux(1:option%nphase)
 
   call TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
                                ghosted_id, dof,option,res)
@@ -417,68 +418,131 @@ subroutine TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
 
   use PM_TOilIms_Aux_module
   use Option_module
+  use EOS_Oil_module
+  use EOS_Water_module
 
   implicit none
 
   !using well_flow_energy_type to pass whaterver type of producer 
   class(well_flow_energy_type) :: this
   PetscInt :: iconn
-  PetscReal :: ss_flow_vol_flux(:)
   PetscBool :: isothermal
-  PetscInt :: ghosted_id, dof
+  PetscInt :: ghosted_id, dof, ierr
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof)
+  PetscReal :: ss_flow_vol_flux(1:option%nphase)
 
 
   PetscInt :: i_ph
-  PetscReal :: dphi, vol_flux, cfact, mob, hc
+  PetscReal :: dphi, vol_flux, cfact, mob, hc, temp
+  PetscReal :: well_oil_mol_den, mol_den_av, dw_kg
+  PetscReal :: phase_mol_den(1:option%nphase)
+  PetscReal :: phase_ent(1:option%nphase)
 
   hc = this%conn_h(iconn)
+  temp = this%conn_temp(iconn)
   cfact = this%conn_factors(iconn)
   
-  Res = 0.d0 
+  Res = 0.d0
+  vol_flux = 0.0d0 
   ss_flow_vol_flux = 0.0d0
-  
+  phase_mol_den = 0.0d0  
+  dw_kg = 0.d0
+
   do i_ph = 1, option%nphase
     !pressure gradient positive for flow entering the well
+
     dphi = this%flow_auxvars(dof,ghosted_id)%pres(i_ph) - &
            this%pw_ref - hc 
-    if ( dphi < 0.0d0 ) &
-      write(*,"('TOilImsWellProd reverse flow at gh = ',I5,' dp = ',e10.4)") &
-      ghosted_id, dphi
 
+    !upwind for den_mol 
+    if (dphi >= 0.0d0) then
+      phase_mol_den(i_ph) = this%flow_auxvars(dof,ghosted_id)%den(i_ph)
+    else if (dphi < 0.0d0 ) then
+      if (i_ph == option%liquid_phase) then
+         call EOSWaterDensity(temp,this%pw_ref+hc, &
+                              dw_kg,phase_mol_den(i_ph),ierr) 
+      else if (i_ph == option%oil_phase) then 
+        call EOSOilDensity(temp,this%pw_ref+hc,phase_mol_den(i_ph),ierr)
+      end if
+    end if
+
+    !upwind for enthalpy
+    if (.not.isothermal) then
+      if (dphi >= 0.0d0) then
+        phase_ent(i_ph) = this%flow_auxvars(dof,ghosted_id)%den(i_ph)
+      else if (dphi < 0.0d0) then 
+        if (i_ph == option%liquid_phase) then  
+          call EOSWaterEnthalpy(temp,this%pw_ref+hc,phase_ent(i_ph),ierr)
+        else if (i_ph == option%oil_phase) then
+          call EOSOilEnthalpy(temp,this%pw_ref+hc,phase_ent(i_ph),ierr)
+        end if
+        phase_ent = phase_ent * 1.d-6 ! J/kmol -> whatever units
+      end if 
+    end if
+    
     mob = this%ConnMob(this%flow_auxvars(dof,ghosted_id)%mobility,i_ph)
+
+    !if ( dabs(dphi) < 1.d-5 ) dphi = 0.0d0 !cut off noise (Pa)
+    !if ( dphi < 0.0d0 ) &
+    !  write(*,"('TOilImsWellProd reverse flow at gh = ',I5,' dp = ',e10.4)") &
+    !  ghosted_id, dphi
      
-    if(cfact * mob > wfloweps) then
+    !if(cfact * mob > wfloweps) then
+    if( mob > wfloweps) then
       !!         m^3 * 1/(Pa.s) * Pa = m^3/s 
       vol_flux = cfact * mob * dphi
 
-      ! the minus sign indicate component fluxes out the reservoir
-      ss_flow_vol_flux(i_ph) = -1.d0 * vol_flux
-      !oss: can use Res(i_ph) here because i_ph conicide with equation indices
-      !the minus sign indicate component fluxes out the reservoir
-      Res(i_ph) = - vol_flux * this%flow_auxvars(dof,ghosted_id)%den(i_ph)
-      
-      if (.not.isothermal) then
-        Res(TOIL_IMS_ENERGY_EQUATION_INDEX) = &
-              Res(TOIL_IMS_ENERGY_EQUATION_INDEX) - &
-              vol_flux * this%flow_auxvars(dof,ghosted_id)%den(i_ph) * &
-              this%flow_energy_auxvars(dof,ghosted_id)%H(i_ph)          
-      end if
+      if ( vol_flux < 0.0d0 .and. dof==ZERO_INTEGER ) &
+       write(*,"('TOilImsWellProd reverse flow at gh = ',I5,' dp = ',e10.4)") &
+        ghosted_id, dphi
+
+      !if( dabs(vol_flux) > 1.d-10 ) then !try to cut som noise
+      !if( dabs(dphi/this%pw_ref) > 1.d-7 ) then !try to cut som noise
+        ! the minus sign indicate component fluxes out the reservoir
+        ss_flow_vol_flux(i_ph) = -1.d0 * vol_flux
+
+        !call EOSOilDensity(temp,this%pw_ref+hc,well_oil_mol_den,ierr)  
+        !mol_den_av = ( this%flow_auxvars(dof,ghosted_id)%den(i_ph) + &
+        !               well_oil_mol_den ) * 0.5d0 
+        !oss: can use Res(i_ph) here because i_ph conicide with equation indices
+        !the minus sign indicate component fluxes out the reservoir
+        !Res(i_ph) = - vol_flux * this%flow_auxvars(dof,ghosted_id)%den(i_ph)
+        !write(*,*) 'I am updatating RES  = '
+        !write(*,*) 'I am updatating RES  = '
+        !write(*,*) 'I am updatating RES  = '
+        !write(*,*) 'I am updatating RES  = '
+        !write(*,*) 'I am updatating RES  = '  
+        !Res(i_ph) = - vol_flux * mol_den_av
+        Res(i_ph) = - vol_flux * phase_mol_den(i_ph)
+        !Res(i_ph) = 0.d0
+        if (.not.isothermal) then
+          Res(TOIL_IMS_ENERGY_EQUATION_INDEX) = &
+                Res(TOIL_IMS_ENERGY_EQUATION_INDEX) - &
+                vol_flux * phase_mol_den(i_ph) * phase_ent(i_ph)   
+                !vol_flux * this%flow_auxvars(dof,ghosted_id)%den(i_ph) * &
+                !this%flow_energy_auxvars(dof,ghosted_id)%H(i_ph)          
+        end if
+      !end if
     end if  
 
 #ifdef WELL_DEBUG
-  write(*,*) 'ExplRes dof = ', dof
-  write(*,*) 'ExplRes gh = ', ghosted_id
-  write(*,*) 'ExplRes i_ph = ', i_ph
-  write(*,"('ExplRes gh i_ph press = ',e10.4)") &
-      this%flow_auxvars(dof,ghosted_id)%pres(i_ph)
-  write(*,"('ExplRes mob i_ph = ',e16.10)") mob
-  write(*,"('ExplRes dphi = ',e16.10)") dphi
-  write(*,"('ExplRes hc = ',e10.4)") hc
-  write(*,"('ExplRes pw_ref = ',e10.4)") this%pw_ref 
-  write(*,"('ExplRes vol_flux = ',e10.4)") vol_flux
-  write(*,"('ExplRes Res(i_ph) = ',e10.4)") Res(i_ph)
+  if ( dof==ZERO_INTEGER ) then
+    write(*,*) 'ExplRes dof = ', dof
+    write(*,*) 'ExplRes gh = ', ghosted_id
+    write(*,*) 'ExplRes i_ph = ', i_ph
+    write(*,"('ExplRes cell press = ',e26.20)") &
+        this%flow_auxvars(dof,ghosted_id)%pres(i_ph)
+    write(*,"('ExplRes mob = ',e46.40)") mob
+    write(*,"('ExplRes sat_i_ph = ',e46.40)") &
+       this%flow_auxvars(dof,ghosted_id)%sat(i_ph)
+    write(*,"('ExplRes dphi = ',e46.40)") dphi
+    write(*,"('ExplRes dp/Pw = ',e46.40)") dphi/this%pw_ref
+    write(*,"('ExplRes hc = ',e26.20)") hc
+    write(*,"('ExplRes pw_ref = ',e16.10)") this%pw_ref 
+    write(*,"('ExplRes vol_flux = ',e26.20)") vol_flux
+    write(*,"('ExplRes Res(i_ph) = ',e46.40)") Res(i_ph)
+  end if
 #endif
 
   end do

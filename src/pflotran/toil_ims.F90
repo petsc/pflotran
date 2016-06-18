@@ -1501,6 +1501,7 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
           delta_pressure = boundary_pressure - &
                            toil_auxvar_dn%pres(iphase) + &
                            gravity_term
+          
 
 !#ifdef DEBUG_GENERAL_FILEOUTPUT
 !          debug_dphi(iphase) = delta_pressure
@@ -2487,6 +2488,18 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
 
       icap_dn = patch%sat_func_id(ghosted_id)
 
+#ifdef WELL_DEBUG
+  write(*,*) 'BC gh = ', ghosted_id
+  write(*,"('BC cell press = ',e26.20)") &
+    patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)%pres(option%oil_phase)
+      !this%flow_auxvars(dof,ghosted_id)%pres(i_ph)
+  write(*,"('BC press = ',e26.20)") &
+    patch%aux%TOil_ims%auxvars_bc(sum_connection)%pres(option%oil_phase)
+  write(*,"('BC delta press = ',e26.20)") &
+    patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)%pres(option%oil_phase) - &
+    patch%aux%TOil_ims%auxvars_bc(sum_connection)%pres(option%oil_phase)
+#endif
+
       call TOilImsBCFlux(boundary_condition%flow_bc_type, &
                      boundary_condition%flow_aux_mapping, &
                      boundary_condition%flow_aux_real_var(:,iconn), &
@@ -2982,20 +2995,26 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
         scale = 1.d0
       endif
       
-      Jup = 0.d0
+      
       if (associated(source_sink%well) ) then
+        !Jdn = 0.0d0
         call source_sink%well%ExplJDerivative(iconn,ghosted_id, &
                         toil_ims_isothermal,TOIL_IMS_ENERGY_EQUATION_INDEX, &
-                         option,Jup)
+                         option,Jdn)
+        Jdn = -Jdn  
+        call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
+                                      ADD_VALUES,ierr);CHKERRQ(ierr)
+
       else 
+        !Jup = 0.d0
         call TOilImsSrcSinkDerivative(option, &
                           source_sink%flow_condition%toil_ims, &
                           patch%aux%TOil_ims%auxvars(:,ghosted_id), &
                           global_auxvars(ghosted_id), &
                           scale,Jup)
+        call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
+                                      ADD_VALUES,ierr);CHKERRQ(ierr)
       end if
-      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
-                                    ADD_VALUES,ierr);CHKERRQ(ierr)
 
     enddo
     source_sink => source_sink%next

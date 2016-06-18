@@ -21,6 +21,7 @@ module Well_WaterInjector_class
     procedure, public :: VarsExplUpdate => WellWatInjVarsExplUpdate
     procedure, public :: LimitCheck => WellWatInjLimitCheck
     procedure, public :: ConnDenUpdate => WellWatInjConnDenUpdate
+    procedure, public :: HydrostaticUpdate => WatInjHydrostaticUpdate
     procedure, public :: ConnMob => WellWatInjConnMob
     procedure, public :: InitDensity => WatInjInitDensity
   end type  well_water_injector_type
@@ -286,6 +287,106 @@ end subroutine WellWatInjConnDenUpdate
 
 ! ************************************************************************** !
 
+subroutine WatInjHydrostaticUpdate(this,grid,ss_fluxes,option)
+  !
+  ! computes hydrostatic corrections for injectors computing first 
+  ! the pressure/densities profiles as for the hydrostatic couplers 
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/17/2016
+  !
+  use Hydrostatic_Common_module
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_water_injector_type) :: this
+  type(grid_type), pointer :: grid
+  PetscReal :: ss_fluxes(:,:)
+  type(option_type) :: option
+
+  PetscReal :: xm_nacl
+  PetscReal :: dist_x, dist_y, dist_z
+  PetscReal :: dist_z_for_pressure
+  !PetscReal :: pw_conn, po_conn
+  PetscReal :: phase_pres(option%nphase)
+  PetscReal :: dummy_pres_grad(3)
+  PetscInt :: iconn, local_id, ghosted_id
+  PetscInt :: ipressure
+  !
+  !PetscReal :: q_sum
+  !PetscReal :: q_ph(option%nphase)
+  PetscReal :: den_ph(option%nphase)
+  !PetscReal :: den_ph_w(option%nphase)
+  PetscReal :: ph_w(option%nphase)
+  PetscReal :: conn_press
+  PetscInt :: i_ph
+
+  xm_nacl = option%m_nacl * FMWNACL
+  xm_nacl = xm_nacl /(1.d3 + xm_nacl)
+
+  !update well temperatures on local and global connections,
+  !and on the vertical finer grid performing an interpolation
+  !from flow_energy_auxvars 
+  call this%TempUpdate(grid,option)
+
+  do i_ph = 1,option%nphase
+
+    call PhaseHydrostaticPressure(this%fine_grid,option%gravity, &
+               option%phase_map(i_ph),this%pw_ref, &
+               this%fine_grid%idatum,xm_nacl,this%well_fine_grid_temp, &
+               this%well_fine_grid_pres(i_ph,:), &
+               this%well_fine_grid_den_kg(i_ph,:) )
+  end do
+
+  dist_x = 0.0d0;
+  dist_y = 0.0d0;
+  dummy_pres_grad = 0.0d0;
+  do iconn=1,this%connection_set%num_connections
+    local_id = this%connection_set%id_dn(iconn)
+    ghosted_id = grid%nL2G(local_id)
+    dist_z = grid%z(ghosted_id) - this%z_pw_ref
+    ipressure = this%fine_grid%idatum+int(dist_z/this%fine_grid%delta_z)
+    dist_z_for_pressure = grid%z(ghosted_id) - this%fine_grid%z(ipressure) 
+    do i_ph = 1,option%nphase
+      phase_pres(i_ph) = PressInterp(ipressure,dist_x,dist_y, &
+                          dist_z_for_pressure,option%gravity, &
+                          this%well_fine_grid_pres(i_ph,:), &
+                          this%well_fine_grid_den_kg(i_ph,:), &
+                          dummy_pres_grad)
+    end do
+    !use saturation to weighting phase densities   
+    do i_ph = 1,option%nphase
+      ph_w(i_ph) = this%flow_auxvars(ZERO_INTEGER,ghosted_id)%sat(i_ph)
+      den_ph(i_ph) = this%flow_auxvars(ZERO_INTEGER,ghosted_id)%den_kg(i_ph)
+    end do
+
+    !compute well fluid density - not used in computation (printing purposes)
+    this%conn_den_kg(iconn) = den_ph(option%liquid_phase)
+
+    !OPTION - 1
+    !since ph_w(i_ph) are saturarions, when injecting water in a 
+    !into a domain saturated by another phase only, the pressure profile
+    !follows the dominating phase - this is not rigorous but should help
+    !stability  - need some testing 
+    conn_press = 0.0d0
+    do i_ph = 1,option%nphase
+      conn_press = conn_press + phase_pres(i_ph) * ph_w(i_ph)
+    end do
+    !OPTION - 2 
+    !commented below a more rigorous option where the well pressure follows
+    !the pressure profile of the phase beinj injected 
+    !conn_press = phase_pres(option%liquid_phase)
+
+    this%conn_h(iconn) = conn_press - this%pw_ref
+
+  end do
+
+
+end subroutine WatInjHydrostaticUpdate
+
+! ************************************************************************** !
 
 function WellWatInjConnMob(this,mobility,iphase)
   !  

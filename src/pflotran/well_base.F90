@@ -4,6 +4,8 @@ module Well_Base_class
   use WellSpec_Base_class
 
   use Connection_module
+  use Hydrostatic_Common_module
+
 
   implicit none
 
@@ -22,7 +24,7 @@ module Well_Base_class
     PetscReal :: z_pw_ref                      ! well elevation where the reference pressure is defined
     PetscInt  :: iwconn_ref                    ! index of reference connection in w_conn_z(:)
     PetscInt :: well_num_conns                 ! number of connection for the entire well - not only portion local to the rank
-    PetscBool :: cntrl_conn                    ! true if the local well sgment coontains the control connection  
+    PetscBool :: cntrl_conn                    ! true if the local well segment contains the control connection  
     PetscInt  :: cntrl_lcell_id                ! if(cntrl_conn) = local (non-ghosted) cell id of control connection, otherwise -999  
     PetscReal, pointer :: conn_factors(:)      ! well connection factors
     PetscInt, pointer  :: conn_drill_dir(:)    ! connection drilling directions
@@ -30,6 +32,7 @@ module Well_Base_class
     PetscInt, pointer  :: w_conn_order(:)      ! connection order for ascending elevation
     PetscInt, pointer  :: conn_l2w(:)          ! map the list of local well conns to well conns 
     PetscReal, pointer :: w_conn_z(:)          ! all well connection elevations ordered by ascending z
+    class(one_dim_grid_type), pointer :: fine_grid !vertical finer grid for hydrostatic pressure computation - order for ascending z
     class(well_spec_base_type), pointer :: spec  !well_spec pointer
     type(connection_set_type), pointer :: connection_set !pointer to well connection_set
   contains  ! add here type-bound procedure 
@@ -44,6 +47,7 @@ module Well_Base_class
     procedure, public :: Output => BaseOutput  
     procedure, public  :: Setup
     procedure, public :: WellFactorUpdate
+    procedure, public :: OneDimGridVarsSetup => WellBase1DGridVarsSetup
     procedure  :: InitWellZRefCntrlConn
     procedure  :: WellConnSort
   end type  well_base_type
@@ -109,9 +113,6 @@ subroutine WellBaseInit(this,well_spec,option)
   this%cntrl_conn = PETSC_FALSE 
   this%cntrl_lcell_id = -999
 
-  nullify(this%spec);
-  this%spec => well_spec
-
   nullify(this%w_rank_conn);   
   nullify(this%disp_rank_conn);
   nullify(this%conn_factors);  
@@ -120,6 +121,10 @@ subroutine WellBaseInit(this,well_spec,option)
   nullify(this%w_conn_order); 
   nullify(this%conn_l2w); 
   nullify(this%w_conn_z);
+  nullify(this%fine_grid);
+
+  nullify(this%spec);
+  this%spec => well_spec
 
   nullify(this%connection_set);
 
@@ -147,13 +152,44 @@ subroutine Setup(this,connection_set,grid,option)
   type(grid_type), pointer :: grid 
   type(option_type) :: option
 
+  PetscReal :: min_z, max_z
+  PetscReal :: datum(3)
+
   call this%ConnInit(connection_set%num_connections,option)
 
   call this%InitWellZRefCntrlConn(grid,connection_set,option)
 
   call this%WellConnSort(grid,connection_set,option)
 
+  !create well one-dimensional fine grid for hydrostatic computation
+  !min_z = this%w_conn_z(1) - 1.0d0                  !1m buffer
+  !max_z = this%w_conn_z(this%well_num_conns) +1.0d0 !1m buffer
+  max_z = max(grid%z_max_global,datum(Z_DIRECTION))+1.d0 ! add 1m buffer
+  min_z = min(grid%z_min_global,datum(Z_DIRECTION))-1.d0
+  datum = 0.0d0
+  datum(Z_DIRECTION) = this%z_pw_ref  
+
+  this%fine_grid => CreateOneDimGrid(min_z,max_z,datum)
+
+  call this%OneDimGridVarsSetup(option)
+
 end subroutine Setup
+
+! ************************************************************************** !
+
+subroutine WellBase1DGridVarsSetup(this,option)
+
+  use Option_module
+
+  implicit none
+
+  class(well_base_type) :: this
+  type(option_type) :: option 
+
+  print *, "WellBase1DGridVarsSetup must be extended"
+  stop  
+
+end subroutine WellBase1DGridVarsSetup
 
 ! ************************************************************************** !
 
@@ -469,7 +505,7 @@ subroutine WellConnSort(this,grid,connection_set,option)
   print *,"order_array", this%w_conn_order(1:well_num_conns)
 #endif
 
-  ! this is the rank contianing the controlling connection
+  ! this is the rank containing the controlling connection
   if(this%cntrl_conn) then
     this%iwconn_ref = this%w_conn_order( this%conn_l2w(iconn_ref) )
 #ifdef WELL_DEBUG
@@ -682,11 +718,11 @@ subroutine WellBaseExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
 
   class(well_base_type) :: this
   PetscInt :: iconn
-  PetscReal :: ss_flow_vol_flux(:)
   PetscBool :: isothermal
   PetscInt :: ghosted_id, dof
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof)
+  PetscReal :: ss_flow_vol_flux(1:option%nphase)
 
   print *, "WellBaseExplRes must be extended"
   stop  
@@ -762,6 +798,9 @@ subroutine BaseWellStrip(well)
   call DeallocateArray(well%w_conn_order)
   call DeallocateArray(well%conn_l2w)
   call DeallocateArray(well%w_conn_z)
+
+  call DestroyOneDimGrid(well%fine_grid)
+  nullify(well%fine_grid)
 
   !these are pointer only 
   nullify(well%spec)

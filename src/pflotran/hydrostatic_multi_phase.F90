@@ -276,7 +276,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   if (datum_in_water) then 
     if (pw_hydrostatic) then
       call PhaseHydrostaticPressure(one_d_grid,option%gravity, &
-                HYDRO_LIQ_PHASE,pressure_at_datum, &
+                LIQUID_PHASE,pressure_at_datum, &
                 one_d_grid%idatum,xm_nacl,temperature_array, &
                 wat_pressure_array,wat_density_array)   
       pw_owc = PressInterp(i_owc,dist_x,dist_y,dist_z_for_pressure, &
@@ -297,17 +297,17 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
       !  ipress_start = size(one_d_grid%z(:))
       dist_owc_start = one_d_grid%z(ipress_start) - owc(Z_DIRECTION)
       press_start = po_owc + dist_owc_start * &
-                    PhaseDensity(HYDRO_OIL_PHASE,po_owc,temp_owc,xm_nacl) * &
+                    PhaseDensity(OIL_PHASE,po_owc,temp_owc,xm_nacl) * &
                     option%gravity(Z_DIRECTION)
       call PhaseHydrostaticPressure(one_d_grid,option%gravity, &
-                HYDRO_OIL_PHASE,press_start, &
+                OIL_PHASE,press_start, &
                 ipress_start,xm_nacl,temperature_array, &
                 oil_pressure_array,oil_density_array)   
     end if
   else ! datum is in the oil region
     if (po_hydrostatic) then
       call PhaseHydrostaticPressure(one_d_grid,option%gravity, &
-                HYDRO_OIL_PHASE,pressure_at_datum, &
+                OIL_PHASE,pressure_at_datum, &
                 one_d_grid%idatum,xm_nacl,temperature_array, &
                 oil_pressure_array,oil_density_array)   
       po_owc = PressInterp(i_owc,dist_x,dist_y,dist_z_for_pressure, &
@@ -326,10 +326,10 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
       ipress_start = i_owc + 1
       dist_owc_start = one_d_grid%z(ipress_start) - owc(Z_DIRECTION)
       press_start = pw_owc + dist_owc_start * &
-                    PhaseDensity(HYDRO_LIQ_PHASE,pw_owc,temp_owc,xm_nacl) * &
+                    PhaseDensity(LIQUID_PHASE,pw_owc,temp_owc,xm_nacl) * &
                     option%gravity(Z_DIRECTION)
       call PhaseHydrostaticPressure(one_d_grid,option%gravity, &
-                HYDRO_LIQ_PHASE,press_start, &
+                LIQUID_PHASE,press_start, &
                 ipress_start,xm_nacl,temperature_array, &
                 wat_pressure_array,wat_density_array) 
     end if

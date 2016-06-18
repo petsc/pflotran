@@ -114,6 +114,7 @@ subroutine WellAuxVarSetUp(well,connection_set,flow_condition,aux,option)
     !when well implmented for other flow modes - add below
   end select 
 
+  !allocate global (entire)  well arrays - flow components
   select type(well)
     class is(well_flow_type)
       well%flow_condition => flow_condition
@@ -125,6 +126,14 @@ subroutine WellAuxVarSetUp(well,connection_set,flow_condition,aux,option)
       allocate(well%well_conn_h_sorted(well%well_num_conns))
       well%well_conn_h_sorted = 0.0d0
 
+  end select
+
+  !allocate global (entire)  well arrays - energy components
+  select type(well)
+    class is(well_flow_energy_type)
+      nullify(well%well_conn_temp)
+      allocate(well%well_conn_temp(well%well_num_conns))
+      well%well_conn_temp = 0.0d0
   end select
 
   !for well base

@@ -8,10 +8,11 @@ module Hydrostatic_Common_module
 
 #include "petsc/finclude/petscsys.h"
 
+  ! commented out, use those defined in pflotran_constants
   !LIQ = water to be consistent with the remainder fo the code
-  PetscInt, parameter, public :: HYDRO_LIQ_PHASE = 1  
-  PetscInt, parameter, public :: HYDRO_GAS_PHASE = 2
-  PetscInt, parameter, public :: HYDRO_OIL_PHASE = 3 
+  !PetscInt, parameter, public :: HYDRO_LIQ_PHASE = 1  
+  !PetscInt, parameter, public :: HYDRO_GAS_PHASE = 2
+  !PetscInt, parameter, public :: HYDRO_OIL_PHASE = 3 
 
 
   type, public :: one_dim_grid_type
@@ -22,6 +23,7 @@ module Hydrostatic_Common_module
     PetscInt :: idatum
   contains 
     procedure :: ElevationIdLoc
+    procedure, public :: InterpFromWellConnTo1DGrid
   end type one_dim_grid_type
 
 
@@ -124,7 +126,7 @@ subroutine PhaseHydrostaticPressure(one_d_grid,gravity,iphase,press_start, &
   PetscReal :: pressure, pressure0, rho, rho_one, rho_kg, rho_zero
   PetscInt :: ipressure, num_iteration
   
-  if(iphase == HYDRO_GAS_PHASE ) then
+  if(iphase == GAS_PHASE ) then
     print *, "PhaseHydrostaticPressure does not support gas"
     stop
   end if
@@ -219,14 +221,14 @@ function PhaseDensity(iphase,p,t,xm_nacl)
   PetscErrorCode :: ierr
 
   select case(iphase)
-    case(HYDRO_LIQ_PHASE)
+    case(LIQUID_PHASE)
       aux(1) = xm_nacl
       call EOSWaterDensityExt(t,p,aux,PhaseDensity,dw_mol,ierr)
-    case(HYDRO_GAS_PHASE)
+    case(GAS_PHASE)
       !call EOSGasDensityNoDerive(t,p,PhaseDensity,ierr)
       ! rho_kg = rho * GAS_FMW (to get gas FMW currenlty mode specific)
       ! gas_fmw should be defined in gas_eos 
-    case(HYDRO_OIL_PHASE)
+    case(OIL_PHASE)
       call EOSOilDensity(t,p,PhaseDensity,ierr)
       PhaseDensity = PhaseDensity * EOSOilGetFMW() 
   end select
@@ -430,12 +432,80 @@ end function ElevationIdLoc
 
 ! ************************************************************************** !
 
+!subroutine InterpFromWellConnTo1DGrid(this,grid,connection_set, w_conn_z &
+!                                      well_conn_val,interp_val)
+subroutine InterpFromWellConnTo1DGrid(this,w_conn_z,ord, &
+                                      well_conn_val,interp_val)
+
+  !   
+  ! Interpolate well connection varìaiable values to the vertical fine grid
+  ! Note that the vertical fine grid is ordered for ascending z
+  ! This function works for deviated wells -
+  ! Needs to be extended for horizontal wells  
+  !
+  ! Author: Paolo Orsini
+  ! Date: 06/17/16
+  ! 
+
+  implicit none
+
+  !class(one_dim_grid_type) :: one_d_grid
+  class(one_dim_grid_type) :: this
+  !type(connection_set_type), intent(in) :: connection_set
+  !type(grid_type), intent(in) :: grid
+  PetscReal, intent(in) :: w_conn_z(:)
+  PetscReal, intent(in) :: well_conn_val(:) ! same size of w_conn_z but not z-ordered
+  PetscInt, intent(in) :: ord(:)           ! same size of w_conn_z -> well_num_conns
+  PetscReal, intent(out) :: interp_val(:)  ! same size of this%z(:)
+
+  PetscInt :: inode,iconn  
+  PetscReal, parameter :: tol_z = 1.0d-6 ! m - to spot nearly overlapping nodes
+
+  !well_conn_val(ord(iconn)) -> gives conn_val in z ascending order 
+
+  !for horizontal and mixed deviated/horizontal wells
+  ! - loop over w_conn_z and identify aligned connections using tol_z
+  ! - for aligned well connections perform an average of well_conn_val
+  !   over the number of aligned connections 
+  
+
+  do inode=1,size(this%z(:))
+    if ( this%z(inode) < (w_conn_z(ONE_INTEGER)-tol_z) ) then
+      interp_val(inode) = well_conn_val(ord(ONE_INTEGER)) 
+    else if ( this%z(inode) > (w_conn_z(size(ord(:)))+tol_z) ) then
+      interp_val(inode) = well_conn_val(ord(size(ord(:))))
+    else 
+      do iconn=1,size(ord(:))-1 !loop to well_num_conns-1
+        !nearly overlapping node
+        if ( (this%z(inode) > (w_conn_z(iconn)-tol_z) ).and. &
+             (this%z(inode) < (w_conn_z(iconn)+tol_z) ) &
+           ) then
+          interp_val(inode) = well_conn_val(ord(iconn)) ! assign well conn value
+        else if ( ( this%z(inode) > (w_conn_z(iconn)+tol_z) ).and. &
+                  ( this%z(inode) < (w_conn_z(iconn+1)-tol_z) ) &
+                ) then
+          !perform linear inteprolation
+          interp_val(inode) = well_conn_val(ord(iconn)) + &
+                              ( well_conn_val(ord(iconn+1)) - &
+                                well_conn_val(ord(iconn)) ) / &
+                              ( w_conn_z(iconn+1) - w_conn_z(iconn) ) * &
+                              ( this%z(inode) - w_conn_z(iconn) ) 
+        end if
+      end do !end loop over well connections  
+    end if !end if extrapolation 
+  end do !end loop over vertical fine grid nodes 
+
+end subroutine InterpFromWellConnTo1DGrid
+
+! ************************************************************************** !
+
 subroutine DestroyOneDimGrid(one_d_grid)
+  !
+  ! destroys OneDimGrid
   ! 
   ! Author: Paolo Orsini
   ! Date: 12/30/15
   ! 
-  ! destroys OneDimGrid
 
   use Utility_module 
 

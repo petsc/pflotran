@@ -407,6 +407,9 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%nphase = 2
       option%liquid_phase = 1           ! liquid_pressure
       option%oil_phase = 2              ! oil_pressure
+      option%phase_map(1) = LIQUID_PHASE 
+      option%phase_map(2) = OIL_PHASE
+      option%phase_map(3) = UNINITIALIZED_INTEGER ! no third phase
 
       option%capillary_pressure_id = 3  ! capillary pressure
 

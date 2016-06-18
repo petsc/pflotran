@@ -1315,23 +1315,24 @@ well.o : auxiliary.o condition.o connection.o option.o output_aux.o \
          pflotran_constants.o well_base.o well_flow.o well_flow_energy.o \
          well_oil_producer.o well_spec_base.o well_toil_ims.o \
          well_water_injector.o
-well_base.o : connection.o grid.o material_aux.o option.o output_aux.o \
-              pflotran_constants.o utility.o well_spec_base.o
-well_flow.o : auxvars_flow.o condition.o grid.o option.o pflotran_constants.o \
-              utility.o well_base.o well_spec_base.o
-well_flow_energy.o : auxvars_flow_energy.o grid.o option.o \
-                     pflotran_constants.o utility.o well_flow.o
+well_base.o : connection.o grid.o hydrostatic_common.o material_aux.o option.o \
+              output_aux.o pflotran_constants.o utility.o well_spec_base.o
+well_flow.o : auxvars_flow.o condition.o grid.o hydrostatic_common.o option.o \
+              pflotran_constants.o utility.o well_base.o well_spec_base.o
+well_flow_energy.o : auxvars_flow_energy.o grid.o hydrostatic_common.o \
+                     option.o pflotran_constants.o utility.o well_flow.o
 well_oil_producer.o : eos_water.o grid.o option.o output_aux.o \
                       pflotran_constants.o well_base.o well_flow.o \
                       well_flow_energy.o well_spec_base.o
 well_spec_base.o : input_aux.o option.o pflotran_constants.o string.o units.o \
                    utility.o
-well_toil_ims.o : eos_water.o option.o output_aux.o pflotran_constants.o \
-                  pm_toil_ims_aux.o well_base.o well_flow.o well_flow_energy.o \
-                  well_oil_producer.o well_spec_base.o well_water_injector.o
-well_water_injector.o : eos_water.o grid.o option.o output_aux.o \
-                        pflotran_constants.o well_base.o well_flow.o \
-                        well_flow_energy.o well_spec_base.o
+well_toil_ims.o : eos_oil.o eos_water.o option.o output_aux.o \
+                  pflotran_constants.o pm_toil_ims_aux.o well_base.o \
+                  well_flow.o well_flow_energy.o well_oil_producer.o \
+                  well_spec_base.o well_water_injector.o
+well_water_injector.o : eos_water.o grid.o hydrostatic_common.o option.o \
+                        output_aux.o pflotran_constants.o well_base.o \
+                        well_flow.o well_flow_energy.o well_spec_base.o
 wipp.o : input_aux.o lookup_table.o material_aux.o option.o \
          pflotran_constants.o string.o units.o utility.o
 wrapper_hydrogeophysics.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \

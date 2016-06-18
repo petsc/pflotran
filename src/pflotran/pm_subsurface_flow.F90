@@ -574,7 +574,7 @@ subroutine AllWellsUpdate(this)
         !              this%realization%patch% &
         !             ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
         !                                 this%realization%option)
-
+        !commenting this freezes the hydrostatic corrections at the intial solution 
         call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
                       this%realization%patch% &
                       ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &

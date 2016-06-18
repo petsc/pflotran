@@ -201,6 +201,7 @@ module PFLOTRAN_Constants_module
   ! phase ids
   PetscInt, parameter, public :: LIQUID_PHASE = 1
   PetscInt, parameter, public :: GAS_PHASE = 2
+  PetscInt, parameter, public :: OIL_PHASE = 3
   
   ! approaches to coupling reactive transport
   PetscInt, parameter, public :: GLOBAL_IMPLICIT = 0
