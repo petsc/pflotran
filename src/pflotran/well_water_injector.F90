@@ -366,10 +366,10 @@ subroutine WatInjHydrostaticUpdate(this,grid,ss_fluxes,option)
     this%conn_den_kg(iconn) = den_ph(option%liquid_phase)
 
     !OPTION - 1
-    !since ph_w(i_ph) are saturarions, when injecting water in a 
+    !since ph_w(i_ph) are saturarions, when injecting water  
     !into a domain saturated by another phase only, the pressure profile
-    !follows the dominating phase - this is not rigorous but should help
-    !stability  - need some testing 
+    !follows the dominating phase - this is not rigorous but help
+    !stability and avoid initial reverse flow  during pressure build up 
     conn_press = 0.0d0
     do i_ph = 1,option%nphase
       conn_press = conn_press + phase_pres(i_ph) * ph_w(i_ph)

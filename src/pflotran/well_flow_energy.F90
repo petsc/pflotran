@@ -511,9 +511,9 @@ subroutine FlowEnergyWellStrip(well)
   !only pointers to auxvars 
   nullify(well%flow_energy_auxvars)
 
-  deallocate(well%well_fine_grid_temp)
-  deallocate(well%conn_temp)
-  deallocate(well%well_conn_temp)
+  call DeallocateArray(well%well_fine_grid_temp)
+  call DeallocateArray(well%conn_temp)
+  call DeallocateArray(well%well_conn_temp)
 
   ! this will strip all its parents too
   call FlowWellStrip(well) 

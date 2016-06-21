@@ -192,6 +192,9 @@ subroutine PhaseHydrostaticPressure(one_d_grid,gravity,iphase,press_start, &
     pressure0 = pressure
   enddo
 
+  !write(*,*) "den fine bottom", den_kg(1) 
+  !write(*,*) "den fine top", den_kg(size(one_d_grid%z(:)))
+
 end subroutine PhaseHydrostaticPressure
 
 ! ************************************************************************** !

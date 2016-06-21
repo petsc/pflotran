@@ -44,6 +44,7 @@ module Well_Flow_class
     procedure, public :: ConnDenUpdate => WellFlowConnDenUpdate
     procedure, public :: HydrostaticUpdate => FlowHydrostaticUpdate
     procedure, public :: OneDimGridVarsSetup => WellFlow1DGridVarsSetup
+    procedure, public :: DataOutput => FlowDataOutput
     !------------------------------------------------
     !procedure, public :: Init => WellAuxVarBaseInit
     !procedure, public :: Read => WellAuxVarBaseRead
@@ -757,7 +758,7 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
   type(option_type) :: option
 
   
-  !PetscInt, pointer :: ord(:), l2w(:)
+  PetscInt, pointer :: ord(:), l2w(:)
   !PetscReal, pointer :: zcn(:) 
   PetscInt :: iconn, ierr
   !PetscReal :: rho_up, rho_dn, p_up, p_dn, delta_z
@@ -786,9 +787,10 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
               MPI_DOUBLE_PRECISION, this%well_conn_den_kg, this%w_rank_conn, &
               this%disp_rank_conn,MPI_DOUBLE_PRECISION, this%comm,ierr)  
 
-  !for printing purposes only - assign well_conn_den_kg avergare value
+  !for printing purposes only: assign dw_kg_ref avergare value 
   this%dw_kg_ref = 0.d0
   do iconn=1,this%well_num_conns
+    
     do i_ph=1,option%nphase
       this%dw_kg_ref(i_ph) = this%dw_kg_ref(i_ph) + &
                              this%well_conn_den_kg(iconn)
@@ -797,7 +799,18 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
   do i_ph=1,option%nphase
     this%dw_kg_ref(i_ph) = this%dw_kg_ref(i_ph) / dble(this%well_num_conns)
   end do
-   
+
+  ord => this%w_conn_order
+  l2w => this%conn_l2w      
+
+  !for printing purposes only: load ordered hydrostatic corrections
+  do iconn=1,this%connection_set%num_connections 
+    this%well_conn_h_sorted(ord(l2w(iconn))) = this%conn_h(iconn)
+  end do
+
+  nullify(ord)
+  nullify(l2w)
+
 !skip here the old way of computing hydrostatic corrections 
 #if 0   
 !#ifdef WELL_DEBUG
@@ -1029,7 +1042,76 @@ function WellFlowConnMob(this,mobility,iphase)
 end function WellFlowConnMob
 
 !*****************************************************************************!
+subroutine FlowDataOutput(this,grid,src_name,option)
+  !
+  ! Write well pressure and perforated grid lock profile
+  ! Overwrites previous file - currently for debugging
+  ! TO DO - should add control at which time step to print the profiles 
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/20/2016
 
+  use Grid_module
+  use Option_module
+  
+  implicit none
+
+  class(well_flow_type) :: this
+  type(grid_type), pointer :: grid
+  character(len=MAXWORDLENGTH) :: src_name
+  type(option_type) :: option
+
+  PetscInt, pointer :: ord(:), l2w(:)
+  PetscReal, pointer :: zcn(:) 
+  PetscReal, pointer :: perf_block_press(:,:)
+  PetscInt :: iconn, local_id, ghosted_id, i_ph
+  character(len=MAXSTRINGLENGTH) :: wfile_name
+  PetscMPIInt :: cur_w_myrank
+  PetscInt :: ierr
+
+  ord => this%w_conn_order
+  l2w => this%conn_l2w      
+  zcn => this%w_conn_z !already sorted for acending z     
+
+  allocate(perf_block_press(option%nphase,this%well_num_conns))
+  perf_block_press = 0.0d0
+
+  do iconn = 1, this%connection_set%num_connections      
+    local_id = this%connection_set%id_dn(iconn)
+    ghosted_id = grid%nL2G(local_id)
+    do i_ph =1,option%nphase
+      perf_block_press(i_ph,ord(l2w(iconn))) = &
+        this%flow_auxvars(ZERO_INTEGER,ghosted_id)%pres(i_ph)
+    end do
+  end do 
+  !make sure all well ranks have filled in their part of perf_block_press
+  call MPI_Barrier( this%comm,ierr)
+
+  if( this%connection_set%num_connections > 0 ) then
+    call MPI_Comm_rank(this%comm, cur_w_myrank, ierr )  
+    if(this%cntr_rank == cur_w_myrank ) then
+      wfile_name = trim(option%global_prefix) // "_" // &
+                   trim(src_name) // ".dat" 
+      open(unit=IUNIT_TEMP,file=wfile_name)
+      write(IUNIT_TEMP,*) "z  press_well  press_block_ph1, press_block_ph2 "
+      do iconn=1,this%well_num_conns
+        write(IUNIT_TEMP,"(4(E16.10,1x))") zcn(iconn), &
+                this%pw_ref + this%well_conn_h_sorted(iconn), &
+                perf_block_press(1:option%nphase,iconn) 
+      end do
+      close(IUNIT_TEMP)
+    end if
+  end if 
+
+  nullify(ord)
+  nullify(l2w)
+  nullify(zcn)
+
+  deallocate(perf_block_press)
+  nullify(perf_block_press)
+
+end subroutine FlowDataOutput
+!*****************************************************************************!
 subroutine FlowWellStrip(well)
   !
   ! Strip well_flow and all its parent members

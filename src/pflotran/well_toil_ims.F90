@@ -333,10 +333,6 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
   dphi = this%pw_ref + hc - & 
             this%flow_auxvars(dof,ghosted_id)%pres(option%liquid_phase)
 
-  if ( dphi < 0.0d0 ) &
-    write(*,"('TOilImsWatInj reverse flow at gh = ',I5,' dp = ',e10.4)") &
-          ghosted_id, dphi
-
   ! it is assumed that the temperature is uniform throughout the well
   call EOSWaterDensity(this%tw_ref,this%pw_ref+hc, &
                        dw_kg,dw_h2o_mol,ierr) 
@@ -348,6 +344,11 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
    end if
 
   if(cfact * mob > wfloweps) then
+
+    if ( dphi < 0.0d0 .and. dof==ZERO_INTEGER ) &
+      write(*,"('TOilImsWatInj reverse flow at gh = ',I5,' dp = ',e10.4)") &
+            ghosted_id, dphi
+
     !         m^3 * 1/(Pa.s) * Pa = m^3/s
     vol_flux = cfact * mob * dphi
     !vol_flux = 0.00015
@@ -361,17 +362,28 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
    end if
 
 #ifdef WELL_DEBUG
-  write(*,*) 'ExplRes dof = ', dof
-  write(*,*) 'ExplRes gh = ', ghosted_id
-  write(*,"('ExplRes gh press = ',e10.4)") &
-      this%flow_auxvars(dof,ghosted_id)%pres(option%liquid_phase)
-  write(*,"('ExplRes mob = ',e16.10)") mob
-  write(*,"('ExplRes dphi = ',e16.10)") dphi
-  write(*,"('ExplRes hc = ',e10.4)") hc
-  write(*,"('ExplRes pw_ref = ',e10.4)") this%pw_ref 
-  write(*,"('ExplRes vol_flux = ',e10.4)") vol_flux
-  write(*,"('ExplRes dw_h2o_mol = ',e10.4)") dw_h2o_mol
-  write(*,"('ExplRes Res(water_id) = ',e10.4)") Res(option%water_id)
+  if ( dof==ZERO_INTEGER ) then
+    write(*,*) 'ExplRes dof = ', dof
+    write(*,*) 'ExplRes gh = ', ghosted_id
+    write(*,"('ExplRes gh press = ',e46.40)") &
+        this%flow_auxvars(dof,ghosted_id)%pres(option%liquid_phase)
+    write(*,"('ExplRes sat_wat = ',e46.40)") &
+       this%flow_auxvars(dof,ghosted_id)%sat(option%liquid_phase)
+    write(*,"('ExplRes sat_oil = ',e46.40)") &
+       this%flow_auxvars(dof,ghosted_id)%sat(option%oil_phase)
+    write(*,"('ExplRes mob_wat = ',e46.40)") &
+       this%flow_auxvars(dof,ghosted_id)%mobility(option%liquid_phase)
+    write(*,"('ExplRes mob_oil = ',e46.40)") &
+       this%flow_auxvars(dof,ghosted_id)%mobility(option%oil_phase)
+    write(*,"('ExplRes mob = ',e16.10)") mob
+    write(*,"('ExplRes dphi = ',e16.10)") dphi
+    write(*,"('ExplRes hc = ',e46.40)") hc
+    write(*,"('ExplRes conn_den_kg = ',e46.40)") this%conn_den_kg(iconn)
+    write(*,"('ExplRes pw_ref = ',e46.40)") this%pw_ref 
+    write(*,"('ExplRes vol_flux = ',e10.4)") vol_flux
+    write(*,"('ExplRes dw_h2o_mol = ',e10.4)") dw_h2o_mol
+    write(*,"('ExplRes Res(water_id) = ',e10.4)") Res(option%water_id)
+  end if
 #endif
 
 end subroutine TOilImsWatInjExplRes

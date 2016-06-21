@@ -48,6 +48,7 @@ module Well_Base_class
     procedure, public  :: Setup
     procedure, public :: WellFactorUpdate
     procedure, public :: OneDimGridVarsSetup => WellBase1DGridVarsSetup
+    procedure, public :: DataOutput => BaseDataOutput
     procedure  :: InitWellZRefCntrlConn
     procedure  :: WellConnSort
   end type  well_base_type
@@ -753,6 +754,32 @@ subroutine BaseOutput(this,output_file_unit,output_option,option)
 end subroutine BaseOutput
 
 ! ************************************************************************** !
+
+subroutine BaseDataOutput(this,grid,src_name,option)
+  !
+  ! Write well pressure and perforated grid lock profile
+  ! Overwrites previous file - currently for debugging
+  ! TO DO - should add control at which time step to print the profiles 
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/20/2016
+
+  use Grid_module
+  use Option_module
+  
+  implicit none
+
+  class(well_base_type) :: this
+  type(grid_type), pointer :: grid
+  character(len=MAXWORDLENGTH) :: src_name
+  type(option_type) :: option
+
+  print *, "Well BaseDataOutput must be extended"
+  stop  
+
+end subroutine BaseDataOutput
+!*****************************************************************************!
+
 
 subroutine BaseInitDensity(this,grid,option)
   !
