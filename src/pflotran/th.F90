@@ -1376,7 +1376,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   J = J/option%flow_dt
   J(option%nflowdof,:) = vol_frac_prim*J(option%nflowdof,:)
 
-  if (option%numerical_derivatives_flow) then
+  if (option%flow%numerical_derivatives) then
     call GlobalAuxVarInit(global_auxvar_pert,option)  
     call MaterialAuxVarInit(material_auxvar_pert,option)  
 
@@ -1971,7 +1971,7 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   ! note: Res is the flux contribution, for node up J = J + Jup
   !                                              dn J = J - Jdn  
 
-  if (option%numerical_derivatives_flow) then
+  if (option%flow%numerical_derivatives) then
     call THAuxVarCopy(auxvar_up,auxvar_pert_up,option)
     call THAuxVarCopy(auxvar_dn,auxvar_pert_dn,option)
 
@@ -2890,7 +2890,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   end select
 
 #if 0
-  if (option%numerical_derivatives_flow) then
+  if (option%flow%numerical_derivatives) then
     allocate(material_auxvar_pert_up,material_auxvar_pert_dn)
 
     call MaterialAuxVarInit(material_auxvar_pert_up,option)

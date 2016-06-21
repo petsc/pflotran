@@ -190,6 +190,9 @@ subroutine PMSubsurfaceFlowReadSelectCase(this,input,keyword,found,option)
       call InputErrorMsg(input,option,'MAX_CFL', &
                           'SUBSURFACE_FLOW OPTIONS')
 
+    case('NUMERICAL_JACOBIAN')
+      option%flow%numerical_derivatives = PETSC_TRUE
+
     case default
       found = PETSC_FALSE
   end select  

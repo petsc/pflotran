@@ -219,7 +219,7 @@ subroutine Flash2SetupPatch(realization)
   enddo
   patch%aux%Flash2%auxvars_bc => auxvars_bc
   patch%aux%Flash2%num_aux_bc = sum_connection
-  option%numerical_derivatives_flow = PETSC_TRUE
+  option%flow%numerical_derivatives = PETSC_TRUE
   
   allocate(patch%aux%Flash2%delx(option%nflowdof, grid%ngmax))
   allocate(patch%aux%Flash2%Resold_AR(grid%nlmax,option%nflowdof))
@@ -2226,7 +2226,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     endif
 #endif
 
-    if (option%numerical_derivatives_flow) then
+    if (option%flow%numerical_derivatives) then
       delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
       delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
@@ -3013,7 +3013,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
     endif
 #endif
 
-    if (option%numerical_derivatives_flow) then
+    if (option%flow%numerical_derivatives) then
       delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
       delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  

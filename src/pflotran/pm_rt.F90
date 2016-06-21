@@ -161,6 +161,8 @@ subroutine PMRTRead(this,input)
       case('MAX_VOLUME_FRACTION_CHANGE')
         call InputReadDouble(input,option,this%volfrac_change_governor)
         call InputDefaultMsg(input,option,'maximum volume fraction change')
+      case('NUMERICAL_JACOBIAN')
+        option%transport%numerical_derivatives = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
