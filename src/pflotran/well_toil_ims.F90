@@ -458,7 +458,8 @@ subroutine TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
   Res = 0.d0
   vol_flux = 0.0d0 
   ss_flow_vol_flux = 0.0d0
-  phase_mol_den = 0.0d0  
+  phase_mol_den = 0.0d0 
+  phase_ent = 0.0d0 
   dw_kg = 0.d0
 
   do i_ph = 1, option%nphase
@@ -482,7 +483,7 @@ subroutine TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
     !upwind for enthalpy
     if (.not.isothermal) then
       if (dphi >= 0.0d0) then
-        phase_ent(i_ph) = this%flow_auxvars(dof,ghosted_id)%den(i_ph)
+        phase_ent(i_ph) = this%flow_energy_auxvars(dof,ghosted_id)%H(i_ph)
       else if (dphi < 0.0d0) then 
         if (i_ph == option%liquid_phase) then  
           call EOSWaterEnthalpy(temp,this%pw_ref+hc,phase_ent(i_ph),ierr)

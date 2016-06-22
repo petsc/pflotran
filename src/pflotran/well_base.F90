@@ -162,17 +162,19 @@ subroutine Setup(this,connection_set,grid,option)
 
   call this%WellConnSort(grid,connection_set,option)
 
-  !create well one-dimensional fine grid for hydrostatic computation
-  !min_z = this%w_conn_z(1) - 1.0d0                  !1m buffer
-  !max_z = this%w_conn_z(this%well_num_conns) +1.0d0 !1m buffer
-  max_z = max(grid%z_max_global,datum(Z_DIRECTION))+1.d0 ! add 1m buffer
-  min_z = min(grid%z_min_global,datum(Z_DIRECTION))-1.d0
-  datum = 0.0d0
-  datum(Z_DIRECTION) = this%z_pw_ref  
+  if (connection_set%num_connections > 0) then
+    !create well one-dimensional fine grid for hydrostatic computation
+    min_z = this%w_conn_z(1) - 1.0d0                  !1m buffer
+    max_z = this%w_conn_z(this%well_num_conns) +1.0d0 !1m buffer
+    !max_z = max(grid%z_max_global,datum(Z_DIRECTION))+1.d0 ! add 1m buffer
+    !min_z = min(grid%z_min_global,datum(Z_DIRECTION))-1.d0
+    datum = 0.0d0
+    datum(Z_DIRECTION) = this%z_pw_ref  
 
-  this%fine_grid => CreateOneDimGrid(min_z,max_z,datum)
+    this%fine_grid => CreateOneDimGrid(min_z,max_z,datum)
 
-  call this%OneDimGridVarsSetup(option)
+    call this%OneDimGridVarsSetup(option)
+  end if
 
 end subroutine Setup
 
@@ -382,6 +384,8 @@ subroutine WellConnSort(this,grid,connection_set,option)
   PetscInt :: ierr 
   PetscInt :: iconn_ref 
   PetscReal, pointer :: conns_z_snd(:)
+  PetscReal :: tmp_real
+  PetscInt :: tmp_int
   PetscInt, pointer :: w_rank_conn(:) ! each rank has its own num_connections 
   PetscInt, pointer :: disp_rank_conn(:) ! conns displacement  
   PetscInt :: num_w_ranks
@@ -495,8 +499,12 @@ subroutine WellConnSort(this,grid,connection_set,option)
   do bub_step=1,well_num_conns
     do  iconn = 1, well_num_conns - bub_step
       if(this%w_conn_z(iconn) > this%w_conn_z(iconn + 1)) then
+        tmp_real = this%w_conn_z(iconn)
+        tmp_int = this%w_conn_order(iconn)
         this%w_conn_z(iconn) = this%w_conn_z(iconn + 1)
-        this%w_conn_order(iconn) = this%w_conn_order(iconn + 1) 
+        this%w_conn_z(iconn + 1) = tmp_real
+        this%w_conn_order(iconn) = this%w_conn_order(iconn + 1)
+        this%w_conn_order(iconn + 1) = tmp_int
       end if
     end do
   end do
@@ -572,10 +580,15 @@ subroutine WellFactorUpdate(this,grid,connection_set,material_auxvars,option)
     do iconn=1,connection_set%num_connections
       local_id = connection_set%id_dn(iconn);
       ghosted_id = grid%nL2G(local_id);
-      dx = grid%structured_grid%dx(ghosted_id)
-      dy = grid%structured_grid%dy(ghosted_id)
-      dz = grid%structured_grid%dz(ghosted_id)
-  
+      if (associated(this%spec%dxyz_const)) then
+         dx = this%spec%dxyz_const(1)
+         dy = this%spec%dxyz_const(2)
+         dz = this%spec%dxyz_const(3)         
+      else 
+         dx = grid%structured_grid%dx(ghosted_id)
+         dy = grid%structured_grid%dy(ghosted_id)
+         dz = grid%structured_grid%dz(ghosted_id)
+      end if  
       select case(this%conn_drill_dir(iconn))
         case(X_DIRECTION) 
           dx1 = dy

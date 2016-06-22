@@ -1272,7 +1272,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
     endif
 
     !Well Setup
-    if(associated(coupler%well)) then
+    if (associated(coupler%well)) then
       call coupler%well%Setup(coupler%connection_set,patch%grid, &
                                         option)
     end if

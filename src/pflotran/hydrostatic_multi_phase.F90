@@ -241,7 +241,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   end if
   
   dist_x = 0.d0
-  dist_x = 0.d0
+  dist_y = 0.d0
   dist_z = owc(Z_DIRECTION) - datum(Z_DIRECTION)
   po_owc = 0.d0
   pw_owc = 0.d0
@@ -419,6 +419,14 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
       if ( pc_comp <= 0.d0 ) then ! water-only region 
         coupler%flow_aux_real_var(1,iconn) = pw_cell
         coupler%flow_aux_real_var(2,iconn) = 1.0d-6 !to avoid truncation erros
+      !oil region - case of zero capillary pressure - can assign So < So_ir
+      else if ( (pc_comp > 0.d0) .and. &
+                (characteristic_curves%saturation_function%pcmax < 1.0d-40 ) &
+              ) then  
+        !OIL SATURATION from input
+        coupler%flow_aux_real_var(1,iconn) = po_cell
+        coupler%flow_aux_real_var(2,iconn) = &
+                coupler%flow_condition%toil_ims%saturation%dataset%rarray(1)        
       else if ( pc_comp >= characteristic_curves%saturation_function%pcmax ) &
         then
         ! oil region: can consider here connate water if required, or Sw_ir

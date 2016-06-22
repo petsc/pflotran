@@ -45,20 +45,21 @@ module WellSpec_Base_class
 
   type, public :: well_spec_base_type
       PetscInt :: id
-      character(len=MAXWORDLENGTH) :: name      ! well_spec name
+      character(len=MAXWORDLENGTH) :: name       ! well_spec name
       PetscInt  :: itype                         ! well integer type
       character(len=MAXWORDLENGTH) :: ctype      ! well char type
-      PetscInt :: well_fact_itype               ! type of well factor     
-      PetscReal :: const_well_fact               ! constant well factor 
+      PetscInt :: well_fact_itype                ! type of well factor     
+      PetscReal :: const_well_fact               ! [m^3] constant well factor 
+      PetscReal, pointer :: dxyz_const(:)        ! [m] (dx1,dx2,dh) extensions of perforated cells, required for expl. unstr.
       PetscReal :: radius                        ! [m] well radius
       PetscReal :: skin_factor                   ! [-] well skin factor
       PetscReal :: theta_frac                    ! [-] portion of the well exposure angle (betwen 0 and 1)
       PetscBool :: input_const_drill_dir         ! if(input_const_drill_dir) all conns have const_drill_dir 
       PetscInt :: const_drill_dir                ! constant drilling direction 
       PetscInt :: status                         ! well status (can be open, closed or auto)
-      PetscInt :: cntrl_var                       ! controlling variable (e.g. vol/mass rate)
+      PetscInt :: cntrl_var                      ! controlling variable (e.g. vol/mass rate)
       PetscInt :: num_limits                     ! number of limiting parameter
-      PetscBool, pointer :: lmt_var(:)          ! limiting variables (e.g. pressure )   
+      PetscBool, pointer :: lmt_var(:)           ! limiting variables (e.g. pressure )   
       PetscBool :: input_z_pw_ref                ! true if the z_pw_ref has been read from input
       PetscReal :: input_val_z_pw_ref            ! eevation input for z_pw_ref 
       class(well_spec_base_type), pointer :: next ! points to next link in the list
@@ -127,6 +128,7 @@ subroutine WellSpecBaseInit(this)
   this%cntrl_var = CNTRL_VAR_BHP;
   this%num_limits = 0;
   allocate(this%lmt_var(num_well_limits))
+  nullify(this%dxyz_const);
   this%lmt_var = PETSC_FALSE
   this%input_z_pw_ref = PETSC_FALSE 
   this%input_val_z_pw_ref = 0.0;
@@ -177,6 +179,7 @@ subroutine WellSpecBaseRead(this,input,option)
   
   character(len=MAXWORDLENGTH) :: keyword, word, units, sub_keyword
   character(len=MAXWORDLENGTH) :: internal_units
+  PetscInt :: i_dim
 
   internal_units = 'not_assigned'
  
@@ -209,6 +212,29 @@ subroutine WellSpecBaseRead(this,input,option)
         call InputReadDouble(input,option,this%skin_factor)
         call InputErrorMsg(input,option,'skin factor','WELL_SPEC')
         call InputReadWord(input,option,word,PETSC_TRUE) 
+      case('DX_DY_DZ_CONST')
+        allocate(this%dxyz_const(3))
+        this%dxyz_const = 0.0d0
+        !internal_units = 'meter,meter'
+        do i_dim =1,3
+          call InputReadDouble(input,option,this%dxyz_const(i_dim))
+          call InputErrorMsg(input,option,'DX1_DX2_DZ','WELL_SPEC')
+        end do
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        if (InputError(input)) then
+          word = trim(keyword) // ' UNITS'
+          call InputDefaultMsg(input,option,word)
+        else
+          do i_dim =1,3
+            internal_units = 'meter'
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,keyword,'WELL_SPEC')
+              units = trim(word)
+              this%dxyz_const(i_dim) = &
+                      UnitsConvertToInternal(units,internal_units,option) * &
+                      this%dxyz_const(i_dim)
+          end do
+        endif
       case('THETA_FRACTION')
         call InputReadDouble(input,option,this%theta_frac)
         call InputErrorMsg(input,option,'theta angle fraction','WELL_SPEC')
@@ -281,7 +307,17 @@ subroutine WellSpecBaseRead(this,input,option)
         this%well_fact_itype = WELL_FACTOR_CONST
         call InputReadDouble(input,option,this%const_well_fact)
         call InputErrorMsg(input,option,'well factor','WELL_SPEC')
-        call InputReadWord(input,option,word,PETSC_TRUE)  
+        call InputReadWord(input,option,word,PETSC_TRUE) 
+        internal_units = 'm^3'
+        if (InputError(input)) then
+          word = trim(keyword) // ' UNITS'
+          call InputDefaultMsg(input,option,word)
+        else
+          units = trim(word)
+          this%const_well_fact = &
+              UnitsConvertToInternal(units,internal_units,option) * &
+                   this%const_well_fact
+        end if
       case('CONST_DRILL_DIR')
         this%input_const_drill_dir = PETSC_TRUE
         call InputReadWord(input,option,keyword,PETSC_TRUE)
@@ -458,6 +494,8 @@ subroutine WellSpecBaseClear(this)
   class(well_spec_base_type) :: this
 
   call DeallocateArray(this%lmt_var)   
+  call DeallocateArray(this%dxyz_const)
+
   nullify(this%next);
 
 end subroutine WellSpecBaseClear
