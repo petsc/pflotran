@@ -1687,9 +1687,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                 lnQK = lnQK + reaction%eqcplxstoich(jcomp,icplx)* &
                               log(rt_auxvar%pri_molal(comp_id)* &
                               rt_auxvar%pri_act_coef(comp_id))
-                print *,'pH: ',icomp,jcomp,comp_id,lnQK,reaction%eqcplx_logK(icplx), &
-                reaction%eqcplxstoich(jcomp,icplx), conc(icomp), &
-                rt_auxvar%pri_molal(comp_id)
               enddo
               lnQK = lnQK + conc(icomp)*LOG_TO_LN ! this is log activity H+
               QK = exp(lnQK)
