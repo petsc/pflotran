@@ -19,29 +19,29 @@
      Mean:   9.9780784628622E-21
         1:   9.9781224493288E-21
 -- CONCENTRATION: Total Np-237 --
-      Max:   1.0375587099585E-20
-      Min:   1.0375495626925E-20
-     Mean:   1.0375541363388E-20
-        1:   1.0375587099585E-20
+      Max:   1.0375587099025E-20
+      Min:   1.0292088564422E-20
+     Mean:   1.0347738586218E-20
+        1:   1.0375587099025E-20
 -- CONCENTRATION: Total U-233 --
       Max:   9.9999870676436E-21
-      Min:   9.9998989030807E-21
-     Mean:   9.9999429854899E-21
+      Min:   9.9998996322135E-21
+     Mean:   9.9999432285362E-21
         1:   9.9999870676436E-21
 -- CONCENTRATION: Total Th-229 --
       Max:   9.9988577397583E-21
-      Min:   9.9987695839765E-21
-     Mean:   9.9988136619951E-21
+      Min:   9.9987695839770E-21
+     Mean:   9.9988136619953E-21
         1:   9.9988577397583E-21
 -- CONCENTRATION: Total Pu-240 --
       Max:   7.9400000000000E-11
-      Min:   7.9400000000000E-11
-     Mean:   7.9400000000000E-11
+      Min:   6.7737594966848E-16
+     Mean:   5.2933559125317E-11
         1:   7.9400000000000E-11
 -- CONCENTRATION: Total Tc-99 --
       Max:   7.9400000000000E-11
-      Min:   7.9400000000000E-11
-     Mean:   7.9400000000000E-11
+      Min:   6.7742337313271E-16
+     Mean:   5.2933559141124E-11
         1:   7.9400000000000E-11
 -- CONCENTRATION: Total C-tracer --
       Max:   1.0000042219688E-20
@@ -49,12 +49,12 @@
      Mean:   9.9999999999957E-21
         1:   1.0000042219688E-20
 -- DISCRETE: Material ID --
-      Max:         1
+      Max:         2
       Min:         1
-     Mean:   1.0000000000000E+00
+     Mean:   1.3333333333333E+00
         1:         1
 -- SOLUTION: Flow --
-   Time (seconds):   8.9183568954468E-02
+   Time (seconds):   8.1907987594604E-02
    Time Steps:          122
    Newton Iterations:          128
    Solver Iterations:          125
@@ -62,10 +62,10 @@
    Solution 2-Norm:   3.4897940597244E+05
    Residual 2-Norm:   8.8813010111187E-19
 -- SOLUTION: Transport --
-   Time (seconds):   1.9910430908203E-01
+   Time (seconds):   1.6786670684814E-01
    Time Steps:          122
    Newton Iterations:          122
    Solver Iterations:          122
    Time Step Cuts:            0
-   Solution 2-Norm:   1.9503453630091E-10
-   Residual 2-Norm:   8.9249423279158E-30
+   Solution 2-Norm:   1.5924503205899E-10
+   Residual 2-Norm:   8.9249465836589E-30

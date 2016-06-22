@@ -615,12 +615,23 @@ function StringIntegerDoubleOrWord(string)
 
   PetscReal :: d
   PetscInt :: i
+  PetscBool :: double_syntax_found
+  character(len=MAXWORDLENGTH) :: word
   PetscErrorCode :: ierr
 
   StringIntegerDoubleOrWord = -999
   ierr = 0
+  double_syntax_found = (index(string,'.') > 0 .or. &
+      index(string,'d') > 0 .or. index(string,'D') > 0 .or. &
+      index(string,'e') > 0 .or. index(string,'E') > 0) 
   read(string,*,iostat=ierr) i
   if (ierr == 0) then
+    ! the Intel compiler does not alway catch the misread of a double to an 
+    ! integer
+    if (double_syntax_found) then
+      StringIntegerDoubleOrWord = STRING_IS_DOUBLE
+      return
+    endif
     StringIntegerDoubleOrWord = STRING_IS_INTEGER
     return
   endif

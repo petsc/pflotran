@@ -293,7 +293,8 @@ subroutine GeomechanicsJumpStart(simulation)
 
   option => geomch_realization%option
 
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", &
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-vecload_block_size", &
                            failure, ierr);CHKERRQ(ierr)
                              
   if (option%steady_state) then
@@ -1241,7 +1242,8 @@ subroutine GeomechInitSetupSolvers(geomech_realization,realization, &
   ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
   if (option%verbosity >= 1) then
     string = '-geomech_snes_view'
-    call PetscOptionsInsertString(string, ierr);CHKERRQ(ierr)
+    call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
+                                   string, ierr);CHKERRQ(ierr)
   endif
 
   call SolverSetSNESOptions(solver)

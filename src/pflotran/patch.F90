@@ -1123,6 +1123,7 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
   PetscBool :: update
   PetscBool :: dof1, dof2, dof3
   PetscReal :: temperature, p_sat, p_air, p_gas, p_cap, s_liq
+  PetscReal :: relative_humidity
   PetscReal :: dummy_real
   PetscReal :: x(option%nflowdof)
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -1236,11 +1237,11 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
             ! temperature to air pressure
             local_id = coupler%connection_set%id_dn(iconn)
             ghosted_id = patch%grid%nL2G(local_id)
-            ! we have to convert capillary pressure (stored in air pressure index) 
-            ! to a saturation
+            ! we have to convert capillary pressure (stored in air 
+            ! pressure index) to a saturation
             ! index     variable
             !  1        coupler%flow_aux_mapping(GENERAL_GAS_PRESSURE_INDEX) = 1
-            !                          air pressure in this case hijacked for capillary pressure
+            !        air pressure in this case hijacked for capillary pressure
             !  2        coupler%flow_aux_mapping(GENERAL_AIR_PRESSURE_INDEX) = 2
             !  3        coupler%flow_aux_mapping(GENERAL_TEMPERATURE_INDEX) = 3
             p_gas = coupler%flow_aux_real_var( &
@@ -1386,36 +1387,69 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           call printErrMsg(option)
       end select
       real_count = real_count + 1
-      select case(general%mole_fraction%itype)
-        case(DIRICHLET_BC)
-          if (Uninitialized(p_gas) .or. Uninitialized(temperature)) then
-            option%io_buffer = 'Gas pressure or temperature not set ' // &
-              'correctly in flow condition "' // &
-              trim(flow_condition%name) // '".'
+      if (associated(general%mole_fraction)) then
+        select case(general%mole_fraction%itype)
+          case(DIRICHLET_BC)
+            if (Uninitialized(p_gas) .or. Uninitialized(temperature)) then
+              option%io_buffer = 'Gas pressure or temperature not set ' // &
+                'correctly in flow condition "' // &
+                trim(flow_condition%name) // '".'
+              call printErrMsg(option)
+            endif
+            coupler%flow_aux_mapping(GENERAL_AIR_PRESSURE_INDEX) = real_count
+            p_air = general%mole_fraction%dataset%rarray(1) * p_gas
+            call EOSWaterSaturationPressure(temperature,p_sat,ierr)
+            if (p_gas - p_air >= p_sat) then
+              option%io_buffer = 'MOLE_FRACTION set in flow condition "' // &
+                trim(flow_condition%name) // &
+                '" results in a vapor pressure exceeding the water ' // &
+                'saturation pressure, which indicates that a two-phase ' // &
+                'state with GAS_PRESSURE and GAS_SATURATION should be used.'
+              call printErrMsg(option)
+            endif
+            coupler%flow_aux_real_var(real_count,1:num_connections) = p_air
+            dof2 = PETSC_TRUE
+            coupler%flow_bc_type(GENERAL_LIQUID_EQUATION_INDEX) = DIRICHLET_BC
+          case default
+            string = &
+              GetSubConditionName(general%mole_fraction%itype)
+            option%io_buffer = &
+                FlowConditionUnknownItype(coupler%flow_condition, &
+                'general gas state mole fraction',string)
             call printErrMsg(option)
-          endif
-          coupler%flow_aux_mapping(GENERAL_AIR_PRESSURE_INDEX) = real_count
-          p_air = general%mole_fraction%dataset%rarray(1) * p_gas
-          call EOSWaterSaturationPressure(temperature,p_sat,ierr)
-          if (p_gas - p_air >= p_sat) then
-            option%io_buffer = 'MOLE_FRACTION set in flow condition "' // &
-              trim(flow_condition%name) // &
-              '" results in a vapor pressure exceeding the water ' // &
-              'saturation pressure, which indicates that a two-phase ' // &
-              'state with GAS_PRESSURE and GAS_SATURATION should be used.'
+        end select                
+      else
+        select case(general%relative_humidity%itype)
+          case(DIRICHLET_BC)
+            if (Uninitialized(p_gas) .or. Uninitialized(temperature)) then
+              option%io_buffer = 'Gas pressure or temperature not set ' // &
+                'correctly in flow condition "' // &
+                trim(flow_condition%name) // '".'
+              call printErrMsg(option)
+            endif
+            coupler%flow_aux_mapping(GENERAL_AIR_PRESSURE_INDEX) = real_count
+            ! relative humidity in %
+            relative_humidity = general%relative_humidity%dataset%rarray(1)
+            if (relative_humidity < 0.d0 .or. relative_humidity > 100.d0) then
+              option%io_buffer = 'Relative humidity in flow condition "' // &
+                trim(flow_condition%name) // '" outside bounds of 0-100%.'
+              call printErrMsg(option)
+            endif
+            call EOSWaterSaturationPressure(temperature,p_sat,ierr)
+                             ! convert from % to fraction
+            p_air = p_gas - relative_humidity*1.d-2*p_sat
+            coupler%flow_aux_real_var(real_count,1:num_connections) = p_air
+            dof2 = PETSC_TRUE
+            coupler%flow_bc_type(GENERAL_LIQUID_EQUATION_INDEX) = DIRICHLET_BC
+          case default
+            string = &
+              GetSubConditionName(general%mole_fraction%itype)
+            option%io_buffer = &
+                FlowConditionUnknownItype(coupler%flow_condition, &
+                'general gas state relative humidity',string)
             call printErrMsg(option)
-          endif
-          coupler%flow_aux_real_var(real_count,1:num_connections) = p_air
-          dof2 = PETSC_TRUE
-          coupler%flow_bc_type(GENERAL_LIQUID_EQUATION_INDEX) = DIRICHLET_BC
-        case default
-          string = &
-            GetSubConditionName(general%mole_fraction%itype)
-          option%io_buffer = &
-            FlowConditionUnknownItype(coupler%flow_condition, &
-              'general gas state mole fraction',string)
-          call printErrMsg(option)
-      end select                
+        end select                
+      endif
     case(ANY_STATE)
       if (associated(coupler%flow_aux_int_var)) then ! not used with rate
         coupler%flow_aux_int_var(GENERAL_STATE_INDEX,1:num_connections) = &
@@ -6153,6 +6187,9 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
       distance = cur_connection_set%dist(0,iconn)
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       do iphase = 1, option%nphase
+        ! if the phase is not present in either cell, skip the connection
+        if (.not.(global_auxvars(ghosted_id_up)%sat(iphase) > 0.d0 .and. &
+                  global_auxvars(ghosted_id_dn)%sat(iphase) > 0.d0)) cycle
         por_sat_min = min(material_auxvars(ghosted_id_up)%porosity* &
                           global_auxvars(ghosted_id_up)%sat(iphase), &
                           material_auxvars(ghosted_id_dn)%porosity* &

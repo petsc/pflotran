@@ -2005,13 +2005,15 @@ subroutine DbaseLookupInt(keyword,value,ierr)
   call StringToUpper(keyword)
   
   found = PETSC_FALSE
-  do i = 1, size(dbase%icard)
-    if (StringCompare(keyword,dbase%icard(i))) then
-      found = PETSC_TRUE
-      value = dbase%ivalue(i)
-      exit
-    endif
-  enddo
+  if (associated(dbase%icard)) then
+    do i = 1, size(dbase%icard)
+      if (StringCompare(keyword,dbase%icard(i))) then
+        found = PETSC_TRUE
+        value = dbase%ivalue(i)
+        exit
+      endif
+    enddo
+  endif
   
   if (.not.found) then
     ierr = 1
@@ -2044,13 +2046,15 @@ subroutine DbaseLookupDouble(keyword,value,ierr)
   call StringToUpper(keyword)
   
   found = PETSC_FALSE
-  do i = 1, size(dbase%rcard)
-    if (StringCompare(keyword,dbase%rcard(i))) then
-      found = PETSC_TRUE
-      value = dbase%rvalue(i)
-      exit
-    endif
-  enddo
+  if (associated(dbase%rcard)) then
+    do i = 1, size(dbase%rcard)
+      if (StringCompare(keyword,dbase%rcard(i))) then
+        found = PETSC_TRUE
+        value = dbase%rvalue(i)
+        exit
+      endif
+    enddo
+  endif
   
   if (.not.found) then
     ierr = 1
@@ -2083,13 +2087,15 @@ subroutine DbaseLookupWord(keyword,value,ierr)
   call StringToUpper(keyword)
   
   found = PETSC_FALSE
-  do i = 1, size(dbase%ccard)
-    if (StringCompare(keyword,dbase%ccard(i))) then
-      found = PETSC_TRUE
-      value = dbase%cvalue(i)
-      exit
-    endif
-  enddo
+  if (associated(dbase%ccard)) then
+    do i = 1, size(dbase%ccard)
+      if (StringCompare(keyword,dbase%ccard(i))) then
+        found = PETSC_TRUE
+        value = dbase%cvalue(i)
+        exit
+      endif
+    enddo
+  endif
   
   if (.not.found) then
     ierr = 1

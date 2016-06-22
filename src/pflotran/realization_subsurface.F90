@@ -398,7 +398,7 @@ subroutine RealizationCreateDiscretization(realization)
 
     ! vx
     call VecCreateMPI(option%mycomm, &
-        (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
+        (option%nflowspec*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
         PETSC_DETERMINE,field%vx_face_inst,ierr);CHKERRQ(ierr)
     call VecSet(field%vx_face_inst,0.d0,ierr);CHKERRQ(ierr)
 

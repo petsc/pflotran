@@ -99,7 +99,7 @@ subroutine RichardsAccumDerivative(rich_auxvar,global_auxvar, &
 
   J(1,1) = derivative * vol_over_dt
 
-  if (option%numerical_derivatives_flow) then
+  if (option%flow%numerical_derivatives) then
     call GlobalAuxVarInit(global_auxvar_pert,option)  
     call MaterialAuxVarInit(material_auxvar_pert,option)  
     call RichardsAuxVarCopy(rich_auxvar,rich_auxvar_pert,option)
@@ -328,7 +328,7 @@ subroutine RichardsFluxDerivative(rich_auxvar_up,global_auxvar_up, &
  ! note: Res is the flux contribution, for node up J = J + Jup
  !                                              dn J = J - Jdn  
 
-  if (option%numerical_derivatives_flow) then
+  if (option%flow%numerical_derivatives) then
     call GlobalAuxVarInit(global_auxvar_pert_up,option)
     call GlobalAuxVarInit(global_auxvar_pert_dn,option)  
     call MaterialAuxVarInit(material_auxvar_pert_up,option)
@@ -763,7 +763,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
 
-  if (option%numerical_derivatives_flow) then
+  if (option%flow%numerical_derivatives) then
     call GlobalAuxVarInit(global_auxvar_pert_up,option)
     call GlobalAuxVarInit(global_auxvar_pert_dn,option)  
     allocate(material_auxvar_pert_up,material_auxvar_pert_dn)

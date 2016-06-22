@@ -327,7 +327,7 @@ subroutine MphaseSetupPatch(realization)
   mphase%auxvars_ss => auxvars_ss
   mphase%num_aux_ss = sum_connection
   
-  option%numerical_derivatives_flow = PETSC_TRUE
+  option%flow%numerical_derivatives = PETSC_TRUE
 
 end subroutine MphaseSetupPatch
 
@@ -2658,7 +2658,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     endif
 #endif
 
-    if (option%numerical_derivatives_flow) then
+    if (option%flow%numerical_derivatives) then
       mphase%delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac !* 1.D-3
       mphase%delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
 
@@ -3855,9 +3855,9 @@ subroutine MphaseMaxChange(realization,dpmax,dtmpmax,dsmax,dcmax)
 
   call MphaseMaxChangePatch(realization, dcmax, dsmax)
 
-  call MPI_Allreduce(dcmax,MPI_IN_PLACE,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+  call MPI_Allreduce(MPI_IN_PLACE,dcmax,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                      MPI_MAX,option%mycomm,ierr)
-  call MPI_Allreduce(dsmax,MPI_IN_PLACE,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+  call MPI_Allreduce(MPI_IN_PLACE,dsmax,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                      MPI_MAX,option%mycomm,ierr)
 
 end subroutine MphaseMaxChange

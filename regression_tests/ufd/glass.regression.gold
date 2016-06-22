@@ -35,13 +35,13 @@
         1:   9.9988577397583E-21
 -- CONCENTRATION: Total Pu-240 --
       Max:   7.9400000000000E-11
-      Min:   3.8293981485357E-14
-     Mean:   5.2946097993828E-11
+      Min:   1.5643949041158E-19
+     Mean:   2.6466779616471E-11
         1:   7.9400000000000E-11
 -- CONCENTRATION: Total Tc-99 --
       Max:   7.9400000000000E-11
-      Min:   3.6003640938976E-13
-     Mean:   5.3053345469797E-11
+      Min:   1.5645112539862E-19
+     Mean:   2.6466779624379E-11
         1:   7.9400000000000E-11
 -- CONCENTRATION: Total C-tracer --
       Max:   1.0000042219688E-20
@@ -54,7 +54,7 @@
      Mean:   1.0000000000000E+00
         1:         1
 -- SOLUTION: Flow --
-   Time (seconds):   6.1695575714111E-02
+   Time (seconds):   6.2063217163086E-02
    Time Steps:          122
    Newton Iterations:          128
    Solver Iterations:          125
@@ -62,10 +62,10 @@
    Solution 2-Norm:   3.4897940597244E+05
    Residual 2-Norm:   8.8813010111187E-19
 -- SOLUTION: Transport --
-   Time (seconds):   6.1104536056519E-02
+   Time (seconds):   6.1040639877319E-02
    Time Steps:          122
    Newton Iterations:          122
    Solver Iterations:          122
    Time Step Cuts:            0
-   Solution 2-Norm:   1.5924509496892E-10
-   Residual 2-Norm:   8.9250785106892E-30
+   Solution 2-Norm:   1.1260274564470E-10
+   Residual 2-Norm:   8.9249433918530E-30

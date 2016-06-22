@@ -48,6 +48,7 @@ STANDARD_CFG = \
 	default/materials/soil_compressibility/soil_compressibility.cfg \
 	default/materials/mineral_volume/mineral_volume.cfg \
 	default/infiltrometer/infiltrometer.cfg \
+	default/numerical/numerical.cfg \
 	default/steady/steady.cfg \
 	default/condition/condition.cfg \
 	default/condition/dataset/dataset.cfg \

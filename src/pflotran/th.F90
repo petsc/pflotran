@@ -1376,7 +1376,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   J = J/option%flow_dt
   J(option%nflowdof,:) = vol_frac_prim*J(option%nflowdof,:)
 
-  if (option%numerical_derivatives_flow) then
+  if (option%flow%numerical_derivatives) then
     call GlobalAuxVarInit(global_auxvar_pert,option)  
     call MaterialAuxVarInit(material_auxvar_pert,option)  
 
@@ -1897,32 +1897,30 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   endif ! if (use_th_freezing)
 
         
-  if (option%use_th_freezing) then
-            
     dKe_dp_up = auxvar_up%dKe_dp
     dKe_dp_dn = auxvar_dn%dKe_dp
 
+    dKe_dt_up = auxvar_up%dKe_dt
+    dKe_dt_dn = auxvar_dn%dKe_dt
+
+  if (option%use_th_freezing) then
+            
     Dk_eff_up = auxvar_up%Dk_eff
     Dk_eff_dn = auxvar_dn%Dk_eff
 
     Ke_fr_up = auxvar_up%ice%Ke_fr
     Ke_fr_dn = auxvar_dn%ice%Ke_fr
 
-    dKe_dt_up = auxvar_up%dKe_dt
-    dKe_dt_dn = auxvar_dn%dKe_dt
-
     dKe_fr_dt_up = auxvar_up%ice%dKe_fr_dt
     dKe_fr_dt_dn = auxvar_dn%ice%dKe_fr_dt
 
     dKe_fr_dp_up = auxvar_up%ice%dKe_fr_dp
     dKe_fr_dp_dn = auxvar_dn%ice%dKe_fr_dp
+
   else
 
     Dk_eff_up = auxvar_up%Dk_eff
     Dk_eff_dn = auxvar_dn%Dk_eff
-
-    dKe_dt_up = auxvar_up%dKe_dt
-    dKe_dt_dn = auxvar_dn%dKe_dt
 
   endif
  
@@ -1973,7 +1971,7 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   ! note: Res is the flux contribution, for node up J = J + Jup
   !                                              dn J = J - Jdn  
 
-  if (option%numerical_derivatives_flow) then
+  if (option%flow%numerical_derivatives) then
     call THAuxVarCopy(auxvar_up,auxvar_pert_up,option)
     call THAuxVarCopy(auxvar_dn,auxvar_pert_dn,option)
 
@@ -2892,7 +2890,7 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   end select
 
 #if 0
-  if (option%numerical_derivatives_flow) then
+  if (option%flow%numerical_derivatives) then
     allocate(material_auxvar_pert_up,material_auxvar_pert_dn)
 
     call MaterialAuxVarInit(material_auxvar_pert_up,option)

@@ -107,7 +107,8 @@ FORMAT TECPLOT POINT
 noskip
 #======================== times ====================================
 TIME
-FINAL_TIME 0.25d0 y
+#FINAL_TIME 0.25d0 y
+FINAL_TIME 1.d-3 y
 INITIAL_TIMESTEP_SIZE 1.d-12 y
 MAXIMUM_TIMESTEP_SIZE 1.d-1 y
 /

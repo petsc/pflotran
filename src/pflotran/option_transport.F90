@@ -27,6 +27,7 @@ module Option_Transport_module
     PetscBool :: no_checkpoint_kinetic_sorption
     PetscBool :: no_restart_kinetic_sorption
     PetscBool :: no_restart_mineral_vol_frac
+    PetscBool :: numerical_derivatives
         
   end type transport_option_type
   
@@ -110,6 +111,7 @@ subroutine OptionTransportInitRealization(option)
   option%store_fluxes = PETSC_FALSE
   
   option%reactive_transport_coupling = GLOBAL_IMPLICIT
+  option%numerical_derivatives = PETSC_FALSE
   
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   option%no_checkpoint_kinetic_sorption = PETSC_FALSE

@@ -1,0 +1,234 @@
+#Description:
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+      OPTIONS
+        MAX_SATURATION_CHANGE 1.d0
+        MAX_CONCENTRATION_CHANGE 0.5d0
+        MAX_CFL 1.
+      /
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS
+    1
+    2
+  /
+END
+
+#=========================== flow mode ========================================
+
+#=========================== debug settings ===================================
+#USE_TOUCH_OPTIONS
+
+#DEBUG
+#MATVIEW_JACOBIAN
+#VECVIEW_RESIDUAL
+#VECVIEW_SOLUTION
+#/
+
+#=========================== time stepper options =============================
+TIMESTEPPER FLOW
+#  MAX_STEPS -1
+/
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 10 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    10.d0 1.d0 1.d0
+  /
+/
+
+#=========================== solver options ===================================
+NEWTON_SOLVER FLOW
+  RTOL 1.d-8
+  ATOL 1.d-8
+  STOL 1.d-30
+/
+
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+/
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+/
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil
+  ID 1
+  CHARACTERISTIC_CURVES cc1
+  POROSITY 0.25
+  TORTUOSITY 0.5
+  ROCK_DENSITY 2650.d-3 kg/L
+  THERMAL_CONDUCTIVITY_DRY 0.5d-6 MW/m-C
+  THERMAL_CONDUCTIVITY_WET 2.d-6 MW/m-C
+  HEAT_CAPACITY 830.d-6 MJ/kg-C
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+/
+
+#=========================== saturation functions =============================
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    ALPHA 1.d-4
+    M 0.5d0
+    MAX_CAPILLARY_PRESSURE 1.d6
+  /
+  PERMEABILITY_FUNCTION MUALEM
+    PHASE LIQUID
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    M 0.5d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_GAS
+    PHASE GAS
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    GAS_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
+/
+
+#=========================== output options ===================================
+OUTPUT
+skip
+  PERIODIC TIME 0.1 y
+  PERIODIC_OBSERVATION TIMESTEP 1
+#  FORMAT TECPLOT POINT
+  FORMAT HDF5
+  VELOCITY_AT_CENTER
+  MASS_BALANCE
+  VARIABLES
+     LIQUID_PRESSURE
+     GAS_SATURATION
+     LIQUID_MOBILITY
+     GAS_MOBILITY
+  /
+noskip
+/
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 1. y
+  INITIAL_TIMESTEP_SIZE 1.d0 s
+  MAXIMUM_TIMESTEP_SIZE 0.1d0 y
+/
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    -1.d20 -1.d20 -1.d20
+    1.d20 1.d20 1.d20
+  /
+/
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+/
+
+REGION east
+  FACE EAST
+  COORDINATES
+    10.d0 0.d0 0.d0
+    10.d0 1.d0 1.d0
+  /
+/
+
+REGION middle
+  COORDINATE 5.d0 0.5d0 0.5d0
+/
+
+#=========================== observation points ===============================
+OBSERVATION 
+#  REGION middle
+  REGION east
+  VELOCITY
+/
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
+    TEMPERATURE dirichlet
+  /
+  DATUM 0. 0. 0.d0
+  LIQUID_PRESSURE 111325.d0
+  MOLE_FRACTION 1.d-10
+  TEMPERATURE 25.d0
+/
+
+FLOW_CONDITION outlet
+  TYPE
+    GAS_PRESSURE dirichlet
+    RELATIVE_HUMIDITY dirichlet
+    TEMPERATURE dirichlet
+  /
+  GAS_PRESSURE 111325.d0
+  RELATIVE_HUMIDITY 100.d0
+  TEMPERATURE 25.d0
+/
+
+skip
+FLOW_CONDITION inlet
+  TYPE
+    LIQUID_FLUX NEUMANN
+    GAS_FLUX NEUMANN
+    ENERGY_FLUX NEUMANN
+  /
+  LIQUID_FLUX 10.d0 m/y
+  GAS_FLUX 1.d0 m/y
+  ENERGY_FLUX 0.d0 MW/m^2
+/
+noskip
+
+FLOW_CONDITION inlet
+  TYPE
+    RATE mass_rate
+  /
+  RATE 1.d0 1.d0 0.d0 kg/y kg/y MW
+/
+
+#=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+/
+
+#BOUNDARY_CONDITION west
+SOURCE_SINK west
+  FLOW_CONDITION inlet
+  REGION west
+/
+
+BOUNDARY_CONDITION east
+  FLOW_CONDITION outlet
+  REGION east
+/
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil
+  REGION all
+/
+
+END_SUBSURFACE

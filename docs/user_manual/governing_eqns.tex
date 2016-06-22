@@ -930,13 +930,43 @@ with molality $m_j$ of the $j$th primary species. The rate constant $k_{ml}$ is 
 \EQ
 k_{ml} (T) \eq k_{ml}^0 \exp\left[\frac{E_{ml}}{R}\Big(\frac{1}{T_0}-\frac{1}{T}\Big)\right],
 \EN
-where $k_{ml}^0$ refers to the rate constant at the reference temperature $T_0$ taken as 25\degc, with $T$ in units of Kelvin, $E_{ml}$ denotes the activation energy (kJ/mol),
-and the quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction with the form
-\EQ\label{prefactor}
-\P_{ml} \eq \prod_i\dfrac{\big(\gamma_i m_i\big)^{\a_{il}^m}}{1+K_{ml}\big(\gamma_i m_i\big)^{\b_{il}^m} },
+where $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K), 
+$k_{ml}^0$ refers to the rate constant at the reference temperature $T_0$ taken as 25\degc, with $T$ in units of Kelvin, and $E_{ml}$ denotes the activation energy (kJ/mol).
+The quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction with the form
+\begin{subequations}
+\BA\label{prefactor}
+\P_{ml} &\eq \prod_{j=1}^{N_c}\dfrac{\big(\gamma_j m_j\big)^{\a_{jl}^m}}{1+K_{jl}^m\big(\gamma_j m_j\big)^{\b_{jl}^m}} \ 
+\prod_{i=1}^{N_{\rm sec}}\dfrac{\big(\gamma_i m_i\big)^{\a_{il}^m}}{1+K_{il}^m\big(\gamma_i m_i\big)^{\b_{il}^m}},\\
+&\eq \A_{ml} \, \B_{ml},
+\EA
+\end{subequations}
+where in the first term on the right-hand side corresponding to $\A_{ml}$ product index $j$ runs over primary species and in the second term corresponding to $\B_{ml}$ product index $i$ runs over secondary species. The quantities $\a_{jl}^m$, $\a_{il}^m$ and $\b_{jl}^m$, $\b_{il}^m$ refer to prefactor coefficients, and $K_{jl}^m$, $K_{il}^m$ are attenuation factors.
+
+To compute the jacobian the partial derivative of the prefactor with respect to primary species is needed. For the general case of both primary and secondary prefactor species forming the derivative of the logarithm of the prefactor yields
+\begin{subequations}
+\BA
+\frac{\p\ln\P_{ml}}{\p m_j} &\eq \frac{\p\ln \A_{ml}}{\p m_j} + \sum_i \frac{\p\ln \B_{ml}}{\p m_i} \frac{\p m_i}{\p m_j},\\
+&\eq \frac{\p\ln \A_{ml}}{\p m_j} + \frac{1}{m_j}\sum_i \nu_{ji} m_i \frac{\p\ln \B_{ml}}{\p m_i},
+\EA
+\end{subequations}
+using  
+\EQ
+\frac{\p m_i}{\p m_j} \eq \frac{\nu_{ji} m_i}{m_j},
 \EN
-where the product index $i$ generally runs over both primary and secondary species, the quantities $\a_{il}^m$ and $\b_{il}^m$ refer to prefactor coefficients, and $K_{ml}$ is an attenuation factor.
-The quantity $R$ denotes the gas constant ($8.317\times 10^{-3}$ kJ/mol/K). 
+as obtained from differentiating the secondary species mass action equation
+\EQ
+m_i \eq \frac{K_i}{\gamma_i} \prod_j \big(\gamma_j m_j\big)^{\nu_{ji}},
+\EN
+assuming constant activity coefficients. Derivatives of the coefficients $\A_{ml}$ and $\B_{ml}$ are given by
+\begin{subequations}
+\EQ
+\frac{\p\ln\A_{ml}}{\p\ln m_j} \eq \a_{jl}^m - \frac{\b_{jl}^m K_{ml} \big(\gamma_j m_j\big)^{\b_{jl}^m}}{1+K_{ml} \big(\gamma_j m_j\big)^{\b_{jl}^m}},
+\EN
+and
+\EQ
+\frac{\p\ln\B_{ml}}{\p\ln m_i} \eq \a_{il}^m - \frac{\b_{il}^m K_{ml} \big(\gamma_i m_i\big)^{\b_{il}^m}}{1+K_{ml} \big(\gamma_i m_i\big)^{\b_{il}^m}}.
+\EN
+\end{subequations}
 
 \paragraph{Rate Limiter}
 
