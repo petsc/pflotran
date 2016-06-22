@@ -733,7 +733,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 
       ! compute prefactor
       if (mineral%kinmnrl_num_prefactors(imnrl) > 0) then
-        sum_prefactor_rate = 0
+        sum_prefactor_rate = 0.d0
         prefactor = 0.d0
         ln_prefactor_spec = 0.d0
         ! sum over parallel prefactors
@@ -780,7 +780,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                                  IDEAL_GAS_CONSTANT &
             *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+273.15d0)))
         endif
-        sum_prefactor_rate = mineral%kinmnrl_rate(imnrl)*arrhenius_factor
+        sum_prefactor_rate = mineral%kinmnrl_rate_constant(imnrl)* &
+                             arrhenius_factor
       endif
 
       ! compute rate
@@ -904,7 +905,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
         do ipref_species = 1, mineral%kinmnrl_prefactor_id(0,ipref,imnrl)
           ! derivative of 54 with respect to a single "monod" equation
           ! ln_prefactor_spec(,) saved in residual calc above
-          dprefactor_dprefactor_spec = ln_prefactor-ln_prefactor_spec(ipref_species,ipref)
+          dprefactor_dprefactor_spec = exp(ln_prefactor- &
+                                         ln_prefactor_spec(ipref_species,ipref))
           icomp = mineral%kinmnrl_prefactor_id(ipref_species,ipref,imnrl)
           if (icomp > 0) then ! primary species
             ln_spec_act = ln_act(icomp)
@@ -1081,7 +1083,7 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
 
     ! compute prefactor
     if (mineral%kinmnrl_num_prefactors(imnrl) > 0) then
-      sum_prefactor_rate = 0
+      sum_prefactor_rate = 0.d0
       prefactor = 0.d0
       ln_prefactor_spec = 0.d0
       ! sum over parallel prefactors
@@ -1128,7 +1130,8 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
                                IDEAL_GAS_CONSTANT &
           *(1.d0/(25.d0+273.15d0)-1.d0/(global_auxvar%temp+273.15d0)))
       endif
-      sum_prefactor_rate = mineral%kinmnrl_rate(imnrl)*arrhenius_factor
+      sum_prefactor_rate = mineral%kinmnrl_rate_constant(imnrl)* &
+                           arrhenius_factor
     endif
 
     ! compute rate

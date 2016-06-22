@@ -1697,8 +1697,8 @@ subroutine BasisInit_hpt(reaction,option)
       reaction%kinmnrl_rate_limiter = 0.d0
       allocate(reaction%kinmnrl_irreversible(reaction%nkinmnrl))
       reaction%kinmnrl_irreversible = 0
-      allocate(reaction%kinmnrl_rate(reaction%nkinmnrl))
-      reaction%kinmnrl_rate = 0.d0
+      allocate(reaction%kinmnrl_rate_constant(reaction%nkinmnrl))
+      reaction%kinmnrl_rate_constant = 0.d0
       allocate(reaction%kinmnrl_activation_energy(reaction%nkinmnrl))
       reaction%kinmnrl_activation_energy = 0.d0
       allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
@@ -1837,7 +1837,7 @@ subroutine BasisInit_hpt(reaction,option)
           reaction%kinmnrl_irreversible(ikinmnrl) = tstrxn%irreversible
           if (reaction%kinmnrl_num_prefactors(ikinmnrl) == 0) then
             ! no prefactors, rates stored in upper level
-            reaction%kinmnrl_rate(ikinmnrl) = tstrxn%rate
+            reaction%kinmnrl_rate_constant(ikinmnrl) = tstrxn%rate
             reaction%kinmnrl_activation_energy(ikinmnrl) = &
               tstrxn%activation_energy
           endif
@@ -2959,7 +2959,7 @@ subroutine BasisInit_hpt(reaction,option)
       write(86,'(1es13.5)') reaction%kinmnrl_logK(imnrl)
       write(86,'(1es13.5)') reaction%kinmnrl_molar_vol(imnrl)
       write(86,'(1es13.5)') reaction%kinmnrl_molar_wt(imnrl)
-      write(86,'(1es13.5)') reaction%kinmnrl_rate(1,imnrl)
+      write(86,'(1es13.5)') reaction%kinmnrl_rate_constant(1,imnrl)
       write(86,'(1es13.5)') 1.d0 ! specific surface area 1 cm^2 / cm^3
     enddo
         close(86)
