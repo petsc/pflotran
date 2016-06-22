@@ -489,6 +489,7 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
   use Geomechanics_Strata_module
   use Geomechanics_Condition_module
   use Geomechanics_Coupler_module
+  use Geomechanics_Regression_module
   use Output_Aux_module
   use Output_Tecplot_module
   use Solver_module
@@ -631,6 +632,10 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
           case('GEOMECHANICS')
             call SolverReadLinear(geomech_solver,input,option)
         end select
+
+      !.....................
+      case ('REGRESSION')
+        call GeomechanicsRegressionRead(simulation%geomech_regression,input,option)
 
       !.........................................................................
       case ('GEOMECHANICS_TIME')

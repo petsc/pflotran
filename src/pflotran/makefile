@@ -389,6 +389,7 @@ geomech_obj = \
 	${common_src}geomechanics_material.o \
 	${common_src}geomechanics_patch.o \
 	${common_src}geomechanics_region.o \
+	${common_src}geomechanics_regression.o \
 	${common_src}geomechanics_strata.o \
 	${common_src}output_geomechanics.o \
 	${common_src}pm_geomechanics_force.o \
@@ -688,6 +689,9 @@ geomechanics_realization.o : dataset.o dataset_base.o geomech_grid.o \
 geomechanics_region.o : geometry.o grid_unstructured_cell.o input_aux.o \
                         logging.o option.o pflotran_constants.o string.o \
                         utility.o
+geomechanics_regression.o : discretization.o  input_aux.o option.o output.o \
+               output_aux.o output_common.o pflotran_constants.o \
+               string.o utility.o geomech_grid_aux.o
 geomechanics_strata.o : geomechanics_material.o geomechanics_region.o \
                         input_aux.o option.o pflotran_constants.o string.o
 geometry.o : input_aux.o option.o pflotran_constants.o
@@ -1166,7 +1170,7 @@ simulation_geomechanics.o : geomechanics_realization.o option.o output.o \
                             regression.o simulation_base.o \
                             simulation_subsurface.o timestepper_base.o \
                             waypoint.o simulation_aux.o checkpoint.o \
-                            output_aux.o 
+                            output_aux.o geomechanics_regression.o
 simulation_hydrogeophysics.o : option.o pflotran_constants.o \
                                pmc_hydrogeophysics.o simulation_base.o \
                                simulation_subsurface.o \

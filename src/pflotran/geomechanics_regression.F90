@@ -1,0 +1,890 @@
+module Geomechanics_Regression_module
+ 
+  use Output_Aux_module
+  
+  use PFLOTRAN_Constants_module
+
+  implicit none
+
+  private
+
+#include "petsc/finclude/petscsys.h"
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+ 
+  type, public :: geomechanics_regression_type
+    type(geomechanics_regression_variable_type), pointer :: variable_list
+    PetscInt, pointer :: natural_vertex_ids(:)
+    PetscInt :: num_vertices_per_process
+    PetscInt, pointer :: vertices_per_process_natural_ids(:)
+    Vec :: natural_vertex_id_vec
+    Vec :: vertices_per_process_vec
+    VecScatter :: scatter_natural_vertex_id_gtos
+    VecScatter :: scatter_vertices_per_process_gtos
+    type(geomechanics_regression_type), pointer :: next
+  end type geomechanics_regression_type
+
+  type, public :: geomechanics_regression_variable_type
+    character(len=MAXSTRINGLENGTH) :: name
+    type(geomechanics_regression_variable_type), pointer :: next
+  end type geomechanics_regression_variable_type
+  
+  public :: GeomechanicsRegressionRead, &
+!            GeomechanicsRegressionCreateMapping, &
+!            GeomechanicsRegressionOutput, &
+            GeomechanicsRegressionDestroy
+  
+contains
+
+! ************************************************************************** !
+
+function GeomechanicsRegressionCreate()
+  ! 
+  ! Creates a geomechanics regression object
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/01/2016
+  ! 
+  
+  implicit none
+
+  type(geomechanics_regression_type), pointer :: GeomechanicsRegressionCreate
+  
+  type(geomechanics_regression_type), pointer :: geomechanics_regression
+  
+  allocate(geomechanics_regression)
+  nullify(geomechanics_regression%variable_list)
+  nullify(geomechanics_regression%natural_vertex_ids)
+  geomechanics_regression%num_vertices_per_process = 0
+  nullify(geomechanics_regression%vertices_per_process_natural_ids)
+  geomechanics_regression%natural_vertex_id_vec = 0
+  geomechanics_regression%vertices_per_process_vec = 0
+  geomechanics_regression%scatter_natural_vertex_id_gtos = 0
+  geomechanics_regression%scatter_vertices_per_process_gtos = 0
+  nullify(geomechanics_regression%next)
+  GeomechanicsRegressionCreate => geomechanics_regression
+
+end function GeomechanicsRegressionCreate
+
+! ************************************************************************** !
+
+function GeomechanicsRegressionVariableCreate()
+  ! 
+  ! Creates a geomechanics_regression variable object
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/11/12
+  ! 
+  
+  implicit none
+
+  type(geomechanics_regression_variable_type), pointer :: GeomechanicsRegressionVariableCreate
+  
+  type(geomechanics_regression_variable_type), pointer :: geomechanics_regression_variable
+  
+  allocate(geomechanics_regression_variable)
+  geomechanics_regression_variable%name = ''
+  nullify(geomechanics_regression_variable%next)
+  GeomechanicsRegressionVariableCreate => geomechanics_regression_variable
+
+end function GeomechanicsRegressionVariableCreate
+
+! ************************************************************************** !
+
+subroutine GeomechanicsRegressionRead(geomechanics_regression,input,option)
+  ! 
+  ! Reads in contents of a geomechanics_regression card
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/11/12
+  ! 
+
+  use Option_module
+  use Input_Aux_module
+  use String_module
+  use Utility_module
+
+  implicit none
+  
+  type(geomechanics_regression_type), pointer :: geomechanics_regression
+  type(input_type), pointer :: input
+  type(option_type) :: option
+  
+  character(len=MAXWORDLENGTH) :: keyword, word
+  type(geomechanics_regression_variable_type), pointer :: cur_variable, new_variable
+  PetscInt :: count, max_vertices
+  PetscInt, pointer :: int_array(:)
+  PetscErrorCode :: ierr
+
+  geomechanics_regression => GeomechanicsRegressionCreate()
+  
+  input%ierr = 0
+  do
+  
+    call InputReadPflotranString(input,option)
+
+    if (InputCheckExit(input,option)) exit  
+
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','GEOMECHANICS_REGRESSION')
+    call StringToUpper(keyword)   
+      
+    select case(trim(keyword))
+    
+      case('VARIABLES') 
+        count = 0
+        do 
+          call InputReadPflotranString(input,option)
+          if (InputCheckExit(input,option)) exit  
+
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'variable','GEOMECHANICS_REGRESSION,VARIABLES')
+          call StringToUpper(word)
+          new_variable => GeomechanicsRegressionVariableCreate()
+          new_variable%name = word
+          if (.not.associated(geomechanics_regression%variable_list)) then
+            geomechanics_regression%variable_list => new_variable
+          else
+            cur_variable%next => new_variable
+          endif
+          cur_variable => new_variable
+        enddo
+      case('VERTICES')
+        max_vertices = 100
+        allocate(int_array(max_vertices))
+        count = 0
+        do 
+          call InputReadPflotranString(input,option)
+          if (InputCheckExit(input,option)) exit  
+
+          count = count + 1
+          if (count > max_vertices) then
+            call reallocateIntArray(int_array,max_vertices)
+          endif
+          call InputReadInt(input,option,int_array(count))
+          call InputErrorMsg(input,option,'natural vertex id','GEOMECHANICS_REGRESSION,VERTICES')
+        enddo
+        allocate(geomechanics_regression%natural_vertex_ids(count))
+        geomechanics_regression%natural_vertex_ids = int_array(1:count)
+        call PetscSortInt(count,geomechanics_regression%natural_vertex_ids, &
+                          ierr);CHKERRQ(ierr)
+        deallocate(int_array)
+      case('VERTICES_PER_PROCESS')
+        call InputReadInt(input,option,geomechanics_regression%num_vertices_per_process)
+        call InputErrorMsg(input,option,'num vertices per process','GEOMECHANICS_REGRESSION')
+      case default
+        call InputKeywordUnrecognized(keyword,'GEOMECHANICS_REGRESSION',option)
+    end select
+    
+  enddo
+  
+end subroutine GeomechanicsRegressionRead
+
+! ************************************************************************** !
+
+#if 0
+subroutine GeomechanicsRegressionCreateMapping(regression,realization)
+  ! 
+  ! Creates mapping between a natural mpi vec and a
+  ! sequential vec on io_rank
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/12/12
+  ! 
+
+  use Option_module
+  use Geomechanics_Realization_class
+  use Geomechanics_Grid_Aux_module
+  use Discretization_module
+  
+  implicit none
+  
+#include "petsc/finclude/petscis.h"
+#include "petsc/finclude/petscis.h90"
+#include "petsc/finclude/petscviewer.h"
+
+  type(regression_type), pointer :: regression
+  class(realization_geomech_type) :: realization
+  
+  IS :: is_petsc
+  PetscInt, allocatable :: int_array(:)
+  PetscInt :: i, upper_bound, lower_bound, count, temp_int
+  PetscInt :: local_id
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: temp_vec
+  VecScatter :: temp_scatter
+  IS :: temp_is
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+
+  type(geomech_grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  
+  if (.not.associated(regression)) return
+  
+  grid => realization%patch%grid
+  option => realization%option
+  
+  ! natural vertex ids
+  if (associated(regression%natural_vertex_ids)) then
+    ! ensure that natural ids are within problem domain
+    if (maxval(regression%natural_vertex_ids) > grid%nmax) then
+      option%io_buffer = 'Natural IDs outside problem domain requested ' // &
+        'for regression output.  Removing non-existent IDs.'
+      call printWrnMsg(option)
+      count = 0
+      allocate(int_array(size(regression%natural_vertex_ids)))
+      int_array = 0
+      do i = 1, size(regression%natural_vertex_ids)
+        if (regression%natural_vertex_ids(i) <= grid%nmax_node) then
+          count = count + 1
+          int_array(count) = regression%natural_vertex_ids(i)
+        endif
+      enddo
+      ! reallocate array
+      deallocate(regression%natural_vertex_ids)
+      allocate(regression%natural_vertex_ids(count))
+      !geh: Since natural_vertex_ids and int_array may now be of different sizes,
+      !     we need to be explicit about the values to copy.  gfortran has
+      !     issues with this while Intel figures it out. Better to be explicit.
+      regression%natural_vertex_ids = int_array(1:count)
+      deallocate(int_array)
+    endif
+    call VecCreate(PETSC_COMM_SELF,regression%natural_vertex_id_vec, &
+                   ierr);CHKERRQ(ierr)
+    if (option%myrank == option%io_rank) then
+      call VecSetSizes(regression%natural_vertex_id_vec, &
+                       size(regression%natural_vertex_ids), &
+                       PETSC_DECIDE,ierr);CHKERRQ(ierr)
+    else
+      call VecSetSizes(regression%natural_vertex_id_vec,0, &
+                       PETSC_DECIDE,ierr);CHKERRQ(ierr)
+    endif
+    call VecSetFromOptions(regression%natural_vertex_id_vec,ierr);CHKERRQ(ierr)
+  
+    if (option%myrank == option%io_rank) then
+      count = size(regression%natural_vertex_ids)
+      ! determine how many of the natural vertex ids are local
+      allocate(int_array(count))
+      int_array = regression%natural_vertex_ids
+      ! convert to zero based
+      int_array = int_array - 1
+    else
+      count = 0
+      allocate(int_array(count))
+    endif
+    call DiscretAOApplicationToPetsc(realization%discretization,int_array)
+  
+  ! create IS for global petsc vertex ids
+    call ISCreateGeneral(option%mycomm,count,int_array,PETSC_COPY_VALUES, &
+                         is_petsc,ierr);CHKERRQ(ierr)
+    deallocate(int_array)
+  
+#ifdef GEOMECHANICS_REGRESSION_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, &
+                              'is_petsc_natural_vertex_id.out', &
+                              viewer,ierr);CHKERRQ(ierr)
+    call ISView(is_petsc,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
+
+    ! create scatter context
+    call VecScatterCreate(realization%field%work,is_petsc, &
+                          regression%natural_vertex_id_vec,PETSC_NULL_OBJECT, &
+                          regression%scatter_natural_vertex_id_gtos, &
+                          ierr);CHKERRQ(ierr)
+
+    call ISDestroy(is_petsc,ierr);CHKERRQ(ierr)
+
+#ifdef GEOMECHANICS_REGRESSION_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, &
+                              'regression_scatter_nat_vertex_ids.out',viewer, &
+                              ierr);CHKERRQ(ierr)
+    call VecScatterView(regression%scatter_natural_vertex_id_gtos,viewer, &
+                        ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
+
+  endif
+
+  if (regression%num_vertices_per_process > 0) then
+    ! determine minimum number of vertices per process
+    i = grid%nlmax
+    call MPI_Allreduce(i,count,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MIN, &
+                       option%mycomm,ierr)
+    if (count < regression%num_vertices_per_process) then
+      option%io_buffer = 'Number of vertices per process for GeomechanicsRegression ' // &
+        'exceeds minimum number of vertices per process.  Truncating.'
+      call printMsg(option)
+      regression%num_vertices_per_process = count
+    endif
+  
+    ! vertices ids per processor
+    call VecCreate(PETSC_COMM_SELF,regression%vertices_per_process_vec, &
+                   ierr);CHKERRQ(ierr)
+    if (option%myrank == option%io_rank) then
+      call VecSetSizes(regression%vertices_per_process_vec, &
+                       regression%num_vertices_per_process*option%mycommsize, &
+                       PETSC_DECIDE,ierr);CHKERRQ(ierr)
+    else
+      call VecSetSizes(regression%vertices_per_process_vec,ZERO_INTEGER, &
+                       PETSC_DECIDE,ierr);CHKERRQ(ierr)
+    endif
+    call VecSetFromOptions(regression%vertices_per_process_vec, &
+                           ierr);CHKERRQ(ierr)
+
+    ! create temporary vec to transfer down ids of vertices
+    call VecCreate(option%mycomm,temp_vec,ierr);CHKERRQ(ierr)
+    call VecSetSizes(temp_vec, &
+                     regression%num_vertices_per_process, &
+                     PETSC_DECIDE,ierr);CHKERRQ(ierr)
+    call VecSetFromOptions(temp_vec,ierr);CHKERRQ(ierr)
+  
+    ! calculate interval
+    call VecGetArrayF90(temp_vec,vec_ptr,ierr);CHKERRQ(ierr)
+    temp_int = grid%nlmax / regression%num_vertices_per_process
+    do i = 1, regression%num_vertices_per_process
+      vec_ptr(i) = temp_int*(i-1) + 1 + grid%global_offset
+    enddo
+    call VecRestoreArrayF90(temp_vec,vec_ptr,ierr);CHKERRQ(ierr)
+
+    ! create temporary scatter to transfer values to io_rank
+    if (option%myrank == option%io_rank) then
+      count = option%mycommsize*regression%num_vertices_per_process
+      ! determine how many of the natural vertex ids are local
+      allocate(int_array(count))
+      do i = 1, count
+        int_array(i) = i
+      enddo
+      ! convert to zero based
+      int_array = int_array - 1
+    else
+      count = 0
+      allocate(int_array(count))
+    endif
+    call ISCreateGeneral(option%mycomm,count, &
+                         int_array,PETSC_COPY_VALUES,temp_is, &
+                         ierr);CHKERRQ(ierr)
+
+    call VecScatterCreate(temp_vec,temp_is, &
+                          regression%vertices_per_process_vec,PETSC_NULL_OBJECT, &
+                          temp_scatter,ierr);CHKERRQ(ierr)
+    call ISDestroy(temp_is,ierr);CHKERRQ(ierr)
+ 
+    ! scatter ids to io_rank
+    call VecScatterBegin(temp_scatter,temp_vec, &
+                         regression%vertices_per_process_vec, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+    call VecScatterEnd(temp_scatter,temp_vec, &
+                       regression%vertices_per_process_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+    call VecScatterDestroy(temp_scatter,ierr);CHKERRQ(ierr)
+    call VecDestroy(temp_vec,ierr);CHKERRQ(ierr)
+   
+    ! transfer vertex ids into array for creating new scatter
+    if (option%myrank == option%io_rank) then
+      count = option%mycommsize*regression%num_vertices_per_process
+      call VecGetArrayF90(regression%vertices_per_process_vec,vec_ptr, &
+                          ierr);CHKERRQ(ierr)
+      do i = 1, count
+        int_array(i) = int(vec_ptr(i)+0.1d0) ! tolerance to ensure int value
+      enddo
+      call VecRestoreArrayF90(regression%vertices_per_process_vec,vec_ptr, &
+                              ierr);CHKERRQ(ierr)
+      ! convert to zero based
+      int_array = int_array - 1
+    endif
+
+    call ISCreateGeneral(option%mycomm,count, &
+                         int_array,PETSC_COPY_VALUES,is_petsc, &
+                         ierr);CHKERRQ(ierr)
+    deallocate(int_array)
+
+#ifdef GEOMECHANICS_REGRESSION_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, &
+                              'is_petsc_vertices_per_process.out', &
+                              viewer,ierr);CHKERRQ(ierr)
+    call ISView(is_petsc,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
+
+    call VecScatterCreate(realization%field%work,is_petsc, &
+                          regression%vertices_per_process_vec, &
+                          PETSC_NULL_OBJECT, &
+                          regression%scatter_vertices_per_process_gtos, &
+                          ierr);CHKERRQ(ierr)
+    call ISDestroy(is_petsc,ierr);CHKERRQ(ierr)
+
+#ifdef GEOMECHANICS_REGRESSION_DEBUG
+    call PetscViewerASCIIOpen(option%mycomm, &
+                              'regression_scatter_vertices_per_process.out', &
+                              viewer,ierr);CHKERRQ(ierr)
+    call VecScatterView(regression%scatter_vertices_per_process_gtos,viewer, &
+                        ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
+  
+    ! fill in natural ids of these vertices on the io_rank
+    if (option%myrank == option%io_rank) then
+      allocate(regression%vertices_per_process_natural_ids( &
+               regression%num_vertices_per_process*option%mycommsize))
+    endif
+
+    call VecGetArrayF90(realization%field%work,vec_ptr,ierr);CHKERRQ(ierr)
+    do local_id = 1, grid%nlmax
+      vec_ptr(local_id) = grid%nG2A(grid%nL2G(local_id))
+    enddo
+    call VecRestoreArrayF90(realization%field%work,vec_ptr,ierr);CHKERRQ(ierr)
+
+    call VecScatterBegin(regression%scatter_vertices_per_process_gtos, &
+                          realization%field%work, &
+                          regression%vertices_per_process_vec, &
+                          INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+    call VecScatterEnd(regression%scatter_vertices_per_process_gtos, &
+                       realization%field%work, &
+                       regression%vertices_per_process_vec, &
+                       INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+
+    if (option%myrank == option%io_rank) then
+      call VecGetArrayF90(regression%vertices_per_process_vec,vec_ptr, &
+                          ierr);CHKERRQ(ierr)
+      regression%vertices_per_process_natural_ids(:) = int(vec_ptr(:)+0.1)
+      call VecRestoreArrayF90(regression%vertices_per_process_vec,vec_ptr, &
+                              ierr);CHKERRQ(ierr)
+    endif
+
+  endif
+  
+end subroutine GeomechanicsRegressionCreateMapping
+
+! ************************************************************************** !
+
+subroutine GeomechanicsRegressionOutput(regression,realization,flow_timestepper, &
+                            tran_timestepper)
+  !
+  ! Prints regression output through the io_rank
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/12/12
+  ! 
+
+  use Realization_Subsurface_class
+  use Timestepper_BE_class
+  use Option_module
+  use Discretization_module
+  use Output_module
+  use Output_Aux_module
+  use Output_Common_module, only : OutputGetCellCenteredVelocities, &
+                                   OutputGetVarFromArray
+  
+  implicit none
+  
+  type(regression_type), pointer :: regression
+  class(realization_subsurface_type) :: realization
+  ! these must be pointers as they can be null
+  class(timestepper_BE_type), pointer :: flow_timestepper
+  class(timestepper_BE_type), pointer :: tran_timestepper  
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  Vec :: global_vec
+  Vec :: global_vec_vx,global_vec_vy,global_vec_vz
+  Vec :: x_vel_natural, y_vel_natural, z_vel_natural
+  Vec :: x_vel_process, y_vel_process, z_vel_process
+  PetscInt :: ivar, isubvar
+  type(option_type), pointer :: option
+  type(output_variable_type), pointer :: cur_variable
+  PetscReal, pointer :: vec_ptr(:), y_ptr(:), z_ptr(:)
+  PetscInt :: i
+  PetscInt :: iphase
+  PetscReal :: r_norm, x_norm
+  PetscReal :: max, min, mean
+  PetscErrorCode :: ierr
+  
+  if (.not.associated(regression)) return
+  
+  option => realization%option
+  
+  if (option%myrank == option%io_rank) then
+    string = trim(option%global_prefix) // &
+             trim(option%group_prefix) // &  
+             '.regression'
+    option%io_buffer = '--> write regression output file: ' // trim(string)
+    call printMsg(option)
+    open(unit=OUTPUT_UNIT,file=string,action="write")
+  endif
+  
+  call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                  global_vec,GLOBAL,option)  
+  call DiscretizationDuplicateVector(realization%discretization,global_vec,global_vec_vx)
+  call DiscretizationDuplicateVector(realization%discretization,global_vec,global_vec_vy)
+  call DiscretizationDuplicateVector(realization%discretization,global_vec,global_vec_vz)
+
+  cur_variable => realization%output_option%output_snap_variable_list%first
+  do 
+    if (.not.associated(cur_variable)) exit
+    
+    ivar = cur_variable%ivar
+    isubvar = cur_variable%isubvar
+  
+    call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
+    
+    call VecMax(global_vec,PETSC_NULL_INTEGER,max,ierr);CHKERRQ(ierr)
+    call VecMin(global_vec,PETSC_NULL_INTEGER,min,ierr);CHKERRQ(ierr)
+    call VecSum(global_vec,mean,ierr);CHKERRQ(ierr)
+    mean = mean / realization%patch%grid%nmax
+    
+    ! list of natural ids
+    if (associated(regression%natural_vertex_ids)) then
+      call VecScatterBegin(regression%scatter_natural_vertex_id_gtos, &
+                           global_vec, &
+                           regression%natural_vertex_id_vec, &
+                           INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+      call VecScatterEnd(regression%scatter_natural_vertex_id_gtos, &
+                         global_vec, &
+                         regression%natural_vertex_id_vec, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+    endif
+    if (regression%num_vertices_per_process > 0) then
+      ! vertices per process
+      call VecScatterBegin(regression%scatter_vertices_per_process_gtos, &
+                           global_vec, &
+                           regression%vertices_per_process_vec, &
+                           INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+      call VecScatterEnd(regression%scatter_vertices_per_process_gtos, &
+                         global_vec, &
+                         regression%vertices_per_process_vec, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+    endif
+
+100 format(i9,': ',es21.13)    
+101 format(i9,': ',i9)    
+    
+    if (option%myrank == option%io_rank) then
+      string = OutputVariableToCategoryString(cur_variable%icategory)
+      write(OUTPUT_UNIT,'(''-- '',a,'': '',a,'' --'')') &
+        trim(string), trim(cur_variable%name)
+      
+      ! max, min, mean
+      if (cur_variable%iformat == 0) then
+        write(OUTPUT_UNIT,'(6x,''Max: '',es21.13)') max
+        write(OUTPUT_UNIT,'(6x,''Min: '',es21.13)') min
+      else
+        write(OUTPUT_UNIT,'(6x,''Max: '',i9)') int(max)
+        write(OUTPUT_UNIT,'(6x,''Min: '',i9)') int(min)
+      endif
+      write(OUTPUT_UNIT,'(5x,''Mean: '',es21.13)') mean
+      
+      ! natural vertex ids
+      if (associated(regression%natural_vertex_ids)) then
+        if (size(regression%natural_vertex_ids) > 0) then
+          call VecGetArrayF90(regression%natural_vertex_id_vec,vec_ptr, &
+                              ierr);CHKERRQ(ierr)
+          if (cur_variable%iformat == 0) then
+            do i = 1, size(regression%natural_vertex_ids)
+              write(OUTPUT_UNIT,100) &
+                regression%natural_vertex_ids(i),vec_ptr(i)
+            enddo
+          else
+            do i = 1, size(regression%natural_vertex_ids)
+              write(OUTPUT_UNIT,101) &
+                regression%natural_vertex_ids(i),int(vec_ptr(i))
+            enddo
+          endif
+          call VecRestoreArrayF90(regression%natural_vertex_id_vec,vec_ptr, &
+                                  ierr);CHKERRQ(ierr)
+        endif
+      endif
+      
+      ! vertex ids per process
+      if (regression%num_vertices_per_process > 0) then
+        call VecGetArrayF90(regression%vertices_per_process_vec,vec_ptr, &
+                            ierr);CHKERRQ(ierr)
+        if (cur_variable%iformat == 0) then
+          do i = 1, regression%num_vertices_per_process*option%mycommsize
+            write(OUTPUT_UNIT,100) &
+              regression%vertices_per_process_natural_ids(i),vec_ptr(i)
+          enddo
+        else
+          do i = 1, regression%num_vertices_per_process*option%mycommsize
+            write(OUTPUT_UNIT,101) &
+              regression%vertices_per_process_natural_ids(i),int(vec_ptr(i))
+          enddo
+        endif
+        call VecRestoreArrayF90(regression%vertices_per_process_vec,vec_ptr, &
+                                ierr);CHKERRQ(ierr)
+      endif
+    endif
+  
+    cur_variable => cur_variable%next
+  enddo
+  
+  ! velocities
+  if ((realization%output_option%print_tecplot_vel_cent .or. &
+       realization%output_option%print_hdf5_vel_cent) .and. &
+      option%nflowdof > 0) then
+    if (associated(regression%natural_vertex_ids)) then
+      call VecDuplicate(regression%natural_vertex_id_vec,x_vel_natural, &
+                        ierr);CHKERRQ(ierr)
+      call VecDuplicate(regression%natural_vertex_id_vec,y_vel_natural, &
+                        ierr);CHKERRQ(ierr)
+      call VecDuplicate(regression%natural_vertex_id_vec,z_vel_natural, &
+                        ierr);CHKERRQ(ierr)
+      call VecZeroEntries(x_vel_natural,ierr);CHKERRQ(ierr)
+      call VecZeroEntries(y_vel_natural,ierr);CHKERRQ(ierr)
+      call VecZeroEntries(z_vel_natural,ierr);CHKERRQ(ierr)
+    endif
+    if (regression%num_vertices_per_process > 0) then
+      call VecDuplicate(regression%vertices_per_process_vec,x_vel_process, &
+                        ierr);CHKERRQ(ierr)
+      call VecDuplicate(regression%vertices_per_process_vec,y_vel_process, &
+                        ierr);CHKERRQ(ierr)
+      call VecDuplicate(regression%vertices_per_process_vec,z_vel_process, &
+                        ierr);CHKERRQ(ierr)
+      call VecZeroEntries(x_vel_process,ierr);CHKERRQ(ierr)
+      call VecZeroEntries(y_vel_process,ierr);CHKERRQ(ierr)
+      call VecZeroEntries(z_vel_process,ierr);CHKERRQ(ierr)
+    endif
+
+    do iphase = 1, option%nphase
+      if (associated(regression%natural_vertex_ids) .or. &
+          regression%num_vertices_per_process > 0) then
+    
+        if (iphase == 1) then
+          string = 'LIQUID'
+        else
+          string = 'GAS'
+        endif
+        if (option%myrank == option%io_rank) then
+          write(OUTPUT_UNIT,'(''-- GENERIC: '',a,'' VELOCITY ['',a, &
+                              &''] --'')') &
+            trim(string), 'm/' // trim(realization%output_option%tunit)
+        endif
+    
+        ! X
+        call OutputGetCellCenteredVelocities(realization,global_vec_vx, &
+                                             global_vec_vy,global_vec_vz, &
+                                             iphase)
+        if (associated(regression%natural_vertex_ids)) then
+          call VecScatterBegin(regression%scatter_natural_vertex_id_gtos, &
+                               global_vec_vx,x_vel_natural,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+          call VecScatterEnd(regression%scatter_natural_vertex_id_gtos, &
+                             global_vec_vx,x_vel_natural,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+        endif
+        if (regression%num_vertices_per_process > 0) then
+          call VecScatterBegin(regression%scatter_vertices_per_process_gtos, &
+                               global_vec_vx,x_vel_process,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+          call VecScatterEnd(regression%scatter_vertices_per_process_gtos, &
+                             global_vec_vx,x_vel_process,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+        endif
+        ! Y
+        if (associated(regression%natural_vertex_ids)) then
+          call VecScatterBegin(regression%scatter_natural_vertex_id_gtos, &
+                               global_vec_vy,y_vel_natural,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+          call VecScatterEnd(regression%scatter_natural_vertex_id_gtos, &
+                             global_vec_vy,y_vel_natural,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+        endif
+        if (regression%num_vertices_per_process > 0) then
+          call VecScatterBegin(regression%scatter_vertices_per_process_gtos, &
+                               global_vec_vy,y_vel_process,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+          call VecScatterEnd(regression%scatter_vertices_per_process_gtos, &
+                             global_vec_vy,y_vel_process,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+        endif
+        ! Z
+        if (associated(regression%natural_vertex_ids)) then
+          call VecScatterBegin(regression%scatter_natural_vertex_id_gtos, &
+                               global_vec_vz,z_vel_natural,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+          call VecScatterEnd(regression%scatter_natural_vertex_id_gtos, &
+                             global_vec_vz,z_vel_natural,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+        endif
+        if (regression%num_vertices_per_process > 0) then
+          call VecScatterBegin(regression%scatter_vertices_per_process_gtos, &
+                               global_vec_vz,z_vel_process,INSERT_VALUES, &
+                               SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+          call VecScatterEnd(regression%scatter_vertices_per_process_gtos, &
+                             global_vec_vz,z_vel_process,INSERT_VALUES, &
+                             SCATTER_FORWARD,ierr);CHKERRQ(ierr)
+        endif
+      
+104 format(i9,': ',3es21.13) 
+
+        ! natural vertex ids
+        if (option%myrank == option%io_rank) then
+          if (associated(regression%natural_vertex_ids)) then
+            if (size(regression%natural_vertex_ids) > 0) then
+              call VecGetArrayF90(x_vel_natural,vec_ptr,ierr);CHKERRQ(ierr)
+              call VecGetArrayF90(y_vel_natural,y_ptr,ierr);CHKERRQ(ierr)
+              call VecGetArrayF90(z_vel_natural,z_ptr,ierr);CHKERRQ(ierr)
+              do i = 1, size(regression%natural_vertex_ids)
+                write(OUTPUT_UNIT,104) &
+                  regression%natural_vertex_ids(i),vec_ptr(i),y_ptr(i),z_ptr(i)
+              enddo
+              call VecRestoreArrayF90(x_vel_natural,vec_ptr, &
+                                      ierr);CHKERRQ(ierr)
+              call VecRestoreArrayF90(y_vel_natural,y_ptr,ierr);CHKERRQ(ierr)
+              call VecRestoreArrayF90(z_vel_natural,z_ptr,ierr);CHKERRQ(ierr)
+            endif
+          endif
+      
+          ! vertex ids per process
+          if (regression%num_vertices_per_process > 0) then
+            call VecGetArrayF90(x_vel_process,vec_ptr,ierr);CHKERRQ(ierr)
+            call VecGetArrayF90(y_vel_process,y_ptr,ierr);CHKERRQ(ierr)
+            call VecGetArrayF90(z_vel_process,z_ptr,ierr);CHKERRQ(ierr)
+            do i = 1, regression%num_vertices_per_process*option%mycommsize
+              write(OUTPUT_UNIT,104) &
+                regression%vertices_per_process_natural_ids(i),vec_ptr(i), &
+                  y_ptr(i),z_ptr(i)
+            enddo
+            call VecRestoreArrayF90(x_vel_process,vec_ptr,ierr);CHKERRQ(ierr)
+            call VecRestoreArrayF90(y_vel_process,y_ptr,ierr);CHKERRQ(ierr)
+            call VecRestoreArrayF90(z_vel_process,z_ptr,ierr);CHKERRQ(ierr)
+          endif
+        endif
+      endif
+    enddo
+
+    if (associated(regression%natural_vertex_ids)) then
+      call VecDestroy(x_vel_natural,ierr);CHKERRQ(ierr)
+      call VecDestroy(y_vel_natural,ierr);CHKERRQ(ierr)
+      call VecDestroy(z_vel_natural,ierr);CHKERRQ(ierr)
+    endif
+    if (regression%num_vertices_per_process > 0) then
+      call VecDestroy(x_vel_process,ierr);CHKERRQ(ierr)
+      call VecDestroy(y_vel_process,ierr);CHKERRQ(ierr)
+      call VecDestroy(z_vel_process,ierr);CHKERRQ(ierr)
+    endif
+  endif ! option%nflowdof > 0
+  
+  call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vx,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vy,ierr);CHKERRQ(ierr)
+  call VecDestroy(global_vec_vz,ierr);CHKERRQ(ierr)
+
+102 format(i12)    
+103 format(es21.13)
+
+  ! timestep, newton iteration, solver iteration output
+  if (associated(flow_timestepper)) then
+    call VecNorm(realization%field%flow_xx,NORM_2,x_norm,ierr);CHKERRQ(ierr)
+    call VecNorm(realization%field%flow_r,NORM_2,r_norm,ierr);CHKERRQ(ierr)
+    if (option%myrank == option%io_rank) then
+      write(OUTPUT_UNIT,'(''-- SOLUTION: Flow --'')')
+      write(OUTPUT_UNIT,'(''   Time (seconds): '',es21.13)') &
+        flow_timestepper%cumulative_solver_time
+      write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') flow_timestepper%steps
+      write(OUTPUT_UNIT,'(''   Newton Iterations: '',i12)') &
+        flow_timestepper%cumulative_newton_iterations
+      write(OUTPUT_UNIT,'(''   Solver Iterations: '',i12)') &
+        flow_timestepper%cumulative_linear_iterations
+      write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
+        flow_timestepper%cumulative_time_step_cuts
+      write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es21.13)') x_norm
+      write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm
+    endif
+  endif
+  if (associated(tran_timestepper)) then
+    call VecNorm(realization%field%tran_xx,NORM_2,x_norm,ierr);CHKERRQ(ierr)
+    if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      call VecNorm(realization%field%tran_r,NORM_2,r_norm,ierr);CHKERRQ(ierr)
+    endif
+    if (option%myrank == option%io_rank) then
+      write(OUTPUT_UNIT,'(''-- SOLUTION: Transport --'')')
+      write(OUTPUT_UNIT,'(''   Time (seconds): '',es21.13)') &
+        tran_timestepper%cumulative_solver_time
+      write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') tran_timestepper%steps
+      write(OUTPUT_UNIT,'(''   Newton Iterations: '',i12)') &
+        tran_timestepper%cumulative_newton_iterations
+      write(OUTPUT_UNIT,'(''   Solver Iterations: '',i12)') &
+        tran_timestepper%cumulative_linear_iterations
+      write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
+        tran_timestepper%cumulative_time_step_cuts
+      write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es21.13)') x_norm
+      if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+        write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm
+      endif
+    endif
+  endif
+  
+  close(OUTPUT_UNIT)
+  
+end subroutine GeomechanicsRegressionOutput
+
+#endif
+! ************************************************************************** !
+
+recursive subroutine GeomechanicsRegressionVariableDestroy(geomechanics_regression_variable)
+  ! 
+  ! Destroys a regression variable object
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/11/12
+  ! 
+
+  implicit none
+  
+  type(geomechanics_regression_variable_type), pointer :: geomechanics_regression_variable
+  
+  if (.not.associated(geomechanics_regression_variable)) return
+  
+  call GeomechanicsRegressionVariableDestroy(geomechanics_regression_variable%next)
+
+  deallocate(geomechanics_regression_variable)
+  nullify(geomechanics_regression_variable)
+  
+end subroutine GeomechanicsRegressionVariableDestroy
+
+! ************************************************************************** !
+
+subroutine GeomechanicsRegressionDestroy(geomechanics_regression)
+  ! 
+  ! Destroys a geomechanics_regression object
+  ! 
+  ! Author: Satish Karra
+  ! Date: 10/11/12
+  ! 
+
+  use Utility_module
+  
+  implicit none
+  
+  type(geomechanics_regression_type), pointer :: geomechanics_regression
+  
+  PetscErrorCode :: ierr
+  
+  if (.not.associated(geomechanics_regression)) return
+  
+  call GeomechanicsRegressionVariableDestroy(geomechanics_regression%variable_list)
+  call DeallocateArray(geomechanics_regression%natural_vertex_ids)
+  geomechanics_regression%num_vertices_per_process = 0
+  call DeallocateArray(geomechanics_regression%vertices_per_process_natural_ids)
+  if (geomechanics_regression%natural_vertex_id_vec /= 0) then
+    call VecDestroy(geomechanics_regression%natural_vertex_id_vec,ierr);CHKERRQ(ierr)
+  endif
+  if (geomechanics_regression%vertices_per_process_vec /= 0) then
+    call VecDestroy(geomechanics_regression%vertices_per_process_vec,ierr);CHKERRQ(ierr)
+  endif
+  if (geomechanics_regression%scatter_natural_vertex_id_gtos /= 0) then
+    call VecScatterDestroy(geomechanics_regression%scatter_natural_vertex_id_gtos, &
+                           ierr);CHKERRQ(ierr)
+  endif
+  if (geomechanics_regression%scatter_vertices_per_process_gtos /= 0) then
+    call VecScatterDestroy(geomechanics_regression%scatter_vertices_per_process_gtos, &
+                           ierr);CHKERRQ(ierr)
+  endif
+
+  deallocate(geomechanics_regression)
+  nullify(geomechanics_regression)
+  
+end subroutine GeomechanicsRegressionDestroy
+
+end module Geomechanics_Regression_module
