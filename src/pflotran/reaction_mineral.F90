@@ -948,7 +948,12 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
            
           if (icomp > 0) then 
             ! add derivative for primary species
-            Jac(icomp,icomp) = Jac(icomp,icomp) + dIm_dspec
+            do i = 1, ncomp
+              jcomp = mineral%kinmnrlspecid(i,imnrl)
+              ! units = (mol/sec)*(kg water/mol) = kg water/sec
+              Jac(jcomp,icomp) = Jac(jcomp,icomp) + &
+                                 mineral%kinmnrlstoich(i,imnrl)*dIm_dspec
+            enddo
           else ! secondary species -- have to calculate the derivative
             ! have to recalculate the reaction quotient (QK) for secondary species
             icplx = -icomp
