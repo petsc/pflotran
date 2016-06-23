@@ -959,23 +959,20 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
           select type(cur_pm)
           !-----------------------------------
             class is(pm_subsurface_flow_type)
-              if (ts%solver%check_post_convergence .or. &
-                  cur_pm%check_post_convergence) then
+              if (cur_pm%check_post_convergence) then
                 call SNESLineSearchSetPostCheck(linesearch,PMCheckUpdatePost, &
                      pmc%pm_ptr,ierr);CHKERRQ(ierr)
                 !geh: it is possible that the other side has not been set
-                ts%solver%check_post_convergence = PETSC_TRUE
                 cur_pm%check_post_convergence = PETSC_TRUE
               endif
           !------------------------------------
             class is(pm_rt_type)
-              if (ts%solver%check_post_convergence .or. &
-                  cur_pm%print_EKG .or. option%use_mc) then
+              if (cur_pm%print_EKG .or. option%use_mc .or. &
+                  cur_pm%check_post_convergence) then
                 call SNESLineSearchSetPostCheck(linesearch,PMCheckUpdatePost, &
                      pmc%pm_ptr,ierr);CHKERRQ(ierr)
                 if (cur_pm%print_EKG) then
-                  ts%solver%check_post_convergence = PETSC_TRUE
-                  option%transport%check_post_convergence = PETSC_TRUE
+                  cur_pm%check_post_convergence = PETSC_TRUE
                 endif
               endif
           !-------------------------------------
@@ -2014,13 +2011,6 @@ subroutine SubsurfaceReadInput(simulation)
             call SolverReadNewton(flow_timestepper%solver,input,option)
           case('TRAN','TRANSPORT')
             call SolverReadNewton(tran_timestepper%solver,input,option)
-            if (tran_timestepper%solver%check_post_convergence) then
-              option%transport%check_post_convergence = PETSC_TRUE
-              option%transport%inf_scaled_res_tol = &
-                tran_timestepper%solver%newton_inf_scaled_res_tol
-              option%transport%inf_rel_update_tol = &
-                tran_timestepper%solver%newton_inf_rel_update_tol
-            endif
           case default
             option%io_buffer = 'NEWTON_SOLVER must specify FLOW or TRANSPORT.'
             call printErrMsg(option)

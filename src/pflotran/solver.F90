@@ -41,7 +41,6 @@ module Solver_module
     PetscReal :: newton_inf_upd_tol    ! infinity tolerance for update
     PetscReal :: newton_inf_rel_update_tol ! infinity norm on relative update (c(i)-c(i-1))/c(i-1)
     PetscReal :: newton_inf_scaled_res_tol ! infinity norm on scale residual (r(i)/accum(i))
-    PetscBool :: check_post_convergence ! toggle for checking convergence in XXXCheckUpdatePost()
     PetscReal :: newton_inf_res_tol_sec  ! infinity tolerance for secondary continuum residual
     PetscInt :: newton_max_iterations     ! maximum number of iterations
     PetscInt :: newton_min_iterations     ! minimum number of iterations
@@ -137,7 +136,6 @@ function SolverCreate()
   solver%newton_inf_upd_tol = UNINITIALIZED_DOUBLE
   solver%newton_inf_rel_update_tol = UNINITIALIZED_DOUBLE
   solver%newton_inf_scaled_res_tol = UNINITIALIZED_DOUBLE
-  solver%check_post_convergence = PETSC_FALSE
   solver%newton_inf_res_tol_sec = 1.d-10
   solver%newton_max_iterations = PETSC_DEFAULT_INTEGER
   solver%newton_min_iterations = 1
@@ -802,30 +800,16 @@ subroutine SolverReadNewton(solver,input,option)
         call InputErrorMsg(input,option,'newton_inf_upd_tol','NEWTON_SOLVER')
 
       case('ITOL_SCALED_RESIDUAL')
-        if (solver%itype == FLOW_CLASS) then
-          option%io_buffer = 'Flow NEWTON_SOLVER ITOL_SCALED_RESIDUAL is ' // &
-            'now specific to each process model and must be defined in ' // &
-            'the SIMULATION/PROCESS_MODELS/SUBSURFACE_FLOW/OPTIONS block.'
-          call printErrMsg(option)
-        endif
-        solver%check_post_convergence = PETSC_TRUE
-        call InputReadDouble(input,option,solver%newton_inf_scaled_res_tol)
-        call InputErrorMsg(input,option, &
-                           'infinity scaled residual tolerance', &
-                           'NEWTON_SOLVER')
+        option%io_buffer = 'Flow NEWTON_SOLVER ITOL_SCALED_RESIDUAL is ' // &
+          'now specific to each process model and must be defined in ' // &
+          'the SIMULATION/PROCESS_MODELS/SUBSURFACE_FLOW/OPTIONS block.'
+        call printErrMsg(option)
           
       case('ITOL_RELATIVE_UPDATE')
-        if (solver%itype == FLOW_CLASS) then
-          option%io_buffer = 'Flow NEWTON_SOLVER ITOL_RELATIVE_UPDATE is ' // &
-            'now specific to each process model and must be defined in ' // &
-            'the SIMULATION/PROCESS_MODELS/SUBSURFACE_FLOW/OPTIONS block.'
-          call printErrMsg(option)
-        endif
-        solver%check_post_convergence = PETSC_TRUE
-        call InputReadDouble(input,option,solver%newton_inf_rel_update_tol)
-        call InputErrorMsg(input,option, &
-                           'infinity relative update tolerance', &
-                           'NEWTON_SOLVER')
+        option%io_buffer = 'Flow NEWTON_SOLVER ITOL_RELATIVE_UPDATE is ' // &
+          'now specific to each process model and must be defined in ' // &
+          'the SIMULATION/PROCESS_MODELS/SUBSURFACE_FLOW/OPTIONS block.'
+        call printErrMsg(option)
 
       case('ITOL_SEC','ITOL_RES_SEC','INF_TOL_SEC')
         if (.not.option%use_mc) then

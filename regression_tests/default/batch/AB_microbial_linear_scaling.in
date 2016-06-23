@@ -5,6 +5,7 @@ SIMULATION
   PROCESS_MODELS
     SUBSURFACE_TRANSPORT transport
       GLOBAL_IMPLICIT
+      ITOL_RELATIVE_UPDATE 1.d-12
     /
   /
 END
@@ -51,7 +52,7 @@ NEWTON_SOLVER TRANSPORT
   ATOL 1.d-50
   RTOL 1.d-50
   STOL 1.d-50
-  ITOL_RELATIVE_UPDATE 1.d-12
+#  ITOL_RELATIVE_UPDATE 1.d-12
 END
 
 #=========================== discretization ===================================
