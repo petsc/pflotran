@@ -635,7 +635,7 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
         end select
 
       !.....................
-      case ('REGRESSION')
+      case ('GEOMECHANICS_REGRESSION')
         call GeomechanicsRegressionRead(simulation%geomech_regression,input,option)
 
       !.........................................................................
