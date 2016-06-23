@@ -760,6 +760,7 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
   
   PetscInt, pointer :: ord(:), l2w(:)
   !PetscReal, pointer :: zcn(:) 
+  PetscReal, pointer :: well_conn_h(:)
   PetscInt :: iconn, ierr
   !PetscReal :: rho_up, rho_dn, p_up, p_dn, delta_z
   !for debugging
@@ -803,13 +804,26 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
   ord => this%w_conn_order
   l2w => this%conn_l2w      
 
+  allocate(well_conn_h(this%well_num_conns))
+  well_conn_h = 0.0d0
+  ! concatanate hydrostatic corrections from different ranks for printing only
+  call MPI_Allgatherv(this%conn_h,this%connection_set%num_connections, &
+              MPI_DOUBLE_PRECISION, well_conn_h, this%w_rank_conn, &
+              this%disp_rank_conn,MPI_DOUBLE_PRECISION, this%comm,ierr)  
+
+#ifdef WELL_DEBUG
+  print *,"After MPI_Allgatherv well_conn_h",well_conn_h(1:this%well_num_conns)
+#endif
+
   !for printing purposes only: load ordered hydrostatic corrections
-  do iconn=1,this%connection_set%num_connections 
-    this%well_conn_h_sorted(ord(l2w(iconn))) = this%conn_h(iconn)
+  do iconn=1,this%well_num_conns 
+    this%well_conn_h_sorted(ord(iconn)) = well_conn_h(iconn)
   end do
 
   nullify(ord)
   nullify(l2w)
+  deallocate(well_conn_h)
+  nullify(well_conn_h)
 
 !skip here the old way of computing hydrostatic corrections 
 #if 0   
@@ -1063,6 +1077,7 @@ subroutine FlowDataOutput(this,grid,src_name,option)
 
   PetscInt, pointer :: ord(:), l2w(:)
   PetscReal, pointer :: zcn(:) 
+  PetscReal, pointer :: lc_perf_block_press(:,:)
   PetscReal, pointer :: perf_block_press(:,:)
   PetscInt :: iconn, local_id, ghosted_id, i_ph
   character(len=MAXSTRINGLENGTH) :: wfile_name
@@ -1076,16 +1091,46 @@ subroutine FlowDataOutput(this,grid,src_name,option)
   allocate(perf_block_press(option%nphase,this%well_num_conns))
   perf_block_press = 0.0d0
 
+  allocate(lc_perf_block_press(option%nphase,this%connection_set%num_connections))
+  perf_block_press = 0.0d0
+
+  !load local connections
   do iconn = 1, this%connection_set%num_connections      
     local_id = this%connection_set%id_dn(iconn)
     ghosted_id = grid%nL2G(local_id)
     do i_ph =1,option%nphase
-      perf_block_press(i_ph,ord(l2w(iconn))) = &
+      !perf_block_press(i_ph,ord(l2w(iconn))) = & 
+        lc_perf_block_press(i_ph,iconn) = &
         this%flow_auxvars(ZERO_INTEGER,ghosted_id)%pres(i_ph)
     end do
   end do 
+
+#ifdef WELL_DEBUG
+  call MPI_Comm_rank(this%comm, cur_w_myrank, ierr ) 
+  print *, "Before MPI_Allgatherv well myrank =",cur_w_myrank, &
+           "myrank =", option%myrank, "perf_block_press", &
+           perf_block_press(1,1:this%well_num_conns)
+#endif
+ 
+  do i_ph=1,option%nphase
+    !MPI_Allgatherv because each well segment can have a different number of conns
+    call MPI_Allgatherv(lc_perf_block_press(i_ph,:), &
+               this%connection_set%num_connections, &
+               MPI_DOUBLE_PRECISION, perf_block_press(i_ph,:), &
+               this%w_rank_conn, this%disp_rank_conn,MPI_DOUBLE_PRECISION, &
+               this%comm, ierr)
+  end do
+
   !make sure all well ranks have filled in their part of perf_block_press
-  call MPI_Barrier( this%comm,ierr)
+  !call MPI_Barrier( this%comm,ierr)
+
+#ifdef WELL_DEBUG
+  call MPI_Comm_rank(this%comm, cur_w_myrank, ierr ) 
+  print *, "After MPI_Allgatherv well myrank =",cur_w_myrank, &
+           "myrank =", option%myrank, "perf_block_press", &
+           perf_block_press(1,1:this%well_num_conns)
+#endif
+
 
   if( this%connection_set%num_connections > 0 ) then
     call MPI_Comm_rank(this%comm, cur_w_myrank, ierr )  
@@ -1097,7 +1142,7 @@ subroutine FlowDataOutput(this,grid,src_name,option)
       do iconn=1,this%well_num_conns
         write(IUNIT_TEMP,"(4(E16.10,1x))") zcn(iconn), &
                 this%pw_ref + this%well_conn_h_sorted(iconn), &
-                perf_block_press(1:option%nphase,iconn) 
+                perf_block_press(1:option%nphase,ord(iconn)) 
       end do
       close(IUNIT_TEMP)
     end if
@@ -1109,6 +1154,8 @@ subroutine FlowDataOutput(this,grid,src_name,option)
 
   deallocate(perf_block_press)
   nullify(perf_block_press)
+  deallocate(lc_perf_block_press)
+  nullify(lc_perf_block_press)
 
 end subroutine FlowDataOutput
 !*****************************************************************************!

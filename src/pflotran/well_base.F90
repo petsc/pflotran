@@ -16,8 +16,8 @@ module Well_Base_class
   type, public :: well_base_type 
     !PetscInt :: id                            ! well id is not needed - use coupler id
     !character(len=MAXWORDLENGTH) :: name      ! well name is not needed - use coupler name
-    PetscMPIInt :: comm                        ! well group 
-    PetscMPIInt :: group                       ! well communicator
+    PetscMPIInt :: comm                        ! well communicator
+    PetscMPIInt :: group                       ! well group 
     PetscMPIInt :: cntr_rank                   ! rank where the controlling connection is located
     PetscInt, pointer  :: w_rank_conn(:)       ! number of well conns in each well rank
     PetscInt, pointer  :: disp_rank_conn(:)    ! conns stride for each well rank

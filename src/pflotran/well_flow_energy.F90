@@ -267,7 +267,7 @@ subroutine WellFlowEnergyAverageTemp(this,grid,ss_fluxes,option)
   if ( q_sum_well > wfloweps ) then
     this%tw_ref = temp_q_well / q_sum_well
   else
-    this%tw_ref = temp_well / dble(this%connection_set%num_connections)
+    this%tw_ref = temp_well / dble(this%well_num_conns)
   end if
 
 
