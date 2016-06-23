@@ -10,7 +10,7 @@ module EOS_Oil_module
 #include "petsc/finclude/petscsys.h"
 
   ! module variables
-  PetscReal :: fmw_oil  
+  PetscReal :: fmw_oil           !kg/Kmol
   PetscReal :: constant_density  !kg/m3
   PetscReal :: constant_enthalpy
   PetscReal :: constant_viscosity
@@ -22,11 +22,16 @@ module EOS_Oil_module
   PetscReal :: quad_vis_pres_coef(2)
   PetscReal :: quad_vis_temp_coef(2)
   ! parameters for linear density 
-  PetscReal :: compress_coeff   
-  PetscReal :: th_expansion_coeff  
-  PetscReal :: den_linear_den0
-  PetscReal :: den_linear_ref_pres
-  PetscReal :: den_linear_ref_temp
+  PetscReal :: compress_coeff      ! [kg/m3/Pa]   
+  PetscReal :: th_expansion_coeff  ! [kg/m3/°C]
+  PetscReal :: den_linear_den0     ! [kg/m3]
+  PetscReal :: den_linear_ref_pres ! [Pa]
+  PetscReal :: den_linear_ref_temp ! [°C] 
+
+  ! quadratic enthalpy 
+  PetscReal :: quad_ent_ref_temp(2)
+  PetscReal :: quad_ent_temp_coef(2)
+
 
   ! EOS databases
   class(eos_database_type), pointer :: eos_dbase
@@ -143,6 +148,7 @@ module EOS_Oil_module
             EOSOilSetVisDBase, &
             EOSOilSetDensityConstant, &
             EOSOilSetDensityLinear, &
+            EOSOilSetDensityInverseLinear, &
             EOSOilSetDenLinearRefDen, &
             EOSOilSetDenLinearComprCoef, &
             EOSOilSetDenLinearExpanCoef, &
@@ -151,6 +157,9 @@ module EOS_Oil_module
             EOSOilSetDenDBase, &
             EOSOilSetEnthalpyConstant, &
             EOSOilSetEnthalpyLinearTemp, &
+            EOSOilSetEnthalpyQuadraticTemp, &
+            EOSOilSetEntQuadRefTemp, &
+            EOSOilSetEntQuadTempCoef, &
             EOSOilSetEntDBase, &
             EOSOilSetEOSDBase, &
             EOSOilDBaseDestroy
@@ -179,6 +188,10 @@ subroutine EOSOilInit()
   den_linear_ref_pres = UNINITIALIZED_DOUBLE
   den_linear_ref_temp = UNINITIALIZED_DOUBLE
 
+  quad_ent_ref_temp(1:2) = UNINITIALIZED_DOUBLE 
+  quad_ent_temp_coef(1:2) = UNINITIALIZED_DOUBLE 
+
+
   fmw_oil = FMWOIL !default oil formula weight C10H22 (142 g/mol)
 
   EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms
@@ -203,7 +216,12 @@ end subroutine EOSOilInit
 ! ************************************************************************** !
 
 subroutine EOSOilVerify(ierr,error_string)
-
+  !
+  ! Author: Paolo Orsini
+  ! 
+  ! to do : add check on unitialized coeffiecinets for linear and quadratic
+  !         functions (density, viscosity, enthalpy)
+  !
   implicit none
   
   PetscErrorCode, intent(out) :: ierr
@@ -480,6 +498,18 @@ end subroutine EOSOilSetDensityLinear
 
 ! ************************************************************************** !
 
+subroutine EOSOilSetDensityInverseLinear()
+
+  implicit none
+  
+  EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms
+  EOSOilDensityPtr => EOSOilDensityInverseLinear
+  
+end subroutine EOSOilSetDensityInverseLinear
+
+
+! ************************************************************************** !
+
 subroutine EOSOilSetDenLinearRefDen(den0)
 
   implicit none
@@ -590,6 +620,44 @@ end subroutine EOSOilSetEnthalpyLinearTemp
 
 ! ************************************************************************** !
 
+subroutine EOSOilSetEnthalpyQuadraticTemp()
+
+  implicit none
+  
+  EOSOilDensityEnergyPtr => EOSOilDensityEnergyTOilIms
+  EOSOilEnthalpyPtr => EOSOilEnthalpyQuadTemp
+
+
+end subroutine EOSOilSetEnthalpyQuadraticTemp
+
+! ************************************************************************** !
+
+subroutine EOSOilSetEntQuadRefTemp(t1,t2)
+
+  implicit none
+  
+  PetscReal :: t1, t2
+  
+  quad_ent_ref_temp(1) = t1
+  quad_ent_ref_temp(2) = t2
+  
+end subroutine EOSOilSetEntQuadRefTemp
+
+! ************************************************************************** !
+
+subroutine EOSOilSetEntQuadTempCoef(c1,c2)
+
+  implicit none
+  
+  PetscReal :: c1, c2 
+  
+  quad_ent_temp_coef(1) = c1
+  quad_ent_temp_coef(2) = c2
+  
+end subroutine EOSOilSetEntQuadTempCoef
+
+! ************************************************************************** !
+
 subroutine EOSOilSetEntDBase(filename,option)
 
   use Option_module
@@ -637,7 +705,10 @@ end subroutine EOSOilSetEOSDBase
 ! ************************************************************************** !
 
 subroutine EOSOilViscosityConstant(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
-
+  !
+  ! Author: Paolo Orsini
+  ! Date: 12/11/15
+  ! 
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -659,7 +730,10 @@ end subroutine EOSOilViscosityConstant
 ! ************************************************************************** !
 
 subroutine EOSOilQuadViscosity(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
-
+  !
+  ! Author: Paolo Orsini
+  ! Date: 12/11/15
+  ! 
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -689,7 +763,10 @@ end subroutine EOSOilQuadViscosity
 ! ************************************************************************** !
 
 subroutine EOSOilViscosityEOSDBase(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
-
+  !
+  ! Author: Paolo Orsini
+  ! Date: 12/11/15
+  ! 
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -719,7 +796,10 @@ end subroutine EOSOilViscosityEOSDBase
 ! ************************************************************************** !
 
 subroutine EOSOilViscosityVisDBase(T,P,Rho,deriv,Vis,dVis_dT,dVis_dP,ierr)
-
+  !
+  ! Author: Paolo Orsini
+  ! Date: 12/11/15
+  ! 
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -767,7 +847,10 @@ end subroutine EOSOilViscosityNoDerive
 ! ************************************************************************** !
 
 subroutine EOSOilDensityConstant(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
-
+  !
+  ! Author: Paolo Orsini
+  ! Date: 12/11/15
+  ! 
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -788,7 +871,10 @@ end subroutine EOSOilDensityConstant
 ! ************************************************************************** !
 
 subroutine EOSOilDensityLinear(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
-
+  !
+  ! Author: Paolo Orsini
+  ! Date: 12/11/15
+  ! 
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -816,8 +902,49 @@ end subroutine EOSOilDensityLinear
 
 ! ************************************************************************** !
 
-subroutine EOSOilDensityEOSDBase(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
+subroutine EOSOilDensityInverseLinear(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
+  !
+  ! Author: Paolo Orsini
+  ! Date: 12/11/15
+  ! 
+  implicit none
 
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscBool, intent(in) :: deriv    ! indicate if derivatives are needed or not
+  PetscReal, intent(out) :: Rho     ! oil density [kmol/m^3]
+  PetscReal, intent(out) :: dRho_dT ! derivative oil density wrt temperature
+  PetscReal, intent(out) :: dRho_dP ! derivative oil density wrt pressure
+  PetscErrorCode, intent(out) :: ierr
+
+  Rho = den_linear_den0 / &
+        ( 1.0d0 - compress_coeff * (P - den_linear_ref_pres ) ) / &  ! compression 
+        ( 1.0d0 + th_expansion_coeff * (T - den_linear_ref_temp ) )  ! expansion
+
+  ! conversion to molar density
+        ! kg/m3 * kmol/kg  = kmol/m3
+  Rho = Rho / fmw_oil ! kmol/m^3
+
+  if (deriv) then
+    dRho_dT = - th_expansion_coeff * den_linear_den0 *  &
+        ( 1.0d0 + th_expansion_coeff * (T - den_linear_ref_temp) )**(-2.0) / &
+        ( 1.0d0 - compress_coeff * (P - den_linear_ref_pres ) ) / &
+         fmw_oil
+    dRho_dP = compress_coeff * den_linear_den0 * &
+        ( 1.0d0 - compress_coeff * (P - den_linear_ref_pres ) )**(-2.0) / &
+        ( 1.0d0 + th_expansion_coeff * (T - den_linear_ref_temp ) ) / &
+         fmw_oil
+  end if
+
+end subroutine EOSOilDensityInverseLinear
+
+! ************************************************************************** !
+
+subroutine EOSOilDensityEOSDBase(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
+  !
+  ! Author: Paolo Orsini
+  ! Date: 12/11/15
+  ! 
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -847,7 +974,10 @@ end subroutine EOSOilDensityEOSDBase
 ! ************************************************************************** !
 
 subroutine EOSOilDensityDenDBase(T, P, deriv, Rho, dRho_dT, dRho_dP, ierr)
-
+  !
+  ! Author: Paolo Orsini
+  ! Date: 12/11/15
+  ! 
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -931,6 +1061,10 @@ end subroutine EOSOilEnthalpyConstant
 ! ************************************************************************** !
 
 subroutine EOSOilEnthalpyLinearTemp(T,P,deriv,H,dH_dT,dH_dP,ierr)
+  !
+  ! Author: Paolo Orsini
+  ! Date: 12/11/15
+  ! 
   implicit none
   PetscReal, intent(in) :: T        ! temperature [C]
   PetscReal, intent(in) :: P        ! pressure [Pa]
@@ -953,6 +1087,42 @@ subroutine EOSOilEnthalpyLinearTemp(T,P,deriv,H,dH_dT,dH_dP,ierr)
 end subroutine EOSOilEnthalpyLinearTemp
 
 ! ************************************************************************** !
+
+subroutine EOSOilEnthalpyQuadTemp(T,P,deriv,H,dH_dT,dH_dP,ierr)
+
+  ! Author: Paolo Orsini
+  ! Date: 6/23/16
+  ! 
+  implicit none
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: P        ! pressure [Pa]
+  PetscBool, intent(in) :: deriv    ! indicate if derivatives are needed or not
+  PetscReal, intent(out) :: H       ! enthalpy [J/kmol]
+  PetscReal, intent(out) :: dH_dT   ! derivative enthalpy wrt temperature
+  PetscReal, intent(out) :: dH_dP   ! derivative enthalpy wrt pressure
+  PetscErrorCode, intent(out) :: ierr
+
+  !H = constant_sp_heat * T * fmw_oil ! J/(kg °C) °C * Kg/Kmol = J/Kmol 
+
+
+       ! [ J/(kg °C) * °C ] * [ J/(kg °C °C) °C °C ] * Kg/Kmol = J/Kmol
+  H = ( quad_ent_temp_coef(1) * (T-quad_ent_ref_temp(1)) + &
+        0.5d0 * quad_ent_temp_coef(2) * (T-quad_ent_ref_temp(2))**2.0d0 ) &
+        * fmw_oil 
+
+  dH_dT = UNINITIALIZED_DOUBLE
+  dH_dP = UNINITIALIZED_DOUBLE 
+
+  if (deriv) then
+    dH_dP = 0.d0
+    dH_dT = ( quad_ent_temp_coef(1) + &
+              quad_ent_temp_coef(2) * (T-quad_ent_ref_temp(2)) ) * fmw_oil
+  end if
+
+end subroutine EOSOilEnthalpyQuadTemp
+
+! ************************************************************************** !
+
 
 subroutine EOSOilEnthalpyEOSDBase(T,P,deriv,H,dH_dT,dH_dP,ierr)
   implicit none

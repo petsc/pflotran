@@ -380,8 +380,13 @@ subroutine EOSRead(input,option)
                                    'EOS,OIL,DENSITY,CONSTANT')
                 call EOSOilSetDensityConstant(tempreal)
 
-              case('LINEAR')
-                call EOSOilSetDensityLinear()
+              case('LINEAR','INVERSE_LINEAR')
+                select case(trim(word))
+                  case('LINEAR')
+                    call EOSOilSetDensityLinear()
+                  case('INVERSE_LINEAR')
+                    call EOSOilSetDensityInverseLinear()
+                end select
                 do
                   call InputReadPflotranString(input,option)
                   if (InputCheckExit(input,option)) exit  
@@ -441,6 +446,34 @@ subroutine EOSRead(input,option)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,OIL,ENTHALPY,LINEAR_TEMP')
                 call EOSOilSetEnthalpyLinearTemp(tempreal) 
+              case('QUADRATIC_TEMP')
+                call EOSOilSetEnthalpyQuadraticTemp()
+                do
+                  call InputReadPflotranString(input,option)
+                  if (InputCheckExit(input,option)) exit  
+                  call InputReadWord(input,option,subkeyword,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'subkeyword',&
+                                     'EOS,OIL,ENTHALPY')
+                  call StringToUpper(subkeyword)   
+                  select case(subkeyword)
+                    case('TEMP_REF_VALUES')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,ENTHALPY_QUAD,TEMP_REF_VAULES_1') 
+                      call InputReadDouble(input,option,tempreal2)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,ENTHALPY_QUAD,TEMP_REF_VAULES_2') 
+                      call EOSOilSetEntQuadRefTemp(tempreal,tempreal2)
+                    case('TEMP_COEFFICIENTS')
+                      call InputReadDouble(input,option,tempreal)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,ENTHALPY_QUAD,TEMP_COEFF_1') 
+                      call InputReadDouble(input,option,tempreal2)
+                      call InputErrorMsg(input,option,'VALUE', &
+                            'EOS,OIL,ENTHALPY_QUAD,TEMP_COEFF_2') 
+                      call EOSOilSetEntQuadTempCoef(tempreal,tempreal2)
+                  end select
+                end do  
               case('DATABASE')
                 call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'EOS,OIL','ENT DBASE filename')
