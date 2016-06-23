@@ -1071,9 +1071,7 @@ subroutine GeomechRealizDestroy(geomech_realization)
   class(realization_geomech_type), pointer :: geomech_realization
   
   if (.not.associated(geomech_realization)) return
-  
-  call RealizationBaseStrip(geomech_realization)
-  
+    
   call GeomechFieldDestroy(geomech_realization%geomech_field)
 
   call OutputOptionDestroy(geomech_realization%output_option)
