@@ -842,9 +842,14 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         global_auxvar%istate = TWO_PHASE_STATE
         liquid_epsilon = epsilon
 !TOUGH2 approach
+        ! geh: just testing something here
         x(GENERAL_GAS_PRESSURE_DOF) = max(gen_auxvar%pres(gid), &
                                           gen_auxvar%pres(spid))* &
                                          (1.d0 + liquid_epsilon)
+!        x(GENERAL_GAS_PRESSURE_DOF) = max(gen_auxvar%pres(gid), &
+!                                          gen_auxvar%pres(spid)+ &
+!                                          gen_auxvar%pres(apid))* &
+!                                         (1.d0 + liquid_epsilon)
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
           ! do nothing as the energy dof has not changed
           if (.not.general_isothermal) then
@@ -1287,6 +1292,7 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: liquid_mass, gas_mass
   PetscReal :: liquid_density, gas_density
   PetscReal :: liquid_energy, gas_energy
+  PetscReal :: liquid_saturation, gas_saturation
 
   lid = option%liquid_phase
   gid = option%gas_phase
@@ -1303,6 +1309,8 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,material_auxvar, &
   gas_density = 0.d0
   liquid_energy = 0.d0
   gas_energy = 0.d0
+  liquid_saturation = 0.d0
+  gas_saturation = 0.d0
 
   print *, '--------------------------------------------------------'
   print *, trim(string)
@@ -1312,26 +1320,30 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,material_auxvar, &
       print *, '     Thermodynamic state: Liquid phase'
       liquid_density = general_auxvar%den(lid)
       liquid_energy = general_auxvar%U(lid)
+      liquid_saturation = general_auxvar%sat(lid)
     case(GAS_STATE)
       print *, '     Thermodynamic state: Gas phase'
       gas_density = general_auxvar%den(gid)
       gas_energy = general_auxvar%U(gid)
+      gas_saturation = general_auxvar%sat(gid)
     case(TWO_PHASE_STATE)
       print *, '     Thermodynamic state: Two phase'
       liquid_density = general_auxvar%den(lid)
       gas_density = general_auxvar%den(gid)
       liquid_energy = general_auxvar%U(lid)
       gas_energy = general_auxvar%U(gid)
+      liquid_saturation = general_auxvar%sat(lid)
+      gas_saturation = general_auxvar%sat(gid)
   end select
   liquid_mass = (liquid_density*general_auxvar%xmol(lid,lid)* & 
-                 general_auxvar%sat(lid)+ &
+                 liquid_saturation+ &
                  gas_density*general_auxvar%xmol(lid,gid)* & 
-                 general_auxvar%sat(gid))* & 
+                 gas_saturation)* & 
                  general_auxvar%effective_porosity*material_auxvar%volume
   gas_mass = (liquid_density*general_auxvar%xmol(gid,lid)* & 
-              general_auxvar%sat(lid)+ &
+              liquid_saturation+ &
               gas_density*general_auxvar%xmol(gid,gid)* & 
-              general_auxvar%sat(gid))* & 
+              gas_saturation)* & 
               general_auxvar%effective_porosity*material_auxvar%volume
   print *, 'tot liq comp mass [kmol]: ', liquid_mass
   print *, 'tot gas comp mass [kmol]: ', gas_mass
@@ -1396,6 +1408,7 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: liquid_mass, gas_mass
   PetscReal :: liquid_density, gas_density
   PetscReal :: liquid_energy, gas_energy
+  PetscReal :: liquid_saturation, gas_saturation
 
   lid = option%liquid_phase
   gid = option%gas_phase
@@ -1412,6 +1425,8 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,material_auxvar, &
   gas_density = 0.d0
   liquid_energy = 0.d0
   gas_energy = 0.d0
+  liquid_saturation = 0.d0
+  gas_saturation = 0.d0
 
   write(string2,*) natural_id
   string2 = trim(adjustl(string)) // '_' // trim(adjustl(string2)) // '.txt'
@@ -1429,26 +1444,30 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,material_auxvar, &
       write(86,*) ' Thermodynamic state: Liquid phase'
       liquid_density = general_auxvar%den(lid)
       liquid_energy = general_auxvar%U(lid)
+      liquid_saturation = general_auxvar%sat(lid)
     case(GAS_STATE)
       write(86,*) ' Thermodynamic state: Gas phase'
       gas_density = general_auxvar%den(gid)
       gas_energy = general_auxvar%U(gid)
+      gas_saturation = general_auxvar%sat(gid)
     case(TWO_PHASE_STATE)
       write(86,*) ' Thermodynamic state: Two phase'
       liquid_density = general_auxvar%den(lid)
       gas_density = general_auxvar%den(gid)
       liquid_energy = general_auxvar%U(lid)
       gas_energy = general_auxvar%U(gid)
+      liquid_saturation = general_auxvar%sat(lid)
+      gas_saturation = general_auxvar%sat(gid)
   end select
   liquid_mass = (liquid_density*general_auxvar%xmol(lid,lid)* & 
-                 general_auxvar%sat(lid)+ &
+                 liquid_saturation+ &
                  gas_density*general_auxvar%xmol(lid,gid)* & 
-                 general_auxvar%sat(gid))* & 
+                 gas_saturation)* & 
                  general_auxvar%effective_porosity*material_auxvar%volume
   gas_mass = (liquid_density*general_auxvar%xmol(gid,lid)* & 
-              general_auxvar%sat(lid)+ &
+              liquid_saturation+ &
               gas_density*general_auxvar%xmol(gid,gid)* & 
-              general_auxvar%sat(gid))* & 
+              gas_saturation)* & 
               general_auxvar%effective_porosity*material_auxvar%volume
   write(86,*) 'tot liq comp mass [kmol]: ', liquid_mass
   write(86,*) 'tot gas comp mass [kmol]: ', gas_mass
