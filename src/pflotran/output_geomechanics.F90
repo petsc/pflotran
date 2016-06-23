@@ -21,7 +21,8 @@ module Output_Geomechanics_module
   PetscBool :: geomech_hdf5_first
 
   public :: OutputGeomechanics, &
-            OutputGeomechInit
+            OutputGeomechInit, &
+            OutputGeomechGetVarFromArray
       
 contains
 

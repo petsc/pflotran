@@ -105,6 +105,10 @@ ifdef use_matseqaij_fix
   MYFLAGS += ${FC_DEFINE_FLAG}USE_MATSEQAIJ_FIX
 endif
 
+ifdef debug_geomech_regression
+  MYFLAGS += ${FC_DEFINE_FLAG}GEOMECHANICS_REGRESSION_DEBUG
+endif
+
 UPDATE_PROVENANCE=0
 ifdef provenance
   UPDATE_PROVENANCE=1
@@ -539,6 +543,7 @@ factory_geomechanics.o : condition_control.o convergence.o discretization.o \
                          geomechanics_force.o geomechanics_global.o \
                          geomechanics_material.o geomechanics_patch.o \
                          geomechanics_realization.o geomechanics_region.o \
+                         geomechanics_regression.o \
                          geomechanics_strata.o grid_unstructured.o \
                          grid_unstructured_aux.o init_common.o input_aux.o \
                          logging.o option.o output.o output_aux.o \
@@ -689,8 +694,8 @@ geomechanics_realization.o : dataset.o dataset_base.o geomech_grid.o \
 geomechanics_region.o : geometry.o grid_unstructured_cell.o input_aux.o \
                         logging.o option.o pflotran_constants.o string.o \
                         utility.o
-geomechanics_regression.o : discretization.o  input_aux.o option.o output.o \
-               output_aux.o output_common.o pflotran_constants.o \
+geomechanics_regression.o : discretization.o  input_aux.o option.o \
+               output_geomechanics.o pflotran_constants.o \
                string.o utility.o geomech_grid_aux.o
 geomechanics_strata.o : geomechanics_material.o geomechanics_region.o \
                         input_aux.o option.o pflotran_constants.o string.o

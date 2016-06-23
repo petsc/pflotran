@@ -212,7 +212,7 @@ subroutine GeomechanicsSimulationFinalizeRun(this)
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 01/01/14
-  ! 
+  ! Modified by Satish Karra, 06/22/16
 
   use Timestepper_Base_class
 
@@ -224,6 +224,9 @@ subroutine GeomechanicsSimulationFinalizeRun(this)
 
   call SubsurfaceFinalizeRun(this)
   !call GeomechanicsFinalizeRun(this)
+  call GeomechanicsRegressionOutput(this%geomech_regression, &
+  									this%geomech_realization)  
+
 
 end subroutine GeomechanicsSimulationFinalizeRun
 

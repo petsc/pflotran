@@ -57,6 +57,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
   use Geomechanics_Discretization_module
   use Geomechanics_Force_module
   use Geomechanics_Realization_class
+  use Geomechanics_Regression_module
   use Simulation_Aux_module
   use Realization_Subsurface_class
   use Timestepper_Steady_class
@@ -212,6 +213,9 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
                               dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
                               GEOMECHANICS_TO_SUBSURF)
   endif
+
+  call GeomechanicsRegressionCreateMapping(simulation%geomech_regression, &
+                                           geomech_realization)
 
   ! sim_aux: Set pointer
   simulation%flow_process_model_coupler%sim_aux => simulation%sim_aux
