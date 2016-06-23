@@ -495,7 +495,8 @@ end subroutine GeomechanicsRegressionCreateMapping
 ! ************************************************************************** !
 
 subroutine GeomechanicsRegressionOutput(geomechanics_regression, &
-                                        geomechanics_realization)
+                                        geomechanics_realization, &
+                                        geomechanics_timestepper)
   !
   ! Prints geomechanics regression output through the io_rank
   ! 
@@ -504,7 +505,7 @@ subroutine GeomechanicsRegressionOutput(geomechanics_regression, &
   ! 
 
   use Geomechanics_Realization_class
-  use Timestepper_BE_class
+  use Timestepper_Steady_class
   use Option_module
   use Geomechanics_Discretization_module
   use Output_Geomechanics_module, only : OutputGeomechGetVarFromArray
@@ -513,6 +514,7 @@ subroutine GeomechanicsRegressionOutput(geomechanics_regression, &
   
   type(geomechanics_regression_type), pointer :: geomechanics_regression
   class(realization_geomech_type) :: geomechanics_realization
+  class(timestepper_steady_type), pointer :: geomechanics_timestepper
   ! these must be pointers as they can be null
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
@@ -641,30 +643,30 @@ subroutine GeomechanicsRegressionOutput(geomechanics_regression, &
     cur_variable => cur_variable%next
   enddo
   
-#if 0  
 102 format(i12)    
 103 format(es21.13)
 
   ! timestep, newton iteration, solver iteration output
-  if (associated(flow_timestepper)) then
-    call VecNorm(geomechanics_realization%field%flow_xx,NORM_2,x_norm,ierr);CHKERRQ(ierr)
-    call VecNorm(geomechanics_realization%field%flow_r,NORM_2,r_norm,ierr);CHKERRQ(ierr)
+  if (associated(geomechanics_timestepper)) then
+    call VecNorm(geomechanics_realization%geomech_field%disp_xx, &
+                 NORM_2,x_norm,ierr);CHKERRQ(ierr)
+    call VecNorm(geomechanics_realization%geomech_field%disp_r, &
+                 NORM_2,r_norm,ierr);CHKERRQ(ierr)
     if (option%myrank == option%io_rank) then
-      write(OUTPUT_UNIT,'(''-- SOLUTION: Flow --'')')
+      write(OUTPUT_UNIT,'(''-- SOLUTION: Geomechanics --'')')
       write(OUTPUT_UNIT,'(''   Time (seconds): '',es21.13)') &
-        flow_timestepper%cumulative_solver_time
-      write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') flow_timestepper%steps
+        geomechanics_timestepper%cumulative_solver_time
+      write(OUTPUT_UNIT,'(''   Time Steps: '',i12)') geomechanics_timestepper%steps
       write(OUTPUT_UNIT,'(''   Newton Iterations: '',i12)') &
-        flow_timestepper%cumulative_newton_iterations
+        geomechanics_timestepper%cumulative_newton_iterations
       write(OUTPUT_UNIT,'(''   Solver Iterations: '',i12)') &
-        flow_timestepper%cumulative_linear_iterations
+        geomechanics_timestepper%cumulative_linear_iterations
       write(OUTPUT_UNIT,'(''   Time Step Cuts: '',i12)') &
-        flow_timestepper%cumulative_time_step_cuts
+        geomechanics_timestepper%cumulative_time_step_cuts
       write(OUTPUT_UNIT,'(''   Solution 2-Norm: '',es21.13)') x_norm
       write(OUTPUT_UNIT,'(''   Residual 2-Norm: '',es21.13)') r_norm
     endif
   endif
-#endif
 
   close(OUTPUT_UNIT)
   

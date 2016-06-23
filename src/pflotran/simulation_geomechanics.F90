@@ -214,18 +214,27 @@ subroutine GeomechanicsSimulationFinalizeRun(this)
   ! Date: 01/01/14
   ! Modified by Satish Karra, 06/22/16
 
-  use Timestepper_Base_class
+  use Timestepper_Steady_class
 
   implicit none
 
   class(simulation_geomechanics_type) :: this
+  class(timestepper_steady_type), pointer :: geomech_timestepper
 
   call printMsg(this%option,'GeomechanicsSimulationFinalizeRun')
 
   call SubsurfaceFinalizeRun(this)
   !call GeomechanicsFinalizeRun(this)
+  nullify(geomech_timestepper)
+  if (associated(this%geomech_process_model_coupler)) then
+    select type(ts => this%geomech_process_model_coupler%timestepper)
+      class is(timestepper_steady_type)
+        geomech_timestepper => ts
+    end select
+  endif
   call GeomechanicsRegressionOutput(this%geomech_regression, &
-  									this%geomech_realization)  
+                                    this%geomech_realization, &
+                                    geomech_timestepper)  
 
 
 end subroutine GeomechanicsSimulationFinalizeRun
