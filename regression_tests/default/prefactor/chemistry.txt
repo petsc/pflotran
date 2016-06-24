@@ -1,0 +1,167 @@
+CHEMISTRY
+  PRIMARY_SPECIES
+    Na+
+    Ca++
+    H+
+    UO2++
+    SiO2(aq)
+    HCO3-
+    Cl-
+    O2(aq)
+    Tracer
+  /
+  SECONDARY_SPECIES
+    CO(aq)
+    ClO-
+    ClO2-
+    ClO3-
+    ClO4-
+    H2(aq)
+    U+++
+    U++++
+    (UO2)11(CO3)6(OH)12--
+    (UO2)2(OH)2++
+    (UO2)2CO3(OH)3-
+    (UO2)2OH+++
+    (UO2)3(CO3)6(6-)
+    (UO2)3(OH)4++
+    (UO2)3(OH)5+
+    (UO2)3(OH)5CO2+
+    (UO2)3(OH)7-
+    (UO2)3O(OH)2(HCO3)+
+    (UO2)4(OH)7+
+    CO2(aq)
+    CO3--
+    CaCO3(aq)
+    CaCl+
+    CaCl2(aq)
+    CaHCO3+
+    CaOH+
+    CH4(aq)
+    H2SiO4--
+    HCl(aq)
+    HO2-
+    HSiO3-
+    H3SiO4-
+    NaCO3-
+    NaCl(aq)
+    NaHCO3(aq)
+    NaHSiO3(aq)
+    NaOH(aq)
+    OH-
+    UO2(CO3)2--
+    UO2(CO3)3----
+    UO2(OH)2(aq)
+    UO2(OH)3-
+    UO2(OH)4--
+    UO2CO3(aq)
+    UO2Cl+
+    UO2Cl2(aq)
+    UO2OH+
+    Ca2UO2(CO3)3(aq)
+    CaUO2(CO3)3--
+    HClO(aq)
+    HClO2(aq)
+    U(CO3)4----
+    U(CO3)5(6-)
+    U(OH)4(aq)
+    UCl+++
+    UO2ClO3+
+    UOH+++
+  /
+  GAS_SPECIES
+    CO2(g)
+    O2(g)
+  /
+  MINERALS
+    Aragonite
+    Calcite
+    Quartz
+    Chalcedony
+    SiO2(am)
+    Uraninite
+    Schoepite
+    Coffinite
+  /
+  MINERAL_KINETICS
+    Uraninite
+      SURFACE_AREA_VOL_FRAC_POWER 0.666667d0
+      PREFACTOR
+        RATE_CONSTANT 3.5d-8      mol/m^2-sec
+        PREFACTOR_SPECIES O2(aq)
+          ALPHA 0.31d0
+        /
+        PREFACTOR_SPECIES H+
+          ALPHA 0.37d0
+          ATTENUATION_COEF 1.d9
+          BETA 1.d0
+        /
+      /
+    /
+    Schoepite
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    Coffinite
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    Calcite
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    SiO2(am)
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    Quartz
+      RATE_CONSTANT 1.d-17 mol/cm^2-sec
+    /
+  /
+  DATABASE ../../../database/hanford.dat
+
+  LOG_FORMULATION
+# OPERATOR_SPLITTING
+  ACTIVITY_COEFFICIENTS TIMESTEP
+# ACTIVITY_COEFFICIENTS OFF
+  MOLAL
+  UPDATE_MINERAL_SURFACE_AREA
+
+skip
+  SORPTION
+    SURFACE_COMPLEXATION_RXN
+      EQUILIBRIUM
+      MINERAL Quartz
+      SITE >FeOH 100.
+      COMPLEXES
+        >FeOHUO3
+        >FeOHUO2++
+      /
+    /
+  /
+noskip
+
+  OUTPUT
+    all
+    pH
+    FREE_ION
+    TOTAL
+  END
+  
+skip
+  OUTPUT
+    pH
+    FREE_ION
+    TOTAL
+#   SECONDARY_SPECIES
+    UO2++
+skip
+    Ca2UO2(CO3)3(aq)
+    U(OH)4(aq)      
+    CaUO2(CO3)3--   
+    UO2(OH)2(aq)    
+    UO2(CO3)2--     
+    UO2(CO3)3----   
+noskip
+    all
+    pe 
+    eh
+  /
+noskip
+END

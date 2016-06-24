@@ -942,7 +942,17 @@ The quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction wit
 \end{subequations}
 where in the first term on the right-hand side corresponding to $\A_{ml}$ product index $j$ runs over primary species and in the second term corresponding to $\B_{ml}$ product index $i$ runs over secondary species. The quantities $\a_{jl}^m$, $\a_{il}^m$ and $\b_{jl}^m$, $\b_{il}^m$ refer to prefactor coefficients, and $K_{jl}^m$, $K_{il}^m$ are attenuation factors.
 
-To compute the jacobian the partial derivative of the prefactor with respect to primary species is needed. For the general case of both primary and secondary prefactor species forming the derivative of the logarithm of the prefactor yields
+To compute the jacobian the partial derivative of the prefactor with respect to primary species is needed. The residual function can be split up in a term involving the mineral reaction rate and remaining terms as
+\BA
+R_j \eq R_j^0 + \sum_m \nu_{jm} I_m,
+\EA
+with jacobian
+\BA
+J_{jk} &\eq \frac{\p R_j^0}{\p m_k} + \frac{\p R_j}{\p m_k},\\
+&\eq \frac{\p R_j^0}{\p m_k} + \sum_m \nu_{jm} \frac{\p I_m}{\p m_k}.
+\EA
+
+For the general case of both primary and secondary prefactor species forming the derivative of the logarithm of the prefactor yields
 \begin{subequations}
 \BA
 \frac{\p\ln\P_{ml}}{\p m_j} &\eq \frac{\p\ln \A_{ml}}{\p m_j} + \sum_i \frac{\p\ln \B_{ml}}{\p m_i} \frac{\p m_i}{\p m_j},\\
@@ -967,6 +977,15 @@ and
 \frac{\p\ln\B_{ml}}{\p\ln m_i} \eq \a_{il}^m - \frac{\b_{il}^m K_{ml} \big(\gamma_i m_i\big)^{\b_{il}^m}}{1+K_{ml} \big(\gamma_i m_i\big)^{\b_{il}^m}}.
 \EN
 \end{subequations}
+Thus it follows that
+\EQ
+\frac{\p P_{ml}}{\p m_j} \eq 
+\frac{P_{ml}}{m_j} \left\{
+\begin{array}{ll}
+\dfrac{\p\ln\A_{ml}}{\p\ln m_j}, & \alpha_{jl}^m \ne 0 \\
+\displaystyle\sum_i \nu_{ji} \dfrac{\p\ln\B_{ml}}{\p\ln m_i}, & \alpha_{il}^m \ne 0
+\end{array}\right..
+\EN
 
 \paragraph{Rate Limiter}
 
