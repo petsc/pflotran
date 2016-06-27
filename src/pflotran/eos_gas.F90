@@ -928,6 +928,7 @@ subroutine EOSGasEnergyIdealMethane(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   PetscReal :: T_energy
   PetscReal :: T_k
 
+  ierr = 0
   ! T_energy is either T or T + 273.15
   ! do not change below
   T_energy = T + T_energy_offset

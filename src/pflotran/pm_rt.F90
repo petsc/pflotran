@@ -795,7 +795,7 @@ subroutine PMRTCheckUpdatePre(this,line_search,X,dX,changed,ierr)
       ! scale if necessary
       if (min_ratio < 1.d0) then
         if (min_ratio < this%realization%option%min_allowable_scale) then
-          write(string,'(es9.3)') min_ratio
+          write(string,'(es10.3)') min_ratio
           string = 'The update of primary species concentration is being ' // &
             'scaled by a very small value (i.e. ' // &
             trim(adjustl(string)) // &
