@@ -68,8 +68,6 @@ module Reaction_Sandbox_Cyber_class
     procedure, public :: Destroy => CyberDestroy
   end type reaction_sandbox_cyber_type
   
-  PetscReal, parameter :: STOICH_CH2O = 1.d0
-
   public :: CyberCreate
 
 contains
@@ -232,31 +230,45 @@ subroutine CyberSetup(this,reaction,option)
     GetPrimarySpeciesIDFromName(word,reaction,option)
   
   this%f1 = 0.497d0
+  this%f2 = 0.999d0
+  this%f3 = 0.066d0
   this%k1 = 25.04d0 * per_day_to_per_sec
+  this%k2 = 17.82d0 * per_day_to_per_sec
+  this%k3 = 75.12d0 * per_day_to_per_sec
   this%Kd1 = 0.25d-3
-  this%Ka1 = 1.d-6
-  this%stoich_1_nh4 = 0.2d0*(1.d0-this%f1)
-  this%stoich_1_no3 = 2.d0*this%f1
+  this%Kd2 = 0.25d-3
+  this%Kd3 = 0.25d-3
+  this%Ka1 = 0.001d-3
+  this%Ka2 = 0.004d-3
+  this%Ka3 = 0.001d-3
+  this%f_act = 0.126d0
+  this%k_deg = 0.532d0 * per_day_to_per_sec
+
+!  this%k1 = 0.d0
+!  this%k2 = 0.d0
+!  this%k3 = 0.d0
+!  this%Kd1 = 0.d0
+!  this%Ka1 = 0.d0
+!  this%f_act = 1.d40
+!  this%k_deg = 0.d0
+
+  this%stoich_1_doc = -1.d0
+  this%stoich_1_nh4 = -0.2d0*(1.d0-this%f1)
+  this%stoich_1_no3 = -2.d0*this%f1
   this%stoich_1_no2 = 2.d0*this%f1
   this%stoich_1_co2 = this%f1
   this%stoich_1_biomass = 0.2d0*(1.d0-this%f1)
-  
-  this%f2 = 0.999d0
-  this%k2 = 17.82d0 * per_day_to_per_sec
-  this%Kd2 = 0.25d-3
-  this%Ka2 = 4.d-6
-  this%stoich_2_nh4 = 0.2d0*(1.d0-this%f2)
-  this%stoich_2_no2 = 4.d0/3.d0*this%f2
+
+  this%stoich_2_doc = -1.d0
+  this%stoich_2_nh4 = -0.2d0*(1.d0-this%f2)
+  this%stoich_2_no2 = -4.d0/3.d0*this%f2
   this%stoich_2_n2 = 2.d0/3.d0*this%f2
   this%stoich_2_co2 = this%f2
   this%stoich_2_biomass = 0.2d0*(1.d0-this%f2)
-  
-  this%f3 = 0.066d0
-  this%k3 = 75.12d0 * per_day_to_per_sec
-  this%Kd3 = 0.25d-3
-  this%Ka3 = 1.d-6
-  this%stoich_3_nh4 = 0.2d0*(1.d0-this%f3)
-  this%stoich_3_o2 = 2.d0*this%f3
+
+  this%stoich_3_doc = -1.d0
+  this%stoich_3_nh4 = -0.2d0*(1.d0-this%f3)
+  this%stoich_3_o2 = -1.d0*this%f3
   this%stoich_3_co2 = this%f3
   this%stoich_3_biomass = 0.2d0*(1.d0-this%f3)
 
@@ -281,7 +293,7 @@ subroutine CyberSetup(this,reaction,option)
   this%irow(4,irxn) = this%no2_id
   this%irow(5,irxn) = this%co2_id
   this%irow(6,irxn) = this%biomass_id
-  this%stoich_row(1,irxn) = STOICH_CH2O
+  this%stoich_row(1,irxn) = this%stoich_1_doc
   this%stoich_row(2,irxn) = this%stoich_1_nh4
   this%stoich_row(3,irxn) = this%stoich_1_no3
   this%stoich_row(4,irxn) = this%stoich_1_no2
@@ -301,7 +313,7 @@ subroutine CyberSetup(this,reaction,option)
   this%irow(4,irxn) = this%n2_id
   this%irow(5,irxn) = this%co2_id
   this%irow(6,irxn) = this%biomass_id
-  this%stoich_row(1,irxn) = STOICH_CH2O
+  this%stoich_row(1,irxn) = this%stoich_2_doc
   this%stoich_row(2,irxn) = this%stoich_2_nh4
   this%stoich_row(3,irxn) = this%stoich_2_no2
   this%stoich_row(4,irxn) = this%stoich_2_n2
@@ -320,7 +332,7 @@ subroutine CyberSetup(this,reaction,option)
   this%irow(3,irxn) = this%o2_id
   this%irow(4,irxn) = this%co2_id
   this%irow(5,irxn) = this%biomass_id
-  this%stoich_row(1,irxn) = STOICH_CH2O
+  this%stoich_row(1,irxn) = this%stoich_3_doc
   this%stoich_row(2,irxn) = this%stoich_3_nh4
   this%stoich_row(3,irxn) = this%stoich_3_o2
   this%stoich_row(4,irxn) = this%stoich_3_co2
@@ -331,9 +343,6 @@ subroutine CyberSetup(this,reaction,option)
   this%icol(3,irxn) = this%no2_id
   this%icol(4,irxn) = this%o2_id
   
-  this%f_act = 0.126d0
-  this%k_deg = 0.532d0 * per_day_to_per_sec
-      
 end subroutine CyberSetup
 
 ! ************************************************************************** !
@@ -400,13 +409,13 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
             material_auxvar%volume*1.d3
     
   Co2 = rt_auxvar%pri_molal(this%o2_id)*rt_auxvar%pri_act_coef(this%o2_id)
-  Cnh4 = rt_auxvar%pri_molal(this%o2_id)*rt_auxvar%pri_act_coef(this%nh4_id)
+  Cnh4 = rt_auxvar%pri_molal(this%nh4_id)*rt_auxvar%pri_act_coef(this%nh4_id)
   Cno3 = rt_auxvar%pri_molal(this%no3_id)*rt_auxvar%pri_act_coef(this%no3_id)
   Cno2 = rt_auxvar%pri_molal(this%no2_id)*rt_auxvar%pri_act_coef(this%no2_id)
   Cn2 = rt_auxvar%pri_molal(this%n2_id)*rt_auxvar%pri_act_coef(this%n2_id)
   Cdoc = rt_auxvar%pri_molal(this%doc_id)*rt_auxvar%pri_act_coef(this%doc_id)
 !  X = rt_auxvar%immobile(this%biomass_id-reaction%offset_immobile)
-  X = rt_auxvar%pri_molal(this%biomass_id)
+  X = rt_auxvar%pri_molal(this%biomass_id)*rt_auxvar%pri_act_coef(this%biomass_id)
   
   ! NO3- -> NO2-
   r1docmonod_denom = Cdoc+this%Kd1
@@ -419,7 +428,7 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   r2docmonod_denom = Cdoc+this%Kd2 
   r2docmonod = Cdoc/r2docmonod_denom
   r2no2monod_denom = Cno2+this%Ka2
-  r2no2monod = Cno3/r2no2monod_denom
+  r2no2monod = Cno2/r2no2monod_denom
   r2kin = this%k2*r2docmonod*r2no2monod
                  
   ! O2 -> 
@@ -432,9 +441,12 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   sumkin = r1kin + r2kin + r3kin
   sumkinsq = sumkin * sumkin
                  
-  u1 = r1kin/sumkin
-  u2 = r2kin/sumkin
-  u3 = r3kin/sumkin
+  u1 = 0.d0
+  if (r1kin > 0.d0) u1 = r1kin/sumkin
+  u2 = 0.d0
+  if (r2kin > 0.d0) u2 = r2kin/sumkin
+  u3 = 0.d0
+  if (r3kin > 0.d0) u3 = r3kin/sumkin
   
   rate(1) = u1*r1kin
   rate(2) = u2*r2kin
@@ -442,18 +454,19 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   
   do irxn = 1, this%nrxn
     do i = 1, this%nrow(irxn)
-      Residual(this%irow(i,irxn)) = Residual(this%irow(i,irxn)) + &
+      Residual(this%irow(i,irxn)) = Residual(this%irow(i,irxn)) - &
         this%stoich_row(i,irxn) * rate(irxn) * X
     enddo
   enddo
   
   ! decay of doc
+  ! note the addition
   Residual(this%doc_id) = Residual(this%doc_id) + &
-                          -1.d0 * this%k_deg/this%f_act * X
+                          this%k_deg/this%f_act * Cdoc
   
   ! decay of biomass
   Residual(this%biomass_id) = Residual(this%biomass_id) + &
-                              -1.d0 * this%k_deg * X
+                              this%k_deg * X
                  
   if (compute_derivative) then
   
@@ -543,13 +556,13 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
       do j = 1, this%ncol(irxn)
         do i = 1, this%nrow(irxn)
           Jacobian(this%irow(i,irxn),this%icol(j,irxn)) = &
-            Jacobian(this%irow(i,irxn),this%icol(j,irxn)) + &
+            Jacobian(this%irow(i,irxn),this%icol(j,irxn)) - &
             this%stoich_row(i,irxn) * derivative_col(j,irxn) * X
         enddo
       enddo
       do i = 1, this%nrow(irxn)
         Jacobian(this%irow(i,irxn),this%biomass_id) = &
-          Jacobian(this%irow(i,irxn),this%biomass_id) + &
+          Jacobian(this%irow(i,irxn),this%biomass_id) - &
            this%stoich_row(i,irxn) * rate(irxn)
       enddo
     enddo 
@@ -557,12 +570,12 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
     ! decay of doc
     Jacobian(this%doc_id,this%doc_id) = &
       Jacobian(this%doc_id,this%doc_id) + &
-      -1.d0 * this%k_deg/this%f_act
+      this%k_deg/this%f_act
 
     ! decay of biomass
     Jacobian(this%biomass_id,this%biomass_id) = &
       Jacobian(this%biomass_id,this%biomass_id) + &
-      -1.d0 * this%k_deg
+      this%k_deg
     
   endif
   
