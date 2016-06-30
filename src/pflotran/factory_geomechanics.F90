@@ -112,15 +112,10 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
   if (option%geomech_on) then
     simulation%geomech_realization => GeomechRealizCreate(option)
     geomech_realization => simulation%geomech_realization
-    geomech_realization%output_option => OutputOptionDuplicate(simulation%output_option)
-    nullify(geomech_realization%output_option%output_snap_variable_list)
-    nullify(geomech_realization%output_option%output_obs_variable_list)    
-    geomech_realization%output_option%output_snap_variable_list => OutputVariableListCreate()
-    geomech_realization%output_option%output_obs_variable_list => OutputVariableListCreate()
     subsurf_realization => simulation%realization
+    subsurf_realization%output_option => OutputOptionDuplicate(simulation%output_option)
     geomech_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
     call GeomechicsInitReadRequiredCards(geomech_realization)
-    pm_geomech%output_option => geomech_realization%output_option
     pmc_geomech => PMCGeomechanicsCreate()
     pmc_geomech%name = 'PMCGeomech'
     simulation%geomech_process_model_coupler => pmc_geomech
@@ -141,7 +136,13 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     string = 'GEOMECHANICS'
     call InputFindStringInFile(input,option,string)
     call InputFindStringErrorMsg(input,option,string)  
+    geomech_realization%output_option => OutputOptionDuplicate(simulation%output_option)
+    nullify(geomech_realization%output_option%output_snap_variable_list)
+    nullify(geomech_realization%output_option%output_obs_variable_list)    
+    geomech_realization%output_option%output_snap_variable_list => OutputVariableListCreate()
+    geomech_realization%output_option%output_obs_variable_list => OutputVariableListCreate()
     call GeomechanicsInitReadInput(simulation,timestepper%solver,input)
+    pm_geomech%output_option => geomech_realization%output_option
 
     ! Add first waypoint
     waypoint => WaypointCreate()
@@ -155,6 +156,20 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     waypoint%print_snap_output = PETSC_TRUE
     call WaypointInsertInList(waypoint,simulation%waypoint_list_geomechanics)   
 
+ 
+    call GeomechInitSetupRealization(simulation)
+    call InitCommonAddOutputWaypoints(option,simulation%output_option, &
+                                      simulation%waypoint_list_geomechanics)  
+    call InitCommonAddOutputWaypoints(option,subsurf_realization%output_option, &
+                                      simulation%waypoint_list_geomechanics)    
+    call GeomechInitSetupSolvers(geomech_realization,subsurf_realization, &
+                                 timestepper%convergence_context, &
+                                 timestepper%solver)
+                                  
+    call WaypointListFillIn(simulation%waypoint_list_geomechanics,option)
+    call WaypointListRemoveExtraWaypnts(simulation% &
+                                        waypoint_list_geomechanics,option)
+
     if (associated(simulation%geomech_process_model_coupler)) then
       if (associated(simulation%geomech_process_model_coupler% &
                      timestepper)) then
@@ -162,14 +177,6 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
           simulation%waypoint_list_geomechanics%first
       endif
     endif
- 
-    call GeomechInitSetupRealization(simulation)
-    call InitCommonAddOutputWaypoints(option,simulation%output_option, &
-                                      simulation%waypoint_list_geomechanics)    
-    call GeomechInitSetupSolvers(geomech_realization,subsurf_realization, &
-                                 timestepper%convergence_context, &
-                                 timestepper%solver)
-                                  
 
     call pm_geomech%PMGeomechForceSetRealization(geomech_realization)
     call pm_geomech%Setup()
@@ -308,6 +315,8 @@ subroutine GeomechanicsJumpStart(simulation)
     return
   endif
   
+  geomech_timestepper%name = 'GEOMECHANICS'
+ 
   master_timestepper => geomech_timestepper
 
   snapshot_plot_flag = PETSC_FALSE
