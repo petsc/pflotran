@@ -674,6 +674,8 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
     case (MPH_MODE)
       pres_dof = MPH_PRESSURE_DOF
       temp_dof = MPH_TEMPERATURE_DOF
+    case(RICHARDS_MODE)
+      pres_dof = RICHARDS_PRESSURE_DOF
     case default
       this%option%io_buffer = 'PMCSubsurfaceSetAuxDataForGeomech() not ' // &
         'supported for ' // trim(this%option%flowmode)
@@ -700,8 +702,14 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
 
         do local_id = 1, subsurf_grid%nlmax
           ghosted_id = subsurf_grid%nL2G(local_id)
-          pres_p(local_id) = xx_loc_p(option%nflowdof*(ghosted_id - 1) + pres_dof)
-          temp_p(local_id) = xx_loc_p(option%nflowdof*(ghosted_id - 1) + temp_dof)
+          pres_p(local_id) = xx_loc_p(option%nflowdof*(ghosted_id - 1) + &
+                                      pres_dof)
+          if (this%option%iflowmode == RICHARDS_MODE) then
+            temp_p(local_id) = this%option%reference_temperature
+          else
+            temp_p(local_id) = xx_loc_p(option%nflowdof*(ghosted_id - 1) + &
+                                        temp_dof)
+          endif
         enddo
 
         call VecRestoreArrayF90(subsurf_field%flow_xx_loc, xx_loc_p,  &
