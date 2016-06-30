@@ -90,7 +90,16 @@ cd ../../th_mode/transient
 pf=$(cd ../../../../src/pflotran; pwd)
 echo $PWD
 echo ' '
-echo 'No tests to run. . .'
+
+echo '============================='
+echo '  1D_conduction_BC_1st_kind'
+echo '============================='
+cd 1D_conduction_BC_1st_kind
+echo 'Running PFLOTRAN simulation . . .'
+mpirun -np $nproc $pf/pflotran -input_prefix 1D_conduction_BC_1st_kind > screen.txt
+python run_1D_conduction_BC_1st_kind.py
+rm *.vtk *.out screen.txt
+cd ..
 
 echo ' '
 echo '========================================================================='
