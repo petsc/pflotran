@@ -1712,6 +1712,8 @@ subroutine ReactionInputRecord(rxn)
   write(id,'(a29)',advance='no') '---------------------------: '
   write(id,'(a)') 'CHEMISTRY'
   
+  if (.not.associated(rxn)) return
+  
 ! --------- primary species list ---------------------------------------------
   if (associated(rxn%primary_species_list)) then
     write(id,'(a29)',advance='no') 'primary species list: '

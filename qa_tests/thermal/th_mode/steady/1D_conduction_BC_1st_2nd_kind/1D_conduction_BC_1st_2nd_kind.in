@@ -1,0 +1,180 @@
+#Description: QA test
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE TH
+    /
+  /
+  #INPUT_RECORD_FILE
+END
+
+SUBSURFACE
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 10 1 1
+  DXYZ
+   10
+   10
+   10
+  END
+END
+
+#=========================== regions ==========================================
+REGION left
+  COORDINATES
+    0.d0   0.d0   0.d0
+    40.d0  10.d0  10.d0
+  /
+END
+
+REGION right
+  COORDINATES
+    40.d0   0.d0   0.d0
+    100.d0  10.d0  10.d0
+  /
+END
+
+REGION left_face
+  FACE WEST
+  COORDINATES
+    0.d0  0.d0   0.d0
+    0.d0  10.d0  10.d0
+  /
+END
+
+REGION right_face
+  FACE EAST
+  COORDINATES
+    100.d0  0.d0   0.d0
+    100.d0  10.d0  10.d0
+  /
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY beam_left
+  ID 1
+  POROSITY 0.01d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.8E3
+  SPECIFIC_HEAT 1.d-3
+  THERMAL_CONDUCTIVITY_DRY 100 W/m-C
+  THERMAL_CONDUCTIVITY_WET 100 W/m-C
+  SATURATION_FUNCTION default
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+END
+
+MATERIAL_PROPERTY beam_right
+  ID 2
+  POROSITY 0.01d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.8E3
+  SPECIFIC_HEAT 1E3
+  THERMAL_CONDUCTIVITY_DRY 300 W/m-C
+  THERMAL_CONDUCTIVITY_WET 300 W/m-C
+  SATURATION_FUNCTION default
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+END
+
+#=========================== characteristic curves ============================
+SATURATION_FUNCTION default
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.5d-1
+  LAMBDA 0.75
+  ALPHA 1.d-3
+END
+
+#===================== stratigraphy couplers ==================================
+STRATA
+  REGION left
+  MATERIAL beam_left
+END
+
+STRATA
+  REGION right
+  MATERIAL beam_right
+END
+
+#=========================== output options ===================================
+OUTPUT
+  SNAPSHOT_FILE
+    TIMES yr 100
+    #PERIODIC TIME 1000 y
+    NO_PRINT_INITIAL
+    #FORMAT TECPLOT BLOCK
+    FORMAT VTK
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 100 yr
+  INITIAL_TIMESTEP_SIZE 1.d-4 day
+  MAXIMUM_TIMESTEP_SIZE 5.d0 yr at 0.d0 yr
+END
+
+#======================= flow conditions ======================================
+FLOW_CONDITION initial
+  TYPE
+    TEMPERATURE dirichlet
+    PRESSURE dirichlet
+  /
+  TEMPERATURE 1.0d0 C
+  PRESSURE 101325 Pa
+END
+
+FLOW_CONDITION left_face
+  TYPE
+    TEMPERATURE dirichlet
+    PRESSURE dirichlet
+  /
+  TEMPERATURE 1.d0 C
+  PRESSURE 101325 Pa
+END
+
+FLOW_CONDITION right_face
+  TYPE
+    ENERGY_FLUX neumann
+    PRESSURE dirichlet
+  /
+  ENERGY_FLUX +1.5d0 W/m^2
+  PRESSURE 101325 Pa
+END
+
+#========================== initial and boundary conditions ===================
+# initial condition
+INITIAL_CONDITION initial_left
+  REGION left
+  FLOW_CONDITION initial
+END
+INITIAL_CONDITION initial_right
+  REGION right
+  FLOW_CONDITION initial
+END
+
+# west boundary condition
+BOUNDARY_CONDITION left_face
+  REGION left_face
+  FLOW_CONDITION left_face
+END
+
+# east boundary condition
+BOUNDARY_CONDITION right_face
+  FLOW_CONDITION right_face
+  REGION right_face
+END
+
+
+END_SUBSURFACE
+
