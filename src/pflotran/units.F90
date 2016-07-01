@@ -346,9 +346,9 @@ subroutine UnitsCategory(unit,unit_category,error,error_msg)
       case('s','sec','second','min','minute','h','hr','hour','d','day','w', &
            'week','mo','month','y','yr','year')
         unit_category(k) = 'time'
-      case('J','KJ','MJ')
+      case('J','kJ','MJ')
         unit_category(k) = 'energy'
-      case('W','KW','MW')
+      case('W','kW','MW')
         unit_category(k) = 'power'
       case('mol','mole','moles','ug','mg','g','kg')
         unit_category(k) = 'mass'
@@ -358,7 +358,7 @@ subroutine UnitsCategory(unit,unit_category,error,error_msg)
         unit_category(k) = 'temperature'
         error_msg = 'Kelvin temperature units are not supported. Use Celcius.' 
         error = PETSC_TRUE
-      case('Pa','KPa','MPa','Bar')
+      case('Pa','kPa','MPa','Bar')
         unit_category(k) = 'pressure'
       case('M')
         unit_category(k) = 'concentration'
@@ -447,14 +447,14 @@ subroutine UnitsConvertToSI(unit,conversion_factor,error,error_msg)
   ! ---> ENERGY ---> (Joule)
     case('J')   
       conversion_factor = 1.d0
-    case('KJ')   
+    case('kJ')   
       conversion_factor = 1.d3
     case('MJ')   
       conversion_factor = 1.d6
   ! ---> ENERGY FLUX or POWER ---> (Watt)
     case('W')   
       conversion_factor = 1.d0
-    case('KW')   
+    case('kW')   
       conversion_factor = 1.d3
     case('MW')   
       conversion_factor = 1.d6
@@ -475,7 +475,7 @@ subroutine UnitsConvertToSI(unit,conversion_factor,error,error_msg)
   ! ---> PRESSURE ---> (Pascal)
     case('Pa') 
       conversion_factor = 1.d0
-    case('KPa')
+    case('kPa')
       conversion_factor = 1.d3
     case('MPa')
       conversion_factor = 1.d6

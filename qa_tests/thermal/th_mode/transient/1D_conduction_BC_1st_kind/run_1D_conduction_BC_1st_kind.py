@@ -61,7 +61,7 @@ import math
 import matplotlib.pyplot as plt
 
 # Option parameters:
-plot_flag = 0  # [1 = make plots, 0 = do not make plots]
+plot_flag = 1  # [1 = make plots, 0 = do not make plots]
 passing_crit = 2.  # [% error]
 
 # Create the analytical solution
