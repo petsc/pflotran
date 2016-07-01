@@ -382,8 +382,8 @@ subroutine InitSubsurfAssignMatProperties(realization)
     call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr);CHKERRQ(ierr)
     if (soil_compressibility_index > 0) then
-      call VecRestoreArrayF90(field%compressibility0,compress_p,ierr); &
-                              CHKERRQ(ierr)
+      call VecRestoreArrayF90(field%compressibility0,compress_p, &
+                              ierr);CHKERRQ(ierr)
     endif
   endif
   call VecRestoreArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)

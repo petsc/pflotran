@@ -942,7 +942,17 @@ The quantity $\P_{ml}$ denotes the prefactor for the $l$th parallel reaction wit
 \end{subequations}
 where in the first term on the right-hand side corresponding to $\A_{ml}$ product index $j$ runs over primary species and in the second term corresponding to $\B_{ml}$ product index $i$ runs over secondary species. The quantities $\a_{jl}^m$, $\a_{il}^m$ and $\b_{jl}^m$, $\b_{il}^m$ refer to prefactor coefficients, and $K_{jl}^m$, $K_{il}^m$ are attenuation factors.
 
-To compute the jacobian the partial derivative of the prefactor with respect to primary species is needed. For the general case of both primary and secondary prefactor species forming the derivative of the logarithm of the prefactor yields
+To compute the jacobian the partial derivative of the prefactor with respect to primary species is needed. The residual function can be split up in a term involving the mineral reaction rate and remaining terms as
+\BA
+R_j \eq R_j^0 + \sum_m \nu_{jm} I_m,
+\EA
+with jacobian
+\BA
+J_{jk} &\eq \frac{\p R_j^0}{\p m_k} + \frac{\p R_j}{\p m_k},\\
+&\eq \frac{\p R_j^0}{\p m_k} + \sum_m \nu_{jm} \frac{\p I_m}{\p m_k}.
+\EA
+
+For the general case of both primary and secondary prefactor species forming the derivative of the logarithm of the prefactor yields
 \begin{subequations}
 \BA
 \frac{\p\ln\P_{ml}}{\p m_j} &\eq \frac{\p\ln \A_{ml}}{\p m_j} + \sum_i \frac{\p\ln \B_{ml}}{\p m_i} \frac{\p m_i}{\p m_j},\\
@@ -967,6 +977,15 @@ and
 \frac{\p\ln\B_{ml}}{\p\ln m_i} \eq \a_{il}^m - \frac{\b_{il}^m K_{ml} \big(\gamma_i m_i\big)^{\b_{il}^m}}{1+K_{ml} \big(\gamma_i m_i\big)^{\b_{il}^m}}.
 \EN
 \end{subequations}
+Thus it follows that
+\EQ
+\frac{\p P_{ml}}{\p m_j} \eq 
+\frac{P_{ml}}{m_j} \left\{
+\begin{array}{ll}
+\dfrac{\p\ln\A_{ml}}{\p\ln m_j}, & \alpha_{jl}^m \ne 0 \\
+\displaystyle\sum_i \nu_{ji} \dfrac{\p\ln\B_{ml}}{\p\ln m_i}, & \alpha_{il}^m \ne 0
+\end{array}\right..
+\EN
 
 \paragraph{Rate Limiter}
 
@@ -1466,7 +1485,7 @@ with corresponding reaction rates $I_k^\m$, $I_k^\im$, and $I_k^s$, where the su
 \EQ
 \sum_j\nu_{js}\A_j \arrows \M_s.
 \EN
-The transport equations for primary species, mobile and immobile colloids, read
+The transport equations for primary species, and colloid-facilitated transport with sorption on mobile and immobile colloids, read
 \BA
 \frac{\p}{\p t} \varphi s_l \Psi_j^l + \bnabla\cdot\bOmega_j^l &\eq -\sum_k\nu_{jk}\big(I_k^\m + I_k^\im + \sum_s I_k^s\big) - \sum_s \nu_{js} I_s,\label{rateform}\\
 \frac{\p}{\p t} \varphi s_l S_k^\m + \bnabla\cdot\bq_c S_k^\m & \eq I_k^\m,\label{mobile}\\
@@ -1474,6 +1493,13 @@ The transport equations for primary species, mobile and immobile colloids, read
 \frac{\p}{\p t} S_k^s & \eq I_k^s,\label{solid}
 \EA
 where $\bq_c$ denotes the colloid Darcy velocity which may be greater than the fluid velocity $\bq$.
+In this equation $S_k^\im$, $S_k^\m$ and $S_k^s$ denote the sorbed concentrations in moles per bulk volume. These quantities may be expressed in terms of moles per kg of mobile and immobile colloids denoted by $\overline S_k^\m$ and $\overline S_k^\im$, through the relations
+\BA
+S_k^\m &\eq \frac{n_k^\m}{V_p} \eq \frac{n_k^\m}{M_c^\m} \frac{W_c^{} n_c^\m}{V_p} \eq W_c^{} C_c^\m \overline S_k^\m,\\
+S_k^\im &\eq \frac{n_k^\im}{V} \eq \frac{n_k^\im}{M_c^\im} \frac{W_c n_c^\im}{V} \eq W_c^{} S_c^\im \overline S_k^\im,
+\EA
+with colloid formula weight $W_c$ and where $C_c^\m$ and $S_c^\im$ denote the aqueous and immobile colloid concentrations, respectively. These latter quantities must be obtained from additional equations describing colloid transport and filtration not currently implemented in PFLOTRAN.
+
 For conditions of local equilibrium the sorption reaction rates may be eliminated and replaced by algebraic sorption isotherms to yield
 \EQ\label{eqform}
 \frac{\p}{\p t}\Big[ \varphi s_l \Psi_j^l + \sum_k \nu_{jk} \big(\varphi s_l S_k^\m + S_k^\im + \sum_s S_k^s\big) \Big] + \bnabla\cdot\Big(\bOmega_j^l + \bq_c \sum_k \nu_{jk} S_k^\m\Big) \eq - \sum_s \nu_{js} I_s.
@@ -1490,10 +1516,10 @@ with rate constant $k_k$ and where $S_{km}^{\rm eq}$ is a known function of the 
 
 Kinetic rate law:
 \EQ
-\R_i = k_i X_i \frac{C_a }{(K_a + C_a)} \frac{C_d }{ (K_d + C_d)} I_i
+\R_i = k_i X_i \frac{C_a}{K_a + C_a} \frac{C_d}{K_d + C_d} I_i
 \EN
 \EQ
-\R_i = k_i (X_i-X_i^{th}) \left[\frac{(C_a^{}-C_a^{th})}{(K_a^{} + C_a^{}-C_a^{th})}\right] \left[\frac{(C_d^{}-C_d^{th}) }{ (K_d^{} + C_d^{}-C_d^{th})}\right] I_i
+\R_i = k_i (X_i-X_i^{th}) \left[\frac{C_a^{}-C_a^{th}}{K_a^{} + C_a^{}-C_a^{th}}\right] \left[\frac{C_d^{}-C_d^{th}}{K_d^{} + C_d^{}-C_d^{th}}\right] I_i
 \EN
 
 \noindent

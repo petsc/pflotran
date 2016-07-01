@@ -30,6 +30,7 @@ module PM_RT_class
     PetscBool :: steady_flow
     PetscReal :: tran_weight_t0
     PetscReal :: tran_weight_t1
+    PetscBool :: check_post_convergence
     ! these govern the size of subsequent time steps
     PetscReal :: max_concentration_change
     PetscReal :: max_volfrac_change
@@ -105,6 +106,7 @@ function PMRTCreate()
   rt_pm%steady_flow = PETSC_FALSE
   rt_pm%tran_weight_t0 = 0.d0
   rt_pm%tran_weight_t1 = 0.d0
+  rt_pm%check_post_convergence = PETSC_FALSE
   rt_pm%max_concentration_change = 0.d0
   rt_pm%max_volfrac_change = 0.d0
   rt_pm%volfrac_change_governor = 1.d0
@@ -131,6 +133,7 @@ subroutine PMRTRead(this,input)
   use Input_Aux_module
   use String_module
   use Option_module
+  use Reactive_Transport_Aux_module
  
   implicit none
   
@@ -161,6 +164,10 @@ subroutine PMRTRead(this,input)
       case('MAX_VOLUME_FRACTION_CHANGE')
         call InputReadDouble(input,option,this%volfrac_change_governor)
         call InputDefaultMsg(input,option,'maximum volume fraction change')
+      case('ITOL_RELATIVE_UPDATE')
+        call InputReadDouble(input,option,rt_itol_rel_update)
+        call InputDefaultMsg(input,option,'rt_itol_rel_update')
+        this%check_post_convergence = PETSC_TRUE
       case('NUMERICAL_JACOBIAN')
         option%transport%numerical_derivatives = PETSC_TRUE
       case default
@@ -756,6 +763,11 @@ subroutine PMRTCheckUpdatePre(this,line_search,X,dX,changed,ierr)
     ! since it is not checkied in PETSc.  Thus, I don't want to spend 
     ! time checking for changes and performing an allreduce for log 
     ! formulation.
+    if (Initialized(reaction%truncated_concentration)) then
+      call VecGetArrayReadF90(X,C_p,ierr);CHKERRQ(ierr)
+      dC_p = min(C_p-log(reaction%truncated_concentration),dC_p)
+      call VecRestoreArrayReadF90(X,C_p,ierr);CHKERRQ(ierr)
+    endif
   else
     call VecGetLocalSize(X,n,ierr);CHKERRQ(ierr)
     call VecGetArrayReadF90(X,C_p,ierr);CHKERRQ(ierr)
@@ -788,7 +800,7 @@ subroutine PMRTCheckUpdatePre(this,line_search,X,dX,changed,ierr)
       ! scale if necessary
       if (min_ratio < 1.d0) then
         if (min_ratio < this%realization%option%min_allowable_scale) then
-          write(string,'(es9.3)') min_ratio
+          write(string,'(es10.3)') min_ratio
           string = 'The update of primary species concentration is being ' // &
             'scaled by a very small value (i.e. ' // &
             trim(adjustl(string)) // &
@@ -832,6 +844,7 @@ subroutine PMRTCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   use Option_module
   use Secondary_Continuum_module, only : SecondaryRTUpdateIterate
   use Output_EKG_module
+  use Reactive_Transport_Aux_module
 
   implicit none
   
@@ -873,7 +886,7 @@ subroutine PMRTCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   X1_changed = PETSC_FALSE
   
   converged_flag = 0
-  if (option%transport%check_post_convergence) then
+  if (this%check_post_convergence) then
     converged_due_to_rel_update = PETSC_FALSE
     converged_due_to_residual = PETSC_FALSE
     call VecGetArrayReadF90(dX,dC_p,ierr);CHKERRQ(ierr)
@@ -886,12 +899,10 @@ subroutine PMRTCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
     max_scaled_residual = maxval(dabs(r_p(:)/accum_p(:)))
     call VecRestoreArrayReadF90(field%tran_r,r_p,ierr);CHKERRQ(ierr)
     call VecRestoreArrayReadF90(field%tran_accum,accum_p,ierr);CHKERRQ(ierr)
-    converged_due_to_rel_update = &
-      (option%transport%inf_rel_update_tol > 0.d0 .and. &
-       max_relative_change < option%transport%inf_rel_update_tol)
-    converged_due_to_residual = &
-      (option%transport%inf_scaled_res_tol  > 0.d0 .and. &
-       max_scaled_residual < option%transport%inf_scaled_res_tol)
+    converged_due_to_rel_update = (Initialized(rt_itol_rel_update) .and. &
+                                   max_relative_change < rt_itol_rel_update)
+    converged_due_to_residual = (Initialized(rt_itol_scaled_res) .and. &
+                                max_scaled_residual < rt_itol_scaled_res)
     if (converged_due_to_rel_update .or. converged_due_to_residual) then
       converged_flag = 1
     endif

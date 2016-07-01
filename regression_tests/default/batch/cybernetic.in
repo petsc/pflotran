@@ -1,11 +1,11 @@
-#Description: 1D microbial degradation problem without biomass
+#Description: 0D microbial degradation problem with biomass
 
 SIMULATION
   SIMULATION_TYPE SUBSURFACE
   PROCESS_MODELS
     SUBSURFACE_TRANSPORT transport
       GLOBAL_IMPLICIT
-      ITOL_RELATIVE_UPDATE 1.d-12
+#      NUMERICAL_JACOBIAN
     /
   /
 END
@@ -24,25 +24,30 @@ END
 
 #=========================== useful tranport parameters ==================
 UNIFORM_VELOCITY 0.d0 0.d0 0.d0 m/yr
+REFERENCE_TEMPERATURE 25.d0 C
 
 #=========================== chemistry ========================================
+# Uncomment to debug reactions
+#NUMERICAL_JACOBIAN_RXN
 CHEMISTRY
   PRIMARY_SPECIES
-    A(aq)
-    B(aq)
+    C5H7O2N(aq)
+    CH2O(aq)
+    CO2(aq)
+    NH4+
+    NO2-
+    NO3-
+    N2(aq)
+    O2(aq)
   /
-  MICROBIAL_REACTION
-    REACTION A(aq) <-> B(aq) 
-    RATE_CONSTANT 1.d-12
-    MONOD
-      SPECIES_NAME A(aq)
-      HALF_SATURATION_CONSTANT 1.d-20        ! A is the donor
+  REACTION_SANDBOX 
+    CYBERNETIC
     /
   /
-  TRUNCATE_CONCENTRATION 1.d-20
-  DATABASE ../../../database/hanford.dat
+  DATABASE ./cybernetic.dat
+  LOG_FORMULATION
   ACTIVITY_COEFFICIENTS OFF
-  MOLAL
+  TRUNCATE_CONCENTRATION 1.d-40
   OUTPUT
     all
     TOTAL
@@ -51,10 +56,11 @@ END
 
 #=========================== solver options ===================================
 NEWTON_SOLVER TRANSPORT
-  ATOL 1.d-50
-  RTOL 1.d-50
-  STOL 1.d-50
-#  ITOL_RELATIVE_UPDATE 1.d-12
+  MAXIT 12
+END
+
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
 END
 
 #=========================== discretization ===================================
@@ -83,27 +89,33 @@ END
 OUTPUT
 #  TIMES y 5. 10. 15. 20.
 #  FORMAT TECPLOT POINT
-   PERIODIC_OBSERVATION TIMESTEP 1
+#  PERIODIC_OBSERVATION TIMESTEP 1
 END
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 4.d0 y            ! A(aq) at 50m midpoint
-  INITIAL_TIMESTEP_SIZE 1.d0 h
-  MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
+#  FINAL_TIME 20.d0 d 
+  FINAL_TIME 1.d0 d 
+#  INITIAL_TIMESTEP_SIZE 1.d0 h
+  INITIAL_TIMESTEP_SIZE 1.d0 s
+  MAXIMUM_TIMESTEP_SIZE 1.d0 h
 END
 
 #=========================== regions ==========================================
 REGION all
   COORDINATES
-    0.d0 0.d0 0.d0
-    1.d0 1.d0 1.d0
+    -1.d20 -1.d20 -1.d20
+    1.d20 1.d20 1.d20
   /
+END
+
+REGION pt
+  COORDINATE 0.5d0 0.5d0 0.5d0
 END
 
 #=========================== observation points ===============================
 OBSERVATION
-  REGION all
+  REGION pt
 END
 
 #=========================== transport conditions =============================
@@ -117,8 +129,15 @@ END
 #=========================== constraints ======================================
 CONSTRAINT initial
   CONCENTRATIONS
-    A(aq) 1.d-4  T
-    B(aq) 1.d-7  T
+    C5H7O2N(aq) 1.d-5    T
+    CH2O(aq)    61.13d-3 T
+    CO2(aq)     1.d-3    T
+    N2(aq)      1.d-10   T
+    NH4+        1.d0     T
+    NO2-        1.d-10   T
+#    NO2-        1.d-2   T
+    NO3-        18.25d-3 T
+    O2(aq)      1.d-3    T
   /
 END
 
@@ -134,6 +153,5 @@ STRATA
   REGION all
   MATERIAL soil1
 END
-
 
 END_SUBSURFACE

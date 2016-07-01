@@ -824,8 +824,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           gen_auxvar%pres(spid)*(1.d0-window_epsilon)) then
 !#ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
-        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,natural_id, &
-                                 'Before Update',option)
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,material_auxvar, &
+                                 natural_id,'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''Liquid -> 2 Phase at Cell '',i8)') &
@@ -842,9 +842,14 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
         global_auxvar%istate = TWO_PHASE_STATE
         liquid_epsilon = epsilon
 !TOUGH2 approach
+        ! geh: just testing something here
         x(GENERAL_GAS_PRESSURE_DOF) = max(gen_auxvar%pres(gid), &
                                           gen_auxvar%pres(spid))* &
                                          (1.d0 + liquid_epsilon)
+!        x(GENERAL_GAS_PRESSURE_DOF) = max(gen_auxvar%pres(gid), &
+!                                          gen_auxvar%pres(spid)+ &
+!                                          gen_auxvar%pres(apid))* &
+!                                         (1.d0 + liquid_epsilon)
         if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
           ! do nothing as the energy dof has not changed
           if (.not.general_isothermal) then
@@ -876,8 +881,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
           gen_auxvar%pres(spid)*(1.d0+window_epsilon)) then
 !#ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
-        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,natural_id, &
-                                 'Before Update',option)
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,material_auxvar, &
+                                 natural_id,'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''Gas -> 2 Phase at Cell '',i8)') &
@@ -909,8 +914,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
       if (gen_auxvar%sat(gid) < 0.d0) then
 !#ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
-        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,natural_id, &
-                                 'Before Update',option)
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,material_auxvar, &
+                                 natural_id,'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''2 Phase -> Liquid at Cell '',i8)') &
@@ -952,8 +957,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
       else if (gen_auxvar%sat(gid) > 1.d0) then
 !#ifdef DEBUG_GENERAL
 #ifdef DEBUG_GENERAL_INFO
-        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,natural_id, &
-                                 'Before Update',option)
+        call GeneralPrintAuxVars(gen_auxvar,global_auxvar,material_auxvar, &
+                                 natural_id,'Before Update',option)
 #endif
         if (option%iflag == GENERAL_UPDATE_FOR_ACCUM) then
           write(state_change_string,'(''2 Phase -> Gas at Cell '',i8)') &
@@ -994,8 +999,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
     state_change_string = 'State Transition: ' // trim(state_change_string)
     call printMsgByRank(option,state_change_string)
 #ifdef DEBUG_GENERAL_INFO
-    call GeneralPrintAuxVars(gen_auxvar,global_auxvar,natural_id, &
-                             'After Update',option)
+    call GeneralPrintAuxVars(gen_auxvar,global_auxvar,material_auxvar, &
+                             natural_id,'After Update',option)
 #endif
 !#endif
   endif
@@ -1260,8 +1265,8 @@ end subroutine GeneralAuxVarPerturb
 
 ! ************************************************************************** !
 
-subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,natural_id, &
-                               string,option)
+subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,material_auxvar, &
+                               natural_id,string,option)
   ! 
   ! Prints out the contents of an auxvar
   ! 
@@ -1270,18 +1275,24 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,natural_id, &
   ! 
 
   use Global_Aux_module
+  use Material_Aux_class
   use Option_module
 
   implicit none
 
   type(general_auxvar_type) :: general_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   PetscInt :: natural_id
   character(len=*) :: string
   type(option_type) :: option
 
   PetscInt :: apid, cpid, vpid, spid
   PetscInt :: gid, lid, acid, wid, eid
+  PetscReal :: liquid_mass, gas_mass
+  PetscReal :: liquid_density, gas_density
+  PetscReal :: liquid_energy, gas_energy
+  PetscReal :: liquid_saturation, gas_saturation
 
   lid = option%liquid_phase
   gid = option%gas_phase
@@ -1294,49 +1305,82 @@ subroutine GeneralPrintAuxVars(general_auxvar,global_auxvar,natural_id, &
   wid = option%water_id
   eid = option%energy_id
 
+  liquid_density = 0.d0
+  gas_density = 0.d0
+  liquid_energy = 0.d0
+  gas_energy = 0.d0
+  liquid_saturation = 0.d0
+  gas_saturation = 0.d0
+
   print *, '--------------------------------------------------------'
   print *, trim(string)
-  print *, '             cell id: ', natural_id
+  print *, '                 cell id: ', natural_id
   select case(global_auxvar%istate)
     case(LIQUID_STATE)
-      print *, ' Thermodynamic state: Liquid phase'
+      print *, '     Thermodynamic state: Liquid phase'
+      liquid_density = general_auxvar%den(lid)
+      liquid_energy = general_auxvar%U(lid)
+      liquid_saturation = general_auxvar%sat(lid)
     case(GAS_STATE)
-      print *, ' Thermodynamic state: Gas phase'
+      print *, '     Thermodynamic state: Gas phase'
+      gas_density = general_auxvar%den(gid)
+      gas_energy = general_auxvar%U(gid)
+      gas_saturation = general_auxvar%sat(gid)
     case(TWO_PHASE_STATE)
-      print *, ' Thermodynamic state: Two phase'
+      print *, '     Thermodynamic state: Two phase'
+      liquid_density = general_auxvar%den(lid)
+      gas_density = general_auxvar%den(gid)
+      liquid_energy = general_auxvar%U(lid)
+      gas_energy = general_auxvar%U(gid)
+      liquid_saturation = general_auxvar%sat(lid)
+      gas_saturation = general_auxvar%sat(gid)
   end select
-  print *, '      liquid pressure: ', general_auxvar%pres(lid)
-  print *, '         gas pressure: ', general_auxvar%pres(gid)
-  print *, '         air pressure: ', general_auxvar%pres(apid)
-  print *, '   capillary pressure: ', general_auxvar%pres(cpid)
-  print *, '       vapor pressure: ', general_auxvar%pres(vpid)
-  print *, '  saturation pressure: ', general_auxvar%pres(spid)
-  print *, '    liquid saturation: ', general_auxvar%sat(lid)
-  print *, '       gas saturation: ', general_auxvar%sat(gid)
-  print *, 'liquid density [kmol]: ', general_auxvar%den(lid)
-  print *, '   gas density [kmol]: ', general_auxvar%den(gid)
-  print *, '  liquid density [kg]: ', general_auxvar%den_kg(lid)
-  print *, '     gas density [kg]: ', general_auxvar%den_kg(gid)
-  print *, '      temperature [C]: ', general_auxvar%temp
-  print *, '   liquid H [MJ/kmol]: ', general_auxvar%H(lid)
-  print *, '      gas H [MJ/kmol]: ', general_auxvar%H(gid)
-  print *, '   liquid U [MJ/kmol]: ', general_auxvar%U(lid)
-  print *, '      gas U [MJ/kmol]: ', general_auxvar%U(gid)
-  print *, '  X (water in liquid): ', general_auxvar%xmol(lid,lid)
-  print *, '    X (air in liquid): ', general_auxvar%xmol(gid,lid)
-  print *, '     X (water in gas): ', general_auxvar%xmol(lid,gid)
-  print *, '       X (air in gas): ', general_auxvar%xmol(gid,gid)
-  print *, '      liquid mobility: ', general_auxvar%mobility(lid)
-  print *, '         gas mobility: ', general_auxvar%mobility(gid)
-  print *, '   effective porosity: ', general_auxvar%effective_porosity
+  liquid_mass = (liquid_density*general_auxvar%xmol(lid,lid)* & 
+                 liquid_saturation+ &
+                 gas_density*general_auxvar%xmol(lid,gid)* & 
+                 gas_saturation)* & 
+                 general_auxvar%effective_porosity*material_auxvar%volume
+  gas_mass = (liquid_density*general_auxvar%xmol(gid,lid)* & 
+              liquid_saturation+ &
+              gas_density*general_auxvar%xmol(gid,gid)* & 
+              gas_saturation)* & 
+              general_auxvar%effective_porosity*material_auxvar%volume
+  print *, 'tot liq comp mass [kmol]: ', liquid_mass
+  print *, 'tot gas comp mass [kmol]: ', gas_mass
+  print *, '             energy [MJ]: ', liquid_mass*liquid_energy + &
+                                         gas_mass*gas_energy
+  print *, '         liquid pressure: ', general_auxvar%pres(lid)
+  print *, '            gas pressure: ', general_auxvar%pres(gid)
+  print *, '            air pressure: ', general_auxvar%pres(apid)
+  print *, '      capillary pressure: ', general_auxvar%pres(cpid)
+  print *, '          vapor pressure: ', general_auxvar%pres(vpid)
+  print *, '     saturation pressure: ', general_auxvar%pres(spid)
+  print *, '       liquid saturation: ', general_auxvar%sat(lid)
+  print *, '          gas saturation: ', general_auxvar%sat(gid)
+  print *, '   liquid density [kmol]: ', general_auxvar%den(lid)
+  print *, '      gas density [kmol]: ', general_auxvar%den(gid)
+  print *, '     liquid density [kg]: ', general_auxvar%den_kg(lid)
+  print *, '        gas density [kg]: ', general_auxvar%den_kg(gid)
+  print *, '         temperature [C]: ', general_auxvar%temp
+  print *, '      liquid H [MJ/kmol]: ', general_auxvar%H(lid)
+  print *, '         gas H [MJ/kmol]: ', general_auxvar%H(gid)
+  print *, '      liquid U [MJ/kmol]: ', general_auxvar%U(lid)
+  print *, '         gas U [MJ/kmol]: ', general_auxvar%U(gid)
+  print *, '     X (water in liquid): ', general_auxvar%xmol(lid,lid)
+  print *, '       X (air in liquid): ', general_auxvar%xmol(gid,lid)
+  print *, '        X (water in gas): ', general_auxvar%xmol(lid,gid)
+  print *, '          X (air in gas): ', general_auxvar%xmol(gid,gid)
+  print *, '         liquid mobility: ', general_auxvar%mobility(lid)
+  print *, '            gas mobility: ', general_auxvar%mobility(gid)
+  print *, '      effective porosity: ', general_auxvar%effective_porosity
   print *, '--------------------------------------------------------'
 
 end subroutine GeneralPrintAuxVars
 
 ! ************************************************************************** !
 
-subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,natural_id, &
-                                string,append,option)
+subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,material_auxvar, &
+                                 natural_id,string,append,option)
   ! 
   ! Prints out the contents of an auxvar to a file
   ! 
@@ -1345,12 +1389,14 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,natural_id, &
   ! 
 
   use Global_Aux_module
+  use Material_Aux_class
   use Option_module
 
   implicit none
 
   type(general_auxvar_type) :: general_auxvar
   type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
   PetscInt :: natural_id
   character(len=*) :: string
   PetscBool :: append
@@ -1359,6 +1405,10 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,natural_id, &
   character(len=MAXSTRINGLENGTH) :: string2
   PetscInt :: apid, cpid, vpid, spid
   PetscInt :: gid, lid, acid, wid, eid
+  PetscReal :: liquid_mass, gas_mass
+  PetscReal :: liquid_density, gas_density
+  PetscReal :: liquid_energy, gas_energy
+  PetscReal :: liquid_saturation, gas_saturation
 
   lid = option%liquid_phase
   gid = option%gas_phase
@@ -1371,6 +1421,13 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,natural_id, &
   wid = option%water_id
   eid = option%energy_id
   
+  liquid_density = 0.d0
+  gas_density = 0.d0
+  liquid_energy = 0.d0
+  gas_energy = 0.d0
+  liquid_saturation = 0.d0
+  gas_saturation = 0.d0
+
   write(string2,*) natural_id
   string2 = trim(adjustl(string)) // '_' // trim(adjustl(string2)) // '.txt'
   if (append) then
@@ -1385,36 +1442,66 @@ subroutine GeneralOutputAuxVars1(general_auxvar,global_auxvar,natural_id, &
   select case(global_auxvar%istate)
     case(LIQUID_STATE)
       write(86,*) ' Thermodynamic state: Liquid phase'
+      liquid_density = general_auxvar%den(lid)
+      liquid_energy = general_auxvar%U(lid)
+      liquid_saturation = general_auxvar%sat(lid)
     case(GAS_STATE)
       write(86,*) ' Thermodynamic state: Gas phase'
+      gas_density = general_auxvar%den(gid)
+      gas_energy = general_auxvar%U(gid)
+      gas_saturation = general_auxvar%sat(gid)
     case(TWO_PHASE_STATE)
       write(86,*) ' Thermodynamic state: Two phase'
+      liquid_density = general_auxvar%den(lid)
+      gas_density = general_auxvar%den(gid)
+      liquid_energy = general_auxvar%U(lid)
+      gas_energy = general_auxvar%U(gid)
+      liquid_saturation = general_auxvar%sat(lid)
+      gas_saturation = general_auxvar%sat(gid)
   end select
-  write(86,*) '      liquid pressure: ', general_auxvar%pres(lid)
-  write(86,*) '         gas pressure: ', general_auxvar%pres(gid)
-  write(86,*) '         air pressure: ', general_auxvar%pres(apid)
-  write(86,*) '   capillary pressure: ', general_auxvar%pres(cpid)
-  write(86,*) '       vapor pressure: ', general_auxvar%pres(vpid)
-  write(86,*) '  saturation pressure: ', general_auxvar%pres(spid)
-  write(86,*) '      temperature [C]: ', general_auxvar%temp
-  write(86,*) '    liquid saturation: ', general_auxvar%sat(lid)
-  write(86,*) '       gas saturation: ', general_auxvar%sat(gid)
-  write(86,*) 'liquid density [kmol]: ', general_auxvar%den(lid)
-  write(86,*) '  liquid density [kg]: ', general_auxvar%den_kg(lid)
-  write(86,*) '   gas density [kmol]: ', general_auxvar%den(gid)
-  write(86,*) '     gas density [kg]: ', general_auxvar%den_kg(gid)
-  write(86,*) '  X (water in liquid): ', general_auxvar%xmol(lid,lid)
-  write(86,*) '    X (air in liquid): ', general_auxvar%xmol(gid,lid)
-  write(86,*) '     X (water in gas): ', general_auxvar%xmol(lid,gid)
-  write(86,*) '       X (air in gas): ', general_auxvar%xmol(gid,gid)
-  write(86,*) '   liquid H [MJ/kmol]: ', general_auxvar%H(lid)
-  write(86,*) '      gas H [MJ/kmol]: ', general_auxvar%H(gid)
-  write(86,*) '   liquid U [MJ/kmol]: ', general_auxvar%U(lid)
-  write(86,*) '      gas U [MJ/kmol]: ', general_auxvar%U(gid)
-  write(86,*) '      liquid mobility: ', general_auxvar%mobility(lid)
-  write(86,*) '         gas mobility: ', general_auxvar%mobility(gid)
-  write(86,*) '   effective porosity: ', general_auxvar%effective_porosity
+  liquid_mass = (liquid_density*general_auxvar%xmol(lid,lid)* & 
+                 liquid_saturation+ &
+                 gas_density*general_auxvar%xmol(lid,gid)* & 
+                 gas_saturation)* & 
+                 general_auxvar%effective_porosity*material_auxvar%volume
+  gas_mass = (liquid_density*general_auxvar%xmol(gid,lid)* & 
+              liquid_saturation+ &
+              gas_density*general_auxvar%xmol(gid,gid)* & 
+              gas_saturation)* & 
+              general_auxvar%effective_porosity*material_auxvar%volume
+  write(86,*) 'tot liq comp mass [kmol]: ', liquid_mass
+  write(86,*) 'tot gas comp mass [kmol]: ', gas_mass
+  write(86,*) '             energy [MJ]: ', liquid_mass*liquid_energy + &
+                                            gas_mass*gas_energy
+  write(86,*) '         liquid pressure: ', general_auxvar%pres(lid)
+  write(86,*) '            gas pressure: ', general_auxvar%pres(gid)
+  write(86,*) '            air pressure: ', general_auxvar%pres(apid)
+  write(86,*) '      capillary pressure: ', general_auxvar%pres(cpid)
+  write(86,*) '          vapor pressure: ', general_auxvar%pres(vpid)
+  write(86,*) '     saturation pressure: ', general_auxvar%pres(spid)
+  write(86,*) '         temperature [C]: ', general_auxvar%temp
+  write(86,*) '       liquid saturation: ', general_auxvar%sat(lid)
+  write(86,*) '          gas saturation: ', general_auxvar%sat(gid)
+  write(86,*) '   liquid density [kmol]: ', general_auxvar%den(lid)
+  write(86,*) '     liquid density [kg]: ', general_auxvar%den_kg(lid)
+  write(86,*) '      gas density [kmol]: ', general_auxvar%den(gid)
+  write(86,*) '        gas density [kg]: ', general_auxvar%den_kg(gid)
+  write(86,*) '     X (water in liquid): ', general_auxvar%xmol(lid,lid)
+  write(86,*) '       X (air in liquid): ', general_auxvar%xmol(gid,lid)
+  write(86,*) '        X (water in gas): ', general_auxvar%xmol(lid,gid)
+  write(86,*) '          X (air in gas): ', general_auxvar%xmol(gid,gid)
+  write(86,*) '      liquid H [MJ/kmol]: ', general_auxvar%H(lid)
+  write(86,*) '         gas H [MJ/kmol]: ', general_auxvar%H(gid)
+  write(86,*) '      liquid U [MJ/kmol]: ', general_auxvar%U(lid)
+  write(86,*) '         gas U [MJ/kmol]: ', general_auxvar%U(gid)
+  write(86,*) '         liquid mobility: ', general_auxvar%mobility(lid)
+  write(86,*) '            gas mobility: ', general_auxvar%mobility(gid)
+  write(86,*) '      effective porosity: ', general_auxvar%effective_porosity
   write(86,*) '...'
+  write(86,*) liquid_mass
+  write(86,*) gas_mass
+  write(86,*) liquid_mass*general_auxvar%U(lid) + &
+              gas_mass*general_auxvar%U(gid)
   write(86,*) general_auxvar%pres(lid)
   write(86,*) general_auxvar%pres(gid)
   write(86,*) general_auxvar%pres(apid)

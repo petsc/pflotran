@@ -21,7 +21,6 @@ module Option_Transport_module
     
     PetscReal :: inf_rel_update_tol
     PetscReal :: inf_scaled_res_tol
-    PetscBool :: check_post_convergence
   
     PetscBool :: jumpstart_kinetic_sorption
     PetscBool :: no_checkpoint_kinetic_sorption
@@ -121,7 +120,6 @@ subroutine OptionTransportInitRealization(option)
   option%tran_weight_t0 = 0.d0
   option%tran_weight_t1 = 0.d0
 
-  option%check_post_convergence = PETSC_FALSE
   option%inf_rel_update_tol = UNINITIALIZED_DOUBLE
   option%inf_scaled_res_tol = UNINITIALIZED_DOUBLE 
   
