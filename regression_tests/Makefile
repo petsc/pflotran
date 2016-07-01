@@ -36,7 +36,6 @@ endif
 # standard tests that are run to verify pflotran is built correctly
 #
 STANDARD_CFG = \
-    geomech/uniaxial_strain/uniaxial_strain.cfg \
 	ascem/batch/batch.cfg \
 	ascem/1d/1d-calcite/1d-calcite.cfg \
 	default/input_format/input_format.cfg \
@@ -59,6 +58,7 @@ STANDARD_CFG = \
 	default/regions/regions.cfg \
 	default/salinity/salinity.cfg \
 	default/timestepping/timestepping.cfg \
+    geomech/uniaxial_strain/uniaxial_strain.cfg \
 	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\
     general/general.cfg \
     hydrogeophysics/hydrogeophysics.cfg \
