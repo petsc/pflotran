@@ -1314,7 +1314,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = (dsat_dp*den*u + &
                                            sat*dden_dp*u + &
                                            sat*den*du_dp)*porXvol + &
-                        (den*sat*u - rock_dencpr)*vol*dcompressed_porosity_dp
+                        (den*sat*u - rock_dencpr*temp)*vol*dcompressed_porosity_dp
   J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = sat*(dden_dt*u + den*du_dt)*porXvol +  &
                                              (1.d0 - por)*vol*rock_dencpr
 
