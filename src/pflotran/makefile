@@ -697,7 +697,8 @@ geomechanics_region.o : geometry.o grid_unstructured_cell.o input_aux.o \
                         utility.o
 geomechanics_regression.o : discretization.o  input_aux.o option.o \
                output_geomechanics.o pflotran_constants.o \
-               string.o utility.o geomech_grid_aux.o
+               string.o utility.o geomech_grid_aux.o \
+               timestepper_steady.o
 geomechanics_strata.o : geomechanics_material.o geomechanics_region.o \
                         input_aux.o option.o pflotran_constants.o string.o
 geometry.o : input_aux.o option.o pflotran_constants.o
