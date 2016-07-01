@@ -152,24 +152,28 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     ! Add final_time waypoint to geomech_realization
     waypoint => WaypointCreate()
     waypoint%final = PETSC_TRUE
-    waypoint%time = simulation%waypoint_list_geomechanics%last%time
+    waypoint%time = simulation%waypoint_list_subsurface%last%time
     waypoint%print_snap_output = PETSC_TRUE
     call WaypointInsertInList(waypoint,simulation%waypoint_list_geomechanics)   
-
- 
+    ! Merge with subsurface waypoint list and checkpointing waypoints
+    call WaypointListCopyAndMerge(simulation%waypoint_list_geomechanics, &
+                                  simulation%waypoint_list_subsurface,option)
+    call WaypointListCopyAndMerge(simulation%waypoint_list_geomechanics, &
+                                  simulation%waypoint_list_outer,option)
+ 	! initialize geomech realization
     call GeomechInitSetupRealization(simulation)
+    ! Add output waypoints from geomech realization
     call InitCommonAddOutputWaypoints(option,simulation%output_option, &
-                                      simulation%waypoint_list_geomechanics)  
+                                      simulation%waypoint_list_geomechanics) 
+    ! Add output waypoints from subsurface realization
     call InitCommonAddOutputWaypoints(option,subsurf_realization%output_option, &
                                       simulation%waypoint_list_geomechanics)    
-    call GeomechInitSetupSolvers(geomech_realization,subsurf_realization, &
-                                 timestepper%convergence_context, &
-                                 timestepper%solver)
-                                  
+    ! Fill holes and remove extra waypoints                              
     call WaypointListFillIn(simulation%waypoint_list_geomechanics,option)
     call WaypointListRemoveExtraWaypnts(simulation% &
                                         waypoint_list_geomechanics,option)
 
+	! link timestepper waypoints to geomech way point list
     if (associated(simulation%geomech_process_model_coupler)) then
       if (associated(simulation%geomech_process_model_coupler% &
                      timestepper)) then
@@ -177,6 +181,12 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
           simulation%waypoint_list_geomechanics%first
       endif
     endif
+    
+    ! Solver set up
+    call GeomechInitSetupSolvers(geomech_realization,subsurf_realization, &
+                                 timestepper%convergence_context, &
+                                 timestepper%solver)
+
 
     call pm_geomech%PMGeomechForceSetRealization(geomech_realization)
     call pm_geomech%Setup()
