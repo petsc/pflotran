@@ -735,7 +735,7 @@ subroutine FlowConditionRead(condition,input,option)
   saturation%units = ' '
   temperature%units = 'C'
   concentration%units = 'M'
-  enthalpy%units = 'KJ/mol'
+  enthalpy%units = 'kJ/mol'
   displacement_x%units = 'm'
   displacement_y%units = 'm'
   displacement_z%units = 'm'
@@ -777,7 +777,7 @@ subroutine FlowConditionRead(condition,input,option)
               temperature%units = trim(word)
             case('M','mol/L')
               concentration%units = trim(word)
-            case('KJ/mol')
+            case('kJ/mol')
               enthalpy%units = trim(word)
             case default
               call InputKeywordUnrecognized(word,'condition,units',option)
@@ -1004,7 +1004,7 @@ subroutine FlowConditionRead(condition,input,option)
               internal_units = 'unitless'
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
-              internal_units = 'KJ/mol-meter'
+              internal_units = 'kJ/mol-meter'
             case default
               call InputKeywordUnrecognized(word, &
                      'FLOW CONDITION,GRADIENT,TYPE',option)
@@ -1026,7 +1026,7 @@ subroutine FlowConditionRead(condition,input,option)
                                  temperature%dataset, &
                                  temperature%units,internal_units)
       case('ENTHALPY','H')
-        internal_units = 'KJ/mol'
+        internal_units = 'kJ/mol'
         call ConditionReadValues(input,option,word, &
                                  enthalpy%dataset, &
                                  enthalpy%units,internal_units)
