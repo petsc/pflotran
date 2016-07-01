@@ -136,7 +136,8 @@ subroutine GeomechForceSetPlotVariables(list)
   implicit none
 
   type(output_variable_list_type), pointer :: list
-  
+  type(output_variable_type), pointer :: output_variable
+
   character(len=MAXWORDLENGTH) :: name, units
   
   if (associated(list%first)) then
@@ -158,11 +159,13 @@ subroutine GeomechForceSetPlotVariables(list)
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GEOMECH_DISP_Z)
 
-  name = 'Material ID'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_DISCRETE,units, &
-                               GEOMECH_MATERIAL_ID)
-                               
+  name = 'Material ID'
+  output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                          units,GEOMECH_MATERIAL_ID)
+  output_variable%iformat = 1 ! integer
+  call OutputVariableAddToList(list,output_variable)
+                             
   name = 'strain_xx'
   units = ''
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &

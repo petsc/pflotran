@@ -535,7 +535,7 @@ subroutine GeomechanicsRegressionOutput(geomechanics_regression, &
   if (option%myrank == option%io_rank) then
     string = trim(option%global_prefix) // &
              trim(option%group_prefix) // &  
-             '.geomechanics_regression'
+             '.regression'
     option%io_buffer = '--> write geomechanics_regression output file: ' // trim(string)
     call printMsg(option)
     open(unit=OUTPUT_UNIT,file=string,action="write")
