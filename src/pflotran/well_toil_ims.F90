@@ -509,7 +509,9 @@ subroutine TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
       if ( vol_flux < 0.0d0 .and. dof==ZERO_INTEGER ) &
        write(*,"('TOilImsWellProd reverse flow at gh = ',I5,' dp = ',e10.4)") &
         ghosted_id, dphi
-
+   
+      !stopping reversing flows to occur - they cannot be handled with this model
+      if ( vol_flux < wfloweps ) cycle
       !if( dabs(vol_flux) > 1.d-10 ) then !try to cut som noise
       !if( dabs(dphi/this%pw_ref) > 1.d-7 ) then !try to cut som noise
         ! the minus sign indicate component fluxes out the reservoir
