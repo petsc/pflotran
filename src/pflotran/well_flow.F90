@@ -11,10 +11,13 @@ module Well_Flow_class
 
 #include "petsc/finclude/petscsys.h"
 
-  PetscReal, parameter, public :: wfloweps = 1.D-24
+  PetscReal, parameter, public :: wfloweps = 1.D-24 
+  PetscInt, parameter, public :: WELL_HYDROSTATIC_LINEAR = 1
+  PetscInt, parameter, public :: WELL_HYDROSTATIC_ITERATIVE = 2
 
   type, public, extends(well_base_type) :: well_flow_type
     PetscReal :: pw_ref                          ! [Pa] well pressure at reference elevation
+    PetscInt :: hydrostatic_method               ! it defines the mthod used in the well hydrostatic computation
     PetscReal, pointer :: dw_kg_ref(:)           ! dw_kg_ref(iphase) [kg/m3] well fluid density of iphase at reference elevation
     PetscReal, pointer :: q_fld(:)               ! q_fld(iphase)  [m3/s] well fluid flow rates of iphase
     PetscReal, pointer :: mr_fld(:)              ! mr_fld(iphase) [kg/s] well fluid mass rates of iphase
@@ -40,6 +43,7 @@ module Well_Flow_class
     procedure, public :: QPhase => FlowQPhase
     procedure, public :: MRPhase => FlowMRPhase
     procedure, public :: LimitCheck => WellFlowLimitCheck
+    procedure, public :: TempUpdate => FlowTempUpdate
     procedure, public :: HydroCorrUpdates => FlowHydroCorrUpdate
     procedure, public :: ConnDenUpdate => WellFlowConnDenUpdate
     procedure, public :: HydrostaticUpdate => FlowHydrostaticUpdate
@@ -93,6 +97,8 @@ subroutine WellFlowInit(this,option)
   type(option_type) :: option
 
   this%pw_ref = 0.0d0;
+  !to be overwritten by input (for now default to linear)
+  this%hydrostatic_method = WELL_HYDROSTATIC_LINEAR   
 
   allocate( this%dw_kg_ref(option%nphase) );
   this%dw_kg_ref = 0.0d0;
@@ -759,10 +765,10 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
 
   
   PetscInt, pointer :: ord(:), l2w(:)
-  !PetscReal, pointer :: zcn(:) 
+  PetscReal, pointer :: zcn(:) 
   PetscReal, pointer :: well_conn_h(:)
   PetscInt :: iconn, ierr
-  !PetscReal :: rho_up, rho_dn, p_up, p_dn, delta_z
+  PetscReal :: rho_up, rho_dn, p_up, p_dn, delta_z
   !for debugging
   PetscInt :: i_ph  
 
@@ -777,63 +783,72 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
   ! it couldbe done by the control processors only and communicate results
 
   !create here a one
+  if (this%hydrostatic_method == WELL_HYDROSTATIC_ITERATIVE) then
 
-  call this%HydrostaticUpdate(grid,ss_fluxes,option)
+    call this%HydrostaticUpdate(grid,ss_fluxes,option)
   
-  !old density update - linear pressure asusmption
-  !call this%ConnDenUpdate(grid,ss_fluxes,option) 
+    ! concatanate densities from different ranks
+    call MPI_Allgatherv(this%conn_den_kg,this%connection_set%num_connections, &
+                MPI_DOUBLE_PRECISION, this%well_conn_den_kg, this%w_rank_conn, &
+                this%disp_rank_conn,MPI_DOUBLE_PRECISION, this%comm,ierr)  
 
-  ! concatanate densities from different ranks
-  call MPI_Allgatherv(this%conn_den_kg,this%connection_set%num_connections, &
-              MPI_DOUBLE_PRECISION, this%well_conn_den_kg, this%w_rank_conn, &
-              this%disp_rank_conn,MPI_DOUBLE_PRECISION, this%comm,ierr)  
-
-  !for printing purposes only: assign dw_kg_ref avergare value 
-  this%dw_kg_ref = 0.d0
-  do iconn=1,this%well_num_conns
+    !for printing purposes only: assign dw_kg_ref avergare value 
+    this%dw_kg_ref = 0.d0
+    do iconn=1,this%well_num_conns
     
+      do i_ph=1,option%nphase
+        this%dw_kg_ref(i_ph) = this%dw_kg_ref(i_ph) + &
+                               this%well_conn_den_kg(iconn)
+      end do
+    end do 
     do i_ph=1,option%nphase
-      this%dw_kg_ref(i_ph) = this%dw_kg_ref(i_ph) + &
-                             this%well_conn_den_kg(iconn)
+      this%dw_kg_ref(i_ph) = this%dw_kg_ref(i_ph) / dble(this%well_num_conns)
     end do
-  end do 
-  do i_ph=1,option%nphase
-    this%dw_kg_ref(i_ph) = this%dw_kg_ref(i_ph) / dble(this%well_num_conns)
-  end do
 
-  ord => this%w_conn_order
-  l2w => this%conn_l2w      
+    ord => this%w_conn_order
+    l2w => this%conn_l2w      
 
-  allocate(well_conn_h(this%well_num_conns))
-  well_conn_h = 0.0d0
-  ! concatanate hydrostatic corrections from different ranks for printing only
-  call MPI_Allgatherv(this%conn_h,this%connection_set%num_connections, &
-              MPI_DOUBLE_PRECISION, well_conn_h, this%w_rank_conn, &
-              this%disp_rank_conn,MPI_DOUBLE_PRECISION, this%comm,ierr)  
+    allocate(well_conn_h(this%well_num_conns))
+    well_conn_h = 0.0d0
+    ! concatanate hydrostatic corrections from different ranks for printing only
+    call MPI_Allgatherv(this%conn_h,this%connection_set%num_connections, &
+                MPI_DOUBLE_PRECISION, well_conn_h, this%w_rank_conn, &
+                this%disp_rank_conn,MPI_DOUBLE_PRECISION, this%comm,ierr)  
 
 #ifdef WELL_DEBUG
   print *,"After MPI_Allgatherv well_conn_h",well_conn_h(1:this%well_num_conns)
 #endif
 
-  !for printing purposes only: load ordered hydrostatic corrections
-  do iconn=1,this%well_num_conns 
-    this%well_conn_h_sorted(ord(iconn)) = well_conn_h(iconn)
-  end do
+    !for printing purposes only: load ordered hydrostatic corrections
+    do iconn=1,this%well_num_conns 
+      this%well_conn_h_sorted(ord(iconn)) = well_conn_h(iconn)
+    end do
 
-  nullify(ord)
-  nullify(l2w)
-  deallocate(well_conn_h)
-  nullify(well_conn_h)
+    nullify(ord)
+    nullify(l2w)
+    deallocate(well_conn_h)
+    nullify(well_conn_h)
+  ! end of iterative method
+  else if (this%hydrostatic_method == WELL_HYDROSTATIC_LINEAR) then 
 
 !skip here the old way of computing hydrostatic corrections 
-#if 0   
+!#if 0   
+!if (this%hydrostatic_method == WELL_HYDROSTATIC_LINEAR) then
+
 !#ifdef WELL_DEBUG
 !  print *,"After HUpdate MPI_Allgatherv" 
 !#endif
 
-  ord => this%w_conn_order
-  l2w => this%conn_l2w      
-  zcn => this%w_conn_z !already sorted for acending z     
+    call this%ConnDenUpdate(grid,ss_fluxes,option) 
+
+    ! concatanate densities from different ranks
+    call MPI_Allgatherv(this%conn_den_kg,this%connection_set%num_connections, &
+                MPI_DOUBLE_PRECISION, this%well_conn_den_kg, this%w_rank_conn, &
+                this%disp_rank_conn,MPI_DOUBLE_PRECISION, this%comm,ierr)  
+
+    ord => this%w_conn_order
+    l2w => this%conn_l2w      
+    zcn => this%w_conn_z !already sorted for acending z     
 
 !#ifdef WELL_DEBUG
 !  call MPI_Comm_rank(this%comm, w_myrank, ierr )
@@ -844,63 +859,89 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
 !    print *,"ConnHUpdate - iwconn_ref", this%iwconn_ref
 !#endif
 
-  !Each process belonging to the well compute the hydrostatic correction
-  !for all connections. Could use one rank only (e.g. control rank) 
-  ! and communicate to the others
+    !Each process belonging to the well compute the hydrostatic correction
+    !for all connections. Could use one rank only (e.g. control rank) 
+    ! and communicate to the others
 
-  !BEGINNING OF HYDROSTATIC CORRECTION COMPUTATION FOR THE ENTIRE WELL
-  !hydro corrections
-  !initialize cumulative well pressure to pw_ref
-  p_up = this%pw_ref
-  do iconn=1,this%well_num_conns
-    if(iconn > this%iwconn_ref) then
-    ! hydrostatic press corrections above z_ref
-      delta_z = zcn(iconn) - zcn(iconn-1)
-      rho_up = this%well_conn_den_kg(ord(iconn))
-      rho_dn = this%well_conn_den_kg(ord(iconn - 1))
-      p_up = p_up + 0.5d0*(rho_up+rho_dn) * option%gravity(Z_DIRECTION) * &
-             delta_z
+    !BEGINNING OF HYDROSTATIC CORRECTION COMPUTATION FOR THE ENTIRE WELL
+    !hydro corrections
+    !initialize cumulative well pressure to pw_ref
+    p_up = this%pw_ref
+    do iconn=1,this%well_num_conns
+      if(iconn > this%iwconn_ref) then
+      ! hydrostatic press corrections above z_ref
+        delta_z = zcn(iconn) - zcn(iconn-1)
+        rho_up = this%well_conn_den_kg(ord(iconn))
+        rho_dn = this%well_conn_den_kg(ord(iconn - 1))
+        p_up = p_up + 0.5d0*(rho_up+rho_dn) * option%gravity(Z_DIRECTION) * &
+               delta_z
                                       ! this is a negative value 
-      this%well_conn_h_sorted(iconn) = p_up - this%pw_ref   
-    end if 
-  end do  
+        this%well_conn_h_sorted(iconn) = p_up - this%pw_ref   
+      end if 
+    end do  
 
-  !initialize cumulative well pressure to pw_ref
-  p_dn = this%pw_ref   
-  do iconn=this%well_num_conns,1,-1
-    if(iconn < this%iwconn_ref) then
-    ! hydrostatic press corrections below z_ref
-      delta_z = zcn(iconn + 1) - zcn(iconn)
-      rho_up = this%well_conn_den_kg(ord(iconn + 1))
-      rho_dn = this%well_conn_den_kg(ord(iconn))
-      p_dn = p_dn - 0.5d0*(rho_up+rho_dn) * option%gravity(Z_DIRECTION) * &
-             delta_z 
+    !initialize cumulative well pressure to pw_ref
+    p_dn = this%pw_ref   
+    do iconn=this%well_num_conns,1,-1
+      if(iconn < this%iwconn_ref) then
+      ! hydrostatic press corrections below z_ref
+        delta_z = zcn(iconn + 1) - zcn(iconn)
+        rho_up = this%well_conn_den_kg(ord(iconn + 1))
+        rho_dn = this%well_conn_den_kg(ord(iconn))
+        p_dn = p_dn - 0.5d0*(rho_up+rho_dn) * option%gravity(Z_DIRECTION) * &
+               delta_z 
                                        ! this is a positive value
-      this%well_conn_h_sorted(iconn) = p_dn - this%pw_ref 
-    end if 
-  end do
-  !END OF HYDROSTATIC CORRECTION COMPUTATION FOR THE ENTIRE WELL
+        this%well_conn_h_sorted(iconn) = p_dn - this%pw_ref 
+      end if 
+    end do
+    !END OF HYDROSTATIC CORRECTION COMPUTATION FOR THE ENTIRE WELL
 
-  ! load hydrostatic correction into the the well segment belonging 
-  ! to the current well rank
-  do iconn=1,this%connection_set%num_connections
-     this%conn_h(iconn) = this%well_conn_h_sorted( ord(l2w(iconn)) )
-  end do
+    ! load hydrostatic correction into the the well segment belonging 
+    ! to the current well rank
+    do iconn=1,this%connection_set%num_connections
+       this%conn_h(iconn) = this%well_conn_h_sorted( ord(l2w(iconn)) )
+    end do
 
 #ifdef WELL_DEBUG
-  do iconn=1,this%connection_set%num_connections
-     print *, "conn i/h = ", iconn, this%conn_h(iconn)
-  end do
+    do iconn=1,this%connection_set%num_connections
+       print *, "conn i/h = ", iconn, this%conn_h(iconn)
+    end do
 #endif
 
-  nullify(ord)
-  nullify(l2w)
-  nullify(zcn)
+    nullify(ord)
+    nullify(l2w)
+    nullify(zcn)
+  
+  end if !Edn well_hydrostatic_method
 
 !ends here the old way of computing the hydrstatic corroctions
-#endif 
+!#endif 
 
 end subroutine FlowHydroCorrUpdate
+
+!*****************************************************************************!
+
+subroutine FlowTempUpdate(this,grid,option)
+  !
+  !update well flow temperature from flow_energy_auxvars
+  !to be extended at least up to well_flow_energy
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/12/2016
+
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_flow_type) :: this
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
+
+  print *, "Well => FlowTempUpdate must be extended"
+  stop  
+
+end subroutine FlowTempUpdate
 
 !*****************************************************************************!
 
@@ -1023,7 +1064,7 @@ subroutine WellFlowConnDenUpdate(this,grid,ss_fluxes,option)
       this%dw_kg_ref(i_ph) = den_q_well / q_sum_well
     else
       this%dw_kg_ref(i_ph) = den_sum_well / &
-                          dble(this%connection_set%num_connections)
+                             dble(this%well_num_conns)
     end if 
   end do
 

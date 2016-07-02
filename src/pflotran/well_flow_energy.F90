@@ -321,8 +321,8 @@ subroutine FlowEnergyHydrostaticUpdate(this,grid,ss_fluxes,option)
 
   !update well temperatures on local and global connections,
   !and on the vertical finer grid performing an interpolation
-  !from flow_energy_auxvars 
-  call this%TempUpdate(grid,option)
+  !from flow_energy_auxvars - now called in well_update
+  !call this%TempUpdate(grid,option)
 
   do i_ph = 1,option%nphase
 
@@ -447,11 +447,13 @@ subroutine FlowEnergyTempUpdate(this,grid,option)
   call MPI_Allgatherv(this%conn_temp,this%connection_set%num_connections, &
               MPI_DOUBLE_PRECISION, this%well_conn_temp, this%w_rank_conn, &
               this%disp_rank_conn,MPI_DOUBLE_PRECISION, this%comm,ierr)  
-
-  !perform interpolation on the well_fine_grid
-  call this%fine_grid%InterpFromWellConnTo1DGrid(this%w_conn_z, &
-                       this%w_conn_order, &
-                       this%well_conn_temp,this%well_fine_grid_temp)
+  
+  if (this%hydrostatic_method == WELL_HYDROSTATIC_ITERATIVE) then
+    !perform interpolation on the well_fine_grid
+    call this%fine_grid%InterpFromWellConnTo1DGrid(this%w_conn_z, &
+                         this%w_conn_order, &
+                         this%well_conn_temp,this%well_fine_grid_temp)
+  end if
 
 end subroutine FlowEnergyTempUpdate
 

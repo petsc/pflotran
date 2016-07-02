@@ -40,12 +40,13 @@ module Well_Base_class
     procedure, public :: ConnInit => WellBaseConnInit
     procedure, public :: ExplUpdate => BaseExplUpdate
     procedure, public :: HydroCorrUpdates => BaseHydroCorrUpdate
-    procedure, public  :: PrintOutputHeader => PrintOutputHeaderWellBase
+    procedure, public :: TempUpdate => BaseTempUpdate
+    procedure, public :: PrintOutputHeader => PrintOutputHeaderWellBase
     procedure, public :: ExplRes => WellBaseExplRes
     procedure, public :: ExplJDerivative => WellBaseExplJDerivative
     procedure, public :: InitDensity => BaseInitDensity
     procedure, public :: Output => BaseOutput  
-    procedure, public  :: Setup
+    procedure, public :: Setup
     procedure, public :: WellFactorUpdate
     procedure, public :: OneDimGridVarsSetup => WellBase1DGridVarsSetup
     procedure, public :: DataOutput => BaseDataOutput
@@ -635,6 +636,30 @@ subroutine WellFactorUpdate(this,grid,connection_set,material_auxvars,option)
 
 
 end subroutine WellFactorUpdate
+
+! *************************************************************************** !
+
+subroutine BaseTempUpdate(this,grid,option)
+  !
+  !update well flow temperature from flow_energy_auxvars
+  !to be extended at least up to well_flow_energy
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 6/12/2016
+
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_base_type) :: this
+  type(grid_type), pointer :: grid
+  type(option_type) :: option
+
+  print *, "Well => BaseTempUpdate must be extended"
+  stop  
+
+end subroutine BaseTempUpdate
 
 ! *************************************************************************** !
 
