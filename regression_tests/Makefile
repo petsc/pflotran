@@ -58,16 +58,16 @@ STANDARD_CFG = \
 	default/regions/regions.cfg \
 	default/salinity/salinity.cfg \
 	default/timestepping/timestepping.cfg \
-    geomech/uniaxial_strain/uniaxial_strain.cfg \
+	geomech/uniaxial_strain/uniaxial_strain.cfg \
 	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\
-    general/general.cfg \
-    hydrogeophysics/hydrogeophysics.cfg \
+	general/general.cfg \
+	hydrogeophysics/hydrogeophysics.cfg \
 	ngee/ngee.cfg \
-    shortcourse/1D_Calcite/calcite.cfg \
+	shortcourse/1D_Calcite/calcite.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/regional_doublet/regional_doublet.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
-    toil_ims/toil_ims.cfg \
+	toil_ims/toil_ims.cfg \
 	ufd/ufd.cfg \
 	wipp/nuts/nuts.cfg \
 	wipp/bragflo/bragflo.cfg
