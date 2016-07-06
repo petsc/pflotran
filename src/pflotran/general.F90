@@ -52,7 +52,6 @@ module General_module
             GeneralGetTecplotHeader, &
             GeneralSetPlotVariables, &
             GeneralMapBCAuxVarsToGlobal, &
-            GeneralSetReferencePressures, &
             GeneralDestroy
 
 contains
@@ -3608,73 +3607,6 @@ subroutine GeneralMapBCAuxVarsToGlobal(realization)
   enddo
   
 end subroutine GeneralMapBCAuxVarsToGlobal
-
-! ************************************************************************** !
-
-subroutine GeneralSetReferencePressures(realization)
-  ! 
-  ! Sets the initial pressure associated with WIPP fracture module.  This is
-  ! WIPP specific.
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 07/09/15
-  ! 
-  use Realization_Subsurface_class
-  use Realization_Base_class
-  use Patch_module
-  use Grid_module
-  use Material_Aux_class
-  use Fracture_module
-  use WIPP_module, only : wipp
-  use Variables_module, only : MAXIMUM_PRESSURE, SOIL_REFERENCE_PRESSURE
-
-  implicit none
-
-  type(realization_subsurface_type) :: realization
-
-  type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
-  class(material_auxvar_type), pointer :: material_auxvars(:)
-  type(material_type), pointer :: Material  
-  PetscReal, pointer :: vec_loc_p(:)
-
-  PetscInt :: ghosted_id
-  PetscErrorCode :: ierr
-
-  patch => realization%patch
-  grid => patch%grid
-  material_auxvars => patch%aux%Material%auxvars
-  
-  call RealizationGetVariable(realization,realization%field%work_loc, &
-                              MAXIMUM_PRESSURE,ZERO_INTEGER)
-  call VecGetArrayReadF90(realization%field%work_loc,vec_loc_p, &
-                          ierr); CHKERRQ(ierr)
-
-  do ghosted_id = 1, grid%ngmax
-    if (patch%imat(ghosted_id) <= 0) cycle
-    if (associated(material_auxvars(ghosted_id)%fracture)) then
-      call FractureSetInitialPressure(material_auxvars(ghosted_id)%fracture, &
-                                      vec_loc_p(ghosted_id))
-    endif
-  enddo
-  if (associated(wipp)) then
-    if (wipp%cell_by_cell_soil_ref_pres) then
-      Material => patch%aux%Material
-      do ghosted_id = 1, grid%ngmax
-        if (patch%imat(ghosted_id) <= 0) cycle
-          ! use patch%aux%Material due to a bug in setting array members of 
-          ! material_auxvar class
-          call MaterialAuxVarSetValue(Material%auxvars(ghosted_id), &
-                                      SOIL_REFERENCE_PRESSURE, &
-                                      vec_loc_p(ghosted_id))
-      enddo
-    endif
-  endif
-
-  call VecRestoreArrayReadF90(realization%field%work_loc,vec_loc_p, &
-                              ierr); CHKERRQ(ierr)
-
-end subroutine GeneralSetReferencePressures
 
 ! ************************************************************************** !
 

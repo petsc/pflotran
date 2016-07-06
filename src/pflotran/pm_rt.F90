@@ -290,6 +290,9 @@ recursive subroutine PMRTInitializeRun(this)
   call printMsg(this%option,'PMRT%InitializeRun()')
 #endif
 
+  ! check for uninitialized flow variables
+  call RealizUnInitializedVarsTran(this%realization)
+
   if (this%transient_porosity) then
     call RealizationCalcMineralPorosity(this%realization)
     call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
