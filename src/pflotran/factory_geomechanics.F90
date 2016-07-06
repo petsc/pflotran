@@ -57,6 +57,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
   use Geomechanics_Discretization_module
   use Geomechanics_Force_module
   use Geomechanics_Realization_class
+  use Geomechanics_Regression_module
   use Simulation_Aux_module
   use Realization_Subsurface_class
   use Timestepper_Steady_class
@@ -111,15 +112,10 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
   if (option%geomech_on) then
     simulation%geomech_realization => GeomechRealizCreate(option)
     geomech_realization => simulation%geomech_realization
-    geomech_realization%output_option => OutputOptionDuplicate(simulation%output_option)
-    nullify(geomech_realization%output_option%output_snap_variable_list)
-    nullify(geomech_realization%output_option%output_obs_variable_list)    
-    geomech_realization%output_option%output_snap_variable_list => OutputVariableListCreate()
-    geomech_realization%output_option%output_obs_variable_list => OutputVariableListCreate()
     subsurf_realization => simulation%realization
+    subsurf_realization%output_option => OutputOptionDuplicate(simulation%output_option)
     geomech_realization%input => InputCreate(IN_UNIT,option%input_filename,option)
     call GeomechicsInitReadRequiredCards(geomech_realization)
-    pm_geomech%output_option => geomech_realization%output_option
     pmc_geomech => PMCGeomechanicsCreate()
     pmc_geomech%name = 'PMCGeomech'
     simulation%geomech_process_model_coupler => pmc_geomech
@@ -140,7 +136,13 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     string = 'GEOMECHANICS'
     call InputFindStringInFile(input,option,string)
     call InputFindStringErrorMsg(input,option,string)  
+    geomech_realization%output_option => OutputOptionDuplicate(simulation%output_option)
+    nullify(geomech_realization%output_option%output_snap_variable_list)
+    nullify(geomech_realization%output_option%output_obs_variable_list)    
+    geomech_realization%output_option%output_snap_variable_list => OutputVariableListCreate()
+    geomech_realization%output_option%output_obs_variable_list => OutputVariableListCreate()
     call GeomechanicsInitReadInput(simulation,timestepper%solver,input)
+    pm_geomech%output_option => geomech_realization%output_option
 
     ! Add first waypoint
     waypoint => WaypointCreate()
@@ -150,10 +152,28 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     ! Add final_time waypoint to geomech_realization
     waypoint => WaypointCreate()
     waypoint%final = PETSC_TRUE
-    waypoint%time = simulation%waypoint_list_geomechanics%last%time
+    waypoint%time = simulation%waypoint_list_subsurface%last%time
     waypoint%print_snap_output = PETSC_TRUE
     call WaypointInsertInList(waypoint,simulation%waypoint_list_geomechanics)   
+    ! Merge with subsurface waypoint list and checkpointing waypoints
+    call WaypointListCopyAndMerge(simulation%waypoint_list_geomechanics, &
+                                  simulation%waypoint_list_subsurface,option)
+    call WaypointListCopyAndMerge(simulation%waypoint_list_geomechanics, &
+                                  simulation%waypoint_list_outer,option)
+ 	! initialize geomech realization
+    call GeomechInitSetupRealization(simulation)
+    ! Add output waypoints from geomech realization
+    call InitCommonAddOutputWaypoints(option,simulation%output_option, &
+                                      simulation%waypoint_list_geomechanics) 
+    ! Add output waypoints from subsurface realization
+    call InitCommonAddOutputWaypoints(option,subsurf_realization%output_option, &
+                                      simulation%waypoint_list_geomechanics)    
+    ! Fill holes and remove extra waypoints                              
+    call WaypointListFillIn(simulation%waypoint_list_geomechanics,option)
+    call WaypointListRemoveExtraWaypnts(simulation% &
+                                        waypoint_list_geomechanics,option)
 
+	! link timestepper waypoints to geomech way point list
     if (associated(simulation%geomech_process_model_coupler)) then
       if (associated(simulation%geomech_process_model_coupler% &
                      timestepper)) then
@@ -161,14 +181,12 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
           simulation%waypoint_list_geomechanics%first
       endif
     endif
- 
-    call GeomechInitSetupRealization(simulation)
-    call InitCommonAddOutputWaypoints(option,simulation%output_option, &
-                                      simulation%waypoint_list_geomechanics)    
+    
+    ! Solver set up
     call GeomechInitSetupSolvers(geomech_realization,subsurf_realization, &
                                  timestepper%convergence_context, &
                                  timestepper%solver)
-                                  
+
 
     call pm_geomech%PMGeomechForceSetRealization(geomech_realization)
     call pm_geomech%Setup()
@@ -212,6 +230,9 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
                               dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
                               GEOMECHANICS_TO_SUBSURF)
   endif
+
+  call GeomechanicsRegressionCreateMapping(simulation%geomech_regression, &
+                                           geomech_realization)
 
   ! sim_aux: Set pointer
   simulation%flow_process_model_coupler%sim_aux => simulation%sim_aux
@@ -304,6 +325,8 @@ subroutine GeomechanicsJumpStart(simulation)
     return
   endif
   
+  geomech_timestepper%name = 'GEOMECHANICS'
+ 
   master_timestepper => geomech_timestepper
 
   snapshot_plot_flag = PETSC_FALSE
@@ -314,6 +337,11 @@ subroutine GeomechanicsJumpStart(simulation)
   
   call OutputGeomechInit(master_timestepper%steps)
 
+  ! pushed in INIT_STAGE()
+  call PetscLogStagePop(ierr);CHKERRQ(ierr)
+
+  ! popped in TS_STAGE()
+  call PetscLogStagePush(logging%stage(TS_STAGE),ierr);CHKERRQ(ierr)
 
 end subroutine GeomechanicsJumpStart
 
@@ -485,6 +513,7 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
   use Geomechanics_Strata_module
   use Geomechanics_Condition_module
   use Geomechanics_Coupler_module
+  use Geomechanics_Regression_module
   use Output_Aux_module
   use Output_Tecplot_module
   use Solver_module
@@ -627,6 +656,10 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
           case('GEOMECHANICS')
             call SolverReadLinear(geomech_solver,input,option)
         end select
+
+      !.....................
+      case ('GEOMECHANICS_REGRESSION')
+        call GeomechanicsRegressionRead(simulation%geomech_regression,input,option)
 
       !.........................................................................
       case ('GEOMECHANICS_TIME')

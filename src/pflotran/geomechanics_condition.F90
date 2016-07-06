@@ -221,7 +221,6 @@ subroutine GeomechConditionRead(condition,input,option)
   use Option_module
   use Input_Aux_module
   use String_module
-  use Geomechanics_Logging_module 
   use Condition_module
   
   implicit none
@@ -248,9 +247,6 @@ subroutine GeomechConditionRead(condition,input,option)
   PetscInt :: count
   !geh: may not need default_time_storage
   type(time_storage_type), pointer :: default_time_storage
-
-  call PetscLogEventBegin(geomech_logging%event_geomech_condition_read, &
-                          ierr);CHKERRQ(ierr)
 
   default_time = 0.d0
   default_iphase = 0
@@ -540,9 +536,6 @@ subroutine GeomechConditionRead(condition,input,option)
   
   condition%default_time_storage => default_time_storage
     
-  call PetscLogEventEnd(geomech_logging%event_geomech_condition_read, &
-                        ierr);CHKERRQ(ierr)
-
 end subroutine GeomechConditionRead
 
 ! ************************************************************************** !

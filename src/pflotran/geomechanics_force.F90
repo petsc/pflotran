@@ -136,7 +136,8 @@ subroutine GeomechForceSetPlotVariables(list)
   implicit none
 
   type(output_variable_list_type), pointer :: list
-  
+  type(output_variable_type), pointer :: output_variable
+
   character(len=MAXWORDLENGTH) :: name, units
   
   if (associated(list%first)) then
@@ -158,11 +159,13 @@ subroutine GeomechForceSetPlotVariables(list)
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GEOMECH_DISP_Z)
 
-  name = 'Material ID'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_DISCRETE,units, &
-                               GEOMECH_MATERIAL_ID)
-                               
+  name = 'Material ID'
+  output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                          units,GEOMECH_MATERIAL_ID)
+  output_variable%iformat = 1 ! integer
+  call OutputVariableAddToList(list,output_variable)
+                             
   name = 'strain_xx'
   units = ''
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
@@ -429,7 +432,6 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
   use Geomechanics_Realization_class
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
-  use Geomechanics_Logging_module
   use Option_module
 
   implicit none
@@ -444,9 +446,6 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
   type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_field_type), pointer :: field
   type(option_type), pointer :: option
-  
-  call PetscLogEventBegin(geomech_logging%event_geomech_residual, &
-                          ierr);CHKERRQ(ierr)
   
   field => geomech_realization%geomech_field
   geomech_discretization => geomech_realization%geomech_discretization
@@ -475,9 +474,6 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
-  call PetscLogEventEnd(geomech_logging%event_geomech_residual, &
-                        ierr);CHKERRQ(ierr)
-
 end subroutine GeomechForceResidual
 
 ! ************************************************************************** !
@@ -493,7 +489,6 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
   use Geomechanics_Realization_class
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
-  use Geomechanics_Logging_module
   use Geomechanics_Patch_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
@@ -1287,7 +1282,6 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
-  use Geomechanics_Logging_module
   use Option_module
 
   implicit none
@@ -1305,9 +1299,6 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
   type(option_type), pointer :: option
   PetscReal :: norm
   
-  call PetscLogEventBegin(geomech_logging%event_geomech_jacobian, &
-                          ierr);CHKERRQ(ierr)
-
   option => geomech_realization%option
 
   call MatGetType(A,mat_type,ierr);CHKERRQ(ierr)
@@ -1343,10 +1334,6 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
     write(option%io_buffer,'("inf norm: ",es11.4)') norm
     call printMsg(option) 
   endif
-
-  call PetscLogEventEnd(geomech_logging%event_geomech_jacobian, &
-                        ierr);CHKERRQ(ierr)
-!  call printErrMsg(option)
 
 end subroutine GeomechForceJacobian
 
@@ -1563,7 +1550,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
                         ierr);CHKERRQ(ierr)
   call MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE, &
                     ierr);CHKERRQ(ierr)
-
+                    
   deallocate(rows)
 
 end subroutine GeomechForceJacobianPatch  
@@ -1899,7 +1886,6 @@ subroutine GeomechForceStressStrain(geomech_realization)
   use Geomechanics_Realization_class
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
-  use Geomechanics_Logging_module
   use Geomechanics_Patch_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module

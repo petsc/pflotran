@@ -112,6 +112,8 @@ subroutine GeomechFieldDestroy(geomech_field)
   type(geomech_field_type), pointer :: geomech_field
   PetscErrorCode :: ierr
   
+  if (.not.associated(geomech_field)) return
+  
   ! Destroy PetscVecs
   if (geomech_field%work /= 0) then
     call VecDestroy(geomech_field%work,ierr);CHKERRQ(ierr)

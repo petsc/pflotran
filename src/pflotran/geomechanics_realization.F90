@@ -573,7 +573,8 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
 
   call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
                       ierr);CHKERRQ(ierr)
-  
+ 
+  call VecScatterDestroy(scatter,ierr);CHKERRQ(ierr) 
   call ISDestroy(is_geomech,ierr);CHKERRQ(ierr)
   call ISDestroy(is_subsurf,ierr);CHKERRQ(ierr)
   call ISDestroy(is_subsurf_natural,ierr);CHKERRQ(ierr)
@@ -1070,7 +1071,7 @@ subroutine GeomechRealizDestroy(geomech_realization)
   class(realization_geomech_type), pointer :: geomech_realization
   
   if (.not.associated(geomech_realization)) return
-  
+    
   call GeomechFieldDestroy(geomech_realization%geomech_field)
 
   call OutputOptionDestroy(geomech_realization%output_option)
