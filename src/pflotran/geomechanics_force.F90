@@ -670,6 +670,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
   ! Find the boundary nodes with dirichlet and set the residual at those nodes
   ! to zero, later set the Jacobian to 1
 
+  ! displacement boundary conditions
   boundary_condition => patch%geomech_boundary_condition_list%first
   do 
     if (.not.associated(boundary_condition)) exit
@@ -723,7 +724,29 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
             call printErrMsg(option)
         end select
       endif
- 
+      
+    enddo
+    boundary_condition => boundary_condition%next      
+  enddo
+
+  ! Need to assemby here since one cannot mix INSERT_VALUES
+  ! and ADD_VALUES
+  call VecAssemblyBegin(r,ierr);CHKERRQ(ierr)
+  call VecAssemblyEnd(r,ierr);CHKERRQ(ierr)
+  
+  ! Force boundary conditions
+  boundary_condition => patch%geomech_boundary_condition_list%first
+  do 
+    if (.not.associated(boundary_condition)) exit
+    region => boundary_condition%region
+    do ivertex = 1, region%num_verts
+      local_id = region%vertex_ids(ivertex)
+      ghosted_id = grid%nL2G(local_id)
+      petsc_id = grid%node_ids_ghosted_petsc(ghosted_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif    
+       
       ! X force 
       if (associated(boundary_condition%geomech_condition%force_x)) then
         select case(boundary_condition%geomech_condition%force_x%itype)
