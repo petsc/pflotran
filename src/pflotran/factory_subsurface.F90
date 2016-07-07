@@ -805,8 +805,6 @@ subroutine SubsurfaceInitSimulation(simulation)
   call InitSubsurfaceSetupZeroArrays(realization)
   call OutputVariableAppendDefaults(realization%output_option% &
                                       output_snap_variable_list,option)
-    ! check for non-initialized data sets, e.g. porosity, permeability
-  call RealizationNonInitializedData(realization)
 
   if (option%nflowdof > 0) then
     select type(ts => simulation%flow_process_model_coupler%timestepper)

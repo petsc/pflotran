@@ -555,6 +555,7 @@ subroutine CondControlAssignTranInitCond(realization)
   PetscBool :: use_aq_dataset
   PetscReal :: ave_num_iterations
   PetscReal :: tempreal
+  PetscInt :: prev_equilibrated_ghosted_id
   PetscReal, pointer :: iphase_loc_p(:)
   PetscReal, pointer :: flow_xx_p(:)
   PetscLogDouble :: tstart, tend
@@ -695,6 +696,7 @@ subroutine CondControlAssignTranInitCond(realization)
       endif
         
       ave_num_iterations = 0.d0
+      prev_equilibrated_ghosted_id = 0
       do icell=1,initial_condition%region%num_cells
         local_id = initial_condition%region%cell_ids(icell)
         ghosted_id = grid%nL2G(local_id)
@@ -715,7 +717,7 @@ subroutine CondControlAssignTranInitCond(realization)
             enddo
           endif
           option%iflag = grid%nG2A(grid%nL2G(local_id))
-          if (icell == 1) then
+          if (prev_equilibrated_ghosted_id == 0) then
             call ReactionEquilibrateConstraint(rt_auxvars(ghosted_id), &
               global_auxvars(ghosted_id),material_auxvars(ghosted_id), &
               reaction, &
@@ -729,11 +731,9 @@ subroutine CondControlAssignTranInitCond(realization)
               constraint_coupler%num_iterations, &
               PETSC_FALSE,option)
           else
-!geh              call RTAuxVarCopy(rt_auxvars(ghosted_id), &
-!geh                rt_auxvars(grid%nL2G(initial_condition%region%cell_ids(icell-1))), &
-!geh                option)
+            ! copy molalities from previous equilibrated auxvar as initial guess
             rt_auxvars(ghosted_id)%pri_molal = &
-              rt_auxvars(grid%nL2G(initial_condition%region%cell_ids(icell-1)))%pri_molal
+              rt_auxvars(prev_equilibrated_ghosted_id)%pri_molal
             call ReactionEquilibrateConstraint(rt_auxvars(ghosted_id), &
               global_auxvars(ghosted_id),material_auxvars(ghosted_id), &
               reaction, &
@@ -767,6 +767,8 @@ subroutine CondControlAssignTranInitCond(realization)
               endif
           end select
 #endif
+          ! prev_eq_ghosted_id is only updated to the prev active cell
+          prev_equilibrated_ghosted_id = ghosted_id
         endif
         ! ibegin is the local non-ghosted offset: (local_id-1)*option%ntrandof+1
         offset = ibegin + reaction%offset_aqueous - 1

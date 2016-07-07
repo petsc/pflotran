@@ -331,7 +331,7 @@ subroutine SubsurfaceFinalizeRun(this)
 
   use Timestepper_BE_class
   use Reaction_Sandbox_module, only : RSandboxDestroy
-  use SrcSink_Sandbox_module, only : SSSandboxDestroy
+  use SrcSink_Sandbox_module, only : SSSandboxDestroyList
   use WIPP_module, only : WIPPDestroy
   use Klinkenberg_module, only : KlinkenbergDestroy
   use CLM_Rxn_module, only : RCLMRxnDestroy
@@ -358,7 +358,7 @@ subroutine SubsurfaceFinalizeRun(this)
       class is(timestepper_BE_type)
         flow_timestepper => ts
     end select
-    call SSSandboxDestroy()
+    call SSSandboxDestroyList()
     call WIPPDestroy()
     call KlinkenbergDestroy()
   endif
