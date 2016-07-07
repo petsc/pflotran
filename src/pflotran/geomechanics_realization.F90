@@ -610,7 +610,8 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
   PetscInt :: ielem
   PetscInt :: ivertex
   PetscInt :: ghosted_id
-  PetscInt, allocatable :: elenodes(:)
+!  PetscInt, allocatable :: elenodes(:)
+  PetscInt :: elenodes(10)
   PetscReal, pointer :: elem_sharing_node_loc_p(:)
   PetscErrorCode :: ierr
   
@@ -620,7 +621,8 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
                       ierr);CHKERRQ(ierr)
   
   do ielem = 1, grid%nlmax_elem
-    elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
+    elenodes(1:grid%elem_nodes(0,ielem)) = &
+      grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
     do ivertex = 1, grid%elem_nodes(0,ielem)
       ghosted_id = elenodes(ivertex) 
       elem_sharing_node_loc_p(ghosted_id) = &
