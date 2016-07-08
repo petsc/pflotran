@@ -2648,6 +2648,27 @@ END
 \hfill\hyperlink{target_key}{\return}
 
 \noindent{\bf Description:} Condition coupler between regions and geomechanics boundary conditions. Since the geomechanics is solved in a quasi-steady manner, initial conditions are not needed. 
+Displacement or force conditions can be specified. Note that the values specified
+for displacement or force conditions will be applied to all the nodes of the region
+that the condition is coupled to. If one wants to specify a force $F$ on
+on a face, then the $F$ needs to be distributed based on the area around each node
+on that face. 
+For example, if the top face has nodes configuration as follows:
+\newline 1 -- 2 -- 3
+\newline | \quad   | \quad   |
+\newline 4 -- 5 -- 6     
+\newline |  \quad  | \quad   |
+\newline 7 -- 8 -- 9
+\newline with x and y in the horizontal and vertical direction, 
+and if a force $F$ on the entire face is applied in the negative z direction,
+assuming equal spacing in x and y directions, the load distribution will be:
+\newline Nodes 1, 7, 9, 3 will get $(\frac{F}{4\Delta_x\Delta_y})\times(\frac{\Delta_x\Delta_y}{4}) = \frac{F}{16}$.
+\newline Nodes 4, 2, 6, 8 will get $(\frac{F}{4\Delta_x\Delta_y})\times(\frac{\Delta_x\Delta_y}{2}) = \frac{F}{8}$.
+\newline Node 5 will get $(\frac{F}{4\Delta_x\Delta_y})\times(\Delta_x\Delta_y) = \frac{F}{4}$. 
+\newline One will then have to specify three separate regions (one with internal 
+nodes, one with corners and one with boundary nodes that are not corners), 
+and then specify three FORCE\_Z boundary conditions.
+
 
 
 {\noindent\bf Input:}
