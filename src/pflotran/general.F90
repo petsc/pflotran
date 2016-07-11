@@ -169,7 +169,7 @@ subroutine GeneralSetup(realization)
   allocate(gen_auxvars(0:option%nflowdof,grid%ngmax))
   do ghosted_id = 1, grid%ngmax
     do idof = 0, option%nflowdof
-      call GeneralAuxVarInit(gen_auxvars(idof,ghosted_id),option)
+      call GeneralAuxVarInit(gen_auxvars(idof,ghosted_id),idof==0,option)
     enddo
   enddo
   patch%aux%General%auxvars => gen_auxvars
@@ -181,7 +181,7 @@ subroutine GeneralSetup(realization)
   if (sum_connection > 0) then
     allocate(gen_auxvars_bc(sum_connection))
     do iconn = 1, sum_connection
-      call GeneralAuxVarInit(gen_auxvars_bc(iconn),option)
+      call GeneralAuxVarInit(gen_auxvars_bc(iconn),PETSC_FALSE,option)
     enddo
     patch%aux%General%auxvars_bc => gen_auxvars_bc
   endif
@@ -193,7 +193,7 @@ subroutine GeneralSetup(realization)
   if (sum_connection > 0) then
     allocate(gen_auxvars_ss(sum_connection))
     do iconn = 1, sum_connection
-      call GeneralAuxVarInit(gen_auxvars_ss(iconn),option)
+      call GeneralAuxVarInit(gen_auxvars_ss(iconn),PETSC_FALSE,option)
     enddo
     patch%aux%General%auxvars_ss => gen_auxvars_ss
   endif
@@ -972,6 +972,8 @@ subroutine GeneralUpdateFixedAccum(realization)
   PetscInt :: imat
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
   PetscReal, pointer :: accum_p(:), accum_p2(:)
+  PetscReal :: Jac_dummy(realization%option%nflowdof, &
+                         realization%option%nflowdof)
                           
   PetscErrorCode :: ierr
   
@@ -1013,9 +1015,11 @@ subroutine GeneralUpdateFixedAccum(realization)
                               natural_id, &
                               option)
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                             global_auxvars(ghosted_id), &
                              material_auxvars(ghosted_id), &
                              material_parameter%soil_heat_capacity(imat), &
                              option,accum_p(local_start:local_end), &
+                             Jac_dummy,PETSC_FALSE, &
                              local_id == general_debug_cell_id) 
   enddo
   
@@ -1036,8 +1040,9 @@ end subroutine GeneralUpdateFixedAccum
 
 ! ************************************************************************** !
 
-subroutine GeneralAccumulation(gen_auxvar,material_auxvar, &
-                               soil_heat_capacity,option,Res,debug_cell)
+subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
+                               soil_heat_capacity,option,Res,Jac, &
+                               compute_derivative,debug_cell)
   ! 
   ! Computes the non-fixed portion of the accumulation
   ! term for the residual
@@ -1053,10 +1058,13 @@ subroutine GeneralAccumulation(gen_auxvar,material_auxvar, &
   implicit none
 
   type(general_auxvar_type) :: gen_auxvar
+  type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
   PetscReal :: soil_heat_capacity
   type(option_type) :: option
   PetscReal :: Res(option%nflowdof) 
+  PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  PetscBool :: compute_derivative
   PetscBool :: debug_cell
   
   PetscInt :: wat_comp_id, air_comp_id, energy_id
@@ -1129,7 +1137,74 @@ subroutine GeneralAccumulation(gen_auxvar,material_auxvar, &
                     (1.d0 - porosity) * &
                     material_auxvar%soil_particle_density * &
                     soil_heat_capacity * gen_auxvar%temp) * v_over_t
-                    
+  
+  if (compute_derivative) then
+    Jac = 0.d0
+    select case(global_auxvar%istate)
+      case(LIQUID_STATE)
+        ! satl = 1
+        ! ----------
+        ! Water Equation
+        ! por * satl * denl * Xwl
+        ! ---
+        ! w/respect to liquid pressure
+        ! dpor_dpl * denl * Xwl + 
+        ! por * ddenl_dpl * Xwl
+        Jac(1,1) = &
+          gen_auxvar%d%por_pl * gen_auxvar%den(1) * gen_auxvar%xmol(1,1) + &
+          porosity * gen_auxvar%d%denl_pl * gen_auxvar%xmol(1,1)
+        ! w/respect to air mole fraction
+        ! liquid phase density is indepenent of air mole fraction
+        ! por * denl * dXwl_dXal
+        ! Xwl = 1. - Xal
+        ! dXwl_dXal = -1.
+        Jac(1,2) = porosity * gen_auxvar%den(1) * -1.d0
+        ! w/repect to temperature
+        ! por * ddenl_dT * Xwl
+        Jac(1,3) = porosity * gen_auxvar%d%denl_T * gen_auxvar%xmol(1,1)
+        ! ----------
+        ! Air Equation
+        ! por * satl * denl * Xal
+        ! w/respect to liquid pressure
+        ! dpor_dpl * denl * Xal + 
+        ! por * ddenl_dpl * Xal
+        Jac(2,1) = &
+          gen_auxvar%d%por_pl * gen_auxvar%den(1) * gen_auxvar%xmol(2,1) + &
+          porosity * gen_auxvar%d%denl_pl * gen_auxvar%xmol(2,1)
+        ! w/respect to air mole fraction
+        Jac(2,2) = porosity * gen_auxvar%den(1)
+        ! w/repect to temperature
+        ! por * ddenl_dT * Xwl
+        Jac(2,3) = porosity * gen_auxvar%d%denl_T * gen_auxvar%xmol(2,1)
+        ! ----------
+        ! Energy Equation
+        ! por * satl * denl * Ul + (1-por) * dens * Cp * T
+        ! w/respect to liquid pressure
+        ! dpor_dpl * denl * Ul + 
+        ! por * ddenl_dpl * Ul + 
+        ! por * denl * dUl_dpl + 
+        ! -dpor_dpl * dens * Cp * T
+        Jac(3,1) = &
+          gen_auxvar%d%por_pl * gen_auxvar%den(1) * gen_auxvar%U(1) + &
+          porosity * gen_auxvar%d%denl_pl * gen_auxvar%U(1) + &
+          porosity * gen_auxvar%den(1) * gen_auxvar%d%Ul_pl + &
+          -1.d0 * gen_auxvar%d%por_pl * &
+            material_auxvar%soil_particle_density * &
+            soil_heat_capacity * gen_auxvar%temp
+        ! w/respect to air mole fraction
+        Jac(3,2) = 0.d0
+        ! w/respect to temperature
+        Jac(3,3) = &
+          porosity * gen_auxvar%den(1) * gen_auxvar%d%Ul_T + &
+          (1.d0 - porosity) * material_auxvar%soil_particle_density * &
+            soil_heat_capacity
+      case(GAS_STATE)
+      case(TWO_PHASE_STATE)
+!        if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+    end select
+    Jac = Jac * v_over_t
+  endif
+  
 #ifdef DEBUG_GENERAL_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,7es24.15)') 'accum:', Res
@@ -2002,7 +2077,7 @@ end subroutine GeneralSrcSink
 
 ! ************************************************************************** !
 
-subroutine GeneralAccumDerivative(gen_auxvar,material_auxvar, &
+subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
                                   soil_heat_capacity,option,J)
   ! 
   ! Computes derivatives of the accumulation
@@ -2019,24 +2094,30 @@ subroutine GeneralAccumDerivative(gen_auxvar,material_auxvar, &
   implicit none
 
   type(general_auxvar_type) :: gen_auxvar(0:)
+  type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
   type(option_type) :: option
   PetscReal :: soil_heat_capacity
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscReal :: jac(option%nflowdof,option%nflowdof)
+  PetscReal :: jac_pert(option%nflowdof,option%nflowdof)
   PetscInt :: idof, irow
 
 !geh:print *, 'GeneralAccumDerivative'
 
   call GeneralAccumulation(gen_auxvar(ZERO_INTEGER), &
-                           material_auxvar,soil_heat_capacity,option,res, &
+                           global_auxvar, &
+                           material_auxvar,soil_heat_capacity,option, &
+                           res,jac,PETSC_TRUE, &
                            PETSC_FALSE)
                            
   do idof = 1, option%nflowdof
     call GeneralAccumulation(gen_auxvar(idof), &
+                             global_auxvar, &
                              material_auxvar,soil_heat_capacity, &
-                             option,res_pert,PETSC_FALSE)
+                             option,res_pert,jac_pert,PETSC_FALSE,PETSC_FALSE)
     do irow = 1, option%nflowdof
       J(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar(idof)%pert
 !geh:print *, irow, idof, J(irow,idof), gen_auxvar(idof)%pert
@@ -2390,6 +2471,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 
   PetscInt :: icap_up, icap_dn
   PetscReal :: Res(realization%option%nflowdof)
+  PetscReal :: Jac_dummy(realization%option%nflowdof, &
+                         realization%option%nflowdof)
   PetscReal :: v_darcy(realization%option%nphase)
   
   discretization => realization%discretization
@@ -2480,10 +2563,11 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
     local_end = local_id * option%nflowdof
     local_start = local_end - option%nflowdof + 1
     call GeneralAccumulation(gen_auxvars(ZERO_INTEGER,ghosted_id), &
-                              material_auxvars(ghosted_id), &
-                              material_parameter%soil_heat_capacity(imat), &
-                              option,Res, &
-                              local_id == general_debug_cell_id) 
+                             global_auxvars(ghosted_id), &
+                             material_auxvars(ghosted_id), &
+                             material_parameter%soil_heat_capacity(imat), &
+                             option,Res,Jac_dummy,PETSC_FALSE, &
+                             local_id == general_debug_cell_id) 
     r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
     
     !Heeho dynamically update p+1 accumulation term
@@ -2871,6 +2955,7 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
     imat = patch%imat(ghosted_id)
     if (imat <= 0) cycle
     call GeneralAccumDerivative(gen_auxvars(:,ghosted_id), &
+                              global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
                               material_parameter%soil_heat_capacity(imat), &
                               option, &
