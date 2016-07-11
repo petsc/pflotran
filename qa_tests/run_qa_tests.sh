@@ -99,6 +99,26 @@ python run_1D_conduction_BC_1st_2nd_kind.py
 rm *.vtk *.out screen.txt
 cd ..
 
+echo '=============================='
+echo '  2D_conduction_BC_1st_kind'
+echo '=============================='
+cd 2D_conduction_BC_1st_kind
+echo 'Running PFLOTRAN simulation . . .'
+mpirun -np $nproc $pf/pflotran -input_prefix 2D_conduction_BC_1st_kind > screen.txt
+python run_2D_conduction_BC_1st_kind.py
+rm *.vtk *.out screen.txt
+cd ..
+
+echo '================================='
+echo '  2D_conduction_BC_1st_2nd_kind'
+echo '================================='
+cd 2D_conduction_BC_1st_2nd_kind
+echo 'Running PFLOTRAN simulation . . .'
+mpirun -np $nproc $pf/pflotran -input_prefix 2D_conduction_BC_1st_2nd_kind > screen.txt
+python run_2D_conduction_BC_1st_2nd_kind.py
+rm *.vtk *.out screen.txt
+cd ..
+
 echo ' '
 echo '========================================================================='
 echo '====== Running TRANSIENT THERMAL tests =================================='
@@ -110,15 +130,15 @@ pf=$(cd ../../../../src/pflotran; pwd)
 echo $PWD
 echo ' '
 
-echo '============================='
-echo '  1D_conduction_BC_1st_kind'
-echo '============================='
-cd 1D_conduction_BC_1st_kind
-echo 'Running PFLOTRAN simulation . . .'
-mpirun -np $nproc $pf/pflotran -input_prefix 1D_conduction_BC_1st_kind > screen.txt
-python run_1D_conduction_BC_1st_kind.py
-rm *.vtk *.out screen.txt
-cd ..
+#echo '============================='
+#echo '  1D_conduction_BC_1st_kind'
+#echo '============================='
+#cd 1D_conduction_BC_1st_kind
+#echo 'Running PFLOTRAN simulation . . .'
+#mpirun -np $nproc $pf/pflotran -input_prefix 1D_conduction_BC_1st_kind > screen.txt
+#python run_1D_conduction_BC_1st_kind.py
+#rm *.vtk *.out screen.txt
+#cd ..
 
 echo ' '
 echo '========================================================================='

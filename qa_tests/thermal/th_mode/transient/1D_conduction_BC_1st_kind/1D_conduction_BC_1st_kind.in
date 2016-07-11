@@ -163,6 +163,9 @@ BOUNDARY_CONDITION right_end
   REGION right_end
 END
 
+#========================== energy equation only ==============================
+ONLY_ENERGY_EQ
+
 
 END_SUBSURFACE
 
