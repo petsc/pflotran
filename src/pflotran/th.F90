@@ -1779,6 +1779,16 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
       dq_dt_up = Dq*(dukvr_dt_up*dphi+ukvr*dphi_dt_up)*area
       dq_dt_dn = Dq*(dukvr_dt_dn*dphi+ukvr*dphi_dt_dn)*area
         
+
+      ! If only solving the energy equation, ensure Jup(2,2) & Jdn(2,2)
+      ! have no contribution from the mass equation
+      if (option%flow%only_energy_eq) then
+         v_darcy = 0.d0
+         q = 0.d0
+         dq_dt_up = 0.d0
+         dq_dt_dn = 0.d0
+      endif
+
       Jup(1,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)
       Jup(1,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)
 
@@ -1967,6 +1977,20 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2) + Dk*area*(-1.d0) + &
                            area*(global_auxvar_up%temp - & 
                            global_auxvar_dn%temp)*dDk_dt_dn 
+
+  ! If only solving the energy equation,
+  !  - Set jacobian term corresponding to mass-equation to one, and
+  !  - Set off-diagonal jacobian terms to zero.
+  if (option%flow%only_energy_eq) then
+    Jup(1,1) = 1.d0
+    Jup(1,2) = 0.d0
+    Jup(option%nflowdof,1) = 0.d0
+
+    Jdn(1,1) = 1.d0
+    Jdn(1,2) = 0.d0
+    Jup(option%nflowdof,1) = 0.d0
+
+  endif
 
   ! note: Res is the flux contribution, for node up J = J + Jup
   !                                              dn J = J - Jdn  
@@ -2236,6 +2260,11 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
     if (ukvr > floweps) then
       v_darcy = Dq * ukvr * dphi
    
+      ! If only solving the energy equation, ensure Res(2) has no
+      ! contribution from mass equation by setting darcy velocity
+      ! to be zero
+      if (option%flow%only_energy_eq) v_darcy = 0.d0
+
       q = v_darcy * area
         
       fluxm = fluxm + q*density_ave
@@ -2310,6 +2339,9 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   cond = Dk*area*(global_auxvar_up%temp - global_auxvar_dn%temp)
 
   fluxe = fluxe + cond
+
+  ! If only solving the energy equation, ensure Res(1) is zero
+  if (option%flow%only_energy_eq) fluxm = 0.d0
 
   Res(1:option%nflowdof-1) = fluxm
   Res(option%nflowdof) = fluxe
@@ -2763,6 +2795,13 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
   Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)
       
+  ! If only solving the energy equation, ensure Jdn(2,2) has no
+  ! contribution from mass equation
+  if (option%flow%only_energy_eq) then
+    q = 0.d0
+    dq_dt_dn = 0.d0
+  endif
+
   ! based on flux = q*density_ave*uh
   Jdn(option%nflowdof,1) =  &
      ((dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn)
@@ -2888,6 +2927,15 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
       endif ! if (use_th_freezing)
 
   end select
+
+  ! If only solving the energy equation,
+  !  - Set jacobian term corresponding to mass-equation to one, and
+  !  - Set off-diagonal jacobian terms to zero.
+  if (option%flow%only_energy_eq) then
+    Jdn(1,1) = 1.d0
+    Jdn(1,2) = 0.d0
+    Jdn(option%nflowdof,1) = 0.d0
+  endif
 
 #if 0
   if (option%flow%numerical_derivatives) then
@@ -3290,6 +3338,11 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
 
   end select
 
+  ! If only solving the energy equation, ensure Res(2) has no
+  ! contribution from mass equation by setting darcy velocity
+  ! to be zero
+  if (option%flow%only_energy_eq) q = 0.d0
+
   q = v_darcy * area
 
   if (v_darcy >= 0.D0) then
@@ -3383,6 +3436,9 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
         '" not implemented in TH mode.'
       call printErrMsg(option)
   end select
+
+  ! If only solving the energy equation, set Res(1) is 0.d0
+  if (option%flow%only_energy_eq) fluxm = 0.d0
 
   Res(1:option%nflowspec) = fluxm
   Res(option%nflowdof) = fluxe
