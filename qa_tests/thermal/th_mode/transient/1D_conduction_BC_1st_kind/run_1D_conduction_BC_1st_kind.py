@@ -65,8 +65,8 @@ plot_flag = 1  # [1 = make plots, 0 = do not make plots]
 passing_crit = 2.  # [% error]
 
 # Create the analytical solution
-K = 5.0  #250.0    # [W/m-C]
-Cp = 0.001     # [J/kg-C]
+K = 1.0    # [W/m-C]
+Cp = 0.01     # [J/kg-C]
 rho = 2500.    # [kg/m^3]
 Tb = 2.0       # [C/day]
 L = 50.0       # [m]
@@ -86,7 +86,7 @@ for time in range(4):
     T_soln[time,i] = Tb*t + ((Tb*(pow(x,2)-pow(L,2)))/(2.*chi)) 
     sum_term = 0
     # infinite sum truncated to 1000:
-    for n in range(1000):
+    for n in range(8000):
       sum_term = sum_term + (((pow(-1.,n))/(pow(((2*n)+1),3)))*math.cos((math.pi*x*((2*n)+1))/(2*L))*math.exp(-chi*pow((2*n)+1,2)*pow(math.pi,2)*(t/(4*pow(L,2))))) 
     T_soln[time,i] = T_soln[time,i] + ((16.*Tb*pow(L,2))/(chi*pow(math.pi,3)))*sum_term
     i = i + 1
