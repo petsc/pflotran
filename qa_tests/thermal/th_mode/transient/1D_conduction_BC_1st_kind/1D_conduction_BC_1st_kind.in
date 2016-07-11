@@ -5,9 +5,6 @@ SIMULATION
   PROCESS_MODELS
     SUBSURFACE_FLOW flow
       MODE TH
-      OPTIONS
-#        NUMERICAL_JACOBIAN
-      /
     /
   /
   #INPUT_RECORD_FILE
