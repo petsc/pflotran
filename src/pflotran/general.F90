@@ -2124,6 +2124,10 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
     enddo !irow
   enddo ! idof
 
+  if (general_analytical_derivatives) then
+    J = jac
+  endif
+
   if (general_isothermal) then
     J(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
     J(:,GENERAL_ENERGY_EQUATION_INDEX) = 0.d0

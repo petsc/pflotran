@@ -218,6 +218,8 @@ subroutine PMGeneralRead(this,input)
         general_harmonic_diff_density = PETSC_TRUE
       case('ARITHMETIC_GAS_DIFFUSIVE_DENSITY')
         general_harmonic_diff_density = PETSC_FALSE
+      case('ANALYTICAL_DERIVATIVES')
+        general_analytical_derivatives = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(keyword,'GENERAL Mode',option)
     end select
