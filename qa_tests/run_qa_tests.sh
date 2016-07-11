@@ -24,7 +24,7 @@ echo '============================='
 cd 1D_conduction_BC_1st_kind
 echo 'Running PFLOTRAN simulation . . .'
 mpirun -np $nproc $pf/pflotran -input_prefix 1D_conduction_BC_1st_kind > screen.txt
-python run_1D_conduction_BC_1st_kind.py
+python run_1D_conduction_BC_1st_kind.py print_error=false plot_flag=false
 rm *.vtk *.out screen.txt
 cd ..
 
@@ -34,7 +34,7 @@ echo '================================='
 cd 1D_conduction_BC_1st_2nd_kind
 echo 'Running PFLOTRAN simulation . . .'
 mpirun -np $nproc $pf/pflotran -input_prefix 1D_conduction_BC_1st_2nd_kind > screen.txt
-python run_1D_conduction_BC_1st_2nd_kind.py
+python run_1D_conduction_BC_1st_2nd_kind.py print_error=false plot_flag=false
 rm *.vtk *.out screen.txt
 cd ..
 
@@ -44,7 +44,7 @@ echo '=============================='
 cd 2D_conduction_BC_1st_kind
 echo 'Running PFLOTRAN simulation . . .'
 mpirun -np $nproc $pf/pflotran -input_prefix 2D_conduction_BC_1st_kind > screen.txt
-python run_2D_conduction_BC_1st_kind.py
+python run_2D_conduction_BC_1st_kind.py print_error=false plot_flag=false
 rm *.vtk *.out screen.txt
 cd ..
 
@@ -54,7 +54,7 @@ echo '================================='
 cd 2D_conduction_BC_1st_2nd_kind
 echo 'Running PFLOTRAN simulation . . .'
 mpirun -np $nproc $pf/pflotran -input_prefix 2D_conduction_BC_1st_2nd_kind > screen.txt
-python run_2D_conduction_BC_1st_2nd_kind.py
+python run_2D_conduction_BC_1st_2nd_kind.py print_error=false plot_flag=false
 rm *.vtk *.out screen.txt
 cd ..
 
@@ -64,7 +64,7 @@ echo '=============================='
 cd 3D_conduction_BC_1st_kind
 echo 'Running PFLOTRAN simulation . . .'
 mpirun -np $nproc $pf/pflotran -input_prefix 3D_conduction_BC_1st_kind > screen.txt
-python run_3D_conduction_BC_1st_kind.py
+python run_3D_conduction_BC_1st_kind.py print_error=false plot_flag=false
 rm *.vtk *.out screen.txt
 cd ..
 
@@ -85,7 +85,7 @@ echo '============================='
 cd 1D_conduction_BC_1st_kind
 echo 'Running PFLOTRAN simulation . . .'
 mpirun -np $nproc $pf/pflotran -input_prefix 1D_conduction_BC_1st_kind > screen.txt
-python run_1D_conduction_BC_1st_kind.py
+python run_1D_conduction_BC_1st_kind.py print_error=false plot_flag=false
 rm *.vtk *.out screen.txt
 cd ..
 
@@ -95,7 +95,7 @@ echo '================================='
 cd 1D_conduction_BC_1st_2nd_kind
 echo 'Running PFLOTRAN simulation . . .'
 mpirun -np $nproc $pf/pflotran -input_prefix 1D_conduction_BC_1st_2nd_kind > screen.txt
-python run_1D_conduction_BC_1st_2nd_kind.py
+python run_1D_conduction_BC_1st_2nd_kind.py print_error=false plot_flag=false
 rm *.vtk *.out screen.txt
 cd ..
 
@@ -105,7 +105,7 @@ echo '=============================='
 cd 2D_conduction_BC_1st_kind
 echo 'Running PFLOTRAN simulation . . .'
 mpirun -np $nproc $pf/pflotran -input_prefix 2D_conduction_BC_1st_kind > screen.txt
-python run_2D_conduction_BC_1st_kind.py
+python run_2D_conduction_BC_1st_kind.py print_error=false plot_flag=false
 rm *.vtk *.out screen.txt
 cd ..
 
@@ -115,7 +115,17 @@ echo '================================='
 cd 2D_conduction_BC_1st_2nd_kind
 echo 'Running PFLOTRAN simulation . . .'
 mpirun -np $nproc $pf/pflotran -input_prefix 2D_conduction_BC_1st_2nd_kind > screen.txt
-python run_2D_conduction_BC_1st_2nd_kind.py
+python run_2D_conduction_BC_1st_2nd_kind.py print_error=false plot_flag=false
+rm *.vtk *.out screen.txt
+cd ..
+
+echo '=============================='
+echo '  3D_conduction_BC_1st_kind'
+echo '=============================='
+cd 3D_conduction_BC_1st_kind
+echo 'Running PFLOTRAN simulation . . .'
+mpirun -np $nproc $pf/pflotran -input_prefix 3D_conduction_BC_1st_kind > screen.txt
+python run_3D_conduction_BC_1st_kind.py print_error=false plot_flag=false
 rm *.vtk *.out screen.txt
 cd ..
 
@@ -130,15 +140,15 @@ pf=$(cd ../../../../src/pflotran; pwd)
 echo $PWD
 echo ' '
 
-#echo '============================='
-#echo '  1D_conduction_BC_1st_kind'
-#echo '============================='
-#cd 1D_conduction_BC_1st_kind
-#echo 'Running PFLOTRAN simulation . . .'
-#mpirun -np $nproc $pf/pflotran -input_prefix 1D_conduction_BC_1st_kind > screen.txt
-#python run_1D_conduction_BC_1st_kind.py
-#rm *.vtk *.out screen.txt
-#cd ..
+echo '============================='
+echo '  1D_conduction_BC_1st_kind'
+echo '============================='
+cd 1D_conduction_BC_1st_kind
+echo 'Running PFLOTRAN simulation . . .'
+mpirun -np $nproc $pf/pflotran -input_prefix 1D_conduction_BC_1st_kind > screen.txt
+python run_1D_conduction_BC_1st_kind.py print_error=false plot_flag=false
+rm *.vtk *.out screen.txt
+cd ..
 
 echo ' '
 echo '========================================================================='
@@ -150,7 +160,15 @@ cd ../../general_mode/transient
 pf=$(cd ../../../../src/pflotran; pwd)
 echo $PWD
 echo ' '
-echo 'No tests to run. . .'
+echo '============================='
+echo '  1D_conduction_BC_1st_kind'
+echo '============================='
+cd 1D_conduction_BC_1st_kind
+echo 'Running PFLOTRAN simulation . . .'
+mpirun -np $nproc $pf/pflotran -input_prefix 1D_conduction_BC_1st_kind > screen.txt
+python run_1D_conduction_BC_1st_kind.py print_error=false plot_flag=false
+rm *.vtk *.out screen.txt
+cd ..
 
 echo ' '
 echo '========================================================================='
