@@ -1,7 +1,5 @@
 module Output_Geomechanics_module
 
-  use Logging_module 
-  use Geomechanics_Logging_module
   use Output_Aux_module  
   use Output_Tecplot_module
   use Output_Common_module
@@ -23,7 +21,8 @@ module Output_Geomechanics_module
   PetscBool :: geomech_hdf5_first
 
   public :: OutputGeomechanics, &
-            OutputGeomechInit
+            OutputGeomechInit, &
+            OutputGeomechGetVarFromArray
       
 contains
 
@@ -63,6 +62,7 @@ subroutine OutputGeomechanics(geomech_realization,snapshot_plot_flag, &
   ! 
 
   use Geomechanics_Realization_class
+  use Logging_module
   use Option_module, only : OptionCheckTouch, option_type, &
                             printMsg, printErrMsg
 
@@ -104,10 +104,8 @@ subroutine OutputGeomechanics(geomech_realization,snapshot_plot_flag, &
    
     if (geomech_realization%output_option%print_tecplot) then
       call PetscTime(tstart,ierr);CHKERRQ(ierr)
-      call PetscLogEventBegin(logging%event_output_tecplot,ierr);CHKERRQ(ierr)
       call OutputTecplotGeomechanics(geomech_realization)
       call PetscTime(tend,ierr);CHKERRQ(ierr)
-      call PetscLogEventEnd(logging%event_output_tecplot,ierr);CHKERRQ(ierr)
     endif
 
   endif
@@ -690,14 +688,8 @@ subroutine OutputGeomechGetVarFromArray(geomech_realization,vec,ivar,isubvar, &
   
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_output_get_var_from_array, &
-                          ierr);CHKERRQ(ierr)
-                        
   call GeomechRealizGetDataset(geomech_realization,vec,ivar,isubvar,isubvar1)
 
-  call PetscLogEventEnd(logging%event_output_get_var_from_array, &
-                        ierr);CHKERRQ(ierr)
-  
 end subroutine OutputGeomechGetVarFromArray
 
 ! ************************************************************************** !
@@ -816,9 +808,6 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
   patch => geomech_realization%geomech_patch
   grid => patch%geomech_grid
   option => geomech_realization%option
-
-  call PetscLogEventBegin(logging%event_output_write_tecplot, &
-                          ierr);CHKERRQ(ierr)
 
   ! if num_per_line exceeds 100, need to change the format statement below
   if (num_per_line > 100) then
@@ -1032,9 +1021,6 @@ subroutine WriteTecplotDataSetNumPerLineGeomech(fid,geomech_realization, &
   else
     deallocate(real_data)
   endif
-
-  call PetscLogEventEnd(logging%event_output_write_tecplot, &
-                        ierr);CHKERRQ(ierr)
 
 end subroutine WriteTecplotDataSetNumPerLineGeomech
 
@@ -1696,10 +1682,8 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
     double_array((i-1)*3+3) = vec_z_ptr(i)
   enddo
 
-  call PetscLogEventBegin(geomech_logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,double_array,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
-  call PetscLogEventEnd(geomech_logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
 
   deallocate(double_array)
   call h5pclose_f(prop_id,hdf5_err)
@@ -1836,10 +1820,8 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
     enddo
   enddo
 
-  call PetscLogEventBegin(geomech_logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
   call h5dwrite_f(data_set_id,H5T_NATIVE_INTEGER,int_array,dims, &
                   hdf5_err,memory_space_id,file_space_id,prop_id)
-  call PetscLogEventEnd(geomech_logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
 
   deallocate(int_array)
   call h5pclose_f(prop_id,hdf5_err)

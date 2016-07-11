@@ -702,6 +702,12 @@ subroutine SolverReadLinear(solver,input,option)
         call InputReadDouble(input,option,solver%linear_lu_zero_pivot_tol)
         call InputErrorMsg(input,option,'linear_lu_zero_pivot_tol', &
                            'LINEAR_SOLVER')
+
+      case('MUMPS')
+        string = trim(prefix) // 'pc_factor_mat_solver_package'
+        word = 'mumps'
+        call PetscOptionsSetValue(PETSC_NULL_OBJECT, &
+                                  trim(string),trim(word),ierr);CHKERRQ(ierr)
    
       case default
         call InputKeywordUnrecognized(keyword,'LINEAR_SOLVER',option)

@@ -776,13 +776,15 @@ subroutine GeomechDiscretizationDestroy(geomech_discretization)
   
   PetscErrorCode :: ierr
   PetscInt :: i
-    
+
   if (.not.associated(geomech_discretization)) return
       
   if (associated(geomech_discretization%dm_1dof%gmdm)) &
     call GMDMDestroy(geomech_discretization%dm_1dof%gmdm)
   if (associated(geomech_discretization%dm_ngeodof%gmdm)) &
     call GMDMDestroy(geomech_discretization%dm_ngeodof%gmdm)
+  if (associated(geomech_discretization%dm_n_stress_strain_dof%gmdm)) &
+    call GMDMDestroy(geomech_discretization%dm_n_stress_strain_dof%gmdm)
 
   if (associated(geomech_discretization%dm_1dof)) &
     deallocate(geomech_discretization%dm_1dof)

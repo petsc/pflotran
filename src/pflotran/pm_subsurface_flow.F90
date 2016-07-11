@@ -300,6 +300,11 @@ recursive subroutine PMSubsurfaceFlowInitializeRun(this)
   class(pm_subsurface_flow_type) :: this
   PetscBool :: update_initial_porosity
 
+  ! must come before RealizUnInitializedVarsTran
+  call RealizSetSoilReferencePressure(this%realization)
+  ! check for uninitialized flow variables
+  call RealizUnInitializedVarsTran(this%realization)
+
   ! overridden in pm_general only
   if (associated(this%realization%reaction)) then
     if (this%realization%reaction%update_porosity) then

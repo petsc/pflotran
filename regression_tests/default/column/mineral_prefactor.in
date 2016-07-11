@@ -5,16 +5,9 @@ SIMULATION
   PROCESS_MODELS
     SUBSURFACE_TRANSPORT transport
       GLOBAL_IMPLICIT
-#     NUMERICAL_JACOBIAN
       ITOL_RELATIVE_UPDATE 1.d-8
     /
   /
-skip
-  CHECKPOINT
-    PERIODIC TIMESTEP 34
-  /
-noskip
-#  RESTART analytical-ts34.chk
 END
 
 SUBSURFACE
@@ -30,7 +23,135 @@ END
 UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr
 
 #=========================== chemistry ========================================
-EXTERNAL_FILE chemistry.txt
+CHEMISTRY
+  PRIMARY_SPECIES
+    Na+
+    Ca++
+    H+
+    UO2++
+    SiO2(aq)
+    HCO3-
+    Cl-
+    O2(aq)
+    Tracer
+  /
+  SECONDARY_SPECIES
+    CO(aq)
+    ClO-
+    ClO2-
+    ClO3-
+    ClO4-
+    H2(aq)
+    U+++
+    U++++
+    (UO2)11(CO3)6(OH)12--
+    (UO2)2(OH)2++
+    (UO2)2CO3(OH)3-
+    (UO2)2OH+++
+    (UO2)3(CO3)6(6-)
+    (UO2)3(OH)4++
+    (UO2)3(OH)5+
+    (UO2)3(OH)5CO2+
+    (UO2)3(OH)7-
+    (UO2)3O(OH)2(HCO3)+
+    (UO2)4(OH)7+
+    CO2(aq)
+    CO3--
+    CaCO3(aq)
+    CaCl+
+    CaCl2(aq)
+    CaHCO3+
+    CaOH+
+    CH4(aq)
+    H2SiO4--
+    HCl(aq)
+    HO2-
+    HSiO3-
+    H3SiO4-
+    NaCO3-
+    NaCl(aq)
+    NaHCO3(aq)
+    NaHSiO3(aq)
+    NaOH(aq)
+    OH-
+    UO2(CO3)2--
+    UO2(CO3)3----
+    UO2(OH)2(aq)
+    UO2(OH)3-
+    UO2(OH)4--
+    UO2CO3(aq)
+    UO2Cl+
+    UO2Cl2(aq)
+    UO2OH+
+    Ca2UO2(CO3)3(aq)
+    CaUO2(CO3)3--
+    HClO(aq)
+    HClO2(aq)
+    U(CO3)4----
+    U(CO3)5(6-)
+    U(OH)4(aq)
+    UCl+++
+    UO2ClO3+
+    UOH+++
+  /
+  GAS_SPECIES
+    CO2(g)
+    O2(g)
+  /
+  MINERALS
+    Aragonite
+    Calcite
+    Quartz
+    Chalcedony
+    SiO2(am)
+    Uraninite
+    Schoepite
+    Coffinite
+  /
+  MINERAL_KINETICS
+    Uraninite
+      SURFACE_AREA_VOL_FRAC_POWER 0.666667d0
+      PREFACTOR
+        RATE_CONSTANT 3.5d-8      mol/m^2-sec
+        PREFACTOR_SPECIES O2(aq)
+          ALPHA 0.31d0
+        /
+        PREFACTOR_SPECIES H+
+          ALPHA 0.37d0
+          ATTENUATION_COEF 1.d9
+          BETA 1.d0
+        /
+      /
+    /
+    Schoepite
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    Coffinite
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    Calcite
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    SiO2(am)
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    Quartz
+      RATE_CONSTANT 1.d-17 mol/cm^2-sec
+    /
+  /
+  DATABASE ../../../database/hanford.dat
+
+  LOG_FORMULATION
+  ACTIVITY_COEFFICIENTS TIMESTEP
+  MOLAL
+  UPDATE_MINERAL_SURFACE_AREA
+  OUTPUT
+    all
+    pH
+    FREE_ION
+    TOTAL
+  /
+END
 
 
 #=========================== solver options ===================================
@@ -109,53 +230,13 @@ CHARACTERISTIC_CURVES default
 END
 
 #=========================== output options ===================================
-skip
 OUTPUT
-TIME_UNITS d
-  TIMES d 0.001 0.01 0.1 0.25 0.5 0.75 1. 2. 3. 4. 5. 6. 7. 8. 9. 10. 15. 20. 25. 30. 35. 40. 45. 50. 60. \
-  70. 80. 90. 100. 110. 120. 130. 140. 150. 175. 200. 225. 250. 275. 300. 325. 350. 360. 400. \
-  450. 500. 550. 600. 650. 700. 750. 800. 850. 900. \
-  950. 1000. 1050. 1100. 1150. 1200. 1250. 1500. 1750. 1825. 2000. 2500. 3000. 3500. 3650.
-  PRINT_COLUMN_IDS
-  PERIODIC_OBSERVATION TIMESTEP 1
-  FORMAT TECPLOT POINT
-  FORMAT HDF5 MULTIPLE_FILES
-  VELOCITY_AT_CENTER
-# SCREEN PERIODIC 10
-  MASS_BALANCE DETAILED
+#  FORMAT TECPLOT POINT
 END
-noskip
-
-OUTPUT
-  FORMAT TECPLOT POINT
-END
-
-skip
-OUTPUT
-  MASS_BALANCE_FILE
-    PERIODIC TIMESTEP 1
-    DETAILED
-  /
-  SNAPSHOT_FILE
-    TIMES d 0.001 0.01 0.1 0.25 0.5 0.75 1. 2. 3. 4. \
-    5. 6. 7. 8. 9. 10. 15. 20. 25. 30. 35. 40. 45. 50. 60. \
-    70. 80. 90. 100. 110. 120. 130. 140. 150. 175. 200. 225. 250. 275. 300. 325. 350. 360. 400. \
-    450. 500. 550. 600. 650. 700. 750. 800. 850. 900. \
-    950. 1000. 1050. 1100. 1150. 1200. 1250. 1500. 1750. 1825. 2000. 2500. 3000. 3500. 3650.
-    FORMAT TECPLOT POINT
-    FORMAT HDF5 MULTIPLE_FILES
-  /
-  OBSERVATION_FILE
-    PERIODIC TIMESTEP 1
-    PRINT_COLUMN_IDS
-    VELOCITY
-  /
-END
-noskip
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 1.d0 d
+  FINAL_TIME 0.1d0 d
   INITIAL_TIMESTEP_SIZE 1.d-8 d
   MAXIMUM_TIMESTEP_SIZE 1.e-2 d
 END
@@ -163,25 +244,25 @@ END
 #=========================== discretization ===================================
 GRID
   TYPE STRUCTURED
-  NXYZ 100 1 1
+  NXYZ 20 1 1
   BOUNDS
     0.0 0.0 0.0
-    1.0 1.0 1.0
+    0.2 1.0 1.0
   /
 END
 
 #=========================== regions ==========================================
 REGION all
   COORDINATES
-     1.0 1.0 1.0
-     0.0 0.0 0.0
+     -1.d20 -1.d20 -1.d20
+     1.d20 1.d20 1.d20
   /
 /
 
 REGION east
   COORDINATES
-     1.0 1.0 1.0
-     1.0 0.0 0.0
+     0.2 1.0 1.0
+     0.2 0.0 0.0
   /
   FACE EAST
 /
@@ -240,7 +321,6 @@ CONSTRAINT initial_ore
     H+         8.3d0      pH
     UO2++      1.3503E-6   M Uraninite
     SiO2(aq)   8.15367e-4  M Coffinite
-#   SiO2(aq)   8.15367e-4  M Quartz
     HCO3-      3.49082e-3  T
     Cl-        7.0798d-4   T
     O2(aq)     1.d-69      F
