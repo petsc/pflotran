@@ -178,7 +178,5 @@ if abs(max_percent_error) > passing_crit:
   print '-- Test FAIL --\n'
 else: 
   print '-- Test PASS --\n'
-  
-
 
 

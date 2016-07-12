@@ -109,7 +109,7 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,temparray(1))
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,ENTHALPY,CONSTANT')
-               case('IFC67','DEFAULT')
+               case('IFC67','PAINTER','DEFAULT')
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,ENTHALPY',option)
             end select

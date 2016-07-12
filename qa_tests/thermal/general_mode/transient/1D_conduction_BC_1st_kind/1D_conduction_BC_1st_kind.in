@@ -4,7 +4,7 @@ SIMULATION
   SIMULATION_TYPE SUBSURFACE
   PROCESS_MODELS
     SUBSURFACE_FLOW flow
-      MODE TH
+      MODE GENERAL
     /
   /
   #INPUT_RECORD_FILE
@@ -53,10 +53,10 @@ MATERIAL_PROPERTY beam
   POROSITY 1.d-5
   TORTUOSITY 1.d0
   ROCK_DENSITY 2.5d3 kg/m^3
-  SPECIFIC_HEAT 0.01 J/kg-C
+  HEAT_CAPACITY 0.01 J/kg-C
   THERMAL_CONDUCTIVITY_DRY 1.0 W/m-C
   THERMAL_CONDUCTIVITY_WET 1.0 W/m-C
-  SATURATION_FUNCTION default
+  CHARACTERISTIC_CURVES cc1
   PERMEABILITY
     PERM_X 1.d-20
     PERM_Y 1.d-20
@@ -65,11 +65,21 @@ MATERIAL_PROPERTY beam
 END
 
 #=========================== characteristic curves ============================
-SATURATION_FUNCTION default
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.5d-1
-  LAMBDA 0.75
-  ALPHA 1.d-3
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    LIQUID_RESIDUAL_SATURATION 0.5d-1
+    M 0.75
+    ALPHA 1.d-3
+  /
+  PERMEABILITY_FUNCTION MUALEM
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_GAS
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    GAS_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
 END
 
 #===================== stratigraphy couplers ==================================
@@ -78,13 +88,16 @@ STRATA
   MATERIAL beam
 END
 
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
 #=========================== output options ===================================
 OUTPUT
   SNAPSHOT_FILE
     TIMES day 0.25 0.50
-    #PERIODIC TIME 1000 y
     #NO_PRINT_INITIAL
-    #FORMAT TECPLOT BLOCK
     FORMAT VTK
   /
 END
@@ -100,16 +113,19 @@ END
 FLOW_CONDITION initial
   TYPE
     TEMPERATURE dirichlet
-    PRESSURE dirichlet
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
   /
-  TEMPERATURE 0.0D0 C
-  PRESSURE 101325 Pa
+  TEMPERATURE 0.0d0 C
+  LIQUID_PRESSURE 101325 Pa
+  MOLE_FRACTION 1.d-10
 END
 
 FLOW_CONDITION left_end
   TYPE
     TEMPERATURE dirichlet
-    PRESSURE dirichlet
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
   /
   TEMPERATURE LIST
     # T = Tb*t; Tb=2C
@@ -122,13 +138,15 @@ FLOW_CONDITION left_end
     0.50d0 1.0d0
     1.00d0 2.0d0
   /
-  PRESSURE 101325 Pa
+  LIQUID_PRESSURE 101325 Pa
+  MOLE_FRACTION 1.d-10
 END
 
 FLOW_CONDITION right_end
   TYPE
     TEMPERATURE dirichlet
-    PRESSURE dirichlet
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
   /
   TEMPERATURE LIST
     # T = Tb*t; Tb=2C
@@ -141,7 +159,8 @@ FLOW_CONDITION right_end
     0.50d0 1.0d0
     1.00d0 2.0d0
   /
-  PRESSURE 101325 Pa
+  LIQUID_PRESSURE 101325 Pa
+  MOLE_FRACTION 1.d-10
 END
 
 #========================== initial and boundary conditions ===================
@@ -163,8 +182,6 @@ BOUNDARY_CONDITION right_end
   REGION right_end
 END
 
-#========================== energy equation only ==============================
-ONLY_ENERGY_EQ
 
 
 END_SUBSURFACE

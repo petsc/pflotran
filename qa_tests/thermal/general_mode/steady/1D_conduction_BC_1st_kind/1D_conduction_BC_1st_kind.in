@@ -4,7 +4,7 @@ SIMULATION
   SIMULATION_TYPE SUBSURFACE
   PROCESS_MODELS
     SUBSURFACE_FLOW flow
-      MODE TH
+      MODE GENERAL
     /
   /
   #INPUT_RECORD_FILE
@@ -15,48 +15,48 @@ SUBSURFACE
 #=========================== discretization ===================================
 GRID
   TYPE structured
-  NXYZ 200 1 1
+  NXYZ 10 1 1
   DXYZ
-   0.5
-   1
-   1
+   10
+   10
+   10
   END
 END
 
 #=========================== regions ==========================================
 REGION all
   COORDINATES
-    0.d0   0.d0  0.d0
-    100.d0 1.d0  1.d0
+    0.d0    0.d0   0.d0
+    100.d0  10.d0  10.d0
   /
 END
 
 REGION left_end
   FACE WEST
   COORDINATES
-    0.d0  0.d0  0.d0
-    0.d0  1.d0  1.d0
+    0.d0  0.d0   0.d0
+    0.d0  10.d0  10.d0
   /
 END
 
 REGION right_end
   FACE EAST
   COORDINATES
-    100.d0  0.d0  0.d0
-    100.d0  1.d0  1.d0
+    100.d0  0.d0   0.d0
+    100.d0  10.d0  10.d0
   /
 END
 
 #=========================== material properties ==============================
 MATERIAL_PROPERTY beam
   ID 1
-  POROSITY 1.d-5
+  POROSITY 0.01d0
   TORTUOSITY 1.d0
-  ROCK_DENSITY 2.5d3 kg/m^3
-  SPECIFIC_HEAT 0.01 J/kg-C
-  THERMAL_CONDUCTIVITY_DRY 1.0 W/m-C
-  THERMAL_CONDUCTIVITY_WET 1.0 W/m-C
-  SATURATION_FUNCTION default
+  ROCK_DENSITY 2.8E3
+  HEAT_CAPACITY 1.d-3
+  THERMAL_CONDUCTIVITY_DRY 1 W/m-C
+  THERMAL_CONDUCTIVITY_WET 1 W/m-C
+  CHARACTERISTIC_CURVES cc1
   PERMEABILITY
     PERM_X 1.d-20
     PERM_Y 1.d-20
@@ -65,11 +65,21 @@ MATERIAL_PROPERTY beam
 END
 
 #=========================== characteristic curves ============================
-SATURATION_FUNCTION default
-  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-  RESIDUAL_SATURATION 0.5d-1
-  LAMBDA 0.75
-  ALPHA 1.d-3
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    LIQUID_RESIDUAL_SATURATION 0.5d-1
+    M 0.75
+    ALPHA 1.d-3
+  /
+  PERMEABILITY_FUNCTION MUALEM
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_GAS
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    GAS_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
 END
 
 #===================== stratigraphy couplers ==================================
@@ -78,70 +88,59 @@ STRATA
   MATERIAL beam
 END
 
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
 #=========================== output options ===================================
 OUTPUT
   SNAPSHOT_FILE
-    TIMES day 0.25 0.50
-    #PERIODIC TIME 1000 y
-    #NO_PRINT_INITIAL
-    #FORMAT TECPLOT BLOCK
+    TIMES yr 100
+    NO_PRINT_INITIAL
     FORMAT VTK
   /
 END
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 1.0 day
+  FINAL_TIME 100 yr
   INITIAL_TIMESTEP_SIZE 1.d-4 day
-  MAXIMUM_TIMESTEP_SIZE 0.05 day at 0.d0 day
+  MAXIMUM_TIMESTEP_SIZE 5.d0 yr at 0.d0 yr
 END
 
 #======================= flow conditions ======================================
 FLOW_CONDITION initial
   TYPE
     TEMPERATURE dirichlet
-    PRESSURE dirichlet
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
   /
-  TEMPERATURE 0.0D0 C
-  PRESSURE 101325 Pa
+  TEMPERATURE 1.5d0 C
+  LIQUID_PRESSURE 101325 Pa
+  MOLE_FRACTION 1.d-10
 END
 
 FLOW_CONDITION left_end
   TYPE
     TEMPERATURE dirichlet
-    PRESSURE dirichlet
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
   /
-  TEMPERATURE LIST
-    # T = Tb*t; Tb=2C
-    TIME_UNITS day
-    DATA_UNITS C
-    INTERPOLATION LINEAR
-    #time  #temperature
-    0.00d0 0.0d0
-    0.25d0 0.5d0
-    0.50d0 1.0d0
-    1.00d0 2.0d0
-  /
-  PRESSURE 101325 Pa
+  TEMPERATURE 1.D0 C
+  LIQUID_PRESSURE 101325 Pa
+  MOLE_FRACTION 1.d-10
 END
 
 FLOW_CONDITION right_end
   TYPE
     TEMPERATURE dirichlet
-    PRESSURE dirichlet
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
   /
-  TEMPERATURE LIST
-    # T = Tb*t; Tb=2C
-    TIME_UNITS day
-    DATA_UNITS C
-    INTERPOLATION LINEAR
-    #time  #temperature
-    0.00d0 0.0d0
-    0.25d0 0.5d0
-    0.50d0 1.0d0
-    1.00d0 2.0d0
-  /
-  PRESSURE 101325 Pa
+  TEMPERATURE 2.D0 C
+  LIQUID_PRESSURE 101325 Pa
+  MOLE_FRACTION 1.d-10
 END
 
 #========================== initial and boundary conditions ===================
@@ -162,9 +161,6 @@ BOUNDARY_CONDITION right_end
   FLOW_CONDITION right_end
   REGION right_end
 END
-
-#========================== energy equation only ==============================
-ONLY_ENERGY_EQ
 
 
 END_SUBSURFACE
