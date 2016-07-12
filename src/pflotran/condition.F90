@@ -45,6 +45,7 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: displacement_z
     type(flow_general_condition_type), pointer :: general
     type(flow_toil_ims_condition_type), pointer :: toil_ims  
+    ! any new sub conditions must be added to FlowConditionIsTransient
     type(sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
     type(flow_condition_type), pointer :: next ! pointer to next condition_type for linked-lists
   end type flow_condition_type
@@ -61,6 +62,7 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: liquid_flux
     type(flow_sub_condition_type), pointer :: gas_flux
     type(flow_sub_condition_type), pointer :: energy_flux
+    ! any new sub conditions must be added to FlowConditionIsTransient
   end type flow_general_condition_type
 
   ! data structure for toil_ims
@@ -79,6 +81,7 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: energy_flux
     type(flow_sub_condition_type), pointer :: owc   ! oil water contact 
     type(flow_sub_condition_type), pointer :: liq_press_grad ! water piezometric head gradient
+    ! any new sub conditions must be added to FlowConditionIsTransient
   end type flow_toil_ims_condition_type
     
   type, public :: flow_sub_condition_type
@@ -3313,11 +3316,15 @@ function FlowConditionIsTransient(condition)
       FlowSubConditionIsTransient(condition%well) .or. &
       FlowSubConditionIsTransient(condition%enthalpy) .or. &
       FlowSubConditionIsTransient(condition%energy_rate) .or. &
+      FlowSubConditionIsTransient(condition%energy_flux) .or. &
+      FlowSubConditionIsTransient(condition%displacement_x) .or. &
+      FlowSubConditionIsTransient(condition%displacement_y) .or. &
+      FlowSubConditionIsTransient(condition%displacement_z) .or. &
       FlowConditionTOilImsIsTransient(condition%toil_ims) .or. &
       FlowConditionGeneralIsTransient(condition%general)) then
     FlowConditionIsTransient = PETSC_TRUE
   endif
-  
+
 end function FlowConditionIsTransient
 
 ! ************************************************************************** !
@@ -3382,6 +3389,7 @@ function FlowConditionTOilImsIsTransient(condition)
   if (FlowSubConditionIsTransient(condition%pressure) .or. &
       FlowSubConditionIsTransient(condition%saturation) .or. &
       FlowSubConditionIsTransient(condition%temperature) .or. &
+      FlowSubConditionIsTransient(condition%enthalpy) .or. &
       FlowSubConditionIsTransient(condition%rate) .or. &
       FlowSubConditionIsTransient(condition%liquid_flux) .or. &
       FlowSubConditionIsTransient(condition%oil_flux) .or. &
