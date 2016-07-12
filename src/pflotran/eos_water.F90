@@ -51,12 +51,12 @@ module EOS_Water_module
   ! standard versions
     subroutine EOSWaterViscosityDummy(T, P, PS, dPS_dT, &
                                       calculate_derivatives, VW, &
-                                      dVW_dT, dVW_dP, dVW_dPS, ierr)
+                                      dVW_dT, dVW_dP, ierr)
       implicit none
       PetscReal, intent(in) :: T, P, PS, dPS_dT
       PetscBool, intent(in) :: calculate_derivatives
       PetscReal, intent(out) :: VW
-      PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
+      PetscReal, intent(out) :: dVW_dT, dVW_dP
       PetscErrorCode, intent(out) :: ierr
     end subroutine EOSWaterViscosityDummy
     subroutine EOSWaterSatPressDummy(T, calculate_derivatives, &
@@ -107,12 +107,12 @@ module EOS_Water_module
     ! Extended versions
     subroutine EOSWaterViscosityExtDummy(T, P, PS, dPS_dT, aux, &
                                          calculate_derivatives, VW, &
-                                         dVW_dT, dVW_dP, dVW_dPS, ierr)
+                                         dVW_dT, dVW_dP, ierr)
       implicit none
       PetscReal, intent(in) :: T, P, PS, dPS_dT, aux(*)
       PetscBool, intent(in) :: calculate_derivatives
       PetscReal, intent(out) :: VW
-      PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
+      PetscReal, intent(out) :: dVW_dT, dVW_dP
       PetscErrorCode, intent(out) :: ierr
     end subroutine EOSWaterViscosityExtDummy
     subroutine EOSWaterDensityExtDummy(t,p,aux,calculate_derivatives, &
@@ -457,29 +457,29 @@ subroutine EOSWaterViscosityNoDerive(T, P, PS, VW, ierr)
   PetscErrorCode, intent(out) :: ierr
   
   PetscReal :: dPS_dT ! derivative of PS with respect to temp
-  PetscReal :: dum1, dum2, dum3
+  PetscReal :: dum1, dum2
   
   dPS_dT = 0.d0
   call EOSWaterViscosityPtr(T, P, PS, dPS_dT, PETSC_FALSE, VW, &
-                            dum1, dum2, dum3, ierr)
+                            dum1, dum2, ierr)
   
 end subroutine EOSWaterViscosityNoDerive
 
 ! ************************************************************************** !
 
 subroutine EOSWaterViscosityDerive(T, P, PS, dPS_dT, VW, dVW_dT, &
-                                   dVW_dP, dVW_dPS, ierr)
+                                   dVW_dP, ierr)
 
   implicit none
 
   PetscReal, intent(in) :: T, P, PS ! temperature, pressure, saturation_press
   PetscReal, intent(in) :: dPS_dT ! derivative of PS with respect to temp
   PetscReal, intent(out) :: VW ! water viscosity
-  PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS ! derivatives
+  PetscReal, intent(out) :: dVW_dT, dVW_dP ! derivatives
   PetscErrorCode, intent(out) :: ierr
   
   call EOSWaterViscosityPtr(T, P, PS, dPS_dT, PETSC_TRUE, VW, &
-                            dVW_dT, dVW_dP, dVW_dPS, ierr)
+                            dVW_dT, dVW_dP, ierr)
   
 end subroutine EOSWaterViscosityDerive
 
@@ -588,18 +588,18 @@ subroutine EOSWaterViscosityExtNoDerive(T, P, PS, aux, VW, ierr)
   PetscErrorCode, intent(out) :: ierr
   
   PetscReal :: dPS_dT ! derivative of PS with respect to temp
-  PetscReal :: dum1, dum2, dum3
+  PetscReal :: dum1, dum2
   
   dPS_dT = 0.d0
   call EOSWaterViscosityExtPtr(T, P, PS, dPS_dT, aux, PETSC_FALSE, VW, &
-                               dum1, dum2, dum3, ierr)
+                               dum1, dum2, ierr)
   
 end subroutine EOSWaterViscosityExtNoDerive
 
 ! ************************************************************************** !
 
 subroutine EOSWaterViscosityExtDerive(T, P, PS, dPS_dT, aux, VW, dVW_dT, &
-                                      dVW_dP, dVW_dPS, ierr)
+                                      dVW_dP, ierr)
 
   implicit none
 
@@ -607,11 +607,11 @@ subroutine EOSWaterViscosityExtDerive(T, P, PS, dPS_dT, aux, VW, dVW_dT, &
   PetscReal, intent(in) :: dPS_dT ! derivative of PS with respect to temp
   PetscReal, intent(in) :: aux(*)
   PetscReal, intent(out) :: VW ! water viscosity
-  PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS ! derivatives
+  PetscReal, intent(out) :: dVW_dT, dVW_dP ! derivatives
   PetscErrorCode, intent(out) :: ierr
   
   call EOSWaterViscosityExtPtr(T, P, PS, dPS_dT, aux, PETSC_TRUE, VW, &
-                               dVW_dT, dVW_dP, dVW_dPS, ierr)
+                               dVW_dT, dVW_dP, ierr)
   
 end subroutine EOSWaterViscosityExtDerive
 
@@ -684,7 +684,7 @@ end subroutine EOSWaterEnthalpyExtDerive
 ! ************************************************************************** !
 
 subroutine EOSWaterViscosity1(T, P, PS, dPS_dT, calculate_derivatives, &
-                              VW, dVW_dT, dVW_dP, dVW_dPS, ierr)
+                              VW, dVW_dT, dVW_dP, ierr)
 
 ! Calculates the viscosity of water and derivatives as a function of 
 ! temperature, pressure, and saturation pressure.
@@ -695,7 +695,7 @@ subroutine EOSWaterViscosity1(T, P, PS, dPS_dT, calculate_derivatives, &
   PetscReal, intent(in) :: dPS_dT ! derivative of PS with respect to temp
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: VW ! water viscosity
-  PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS ! derivatives
+  PetscReal, intent(out) :: dVW_dT, dVW_dP ! derivatives
   PetscErrorCode, intent(out) :: ierr
   
   PetscReal :: EX, PHI, AM, pwr, aln10
@@ -716,11 +716,9 @@ subroutine EOSWaterViscosity1(T, P, PS, dPS_dT, calculate_derivatives, &
             ! dpwr_EX_dT
             VW*aln10*247.8d0/(T+133.15d0)**2
     dVW_dP = VW/AM*PHI*1.d-11
-    dVW_dPS = -1.d0 * dVW_dP
   else
     dVW_dT = UNINITIALIZED_DOUBLE
     dVW_dP = UNINITIALIZED_DOUBLE
-    dVW_dPS = UNINITIALIZED_DOUBLE
   endif
   ierr = 0
  
@@ -730,7 +728,7 @@ end subroutine EOSWaterViscosity1
 
 subroutine EOSWaterViscosityConstant(T, P, PS, dPS_dT, &
                                      calculate_derivatives, &
-                                      VW, dVW_dT, dVW_dP, dVW_dPS, ierr)
+                                      VW, dVW_dT, dVW_dP, ierr)
 
 ! Calculates the viscosity of water and derivatives as a function of 
 ! temperature, pressure, and saturation pressure.
@@ -741,14 +739,13 @@ subroutine EOSWaterViscosityConstant(T, P, PS, dPS_dT, &
   PetscReal, intent(in) :: dPS_dT ! derivative of PS with respect to temp
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: VW ! water viscosity
-  PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS ! derivatives
+  PetscReal, intent(out) :: dVW_dT, dVW_dP ! derivatives
   PetscErrorCode, intent(out) :: ierr
   
   VW = constant_viscosity
   
   dVW_dT = 0.d0
   dVW_dP = 0.d0
-  dVW_dPS = 0.d0
   
 end subroutine EOSWaterViscosityConstant
 
@@ -1763,7 +1760,7 @@ end subroutine EOSWaterViscosityNaCl
 
 subroutine EOSWaterViscosityKestinExt(T, P, PS, dPS_dT, aux, &
                                       calculate_derivatives, VW, &
-                                      dVW_dT, dVW_dP, dVW_dPS, ierr)
+                                      dVW_dT, dVW_dP, ierr)
 
   !viscosity: Kestin et al. (1981)
 
@@ -1776,7 +1773,7 @@ subroutine EOSWaterViscosityKestinExt(T, P, PS, dPS_dT, aux, &
   PetscReal, intent(in) :: aux(*)
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: VW ! Pa-s
-  PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
+  PetscReal, intent(out) :: dVW_dT, dVW_dP
   PetscErrorCode, intent(out) :: ierr
 
   PetscReal, save :: a1,a2,a3,b1,b2,b3,c1,c2,c3,c4,wnacl
@@ -2324,7 +2321,7 @@ end subroutine EOSWaterDensityBatzleAndWangExt
 
 subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
                                           calculate_derivatives, VW, &
-                                          dVW_dT, dVW_dP, dVW_dPS, ierr)
+                                          dVW_dT, dVW_dP, ierr)
   ! 
   ! From Batlze M. and Z. Wang (1992) Seismic properties of fluids, Geophysics,
   ! Vol. 57, No. 11, Pg. 1396-1408.
@@ -2341,7 +2338,7 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
   PetscReal, intent(in) :: dPS_dT  ! Pa/C
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: VW     ! Pa-s
-  PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
+  PetscReal, intent(out) :: dVW_dT, dVW_dP
   PetscErrorCode, intent(out) :: ierr
   
   ! convert from centipoise to Pa-s (1 cP = 1.d-3 Pa-s)
@@ -2373,7 +2370,7 @@ end subroutine EOSWaterViscosityBatzleAndWang
 
 subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
                                              calculate_derivatives, VW, &
-                                             dVW_dT, dVW_dP, dVW_dPS, ierr)
+                                             dVW_dT, dVW_dP, ierr)
   ! 
   ! From Batlze M. and Z. Wang (1992) Seismic properties of fluids, Geophysics,
   ! Vol. 57, No. 11, Pg. 1396-1408.
@@ -2389,7 +2386,7 @@ subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
   PetscReal, intent(in) :: aux(*)
   PetscBool, intent(in) :: calculate_derivatives
   PetscReal, intent(out) :: VW
-  PetscReal, intent(out) :: dVW_dT, dVW_dP, dVW_dPS
+  PetscReal, intent(out) :: dVW_dT, dVW_dP
   PetscErrorCode, intent(out) :: ierr
   
   ! convert from centipoise to Pa-s (1 cP = 1.d-3 Pa-s)
@@ -2430,7 +2427,7 @@ subroutine TestEOSWaterBatzleAndWang()
   ! Author: Glenn Hammond
   ! Date: 02/15/16
   ! 
-  PetscReal :: p, t, dw, dwmol, dwp, dwt, ps, dps_dt, vw, dvw_dt, dvw_dp, dvw_dps
+  PetscReal :: p, t, dw, dwmol, dwp, dwt, ps, dps_dt, vw, dvw_dt, dvw_dp
   PetscReal :: t2, dw2, p2, vw2
   PetscReal :: aux(1)
   PetscErrorCode :: ierr
@@ -2476,26 +2473,24 @@ subroutine TestEOSWaterBatzleAndWang()
 
   call EOSWaterViscosityBatzleAndWang(t, p, PS, dPS_dT, &
                                       PETSC_TRUE, vw, &
-                                      dvw_dt, dvw_dp, dvw_dps, ierr)  
+                                      dvw_dt, dvw_dp, ierr)  
   print *
   print *, 'vw:      ', vw
   print *, 'dvw_dp:  ', dvw_dp
   print *, 'dvw_dt:  ', dvw_dt
-  print *, 'dvw_dps: ', dvw_dps
   
   
   call EOSWaterViscosityBatzleAndWangExt(t, p, PS, dPS_dT, aux, &
                                          PETSC_TRUE, vw, &
-                                         dvw_dt, dvw_dp, dvw_dps, ierr) 
+                                         dvw_dt, dvw_dp, ierr) 
   print *, 'Ext-'
   print *, 'vw:      ', vw
   print *, 'dvw_dp:  ', dvw_dp
   print *, 'dvw(t)t:  ', dvw_dt
-  print *, 'dvw_dps: ', dvw_dps
   
   call EOSWaterViscosityBatzleAndWangExt(t2, p, PS, dPS_dT, aux, &
                                          PETSC_TRUE, vw2, &
-                                         dvw_dt, dvw_dp, dvw_dps, ierr) 
+                                         dvw_dt, dvw_dp, ierr) 
   
   print *, 'Ext-numerical'
   print *, 'vw:      ', vw2
@@ -2503,12 +2498,11 @@ subroutine TestEOSWaterBatzleAndWang()
   
   call EOSWaterViscosityBatzleAndWangExt(t, p, PS, dPS_dT, aux, &
                                          PETSC_TRUE, vw, &
-                                         dvw_dt, dvw_dp, dvw_dps, ierr) 
+                                         dvw_dt, dvw_dp, ierr) 
   print *, 'Ext-S'
   print *, 'vw:      ', vw
   print *, 'dvw_dp:  ', dvw_dp
   print *, 'dvw(t)t:  ', dvw_dt
-  print *, 'dvw_dps: ', dvw_dps
   
 end subroutine TestEOSWaterBatzleAndWang
 
@@ -2834,7 +2828,7 @@ subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
                                enthalpy(ipres,itemp),dum1,dum2,ierr)
       call EOSWaterViscosityPtr(temp(itemp),pres(ipres),saturation_pressure, &
                                 dum1,PETSC_FALSE,viscosity(ipres,itemp), &
-                                dum2,dum3,dum4,ierr)
+                                dum2,dum3,ierr)
     enddo
   enddo
 

@@ -263,7 +263,7 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
   PetscReal :: dg, dddp, dddt, m_na, m_cl, m_nacl
   PetscReal :: fg, dfgdp, dfgdt, xphi
   PetscReal :: eng, hg, dhdp, dhdt
-  PetscReal :: visg, dvdp, dvdt, dvdps
+  PetscReal :: visg, dvdp, dvdt
   PetscReal :: h(option%nphase), u(option%nphase), kr(option%nphase)
   PetscReal :: xm_nacl, y_nacl, vphi             
   PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
@@ -462,7 +462,7 @@ subroutine MphaseAuxVarCompute_NINC(x,auxvar,global_auxvar,iphase,saturation_fun
     aux(1) = xm_nacl
     call EOSWaterDensityExt(t,p,aux,dw_kg,dw_mol,ierr)
 !   call EOSWaterViscosityNaCl(t,p,xm_nacl,visl)
-    call EOSWaterViscosity(t,pw,sat_pressure,0.d0,visl,dvdt,dvdp,dvdps,ierr)
+    call EOSWaterViscosity(t,pw,sat_pressure,0.d0,visl,dvdt,dvdp,ierr)
 
 !FEHM mixing ****************************
 !  den(1) = xmol(2)*dg + xmol(1)*dw_mol
