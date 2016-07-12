@@ -27,7 +27,7 @@
 # Parameters
 # ----------
 # 5.0 W/m-C thermal conductivity everywhere, constant in time
-# 0.001 J/kg-C heat capacity everywhere, constant in time
+# 0.01 J/kg-C heat capacity everywhere, constant in time
 # 2500 kg/m^3 density everywhere, constant in time
 #
 # Initial Conditions
@@ -80,11 +80,12 @@ for n in options:
     plot_flag = True
 
 # Create the analytical solution
-K = 1.0    # [W/m-C]
-Cp = 0.01     # [J/kg-C]
-rho = 2500.    # [kg/m^3]
-Tb = 2.0       # [C/day]
-L = 50.0       # [m]
+K = 5.0              # [W/m-C]
+Cp = 0.01            # [J/kg-C]
+rho = 2500.          # [kg/m^3]
+Tb_day = 2.0         # [C/day]
+Tb_sec = 2.0/(24.0*3600.0)   # [C/sec]
+L = 50.0             # [m]
 chi = K/(Cp*rho)
 x_soln1 = np.linspace(0.5,49.5,100)    # [m]
 x_soln2 = np.linspace(-49.5,-0.5,100)  # [m]
@@ -92,18 +93,18 @@ x_soln = np.concatenate((x_soln2,x_soln1),axis=0)
 # Add boundary values to analytical solution
 x_soln = np.concatenate(([-50.0],x_soln),axis=0)
 x_soln = np.concatenate((x_soln,[50.0]),axis=0)
-t_soln = np.array([0.0,0.25,0.50,1.0]) # [day]
+t_soln = np.array([0.0,0.25,0.50,0.75]) # [day]
 T_soln = np.zeros((4,202))
 for time in range(4):
-  t = t_soln[time]
+  t = t_soln[time]*(24.0*3600.0)   # [sec]
   i = 0
   for x in x_soln:
-    T_soln[time,i] = Tb*t + ((Tb*(pow(x,2)-pow(L,2)))/(2.*chi)) 
+    T_soln[time,i] = Tb_sec*t + ((Tb_sec*(pow(x,2)-pow(L,2)))/(2.*chi)) 
     sum_term = 0
     # infinite sum truncated to 1000:
-    for n in range(8000):
+    for n in range(1000):
       sum_term = sum_term + (((pow(-1.,n))/(pow(((2*n)+1),3)))*math.cos((math.pi*x*((2*n)+1))/(2*L))*math.exp(-chi*pow((2*n)+1,2)*pow(math.pi,2)*(t/(4*pow(L,2))))) 
-    T_soln[time,i] = T_soln[time,i] + ((16.*Tb*pow(L,2))/(chi*pow(math.pi,3)))*sum_term
+    T_soln[time,i] = T_soln[time,i] + ((16.*Tb_sec*pow(L,2))/(chi*pow(math.pi,3)))*sum_term
     i = i + 1
 
 # Read PFLOTRAN output file containing the temperature solution
@@ -125,8 +126,8 @@ while i < 1235:
   lines[i] = lines[i].strip()
   temperature = np.concatenate((temperature,np.array(lines[i].split())),axis=0)
 # Add boundary values
-temperature = np.concatenate(([Tb*t_soln[0]],temperature),axis=0)
-temperature = np.concatenate((temperature,[Tb*t_soln[0]]),axis=0)
+temperature = np.concatenate(([Tb_day*t_soln[0]],temperature),axis=0)
+temperature = np.concatenate((temperature,[Tb_day*t_soln[0]]),axis=0)
 T_pflotran[0,:] = temperature
 T_pflotran = T_pflotran.astype(np.float)
 # Close PFLOTRAN output file because we are done with it
@@ -147,8 +148,8 @@ while i < 1235:
   lines[i] = lines[i].strip()
   temperature = np.concatenate((temperature,np.array(lines[i].split())),axis=0)
 # Add boundary values
-temperature = np.concatenate(([Tb*t_soln[1]],temperature),axis=0)
-temperature = np.concatenate((temperature,[Tb*t_soln[1]]),axis=0)
+temperature = np.concatenate(([Tb_day*t_soln[1]],temperature),axis=0)
+temperature = np.concatenate((temperature,[Tb_day*t_soln[1]]),axis=0)
 T_pflotran[1,:] = temperature
 T_pflotran = T_pflotran.astype(np.float)
 # Close PFLOTRAN output file because we are done with it
@@ -169,8 +170,8 @@ while i < 1235:
   lines[i] = lines[i].strip()
   temperature = np.concatenate((temperature,np.array(lines[i].split())),axis=0)
 # Add boundary values
-temperature = np.concatenate(([Tb*t_soln[2]],temperature),axis=0)
-temperature = np.concatenate((temperature,[Tb*t_soln[2]]),axis=0)
+temperature = np.concatenate(([Tb_day*t_soln[2]],temperature),axis=0)
+temperature = np.concatenate((temperature,[Tb_day*t_soln[2]]),axis=0)
 T_pflotran[2,:] = temperature
 T_pflotran = T_pflotran.astype(np.float)
 # Close PFLOTRAN output file because we are done with it
@@ -191,8 +192,8 @@ while i < 1235:
   lines[i] = lines[i].strip()
   temperature = np.concatenate((temperature,np.array(lines[i].split())),axis=0)
 # Add boundary values
-temperature = np.concatenate(([Tb*t_soln[3]],temperature),axis=0)
-temperature = np.concatenate((temperature,[Tb*t_soln[3]]),axis=0)
+temperature = np.concatenate(([Tb_day*t_soln[3]],temperature),axis=0)
+temperature = np.concatenate((temperature,[Tb_day*t_soln[3]]),axis=0)
 T_pflotran[3,:] = temperature
 T_pflotran = T_pflotran.astype(np.float)
 # Close PFLOTRAN output file because we are done with it
@@ -227,7 +228,7 @@ if plot_flag:
   plt.xlabel('Distance (m)')
   plt.ylabel('Temperature (C)')
   plt.ylim([0,t_max])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=1.0day')
+  plt.title('Analytical vs. PFLOTRAN Solution, t=0.75day')
   plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
   plt.show()
 

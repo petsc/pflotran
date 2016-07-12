@@ -54,8 +54,8 @@ MATERIAL_PROPERTY beam
   TORTUOSITY 1.d0
   ROCK_DENSITY 2.5d3 kg/m^3
   HEAT_CAPACITY 0.01 J/kg-C
-  THERMAL_CONDUCTIVITY_DRY 1.0 W/m-C
-  THERMAL_CONDUCTIVITY_WET 1.0 W/m-C
+  THERMAL_CONDUCTIVITY_DRY 5.0 W/m-C
+  THERMAL_CONDUCTIVITY_WET 5.0 W/m-C
   CHARACTERISTIC_CURVES cc1
   PERMEABILITY
     PERM_X 1.d-20
@@ -104,9 +104,9 @@ END
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 1.0 day
+  FINAL_TIME 0.75 day
   INITIAL_TIMESTEP_SIZE 1.d-4 day
-  MAXIMUM_TIMESTEP_SIZE 0.05 day at 0.d0 day
+  MAXIMUM_TIMESTEP_SIZE 0.01 day at 0.d0 day
 END
 
 #======================= flow conditions ======================================
