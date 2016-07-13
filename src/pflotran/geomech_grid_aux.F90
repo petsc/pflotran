@@ -865,13 +865,19 @@ subroutine GMGridDestroy(geomech_grid)
   
   nullify(geomech_grid%gauss_node)
  
- if (geomech_grid%no_elems_sharing_node_loc /= 0) then
-   call VecDestroy(geomech_grid%no_elems_sharing_node_loc,ierr);CHKERRQ(ierr)
- endif
- if ( geomech_grid%no_elems_sharing_node /= 0) then
-   call VecDestroy(geomech_grid%no_elems_sharing_node,ierr);CHKERRQ(ierr)
- endif
+  if (geomech_grid%no_elems_sharing_node_loc /= 0) then
+    call VecDestroy(geomech_grid%no_elems_sharing_node_loc,ierr);CHKERRQ(ierr)
+  endif
+  if ( geomech_grid%no_elems_sharing_node /= 0) then
+    call VecDestroy(geomech_grid%no_elems_sharing_node,ierr);CHKERRQ(ierr)
+  endif
  
+  deallocate(geomech_grid%nG2L)
+  deallocate(geomech_grid%nL2G)
+  deallocate(geomech_grid%nG2A)
+  deallocate(geomech_grid%mapping_cell_ids_flow)
+  deallocate(geomech_grid%mapping_vertex_ids_geomech)
+
   deallocate(geomech_grid)
   nullify(geomech_grid)
   

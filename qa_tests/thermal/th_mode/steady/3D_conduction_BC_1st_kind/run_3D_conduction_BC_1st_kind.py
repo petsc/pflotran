@@ -50,10 +50,25 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
+
+# Default options:
+plot_flag = False
+print_error = True
+passing_crit = 2.  # [% error]
 
 # Option parameters:
-plot_flag = 0  # [1 = make plots, 0 = do not make plots]
-passing_crit = 2.  # [% error]
+options = sys.argv[1:]
+num_options = len(options)
+for n in options:
+  if n == 'print_error=false':
+    print_error = False
+  if n == 'print_error=true':
+    print_error = True
+  if n == 'plot_flag=false':
+    plot_flag = False
+  if n == 'plot_flag=true':
+    plot_flag = True
 
 # Create the analytical solution
 L = 1.   # [m]
@@ -125,7 +140,7 @@ T_pflotran = T_pflotran.astype(np.float)
 f.close()
 
 # Plot the PFLOTRAN and analytical solutions
-if plot_flag == 1:
+if plot_flag:
   # temperature values to contour against and compare visually
   levels = np.linspace(0.,3.,31)
   slice_ind = 6
@@ -152,8 +167,9 @@ T_pflotran = T_pflotran + 0.50
 T_soln = T_soln + 0.50
 percent_error = 100.0*(T_pflotran-T_soln)/T_soln
 max_percent_error = np.nanmax(abs(percent_error))
-print 'Percent Error (temperature):'
-print percent_error
+if print_error:
+  print 'Percent Error (temperature):'
+  print percent_error
 print 'Maximum Error:'
 print max_percent_error
 

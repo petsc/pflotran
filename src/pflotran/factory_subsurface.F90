@@ -2742,6 +2742,14 @@ subroutine SubsurfaceReadInput(simulation)
         endif
 
 !....................
+      case ('ONLY_ENERGY_EQ')
+        option%flow%only_energy_eq = PETSC_TRUE
+        if (option%iflowmode /= TH_MODE) then
+          option%io_buffer = 'ONLY_ENERGY_EQ applicable only in TH mode.'
+          call printErrMsg(option)
+        endif
+
+!....................
       case ('RELATIVE_PERMEABILITY_AVERAGE')
         call InputReadWord(input,option,word,PETSC_FALSE)
         call StringToUpper(word)

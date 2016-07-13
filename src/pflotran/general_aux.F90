@@ -1044,6 +1044,8 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
 #else
   PetscReal, parameter :: perturbation_tolerance = 1.d-8
+! 1.d-11 works well for Emily's 1D nacl2
+!  PetscReal, parameter :: perturbation_tolerance = 1.d-11
 #endif
   PetscReal, parameter :: min_mole_fraction_pert = 1.d-12
   PetscReal, parameter :: min_perturbation = 1.d-10
