@@ -168,10 +168,8 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     ! Add output waypoints from subsurface realization
     call InitCommonAddOutputWaypoints(option,subsurf_realization%output_option, &
                                       simulation%waypoint_list_geomechanics)    
-    ! Fill holes and remove extra waypoints                              
+    ! Fill holes                             
     call WaypointListFillIn(simulation%waypoint_list_geomechanics,option)
-    call WaypointListRemoveExtraWaypnts(simulation% &
-                                        waypoint_list_geomechanics,option)
 
 	! link timestepper waypoints to geomech way point list
     if (associated(simulation%geomech_process_model_coupler)) then
@@ -182,6 +180,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
       endif
     endif
     
+
     ! Solver set up
     call GeomechInitSetupSolvers(geomech_realization,subsurf_realization, &
                                  timestepper%convergence_context, &
@@ -190,6 +189,12 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
 
     call pm_geomech%PMGeomechForceSetRealization(geomech_realization)
     call pm_geomech%Setup()
+    ! Here I first calculate the linear part of the jacobian and store it
+    ! since the jacobian is always linear with geomech (even when coupled with
+    ! flow since we are performing sequential coupling). Although
+    ! SNESSetJacobian is called, nothing is done there and PETSc just 
+    ! re-uses the linear Jacobian at all iterations and times
+    call GeomechForceJacobianLinearPart(timestepper%solver%J,geomech_realization)
     call SNESSetFunction(timestepper%solver%snes, &
                          pm_geomech%residual_vec, &
                          PMResidual, &
