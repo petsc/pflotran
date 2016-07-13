@@ -110,7 +110,6 @@ module Characteristic_Curves_module
     procedure, public :: Test => RPF_Base_Test
     procedure, public :: SetupPolynomials => RPFBaseSetupPolynomials
     procedure, public :: RelativePermeability => RPF_Base_RelPerm
-    procedure, public :: DRelPerm_DPressure => RPFBaseDRelPerm_DPressure
   end type rel_perm_func_base_type
   ! Default
   type, public, extends(rel_perm_func_base_type) :: rel_perm_func_default_type
@@ -2008,20 +2007,6 @@ subroutine RPF_Base_RelPerm(this,liquid_saturation,relative_permeability, &
   call printErrMsg(option)
   
 end subroutine RPF_Base_RelPerm
-
-! ************************************************************************** !
-
-PetscReal function RPFBaseDRelPerm_DPressure(this,ds_dp,dkr_dSe)
-
-  implicit none
-  
-  class(rel_perm_func_base_type) :: this
-  PetscReal, intent(in) :: ds_dp
-  PetscReal, intent(in) :: dkr_dSe
-
-  RPFBaseDRelPerm_DPressure = ds_dp/(1.d0-this%Sr)*dkr_dSe
-  
-end function RPFBaseDRelPerm_DPressure
 
 ! ************************************************************************** !
 
