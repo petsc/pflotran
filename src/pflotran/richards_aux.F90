@@ -223,7 +223,7 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
   PetscReal :: pert, pw_pert, dw_kg_pert
   PetscReal :: fs, ani_A, ani_B, ani_C, ani_n, ani_coef
-  PetscReal :: dkr_Se
+  PetscReal :: dkr_sat
   PetscReal :: aux(1)
   PetscReal, parameter :: tol = 1.d-3
   
@@ -262,9 +262,8 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
     else
       call characteristic_curves%liq_rel_perm_function% &
                        RelativePermeability(global_auxvar%sat(1), &
-                                            kr,dkr_Se,option)
-      dkr_dp = characteristic_curves%liq_rel_perm_function% &
-                                  DRelPerm_DPressure(ds_dp,dkr_Se)
+                                            kr,dkr_sat,option)
+      dkr_dp = ds_dp * dkr_sat
     endif
   else
     saturated = PETSC_TRUE

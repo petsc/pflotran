@@ -1,0 +1,200 @@
+#Description: QA test
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE TH
+    /
+  /
+  #INPUT_RECORD_FILE
+END
+
+SUBSURFACE
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 50 50 1
+  DXYZ
+   2.0
+   2.0
+   1.0
+  END
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0   0.d0   0.d0
+    100.d0 100.d0 1.d0
+  /
+END
+
+REGION west_face
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0   0.d0
+    0.d0 100.d0 1.d0
+  /
+END
+
+REGION east_face
+  FACE EAST
+  COORDINATES
+    100.d0 0.d0   0.d0
+    100.d0 100.d0 1.d0
+  /
+END
+
+REGION north_face
+  FACE NORTH
+  COORDINATES
+    0.d0   100.d0 0.d0
+    100.d0 100.d0 1.d0
+  /
+END
+
+REGION south_face
+  FACE SOUTH
+  COORDINATES
+    0.d0   0.d0 0.d0
+    100.d0 0.d0 1.d0
+  /
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY plate
+  ID 1
+  POROSITY 1.d-5
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.0E3
+  SPECIFIC_HEAT 0.01 J/kg-C
+  THERMAL_CONDUCTIVITY_DRY 0.5787037 W/m-C
+  THERMAL_CONDUCTIVITY_WET 0.5787037 W/m-C
+  SATURATION_FUNCTION default
+  PERMEABILITY
+    PERM_X 1.d-20
+    PERM_Y 1.d-20
+    PERM_Z 1.d-20
+  /
+END
+
+#=========================== characteristic curves ============================
+SATURATION_FUNCTION default
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.5d-1
+  LAMBDA 0.75
+  ALPHA 1.d-3
+END
+
+#===================== stratigraphy couplers ==================================
+STRATA
+  REGION all
+  MATERIAL plate
+END
+
+#=========================== output options ===================================
+OUTPUT
+  SNAPSHOT_FILE
+    TIMES day 0.02 0.04 
+    #NO_PRINT_INITIAL
+    FORMAT VTK
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 0.10 day
+  INITIAL_TIMESTEP_SIZE 1.d-4 day
+  MAXIMUM_TIMESTEP_SIZE 0.005 yr at 0.d0 yr
+END
+
+#=========================== datasets =========================================
+DATASET temperature_initial
+  HDF5_DATASET_NAME initial
+  FILENAME dataset.h5
+END
+
+#======================= flow conditions ======================================
+FLOW_CONDITION initial
+  TYPE
+    TEMPERATURE dirichlet
+    PRESSURE dirichlet
+  /
+  TEMPERATURE DATASET temperature_initial
+  PRESSURE 101325 Pa
+END
+
+FLOW_CONDITION west_face
+  TYPE
+    TEMPERATURE dirichlet
+    PRESSURE dirichlet
+  /
+  TEMPERATURE 0.d0 C
+  PRESSURE 101325 Pa
+END
+
+FLOW_CONDITION east_face
+  TYPE
+    TEMPERATURE dirichlet
+    PRESSURE dirichlet
+  /
+  TEMPERATURE 0.d0 C
+  PRESSURE 101325 Pa
+END
+
+FLOW_CONDITION north_face
+  TYPE
+    ENERGY_FLUX neumann
+    PRESSURE dirichlet
+  /
+  ENERGY_FLUX 0.d0 W/m^2
+  PRESSURE 101325 Pa
+END
+
+FLOW_CONDITION south_face
+  TYPE
+    ENERGY_FLUX neumann
+    PRESSURE dirichlet
+  /
+  ENERGY_FLUX 0.d0 W/m^2
+  PRESSURE 101325 Pa
+END
+
+#========================== initial and boundary conditions ===================
+# initial condition
+INITIAL_CONDITION initial
+  REGION all
+  FLOW_CONDITION initial
+END
+
+# west boundary condition
+BOUNDARY_CONDITION west_face
+  REGION west_face
+  FLOW_CONDITION west_face
+END
+
+# east boundary condition
+BOUNDARY_CONDITION east_face
+  FLOW_CONDITION east_face
+  REGION east_face
+END
+
+# north boundary condition
+BOUNDARY_CONDITION north_face
+  REGION north_face
+  FLOW_CONDITION north_face
+END
+
+# south boundary condition
+BOUNDARY_CONDITION south_face
+  FLOW_CONDITION south_face
+  REGION south_face
+END
+
+#========================== energy equation only ==============================
+ONLY_ENERGY_EQ
+
+END_SUBSURFACE
+

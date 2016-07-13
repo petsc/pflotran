@@ -59,6 +59,7 @@ STANDARD_CFG = \
 	default/salinity/salinity.cfg \
 	default/timestepping/timestepping.cfg \
 	geomech/uniaxial_strain/uniaxial_strain.cfg \
+	geomech/uniaxial_loading/uniaxial_loading.cfg \
 	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\
 	general/general.cfg \
 	hydrogeophysics/hydrogeophysics.cfg \
@@ -98,7 +99,8 @@ GEOCHEMISTRY_CFG = \
 	wipp/nuts/nuts.cfg
 
 GEOMECHANICS_CFG = \
-	geomech/uniaxial_strain/uniaxial_strain.cfg
+	geomech/uniaxial_strain/uniaxial_strain.cfg \
+	geomech/uniaxial_loading/uniaxial_loading.cfg
 
 FLOW_CFG = \
 	default/543/543.cfg \

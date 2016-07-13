@@ -1,0 +1,228 @@
+#Description: QA test
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+    /
+  /
+  #INPUT_RECORD_FILE
+END
+
+SUBSURFACE
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 10 10 1
+  DXYZ
+   0.1
+   0.1
+   1.0
+  END
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0  0.d0  0.d0
+    1.d0  1.d0  1.d0
+  /
+END
+
+REGION west_face
+  FACE WEST
+  COORDINATES
+    0.d0  0.d0  0.d0
+    0.d0  1.d0  1.d0
+  /
+END
+
+REGION east_face
+  FACE EAST
+  COORDINATES
+    1.d0  0.d0  0.d0
+    1.d0  1.d0  1.d0
+  /
+END
+
+REGION north_face
+  FACE NORTH
+  COORDINATES
+    0.d0  1.d0  0.d0
+    1.d0  1.d0  1.d0
+  /
+END
+
+REGION south_face
+  FACE SOUTH
+  COORDINATES
+    0.d0  0.d0  0.d0
+    1.d0  0.d0  1.d0
+  /
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY plate
+  ID 1
+  POROSITY 0.01d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.8E3
+  HEAT_CAPACITY 1.d-3
+  THERMAL_CONDUCTIVITY_DRY 1 W/m-C
+  THERMAL_CONDUCTIVITY_WET 1 W/m-C
+  CHARACTERISTIC_CURVES cc1
+  PERMEABILITY
+    PERM_X 1.d-20
+    PERM_Y 1.d-20
+    PERM_Z 1.d-20
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    LIQUID_RESIDUAL_SATURATION 0.5d-1
+    M 0.75
+    ALPHA 1.d-3
+  /
+  PERMEABILITY_FUNCTION MUALEM
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_GAS
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    GAS_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
+END
+
+#===================== stratigraphy couplers ==================================
+STRATA
+  REGION all
+  MATERIAL plate
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== output options ===================================
+OUTPUT
+  SNAPSHOT_FILE
+    TIMES yr 100
+    NO_PRINT_INITIAL
+    FORMAT VTK
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 100 yr
+  INITIAL_TIMESTEP_SIZE 1.d-4 day
+  MAXIMUM_TIMESTEP_SIZE 5.d0 yr at 0.d0 yr
+END
+
+#=========================== datasets =========================================
+DATASET temperature_bc_x
+  HDF5_DATASET_NAME x_line_node_centered
+  FILENAME dataset.h5
+END
+
+DATASET temperature_bc_y
+  HDF5_DATASET_NAME y_line_node_centered
+  FILENAME dataset.h5
+END
+
+#======================= flow conditions ======================================
+FLOW_CONDITION initial
+  TYPE
+    TEMPERATURE dirichlet
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
+  /
+  TEMPERATURE 1.0d0 C
+  LIQUID_PRESSURE 101325 Pa
+  MOLE_FRACTION 1.d-10
+END
+
+FLOW_CONDITION west_face
+  TYPE
+    TEMPERATURE dirichlet
+    LIQUID_FLUX neumann
+    GAS_FLUX neumann
+  /
+  TEMPERATURE 0.0d0 C
+  LIQUID_FLUX 0.d0 m/yr
+  GAS_FLUX 0.d0 m/yr
+END
+
+FLOW_CONDITION east_face
+  TYPE
+    TEMPERATURE dirichlet
+    LIQUID_FLUX neumann
+    GAS_FLUX neumann
+  /
+  TEMPERATURE DATASET temperature_bc_y
+  LIQUID_FLUX 0.d0 m/yr
+  GAS_FLUX 0.d0 m/yr
+END
+
+FLOW_CONDITION north_face
+  TYPE
+    TEMPERATURE dirichlet
+    LIQUID_FLUX neumann
+    GAS_FLUX neumann
+  /
+  TEMPERATURE DATASET temperature_bc_x
+  LIQUID_FLUX 0.d0 m/yr
+  GAS_FLUX 0.d0 m/yr
+END
+
+FLOW_CONDITION south_face
+  TYPE
+    TEMPERATURE dirichlet
+    LIQUID_FLUX neumann
+    GAS_FLUX neumann
+  /
+  TEMPERATURE 0.0d0 C
+  LIQUID_FLUX 0.d0 m/yr
+  GAS_FLUX 0.d0 m/yr
+END
+
+#========================== initial and boundary conditions ===================
+# initial condition
+INITIAL_CONDITION initial
+  REGION all
+  FLOW_CONDITION initial
+END
+
+# west boundary condition
+BOUNDARY_CONDITION west_face
+  REGION west_face
+  FLOW_CONDITION west_face
+END
+
+# east boundary condition
+BOUNDARY_CONDITION east_face
+  FLOW_CONDITION east_face
+  REGION east_face
+END
+
+# north boundary condition
+BOUNDARY_CONDITION north_face
+  REGION north_face
+  FLOW_CONDITION north_face
+END
+
+# south boundary condition
+BOUNDARY_CONDITION south_face
+  FLOW_CONDITION south_face
+  REGION south_face
+END
+
+
+END_SUBSURFACE
+

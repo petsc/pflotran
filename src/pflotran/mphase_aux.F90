@@ -599,10 +599,14 @@ subroutine MphaseAuxVarElemDestroy(auxvar_elem)
   nullify(auxvar_elem%h)
   if (associated(auxvar_elem%den))deallocate(auxvar_elem%den)
   nullify(auxvar_elem%den)
-  if (associated(auxvar_elem%den))deallocate(auxvar_elem%vis)
+  if (associated(auxvar_elem%vis))deallocate(auxvar_elem%vis)
+   nullify(auxvar_elem%vis)
+   if (associated(auxvar_elem%avgmw))deallocate(auxvar_elem%avgmw)
+   nullify(auxvar_elem%avgmw)
+  if (associated(auxvar_elem%kvr))deallocate(auxvar_elem%kvr)
+  nullify(auxvar_elem%kvr)
+  if (associated(auxvar_elem%vis))deallocate(auxvar_elem%vis)
   nullify(auxvar_elem%vis)
-  if (associated(auxvar_elem%avgmw))deallocate(auxvar_elem%avgmw)
-  nullify(auxvar_elem%avgmw)
 
 end subroutine MphaseAuxVarElemDestroy
 
@@ -617,6 +621,9 @@ subroutine MphaseAuxVarDestroy(auxvar)
   type(mphase_auxvar_type) :: auxvar
 
   PetscInt :: ielem
+
+  deallocate(auxvar%auxvar_elem(0)%hysdat)
+  nullify(auxvar%auxvar_elem(0)%hysdat)
 
   ! subtract 1 since indexing from 0
   if (associated(auxvar%auxvar_elem)) then
