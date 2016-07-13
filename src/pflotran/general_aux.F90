@@ -92,8 +92,8 @@ module General_Aux_module
     PetscReal, pointer :: U(:) ! MJ/kmol
 !    PetscReal, pointer :: dsat_dp(:,:)
 !    PetscReal, pointer :: dden_dp(:,:)
-!    PetscReal, pointer :: dsat_dt(:)
-!    PetscReal, pointer :: dden_dt(:)
+!    PetscReal, pointer :: dsat_dT(:)
+!    PetscReal, pointer :: dden_dT(:)
     PetscReal, pointer :: mobility(:) ! relative perm / kinematic viscosity
     PetscReal :: effective_porosity ! factors in compressibility
     PetscReal :: pert
@@ -107,6 +107,10 @@ module General_Aux_module
     PetscReal :: denl_T
     PetscReal :: Ul_pl
     PetscReal :: Ul_T
+    PetscReal :: psat_dT
+    PetscReal :: mobilityl_pl
+    PetscReal :: mobilityl_T
+    PetscReal :: mobilityl_sat
   end type general_derivative_auxvar_type
   
   type, public :: general_parameter_type
@@ -257,6 +261,10 @@ subroutine GeneralAuxVarInit(auxvar,allocate_derivative,option)
     auxvar%d%denl_T = 0.d0
     auxvar%d%Ul_pl = 0.d0
     auxvar%d%Ul_T = 0.d0
+    auxvar%d%psat_dT = 0.d0
+    auxvar%d%mobilityl_pl = 0.d0
+    auxvar%d%mobilityl_T = 0.d0
+    auxvar%d%mobilityl_sat = 0.d0
   else
     nullify(auxvar%d)
   endif
@@ -363,8 +371,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: u_water_vapor, h_water_vapor
   PetscReal :: den_air, h_air, u_air
   PetscReal :: xmol_air_in_gas, xmol_water_in_gas
-  PetscReal :: krl, visl, dkrl_Se
-  PetscReal :: krg, visg, dkrg_Se
+  PetscReal :: krl, visl, dkrl_dsat, dvis_dp, dvis_dT
+  PetscReal :: krg, visg, dkrg_dsat
   PetscReal :: K_H_tilde
   PetscReal :: guess, dummy
   PetscInt :: apid, cpid, vpid, spid
@@ -377,9 +385,10 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: Uvapor_J_kg, Hvapor_J_kg
   PetscReal :: Hg_mixture_fractioned  
   PetscReal :: aux(1)
-  PetscReal :: hw, hw_dp, hw_dt
+  PetscReal :: hw, hw_dp, hw_dT
   PetscReal :: dpor_dp
   PetscReal :: one_over_dw
+  PetscReal :: tempreal
   character(len=8) :: state_char
   PetscErrorCode :: ierr
 
@@ -658,14 +667,14 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     endif
   endif
   if (associated(gen_auxvar%d)) then
-    call EOSWaterEnthalpy(gen_auxvar%temp,cell_pressure,hw,hw_dp,hw_dt,ierr)
+    call EOSWaterEnthalpy(gen_auxvar%temp,cell_pressure,hw,hw_dp,hw_dT,ierr)
     one_over_dw = 1.d0/gen_auxvar%den(lid)
     !TODO(geh): merge the common terms in dUl_pl and dUl_T equations
     gen_auxvar%d%Ul_pl = hw_dp - &
                          (one_over_dw - &
                           cell_pressure * one_over_dw * one_over_dw * &
                           gen_auxvar%d%denl_pl)
-    gen_auxvar%d%Ul_T = hw_dt - &
+    gen_auxvar%d%Ul_T = hw_dT - &
                         (one_over_dw - &
                          cell_pressure * one_over_dw * one_over_dw * &
                          gen_auxvar%d%denl_T)
@@ -741,36 +750,68 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   if (global_auxvar%istate == LIQUID_STATE .or. &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for LIQUID_STATE (=1)
-!    call SatFuncGetLiqRelPermFromSat(gen_auxvar%sat(lid),krl,dkrl_Se, &
-!                                     saturation_function,lid,PETSC_FALSE,option)
     call characteristic_curves%liq_rel_perm_function% &
-           RelativePermeability(gen_auxvar%sat(lid),krl,dkrl_Se,option)                            
-                               
+           RelativePermeability(gen_auxvar%sat(lid),krl,dkrl_dsat,option)
+    ! dkrl_sat is with respect to liquid pressure, but the primary dependent
+    ! variable is gas pressure.  therefore, negate
+    dkrl_dsat = -1.d0 * dkrl_dsat
     ! use cell_pressure; cell_pressure - psat calculated internally
     if (.not.option%flow%density_depends_on_salinity) then
-      call EOSWaterViscosity(gen_auxvar%temp,cell_pressure, &
-                             gen_auxvar%pres(spid),visl,ierr)
+      if (associated(gen_auxvar%d)) then
+        call EOSWaterViscosity(gen_auxvar%temp,cell_pressure, &
+                               gen_auxvar%pres(spid), &
+                               gen_auxvar%d%psat_dT,visl, &
+                               dvis_dT,dvis_dp,ierr)
+      else
+        call EOSWaterViscosity(gen_auxvar%temp,cell_pressure, &
+                               gen_auxvar%pres(spid),visl,ierr)
+      endif
     else
       aux(1) = global_auxvar%m_nacl(1)
-      call EOSWaterViscosityExt(gen_auxvar%temp,cell_pressure, &
-                                gen_auxvar%pres(spid),aux,visl,ierr)
+      if (associated(gen_auxvar%d)) then
+        call EOSWaterViscosityExt(gen_auxvar%temp,cell_pressure, &
+                                  gen_auxvar%pres(spid), &
+                                  gen_auxvar%d%psat_dT,aux,visl, &
+                                  dvis_dT,dvis_dp,ierr)
+      else
+        call EOSWaterViscosityExt(gen_auxvar%temp,cell_pressure, &
+                                  gen_auxvar%pres(spid),aux,visl,ierr)
+      endif
     endif
     gen_auxvar%mobility(lid) = krl/visl
+    if (associated(gen_auxvar%d)) then
+      ! use chainrule for derivative
+      tempreal = -1.d0*krl/(visl*visl)
+      gen_auxvar%d%mobilityl_pl = tempreal*dvis_dp
+      gen_auxvar%d%mobilityl_T = tempreal*dvis_dT
+      gen_auxvar%d%mobilityl_sat = dkrl_dsat/visl
+    endif
   endif
 
   if (global_auxvar%istate == GAS_STATE .or. &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for GAS_STATE (=1)
-!    call SatFuncGetGasRelPermFromSat(gen_auxvar%sat(lid),krg, &
-!                                     saturation_function,option)
     call characteristic_curves%gas_rel_perm_function% &
-           RelativePermeability(gen_auxvar%sat(lid),krg,dkrg_Se,option)                            
+           RelativePermeability(gen_auxvar%sat(lid),krg,dkrg_dsat,option)                            
+    ! dkrl_sat is with respect to liquid pressure, but the primary dependent
+    ! variable is gas pressure.  therefore, negate
+    dkrg_dsat = -1.d0 * dkrg_dsat
     ! STOMP uses separate functions for calculating viscosity of vapor and
     ! and air (WATGSV,AIRGSV) and then uses GASVIS to calculate mixture 
     ! viscosity.
-    call EOSGasViscosity(gen_auxvar%temp,gen_auxvar%pres(apid), &
-                         gen_auxvar%pres(gid),den_air,visg,ierr)
+    if (associated(gen_auxvar%d)) then
+      option%io_buffer = 'neet to set up gas viscosity derivative in general'
+      call printErrMsg(option)
+    else    
+      call EOSGasViscosity(gen_auxvar%temp,gen_auxvar%pres(apid), &
+                           gen_auxvar%pres(gid),den_air,visg,ierr)
+    endif
     gen_auxvar%mobility(gid) = krg/visg
+    if (associated(gen_auxvar%d)) then
+      ! use chainrule for derivative
+!      gen_auxvar%d%mobilityg_pg = krg/(visg*visg)*dvisg_dp
+!      gen_auxvar%d%mobilityg_satg = dkrg_dsat/visg
+    endif    
   endif
 
 #if 0
