@@ -35,7 +35,8 @@ module Geomechanics_Force_module
             GeomechStoreInitialPressTemp, &
             GeomechStoreInitialDisp, &
             GeomechStoreInitialPorosity, &
-            GeomechUpdateSubsurfPorosity
+            GeomechUpdateSubsurfPorosity, &
+            GeomechForceJacobianLinearPart
  
 contains
 
@@ -1333,8 +1334,6 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
     J = A
   endif
 
-  call MatZeroEntries(J,ierr);CHKERRQ(ierr)
-
   call GeomechForceJacobianPatch(snes,xx,J,J,geomech_realization,ierr)
 
   if (geomech_realization%geomech_debug%matview_Jacobian) then
@@ -1364,10 +1363,40 @@ end subroutine GeomechForceJacobian
 
 subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
   ! 
-  ! Computes the Jacobian on a patch
+  ! Computes the nonlinear part of the Jacobian on a patch
   ! 
   ! Author: Satish Karra
   ! Date: 06/21/13
+  ! Modified: 07/12/16
+       
+  use Geomechanics_Realization_class
+      
+  implicit none
+
+  SNES, intent(in) :: snes
+  Vec, intent(in) :: xx
+  Mat, intent(inout) :: A
+  Mat, intent(out) :: B
+  PetscViewer :: viewer
+
+  PetscErrorCode :: ierr
+   
+  class(realization_geomech_type) :: geomech_realization
+  
+  ! Do nothing here since Jacobian is always linear and is computed
+  ! once at the setup of geomechanics realization
+
+end subroutine GeomechForceJacobianPatch  
+
+! ************************************************************************** !
+
+subroutine GeomechForceJacobianLinearPart(A,geomech_realization)
+  ! 
+  ! Computes the Linear part of the Jacobian on a patch
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/21/13
+  ! Modified: 07/12/16
   ! 
        
   use Geomechanics_Realization_class
@@ -1385,9 +1414,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
       
   implicit none
 
-  SNES, intent(in) :: snes
-  Vec, intent(in) :: xx
-  Mat, intent(out) :: A, B
+  Mat :: A
   PetscViewer :: viewer
 
   PetscErrorCode :: ierr
@@ -1429,6 +1456,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
   geomech_global_aux_vars => patch%geomech_aux%GeomechGlobal%aux_vars  
   GeomechParam => patch%geomech_aux%GeomechParam 
 
+  call MatZeroEntries(A,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%imech_loc,imech_loc_p,ierr);CHKERRQ(ierr)
 
   ! Loop over elements on a processor
@@ -1573,10 +1601,11 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
                         ierr);CHKERRQ(ierr)
   call MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE, &
                     ierr);CHKERRQ(ierr)
+  call MatStoreValues(A,ierr);CHKERRQ(ierr) ! Store the linear part of Jacobian
                     
   deallocate(rows)
 
-end subroutine GeomechForceJacobianPatch  
+end subroutine GeomechForceJacobianLinearPart  
 
 ! ************************************************************************** !
 
