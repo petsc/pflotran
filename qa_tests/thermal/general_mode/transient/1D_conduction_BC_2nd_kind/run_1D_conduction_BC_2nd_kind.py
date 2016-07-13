@@ -4,7 +4,7 @@
 # Test Description: 
 # 1D heat conduction with constant thermal conductivity in time and space, with 
 # transient heat flux boundary condition at right end of them beam, and steady
-# temperature boundary condition at left end of the beam. Solution 
+# heat flux boundary condition at left end of the beam. Solution 
 # evaluated at t=0.045 day and t=0.090 day.
 #
 # Kolditz, et al. (2015) Thermo-Hydro-Mechanical-Chemical Processes in 
@@ -12,11 +12,11 @@
 # Springer International Publishing, Switzerland.
 # Section 2.1.7, pg.20
 # "A Transient 1D Temperature Distribution, Time-Dependent Boundary Conditions 
-# of 1st and 2nd Kind"
+# of 2nd Kind"
 # With some modification of the parameter values given in Kolditz (2015)
 #
 # Author: Jenn Frederick
-# Date: 07/11/2016
+# Date: 07/12/2016
 # *****************************************************************************
 #
 # Domain
@@ -126,7 +126,7 @@ T_pflotran = np.zeros((4,25))  # [C]
 x_pflotran = x_soln[0:25]
 
 # 1:=========================================================================
-f = open('1D_conduction_BC_1st_2nd_kind-001.vtk', 'r')
+f = open('1D_conduction_BC_2nd_kind-001.vtk', 'r')
 # Temperature solution is contained starting at the 167th line 
 # and continues in chunks of 10 values, so we need to read all lines
 # and concatenate them.
@@ -145,7 +145,7 @@ T_pflotran[0,:] = temperature
 f.close()
 
 # 2:=========================================================================
-f = open('1D_conduction_BC_1st_2nd_kind-002.vtk', 'r')
+f = open('1D_conduction_BC_2nd_kind-002.vtk', 'r')
 # Temperature solution is contained starting at the 167th line 
 # and continues in chunks of 10 values, so we need to read all lines
 # and concatenate them.
@@ -164,7 +164,7 @@ T_pflotran[1,:] = temperature
 f.close()
 
 # 3:=========================================================================
-f = open('1D_conduction_BC_1st_2nd_kind-003.vtk', 'r')
+f = open('1D_conduction_BC_2nd_kind-003.vtk', 'r')
 # Temperature solution is contained starting at the 167th line 
 # and continues in chunks of 10 values, so we need to read all lines
 # and concatenate them.
@@ -183,7 +183,7 @@ T_pflotran[2,:] = temperature
 f.close()
 
 # 4:=========================================================================
-f = open('1D_conduction_BC_1st_2nd_kind-004.vtk', 'r')
+f = open('1D_conduction_BC_2nd_kind-004.vtk', 'r')
 # Temperature solution is contained starting at the 167th line 
 # and continues in chunks of 10 values, so we need to read all lines
 # and concatenate them.
