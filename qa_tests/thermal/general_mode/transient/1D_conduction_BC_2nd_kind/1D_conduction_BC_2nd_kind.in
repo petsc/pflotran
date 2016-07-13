@@ -15,7 +15,7 @@ SUBSURFACE
 #=========================== discretization ===================================
 GRID
   TYPE structured
-  NXYZ 100 1 1
+  NXYZ 25 1 1
   DXYZ
    1.0
    1.0
@@ -27,7 +27,7 @@ END
 REGION all
   COORDINATES
     0.d0   0.d0  0.d0
-    100.d0 1.d0  1.d0
+    25.d0 1.d0  1.d0
   /
 END
 
@@ -42,8 +42,8 @@ END
 REGION right_end
   FACE EAST
   COORDINATES
-    100.d0  0.d0  0.d0
-    100.d0  1.d0  1.d0
+    25.d0  0.d0  0.d0
+    25.d0  1.d0  1.d0
   /
 END
 
@@ -54,8 +54,8 @@ MATERIAL_PROPERTY beam
   TORTUOSITY 1.d0
   ROCK_DENSITY 2.0d3 kg/m^3
   HEAT_CAPACITY 0.01 J/kg-C
-  THERMAL_CONDUCTIVITY_DRY 0.5787037 W/m-C
-  THERMAL_CONDUCTIVITY_WET 0.5787037 W/m-C
+  THERMAL_CONDUCTIVITY_DRY 1.16 W/m-C
+  THERMAL_CONDUCTIVITY_WET 1.16 W/m-C
   CHARACTERISTIC_CURVES cc1
   PERMEABILITY
     PERM_X 1.d-20
@@ -96,8 +96,8 @@ END
 #=========================== output options ===================================
 OUTPUT
   SNAPSHOT_FILE
-    TIMES day 0.05 0.1
-    #NO_PRINT_INITIAL
+    TIMES day 0.01 0.04 0.09 0.12
+    NO_PRINT_INITIAL
     FORMAT VTK
   /
 END
@@ -109,12 +109,6 @@ TIME
   MAXIMUM_TIMESTEP_SIZE 0.01 day at 0.d0 day
 END
 
-#=========================== datasets =========================================
-DATASET temperature_initial
-  HDF5_DATASET_NAME initial
-  FILENAME dataset.h5
-END
-
 #======================= flow conditions ======================================
 FLOW_CONDITION initial
   TYPE
@@ -122,7 +116,7 @@ FLOW_CONDITION initial
     LIQUID_PRESSURE dirichlet
     MOLE_FRACTION dirichlet
   /
-  TEMPERATURE DATASET temperature_initial
+  TEMPERATURE 0.0d0 C
   LIQUID_PRESSURE 101325 Pa
   MOLE_FRACTION 1.d-10
 END
@@ -144,7 +138,15 @@ FLOW_CONDITION right_end
     LIQUID_FLUX neumann
     GAS_FLUX neumann
   /
-  ENERGY_FLUX 0.d0 W/m^2
+  ENERGY_FLUX LIST
+    # flux = 0.385802*t [W/m^2]
+    TIME_UNITS day
+    DATA_UNITS W/m^2
+    INTERPOLATION LINEAR
+    #time  #heat_flux
+    0.00d0 0.0d0
+    1.00d0 0.385802
+  /
   LIQUID_FLUX 0.d0 m/yr
   GAS_FLUX 0.d0 m/yr
 END
@@ -167,6 +169,7 @@ BOUNDARY_CONDITION right_end
   FLOW_CONDITION right_end
   REGION right_end
 END
+
 
 
 END_SUBSURFACE

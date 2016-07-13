@@ -3,49 +3,42 @@
 # *****************************************************************************
 # Test Description: 
 # 1D heat conduction with constant thermal conductivity in time and space, with 
-# a complex initial temperature distribution and steady no heat flux boundary
-# conditions at left and right ends of the beam. Solution is evaluated at 
-# t=0.05 day and t=0.1 day.
+# transient heat flux boundary condition at right end of them beam, and steady
+# heat flux boundary condition at left end of the beam. Solution 
+# evaluated at t=0.045 day and t=0.090 day.
 #
 # Kolditz, et al. (2015) Thermo-Hydro-Mechanical-Chemical Processes in 
 # Fractured Porous Media: Modelling and Benchmarking, Closed Form Solutions,
 # Springer International Publishing, Switzerland.
-# Section 2.1.8, pg.21
-# "A Transient 1D Temperature Distribution, Non-Zero Initial Temperature,
-# Boundary Conditions of 1st and 2nd Kind"
+# Section 2.1.7, pg.20
+# "A Transient 1D Temperature Distribution, Time-Dependent Boundary Conditions 
+# of 2nd Kind"
 # With some modification of the parameter values given in Kolditz (2015)
 #
 # Author: Jenn Frederick
-# Date: 07/13/2016
+# Date: 07/12/2016
 # *****************************************************************************
 #
 # Domain
 # ------
-# 100x1x1 hexahedral elements
+# 25x1x1 hexahedral elements
 # 1x1x1 meter elements
-# L = 100 m, domain x = 0:L
-# Only beam T2 is considered
+# L = 25 m, domain x = 0:L
 #
 # Parameters
 # ----------
-# 0.5787037 W/m-C thermal conductivity everywhere, constant in time
+# 1.16 W/m-C thermal conductivity everywhere, constant in time
 # 0.01 J/kg-C heat capacity everywhere, constant in time
 # 2000 kg/m^3 density everywhere, constant in time
 #
 # Initial Conditions
 # ------------------
-# At t=0, T=1C*f(x) everywhere
-# f(x) =
-# 0C for [0 <= x <= L/10]
-# ((10/3L)x - (1/3))C for [L/10 <= x <= 4L/10]
-# 1C for [4L/10 <= x <= 6L/10]
-# (3 - (10/3L)x)C for [6L/10 <= x <= 9L/10]
-# 0C for [9L/10 <= x <= L]
+# At t=0, T=0C everywhere 
 #
 # Boundary Conditions
 # -------------------
-# At x=0m, q = 0
-# At x=L=100m, q=0
+# At x=0m, T=0C
+# At x=L=25m, q=0.385802*t, t-units=days
 #
 # Time Stepping
 # -------------
@@ -54,20 +47,25 @@
 # Simulation Time
 # ---------------
 # Simulations runs for 0.5 days
-# Solution at t=0.05 day and t=0.10 day evaluated
+# Solution at t=0.04 day and t=0.09 day evaluated
 # 
 # Solution (time-dependent)
 # -------------------------
-# T2(x,t) = 0.5 + sum_n=1^n=inf{cos(n*pi*x/L)*exp(-chi*n^2*pi^2*t/L^2)*...
-#           (80/(3*(n*pi)^2))*cos(n*pi/2)*sin(n*pi/4)*sin(3*n*pi/20)}
-# chi = K/(rho*Cp) 
-#
+# T(x,t) = ((8*q*sqrt(chi*t^3))/K)*sum_n=0^n-inf[(i^3erfc{G1})+(i^3erfc{G2})]
+# chi = K/(Cp*rho)
+# G1 = ((2*n+1)*L-x)/(2*sqrt(chi*t))
+# G2 = ((2*n-1)*L-x)/(2*sqrt(chi*t))
+# where i^3ercf{G} =
+# (2/sqrt(pi))*(int_G^inf{(s-G)^3/3! * e^(-s^2)}ds)
+# 
 # *****************************************************************************
 
 import numpy as np
 import math
+import sympy as sym
 import matplotlib.pyplot as plt
 import sys
+from scipy.special import erf
 
 # Default options:
 plot_flag = False
@@ -88,38 +86,56 @@ for n in options:
     plot_flag = True
 
 # Create the analytical solution
-K = 0.5787037  # [W/m-C]
+K = 1.16       # [W/m-C]
 Cp = 0.01      # [J/kg-C]
 rho = 2000.    # [kg/m^3]
-L = 100.0       # [m]
+q = 0.385802   # [C/day]
+L = 25.0       # [m]
 chi = K/(Cp*rho)
-x_soln = np.linspace(0.5,99.5,100)          # [m]
-t_soln = np.array([0.0,0.05,0.10,0.50])     # [day]
-T_soln = np.zeros((4,100))
+x_soln = np.linspace(0.5,24.5,25)               # [m]
+x_soln = np.concatenate((x_soln,[25.]),axis=0)  # [m]
+t_soln = np.array([0.01,0.04,0.09,0.12])        # [day]
+T_soln = np.zeros((4,26))
+p1 = np.zeros(26)
+p2 = np.zeros(26)
+i3erfc1 = np.zeros(26)
+i3erfc2 = np.zeros(26)
 for time in range(4):
   t = t_soln[time]*24.0*3600.0  # [sec]
-  sum_term = np.zeros(100)
+  sum_term = np.zeros(26)
   # truncate infinite sum to 500
   for n in range(500):
-    n = n + 1
-    sum_term = sum_term + (np.cos(n*math.pi*x_soln/L)*np.exp(-chi*pow(n,2)*pow(math.pi,2)*t/pow(L,2))*(80./(3.*pow((n*math.pi),2)))*np.cos(n*math.pi/2.)*np.sin(n*math.pi/4.)*np.sin(3.*n*math.pi/20.))
-  T_soln[time,:] = 0.50 + sum_term
-     
+    p1 = ((((2*n)+1)*L)-x_soln)/(2.*math.sqrt(chi*t))
+    # the definite integral is below
+    i3erfc1 = (1./12.)*np.sqrt(math.pi)*p1**3*erf(1.0*p1) - (1./12.)*np.sqrt(math.pi)*p1**3 + (1./3.)*p1**2*np.exp(-1.0*p1**2) + 0.5*p1*(-0.5*p1*np.exp(-1.0*p1**2) + 0.25*np.sqrt(math.pi)*erf(1.0*p1)) - 0.125*np.sqrt(math.pi)*p1 + (1./12.)*np.exp(-1.0*p1**2)
+    p2 = ((((2*n)+1)*L)+x_soln)/(2.*math.sqrt(chi*t))
+    i3erfc2 = (1./12.)*np.sqrt(math.pi)*p2**3*erf(1.0*p2) - (1./12.)*np.sqrt(math.pi)*p2**3 + (1./3.)*p2**2*np.exp(-1.0*p2**2) + 0.5*p2*(-0.5*p2*np.exp(-1.0*p2**2) + 0.25*np.sqrt(math.pi)*erf(1.0*p2)) - 0.125*np.sqrt(math.pi)*p2 + (1./12.)*np.exp(-1.0*p2**2)
+    sum_term = sum_term + (2./math.pi)*i3erfc1 + (2./math.pi)*i3erfc2
+  T_soln[time,:] = ((8*q*(1./(24.*3600.))*math.sqrt(chi*pow(t,3)))/K)*sum_term
+    
+# To calculate the definite integral, use sympy:
+# p1, s = sym.symbols('p1 s')
+# i3erfc1 = sym.integrate(((pow((s-p1),3))/(3.*2.*1.))*sym.exp(-1.*pow(s,2)),(s,p1,sym.oo))
+# p2, s = sym.symbols('p2 s')
+# i3erfc2 = sym.integrate(((pow((s-p2),3))/(3.*2.*1.))*sym.exp(-1.*pow(s,2)),(s,p2,sym.oo))
+  
+    
 # Read PFLOTRAN output file containing the temperature solution
 # There are four output files
-T_pflotran = np.zeros((4,100))  # [C]
+T_pflotran = np.zeros((4,25))  # [C]
+x_pflotran = x_soln[0:25]
 
 # 1:=========================================================================
-f = open('1D_conduction_BC_1st_2nd_kind-000.vtk', 'r')
-# Temperature solution is contained starting at the 617th line 
+f = open('1D_conduction_BC_2nd_kind-001.vtk', 'r')
+# Temperature solution is contained starting at the 167th line 
 # and continues in chunks of 10 values, so we need to read all lines
 # and concatenate them.
 lines = f.readlines()
-i = 616
+i = 166
 # Get first line
 lines[i] = lines[i].strip()
 temperature = np.array(lines[i].split())
-while i < 626:
+while i < 169:
   i = i + 1
   lines[i] = lines[i].strip()
   temperature = np.concatenate((temperature,np.array(lines[i].split())),axis=0)
@@ -129,16 +145,16 @@ T_pflotran[0,:] = temperature
 f.close()
 
 # 2:=========================================================================
-f = open('1D_conduction_BC_1st_2nd_kind-001.vtk', 'r')
-# Temperature solution is contained starting at the 617th line 
+f = open('1D_conduction_BC_2nd_kind-002.vtk', 'r')
+# Temperature solution is contained starting at the 167th line 
 # and continues in chunks of 10 values, so we need to read all lines
 # and concatenate them.
 lines = f.readlines()
-i = 616
+i = 166
 # Get first line
 lines[i] = lines[i].strip()
 temperature = np.array(lines[i].split())
-while i < 626:
+while i < 169:
   i = i + 1
   lines[i] = lines[i].strip()
   temperature = np.concatenate((temperature,np.array(lines[i].split())),axis=0)
@@ -148,16 +164,16 @@ T_pflotran[1,:] = temperature
 f.close()
 
 # 3:=========================================================================
-f = open('1D_conduction_BC_1st_2nd_kind-002.vtk', 'r')
-# Temperature solution is contained starting at the 617th line 
+f = open('1D_conduction_BC_2nd_kind-003.vtk', 'r')
+# Temperature solution is contained starting at the 167th line 
 # and continues in chunks of 10 values, so we need to read all lines
 # and concatenate them.
 lines = f.readlines()
-i = 616
+i = 166
 # Get first line
 lines[i] = lines[i].strip()
 temperature = np.array(lines[i].split())
-while i < 626:
+while i < 169:
   i = i + 1
   lines[i] = lines[i].strip()
   temperature = np.concatenate((temperature,np.array(lines[i].split())),axis=0)
@@ -167,16 +183,16 @@ T_pflotran[2,:] = temperature
 f.close()
 
 # 4:=========================================================================
-f = open('1D_conduction_BC_1st_2nd_kind-003.vtk', 'r')
-# Temperature solution is contained starting at the 617th line 
+f = open('1D_conduction_BC_2nd_kind-004.vtk', 'r')
+# Temperature solution is contained starting at the 167th line 
 # and continues in chunks of 10 values, so we need to read all lines
 # and concatenate them.
 lines = f.readlines()
-i = 616
+i = 166
 # Get first line
 lines[i] = lines[i].strip()
 temperature = np.array(lines[i].split())
-while i < 626:
+while i < 169:
   i = i + 1
   lines[i] = lines[i].strip()
   temperature = np.concatenate((temperature,np.array(lines[i].split())),axis=0)
@@ -187,38 +203,38 @@ f.close()
 
 # Plot the PFLOTRAN and analytical solutions
 if plot_flag:
-  t_max = 1.5
+  t_max = 0.6
   plt.subplot(221)
-  plt.plot(x_soln,T_pflotran[0,:],'o',x_soln,T_soln[0,:])
+  plt.plot(x_pflotran,T_pflotran[0,:],'o',x_soln,T_soln[0,:])
   plt.xlabel('Distance (m)')
   plt.ylabel('Temperature (C)')
   plt.ylim([0,t_max])
-  plt.xlim([0,100])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0day')
+  plt.xlim([0,25.5])
+  plt.title('Analytical vs. PFLOTRAN Solution, t=0.01day')
   plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
   plt.subplot(222)
-  plt.plot(x_soln,T_pflotran[1,:],'o',x_soln,T_soln[1,:])
+  plt.plot(x_pflotran,T_pflotran[1,:],'o',x_soln,T_soln[1,:])
   plt.xlabel('Distance (m)')
   plt.ylabel('Temperature (C)')
   plt.ylim([0,t_max])
-  plt.xlim([0,100])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0.05day')
+  plt.xlim([0,25.5])
+  plt.title('Analytical vs. PFLOTRAN Solution, t=0.04day')
   plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
   plt.subplot(223)
-  plt.plot(x_soln,T_pflotran[2,:],'o',x_soln,T_soln[2,:])
+  plt.plot(x_pflotran,T_pflotran[2,:],'o',x_soln,T_soln[2,:])
   plt.xlabel('Distance (m)')
   plt.ylabel('Temperature (C)')
   plt.ylim([0,t_max])
-  plt.xlim([0,100])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0.10day')
+  plt.xlim([0,25.5])
+  plt.title('Analytical vs. PFLOTRAN Solution, t=0.09day')
   plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
   plt.subplot(224)
-  plt.plot(x_soln,T_pflotran[3,:],'o',x_soln,T_soln[3,:])
+  plt.plot(x_pflotran,T_pflotran[3,:],'o',x_soln,T_soln[3,:])
   plt.xlabel('Distance (m)')
   plt.ylabel('Temperature (C)')
   plt.ylim([0,t_max])
-  plt.xlim([0,100])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0.50day')
+  plt.xlim([0,25.5])
+  plt.title('Analytical vs. PFLOTRAN Solution, t=0.12day')
   plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
   plt.show()
 
@@ -226,7 +242,7 @@ if plot_flag:
 # Shift both solutions to avoid dividing by zero
 T_pflotran = T_pflotran + 0.5
 T_soln = T_soln + 0.5
-percent_error = 100.0*(T_pflotran-T_soln)/T_soln
+percent_error = 100.0*(T_pflotran-T_soln[:,0:25])/T_soln[:,0:25]
 max_percent_error = np.nanmax(abs(percent_error))
 if print_error:
   print 'Percent Error (temperature):'

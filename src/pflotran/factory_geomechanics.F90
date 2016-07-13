@@ -121,7 +121,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     simulation%geomech_process_model_coupler => pmc_geomech
     pmc_geomech%option => option
     pmc_geomech%checkpoint_option => simulation%checkpoint_option
-    pmc_geomech%waypoint_list => simulation%waypoint_list_geomechanics
+    pmc_geomech%waypoint_list => simulation%waypoint_list_subsurface
     pmc_geomech%pm_list => pm_geomech
     pmc_geomech%pm_ptr%pm => pm_geomech
     pmc_geomech%geomech_realization => simulation%geomech_realization
@@ -144,42 +144,36 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     call GeomechanicsInitReadInput(simulation,timestepper%solver,input)
     pm_geomech%output_option => geomech_realization%output_option
 
-    ! Add first waypoint
-    waypoint => WaypointCreate()
-    waypoint%time = 0.d0
-    call WaypointInsertInList(waypoint,simulation%waypoint_list_geomechanics)
- 
-    ! Add final_time waypoint to geomech_realization
-    waypoint => WaypointCreate()
-    waypoint%final = PETSC_TRUE
-    waypoint%time = simulation%waypoint_list_subsurface%last%time
-    waypoint%print_snap_output = PETSC_TRUE
-    call WaypointInsertInList(waypoint,simulation%waypoint_list_geomechanics)   
-    ! Merge with subsurface waypoint list and checkpointing waypoints
-    call WaypointListCopyAndMerge(simulation%waypoint_list_geomechanics, &
-                                  simulation%waypoint_list_subsurface,option)
-    call WaypointListCopyAndMerge(simulation%waypoint_list_geomechanics, &
-                                  simulation%waypoint_list_outer,option)
- 	! initialize geomech realization
-    call GeomechInitSetupRealization(simulation)
-    ! Add output waypoints from geomech realization
-    call InitCommonAddOutputWaypoints(option,simulation%output_option, &
-                                      simulation%waypoint_list_geomechanics) 
-    ! Add output waypoints from subsurface realization
-    call InitCommonAddOutputWaypoints(option,subsurf_realization%output_option, &
-                                      simulation%waypoint_list_geomechanics)    
-    ! Fill holes                             
-    call WaypointListFillIn(simulation%waypoint_list_geomechanics,option)
 
-	! link timestepper waypoints to geomech way point list
+
+    ! Hijack subsurface waypoint to geomechanics waypoint
+    ! Subsurface controls the output now
+    ! Always have snapshot on at t=0
+    pmc_geomech%waypoint_list%first%print_snap_output = PETSC_TRUE
+    
+
+    ! link geomech and flow timestepper waypoints to geomech way point list
     if (associated(simulation%geomech_process_model_coupler)) then
       if (associated(simulation%geomech_process_model_coupler% &
                      timestepper)) then
         simulation%geomech_process_model_coupler%timestepper%cur_waypoint => &
-          simulation%waypoint_list_geomechanics%first
+          pmc_geomech%waypoint_list%first
+      endif
+
+      if (associated(simulation%flow_process_model_coupler%timestepper)) then
+        simulation%flow_process_model_coupler%timestepper%cur_waypoint => &
+          pmc_geomech%waypoint_list%first
       endif
     endif
     
+    ! print the waypoints when debug flag is on
+    if (geomech_realization%geomech_debug%print_waypoints) then
+      call WaypointListPrint(pmc_geomech%waypoint_list,option, &
+                             geomech_realization%output_option)      
+    endif
+
+    ! initialize geomech realization
+    call GeomechInitSetupRealization(simulation)
 
     ! Solver set up
     call GeomechInitSetupSolvers(geomech_realization,subsurf_realization, &
@@ -733,176 +727,11 @@ subroutine GeomechanicsInitReadInput(simulation,geomech_solver, &
           call InputErrorMsg(input,option,'keyword','GEOMECHANICS_OUTPUT')
           call StringToUpper(word)
           select case(trim(word))
-            case('NO_FINAL','NO_PRINT_FINAL')
-              output_option%print_final_snap = PETSC_FALSE
-              output_option%print_final_obs = PETSC_FALSE
-              output_option%print_final_massbal = PETSC_FALSE
-            case('NO_INITIAL','NO_PRINT_INITIAL')
-              output_option%print_initial_snap = PETSC_FALSE
-              output_option%print_initial_obs = PETSC_FALSE
-              output_option%print_initial_massbal = PETSC_FALSE
-            case('PERMEABILITY')
-              option%io_buffer = 'PERMEABILITY output must now be entered &
-                                 &under OUTPUT/VARIABLES card.'
-              call printErrMsg(option)
-!              output_option%print_permeability = PETSC_TRUE
-            case('POROSITY')
-              option%io_buffer = 'POROSITY output must now be entered under &
-                                 &OUTPUT/VARIABLES card.'
-              call printErrMsg(option)            
-!              output_option%print_porosity = PETSC_TRUE
-            case('PRINT_COLUMN_IDS')
-              output_option%print_column_ids = PETSC_TRUE
             case('TIMES')
-              internal_units = 'sec'
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'units','GEOMECHANICS_OUTPUT')
-              units_conversion = UnitsConvertToInternal(word, &
-                                                        internal_units,option)
-              string = 'GEOMECHANICS_OUTPUT,TIMES'
-              nullify(temp_real_array)
-              call UtilityReadArray(temp_real_array,NEG_ONE_INTEGER, &
-                                    string,input,option)
-              do i = 1, size(temp_real_array)
-                waypoint => WaypointCreate()
-                waypoint%time = temp_real_array(i)*units_conversion
-                waypoint%print_snap_output = PETSC_TRUE
-                call WaypointInsertInList(waypoint,waypoint_list)
-              enddo
-              call DeallocateArray(temp_real_array)
-            case('OUTPUT_FILE')
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'time increment', &
-                                 'GEOMECHANICS_OUTPUT,OUTPUT_FILE')
-              call StringToUpper(word)
-              select case(trim(word))
-                case('OFF')
-                  option%print_to_file = PETSC_FALSE
-                case('PERIODIC')
-                  call InputReadInt(input,option,output_option%output_file_imod)
-                  call InputErrorMsg(input,option,'timestep increment', &
-                                     'GEOMECHANICS_OUTPUT,PERIODIC,OUTPUT_FILE')
-                case default
-                  call InputKeywordUnrecognized(word, &
-                         'GEOMECHANICS_OUTPUT,OUTPUT_FILE',option)
-              end select
-            case('SCREEN')
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'time increment','OUTPUT,SCREEN')
-              call StringToUpper(word)
-              select case(trim(word))
-                case('OFF')
-                  option%print_to_screen = PETSC_FALSE
-                case('PERIODIC')
-                  call InputReadInt(input,option,output_option%screen_imod)
-                  call InputErrorMsg(input,option,'timestep increment', &
-                                     'GEOMECHANICS_OUTPUT,PERIODIC,SCREEN')
-                case default
-                  call InputKeywordUnrecognized(word, &
-                         'GEOMECHANICS,OUTPUT,SCREEN',option)
-              end select
-            case('PERIODIC')
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'time increment', &
-                                 'GEOMECHANICS_OUTPUT,PERIODIC')
-              call StringToUpper(word)
-              select case(trim(word))
-                case('TIME')
-                  internal_units = 'sec'
-                  call InputReadDouble(input,option,temp_real)
-                  call InputErrorMsg(input,option,'time increment', &
-                                     'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
-                  call InputReadWord(input,option,word,PETSC_TRUE)
-                  call InputErrorMsg(input,option,'time increment units', &
-                                     'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
-                  units_conversion = UnitsConvertToInternal(word, &
-                                       internal_units,option)
-                  output_option%periodic_snap_output_time_incr = temp_real* &
-                                                            units_conversion
-                  call InputReadWord(input,option,word,PETSC_TRUE)
-                  if (input%ierr == 0) then
-                    if (StringCompareIgnoreCase(word,'between')) then
-                      internal_units = 'sec'
-                      call InputReadDouble(input,option,temp_real)
-                      call InputErrorMsg(input,option,'start time', &
-                                         'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
-                      call InputReadWord(input,option,word,PETSC_TRUE)
-                      call InputErrorMsg(input,option,'start time units', &
-                                         'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
-                      units_conversion = UnitsConvertToInternal(word, &
-                                           internal_units,option)
-                      temp_real = temp_real * units_conversion
-                      call InputReadWord(input,option,word,PETSC_TRUE)
-                      if (.not.StringCompareIgnoreCase(word,'and')) then
-                        input%ierr = 1
-                      endif
-                      call InputErrorMsg(input,option,'and', &
-                                          'GEOMECHANICS_OUTPUT,PERIODIC,TIME"')
-                      call InputReadDouble(input,option,temp_real2)
-                      call InputErrorMsg(input,option,'end time', &
-                                         'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
-                      call InputReadWord(input,option,word,PETSC_TRUE)
-                      call InputErrorMsg(input,option,'end time units', &
-                                         'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
-                      temp_real2 = temp_real2 * units_conversion
-                      do
-                        waypoint => WaypointCreate()
-                        waypoint%time = temp_real
-                        waypoint%print_snap_output = PETSC_TRUE
-                        write(*,*) 'Inserting waypoint in geomech_realization: &
-                                   &>>>>>>>> ',waypoint%time
-                        call WaypointInsertInList(waypoint,waypoint_list)
-                        temp_real = temp_real + &
-                                    output_option%periodic_snap_output_time_incr
-                        if (temp_real > temp_real2) exit
-                      enddo
-                      output_option%periodic_snap_output_time_incr = 0.d0
-                    else
-                      input%ierr = 1
-                      call InputErrorMsg(input,option,'between', &
-                                          'GEOMECHANICS_OUTPUT,PERIODIC,TIME')
-                    endif
-                  endif
-                case('TIMESTEP')
-                  call InputReadInt(input,option, &
-                                    output_option%periodic_snap_output_ts_imod)
-                  call InputErrorMsg(input,option,'timestep increment', &
-                                     'GEOMECHANICS_OUTPUT,PERIODIC,TIMESTEP')
-                case default
-                  call InputKeywordUnrecognized(word, &
-                         'GEOMECHANICS_OUTPUT,PERIODIC',option)
-              end select
-            case('PERIODIC_OBSERVATION')
-              output_option%print_observation = PETSC_TRUE
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'time increment', &
-                'OUTPUT, PERIODIC_OBSERVATION')
-              call StringToUpper(word)
-              select case(trim(word))
-                case('TIME')
-                  internal_units = 'sec'
-                  call InputReadDouble(input,option,temp_real)
-                  call InputErrorMsg(input,option,'time increment', &
-                                     'GEOMECHANICS_OUTPUT,&
-                                      &PERIODIC_OBSERVATION,TIME')
-                  call InputReadWord(input,option,word,PETSC_TRUE)
-                  call InputErrorMsg(input,option,'time increment units', &
-                                     'GEOMECHANICS_OUTPUT,&
-                                      &PERIODIC_OBSERVATION,TIME')
-                  units_conversion = UnitsConvertToInternal(word, &
-                                       internal_units,option) 
-                  output_option%periodic_obs_output_time_incr = temp_real* &
-                                                               units_conversion
-                case('TIMESTEP')
-                  call InputReadInt(input,option, &
-                                    output_option%periodic_obs_output_ts_imod)
-                  call InputErrorMsg(input,option,'timestep increment', &
-                                     'GEOMECHANICS_OUTPUT,&
-                                      &PERIODIC_OBSERVATION,TIMESTEP')
-                case default
-                  call InputKeywordUnrecognized(word, &
-                         'GEOMECHANICS_OUTPUT,PERIODIC_OBSERVATION',option)
-              end select
+              option%io_buffer = 'Subsurface times are now used for ' // &
+              'geomechanics as well. No need for TIMES keyword under ' // &
+              'GEOMECHANICS_OUTPUT.'
+              call printWrnMsg(option)
             case('FORMAT')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'keyword','GEOMECHANICS_OUTPUT,&
@@ -1173,8 +1002,6 @@ subroutine GeomechInitSetupRealization(simulation)
   call GeomechInitMatPropToGeomechRegions(geomech_realization)
   call GeomechRealizInitAllCouplerAuxVars(geomech_realization)  
   call GeomechRealizPrintCouplers(geomech_realization)  
-  call GeomechRealizAddWaypointsToList(geomech_realization, &
-                                       simulation%waypoint_list_geomechanics)
   call GeomechGridElemSharedByNodes(geomech_realization)
   call GeomechForceSetup(geomech_realization)
   call GeomechGlobalSetup(geomech_realization)
@@ -1296,3 +1123,4 @@ subroutine GeomechInitSetupSolvers(geomech_realization,realization, &
 end subroutine GeomechInitSetupSolvers
 
 end module Factory_Geomechanics_module
+
