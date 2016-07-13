@@ -109,6 +109,10 @@ ifdef debug_geomech_regression
   MYFLAGS += ${FC_DEFINE_FLAG}GEOMECHANICS_REGRESSION_DEBUG
 endif
 
+ifdef geomech_debug
+  MYFLAGS += ${FC_DEFINE_FLAG}GEOMECH_DEBUG
+endif
+
 UPDATE_PROVENANCE=0
 ifdef provenance
   UPDATE_PROVENANCE=1
