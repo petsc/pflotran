@@ -1,0 +1,27 @@
+Thermal QA Tests AND Tutorials
+==============================
+The set of thermal QA tests exercise PFLOTRAN's TH and GENERAL modes on several 
+steady and transient thermal conduction problems. Because these test problems
+are meant to test thermal conduction only, the porosity of the porous media has 
+been made extremely small (as well as the permeability) to avoid fluid flow. 
+
+TH MODE
+-------
+
+Steady Thermal Conduction
+^^^^^^^^^^^^^^^^^^^^^^^^^
+:ref:`thermal-th-steady-1D-conduction-BC-1st-kind`
+
+:ref:`thermal-th-steady-1D-conduction-BC-1st-2nd-kind`
+
+Transient Thermal Conduction
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+GENERAL MODE
+------------
+
+Steady Thermal Conduction
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Transient Thermal Conduction
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
