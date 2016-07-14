@@ -107,6 +107,8 @@ module General_Aux_module
     PetscReal :: denl_T
     PetscReal :: Ul_pl
     PetscReal :: Ul_T
+    PetscReal :: Hl_pl
+    PetscReal :: Hl_T
     PetscReal :: psat_dT
     PetscReal :: mobilityl_pl
     PetscReal :: mobilityl_T
@@ -261,6 +263,8 @@ subroutine GeneralAuxVarInit(auxvar,allocate_derivative,option)
     auxvar%d%denl_T = 0.d0
     auxvar%d%Ul_pl = 0.d0
     auxvar%d%Ul_T = 0.d0
+    auxvar%d%Hl_pl = 0.d0
+    auxvar%d%Hl_T = 0.d0
     auxvar%d%psat_dT = 0.d0
     auxvar%d%mobilityl_pl = 0.d0
     auxvar%d%mobilityl_T = 0.d0
@@ -678,6 +682,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                         (one_over_dw - &
                          cell_pressure * one_over_dw * one_over_dw * &
                          gen_auxvar%d%denl_T)
+    gen_auxvar%d%Hl_pl = hw_dp * 1.d-6
+    gen_auxvar%d%Hl_T = hw_dT * 1.d-6
     gen_auxvar%d%Ul_T = gen_auxvar%d%Ul_T * 1.d-6 ! J/kmol-C -> MJ/kmol-C
     gen_auxvar%d%Ul_pl = gen_auxvar%d%Ul_pl * 1.d-6 ! J/kmol-Pa -> MJ/kmol-Pa
   else
