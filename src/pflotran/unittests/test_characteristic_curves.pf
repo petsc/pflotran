@@ -265,7 +265,7 @@ contains
       write(string,*) i
       string = 'Brooks-Corey-Burdine saturation spline coefficient #' // &
                trim(adjustl(string))
-      @assertEqual(values(i), this%cc_bcb%saturation_function%sat_poly%coefficients(i), dabs(values(i))*tolerance, string)
+      @assertEqual(values(i), this%cc_bcb%saturation_function%sat_poly%coefficients(i),  dabs(values(i))*tolerance, string)
     enddo
 
   end subroutine testSF_BC_SetupPolynomials
@@ -283,7 +283,8 @@ contains
     PetscReal :: liquid_saturation
     PetscReal :: dsat_pres
     PetscReal :: value
-    PetscReal :: dkr_Se
+    PetscReal :: dkr_sat
+    PetscReal :: dkr_p
     PetscReal :: relative_permeability
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
@@ -300,19 +301,24 @@ contains
                     liquid_saturation, dsat_pres,this%option)
     call this%cc_bcb%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, &
-                              relative_permeability,dkr_Se,this%option)
-    string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
-             'pressure below polynomial fit'
+                              relative_permeability,dkr_sat,this%option)
+    dkr_p = dsat_pres * dkr_sat
+    string = 'Brooks-Corey-Burdine saturation as a function of capillary &
+             &pressure below polynomial fit'
     value = 1.d0
     @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
-    string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
-             'capillary pressure below polynomial fit'
+    string = 'Brooks-Corey-Burdine relative permeability as a function of &
+             &capillary pressure below polynomial fit'
     value = 1.d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
-             'of capillary pressure below polynomial fit'
+    string = 'Brooks-Corey-Burdine derivative of saturation as a function &
+             &of capillary pressure below polynomial fit'
     value = 0.d0
     @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+    string = 'Brooks-Corey-Burdine derivative of relative permeability &
+             &as a function of pressure below polynomial fit'
+    value = 0.d0
+    @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
 
     ! saturation = f(capillary_pressure) within the polynomial fit
     select type(sf=>this%cc_bcb%saturation_function)
@@ -326,19 +332,24 @@ contains
                     liquid_saturation, dsat_pres,this%option)
     call this%cc_bcb%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, &
-                              relative_permeability,dkr_Se,this%option)
-    string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
-             'pressure within polynomial fit'
+                              relative_permeability,dkr_sat,this%option)
+    dkr_p = dsat_pres * dkr_sat
+    string = 'Brooks-Corey-Burdine saturation as a function of capillary &
+             &pressure within polynomial fit'
     value = 0.99971176979312304d0
     @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
-    string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
-             'capillary pressure within polynomial fit'
+    string = 'Brooks-Corey-Burdine relative permeability as a function of &
+             &capillary pressure within polynomial fit'
     value = 0.99789158871529349d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
-             'of capillary pressure within polynomial fit'
+    string = 'Brooks-Corey-Burdine derivative of saturation as a function &
+             &of capillary pressure within polynomial fit'
     value = 5.6675690490728353d-7
     @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+    string = 'Brooks-Corey-Burdine derivative of relative permeability &
+             &as a function of pressure within polynomial fit'
+    value = 4.1422137957785640d-006
+    @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
 
     ! saturation = f(capillary_pressure) above the polynomial fit
     select type(sf=>this%cc_bcb%saturation_function)
@@ -352,19 +363,24 @@ contains
                     liquid_saturation, dsat_pres,this%option)
     call this%cc_bcb%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, &
-                              relative_permeability,dkr_Se,this%option)
-    string = 'Brooks-Corey-Burdine saturation as a function of capillary ' // &
-             'pressure above polynomial fit'
+                              relative_permeability,dkr_sat,this%option)
+    dkr_p = dsat_pres * dkr_sat
+    string = 'Brooks-Corey-Burdine saturation as a function of capillary &
+             &pressure above polynomial fit'
     value = 0.96802592722174041d0
     @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
-    string = 'Brooks-Corey-Burdine relative permeability as a function of ' // &
-             'capillary pressure above polynomial fit'
+    string = 'Brooks-Corey-Burdine relative permeability as a function of &
+             &capillary pressure above polynomial fit'
     value = 0.78749164071142996d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Brooks-Corey-Burdine derivative of saturation as a function ' // &
-             'of capillary pressure above polynomial fit'
+    string = 'Brooks-Corey-Burdine derivative of saturation as a function &
+             &of capillary pressure above polynomial fit'
     value = 5.0054278424773111d-6
     @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+    string = 'Brooks-Corey-Burdine derivative of relative permeability &
+             &as a function of pressure above polynomial fit'
+    value = 3.0060561800889172d-005
+    @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
 
   end subroutine testsf_Brooks_Corey
 
@@ -394,8 +410,8 @@ contains
     call this%cc_bcb%saturation_function% &
          CapillaryPressure(liquid_saturation, &
                            capillary_pressure, this%option)
-    string = 'Brooks-Corey capillary pressure as a function of ' // &
-             'liquid saturation barely within polynomial fit'
+    string = 'Brooks-Corey capillary pressure as a function of &
+             &liquid saturation barely within polynomial fit'
     value = 54.068777590990067d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
@@ -409,8 +425,8 @@ contains
     call this%cc_bcb%saturation_function% &
          CapillaryPressure(liquid_saturation, &
                            capillary_pressure, this%option)
-    string = 'Brooks-Corey capillary pressure as a function of ' // &
-             'liquid saturation well within polynomial fit'
+    string = 'Brooks-Corey capillary pressure as a function of &
+             &liquid saturation well within polynomial fit'
     value = 106436.99642977261d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
@@ -424,8 +440,8 @@ contains
     call this%cc_bcb%saturation_function% &
          CapillaryPressure(liquid_saturation, &
                            capillary_pressure, this%option)
-    string = 'Brooks-Corey capillary pressure as a function of ' // &
-             'liquid saturation above within polynomial fit'
+    string = 'Brooks-Corey capillary pressure as a function of &
+             &liquid saturation above within polynomial fit'
     value = 109024.42772683989d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
@@ -444,7 +460,7 @@ contains
     PetscReal :: liquid_saturation
     PetscReal :: dsat_pres
     PetscReal :: value
-    PetscReal :: dkr_Se
+    PetscReal :: dkr_sat
     PetscReal :: relative_permeability
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
@@ -453,28 +469,28 @@ contains
     liquid_saturation = 0.5d0
     call this%cc_bcb%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, & 
-                              dkr_Se, this%option)
-    string = 'Brooks-Corey-Burdine liquid relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'Brooks-Corey-Burdine liquid relative permeability as a &
+             &function of liquid saturation'
     value = 3.1991918327000197d-3
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Brooks-Corey-Burdine derivative of liquid relative ' // &
-             'permeability as a function of liquid saturation'
-    value = 4.9968329577409848d-2
-    @assertEqual(value, dkr_Se, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine derivative of liquid relative &
+             &permeability as a function of liquid saturation'
+    value = 6.2460411971762310d-2
+    @assertEqual(value, dkr_sat, 1.d-8, string)
 
     ! gas relative permeability = f(saturation)
     call this%cc_bcb%gas_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, &
-                              dkr_Se, this%option)
-    string = 'Brooks-Corey-Burdine gas relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'Brooks-Corey-Burdine gas relative permeability as a &
+             &function of liquid saturation'
     value = 0.38173220142506209d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Brooks-Corey-Burdine derivative of gas relative ' // &
-             'permeability as a function of liquid saturation'
-    value = -1.3129595806675352d0
-    @assertEqual(value, dkr_Se, 1.d-8, string)
+    string = 'Brooks-Corey-Burdine derivative of gas relative &
+             &permeability as a function of liquid saturation'
+    value = -1.6412199910843073d0
+    @assertEqual(value, dkr_sat, 1.d-8, string)
 
   end subroutine testrpf_BC_Burdine
 
@@ -491,7 +507,7 @@ contains
     PetscReal :: liquid_saturation
     PetscReal :: dsat_pres
     PetscReal :: value
-    PetscReal :: dkr_Se
+    PetscReal :: dkr_sat
     PetscReal :: relative_permeability
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
@@ -500,28 +516,28 @@ contains
     liquid_saturation = 0.5d0
     call this%cc_bcm%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, & 
-                              dkr_Se, this%option)
-    string = 'Brooks-Corey-Mualem liquid relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'Brooks-Corey-Mualem liquid relative permeability as a &
+             &function of liquid saturation'
     value = 5.2242583862629442d-3
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Brooks-Corey-Mualem derivative of liquid relative ' // &
-             'permeability as a function of liquid saturation'
-    value = 7.4632262660899215d-2 
-    @assertEqual(value, dkr_Se, 1.d-8, string)
+    string = 'Brooks-Corey-Mualem derivative of liquid relative &
+             &permeability as a function of liquid saturation'
+    value = 9.3290328326124022d-2
+    @assertEqual(value, dkr_sat, 1.d-8, string)
 
     ! gas relative permeability = f(saturation)
     call this%cc_bcm%gas_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, &
-                              dkr_Se, this%option)
-    string = 'Brooks-Corey-Mualem gas relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'Brooks-Corey-Mualem gas relative permeability as a &
+             &function of liquid saturation'
     value = 0.65126653365343257d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Brooks-Corey-Mualem derivative of gas relative ' // &
-             'permeability as a function of liquid saturation'
-    value = -1.3794581170063300d0 
-    @assertEqual(value, dkr_Se, 1.d-8, string)
+    string = 'Brooks-Corey-Mualem derivative of gas relative &
+             &permeability as a function of liquid saturation'
+    value = -1.7243442005604193d0
+    @assertEqual(value, dkr_sat, 1.d-8, string)
 
   end subroutine testrpf_BC_Mualem
 
@@ -539,7 +555,8 @@ contains
     PetscReal :: relative_permeability
     PetscReal :: dsat_pres
     PetscReal :: value
-    PetscReal :: dkr_Se
+    PetscReal :: dkr_sat
+    PetscReal :: dkr_p
     PetscReal :: rel_perm
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
@@ -551,19 +568,24 @@ contains
                                          dsat_pres,this%option)
     call this%cc_vgm%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, &
-                              relative_permeability,dkr_Se,this%option)
-    string = 'van Genuchten-Mualem saturation as a function of capillary ' // &
-             'pressure at low capillary pressure'
+                              relative_permeability,dkr_sat,this%option)
+    dkr_p = dsat_pres * dkr_sat
+    string = 'van Genuchten-Mualem saturation as a function of capillary &
+             &pressure at low capillary pressure'
     value = 0.99999995045230206d0
     @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
-    string = 'van Genuchten-Mualem relative permeability as a function of ' // &
-             'capillary pressure at low capillary pressure'
+    string = 'van Genuchten-Mualem relative permeability as a function of &
+             &capillary pressure at low capillary pressure'
     value = 0.99957025105913566d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'van Genuchten-Mualem derivative of saturation as a function ' // &
-             'of capillary pressure at low capillary pressure'
+    string = 'van Genuchten-Mualem derivative of saturation as a function &
+             &of capillary pressure at low capillary pressure'
     value = 1.0475199529417896d-8
     @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+    string = 'van Genuchten-Mualem derivative of relative permeability &
+             &as a function of capillary pressure at low capillary pressure'
+    value = 4.7878857031474202d-005
+    @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
 
     ! saturation = f(capillary_pressure) at high capillary pressure
     select type(sf=>this%cc_vgm%saturation_function)
@@ -577,19 +599,24 @@ contains
                                          dsat_pres,this%option)
     call this%cc_vgm%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, &
-                              relative_permeability,dkr_Se,this%option)
-    string = 'van Genuchten-Mualem saturation as a function of capillary ' // &
-             'pressure at high capillary pressure'
+                              relative_permeability,dkr_sat,this%option)
+    dkr_p = dsat_pres * dkr_sat
+    string = 'van Genuchten-Mualem saturation as a function of capillary &
+             &pressure at high capillary pressure'
     value = 0.20862404282784081d0
     @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
-    string = 'van Genuchten-Mualem relative permeability as a function of ' // &
-             'capillary pressure at high capillary pressure'
+    string = 'van Genuchten-Mualem relative permeability as a function of &
+             &capillary pressure at high capillary pressure'
     value = 4.4900562293186444d-6
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'van Genuchten-Mualem derivative of saturation as a function ' // &
-             'of capillary pressure at high capillary pressure'
+    string = 'van Genuchten-Mualem derivative of saturation as a function &
+             &of capillary pressure at high capillary pressure'
     value = 3.7043838142841442d-7
     @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+    string = 'van Genuchten-Mualem derivative of relative permeability &
+             &as a function of capillary pressure at high capillary pressure'
+    value = 1.0903614584398361d-010
+    @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
 
   end subroutine testsf_van_Genuchten
 
@@ -614,8 +641,8 @@ contains
     call this%cc_vgm%saturation_function% &
          CapillaryPressure(liquid_saturation, &
                            capillary_pressure, this%option)
-    string = 'van Genuchten-Mualem capillary pressure as a function of ' // &
-             'saturation'
+    string = 'van Genuchten-Mualem capillary pressure as a function of &
+             &saturation'
     value = 38910.985405751228d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
@@ -632,7 +659,7 @@ contains
 
     PetscReal :: liquid_saturation
     PetscReal :: relative_permeability
-    PetscReal :: dkr_Se
+    PetscReal :: dkr_sat
     PetscReal :: value
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
@@ -641,28 +668,28 @@ contains
     liquid_saturation = 0.5d0
     call this%cc_vgm%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, & 
-                              dkr_Se, this%option)
-    string = 'van Genuchten-Mualem liquid relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'van Genuchten-Mualem liquid relative permeability as a &
+             &function of liquid saturation'
     value = 7.1160141309814171d-3
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'van Genuchten-Mualem derivative of liquid relative ' // &
-             'permeability as a function of liquid saturation'
-    value = 7.6770090168664040d-2
-    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
+    string = 'van Genuchten-Mualem derivative of liquid relative &
+             &permeability as a function of liquid saturation'
+    value = 8.9580035202641822d-2
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
     ! gas relative permeability = f(saturation)
     call this%cc_vgm%gas_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, & 
-                              dkr_Se, this%option)
-    string = 'van Genuchten-Mualem gas relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'van Genuchten-Mualem gas relative permeability as a &
+             &function of liquid saturation'
     value = 0.61184154078016839d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'van Genuchten-Mualem derivative of gas relative ' // &
-             'permeability as a function of liquid saturation'
-    value = -1.2125958991403705d0
-    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
+    string = 'van Genuchten-Mualem derivative of gas relative &
+             &permeability as a function of liquid saturation'
+    value = -1.4149310375033495d0
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
   end subroutine testrpf_van_Genuchten_Mualem
 
@@ -677,7 +704,7 @@ contains
 
     PetscReal :: liquid_saturation
     PetscReal :: relative_permeability
-    PetscReal :: dkr_Se
+    PetscReal :: dkr_sat
     PetscReal :: value
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
@@ -686,28 +713,28 @@ contains
     liquid_saturation = 0.5d0
     call this%cc_vgb%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, & 
-                              dkr_Se, this%option)
-    string = 'van Genuchten-Burdine liquid relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'van Genuchten-Burdine liquid relative permeability as a &
+             &function of liquid saturation'
     value = 1.8220963608953099d-2
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'van Genuchten-Burdine derivative of liquid relative ' // &
-             'permeability as a function of liquid saturation'
-    value = 0.174833027305569380d0
-    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
+    string = 'van Genuchten-Burdine derivative of liquid relative &
+             &permeability as a function of liquid saturation'
+    value = 0.20400586616752553d0
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
     ! gas relative permeability = f(saturation)
     call this%cc_vgb%gas_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, & 
-                              dkr_Se, this%option)
-    string = 'van Genuchten-Burdine gas relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'van Genuchten-Burdine gas relative permeability as a &
+             &function of liquid saturation'
     value = 0.29870096712333277d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'van Genuchten-Burdine derivative of gas relative ' // &
-             'permeability as a function of liquid saturation'
-    value = -1.2033329432279087d0
-    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
+    string = 'van Genuchten-Burdine derivative of gas relative &
+             &permeability as a function of liquid saturation'
+    value = -1.4207000510364920d0
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
   end subroutine testrpf_van_Genuchten_Burdine
 
@@ -722,7 +749,7 @@ contains
 
     PetscReal :: liquid_saturation
     PetscReal :: relative_permeability
-    PetscReal :: dkr_Se
+    PetscReal :: dkr_sat
     PetscReal :: value
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
@@ -733,15 +760,15 @@ contains
     ! gas relative permeability = f(saturation)
     call this%cc_vgt%gas_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, & 
-                              dkr_Se, this%option)
-    string = 'TOUGH2 IRP7 gas relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'TOUGH2 IRP7 gas relative permeability as a &
+             &function of liquid saturation'
     value = 0.27522069402853439d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'TOUGH2 IRP7 derivative of gas relative permeability as a ' // &
-             'function of liquid saturation'
-    value = -1.2336013267395254d0
-    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
+    string = 'TOUGH2 IRP7 derivative of gas relative permeability as a &
+             &function of liquid saturation'
+    value = -1.4564360410147879d0
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
   end subroutine testrpf_TOUGH2_IRP7_gas
 
 ! ************************************************************************** !
@@ -758,7 +785,8 @@ contains
     PetscReal :: relative_permeability
     PetscReal :: dsat_pres
     PetscReal :: value
-    PetscReal :: dkr_Se
+    PetscReal :: dkr_sat
+    PetscReal :: dkr_p
     PetscReal :: rel_perm
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
@@ -770,19 +798,24 @@ contains
                                          dsat_pres,this%option)
     call this%cc_lm%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, &
-                              relative_permeability,dkr_Se,this%option)
-    string = 'Linear-Mualem saturation as a function of capillary ' // &
-             'pressure at low capillary pressure'
+                              relative_permeability,dkr_sat,this%option)
+    dkr_p = dsat_pres * dkr_sat
+    string = 'Linear-Mualem saturation as a function of capillary &
+             &pressure at low capillary pressure'
     value = 1.0001679766584224d0
     @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
-    string = 'Linear-Mualem relative permeability as a function of ' // &
-             'capillary pressure at low capillary pressure'
+    string = 'Linear-Mualem relative permeability as a function of &
+             &capillary pressure at low capillary pressure'
     value = 1.0000000000000000d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Linear-Mualem derivative of saturation as a function ' // &
-             'of capillary pressure at low capillary pressure'
+    string = 'Linear-Mualem derivative of saturation as a function &
+             &of capillary pressure at low capillary pressure'
     value = 8.5802608854958100d-9
     @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+    string = 'Linear-Mualem derivative of relative permeability as a &
+             &function of capillary pressure at low capillary pressure'
+    value = 0.d0
+    @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
 
     ! saturation = f(capillary_pressure) at high capillary pressure
     select type(sf=>this%cc_lm%saturation_function)
@@ -796,19 +829,24 @@ contains
                                          dsat_pres,this%option)
     call this%cc_lm%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, &
-                              relative_permeability,dkr_Se,this%option)
-    string = 'van Genuchten-Mualem saturation as a function of capillary ' // &
-             'pressure at high capillary pressure'
+                              relative_permeability,dkr_sat,this%option)
+    dkr_p = dsat_pres * dkr_sat
+    string = 'van Genuchten-Mualem saturation as a function of capillary &
+             &pressure at high capillary pressure'
     value = 0.99848743785071759d0
     @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
-    string = 'Linear-Mualem relative permeability as a function of ' // &
-             'capillary pressure at high capillary pressure'
+    string = 'Linear-Mualem relative permeability as a function of &
+             &capillary pressure at high capillary pressure'
     value = 0.21040639641042236d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Linear-Mualem derivative of saturation as a function ' // &
-             'of capillary pressure at high capillary pressure'
+    string = 'Linear-Mualem derivative of saturation as a function &
+             &of capillary pressure at high capillary pressure'
     value = 8.5802608854958100d-9
     @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+    string = 'Linear-Mualem derivative of relative permeability as a &
+             &function of capillary pressure at high capillary pressure'
+    value = 3.7741597839123353d-007
+    @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
 
   end subroutine testsf_Linear
 
@@ -833,8 +871,8 @@ contains
     call this%cc_lm%saturation_function% &
          CapillaryPressure(liquid_saturation, &
                            capillary_pressure, this%option)
-    string = 'Linear capillary pressure as a function of ' // &
-             'saturation'
+    string = 'Linear capillary pressure as a function of &
+             &saturation'
     value = 58292873.507671818d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
@@ -851,7 +889,7 @@ contains
 
     PetscReal :: liquid_saturation
     PetscReal :: relative_permeability
-    PetscReal :: dkr_Se
+    PetscReal :: dkr_sat
     PetscReal :: value
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
@@ -860,22 +898,22 @@ contains
     liquid_saturation = 0.5d0
     call this%cc_lm%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, & 
-                              dkr_Se, this%option)
-    string = 'Linear-Mualem liquid relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'Linear-Mualem liquid relative permeability as a &
+             &function of liquid saturation'
     value = 9.8205932575543323d-4
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Linear-Mualem derivative of liquid relative ' // &
-             'permeability as a function of liquid saturation'
-    value = 7.4265409072522270d-3
-    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
+    string = 'Linear-Mualem derivative of liquid relative &
+             &permeability as a function of liquid saturation'
+    value = 8.6657420154635095d-3
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
     ! gas relative permeability = f(saturation)
     call this%cc_lm%gas_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, & 
-                              dkr_Se, this%option)
-    string = 'Linear-Mualem gas relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'Linear-Mualem gas relative permeability as a &
+             &function of liquid saturation'
     value = 0.70258636467899827d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
 
@@ -892,7 +930,7 @@ contains
 
     PetscReal :: liquid_saturation
     PetscReal :: relative_permeability
-    PetscReal :: dkr_Se
+    PetscReal :: dkr_sat
     PetscReal :: value
     PetscReal, parameter :: tolerance = 1.d-8
     character(len=128) :: string
@@ -901,28 +939,28 @@ contains
     liquid_saturation = 0.5d0
     call this%cc_lb%liq_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, & 
-                              dkr_Se, this%option)
-    string = 'Linear-Mualem liquid relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'Linear-Mualem liquid relative permeability as a &
+             &function of liquid saturation'
     value = 0.41656942823803966d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Linear-Mualem derivative of liquid relative ' // &
-             'permeability as a function of liquid saturation'
-    value = 1.0000000000000000d0
-    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
+    string = 'Linear-Mualem derivative of liquid relative &
+             &permeability as a function of liquid saturation'
+    value = 1.1668611435239207d0
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
     ! gas relative permeability = f(saturation)
     call this%cc_lb%gas_rel_perm_function% &
          RelativePermeability(liquid_saturation, relative_permeability, & 
-                              dkr_Se, this%option)
-    string = 'Linear-Mualem gas relative permeability as a ' // &
-             'function of liquid saturation'
+                              dkr_sat, this%option)
+    string = 'Linear-Mualem gas relative permeability as a &
+             &function of liquid saturation'
     value = 0.57851239669421495d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = 'Linear-Mualem derivative of liquid relative ' // &
-             'permeability as a function of liquid saturation'
-    value = -1.0000000000000000d0
-    @assertEqual(value, dkr_Se, dabs(value)*tolerance, string)
+    string = 'Linear-Mualem derivative of liquid relative &
+             &permeability as a function of liquid saturation'
+    value = -1.1806375442739079d0
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
   end subroutine testrpf_Linear_Burdine
 

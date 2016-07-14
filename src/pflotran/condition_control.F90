@@ -100,7 +100,7 @@ subroutine CondControlAssignFlowInitCond(realization)
 
   if (option%iflowmode == G_MODE) then
     call GlobalAuxVarInit(global_aux,option)
-    call GeneralAuxVarInit(general_aux,option)
+    call GeneralAuxVarInit(general_aux,PETSC_FALSE,option)
   endif
   
   cur_patch => realization%patch_list%first
