@@ -1,8 +1,8 @@
 .. _thermal-th-steady-1D-conduction-BC-1st-kind:
 
-***********************************
-TUTORIAL: 1D_conduction_BC_1st_kind
-***********************************
+*********************************************
+TUTORIAL: 1D_conduction_BC_1st_kind (TH Mode)
+*********************************************
 :ref:`thermal-th-steady-1D-conduction-BC-1st-kind-description`
 
 :ref:`thermal-th-steady-1D-conduction-BC-1st-kind-pflotran-input`
@@ -54,6 +54,8 @@ the solution becomes,
 
 The PFLOTRAN Input File
 =======================
+The PFLOTRAN input file can be downloaded 
+:download:`here <./1D_conduction_BC_1st_kind.in>`.
 
 The ``SIMULATION`` Block
 ------------------------
