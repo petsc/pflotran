@@ -50,17 +50,17 @@ END
 #=========================== material properties ==============================
 MATERIAL_PROPERTY beam
   ID 1
-  POROSITY 0.01d0
+  POROSITY 1.d-5
   TORTUOSITY 1.d0
-  ROCK_DENSITY 2.8E3
-  SPECIFIC_HEAT 1.d-3
+  ROCK_DENSITY 2.8E3 kg/m^3
+  SPECIFIC_HEAT 1.d-3 J/kg-C
   THERMAL_CONDUCTIVITY_DRY 1 W/m-C
   THERMAL_CONDUCTIVITY_WET 1 W/m-C
   SATURATION_FUNCTION default
   PERMEABILITY
-    PERM_X 1.d-12
-    PERM_Y 1.d-12
-    PERM_Z 1.d-12
+    PERM_X 1.d-20
+    PERM_Y 1.d-20
+    PERM_Z 1.d-20
   /
 END
 
@@ -81,10 +81,7 @@ END
 #=========================== output options ===================================
 OUTPUT
   SNAPSHOT_FILE
-    TIMES yr 100
-    #PERIODIC TIME 1000 y
     NO_PRINT_INITIAL
-    #FORMAT TECPLOT BLOCK
     FORMAT VTK
   /
 END
@@ -93,7 +90,7 @@ END
 TIME
   FINAL_TIME 100 yr
   INITIAL_TIMESTEP_SIZE 1.d-4 day
-  MAXIMUM_TIMESTEP_SIZE 5.d0 yr at 0.d0 yr
+  MAXIMUM_TIMESTEP_SIZE 2.d0 yr at 0.d0 yr
 END
 
 #======================= flow conditions ======================================
@@ -102,7 +99,7 @@ FLOW_CONDITION initial
     TEMPERATURE dirichlet
     PRESSURE dirichlet
   /
-  TEMPERATURE 1.5D0 C
+  TEMPERATURE 1.5d0 C
   PRESSURE 101325 Pa
 END
 
@@ -111,7 +108,7 @@ FLOW_CONDITION left_end
     TEMPERATURE dirichlet
     PRESSURE dirichlet
   /
-  TEMPERATURE 1.D0 C
+  TEMPERATURE 1.d0 C
   PRESSURE 101325 Pa
 END
 
@@ -120,7 +117,7 @@ FLOW_CONDITION right_end
     TEMPERATURE dirichlet
     PRESSURE dirichlet
   /
-  TEMPERATURE 2.D0 C
+  TEMPERATURE 2.d0 C
   PRESSURE 101325 Pa
 END
 
