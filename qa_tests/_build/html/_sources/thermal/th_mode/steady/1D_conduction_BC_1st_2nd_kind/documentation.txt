@@ -1,7 +1,7 @@
 .. _thermal-th-steady-1D-conduction-BC-1st-2nd-kind:
 
 ***************************************
-TUTORIAL: 1D_conduction_BC_1st_2nd-kind
+TUTORIAL: 1D_conduction_BC_1st_2nd_kind
 ***************************************
 :ref:`thermal-th-steady-1D-conduction-BC-1st-2nd-kind-description`
 
