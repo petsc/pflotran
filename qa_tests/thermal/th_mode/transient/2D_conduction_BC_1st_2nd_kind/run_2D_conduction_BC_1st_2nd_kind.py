@@ -111,20 +111,30 @@ k = 0
 for t in t_soln:
   t = t*(24.*3600.)
   sum_term_y = np.zeros(int(ny))
-  # truncate infinite sum to 500
-  for n in range(500):
+  sum_term_old_y = np.zeros(int(ny))
+  n = 1
+  epsilon = 1
+  # infinite sum truncated once max(epsilon) < 1e-25:
+  while epsilon > 1e-25:
+    sum_term_old_y = sum_term_y
+    sum_term_y = sum_term_old_y + (np.cos(n*math.pi*y_soln/L)*np.exp(-chi*pow(n,2)*pow(math.pi,2)*t/pow(L,2))*(80./(3.*pow((n*math.pi),2)))*np.cos(n*math.pi/2.)*np.sin(n*math.pi/4.)*np.sin(3.*n*math.pi/20.))
+    epsilon = np.max(np.abs(sum_term_old_y-sum_term_y))
     n = n + 1
-    sum_term_y = sum_term_y + (np.cos(n*math.pi*y_soln/L)*np.exp(-chi*pow(n,2)*pow(math.pi,2)*t/pow(L,2))*(80./(3.*pow((n*math.pi),2)))*np.cos(n*math.pi/2.)*np.sin(n*math.pi/4.)*np.sin(3.*n*math.pi/20.))
   T2y = 0.5 + sum_term_y
   sum_term_x = np.zeros(int(nx))
-  # truncate infinite sum to 500
-  for n in range(500):
+  sum_term_old_x = np.zeros(int(nx))
+  n = 1
+  epsilon = 1
+  # infinite sum truncated once max(epsilon) < 1e-25:
+  while epsilon > 1e-25:
+    sum_term_old_x = sum_term_x
+    sum_term_x = sum_term_old_x + (np.sin(n*math.pi*x_soln/L)*np.exp(-chi*pow(n,2)*pow(math.pi,2)*t/pow(L,2))*(80./(3.*pow((n*math.pi),2)))*np.sin(n*math.pi/2.)*np.sin(n*math.pi/4.)*np.sin(3.*n*math.pi/20.))
+    epsilon = np.max(np.abs(sum_term_old_x-sum_term_x))
     n = n + 1
-    sum_term_x = sum_term_x + (np.sin(n*math.pi*x_soln/L)*np.exp(-chi*pow(n,2)*pow(math.pi,2)*t/pow(L,2))*(80./(3.*pow((n*math.pi),2)))*np.sin(n*math.pi/2.)*np.sin(n*math.pi/4.)*np.sin(3.*n*math.pi/20.))
   T1x = sum_term_x
   for i in range(int(nx)):
     for j in range(int(ny)):
-      T_soln[k,j,i] = T0*T1x[i]*T2y[j]
+      T_soln[k,j,i] = T0*T1x[i]*T2y[j] + 0.10
   k = k + 1
 
 # Read PFLOTRAN output file containing the temperature solution
@@ -215,45 +225,48 @@ for i in range(int(nx)):
 #Close PFLOTRAN output file because we are done with it
 f.close()
 
-# Plot the PFLOTRAN and analytical solutions
-if plot_flag:  
-  X,Y = np.meshgrid(x_soln,y_soln)
-  plt.subplot(221)
-  # temperature values to contour against and compare visually
-  levels = np.linspace(0.,1.,11)
-  plt.contourf(X,Y,T_soln[0,:,:],levels,alpha=0.75)
-  C = plt.contour(X,Y,T_pflotran[0,:,:],levels,colors='black',linewidth=0.5)
-  plt.clabel(C,inline=True,fontsize=10)
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Distance (m)')
-  plt.title('Analytical (fill) vs. PFLOTRAN (contours) Solution, Temperature, t=0d')
-  plt.subplot(222)
-  # temperature values to contour against and compare visually
-  levels = np.linspace(0.,1.,11)
-  plt.contourf(X,Y,T_soln[1,:,:],levels,alpha=0.75)
-  C = plt.contour(X,Y,T_pflotran[1,:,:],levels,colors='black',linewidth=0.5)
-  plt.clabel(C,inline=True,fontsize=10)
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Distance (m)')
-  plt.title('Analytical (fill) vs. PFLOTRAN (contours) Solution, Temperature, t=0.02d')
-  plt.subplot(223)
-  # temperature values to contour against and compare visually
-  levels = np.linspace(0.,1.,11)
-  plt.contourf(X,Y,T_soln[2,:,:],levels,alpha=0.75)
-  C = plt.contour(X,Y,T_pflotran[2,:,:],levels,colors='black',linewidth=0.5)
-  plt.clabel(C,inline=True,fontsize=10)
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Distance (m)')
-  plt.title('Analytical (fill) vs. PFLOTRAN (contours) Solution, Temperature, t=0.04d')
-  plt.subplot(224)
-  # temperature values to contour against and compare visually
-  levels = np.linspace(0.,1.,11)
-  plt.contourf(X,Y,T_soln[3,:,:],levels,alpha=0.75)
-  C = plt.contour(X,Y,T_pflotran[3,:,:],levels,colors='black',linewidth=0.5)
-  plt.clabel(C,inline=True,fontsize=10)
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Distance (m)')
-  plt.title('Analytical (fill) vs. PFLOTRAN (contours) Solution, Temperature, t=0.10d')
+# Plot the PFLOTRAN and analytical solution:  
+X,Y = np.meshgrid(x_soln,y_soln)
+plt.figure(figsize=(10,10))
+plt.subplot(221)
+# temperature values to contour against and compare visually
+levels = np.linspace(0.,1.,11)
+plt.contourf(X,Y,T_soln[0,:,:],levels,alpha=0.75)
+C = plt.contour(X,Y,T_pflotran[0,:,:],levels,colors='black',linewidth=0.5)
+plt.clabel(C,inline=True,fontsize=10)
+plt.xlabel('Distance (m)')
+plt.ylabel('Distance (m)')
+plt.title('Analytical (fill) vs. PFLOTRAN (contours) Solution, Temperature, t=0d')
+plt.subplot(222)
+# temperature values to contour against and compare visually
+levels = np.linspace(0.,1.,11)
+plt.contourf(X,Y,T_soln[1,:,:],levels,alpha=0.75)
+C = plt.contour(X,Y,T_pflotran[1,:,:],levels,colors='black',linewidth=0.5)
+plt.clabel(C,inline=True,fontsize=10)
+plt.xlabel('Distance (m)')
+plt.ylabel('Distance (m)')
+plt.title('Analytical (fill) vs. PFLOTRAN (contours) Solution, Temperature, t=0.02d')
+plt.subplot(223)
+# temperature values to contour against and compare visually
+levels = np.linspace(0.,1.,11)
+plt.contourf(X,Y,T_soln[2,:,:],levels,alpha=0.75)
+C = plt.contour(X,Y,T_pflotran[2,:,:],levels,colors='black',linewidth=0.5)
+plt.clabel(C,inline=True,fontsize=10)
+plt.xlabel('Distance (m)')
+plt.ylabel('Distance (m)')
+plt.title('Analytical (fill) vs. PFLOTRAN (contours) Solution, Temperature, t=0.04d')
+plt.subplot(224)
+# temperature values to contour against and compare visually
+levels = np.linspace(0.,1.,11)
+plt.contourf(X,Y,T_soln[3,:,:],levels,alpha=0.75)
+C = plt.contour(X,Y,T_pflotran[3,:,:],levels,colors='black',linewidth=0.5)
+plt.clabel(C,inline=True,fontsize=10)
+plt.xlabel('Distance (m)')
+plt.ylabel('Distance (m)')
+plt.title('Analytical (fill) vs. PFLOTRAN (contours) Solution, Temperature, t=0.10d')
+plt.savefig('comparison_plot.png')
+  
+if plot_flag:
   plt.show()
 
 # Calculate error between analytical and PFLOTRAN solutions

@@ -87,25 +87,29 @@ Tb_day = 2.0         # [C/day]
 Tb_sec = 2.0/(24.0*3600.0)   # [C/sec]
 L = 50.0             # [m]
 chi = K/(Cp*rho)
-x_soln1 = np.linspace(0.5,49.5,100)    # [m]
-x_soln2 = np.linspace(-49.5,-0.5,100)  # [m]
+x_soln1 = np.linspace(0.5,49.5,2*L)    # [m]
+x_soln2 = np.linspace(-49.5,-0.5,2*L)  # [m]
 x_soln = np.concatenate((x_soln2,x_soln1),axis=0)
 # Add boundary values to analytical solution
 x_soln = np.concatenate(([-50.0],x_soln),axis=0)
 x_soln = np.concatenate((x_soln,[50.0]),axis=0)
-t_soln = np.array([0.0,0.25,0.50,1.0]) # [day]
-T_soln = np.zeros((4,202))
+t_soln = np.array([0.0,0.25,0.50,0.75]) # [day]
+T_soln = np.zeros((4,(4*L+2)))
+
 for time in range(4):
   t = t_soln[time]*(24.0*3600.0)   # [sec]
-  i = 0
-  for x in x_soln:
-    T_soln[time,i] = Tb_sec*t + ((Tb_sec*(pow(x,2)-pow(L,2)))/(2.*chi)) 
-    sum_term = 0
-    # infinite sum truncated to 1000:
-    for n in range(1000):
-      sum_term = sum_term + (((pow(-1.,n))/(pow(((2*n)+1),3)))*math.cos((math.pi*x*((2*n)+1))/(2*L))*math.exp(-chi*pow((2*n)+1,2)*pow(math.pi,2)*(t/(4*pow(L,2))))) 
-    T_soln[time,i] = T_soln[time,i] + ((16.*Tb_sec*pow(L,2))/(chi*pow(math.pi,3)))*sum_term
-    i = i + 1
+  T_soln[time,:] = Tb_sec*t + ((Tb_sec*(pow(x_soln,2)-pow(L,2)))/(2.*chi))
+  sum_term = np.zeros(4*L+2)
+  sum_term_old = np.zeros(4*L+2)
+  n = 0
+  epsilon = 1.0
+  # infinite sum truncated once max(epsilon) < 1e-10:
+  while epsilon > 1e-10:
+    sum_term_old = sum_term
+    sum_term = sum_term_old + (((pow(-1.,n))/(pow(((2*n)+1),3)))*np.cos((math.pi*x_soln*((2*n)+1))/(2*L))*np.exp(-chi*pow((2*n)+1,2)*pow(math.pi,2)*(t/(4*pow(L,2))))) 
+    epsilon = np.max(np.abs(sum_term_old-sum_term))
+    n = n + 1
+  T_soln[time,:] = T_soln[time,:] + ((16.*Tb_sec*pow(L,2))/(chi*pow(math.pi,3)))*sum_term
 
 # Read PFLOTRAN output file containing the temperature solution
 # There are four output files
@@ -200,36 +204,39 @@ T_pflotran = T_pflotran.astype(np.float)
 f.close()
 
 # Plot the PFLOTRAN and analytical solutions
+t_max = 2.0
+plt.figure(figsize=(10,10))
+plt.subplot(221)
+plt.plot(x_soln,T_pflotran[0,:],'o',x_soln,T_soln[0,:])
+plt.xlabel('Distance (m)')
+plt.ylabel('Temperature (C)')
+plt.ylim([0,t_max])
+plt.title('Solution, t=0day')
+plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
+plt.subplot(222)
+plt.plot(x_soln,T_pflotran[1,:],'o',x_soln,T_soln[1,:])
+plt.xlabel('Distance (m)')
+plt.ylabel('Temperature (C)')
+plt.ylim([0,t_max])
+plt.title('Solution, t=0.25day')
+plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
+plt.subplot(223)
+plt.plot(x_soln,T_pflotran[2,:],'o',x_soln,T_soln[2,:])
+plt.xlabel('Distance (m)')
+plt.ylabel('Temperature (C)')
+plt.ylim([0,t_max])
+plt.title('Solution, t=0.5day')
+plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
+plt.subplot(224)
+plt.plot(x_soln,T_pflotran[3,:],'o',x_soln,T_soln[3,:])
+plt.xlabel('Distance (m)')
+plt.ylabel('Temperature (C)')
+plt.ylim([0,t_max])
+plt.title('Solution, t=0.75day')
+plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
+plt.savefig('comparison_plot.png')
+  
 if plot_flag:
-  t_max = 2.0
-  plt.subplot(221)
-  plt.plot(x_soln,T_pflotran[0,:],'o',x_soln,T_soln[0,:])
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Temperature (C)')
-  plt.ylim([0,t_max])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0day')
-  plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
-  plt.subplot(222)
-  plt.plot(x_soln,T_pflotran[1,:],'o',x_soln,T_soln[1,:])
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Temperature (C)')
-  plt.ylim([0,t_max])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0.25day')
-  plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
-  plt.subplot(223)
-  plt.plot(x_soln,T_pflotran[2,:],'o',x_soln,T_soln[2,:])
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Temperature (C)')
-  plt.ylim([0,t_max])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0.5day')
-  plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
-  plt.subplot(224)
-  plt.plot(x_soln,T_pflotran[3,:],'o',x_soln,T_soln[3,:])
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Temperature (C)')
-  plt.ylim([0,t_max])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0.75day')
-  plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
   plt.show()
 
 # Calculate error between analytical and PFLOTRAN solutions

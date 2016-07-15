@@ -55,7 +55,7 @@ T1x = sum_term_x
 
 for i in range(int(nx)):
   for j in range(int(ny)):
-    rarray[i][j] = T0*T1x[i]*T2y[j]
+    rarray[i][j] = T0*T1x[i]*T2y[j] + 0.10
     if rarray[i][j] < 1.0e-5:
       rarray[i][j] = 0.
 h5dset = h5grp.create_dataset('Data', data=rarray)

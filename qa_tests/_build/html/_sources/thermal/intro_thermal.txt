@@ -17,6 +17,7 @@ Steady Thermal Conduction
 Transient Thermal Conduction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+
 GENERAL MODE
 ------------
 
@@ -28,3 +29,4 @@ Steady Thermal Conduction
 
 Transient Thermal Conduction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+:ref:`thermal-general-transient-2D-conduction-BC-1st-2nd-kind`
