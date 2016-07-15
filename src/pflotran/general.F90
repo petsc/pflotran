@@ -169,7 +169,9 @@ subroutine GeneralSetup(realization)
   allocate(gen_auxvars(0:option%nflowdof,grid%ngmax))
   do ghosted_id = 1, grid%ngmax
     do idof = 0, option%nflowdof
-      call GeneralAuxVarInit(gen_auxvars(idof,ghosted_id),idof==0,option)
+      call GeneralAuxVarInit(gen_auxvars(idof,ghosted_id), &
+                             (general_analytical_derivatives .and. idof==0), &
+                             option)
     enddo
   enddo
   patch%aux%General%auxvars => gen_auxvars
@@ -1158,7 +1160,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
         ! por * denl * dXwl_dXal
         ! Xwl = 1. - Xal
         ! dXwl_dXal = -1.
-        Jac(1,2) = porosity * gen_auxvar%den(1) * -1.d0
+        Jac(1,2) = porosity * gen_auxvar%den(1) * (-1.d0)
         ! w/repect to temperature
         ! por * ddenl_dT * Xwl
         Jac(1,3) = porosity * gen_auxvar%d%denl_T * gen_auxvar%xmol(1,1)
@@ -1188,7 +1190,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
           gen_auxvar%d%por_pl * gen_auxvar%den(1) * gen_auxvar%U(1) + &
           porosity * gen_auxvar%d%denl_pl * gen_auxvar%U(1) + &
           porosity * gen_auxvar%den(1) * gen_auxvar%d%Ul_pl + &
-          -1.d0 * gen_auxvar%d%por_pl * &
+          (-1.d0) * gen_auxvar%d%por_pl * &
             material_auxvar%soil_particle_density * &
             soil_heat_capacity * gen_auxvar%temp
         ! w/respect to air mole fraction
@@ -1224,7 +1226,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                        sir_dn, &
                        thermal_conductivity_dn, &
                        area, dist, general_parameter, &
-                       option,v_darcy,Res,Jac,analytical_derivativess, &
+                       option,v_darcy,Res,Jup,Jdn, &
+                       analytical_derivatives, &
                        debug_connection)
   ! 
   ! Computes the internal flux terms for the residual
@@ -1252,7 +1255,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: thermal_conductivity_dn(2)
   PetscReal :: thermal_conductivity_up(2)
   PetscReal :: Res(option%nflowdof)
-  PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  PetscReal :: Jup(option%nflowdof,option%nflowdof)
+  PetscReal :: Jdn(option%nflowdof,option%nflowdof)
   PetscBool :: analytical_derivatives
   PetscBool :: debug_connection
 
@@ -1282,7 +1286,23 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: adv_flux(3,2), diff_flux(2,2)
   PetscReal :: debug_flux(3,3), debug_dphi(2)
   
-  PetscReal :: dummy_perm_up, dummy_perm_dn
+  PetscReal :: dummy_dperm_up, dummy_dperm_dn
+  PetscReal :: temp_perm_up, temp_perm_dn
+
+  PetscReal :: dden_up, dden_dn
+  PetscReal :: dden_dden_kg_up, dden_dden_kg_dn
+  PetscReal :: ddelta_pressure_dpup, ddelta_pressure_dpdn
+  PetscReal :: ddelta_pressure_dTup, ddelta_pressure_dTdn
+  PetscReal :: dmobility_dpup, dmobility_dpdn
+  PetscReal :: dmobility_dsatup, dmobility_dsatdn
+  PetscReal :: dmobility_dTup, dmobility_dTdn
+  PetscReal :: dmole_flux_dpup, dmole_flux_dpdn
+  PetscReal :: dmole_flux_dTup, dmole_flux_dTdn
+  PetscReal :: dv_darcy_dpup, dv_darcy_dpdn
+  PetscReal :: dv_darcy_dTup, dv_darcy_dTdn
+  PetscReal :: duH_dpup, duH_dpdn
+  PetscReal :: duH_dTup, duH_dTdn
+  PetscReal :: dxmol_up, dxmol_dn
    
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
@@ -1295,23 +1315,25 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   
   ! Fracture permeability change only available for structured grid (Heeho)
   if (associated(material_auxvar_up%fracture)) then
-    call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
-                              dummy_perm_up,dist)
+    call FracturePermEvaluate(material_auxvar_up,perm_up,temp_perm_up, &
+                              dummy_dperm_up,dist)
+    perm_up = temp_perm_up
   endif
   if (associated(material_auxvar_dn%fracture)) then
-    call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                              dummy_perm_dn,dist)
+    call FracturePermEvaluate(material_auxvar_dn,perm_dn,temp_perm_dn, &
+                              dummy_dperm_dn,dist)
+    perm_dn = temp_perm_dn
   endif
   
   if (associated(klinkenberg)) then
     perm_ave_over_dist(1) = (perm_up * perm_dn) / &
                             (dist_up*perm_dn + dist_dn*perm_up)
-    dummy_perm_up = klinkenberg%Evaluate(perm_up, &
+    temp_perm_up = klinkenberg%Evaluate(perm_up, &
                                          gen_auxvar_up%pres(option%gas_phase))
-    dummy_perm_dn = klinkenberg%Evaluate(perm_dn, &
+    temp_perm_dn = klinkenberg%Evaluate(perm_dn, &
                                          gen_auxvar_dn%pres(option%gas_phase))
-    perm_ave_over_dist(2) = (dummy_perm_up * dummy_perm_dn) / &
-                            (dist_up*dummy_perm_dn + dist_dn*dummy_perm_up)
+    perm_ave_over_dist(2) = (temp_perm_up * temp_perm_dn) / &
+                            (dist_up*temp_perm_dn + dist_dn*temp_perm_up)
   else
     perm_ave_over_dist(:) = (perm_up * perm_dn) / &
                             (dist_up*perm_dn + dist_dn*perm_up)
@@ -1532,7 +1554,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 #endif
 
   if (analytical_derivatives) then
-    Jac = 0.d0
+    Jup = 0.d0
+    Jdn = 0.d0
     
     do iphase = 1, option%nphase
  
@@ -1571,6 +1594,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         H_ave = gen_auxvar_up%H(iphase)
         uH = H_ave
         
+        duH_dpup = gen_auxvar_up%d%Hl_pl
+        duH_dpdn = 0.d0
+        duH_dTup = gen_auxvar_up%d%Hl_T
+        duH_dTdn = 0.d0
         dxmol_up = 1.d0
         dxmol_dn = 0.d0
         dmobility_dpup = gen_auxvar_up%d%mobilityl_pl
@@ -1585,6 +1612,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         H_ave = gen_auxvar_dn%H(iphase)
         uH = H_ave
 
+        duH_dpup = 0.d0
+        duH_dTup = 0.d0
+        duH_dTdn = gen_auxvar_dn%d%Hl_T
         dxmol_up = 0.d0
         dxmol_dn = 1.d0
         dmobility_dpup = 0.d0
@@ -1593,8 +1623,6 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         dmobility_dpdn = gen_auxvar_dn%d%mobilityl_pl
         dmobility_dsatdn = gen_auxvar_dn%d%mobilityl_sat
         dmobility_dTdn = gen_auxvar_dn%d%mobilityl_T
-        duH_dp = gen_auxvar_dn%d%Hl_pl
-        duH_dT = gen_auxvar_dn%d%Hl_T
       endif      
 
       if (mobility > floweps) then
@@ -1634,15 +1662,15 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         select case(global_auxvar_up%istate)
           case(LIQUID_STATE)
             dmole_flux_dpup = &
-              (dv_darcy_dpup * density_ave + 
-                v_darcy(iphase) *
+              (dv_darcy_dpup * density_ave + &
+                v_darcy(iphase) * &
                 (dden_up * gen_auxvar_up%d%denl_pl + &
-                 dden_dn * gen_auxvar_dn%d%denl_pl)) + &
+                 dden_dn * gen_auxvar_dn%d%denl_pl))
             dmole_flux_dTup = &
-              (dv_darcy_dTup * density_ave + 
-                v_darcy(iphase) *
+              (dv_darcy_dTup * density_ave + &
+                v_darcy(iphase) * &
                 (dden_up * gen_auxvar_up%d%denl_T + &
-                 dden_dn * gen_auxvar_dn%d%denl_T)) + &
+                 dden_dn * gen_auxvar_dn%d%denl_T))
             do icomp = 1, option%nflowspec
               Jup(icomp,1) = Jup(icomp,1) + dmole_flux_dpup * xmol(icomp)
               Jup(icomp,2) = Jup(icomp,2) + mole_flux * dxmol_up
@@ -1658,15 +1686,15 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         select case(global_auxvar_dn%istate)
           case(LIQUID_STATE)
             dmole_flux_dpdn = &
-              (dv_darcy_dpdn * density_ave + 
-                v_darcy(iphase) *
+              (dv_darcy_dpdn * density_ave + &
+                v_darcy(iphase) * &
                 (dden_up * gen_auxvar_up%d%denl_pl + &
-                 dden_dn * gen_auxvar_dn%d%denl_pl)) + &
+                 dden_dn * gen_auxvar_dn%d%denl_pl)) 
             dmole_flux_dTdn = &
-              (dv_darcy_dTdn * density_ave + 
-                v_darcy(iphase) *
+              (dv_darcy_dTdn * density_ave + &
+                v_darcy(iphase) * &
                 (dden_up * gen_auxvar_up%d%denl_T + &
-                 dden_dn * gen_auxvar_dn%d%denl_T)) + &
+                 dden_dn * gen_auxvar_dn%d%denl_T))
             do icomp = 1, option%nflowspec
               Jdn(icomp,1) = Jdn(icomp,1) + dmole_flux_dpdn * xmol(icomp)
               Jdn(icomp,2) = Jdn(icomp,2) + mole_flux * dxmol_dn
@@ -1859,11 +1887,14 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
   PetscReal :: xmol_air_up, xmol_air_dn
   PetscReal :: tempreal
   PetscReal :: delta_X_whatever
-  
+
+  PetscReal :: dden_dn, dden_up
+
   PetscInt :: idof
   PetscBool :: neumann_bc_present
   
-  PetscReal :: dummy_perm_dn
+  PetscReal :: temp_perm_dn
+  PetscReal :: dummy_dperm_dn
   
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
@@ -1886,8 +1917,9 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
 
   ! Fracture permeability change only available for structured grid (Heeho)
   if (associated(material_auxvar_dn%fracture)) then
-    call FracturePermEvaluate(material_auxvar_dn,perm_dn,perm_dn, &
-                              dummy_perm_dn,dist)
+    call FracturePermEvaluate(material_auxvar_dn,perm_dn,temp_perm_dn, &
+                              dummy_dperm_dn,dist)
+    perm_dn = temp_perm_dn
   endif  
   
   if (associated(klinkenberg)) then
@@ -2348,7 +2380,7 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
   call GeneralAccumulation(gen_auxvar(ZERO_INTEGER), &
                            global_auxvar, &
                            material_auxvar,soil_heat_capacity,option, &
-                           res,jac,PETSC_TRUE, &
+                           res,jac,general_analytical_derivatives, &
                            PETSC_FALSE)
                            
   do idof = 1, option%nflowdof
@@ -2419,7 +2451,11 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: area
   PetscReal :: dist(-1:3)
   type(general_parameter_type) :: general_parameter
-  PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
+  PetscReal :: Jup(option%nflowdof,option%nflowdof)
+  PetscReal :: Jdn(option%nflowdof,option%nflowdof)
+  PetscReal :: Janal_up(option%nflowdof,option%nflowdof)
+  PetscReal :: Janal_dn(option%nflowdof,option%nflowdof)
+  PetscReal :: Jdummy(option%nflowdof,option%nflowdof)
 
   PetscReal :: v_darcy(option%nphase)
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
@@ -2437,7 +2473,8 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
                    material_auxvar_dn,sir_dn, &
                    thermal_conductivity_dn, &
                    area,dist,general_parameter, &
-                   option,v_darcy,res,PETSC_FALSE)
+                   option,v_darcy,res,Janal_up,Janal_dn,&
+                   general_analytical_derivatives,PETSC_FALSE)
                            
   ! upgradient derivatives
   do idof = 1, option%nflowdof
@@ -2448,7 +2485,8 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
                      material_auxvar_dn,sir_dn, &
                      thermal_conductivity_dn, &
                      area,dist,general_parameter, &
-                     option,v_darcy,res_pert,PETSC_FALSE)
+                     option,v_darcy,res_pert,Jdummy,Jdummy, &
+                     PETSC_FALSE,PETSC_FALSE)
     do irow = 1, option%nflowdof
       Jup(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_up(idof)%pert
 !geh:print *, 'up: ', irow, idof, Jup(irow,idof), gen_auxvar_up(idof)%pert
@@ -2464,7 +2502,8 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
                      material_auxvar_dn,sir_dn, &
                      thermal_conductivity_dn, &
                      area,dist,general_parameter, &
-                     option,v_darcy,res_pert,PETSC_FALSE)
+                     option,v_darcy,res_pert,Jdummy,Jdummy, &
+                     PETSC_FALSE,PETSC_FALSE)
     do irow = 1, option%nflowdof
       Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
 !geh:print *, 'dn: ', irow, idof, Jdn(irow,idof), gen_auxvar_dn(idof)%pert
@@ -2808,7 +2847,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
                              global_auxvars(ghosted_id), &
                              material_auxvars(ghosted_id), &
                              material_parameter%soil_heat_capacity(imat), &
-                             option,Res,Jac_dummy,PETSC_FALSE, &
+                             option,Res,Jac_dummy, &
+                             general_analytical_derivatives, &
                              local_id == general_debug_cell_id) 
     r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
     
@@ -2860,6 +2900,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
                        cur_connection_set%area(iconn), &
                        cur_connection_set%dist(:,iconn), &
                        general_parameter,option,v_darcy,Res, &
+                       Jac_dummy,Jac_dummy, &
+                       general_analytical_derivatives, &
                        (local_id_up == general_debug_cell_id .or. &
                         local_id_dn == general_debug_cell_id))
 
@@ -3769,7 +3811,7 @@ subroutine GeneralSSSandbox(residual,Jacobian,compute_derivative, &
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
 
-  PetscBool :: analytical_derivatives
+  PetscBool :: compute_derivative
   Vec :: residual
   Mat :: Jacobian
   class(material_auxvar_type), pointer :: material_auxvars(:)

@@ -1836,6 +1836,10 @@ subroutine GeneralAuxVarStrip(auxvar)
   call DeallocateArray(auxvar%H)  
   call DeallocateArray(auxvar%U)  
   call DeallocateArray(auxvar%mobility)  
+  if (associated(auxvar%d)) then
+    deallocate(auxvar%d)
+    nullify(auxvar%d)
+  endif
   
 end subroutine GeneralAuxVarStrip
 
