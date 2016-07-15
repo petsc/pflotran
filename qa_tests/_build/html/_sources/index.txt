@@ -20,7 +20,7 @@ Links to All Tutorials
 ^^^^^^^^^^^^^^^^^^^^^^
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    
    /thermal/th_mode/steady/1D_conduction_BC_1st_kind/documentation
    /thermal/general_mode/steady/1D_conduction_BC_1st_kind/documentation

@@ -1,8 +1,8 @@
 .. _thermal-th-steady-1D-conduction-BC-1st-kind:
 
-*********************************************
-TUTORIAL: 1D_conduction_BC_1st_kind (TH Mode)
-*********************************************
+**********************************************************
+TUTORIAL: 1D Thermal Conduction, BCs of 1st Kind (TH Mode)
+**********************************************************
 :ref:`thermal-th-steady-1D-conduction-BC-1st-kind-description`
 
 :ref:`thermal-th-steady-1D-conduction-BC-1st-kind-pflotran-input`
