@@ -13,16 +13,23 @@ Contents:
    
    intro_general
    /thermal/intro_thermal
+   /flow/intro_flow
+
+   
+Links to All Tutorials
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. toctree::
+   :maxdepth: 2
+   
    /thermal/th_mode/steady/1D_conduction_BC_1st_kind/documentation
    /thermal/general_mode/steady/1D_conduction_BC_1st_kind/documentation
    /thermal/th_mode/steady/1D_conduction_BC_1st_2nd_kind/documentation
-   /flow/intro_flow
 
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. Indices and tables
+   ==================
+   * :ref:`genindex`
+   * :ref:`modindex`
+   * :ref:`search`
 

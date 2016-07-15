@@ -1,4 +1,4 @@
-Thermal QA Tests AND Tutorials
+Thermal QA Tests and Tutorials
 ==============================
 The set of thermal QA tests exercise PFLOTRAN's TH and GENERAL modes on several 
 steady and transient thermal conduction problems. Because these test problems
