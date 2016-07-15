@@ -4,7 +4,7 @@ SIMULATION
   SIMULATION_TYPE SUBSURFACE
   PROCESS_MODELS
     SUBSURFACE_FLOW flow
-      MODE GENERAL
+      MODE TH
     /
   /
   #INPUT_RECORD_FILE
@@ -57,13 +57,13 @@ END
 #=========================== material properties ==============================
 MATERIAL_PROPERTY beam_left
   ID 1
-  POROSITY 0.01d0
+  POROSITY 1.d-5
   TORTUOSITY 1.d0
   ROCK_DENSITY 2.8E3
-  HEAT_CAPACITY 1.d-3
+  SPECIFIC_HEAT 1.d-3
   THERMAL_CONDUCTIVITY_DRY 100 W/m-C
   THERMAL_CONDUCTIVITY_WET 100 W/m-C
-  CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION default
   PERMEABILITY
     PERM_X 1.d-20
     PERM_Y 1.d-20
@@ -73,13 +73,13 @@ END
 
 MATERIAL_PROPERTY beam_right
   ID 2
-  POROSITY 0.01d0
+  POROSITY 1.d-5
   TORTUOSITY 1.d0
   ROCK_DENSITY 2.8E3
-  HEAT_CAPACITY 1.d-3
+  SPECIFIC_HEAT 1.d-3
   THERMAL_CONDUCTIVITY_DRY 300 W/m-C
   THERMAL_CONDUCTIVITY_WET 300 W/m-C
-  CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION default
   PERMEABILITY
     PERM_X 1.d-20
     PERM_Y 1.d-20
@@ -88,21 +88,11 @@ MATERIAL_PROPERTY beam_right
 END
 
 #=========================== characteristic curves ============================
-CHARACTERISTIC_CURVES cc1
-  SATURATION_FUNCTION VAN_GENUCHTEN
-    LIQUID_RESIDUAL_SATURATION 0.5d-1
-    M 0.75
-    ALPHA 1.d-3
-  /
-  PERMEABILITY_FUNCTION MUALEM
-    LIQUID_RESIDUAL_SATURATION 0.1d0
-    M 0.5d0
-  /
-  PERMEABILITY_FUNCTION MUALEM_VG_GAS
-    LIQUID_RESIDUAL_SATURATION 0.1d0
-    GAS_RESIDUAL_SATURATION 0.1d0
-    M 0.5d0
-  /
+SATURATION_FUNCTION default
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.5d-1
+  LAMBDA 0.75
+  ALPHA 1.d-3
 END
 
 #===================== stratigraphy couplers ==================================
@@ -116,16 +106,11 @@ STRATA
   MATERIAL beam_right
 END
 
-#=========================== fluid properties =================================
-FLUID_PROPERTY
-  DIFFUSION_COEFFICIENT 1.d-9
-END
-
 #=========================== output options ===================================
 OUTPUT
   SNAPSHOT_FILE
-    TIMES yr 100
     NO_PRINT_INITIAL
+    #NO_PRINT_FINAL
     FORMAT VTK
   /
 END
@@ -134,41 +119,35 @@ END
 TIME
   FINAL_TIME 100 yr
   INITIAL_TIMESTEP_SIZE 1.d-4 day
-  MAXIMUM_TIMESTEP_SIZE 5.d0 yr at 0.d0 yr
+  MAXIMUM_TIMESTEP_SIZE 2.d0 yr at 0.d0 yr
 END
 
 #======================= flow conditions ======================================
 FLOW_CONDITION initial
   TYPE
     TEMPERATURE dirichlet
-    LIQUID_PRESSURE dirichlet
-    MOLE_FRACTION dirichlet
+    PRESSURE dirichlet
   /
   TEMPERATURE 1.0d0 C
-  LIQUID_PRESSURE 101325 Pa
-  MOLE_FRACTION 1.d-10
+  PRESSURE 101325 Pa
 END
 
 FLOW_CONDITION left_face
   TYPE
     TEMPERATURE dirichlet
-    LIQUID_FLUX neumann
-    GAS_FLUX neumann
+    PRESSURE dirichlet
   /
   TEMPERATURE 1.d0 C
-  LIQUID_FLUX 0.d0 m/yr
-  GAS_FLUX 0.d0 m/yr
+  PRESSURE 101325 Pa
 END
 
 FLOW_CONDITION right_face
   TYPE
     ENERGY_FLUX neumann
-    LIQUID_FLUX neumann
-    GAS_FLUX neumann
+    PRESSURE dirichlet
   /
   ENERGY_FLUX +1.5d0 W/m^2
-  LIQUID_FLUX 0.d0 m/yr
-  GAS_FLUX 0.d0 m/yr
+  PRESSURE 101325 Pa
 END
 
 #========================== initial and boundary conditions ===================
@@ -190,8 +169,8 @@ END
 
 # east boundary condition
 BOUNDARY_CONDITION right_face
-  FLOW_CONDITION right_face
   REGION right_face
+  FLOW_CONDITION right_face
 END
 
 

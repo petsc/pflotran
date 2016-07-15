@@ -25,6 +25,7 @@ Links to All Tutorials
    /thermal/th_mode/steady/1D_conduction_BC_1st_kind/documentation
    /thermal/general_mode/steady/1D_conduction_BC_1st_kind/documentation
    /thermal/th_mode/steady/1D_conduction_BC_1st_2nd_kind/documentation
+   /thermal/general_mode/steady/1D_conduction_BC_1st_2nd_kind/documentation
 
 
 .. Indices and tables

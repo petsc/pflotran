@@ -24,5 +24,7 @@ Steady Thermal Conduction
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 :ref:`thermal-general-steady-1D-conduction-BC-1st-kind`
 
+:ref:`thermal-general-steady-1D-conduction-BC-1st-2nd-kind`
+
 Transient Thermal Conduction
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

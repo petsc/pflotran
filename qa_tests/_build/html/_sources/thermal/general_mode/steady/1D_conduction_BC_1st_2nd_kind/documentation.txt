@@ -1,15 +1,15 @@
-.. _thermal-general-steady-1D-conduction-BC-1st-kind:
+.. _thermal-general-steady-1D-conduction-BC-1st-2nd-kind:
 
-***************************************************************
-TUTORIAL: 1D Thermal Conduction, BCs of 1st Kind (GENERAL Mode)
-***************************************************************
-:ref:`thermal-general-steady-1D-conduction-BC-1st-kind-description`
+*********************************************************************
+TUTORIAL: 1D Thermal Conduction, BCs of 1st & 2nd Kind (GENERAL Mode)
+*********************************************************************
+:ref:`thermal-general-steady-1D-conduction-BC-1st-2nd-kind-description`
 
-:ref:`thermal-general-steady-1D-conduction-BC-1st-kind-pflotran-input`
+:ref:`thermal-general-steady-1D-conduction-BC-1st-2nd-kind-pflotran-input`
 
-:ref:`thermal-general-steady-1D-conduction-BC-1st-kind-python`
+:ref:`thermal-general-steady-1D-conduction-BC-1st-2nd-kind-python`
 
-.. _thermal-general-steady-1D-conduction-BC-1st-kind-description:
+.. _thermal-general-steady-1D-conduction-BC-1st-2nd-kind-description:
 
 The Problem Description
 =======================
@@ -17,17 +17,19 @@ The Problem Description
 This problem is adapted from *Kolditz, et al. (2015), 
 Thermo-Hydro-Mechanical-Chemical Processes in Fractured Porous Media: 
 Modelling and Benchmarking, Closed Form Solutions, Springer International 
-Publishing, Switzerland.* Section 2.1.1, pg.14, "A 1D Steady-State 
-Temperature Distribution, Boundary Conditions of 1st Kind."
+Publishing, Switzerland.* Section 2.1.2, pg.15, "A 1D Steady-State 
+Temperature Distribution, Boundary Conditions of 1st and 2nd Kind."
 
 The domain is a 100x10x10 meter rectangular beam extending along the positive 
 x-axis and is made up of 10x1x1 cubic grid cells with dimensions 10x10x10 
-meters. The domain material is assigned the following properties: thermal
-conductivity *K* = 1.0 W/(m-C); specific heat capacity *Cp* = 0.001 J/(m-C); 
-density *rho* = 2,800 kg/m^3.
+meters. The domain is composed of two materials and is assigned the following 
+properties: thermal conductivity *K1(x<2L/5)* = 100 W/(m-C); thermal 
+conductivity *K2(x>2L/5)* = 300 W/(m-C); specific heat capacity *Cp* = 0.001 
+J/(m-C); density *rho* = 2,800 kg/m^3.
 
-The temperature is initially uniform at *T(t=0)* = 1.5C.
-The boundary temperatures are *T(x=0)* = 1.0C and *T(x=L)* = 2.0C, where L = 100 m.
+The temperature is initially uniform at *T(t=0)* = 1.0C.
+The boundary temperature at the left end is *T(x=0)* = 1.0C and a heat flux 
+*q(x=L)* = -1.5 W/m^2 is applied at the right end, where L = 100 m.
 The simulation is run until the steady-state temperature distribution
 develops. 
 
@@ -37,12 +39,20 @@ The LaPlace equation governs the steady-state temperature distribution,
 
 The solution is given by,
 
-.. math:: T(x) = ax + b
+.. math:: 
 
-When the boundary conditions *T(x=0)* = 1.0C and *T(x=L)* = 2.0C are applied,
-the solution becomes,
+   T(x<2L/5) = a_1 x + b_1
+   
+   T(x>2L/5) = a_2 x + b_2
 
-.. math:: T(x) = T(x=0){x \over L}
+When the boundary conditions *T(x=0)* = 1.0C and *q(x=L)* = -1.5 W/m^2 are 
+applied, the solution becomes,
+
+.. math:: 
+
+   T(x<2L/5) = -{{qx} \over {K1}} + T(x=0)
+   
+   T(x>2L/5) = -{{qx} \over {K2}} + T(x=0) + {{2qL} \over {5}}\left({1 \over K2}-{1 \over K1}\right)
 
 .. image:: visit_figure.png
    :width: 600px
@@ -50,12 +60,12 @@ the solution becomes,
 .. image:: comparison_plot.png
    :width: 600px
    
-.. _thermal-general-steady-1D-conduction-BC-1st-kind-pflotran-input:
+.. _thermal-general-steady-1D-conduction-BC-1st-2nd-kind-pflotran-input:
 
 The PFLOTRAN Input File
 =======================
 The PFLOTRAN input file can be downloaded 
-:download:`here <./1D_conduction_BC_1st_kind.in>`.
+:download:`here <./1D_conduction_BC_1st_2nd_kind.in>`.
 
 The ``SIMULATION`` Block
 ------------------------
@@ -118,14 +128,23 @@ the ``GRID`` card, so it must be closed with an ``END``.
 The ``REGION`` Card
 ^^^^^^^^^^^^^^^^^^^
 Next we describe regions and boundaries of the domain with ``REGION`` cards
-for each region or boundary. Since the entire domain consists of just one 
-material, we first create a region called ``all`` and assign it with
-``COORDINATES``. The two sets of coordinates define a box-like region which we
-call ``all``::
+for each region or boundary. Since the domain consists of two materials, 
+we first create a region called ``left`` and assign it with
+``COORDINATES`` that define a box-like volume which defines region ``left``.
+Region ``left`` contains the domain where x < 2L/5 and is assigned K1
+thermal conductivity. Similarly, we create a region called ``right`` which
+contains the domain where x > 2L/5 and is assigned K2 thermal conductivity::
 
-  REGION all
+  REGION left
     COORDINATES
-      0.d0    0.d0   0.d0
+      0.d0   0.d0   0.d0
+      40.d0  10.d0  10.d0
+    /
+  END
+  
+  REGION right
+    COORDINATES
+      40.d0   0.d0   0.d0
       100.d0  10.d0  10.d0
     /
   END
@@ -157,17 +176,17 @@ The ``MATERIAL_PROPERTY`` Card
 Next, we describe the material properties within the domain with the
 ``MATERIAL_PROPERTY`` card. Because this is a conduction test, we intentionally
 limit fluid flow by setting the porosity to a very small value, as well as the
-permeability (assumed units m^2). The material density is 2,800 kg/m^3, the 
-heat capacity is 0.001 J/kg-C, and the thermal conductivity is set to 1.0 W/m-C::
+permeability (assumed units m^2). In this problem, we have two materials, so
+we have two ``MATERIAL_PROPERTY`` cards:: 
 
-  MATERIAL_PROPERTY beam
+  MATERIAL_PROPERTY beam_left
     ID 1
     POROSITY 1.d-5
     TORTUOSITY 1.d0
     ROCK_DENSITY 2.8E3 kg/m^3
     HEAT_CAPACITY 1.d-3 J/kg-C
-    THERMAL_CONDUCTIVITY_DRY 1 W/m-C
-    THERMAL_CONDUCTIVITY_WET 1 W/m-C
+    THERMAL_CONDUCTIVITY_DRY 100 W/m-C
+    THERMAL_CONDUCTIVITY_WET 100 W/m-C
     CHARACTERISTIC_CURVES cc1
     PERMEABILITY
       PERM_X 1.d-20
@@ -176,7 +195,28 @@ heat capacity is 0.001 J/kg-C, and the thermal conductivity is set to 1.0 W/m-C:
     /
   END
   
-We call this material ``beam`` and we assign it a material ID 1. We assign it
+  MATERIAL_PROPERTY beam_right
+    ID 2
+    POROSITY 1.d-5
+    TORTUOSITY 1.d0
+    ROCK_DENSITY 2.8E3 kg/m^3
+    HEAT_CAPACITY 1.d-3 J/kg-C
+    THERMAL_CONDUCTIVITY_DRY 300 W/m-C
+    THERMAL_CONDUCTIVITY_WET 300 W/m-C
+    CHARACTERISTIC_CURVES cc1
+    PERMEABILITY
+      PERM_X 1.d-20
+      PERM_Y 1.d-20
+      PERM_Z 1.d-20
+    /
+  END
+  
+Both materials are identical except for the value of thermal conductivity.
+The material density is 2,800 kg/m^3, the heat capacity is 0.001 J/kg-C, and 
+the thermal conductivity is set to 100 W/m-C for the left part of the beam,
+and 300 W/m-C for the right part of the beam. To differentiate the two
+materials, we call one material ``beam_left`` and the other ``beam_right``,
+and we assign them different material IDs. We assign both materials
 a ``CHARACTERISTIC_CURVES`` called ``cc1``, which is later defined with the 
 ``CHARACTERISTIC_CURVES`` card.
 
@@ -185,7 +225,7 @@ The ``CHARACTERISTIC_CURVES`` Card
 Because this is a thermal conduction only test, the ``CHARACTERISTIC_CURVES`` 
 card should not matter, but it is required for the ``SUBSURFACE_FLOW`` process 
 model. We call this card ``cc1``, which is consistent with the name in
-the ``MATERIAL_PROPERTY`` card. We assign it a ``VAN_GENUCHTEN`` saturation
+the ``MATERIAL_PROPERTY`` cards. We assign it a ``VAN_GENUCHTEN`` saturation
 function, and set typical values for the residual saturation, and M and alpha 
 parameters::
 
@@ -208,12 +248,18 @@ parameters::
 
 The ``STRATA`` Card
 ^^^^^^^^^^^^^^^^^^^
-The ``STRATA`` card links the material we have defined with the
-``MATERIAL_PROPERTY`` card to the region we defined with the ``REGION`` card::
+The ``STRATA`` card links the materials we have defined with the
+``MATERIAL_PROPERTY`` cards to the regions we defined with the ``REGION`` 
+cards::
 
   STRATA
-    REGION all
-    MATERIAL beam
+    REGION left
+    MATERIAL beam_left
+  END
+  
+  STRATA
+    REGION right
+    MATERIAL beam_right
   END
   
 The ``FLUID_PROPERTY`` Card
@@ -276,7 +322,7 @@ do this with the ``FLOW_CONDITION`` card::
       LIQUID_PRESSURE dirichlet
       MOLE_FRACTION dirichlet
     /
-    TEMPERATURE 1.5d0 C
+    TEMPERATURE 1.0d0 C
     LIQUID_PRESSURE 101325 Pa
     MOLE_FRACTION 1.d-10
   END
@@ -284,56 +330,61 @@ do this with the ``FLOW_CONDITION`` card::
 Here we've called the flow condition ``initial`` because it is the initial 
 condition. In the ``TYPE`` sub-block, we specific the type of initial condition
 for each parameter. In this case, we want the domain to have an initial 
-temperature of 1.5C, so the flow condition type for temperature is ``dirichlet``. 
-We set the pressure to atmospheric (101325 Pa), which is also a ``dirichlet`` 
+temperature of 1.0C, so the flow condition type for temperature is ``dirichlet``. 
+We set the liquid pressure to atmospheric (101325 Pa), which is also a ``dirichlet`` 
 type. We set the gas mole fraction to a small number.
 
 For each boundary, we also use the ``FLOW_CONDITION`` card to specify boundary
 conditions::
 
-  FLOW_CONDITION left_end
+  FLOW_CONDITION left_face
     TYPE
       TEMPERATURE dirichlet
-      LIQUID_PRESSURE dirichlet
-      MOLE_FRACTION dirichlet
+      LIQUID_FLUX neumann
+      GAS_FLUX neumann
     /
     TEMPERATURE 1.d0 C
-    LIQUID_PRESSURE 101325 Pa
-    MOLE_FRACTION 1.d-10
+    LIQUID_FLUX 0.d0 m/yr
+    GAS_FLUX 0.d0 m/yr
   END
 
-  FLOW_CONDITION right_end
+  FLOW_CONDITION right_face
     TYPE
-      TEMPERATURE dirichlet
-      LIQUID_PRESSURE dirichlet
-      MOLE_FRACTION dirichlet
+      ENERGY_FLUX neumann
+      LIQUID_FLUX neumann
+      GAS_FLUX neumann
     /
-    TEMPERATURE 2.d0 C
-    LIQUID_PRESSURE 101325 Pa
-    MOLE_FRACTION 1.d-10
+    ENERGY_FLUX +1.5 W/m^2
+    LIQUID_FLUX 0.d0 m/yr
+    GAS_FLUX 0.d0 m/yr
   END
 
-At the ``left_end`` (or west face), we apply a ``dirichlet`` type temperature 
-boundary condition of 1.0C. At the ``right_end`` (or east face), we apply a 
-``dirichlet`` type temperature boundary condition of 2.0C. Because we don't 
-want any fluid flow for this problem, we apply identical ``dirichlet`` type
-pressure boundary conditions so that no pressure gradient exists. Similarly, 
-we apply a very small gas mole fraction.
+At the ``left_face`` (or west face), we apply a ``dirichlet`` type temperature 
+boundary condition of 1.0C. At the ``right_face`` (or east face), we apply a 
+``neumann`` type heat flux boundary condition of -1.5 W/m^2. PFLOTRAN
+convention means this is a positive value on the east face. Because we don't 
+want any fluid or gas flow for this problem, we apply identical ``neumann`` 
+type fluid and gas flux boundary conditions so that no fluid flux exists.
 
 The ``INITIAL_CONDITION`` Card
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Similarly to the ``STRATA`` card, we use the ``INITIAL_CONDITION`` card to
 link the initial condition we defined in the ``FLOW_CONDITION`` card to the
-region it is applied at::
+regions it is applied at::
 
-  INITIAL_CONDITION initial
-    REGION all
+  INITIAL_CONDITION initial_left
+    REGION left
     FLOW_CONDITION initial
   END
   
-Above, we've linked the ``initial`` flow condition to region ``all``, because
-we want the initial condition to be applied over the whole domain. We call this
-``INITIAL_CONDITION`` ``initial`` (since there may be more than one defined).
+  INITIAL_CONDITION initial_right
+    REGION right
+    FLOW_CONDITION initial
+  END
+  
+Above, we've linked the ``initial`` flow condition to both regions ``left``
+and ``right``, because we want the initial condition to be applied over the 
+whole domain. We give the two ``INITIAL_CONDITION`` cards unique names.
 
 The ``BOUNDARY_CONDITION`` Card
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -341,22 +392,22 @@ Similarly to the ``STRATA`` card, we use the ``BOUNDARY_CONDITION`` card to
 link the boundary conditions we defined in the ``FLOW_CONDITION`` card to the
 regions they are applied at::
 
-  BOUNDARY_CONDITION left_end
-    REGION left_end
-    FLOW_CONDITION left_end
+  BOUNDARY_CONDITION left_face
+    REGION left_face
+    FLOW_CONDITION left_face
   END
 
-  BOUNDARY_CONDITION right_end
-    FLOW_CONDITION right_end
-    REGION right_end
+  BOUNDARY_CONDITION right_face
+    REGION right_face
+    FLOW_CONDITION right_face
   END
 
-Above, we've linked the ``left_end`` flow condition to region ``left_end``, 
-and the ``right_end`` flow condition to region ``right_end``. We also give
-each of the ``BOUNDARY_CONDITION`` cards a descriptive name to differentiate
+Above, we've linked the ``left_face`` flow condition to region ``left_face``, 
+and the ``right_face`` flow condition to region ``right_face``. We also give
+each of the ``BOUNDARY_CONDITION`` cards a unique name to differentiate
 them.
   
-.. _thermal-general-steady-1D-conduction-BC-1st-kind-python:
+.. _thermal-general-steady-1D-conduction-BC-1st-2nd-kind-python:
 
 The Python Script
 =================
@@ -399,9 +450,19 @@ centers. We also include the boundaries.
 
 .. code-block:: python
 
-   L = 100.
+   K1 = 100.  # [W/m-C]
+   K2 = 300.  # [W/m-C]
+   q = -1.5   # [W/m^2]
+   L = 100.   # [m]
    x_soln = np.array([0.,5.,15.,25.,35.,45.,55.,65.,75.,85.,95.,100.])
-   T_soln = np.array(x_soln/L + 1.)
+   T_soln = np.zeros(11)
+   k = -1
+   for j in x_soln:
+     k = k + 1
+     if j <= (2.*L/5.):
+       T_soln[k] = np.array( -((q/K1)*j) + 1. )
+     else:
+       T_soln[k] = np.array( -((q/K2)*j) + 1. + (q*(2.*L/5.)*((1/K2)-(1/K1))) )
    
 Next, we read the output file that was generated by PFLOTRAN. The temperature
 solution begins on the 77th line and ends on the 76th line. 
@@ -428,8 +489,6 @@ use it to construct the PFLOTRAN solution array with boundary values.
    
    x_pflotran = np.concatenate(([0.],x_pflotran),axis=0)
    T_pflotran = np.concatenate(([1.],T_pflotran),axis=0)
-   x_pflotran = np.concatenate((x_pflotran,[100.]),axis=0)
-   T_pflotran = np.concatenate((T_pflotran,[2.]),axis=0)
    
 The next step is to plot the PFLOTRAN solution against the analytical solution so
 we can visually compare the two solutions. If the option to show the plot
