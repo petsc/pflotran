@@ -307,10 +307,14 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
     do ghosted_id = 1, geomech_grid%num_ghost_nodes
       int_array(ghosted_id) = (ghosted_id+geomech_grid%nlmax_node-1)
     enddo
-    call ISCreateBlock(option%mycomm,ndof,geomech_grid%num_ghost_nodes, &
-                       int_array,PETSC_COPY_VALUES,gmdm%is_ghosts_local, &
-                       ierr);CHKERRQ(ierr)
+  else
+    allocate(int_array(1))
+    int_array(1) = 0
   endif
+  
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%num_ghost_nodes, &
+                     int_array,PETSC_COPY_VALUES,gmdm%is_ghosts_local, &
+                     ierr);CHKERRQ(ierr)
                      
   if (allocated(int_array)) deallocate(int_array) 
                                        
@@ -329,11 +333,15 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
       int_array(ghosted_id) = &
         (geomech_grid%ghosted_node_ids_petsc(ghosted_id)-1)
     enddo
-    call ISCreateBlock(option%mycomm,ndof,geomech_grid%num_ghost_nodes, &
-                       int_array,PETSC_COPY_VALUES,gmdm%is_ghosts_petsc, &
-                       ierr);CHKERRQ(ierr)
+  else
+    allocate(int_array(1))
+    int_array(1) = 0
   endif
-                  
+  
+  call ISCreateBlock(option%mycomm,ndof,geomech_grid%num_ghost_nodes, &
+                     int_array,PETSC_COPY_VALUES,gmdm%is_ghosts_petsc, &
+                     ierr);CHKERRQ(ierr)
+                     
   if (allocated(int_array)) deallocate(int_array) 
                                        
 #if GEOMECH_DEBUG
