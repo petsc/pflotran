@@ -174,19 +174,19 @@ subroutine CyberRead(this,input,option)
 
     select case(trim(word))
       case('F1')
-        call InputReadWDouble(input,option,this%f1)  
+        call InputReadDouble(input,option,this%f1)  
         call InputErrorMsg(input,option,'f1', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
       case('F2')
-        call InputReadWDouble(input,option,this%f2)  
+        call InputReadDouble(input,option,this%f2)  
         call InputErrorMsg(input,option,'f2', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
       case('F3')
-        call InputReadWDouble(input,option,this%f3)  
+        call InputReadDouble(input,option,this%f3)  
         call InputErrorMsg(input,option,'f3', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
       case('K1','K_NO3-')
-        call InputReadWDouble(input,option,this%k1)  
+        call InputReadDouble(input,option,this%k1)  
         call InputErrorMsg(input,option,'k1', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
         call InputReadWord(input,option,units,PETSC_TRUE)
@@ -196,7 +196,7 @@ subroutine CyberRead(this,input,option)
           this%k1 = this%k1 * units_conversion
         endif
       case('K2','K_NO2-')
-        call InputReadWDouble(input,option,this%k2)  
+        call InputReadDouble(input,option,this%k2)  
         call InputErrorMsg(input,option,'k2', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
         call InputReadWord(input,option,units,PETSC_TRUE)
@@ -206,7 +206,7 @@ subroutine CyberRead(this,input,option)
           this%k2 = this%k2 * units_conversion
         endif
       case('K3','K_O2(aq)')
-        call InputReadWDouble(input,option,this%k3)  
+        call InputReadDouble(input,option,this%k3)  
         call InputErrorMsg(input,option,'k3', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
         call InputReadWord(input,option,units,PETSC_TRUE)
@@ -216,77 +216,77 @@ subroutine CyberRead(this,input,option)
           this%k3 = this%k3 * units_conversion
         endif    
       case('KA1','KA_NO3-')
-        call InputReadWDouble(input,option,this%Ka1)  
+        call InputReadDouble(input,option,this%Ka1)  
         call InputErrorMsg(input,option,'Ka1', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
         call InputReadWord(input,option,units,PETSC_TRUE)
         if (input%ierr == 0) then
-          internal_units = 'mM'
+          internal_units = 'M'
           units_conversion = UnitsConvertToInternal(units,internal_units,option)
           this%Ka1 = this%Ka1 * units_conversion
         endif    
       case('KA2','KA_NO2-')
-        call InputReadWDouble(input,option,this%Ka2)  
+        call InputReadDouble(input,option,this%Ka2)  
         call InputErrorMsg(input,option,'Ka2', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
         call InputReadWord(input,option,units,PETSC_TRUE)
         if (input%ierr == 0) then
-          internal_units = 'mM'
+          internal_units = 'M'
           units_conversion = UnitsConvertToInternal(units,internal_units,option)
           this%Ka2 = this%Ka2 * units_conversion
         endif    
       case('KA3','KA_O2(aq)')
-        call InputReadWDouble(input,option,this%Ka3)  
+        call InputReadDouble(input,option,this%Ka3)  
         call InputErrorMsg(input,option,'Ka3', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
         call InputReadWord(input,option,units,PETSC_TRUE)
         if (input%ierr == 0) then
-          internal_units = 'mM'
+          internal_units = 'M'
           units_conversion = UnitsConvertToInternal(units,internal_units,option)
           this%Ka3 = this%Ka3 * units_conversion
         endif    
       case('KD1','KD_NO3-')
-        call InputReadWDouble(input,option,this%Kd1)  
+        call InputReadDouble(input,option,this%Kd1)  
         call InputErrorMsg(input,option,'Kd1', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
         call InputReadWord(input,option,units,PETSC_TRUE)
         if (input%ierr == 0) then
-          internal_units = 'mM'
+          internal_units = 'M'
           units_conversion = UnitsConvertToInternal(units,internal_units,option)
           this%Kd1 = this%Kd1 * units_conversion
         endif    
       case('KD2','KD_NO2-')
-        call InputReadWDouble(input,option,this%Kd2)  
+        call InputReadDouble(input,option,this%Kd2)  
         call InputErrorMsg(input,option,'Kd2', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
         call InputReadWord(input,option,units,PETSC_TRUE)
         if (input%ierr == 0) then
-          internal_units = 'mM'
+          internal_units = 'M'
           units_conversion = UnitsConvertToInternal(units,internal_units,option)
           this%Kd2 = this%Kd2 * units_conversion
         endif    
       case('KD3','KD_O2(aq)')
-        call InputReadWDouble(input,option,this%Kd3)  
+        call InputReadDouble(input,option,this%Kd3)  
         call InputErrorMsg(input,option,'Kd3', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
         call InputReadWord(input,option,units,PETSC_TRUE)
         if (input%ierr == 0) then
-          internal_units = 'mM'
+          internal_units = 'M'
           units_conversion = UnitsConvertToInternal(units,internal_units,option)
           this%Kd3 = this%Kd3 * units_conversion
         endif   
       case('KDEG')
-        call InputReadWDouble(input,option,this%Ka3)  
+        call InputReadDouble(input,option,this%k_deg)  
         call InputErrorMsg(input,option,'kdeg', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
         call InputReadWord(input,option,units,PETSC_TRUE)
         if (input%ierr == 0) then
           internal_units = '1/sec'
           units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%Ka3 = this%Ka3 * units_conversion
+          this%k_deg = this%k_deg * units_conversion
         endif    
       case('F_ACT')
-        call InputReadWDouble(input,option,this%f_act)  
+        call InputReadDouble(input,option,this%f_act)  
         call InputErrorMsg(input,option,'f_act', &
                            'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
         call InputReadWord(input,option,units,PETSC_TRUE)

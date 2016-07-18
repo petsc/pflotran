@@ -49,8 +49,8 @@ CHEMISTRY
       Ka1   0.001d0 mM
       Kd1   0.25d0 mM
       K2    17.82d0 1/d
-      Ka1   0.004d0 mM
-      Kd1   0.25d0 mM
+      Ka2   0.004d0 mM
+      Kd2   0.25d0 mM
       K3    75.12d0 1/d
       Ka3   0.001d0 mM
       Kd3   0.25d0 mM
