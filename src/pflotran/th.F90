@@ -1376,6 +1376,15 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   J = J/option%flow_dt
   J(option%nflowdof,:) = vol_frac_prim*J(option%nflowdof,:)
 
+  ! If only solving the energy equation,
+  !  - Set jacobian term corresponding to mass-equation to zero, and
+  !  - Set off-diagonal jacobian terms to zero.
+  if (option%flow%only_energy_eq) then
+    J(1,1) = 1.d0
+    J(1,2) = 0.d0
+    J(2,1) = 0.d0
+  endif
+
   if (option%flow%numerical_derivatives) then
     call GlobalAuxVarInit(global_auxvar_pert,option)  
     call MaterialAuxVarInit(material_auxvar_pert,option)  
@@ -1979,16 +1988,16 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
                            global_auxvar_dn%temp)*dDk_dt_dn 
 
   ! If only solving the energy equation,
-  !  - Set jacobian term corresponding to mass-equation to one, and
+  !  - Set jacobian term corresponding to mass-equation to zero, and
   !  - Set off-diagonal jacobian terms to zero.
   if (option%flow%only_energy_eq) then
-    Jup(1,1) = 1.d0
+    Jup(1,1) = 0.d0
     Jup(1,2) = 0.d0
     Jup(option%nflowdof,1) = 0.d0
 
-    Jdn(1,1) = 1.d0
+    Jdn(1,1) = 0.d0
     Jdn(1,2) = 0.d0
-    Jup(option%nflowdof,1) = 0.d0
+    Jdn(option%nflowdof,1) = 0.d0
 
   endif
 
@@ -2929,10 +2938,10 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   end select
 
   ! If only solving the energy equation,
-  !  - Set jacobian term corresponding to mass-equation to one, and
+  !  - Set jacobian term corresponding to mass-equation to zero, and
   !  - Set off-diagonal jacobian terms to zero.
   if (option%flow%only_energy_eq) then
-    Jdn(1,1) = 1.d0
+    Jdn(1,1) = 0.d0
     Jdn(1,2) = 0.d0
     Jdn(option%nflowdof,1) = 0.d0
   endif

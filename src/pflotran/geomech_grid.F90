@@ -529,9 +529,11 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 #endif     
  
   if (allocated(int_array2)) then
-    allocate(geomech_grid%ghosted_node_ids_natural(vertex_count))
-    ! Change back to 1-based
-    geomech_grid%ghosted_node_ids_natural = int_array2 + 1
+    if (vertex_count > 0) then
+      allocate(geomech_grid%ghosted_node_ids_natural(vertex_count))
+      ! Change back to 1-based
+      geomech_grid%ghosted_node_ids_natural = int_array2 + 1
+    endif
     deallocate(int_array2)
   endif
   

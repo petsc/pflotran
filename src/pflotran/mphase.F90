@@ -2836,11 +2836,11 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                             ss_flow_vol_flux, &
                             enthalpy_flag,option)
 
-  ! included by SK, 08/23/11 to print mass fluxes at source/sink						
+      ! included by SK, 08/23/11 to print mass fluxes at source/sink						
       if (option%compute_mass_balance_new) then
-        global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) = &
-          global_auxvars_ss(sum_connection)%mass_balance_delta(:,1) - &
-          Res(:)/option%flow_dt
+        global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) = &
+          global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - &
+          Res(1:2)/option%flow_dt
       endif
       if (associated(patch%ss_flow_fluxes)) then
         patch%ss_flow_fluxes(:,sum_connection) = Res(:)/option%flow_dt
@@ -2981,9 +2981,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       endif
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_auxvars_bc(sum_connection)%mass_balance_delta(:,1) = &
-          global_auxvars_bc(sum_connection)%mass_balance_delta(:,1) &
-            - Res(:)/option%flow_dt 
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) &
+            - Res(1:2)/option%flow_dt 
       endif
 
     enddo
