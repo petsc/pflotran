@@ -42,6 +42,20 @@ CHEMISTRY
   /
   REACTION_SANDBOX 
     CYBERNETIC
+      F1    0.497d0
+      F2    0.999d0
+      F3    0.066d0
+      K1    25.04d0 1/d
+      Ka1   0.001d0 mM
+      Kd1   0.25d0 mM
+      K2    17.82d0 1/d
+      Ka1   0.004d0 mM
+      Kd1   0.25d0 mM
+      K3    75.12d0 1/d
+      Ka3   0.001d0 mM
+      Kd3   0.25d0 mM
+      Kdeg  0.532d0 1/d
+      F_act 0.126d0
     /
   /
   DATABASE ./cybernetic.dat
