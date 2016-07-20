@@ -1156,7 +1156,7 @@ subroutine OptionInitPetsc(option)
   
   if (option%verbosity > 0) then 
     call PetscLogDefaultBegin(ierr);CHKERRQ(ierr)
-    string = '-log_summary'
+    string = '-log_view'
     call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
                                   string, ierr);CHKERRQ(ierr)
   endif 
