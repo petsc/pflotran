@@ -297,7 +297,10 @@ subroutine PMGeomechForceUpdateSolution(this)
 
   ! begin from RealizationUpdate()
   call GeomechUpdateSolution(this%geomech_realization)
-  call GeomechStoreInitialDisp(this%geomech_realization)
+  if (this%option%geomech_initial) then
+    call GeomechStoreInitialDisp(this%geomech_realization)
+    this%option%geomech_initial = PETSC_FALSE
+  endif
   call GeomechForceUpdateAuxVars(this%geomech_realization)
 
 end subroutine PMGeomechForceUpdateSolution

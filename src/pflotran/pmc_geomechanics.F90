@@ -123,6 +123,11 @@ recursive subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
                                       observation_plot_flag, &
                                       massbal_plot_flag,checkpoint_flag)
   call this%timestepper%StepDT(this%pm_list,local_stop_flag)
+  
+  ! Check if it is initial solve
+  if (this%timestepper%steps == 1) then
+    this%option%geomech_initial = PETSC_TRUE
+  endif
 
   ! Have to loop over all process models coupled in this object and update
   ! the time step size.  Still need code to force all process models to

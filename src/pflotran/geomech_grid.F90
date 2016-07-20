@@ -704,8 +704,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call VecSetFromOptions(geomech_grid%no_elems_sharing_node, &
                          ierr);CHKERRQ(ierr)
 
-  call VecSet(geomech_grid%no_elems_sharing_node_loc,0,ierr);CHKERRQ(ierr)
-  call VecSet(geomech_grid%no_elems_sharing_node,0,ierr);CHKERRQ(ierr)
+  call VecSet(geomech_grid%no_elems_sharing_node_loc,0.d0,ierr);CHKERRQ(ierr)
+  call VecSet(geomech_grid%no_elems_sharing_node,0.d0,ierr);CHKERRQ(ierr)
  
 end subroutine CopySubsurfaceGridtoGeomechGrid
 

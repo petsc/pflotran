@@ -2036,7 +2036,7 @@ subroutine GeomechForceStressStrain(geomech_realization)
     call GeomechForceLocalElemStressStrain(size_elenodes,local_coordinates, &
        local_disp,youngs_vec,poissons_vec, &
        eletype,grid%gauss_node(ielem)%dim,strain,stress,option)
-
+ 
     do ivertex = 1, grid%elem_nodes(0,ielem)
       ghosted_id = elenodes(ivertex)
       do idof = 1, SIX_INTEGER
@@ -2077,12 +2077,11 @@ subroutine GeomechForceStressStrain(geomech_realization)
   call VecGetArrayF90(field%strain,strain_p,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%stress,stress_p,ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax_node
-    ghosted_id = grid%nL2G(local_id)
     do idof = 1, SIX_INTEGER
-      strain_p(idof + (ghosted_id-1)*SIX_INTEGER) = &
-        strain_p(idof + (ghosted_id-1)*SIX_INTEGER)/int(no_elems_p(ghosted_id))
-      stress_p(idof + (ghosted_id-1)*SIX_INTEGER) = &
-        stress_p(idof + (ghosted_id-1)*SIX_INTEGER)/int(no_elems_p(ghosted_id))
+      strain_p(idof + (local_id-1)*SIX_INTEGER) = &
+        strain_p(idof + (local_id-1)*SIX_INTEGER)/int(no_elems_p(local_id))
+      stress_p(idof + (local_id-1)*SIX_INTEGER) = &
+        stress_p(idof + (local_id-1)*SIX_INTEGER)/int(no_elems_p(local_id))
     enddo
   enddo
   call VecRestoreArrayF90(field%stress,stress_p,ierr);CHKERRQ(ierr)
@@ -2268,7 +2267,7 @@ end subroutine GeomechUpdateSolution
 
 ! ************************************************************************** !
 
-subroutine geomechupdatesolutionpatch(geomech_realization)
+subroutine GeomechUpdateSolutionPatch(geomech_realization)
   ! 
   ! updates data in module after a successful time
   ! step
@@ -2283,9 +2282,9 @@ subroutine geomechupdatesolutionpatch(geomech_realization)
   
   class(realization_geomech_type) :: geomech_realization
 
-  call geomechforcestressstrain(geomech_realization)
+  call GeomechForceStressStrain(geomech_realization)
 
-end subroutine geomechupdatesolutionpatch
+end subroutine GeomechUpdateSolutionPatch
 
 ! ************************************************************************** !
 

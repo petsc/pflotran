@@ -1002,7 +1002,7 @@ subroutine GeomechInitSetupRealization(simulation)
   call GeomechInitMatPropToGeomechRegions(geomech_realization)
   call GeomechRealizInitAllCouplerAuxVars(geomech_realization)  
   call GeomechRealizPrintCouplers(geomech_realization)  
-  call GeomechGridElemSharedByNodes(geomech_realization)
+  call GeomechGridElemSharedByNodes(geomech_realization,option)
   call GeomechForceSetup(geomech_realization)
   call GeomechGlobalSetup(geomech_realization)
     
