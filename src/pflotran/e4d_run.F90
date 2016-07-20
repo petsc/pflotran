@@ -504,11 +504,19 @@ contains
 !    call KSPSetOperators(KS,A,A,SAME_PRECONDITIONER,perr)
     call KSPSetOperators(KS,A,A,perr);CHKERRQ(perr)
     call KSPGetPC(KS,P,perr);CHKERRQ(perr)
+!geh - begin
+    call KSPSetErrorIfNotConverged(KS,PETSC_TRUE,perr);CHKERRQ(perr)
+!geh - end
     !call KSPSetType(KS,KSPGMRES,perr) !use default
     !call KSPGMRESSetRestart(KS,1000,perr);
     !call KSPGetTolerances(KS,rtol,atol,dtol,maxints,perr);CHKERRQ(perr)
     call KSPSetTolerances(KS,rtol,atol,dtol,maxints,perr);CHKERRQ(perr)
     call KSPSetFromOptions(KS,perr);CHKERRQ(perr)
+!geh - begin
+    ! this must come after KSPSetFromOptions (or PCSetFromOptions) as it is
+    ! overwritten by the defaults otherwise.
+    call PCFactorSetZeroPivot(P,1.d-40,perr);CHKERRQ(perr)
+!geh - end
     
   end subroutine build_ksp
   !__________________________________________________________________

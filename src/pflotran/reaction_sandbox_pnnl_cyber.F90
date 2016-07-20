@@ -507,6 +507,7 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   class(material_auxvar_type) :: material_auxvar
 
   PetscInt, parameter :: iphase = 1
+  PetscReal :: L_water
   PetscReal :: kg_water
   
   PetscInt :: i, j, irxn
@@ -534,11 +535,16 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: du1_ddoc, du1_dno3, du1_dno2, du1_do2
   PetscReal :: du2_ddoc, du2_dno3, du2_dno2, du2_do2
   PetscReal :: du3_ddoc, du3_dno3, du3_dno2, du3_do2
+  PetscReal :: molality_to_molarity
 
   PetscReal :: rate(3), derivative_col(6,3)
   
+  L_water = material_auxvar%porosity*global_auxvar%sat(iphase)* &
+            material_auxvar%volume*1.d3 ! m^3 -> L
   kg_water = material_auxvar%porosity*global_auxvar%sat(iphase)* &
              global_auxvar%den_kg(iphase)*material_auxvar%volume
+
+  molality_to_molarity = global_auxvar%den_kg(iphase)*1.d-3
     
   if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
     option%io_buffer = 'Activity coefficients not currently supported in &
@@ -546,16 +552,22 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
     call printErrMsg(option)
   endif
   
-  ! concentrations are molalities
-  Co2 = rt_auxvar%pri_molal(this%o2_id)*rt_auxvar%pri_act_coef(this%o2_id)
-  Cnh4 = rt_auxvar%pri_molal(this%nh4_id)*rt_auxvar%pri_act_coef(this%nh4_id)
-  Cno3 = rt_auxvar%pri_molal(this%no3_id)*rt_auxvar%pri_act_coef(this%no3_id)
-  Cno2 = rt_auxvar%pri_molal(this%no2_id)*rt_auxvar%pri_act_coef(this%no2_id)
-  Cn2 = rt_auxvar%pri_molal(this%n2_id)*rt_auxvar%pri_act_coef(this%n2_id)
-  Cdoc = rt_auxvar%pri_molal(this%doc_id)*rt_auxvar%pri_act_coef(this%doc_id)
+  ! concentrations are molarities [M]
+  Co2 = rt_auxvar%pri_molal(this%o2_id)* &
+        rt_auxvar%pri_act_coef(this%o2_id)*molality_to_molarity
+  Cnh4 = rt_auxvar%pri_molal(this%nh4_id)* &
+         rt_auxvar%pri_act_coef(this%nh4_id)*molality_to_molarity
+  Cno3 = rt_auxvar%pri_molal(this%no3_id)* &
+         rt_auxvar%pri_act_coef(this%no3_id)*molality_to_molarity
+  Cno2 = rt_auxvar%pri_molal(this%no2_id)* &
+         rt_auxvar%pri_act_coef(this%no2_id)*molality_to_molarity
+  Cn2 = rt_auxvar%pri_molal(this%n2_id)* &
+        rt_auxvar%pri_act_coef(this%n2_id)*molality_to_molarity
+  Cdoc = rt_auxvar%pri_molal(this%doc_id)* &
+         rt_auxvar%pri_act_coef(this%doc_id)*molality_to_molarity
 !  X = rt_auxvar%immobile(this%biomass_id-reaction%offset_immobile)
   X = rt_auxvar%pri_molal(this%biomass_id)* &
-      rt_auxvar%pri_act_coef(this%biomass_id)
+      rt_auxvar%pri_act_coef(this%biomass_id)*molality_to_molarity
   
   ! NO3- -> NO2-
   r1docmonod_denom = Cdoc+this%Kd1
@@ -595,25 +607,26 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   do irxn = 1, this%nrxn
     do i = 1, this%nrow(irxn)
       ! mol/sec
+      ! X is in [M]
       Residual(this%irow(i,irxn)) = Residual(this%irow(i,irxn)) - &
         this%stoich_row(i,irxn) * rate(irxn) * X * &
-        ! if biomass is aqueous multiply by kg_water
+        ! if biomass is aqueous multiply by L_water
         ! if biomass is immobile multiply by material_auxvar%volume
-        kg_water
+        L_water
     enddo
   enddo
   
   ! decay of biomass
-  ! if biomass is aqueous multiply by kg_water
+  ! if biomass is aqueous multiply by L_water
   ! if biomass is immobile multiply by material_auxvar%volume
   Residual(this%biomass_id) = Residual(this%biomass_id) + &
-                              this%k_deg * X * kg_water
+                              this%k_deg * X * L_water
 
   ! production of doc by biomass decay
   ! note the addition
   ! mol/sec
   Residual(this%doc_id) = Residual(this%doc_id) - &
-                          this%k_deg/this%f_act * X * kg_water
+                          this%k_deg/this%f_act * X * L_water
                  
   if (compute_derivative) then
   
