@@ -31,7 +31,7 @@ module Solver_module
     PetscReal :: linear_rtol       ! relative tolerance
     PetscReal :: linear_dtol       ! divergence tolerance
     PetscInt :: linear_max_iterations     ! maximum number of iterations
-    PetscReal :: linear_lu_zero_pivot_tol  ! zero pivot tolerance for LU
+    PetscReal :: linear_zero_pivot_tol  ! zero pivot tolerance for LU
     
     PetscReal :: newton_atol       ! absolute tolerance
     PetscReal :: newton_rtol       ! relative tolerance
@@ -125,7 +125,7 @@ function SolverCreate()
   solver%linear_rtol = PETSC_DEFAULT_REAL
   solver%linear_dtol = PETSC_DEFAULT_REAL
   solver%linear_max_iterations = PETSC_DEFAULT_INTEGER
-  solver%linear_lu_zero_pivot_tol = PETSC_DEFAULT_REAL
+  solver%linear_zero_pivot_tol = UNINITIALIZED_DOUBLE
   
   solver%newton_atol = PETSC_DEFAULT_REAL
   solver%newton_rtol = PETSC_DEFAULT_REAL
@@ -228,6 +228,10 @@ subroutine SolverSetSNESOptions(solver)
   call KSPSetTolerances(solver%ksp,solver%linear_rtol,solver%linear_atol, &
                         solver%linear_dtol,solver%linear_max_iterations, &
                         ierr);CHKERRQ(ierr)
+  ! as of PETSc 3.7, we need to turn on error reporting due to zero pivots
+  ! as PETSc no longer reports zero pivots for very small concentrations
+  !geh: this get overwritten by ksp->errorifnotconverted
+  call KSPSetErrorIfNotConverged(solver%ksp,PETSC_TRUE,ierr); CHKERRQ(ierr)
 
   ! allow override from command line
   call KSPSetFromOptions(solver%ksp,ierr);CHKERRQ(ierr)
@@ -237,9 +241,8 @@ subroutine SolverSetSNESOptions(solver)
   call KSPGetType(solver%ksp,solver%ksp_type,ierr);CHKERRQ(ierr)
   call PCGetType(solver%pc,solver%pc_type,ierr);CHKERRQ(ierr)
   
-  if ((solver%pc_type == PCLU .or. solver%pc_type == PCILU) .and. &
-      solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL) then
-    call PCFactorSetZeroPivot(solver%pc,solver%linear_lu_zero_pivot_tol, &
+  if (Initialized(solver%linear_zero_pivot_tol)) then
+    call PCFactorSetZeroPivot(solver%pc,solver%linear_zero_pivot_tol, &
                               ierr);CHKERRQ(ierr)
   endif
 
@@ -698,10 +701,16 @@ subroutine SolverReadLinear(solver,input,option)
         call InputReadInt(input,option,solver%linear_max_iterations)
         call InputErrorMsg(input,option,'linear_max_iterations','LINEAR_SOLVER')
 
-      case('LU_ZERO_PIVOT_TOL')
-        call InputReadDouble(input,option,solver%linear_lu_zero_pivot_tol)
-        call InputErrorMsg(input,option,'linear_lu_zero_pivot_tol', &
+      case('ZERO_PIVOT_TOL','LU_ZERO_PIVOT_TOL')
+        call InputReadDouble(input,option,solver%linear_zero_pivot_tol)
+        call InputErrorMsg(input,option,'linear_zero_pivot_tol', &
                            'LINEAR_SOLVER')
+
+      case('MUMPS')
+        string = trim(prefix) // 'pc_factor_mat_solver_package'
+        word = 'mumps'
+        call PetscOptionsSetValue(PETSC_NULL_OBJECT, &
+                                  trim(string),trim(word),ierr);CHKERRQ(ierr)
    
       case default
         call InputKeywordUnrecognized(keyword,'LINEAR_SOLVER',option)
@@ -922,9 +931,8 @@ subroutine SolverPrintLinearInfo(solver,header,option)
     write(*,'("     rtol:",1pe12.4)') solver%linear_rtol
     write(*,'("     dtol:",1pe12.4)') solver%linear_dtol
     write(*,'(" max iter:",i7)') solver%linear_max_iterations
-    if (solver%pc_type == PCLU .and. &
-        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL) then
-      write(*,'("pivot tol:",1pe12.4)') solver%linear_lu_zero_pivot_tol
+    if (Initialized(solver%linear_zero_pivot_tol)) then
+      write(*,'("pivot tol:",1pe12.4)') solver%linear_zero_pivot_tol
     endif
   endif
   
@@ -938,9 +946,8 @@ subroutine SolverPrintLinearInfo(solver,header,option)
     write(fid,'("     rtol:",1pe12.4)') solver%linear_rtol
     write(fid,'("     dtol:",1pe12.4)') solver%linear_dtol
     write(fid,'(" max iter:",i7)') solver%linear_max_iterations
-    if (solver%pc_type == PCLU .and. &
-        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_REAL) then
-      write(fid,'("pivot tol:",1pe12.4)') solver%linear_lu_zero_pivot_tol
+    if (Initialized(solver%linear_zero_pivot_tol)) then
+      write(fid,'("pivot tol:",1pe12.4)') solver%linear_zero_pivot_tol
     endif
   endif
 

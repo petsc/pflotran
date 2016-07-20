@@ -290,6 +290,9 @@ recursive subroutine PMRTInitializeRun(this)
   call printMsg(this%option,'PMRT%InitializeRun()')
 #endif
 
+  ! check for uninitialized flow variables
+  call RealizUnInitializedVarsTran(this%realization)
+
   if (this%transient_porosity) then
     call RealizationCalcMineralPorosity(this%realization)
     call MaterialGetAuxVarVecLoc(this%realization%patch%aux%Material, &
@@ -763,6 +766,11 @@ subroutine PMRTCheckUpdatePre(this,line_search,X,dX,changed,ierr)
     ! since it is not checkied in PETSc.  Thus, I don't want to spend 
     ! time checking for changes and performing an allreduce for log 
     ! formulation.
+    if (Initialized(reaction%truncated_concentration)) then
+      call VecGetArrayReadF90(X,C_p,ierr);CHKERRQ(ierr)
+      dC_p = min(C_p-log(reaction%truncated_concentration),dC_p)
+      call VecRestoreArrayReadF90(X,C_p,ierr);CHKERRQ(ierr)
+    endif
   else
     call VecGetLocalSize(X,n,ierr);CHKERRQ(ierr)
     call VecGetArrayReadF90(X,C_p,ierr);CHKERRQ(ierr)

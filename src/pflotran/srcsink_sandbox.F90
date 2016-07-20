@@ -21,9 +21,9 @@ module SrcSink_Sandbox_module
     module procedure SSSandboxRead2
   end interface
   
-  interface SSSandboxDestroy
-    module procedure SSSandboxDestroy1
-    module procedure SSSandboxDestroy2
+  interface SSSandboxDestroyList
+    module procedure SSSandboxDestroyList1
+    module procedure SSSandboxDestroyList2
   end interface
   
   public :: SSSandboxInit, &
@@ -31,7 +31,7 @@ module SrcSink_Sandbox_module
             SSSandboxSetup, &
             SSSandboxUpdate, &
             SSSandbox, &
-            SSSandboxDestroy
+            SSSandboxDestroyList
 
 contains
 
@@ -49,7 +49,7 @@ subroutine SSSandboxInit(option)
   type(option_type) :: option
 
   if (associated(ss_sandbox_list)) then
-    call SSSandboxDestroy()
+    call SSSandboxDestroyList()
   endif
   nullify(ss_sandbox_list)
   print_mass_balance = PETSC_FALSE
@@ -504,7 +504,30 @@ end subroutine SSSandboxOutput
 
 ! ************************************************************************** !
 
-subroutine SSSandboxDestroy1()
+subroutine SSSandboxDestroy(sandbox)
+  ! 
+  ! Destroys arbitrary sandbox list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 04/11/14
+  ! 
+
+  implicit none
+
+  class(srcsink_sandbox_base_type), pointer :: sandbox
+
+  if (.not.associated(sandbox)) return
+
+  call sandbox%Destroy()
+  deallocate(sandbox)
+  nullify(sandbox)
+
+end subroutine SSSandboxDestroy
+
+
+! ************************************************************************** !
+
+subroutine SSSandboxDestroyList1()
   ! 
   ! Destroys master sandbox list
   ! 
@@ -514,13 +537,13 @@ subroutine SSSandboxDestroy1()
 
   implicit none
 
-  call SSSandboxDestroy(ss_sandbox_list)
+  call SSSandboxDestroyList(ss_sandbox_list)
   
-end subroutine SSSandboxDestroy1
+end subroutine SSSandboxDestroyList1
 
 ! ************************************************************************** !
 
-subroutine SSSandboxDestroy2(local_sandbox_list)
+subroutine SSSandboxDestroyList2(local_sandbox_list)
   ! 
   ! Destroys arbitrary sandbox list
   ! 
@@ -539,11 +562,10 @@ subroutine SSSandboxDestroy2(local_sandbox_list)
   do
     if (.not.associated(cur_sandbox)) exit
     prev_sandbox => cur_sandbox%next
-    call cur_sandbox%Destroy()
-    deallocate(cur_sandbox)
+    call SSSandboxDestroy(cur_sandbox)
     cur_sandbox => prev_sandbox
   enddo  
 
-end subroutine SSSandboxDestroy2
+end subroutine SSSandboxDestroyList2
 
 end module SrcSink_Sandbox_module

@@ -529,9 +529,11 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 #endif     
  
   if (allocated(int_array2)) then
-    allocate(geomech_grid%ghosted_node_ids_natural(vertex_count))
-    ! Change back to 1-based
-    geomech_grid%ghosted_node_ids_natural = int_array2 + 1
+    if (vertex_count > 0) then
+      allocate(geomech_grid%ghosted_node_ids_natural(vertex_count))
+      ! Change back to 1-based
+      geomech_grid%ghosted_node_ids_natural = int_array2 + 1
+    endif
     deallocate(int_array2)
   endif
   
@@ -1117,8 +1119,6 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
   PetscInt :: remainder
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_region_read_ascii,ierr);CHKERRQ(ierr)
-    
   max_size = 1000
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
@@ -1219,8 +1219,6 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
   close(86)
 #endif    
     
-  call PetscLogEventEnd(logging%event_region_read_ascii,ierr);CHKERRQ(ierr)
-
 end subroutine GeomechSubsurfMapFromFileId
 
 end module Geomechanics_Grid_module

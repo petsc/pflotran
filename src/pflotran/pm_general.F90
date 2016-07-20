@@ -218,6 +218,8 @@ subroutine PMGeneralRead(this,input)
         general_harmonic_diff_density = PETSC_TRUE
       case('ARITHMETIC_GAS_DIFFUSIVE_DENSITY')
         general_harmonic_diff_density = PETSC_FALSE
+      case('ANALYTICAL_DERIVATIVES')
+        general_analytical_derivatives = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(keyword,'GENERAL Mode',option)
     end select
@@ -243,7 +245,6 @@ recursive subroutine PMGeneralInitializeRun(this)
   ! Date: 04/21/14 
 
   use Realization_Base_class
-  use General_module, only : GeneralSetReferencePressures
   
   implicit none
   
@@ -263,10 +264,6 @@ recursive subroutine PMGeneralInitializeRun(this)
                                 this%max_change_ivar(i), &
                                 this%max_change_isubvar(i))
   enddo
-
-  ! this call must come before PMSubsurfaceFlowInitializeRun() so that auxvars
-  ! are updated at beginning of run and prior to initial output.
-  call GeneralSetReferencePressures(this%realization)
 
   ! call parent implementation
   call PMSubsurfaceFlowInitializeRun(this)

@@ -455,7 +455,7 @@ subroutine PNNL_NReact(this,Residual,Jacobian,compute_derivative, &
   rate_o2 =      Q_O2 * &
                  X * &
                  (Coc/(Coc+K_S_OC_O2)) * &
-                 (Co2/(Cco2+K_S_O2))                 
+                 (Co2/(Co2+K_S_O2))                 
                  
   rate(1) = rate_no3_no2
   rate(2) = rate_no2_no

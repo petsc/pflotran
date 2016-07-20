@@ -43,6 +43,7 @@ module Material_module
     character(len=MAXWORDLENGTH) :: soil_compressibility_function
     PetscReal :: soil_compressibility
     PetscReal :: soil_reference_pressure
+    PetscBool :: soil_reference_pressure_initial
 !    character(len=MAXWORDLENGTH) :: compressibility_dataset_name
     class(dataset_base_type), pointer :: compressibility_dataset
 
@@ -168,6 +169,7 @@ function MaterialPropertyCreate()
   material_property%soil_compressibility_function = ''
   material_property%soil_compressibility = UNINITIALIZED_DOUBLE
   material_property%soil_reference_pressure = UNINITIALIZED_DOUBLE
+  material_property%soil_reference_pressure_initial = PETSC_FALSE
 !  material_property%compressibility_dataset_name = ''
   nullify(material_property%compressibility_dataset)
 
@@ -370,10 +372,24 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                         'soil compressibility', &
                                         'MATERIAL_PROPERTY',option)
       case('SOIL_REFERENCE_PRESSURE') 
-        call InputReadDouble(input,option, &
-                             material_property%soil_reference_pressure)
+        string = trim(input%buf)
+        ! first read the word to determine if it is the keyword 
+        ! INITIAL_CELL_PRESSURE.
+        call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'soil reference pressure', &
                            'MATERIAL_PROPERTY')
+        length = 16
+        if (StringCompare(word,'INITIAL_PRESSURE',length)) then
+          material_property%soil_reference_pressure_initial = PETSC_TRUE
+        else
+          ! if not the keyword above, copy back into buffer to be read as a
+          ! double precision.
+          input%buf = string
+          call InputReadDouble(input,option, &
+                               material_property%soil_reference_pressure)
+          call InputErrorMsg(input,option,'soil reference pressure', &
+                             'MATERIAL_PROPERTY')
+        endif
       case('THERMAL_EXPANSITIVITY') 
         call InputReadDouble(input,option, &
                              material_property%thermal_expansitivity)
@@ -735,11 +751,19 @@ subroutine MaterialPropertyRead(material_property,input,option)
         '", but SOIL_COMPRESSIBILITY is not defined.'
       call printErrMsg(option)
     endif
-    if (Uninitialized(material_property%soil_reference_pressure)) then
+    if (Uninitialized(material_property%soil_reference_pressure) .and. &
+        .not.material_property%soil_reference_pressure_initial) then
       option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in &
         &inputdeck for MATERIAL_PROPERTY "' // &
         trim(material_property%name) // &
-        '", but SOIL_REFERENCE_PRESSURE is not defined.'
+        '", but a SOIL_REFERENCE_PRESSURE is not defined.'
+      call printErrMsg(option)
+    endif
+    if (Initialized(material_property%soil_reference_pressure) .and. &
+        material_property%soil_reference_pressure_initial) then
+      option%io_buffer = 'SOIL_REFERENCE_PRESSURE may not be defined by the &
+        &initial pressure and a specified pressure in material "' // &
+        trim(material_property%name) // '".'
       call printErrMsg(option)
     endif
   endif
@@ -1291,7 +1315,9 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
       endif
       num_soil_compress = num_soil_compress + 1
     endif
-    if (Initialized(material_property_ptrs(i)%ptr%soil_reference_pressure)) then
+    if (Initialized(material_property_ptrs(i)%ptr%&
+                      soil_reference_pressure) .or. &
+        material_property_ptrs(i)%ptr%soil_reference_pressure_initial) then
       if (soil_reference_pressure_index == 0) then
         icount = icount + 1
         soil_reference_pressure_index = icount
@@ -1377,8 +1403,12 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
       material_property%soil_compressibility
   endif
   if (soil_reference_pressure_index > 0) then
-    material_auxvar%soil_properties(soil_reference_pressure_index) = &
-      material_property%soil_reference_pressure
+    ! soil reference pressure may be assigned as the initial cell pressure, and
+    ! in that case, it will be assigned elsewhere
+    if (Initialized(material_property%soil_reference_pressure)) then
+      material_auxvar%soil_properties(soil_reference_pressure_index) = &
+        material_property%soil_reference_pressure
+    endif
   endif
 !  if (soil_heat_capacity_index > 0) then
 !    material_auxvar%soil_properties(soil_heat_capacity_index) = &
@@ -2000,6 +2030,10 @@ subroutine MaterialPropInputRecord(material_property_list)
       write(id,'(a29)',advance='no') 'soil reference pressure: '
       write(word1,*) cur_matprop%soil_reference_pressure
       write(id,'(a)') adjustl(trim(word1)) // ' Pa'
+    endif
+    if (cur_matprop%soil_reference_pressure_initial) then
+      write(id,'(a29)',advance='no') 'soil reference pressure: '
+      write(id,'(a)') 'initial cell pressure'
     endif
     
     if (cur_matprop%dispersivity(1) > 0.d0 .or. &

@@ -307,6 +307,9 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
     do ghosted_id = 1, geomech_grid%num_ghost_nodes
       int_array(ghosted_id) = (ghosted_id+geomech_grid%nlmax_node-1)
     enddo
+  else
+    allocate(int_array(1))
+    int_array(1) = 0
   endif
   
   call ISCreateBlock(option%mycomm,ndof,geomech_grid%num_ghost_nodes, &
@@ -330,6 +333,9 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
       int_array(ghosted_id) = &
         (geomech_grid%ghosted_node_ids_petsc(ghosted_id)-1)
     enddo
+  else
+    allocate(int_array(1))
+    int_array(1) = 0
   endif
   
   call ISCreateBlock(option%mycomm,ndof,geomech_grid%num_ghost_nodes, &
@@ -650,23 +656,22 @@ subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
     case(MATAIJ)
       d_nnz = d_nnz*gmdm%ndof
       o_nnz = o_nnz*gmdm%ndof
-      call MatCreateAIJ(option%mycomm,ndof_local,ndof_local, &
-                        PETSC_DETERMINE,PETSC_DETERMINE, &
-                        PETSC_NULL_INTEGER,d_nnz, &
-                        PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
-      call MatSetLocalToGlobalMapping(J,gmdm%mapping_ltog, &
-                                      gmdm%mapping_ltog,ierr);CHKERRQ(ierr)
     case(MATBAIJ)
-      call MatCreateBAIJ(option%mycomm,gmdm%ndof,ndof_local,ndof_local, &
-                         PETSC_DETERMINE,PETSC_DETERMINE, &
-                         PETSC_NULL_INTEGER,d_nnz, &
-                         PETSC_NULL_INTEGER,o_nnz,J,ierr);CHKERRQ(ierr)
-      call MatSetLocalToGlobalMapping(J,gmdm%mapping_ltog, &
-                                      gmdm%mapping_ltog,ierr);CHKERRQ(ierr)
     case default
       option%io_buffer = 'MatType not recognized in GMGridDMCreateJacobian'
       call printErrMsg(option)
   end select 
+  
+  call MatCreate(option%mycomm,J,ierr);CHKERRQ(ierr)
+  call MatSetType(J,mat_type,ierr);CHKERRQ(ierr)
+  call MatSetSizes(J,ndof_local,ndof_local,PETSC_DETERMINE,PETSC_DETERMINE, &
+                   ierr);CHKERRQ(ierr)
+  call MatSetFromOptions(J,ierr);CHKERRQ(ierr)  
+  call MatXAIJSetPreallocation(J,gmdm%ndof,d_nnz,o_nnz, &
+                               PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                               ierr); CHKERRQ(ierr)
+  call MatSetLocalToGlobalMapping(J,gmdm%mapping_ltog, &
+                                  gmdm%mapping_ltog,ierr);CHKERRQ(ierr)
   
                         
   deallocate(d_nnz)
@@ -847,8 +852,8 @@ subroutine GMGridDestroy(geomech_grid)
   call DeallocateArray(geomech_grid%node_ids_local_natural)
   call DeallocateArray(geomech_grid%ghosted_node_ids_natural)
   call DeallocateArray(geomech_grid%ghosted_node_ids_petsc)
-!  if (geomech_grid%ao_natural_to_petsc /= 0) &
-!    call AODestroy(geomech_grid%ao_natural_to_petsc,ierr) ! Already destroyed in UGridDestroy
+  if (geomech_grid%ao_natural_to_petsc /= 0) &
+    call AODestroy(geomech_grid%ao_natural_to_petsc,ierr) 
   if (geomech_grid%ao_natural_to_petsc_nodes /= 0) then
     call AODestroy(geomech_grid%ao_natural_to_petsc_nodes,ierr);CHKERRQ(ierr)
   endif
@@ -866,13 +871,19 @@ subroutine GMGridDestroy(geomech_grid)
   
   nullify(geomech_grid%gauss_node)
  
- if (geomech_grid%no_elems_sharing_node_loc /= 0) then
-   call VecDestroy(geomech_grid%no_elems_sharing_node_loc,ierr);CHKERRQ(ierr)
- endif
- if ( geomech_grid%no_elems_sharing_node /= 0) then
-   call VecDestroy(geomech_grid%no_elems_sharing_node,ierr);CHKERRQ(ierr)
- endif
+  if (geomech_grid%no_elems_sharing_node_loc /= 0) then
+    call VecDestroy(geomech_grid%no_elems_sharing_node_loc,ierr);CHKERRQ(ierr)
+  endif
+  if ( geomech_grid%no_elems_sharing_node /= 0) then
+    call VecDestroy(geomech_grid%no_elems_sharing_node,ierr);CHKERRQ(ierr)
+  endif
  
+  deallocate(geomech_grid%nG2L)
+  deallocate(geomech_grid%nL2G)
+  deallocate(geomech_grid%nG2A)
+  deallocate(geomech_grid%mapping_cell_ids_flow)
+  deallocate(geomech_grid%mapping_vertex_ids_geomech)
+
   deallocate(geomech_grid)
   nullify(geomech_grid)
   
@@ -894,7 +905,7 @@ subroutine GMDMDestroy(gmdm)
   PetscErrorCode :: ierr
   
   if (.not.associated(gmdm)) return
-  
+
   call ISDestroy(gmdm%is_ghosted_local,ierr);CHKERRQ(ierr)
   call ISDestroy(gmdm%is_local_local,ierr);CHKERRQ(ierr)
   call ISDestroy(gmdm%is_ghosted_petsc,ierr);CHKERRQ(ierr)

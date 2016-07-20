@@ -35,7 +35,8 @@ module Geomechanics_Force_module
             GeomechStoreInitialPressTemp, &
             GeomechStoreInitialDisp, &
             GeomechStoreInitialPorosity, &
-            GeomechUpdateSubsurfPorosity
+            GeomechUpdateSubsurfPorosity, &
+            GeomechForceJacobianLinearPart
  
 contains
 
@@ -136,7 +137,8 @@ subroutine GeomechForceSetPlotVariables(list)
   implicit none
 
   type(output_variable_list_type), pointer :: list
-  
+  type(output_variable_type), pointer :: output_variable
+
   character(len=MAXWORDLENGTH) :: name, units
   
   if (associated(list%first)) then
@@ -158,11 +160,13 @@ subroutine GeomechForceSetPlotVariables(list)
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                GEOMECH_DISP_Z)
 
-  name = 'Material ID'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_DISCRETE,units, &
-                               GEOMECH_MATERIAL_ID)
-                               
+  name = 'Material ID'
+  output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                          units,GEOMECH_MATERIAL_ID)
+  output_variable%iformat = 1 ! integer
+  call OutputVariableAddToList(list,output_variable)
+                             
   name = 'strain_xx'
   units = ''
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
@@ -429,7 +433,6 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
   use Geomechanics_Realization_class
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
-  use Geomechanics_Logging_module
   use Option_module
 
   implicit none
@@ -444,9 +447,6 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
   type(geomech_discretization_type), pointer :: geomech_discretization
   type(geomech_field_type), pointer :: field
   type(option_type), pointer :: option
-  
-  call PetscLogEventBegin(geomech_logging%event_geomech_residual, &
-                          ierr);CHKERRQ(ierr)
   
   field => geomech_realization%geomech_field
   geomech_discretization => geomech_realization%geomech_discretization
@@ -475,9 +475,6 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
   endif
 
-  call PetscLogEventEnd(geomech_logging%event_geomech_residual, &
-                        ierr);CHKERRQ(ierr)
-
 end subroutine GeomechForceResidual
 
 ! ************************************************************************** !
@@ -493,7 +490,6 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
   use Geomechanics_Realization_class
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
-  use Geomechanics_Logging_module
   use Geomechanics_Patch_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module
@@ -675,6 +671,7 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
   ! Find the boundary nodes with dirichlet and set the residual at those nodes
   ! to zero, later set the Jacobian to 1
 
+  ! displacement boundary conditions
   boundary_condition => patch%geomech_boundary_condition_list%first
   do 
     if (.not.associated(boundary_condition)) exit
@@ -728,7 +725,29 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
             call printErrMsg(option)
         end select
       endif
- 
+      
+    enddo
+    boundary_condition => boundary_condition%next      
+  enddo
+
+  ! Need to assemby here since one cannot mix INSERT_VALUES
+  ! and ADD_VALUES
+  call VecAssemblyBegin(r,ierr);CHKERRQ(ierr)
+  call VecAssemblyEnd(r,ierr);CHKERRQ(ierr)
+  
+  ! Force boundary conditions
+  boundary_condition => patch%geomech_boundary_condition_list%first
+  do 
+    if (.not.associated(boundary_condition)) exit
+    region => boundary_condition%region
+    do ivertex = 1, region%num_verts
+      local_id = region%vertex_ids(ivertex)
+      ghosted_id = grid%nL2G(local_id)
+      petsc_id = grid%node_ids_ghosted_petsc(ghosted_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif    
+       
       ! X force 
       if (associated(boundary_condition%geomech_condition%force_x)) then
         select case(boundary_condition%geomech_condition%force_x%itype)
@@ -1287,7 +1306,6 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
-  use Geomechanics_Logging_module
   use Option_module
 
   implicit none
@@ -1305,9 +1323,6 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
   type(option_type), pointer :: option
   PetscReal :: norm
   
-  call PetscLogEventBegin(geomech_logging%event_geomech_jacobian, &
-                          ierr);CHKERRQ(ierr)
-
   option => geomech_realization%option
 
   call MatGetType(A,mat_type,ierr);CHKERRQ(ierr)
@@ -1318,8 +1333,6 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
   else
     J = A
   endif
-
-  call MatZeroEntries(J,ierr);CHKERRQ(ierr)
 
   call GeomechForceJacobianPatch(snes,xx,J,J,geomech_realization,ierr)
 
@@ -1344,20 +1357,46 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
     call printMsg(option) 
   endif
 
-  call PetscLogEventEnd(geomech_logging%event_geomech_jacobian, &
-                        ierr);CHKERRQ(ierr)
-!  call printErrMsg(option)
-
 end subroutine GeomechForceJacobian
 
 ! ************************************************************************** !
 
 subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
   ! 
-  ! Computes the Jacobian on a patch
+  ! Computes the nonlinear part of the Jacobian on a patch
   ! 
   ! Author: Satish Karra
   ! Date: 06/21/13
+  ! Modified: 07/12/16
+       
+  use Geomechanics_Realization_class
+      
+  implicit none
+
+  SNES, intent(in) :: snes
+  Vec, intent(in) :: xx
+  Mat, intent(inout) :: A
+  Mat, intent(out) :: B
+  PetscViewer :: viewer
+
+  PetscErrorCode :: ierr
+   
+  class(realization_geomech_type) :: geomech_realization
+  
+  ! Do nothing here since Jacobian is always linear and is computed
+  ! once at the setup of geomechanics realization
+
+end subroutine GeomechForceJacobianPatch  
+
+! ************************************************************************** !
+
+subroutine GeomechForceJacobianLinearPart(A,geomech_realization)
+  ! 
+  ! Computes the Linear part of the Jacobian on a patch
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/21/13
+  ! Modified: 07/12/16
   ! 
        
   use Geomechanics_Realization_class
@@ -1375,9 +1414,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
       
   implicit none
 
-  SNES, intent(in) :: snes
-  Vec, intent(in) :: xx
-  Mat, intent(out) :: A, B
+  Mat :: A
   PetscViewer :: viewer
 
   PetscErrorCode :: ierr
@@ -1419,6 +1456,7 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
   geomech_global_aux_vars => patch%geomech_aux%GeomechGlobal%aux_vars  
   GeomechParam => patch%geomech_aux%GeomechParam 
 
+  call MatZeroEntries(A,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%imech_loc,imech_loc_p,ierr);CHKERRQ(ierr)
 
   ! Loop over elements on a processor
@@ -1563,10 +1601,11 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
                         ierr);CHKERRQ(ierr)
   call MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE, &
                     ierr);CHKERRQ(ierr)
-
+  call MatStoreValues(A,ierr);CHKERRQ(ierr) ! Store the linear part of Jacobian
+                    
   deallocate(rows)
 
-end subroutine GeomechForceJacobianPatch  
+end subroutine GeomechForceJacobianLinearPart  
 
 ! ************************************************************************** !
 
@@ -1899,7 +1938,6 @@ subroutine GeomechForceStressStrain(geomech_realization)
   use Geomechanics_Realization_class
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
-  use Geomechanics_Logging_module
   use Geomechanics_Patch_module
   use Geomechanics_Grid_Aux_module
   use Geomechanics_Grid_module

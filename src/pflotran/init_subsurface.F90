@@ -454,26 +454,15 @@ subroutine InitSubsurfAssignMatProperties(realization)
                                     field%work_loc,ONEDOF)
   call MaterialSetAuxVarVecLoc(patch%aux%Material,field%work_loc, &
                                TORTUOSITY,ZERO_INTEGER)
-  ! rock properties
+
+  ! copy rock properties to neighboring ghost cells
   do i = 1, max_material_index
     call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
     do local_id = 1, patch%grid%nlmax
-      ghosted_id = patch%grid%nL2G(local_id)
-      if (patch%imat(ghosted_id) > 0) then
-        vec_p(local_id) = &
+      vec_p(local_id) = &
           Material%auxvars(patch%grid%nL2G(local_id))%soil_properties(i)
-      else
-        vec_p(local_id) = 1.d-40 ! some initialized value for inactive cells.
-      endif
     enddo
     call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
-    call VecMin(field%work,tempint,tempreal,ierr)
-    if (Uninitialized(tempreal)) then
-      option%io_buffer = 'Incorrect assignment of soil properties. Please &
-        &send this error message and your input file to &
-        &pflotran-dev@googlegroups.com.'
-        call printErrMsg(option)
-    endif
     call DiscretizationGlobalToLocal(discretization,field%work, &
                                      field%work_loc,ONEDOF)
     call VecGetArrayF90(field%work_loc,vec_p,ierr);CHKERRQ(ierr)
@@ -488,6 +477,12 @@ subroutine InitSubsurfAssignMatProperties(realization)
     material_property => &
       MaterialPropGetPtrFromArray(creep_closure%material_name, &
                                   patch%material_property_array)
+    if (.not.associated(material_property)) then
+      option%io_buffer = 'Creep material "' // &
+                        trim(creep_closure%material_name) // &
+                        '" not found in material list'
+      call printErrMsg(option)
+    endif
     creep_closure%imat = material_property%internal_id
   endif
   
@@ -822,7 +817,7 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset, &
         call DatasetGriddedHDF5Strip(dataset)
         call DatasetGriddedHDF5Init(dataset)
         dataset%filename = filename
-        dataset%name = dataset_name
+        dataset%name = trim(dataset_name)
       class is(dataset_common_hdf5_type)
         dataset_name = dataset%hdf5_dataset_name
         call HDF5ReadCellIndexedRealArray(realization,field%work, &

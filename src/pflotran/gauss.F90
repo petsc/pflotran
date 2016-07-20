@@ -784,8 +784,6 @@ subroutine GaussBrick(NGPTS,r,w)
   
   allocate(r(NGPTS*NGPTS*NGPTS,3))
   allocate(w(NGPTS*NGPTS*NGPTS))
-  allocate(l(NGPTS,1))
-  allocate(m(NGPTS))
   
   call Gauss1D(LINE_TYPE,NGPTS,l,m)
   
@@ -828,10 +826,6 @@ subroutine GaussWedge(NGPTS,r,w)
   
   allocate(r(NGPTS*NGPTS,3))
   allocate(w(NGPTS*NGPTS))
-  allocate(rL2(NGPTS,1))
-  allocate(wL2(NGPTS))
-  allocate(rT3(NGPTS,2))
-  allocate(wT3(NGPTS))
   
   call Gauss1D(LINE_TYPE,NGPTS,rL2,wL2)
   call Gauss2D(TRI_TYPE,NGPTS,rT3,wT3)

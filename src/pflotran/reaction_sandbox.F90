@@ -5,6 +5,7 @@ module Reaction_Sandbox_module
   use Reaction_Sandbox_UFD_WP_class
   use Reaction_Sandbox_Example_class
   use Reaction_Sandbox_Simple_class
+  use Reaction_Sandbox_Cyber_class
   
   ! Add new reacton sandbox classes here.
   
@@ -157,6 +158,8 @@ subroutine RSandboxRead2(local_sandbox_list,input,option)
         new_sandbox => EXAMPLECreate()
       case('SIMPLE')
         new_sandbox => SimpleCreate()
+      case('CYBERNETIC')
+        new_sandbox => CyberCreate()
       case default
         call InputKeywordUnrecognized(word,'CHEMISTRY,REACTION_SANDBOX',option)
     end select
