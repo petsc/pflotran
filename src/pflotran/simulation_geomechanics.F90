@@ -259,7 +259,9 @@ subroutine GeomechanicsSimulationStrip(this)
   
   call SubsurfaceSimulationStrip(this)
   call GeomechanicsRegressionDestroy(this%geomech_regression)
- 
+  call WaypointListDestroy(this%waypoint_list_subsurface)
+  call WaypointListDestroy(this%waypoint_list_geomechanics)
+   
 end subroutine GeomechanicsSimulationStrip
 
 ! ************************************************************************** !

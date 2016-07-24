@@ -596,6 +596,7 @@ subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
   call ISLocalToGlobalMappingCreateIS(is_tmp_petsc, &
                                       gmdm%mapping_ltog_elem, &
                                       ierr);CHKERRQ(ierr)
+!  call ISDestroy(is_tmp_petsc,ierr);CHKERRQ(ierr)
               
 end subroutine GMCreateGMDM
 

@@ -265,6 +265,7 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
   endif    
 
   call GeomechanicsJumpStart(simulation)
+  call InputDestroy(geomech_realization%input)
   
 end subroutine GeomechanicsInitializePostPETSc
 
@@ -460,7 +461,8 @@ subroutine GeomechanicsInit(geomech_realization,input,option)
             call UGridRead(ugrid,geomech_discretization%filename,option)
             call UGridDecompose(ugrid,option)
             call CopySubsurfaceGridtoGeomechGrid(ugrid, &
-                                                 geomech_discretization%grid,option)
+                                                 geomech_discretization%grid, &
+                                                 option)
             patch => GeomechanicsPatchCreate()
             patch%geomech_grid => geomech_discretization%grid
             geomech_realization%geomech_patch => patch

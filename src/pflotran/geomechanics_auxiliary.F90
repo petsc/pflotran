@@ -86,6 +86,11 @@ subroutine GeomechAuxDestroy(geomech_aux)
       deallocate(geomech_aux%GeomechParam%density)
     nullify(geomech_aux%GeomechParam%density)
   endif
+  
+  if (associated(geomech_aux%GeomechParam)) then
+    deallocate(geomech_aux%GeomechParam)
+  endif
+  nullify(geomech_aux%GeomechParam)
     
 end subroutine GeomechAuxDestroy
 
