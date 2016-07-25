@@ -230,11 +230,24 @@ subroutine MaterialDiagPermTensorToScalar(material_auxvar,dist, &
   ! 3 = unit z-dir
   PetscReal, intent(in) :: dist(-1:3)
   PetscReal, intent(out) :: scalar_permeability
-  
+
+  PetscReal :: kx, ky, kz
+  PetscReal :: ux, uy, uz
+  PetscReal :: theta, phi 
+#if 1
   scalar_permeability = &
             material_auxvar%permeability(perm_xx_index)*dabs(dist(1))+ &
             material_auxvar%permeability(perm_yy_index)*dabs(dist(2))+ &
             material_auxvar%permeability(perm_zz_index)*dabs(dist(3))
+#else
+  kx = material_auxvar%permeability(perm_xx_index)
+  ky = material_auxvar%permeability(perm_yy_index)
+  kz = material_auxvar%permeability(perm_zz_index)
+  ux = dabs(dist(1))
+  uy = dabs(dist(2))
+  uz = dabs(dist(3))
+  scalar_permeability =  
+#endif
 
 end subroutine MaterialDiagPermTensorToScalar
 
