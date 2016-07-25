@@ -295,7 +295,10 @@ subroutine CyberRead(this,input,option)
           units_conversion = UnitsConvertToInternal(units,internal_units,option)
           this%f_act = this%f_act * units_conversion
         endif    
-      end select
+      case default
+        call InputKeywordUnrecognized(word, &
+                     'CHEMISTRY,REACTION_SANDBOX,CYBERNETIC',option)
+    end select
   enddo
   
 end subroutine CyberRead
