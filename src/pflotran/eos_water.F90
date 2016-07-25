@@ -769,7 +769,7 @@ subroutine EOSWaterSaturationPressureIFC67(T, calculate_derivatives, &
   DATA A/ &
     -7.691234564d0,-2.608023696d1,-1.681706546d2,6.423285504d1, &
     -1.189646225d2,4.167117320d0,2.097506760E1,1.d9,6.d0/
-   
+
   if (T .GT. 500.d0) then
     ierr = 1
     return
@@ -900,35 +900,36 @@ subroutine EOSWaterDensityIFC67(t,p,calculate_derivatives,dw,dwmol, &
     
   theta = (t+273.15d0)*utc1
   theta2x = theta*theta
-  theta18 = theta**18
+  theta18 = theta**18.d0
   theta20 = theta18*theta2x
     
   beta = p*upc1
   beta2x = beta*beta
   beta4  = beta2x*beta2x
     
-  yy = one-a1*theta2x-a2*theta**(-6)
+  yy = one-a1*theta2x-a2*theta**(-6.d0)
   xx = a3*yy*yy-two*(a4*theta-a5*beta)
     
 !   Note: xx may become negative near the critical point-pcl.
   if (xx.gt.zero) then
     xx = sqrt(xx)
   else
-    write(*,*) 'Warning: negative term in density (eos_water.F90:EOSWaterDensityIFC67):'
+    write(*,*) 'Warning: negative term in density (eos_water.F90:&
+      &EOSWaterDensityIFC67):'
     write(*,*) 't= ',t,' p= ',p,' xx= ',xx
     ierr = 1
-    xx = 1.e-6               !set arbitrarily
+    xx = 1.d-6               !set arbitrarily
   end if
   zz = yy + xx                                     
   u0 = -five/17.d0
   u1 = aa(11)*a5*zz**u0
-  u2 = one/(a8+theta**11)
+  u2 = one/(a8+theta**11.d0)
   u3 = aa(17)+(two*aa(18)+three*aa(19)*beta)*beta
   u4 = one/(a7+theta18*theta)
-  u5 = (a10+beta)**(-4)
+  u5 = (a10+beta)**(-4.d0)
   u6 = a11-three*u5
   u7 = aa(20)*theta18*(a9+theta2x)
-  u8 = aa(15)*(a6-theta)**9
+  u8 = aa(15)*(a6-theta)**9.d0
     
   vr = u1+aa(12)+theta*(aa(13)+aa(14)*theta)+u8*(a6-theta) &
         +aa(16)*u4-u2*u3-u6*u7+(three*aa(21)*(a12-theta) &
@@ -938,7 +939,7 @@ subroutine EOSWaterDensityIFC67(t,p,calculate_derivatives,dw,dwmol, &
   dw = one/(vr*vc1) ! kg/m^3
 
   ! ypt used for enthalpy even if derivative not calculated
-  ypt = six*a2*theta**(-7)-two*a1*theta
+  ypt = six*a2*theta**(-7.d0)-two*a1*theta
   
   !---calculate derivatives for water density
   if (calculate_derivatives) then
@@ -946,7 +947,7 @@ subroutine EOSWaterDensityIFC67(t,p,calculate_derivatives,dw,dwmol, &
     zpp = a5/xx
     u9 = u0*u1/zz
     vrpt = u9*zpt+aa(13)+two*aa(14)*theta-ten*u8 &
-        -19.d0*aa(16)*u4*u4*theta18+11.d0*u2*u2*u3*theta**10 &
+        -19.d0*aa(16)*u4*u4*theta18+11.d0*u2*u2*u3*theta**10.d0 &
         -aa(20)*u6*(18.d0*a9*theta18+20.d0*theta20)/theta &
         -(three*aa(21)+80.d0*aa(22)*beta/(theta20*theta))*beta2x
     
@@ -1073,23 +1074,24 @@ subroutine EOSWaterEnthalpyIFC67(t,p,calculate_derivatives,hw, &
     
   theta = (t+273.15d0)*utc1
   theta2x = theta*theta
-  theta18 = theta**18
+  theta18 = theta**18.d0
   theta20 = theta18*theta2x
     
   beta = p*upc1
   beta2x = beta*beta
   beta4  = beta2x*beta2x
     
-  yy = one-a1*theta2x-a2*theta**(-6)
+  yy = one-a1*theta2x-a2*theta**(-6.d0)
   xx = a3*yy*yy-two*(a4*theta-a5*beta)
 !   Note: xx may become negative near the critical point-pcl.
   if (xx.gt.zero) then
     xx = sqrt(xx)
   else
-    write(*,*) 'Warning: negative term in density (eos_water.F90:EOSWaterEnthalpyIFC67):'
+    write(*,*) 'Warning: negative term in density (eos_water.F90:&
+      &EOSWaterEnthalpyIFC67):'
     write(*,*) 't= ',t,' p= ',p,' xx= ',xx
     ierr = 1
-    xx = 1.e-6               !set arbitrarily
+    xx = 1.d-6               !set arbitrarily
   end if
   zz = yy + xx                                     
   u0 = -five/17.d0
@@ -1114,7 +1116,7 @@ subroutine EOSWaterEnthalpyIFC67(t,p,calculate_derivatives,hw, &
   if (calculate_derivatives) then
     u9 = u0*u1/zz
     vrpt = u9*zpt+aa(13)+two*aa(14)*theta-ten*u8 &
-        -19.d0*aa(16)*u4*u4*theta18+11.d0*u2*u2*u3*theta**10 &
+        -19.d0*aa(16)*u4*u4*theta18+11.d0*u2*u2*u3*theta**10.d0 &
         -aa(20)*u6*(18.d0*a9*theta18+20.d0*theta20)/theta &
         -(three*aa(21)+80.d0*aa(22)*beta/(theta20*theta))*beta2x
     
@@ -1132,7 +1134,7 @@ subroutine EOSWaterEnthalpyIFC67(t,p,calculate_derivatives,hw, &
 #endif  
 
   ! ypt used for enthalpy even if derivative not calculated
-  ypt = six*a2*theta**(-7)-two*a1*theta
+  ypt = six*a2*theta**(-7.d0)-two*a1*theta
   
 
 !---compute enthalpy internal energy and derivatives for water
@@ -1160,9 +1162,9 @@ subroutine EOSWaterEnthalpyIFC67(t,p,calculate_derivatives,hw, &
   ! "v" section 2
   v1_2 = nine*theta+a6
   v20_2 = (a6-theta)
-  v2_2 = v20_2**9
-  v3_2 = a7+20.d0*theta**19
-  v40_2 = a7+theta**19
+  v2_2 = v20_2**9.d0
+  v3_2 = a7+20.d0*theta**19.d0
+  v40_2 = a7+theta**19.d0
   v4_2 = one/(v40_2*v40_2)
   ! term4p is a derivative, but left due to dependency in term4
   term4p = aa(12)-aa(14)*theta2x+aa(15)*v1_2*v2_2+aa(16)*v3_2*v4_2
@@ -1172,15 +1174,15 @@ subroutine EOSWaterEnthalpyIFC67(t,p,calculate_derivatives,hw, &
     
   ! "v" section 3
   v1_3 = beta*(aa(17)+aa(18)*beta+aa(19)*beta2x)
-  v2_3 = 12.d0*theta**11+a8
-  v4_3 = one/(a8+theta**11)
+  v2_3 = 12.d0*theta**11.d0+a8
+  v4_3 = one/(a8+theta**11.d0)
   v3_3 = v4_3*v4_3
   term5 = v1_3*v2_3*v3_3
   
   ! block 3 removed from here
     
   ! "v" section 4
-  v1_4 = (a10+beta)**(-3)+a11*beta
+  v1_4 = (a10+beta)**(-3.d0)+a11*beta
   v3_4 = (17.d0*a9+19.d0*theta2x)
   v2_4 = aa(20)*theta18*v3_4       
   term6 = v1_4*v2_4
@@ -1202,7 +1204,7 @@ subroutine EOSWaterEnthalpyIFC67(t,p,calculate_derivatives,hw, &
     zpp = a5/xx
   
     ! block 1
-    yptt = -two*a1-42.d0*a2/theta**8
+    yptt = -two*a1-42.d0*a2/theta**8.d0
     dv2t = 17.d0*(zpt/29.d0-ypt/12.d0)+five/12.d0*(ypt+theta*yptt) 
     dv3t = a4-(a3-one)*(theta*yy*yptt+yy*ypt+theta*ypt*ypt)
     dv2p = 17.d0*zpp/29.d0
@@ -1216,10 +1218,10 @@ subroutine EOSWaterEnthalpyIFC67(t,p,calculate_derivatives,hw, &
 
     ! block 3
     term5p = v3_3*v2_3*(aa(17)+two*aa(18)*beta+three*aa(19)*beta2x)
-    term5t = v1_3*(132.d0*v3_3*theta**10-22.d0*v2_3*v3_3*v4_3*theta**10)
+    term5t = v1_3*(132.d0*v3_3*theta**10.d0-22.d0*v2_3*v3_3*v4_3*theta**10.d0)
   
     ! block 4
-    term6p = v2_4*(a11-three*(a10+beta)**(-4))
+    term6p = v2_4*(a11-three*(a10+beta)**(-4.d0))
     term6t = v1_4*aa(20)*theta18*(18.d0*v3_4*utheta+38.d0*theta)
     
     ! block 5

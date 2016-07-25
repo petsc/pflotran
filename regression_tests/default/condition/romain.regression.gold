@@ -36,8 +36,8 @@
        81:   9.9945541948641E+02
 -- GENERIC: Liquid Energy --
       Max:  -2.1675224641666E-01
-      Min:  -3.7229676178857E-01
-     Mean:  -2.4428065950956E-01
+      Min:  -3.7229676178858E-01
+     Mean:  -2.4428065950949E-01
         1:  -2.1675224641666E-01
        21:  -2.2709695212061E-01
        41:  -2.3973862317019E-01
@@ -71,10 +71,10 @@
        61:         1
        81:         1
 -- SOLUTION: Flow --
-   Time (seconds):   1.4681482315063E-01
+   Time (seconds):   1.7497158050537E-01
    Time Steps:           86
    Newton Iterations:           86
    Solver Iterations:           86
    Time Step Cuts:            0
    Solution 2-Norm:   1.0000305582066E+06
-   Residual 2-Norm:   4.0567680384574E-12
+   Residual 2-Norm:   4.0567680384515E-12

@@ -220,7 +220,7 @@
       139:         1
       185:         1
 -- SOLUTION: Flow --
-   Time (seconds):   2.4404675960541E+00
+   Time (seconds):   2.2904140949249E+00
    Time Steps:           96
    Newton Iterations:          277
    Solver Iterations:          277

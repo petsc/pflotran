@@ -17,7 +17,7 @@
       Min:   0.0000000000000E+00
      Mean:   1.3659936208694E-01
        28:   3.5162209783620E-06
-        1:   2.8904124479767E-18
+        1:   2.8904124479641E-18
        31:   3.6136568497089E-07
 -- DISCRETE: Material ID --
       Max:        10
@@ -27,18 +27,18 @@
         1:         1
        31:         3
 -- SOLUTION: Flow --
-   Time (seconds):   1.6771221160889E-01
+   Time (seconds):   1.3878011703491E-01
    Time Steps:           33
    Newton Iterations:          103
    Solver Iterations:          103
    Time Step Cuts:            0
    Solution 2-Norm:   1.8747274593618E+06
-   Residual 2-Norm:   3.0885663432163E-14
+   Residual 2-Norm:   3.0900725932285E-14
 -- SOLUTION: Transport --
-   Time (seconds):   5.2199840545654E-02
+   Time (seconds):   4.1404247283936E-02
    Time Steps:           33
    Newton Iterations:           33
    Solver Iterations:           33
    Time Step Cuts:            0
    Solution 2-Norm:   2.5815357881228E+00
-   Residual 2-Norm:   3.6482963311809E-16
+   Residual 2-Norm:   1.4886834666682E-16
