@@ -2431,7 +2431,7 @@ subroutine GeomechUpdateSubsurfPorosity(realization,geomech_realization)
     trace_epsilon = strain_loc_p((ghosted_id-1)*SIX_INTEGER+ONE_INTEGER) + &
                     strain_loc_p((ghosted_id-1)*SIX_INTEGER+TWO_INTEGER) + &
                     strain_loc_p((ghosted_id-1)*SIX_INTEGER+THREE_INTEGER)
-    material_auxvars(ghosted_id)%tortuosity = por0_loc_p(ghosted_id)/ &
+    material_auxvars(ghosted_id)%porosity = por0_loc_p(ghosted_id)/ &
       (1.d0 + (1.d0 - por0_loc_p(ghosted_id))*trace_epsilon)
   enddo
   
