@@ -37,7 +37,7 @@ CHEMISTRY
   # First order decay of Tracer1 to Tracer2
   RADIOACTIVE_DECAY_REACTION
     REACTION Tracer1 <->
-    HALF_LIFE 1.d6
+    HALF_LIFE 1.d6 sec
   /
   DATABASE ../../../database/hanford.dat
   OUTPUT

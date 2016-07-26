@@ -319,35 +319,21 @@ subroutine ReactionReadPass1(reaction,input,option)
               call InputErrorMsg(input,option,'reaction', &
                                'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
             case('RATE_CONSTANT')
-              internal_units = 'unitless/sec'
               call InputReadDouble(input,option, &
                                    radioactive_decay_rxn%rate_constant)
               call InputErrorMsg(input,option,'rate constant', &
                 'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,RATE_CONSTANT') 
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              if (InputError(input)) then
-                call InputDefaultMsg(input,option, &
-                  'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,RATE_CONSTANT UNITS')
-              else
-                radioactive_decay_rxn%rate_constant = &
-                  UnitsConvertToInternal(word,internal_units,option) * &
-                  radioactive_decay_rxn%rate_constant
-              endif
+              call InputReadAndConvertUnits(input, &
+                     radioactive_decay_rxn%rate_constant,'unitless/sec', &
+                    'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,RATE_CONSTANT',option)
             case('HALF_LIFE')
-              internal_units = 'sec'
               call InputReadDouble(input,option, &
                                    radioactive_decay_rxn%half_life)
               call InputErrorMsg(input,option,'half life', &
                 'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,HALF_LIFE') 
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              if (InputError(input)) then
-                call InputDefaultMsg(input,option, &
-                  'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,HALF_LIFE UNITS')
-              else
-                radioactive_decay_rxn%half_life = &
-                  UnitsConvertToInternal(word,internal_units,option) * &
-                  radioactive_decay_rxn%half_life
-              endif
+              call InputReadAndConvertUnits(input, &
+                     radioactive_decay_rxn%half_life,'sec', &
+                    'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,HALF_LIFE',option)
               ! convert half life to rate constant
               radioactive_decay_rxn%rate_constant = &
                 -1.d0*log(0.5d0)/radioactive_decay_rxn%half_life

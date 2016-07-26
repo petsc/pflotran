@@ -122,7 +122,8 @@ module Input_Aux_module
             InputCheckMandatoryUnits, &
             InputDbaseDestroy, &
             InputPushExternalFile, &
-            InputReadWordDbaseCompatible
+            InputReadWordDbaseCompatible, &
+            InputReadAndConvertUnits
 
 contains
 
@@ -2183,6 +2184,46 @@ subroutine InputCheckMandatoryUnits(input,option)
   endif
   
 end subroutine InputCheckMandatoryUnits
+
+! ************************************************************************** !
+
+subroutine InputReadAndConvertUnits(input,double_value,internal_units, &
+                                    keyword_string,option)
+  ! 
+  ! Reads units if they exist and returns the units conversion factor.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/26/16
+  ! 
+  use Option_module
+  use Units_module
+  
+  implicit none
+  
+  type(input_type) :: input
+  PetscReal :: double_value
+  character(len=*) :: internal_units
+  character(len=*) :: keyword_string
+  type(option_type) :: option
+
+  character(len=MAXWORDLENGTH) :: units
+  character(len=MAXWORDLENGTH) :: internal_units_word
+
+  call InputReadWord(input,option,units,PETSC_TRUE)
+  if (input%ierr == 0) then
+    if (len_trim(internal_units) < 1) then
+      option%io_buffer = 'No internal units provided in &
+                         &InputReadAndConvertUnits()'
+      call printErrMsg(option)
+    endif
+    internal_units_word = trim(internal_units)
+    double_value = double_value * &
+                   UnitsConvertToInternal(units,internal_units_word,option)
+  else
+    call InputDefaultMsg(input,option,keyword_string)
+  endif
+  
+end subroutine InputReadAndConvertUnits
 
 ! ************************************************************************** !
 

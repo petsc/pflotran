@@ -85,6 +85,8 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,temparray(1))
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,DENSITY,CONSTANT')
+                call InputReadAndConvertUnits(input,temparray(1), &
+                               'kg/m^3','EOS,WATER,DENSITY,CONSTANT',option)
               case('EXPONENTIAL')
                 call InputReadDouble(input,option,temparray(1))
                 call InputErrorMsg(input,option,'REFERENCE_DENSITY', &
@@ -109,6 +111,8 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,temparray(1))
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,ENTHALPY,CONSTANT')
+                call InputReadAndConvertUnits(input,temparray(1), &
+                               'J/kmol','EOS,WATER,ENTHALPY,CONSTANT',option)
                case('IFC67','PAINTER','DEFAULT')
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,ENTHALPY',option)
@@ -123,6 +127,8 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,temparray(1))
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,VISCOSITY,CONSTANT')
+                call InputReadAndConvertUnits(input,temparray(1), &
+                              'Pa-s','EOS,WATER,VISCOSITY,CONSTANT',option)
               case('DEFAULT','BATZLE_AND_WANG')
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,VISCOSITY', &
@@ -138,6 +144,8 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,temparray(1))
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,STEAM_DENSITY,CONSTANT')
+                call InputReadAndConvertUnits(input,temparray(1), &
+                           'kg/m^3','EOS,WATER,STEAM_DENSITY,CONSTANT',option)
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,STEAM_DENSITY', &
                                               option)
@@ -152,6 +160,8 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,temparray(1))
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,WATER,STEAM_ENTHALPY,CONSTANT')
+                call InputReadAndConvertUnits(input,temparray(1), &
+                        'J/kmol','EOS,WATER,STEAM_ENTHALPY,CONSTANT',option)
               case default
                 call InputKeywordUnrecognized(word, &
                        'EOS,WATER,STEAM_ENTHALPY',option)
@@ -241,6 +251,8 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,tempreal)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,GAS,DENSITY,CONSTANT')
+                call InputReadAndConvertUnits(input,tempreal, &
+                            'kg/m^3','EOS,GAS,DENSITY,CONSTANT',option)
                 call EOSGasSetDensityConstant(tempreal)
               case('RKS')
                 ! if nothing is entered, it will calculate as hydrogen gas
@@ -307,6 +319,8 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,tempreal)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,GAS,ENTHALPY,CONSTANT')
+                call InputReadAndConvertUnits(input,tempreal, &
+                                 'J/kmol','EOS,GAS,ENTHALPY,CONSTANT',option)
                 call EOSGasSetEnergyConstant(tempreal)
               case('IDEAL_METHANE')
                 call EOSGasSetEnergyIdealMethane()
@@ -324,6 +338,8 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,tempreal)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,GAS,VISCOSITY,CONSTANT')
+                call InputReadAndConvertUnits(input,tempreal, &
+                                 'Pa-s','EOS,GAS,VISCOSITY,CONSTANT',option)
                 call EOSGasSetViscosityConstant(tempreal)
               case('DEFAULT')
               case default
@@ -439,8 +455,9 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,tempreal)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,OIL,DENSITY,CONSTANT')
+                call InputReadAndConvertUnits(input,tempreal, &
+                                 'kg/m^3','EOS,OIL,DENSITY,CONSTANT',option)
                 call EOSOilSetDensityConstant(tempreal)
-
               case('LINEAR')
                 call EOSOilSetDensityLinear()
                 do
@@ -496,6 +513,8 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,tempreal)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,OIL,ENTHALPY,CONSTANT')
+                call InputReadAndConvertUnits(input,tempreal, &
+                                  'J/kmol','EOS,OIL,ENTHALPY,CONSTANT',option)
                 call EOSOilSetEnthalpyConstant(tempreal)
               case('LINEAR_TEMP')
                 call InputReadDouble(input,option,tempreal)
@@ -518,6 +537,8 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,tempreal)
                 call InputErrorMsg(input,option,'VALUE', &
                                    'EOS,OIL,VISCOSITY,CONSTANT')
+                call InputReadAndConvertUnits(input,tempreal, &
+                                 'Pa-s','EOS,OIL,VISCOSITY,CONSTANT',option)
                 call EOSOilSetViscosityConstant(tempreal)
               case('QUADRATIC')
                 call EOSOilSetViscosityQuad()
@@ -580,8 +601,9 @@ subroutine EOSRead(input,option)
           case('FORMULA_WEIGHT') 
             call InputReadDouble(input,option,tempreal)
             !call InputReadDouble(input,option,fmw_oil)
-            call InputErrorMsg(input,option,'VALUE', &
-                                   'EOS,OIL,FORMULA_WEIGHT')
+            call InputErrorMsg(input,option,'VALUE','EOS,OIL,FORMULA_WEIGHT')
+            call InputReadAndConvertUnits(input,tempreal, &
+                             'g/mol','EOS,OIL,FORMULA_WEIGHT',option)
             call EOSOilSetFMWConstant(tempreal)
           case default
             call InputKeywordUnrecognized(keyword,'EOS,OIL',option)

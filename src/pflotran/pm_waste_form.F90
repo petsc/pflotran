@@ -673,12 +673,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             call InputReadDouble(input,option,double)
             call InputErrorMsg(input,option,'specific surface area', &
                                error_string)
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            if (input%ierr == 0) then
-              internal_units = 'm^2/kg'
-              double = UnitsConvertToInternal(word,internal_units,option) * &
-                       double
-            endif
+            call InputReadAndConvertUnits(input,double,'m^2/kg', &
+                                  error_string//',specific surface area',option)
             select type(new_mechanism)
               type is(wf_mechanism_dsnf_type)
                 option%io_buffer = 'SPECIFIC_SURFACE_AREA cannot be &
@@ -695,12 +691,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
           case('MATRIX_DENSITY')
             call InputReadDouble(input,option,new_mechanism%matrix_density)
             call InputErrorMsg(input,option,'matrix density',error_string)
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            if (input%ierr == 0) then
-              internal_units = 'kg/m^3'
-              new_mechanism%matrix_density = UnitsConvertToInternal(word, &
-                   internal_units,option) * new_mechanism%matrix_density
-            endif
+            call InputReadAndConvertUnits(input,new_mechanism%matrix_density, &
+                              'kg/m^3',error_string//',matrix density',option)
         !--------------------------
           case('FRACTIONAL_DISSOLUTION_RATE')
             select type(new_mechanism)
@@ -709,13 +701,9 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                      new_mechanism%frac_dissolution_rate)
                 call InputErrorMsg(input,option,'fractional dissolution rate', &
                                    error_string)
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                if (input%ierr == 0) then
-                  internal_units = 'unitless/sec'
-                  new_mechanism%frac_dissolution_rate = &
-                    UnitsConvertToInternal(word,internal_units,option) * &
-                    new_mechanism%frac_dissolution_rate
-                endif
+                call InputReadAndConvertUnits(input, &
+                         new_mechanism%frac_dissolution_rate,'unitless/sec', &
+                         error_string//',fractional dissolution rate',option)
               class default
                 option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE cannot be &
                                    &specified for ' // trim(error_string)
@@ -728,13 +716,9 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                 call InputReadDouble(input,option, &
                      new_mechanism%dissolution_rate)
                 call InputErrorMsg(input,option,'dissolution rate',error_string)
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                if (input%ierr == 0) then
-                  internal_units = 'kg/m^2-sec'
-                  new_mechanism%dissolution_rate = &
-                    UnitsConvertToInternal(word,internal_units,option) * &
-                    new_mechanism%dissolution_rate
-                endif
+                call InputReadAndConvertUnits(input, &
+                       new_mechanism%dissolution_rate, &
+                       'kg/m^2-sec',error_string//',dissolution_rate',option)
               class default
                 option%io_buffer = 'DISSOLUTION_RATE cannot be specified for ' &
                                    // trim(error_string)
@@ -748,12 +732,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                 call InputErrorMsg(input,option,'burnup',error_string)
 #ifndef FMDM_MODEL
                 ! if fmdm model is not on, then burnup is dissolution rate
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                if (input%ierr == 0) then
-                  internal_units = 'kg/m^2-sec'
-                  new_mechanism%burnup = UnitsConvertToInternal(word, &
-                    internal_units,option) * new_mechanism%burnup
-                endif
+                call InputReadAndConvertUnits(input,new_mechanism%burnup, &
+                                'kg/m^2-sec',error_string//',burnup',option)
                 option%io_buffer = 'Warning: FMDM is not linked, but an &
                                    &FMDM mechanism was defined. BURNUP &
                                    &will be used for fuel dissolution rate.'
@@ -1033,13 +1013,8 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
           case('VOLUME')
             call InputReadDouble(input,option,new_waste_form%volume)
             call InputErrorMsg(input,option,'volume',error_string)
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            if (input%ierr == 0) then
-              internal_units = 'm^3'
-              new_waste_form%volume = UnitsConvertToInternal(word, &
-                   internal_units,option) * new_waste_form%volume
-            endif
-            new_waste_form%init_volume = new_waste_form%volume
+            call InputReadAndConvertUnits(input,new_waste_form%volume, &
+                                          'm^3',error_string//',volume',option)
         !-----------------------------
           case('COORDINATE')
             call GeometryReadCoordinate(input,option, &
@@ -1054,25 +1029,18 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
           case('CANISTER_VITALITY_RATE')
             call InputReadDouble(input,option, &
                                  new_waste_form%canister_vitality_rate)
-            call InputErrorMsg(input,option,'canister vitality rate',error_string)
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            if (input%ierr == 0) then
-              internal_units = 'unitless/sec'
-              new_waste_form%canister_vitality_rate = UnitsConvertToInternal(word, &
-                   internal_units,option) * &
-                   new_waste_form%canister_vitality_rate
-            endif
+            call InputErrorMsg(input,option,'canister vitality rate', &
+                               error_string)
+            call InputReadAndConvertUnits(input, &
+                        new_waste_form%canister_vitality_rate,'unitless/sec', &
+                        error_string//'canister vitality rate',option)
         !-----------------------------
           case('CANISTER_BREACH_TIME')
             call InputReadDouble(input,option, &
                                  new_waste_form%breach_time)
             call InputErrorMsg(input,option,'CANISTER_BREACH_TIME',error_string)
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            if (input%ierr == 0) then
-              internal_units = 'sec'
-              new_waste_form%breach_time = UnitsConvertToInternal(word, &
-                   internal_units,option) * new_waste_form%breach_time
-            endif
+            call InputReadAndConvertUnits(input,new_waste_form%breach_time, &
+                           'sec',error_string//',CANISTER_BREACH_TIME',option)
         !-----------------------------    
           case default
             call InputKeywordUnrecognized(word,error_string,option)

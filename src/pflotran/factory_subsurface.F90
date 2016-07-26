@@ -1500,7 +1500,6 @@ subroutine SubsurfaceReadInput(simulation)
   character(len=1) :: backslash
   PetscReal :: temp_real, temp_real2
   PetscReal, pointer :: temp_real_array(:)
-  PetscReal :: units_conversion
   PetscInt :: temp_int
   PetscInt :: id
   
@@ -1545,6 +1544,7 @@ subroutine SubsurfaceReadInput(simulation)
   
   PetscReal :: dt_init
   PetscReal :: dt_min
+  PetscReal :: units_conversion
   
   class(timestepper_BE_type), pointer :: flow_timestepper
   class(timestepper_BE_type), pointer :: tran_timestepper
@@ -1620,13 +1620,11 @@ subroutine SubsurfaceReadInput(simulation)
         call InputReadDouble(input,option,uniform_velocity_dataset%values(3,1))
         call InputErrorMsg(input,option,'velz','UNIFORM_VELOCITY')
         ! read units, if present
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'meter/sec'
-          units_conversion = UnitsConvertToInternal(word,internal_units,option) 
-          uniform_velocity_dataset%values(:,1) = &
-            uniform_velocity_dataset%values(:,1) * units_conversion
-        endif
+        temp_real = 1.d0
+        call InputReadAndConvertUnits(input,temp_real, &
+                                    'meter/sec','UNIFORM_VELOCITY,units',option)
+        uniform_velocity_dataset%values(:,1) = &
+          uniform_velocity_dataset%values(:,1) * temp_real
         call UniformVelocityDatasetVerify(option,uniform_velocity_dataset)
         realization%uniform_velocity_dataset => uniform_velocity_dataset
       

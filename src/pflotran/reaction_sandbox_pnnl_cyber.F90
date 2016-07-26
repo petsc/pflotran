@@ -150,7 +150,6 @@ subroutine CyberRead(this,input,option)
   use Option_module
   use String_module
   use Input_Aux_module
-  use Units_module, only : UnitsConvertToInternal
   
   implicit none
   
@@ -160,7 +159,9 @@ subroutine CyberRead(this,input,option)
 
   PetscInt :: i
   character(len=MAXWORDLENGTH) :: word, internal_units, units
-  PetscReal :: units_conversion
+  character(len=MAXSTRINGLENGTH) :: error_string 
+
+  error_string = 'CHEMISTRY,REACTION_SANDBOX,CYBERNETIC'
   
   do 
     call InputReadPflotranString(input,option)
@@ -168,136 +169,74 @@ subroutine CyberRead(this,input,option)
     if (InputCheckExit(input,option)) exit
 
     call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword', &
-                       'CHEMISTRY,REACTION_SANDBOX,CYBERNETIC')
+    call InputErrorMsg(input,option,'keyword',error_string)
     call StringToUpper(word)   
 
     select case(trim(word))
       case('F1')
         call InputReadDouble(input,option,this%f1)  
-        call InputErrorMsg(input,option,'f1', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
+        call InputErrorMsg(input,option,'f1',error_string)
       case('F2')
         call InputReadDouble(input,option,this%f2)  
-        call InputErrorMsg(input,option,'f2', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
+        call InputErrorMsg(input,option,'f2',error_string)
       case('F3')
         call InputReadDouble(input,option,this%f3)  
-        call InputErrorMsg(input,option,'f3', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
+        call InputErrorMsg(input,option,'f3',error_string)
       case('K1','K_NO3-')
         call InputReadDouble(input,option,this%k1)  
-        call InputErrorMsg(input,option,'k1', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
-        call InputReadWord(input,option,units,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = '1/sec'
-          units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%k1 = this%k1 * units_conversion
-        endif
+        call InputErrorMsg(input,option,'k1',error_string)
+        call InputReadAndConvertUnits(input,this%k1,'1/sec', &
+                                      error_string//',k1',option)
       case('K2','K_NO2-')
         call InputReadDouble(input,option,this%k2)  
-        call InputErrorMsg(input,option,'k2', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
-        call InputReadWord(input,option,units,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = '1/sec'
-          units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%k2 = this%k2 * units_conversion
-        endif
+        call InputErrorMsg(input,option,'k2',error_string)
+        call InputReadAndConvertUnits(input,this%k2,'1/sec', &
+                                      error_string//',k2',option)
       case('K3','K_O2(aq)')
         call InputReadDouble(input,option,this%k3)  
-        call InputErrorMsg(input,option,'k3', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
-        call InputReadWord(input,option,units,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = '1/sec'
-          units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%k3 = this%k3 * units_conversion
-        endif    
+        call InputErrorMsg(input,option,'k3',error_string)
+        call InputReadAndConvertUnits(input,this%k3,'1/sec', &
+                                      error_string//',k3',option)
       case('KA1','KA_NO3-')
         call InputReadDouble(input,option,this%Ka1)  
-        call InputErrorMsg(input,option,'Ka1', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
-        call InputReadWord(input,option,units,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'M'
-          units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%Ka1 = this%Ka1 * units_conversion
-        endif    
+        call InputErrorMsg(input,option,'Ka1',error_string)
+        call InputReadAndConvertUnits(input,this%Ka1,'M', &
+                                      error_string//',Ka1',option)
       case('KA2','KA_NO2-')
         call InputReadDouble(input,option,this%Ka2)  
-        call InputErrorMsg(input,option,'Ka2', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
-        call InputReadWord(input,option,units,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'M'
-          units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%Ka2 = this%Ka2 * units_conversion
-        endif    
+        call InputErrorMsg(input,option,'Ka2',error_string)
+        call InputReadAndConvertUnits(input,this%Ka2,'M', &
+                                      error_string//',Ka2',option)
       case('KA3','KA_O2(aq)')
         call InputReadDouble(input,option,this%Ka3)  
-        call InputErrorMsg(input,option,'Ka3', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
-        call InputReadWord(input,option,units,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'M'
-          units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%Ka3 = this%Ka3 * units_conversion
-        endif    
+        call InputErrorMsg(input,option,'Ka3',error_string)
+        call InputReadAndConvertUnits(input,this%Ka3,'M', &
+                                      error_string//',Ka3',option)
       case('KD1','KD_NO3-')
         call InputReadDouble(input,option,this%Kd1)  
-        call InputErrorMsg(input,option,'Kd1', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
-        call InputReadWord(input,option,units,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'M'
-          units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%Kd1 = this%Kd1 * units_conversion
-        endif    
+        call InputErrorMsg(input,option,'Kd1',error_string)
+        call InputReadAndConvertUnits(input,this%Kd1,'M', &
+                                      error_string//',Kd1',option)
       case('KD2','KD_NO2-')
         call InputReadDouble(input,option,this%Kd2)  
-        call InputErrorMsg(input,option,'Kd2', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
-        call InputReadWord(input,option,units,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'M'
-          units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%Kd2 = this%Kd2 * units_conversion
-        endif    
+        call InputErrorMsg(input,option,'Kd2',error_string)
+        call InputReadAndConvertUnits(input,this%Kd2,'M', &
+                                      error_string//',Kd2',option)
       case('KD3','KD_O2(aq)')
         call InputReadDouble(input,option,this%Kd3)  
-        call InputErrorMsg(input,option,'Kd3', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
-        call InputReadWord(input,option,units,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'M'
-          units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%Kd3 = this%Kd3 * units_conversion
-        endif   
+        call InputErrorMsg(input,option,'Kd3',error_string)
+        call InputReadAndConvertUnits(input,this%Kd3,'M', &
+                                      error_string//',Kd3',option)
       case('KDEG')
         call InputReadDouble(input,option,this%k_deg)  
-        call InputErrorMsg(input,option,'kdeg', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
-        call InputReadWord(input,option,units,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = '1/sec'
-          units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%k_deg = this%k_deg * units_conversion
-        endif    
+        call InputErrorMsg(input,option,'kdeg',error_string)
+        call InputReadAndConvertUnits(input,this%k_deg,'1/sec', &
+                                      error_string//',kdeg',option)
       case('F_ACT')
         call InputReadDouble(input,option,this%f_act)  
-        call InputErrorMsg(input,option,'f_act', &
-                           'CHEMISTRY,REACTION_SANDBOX_CYBERNETIC')      
-        call InputReadWord(input,option,units,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = '1/sec'
-          units_conversion = UnitsConvertToInternal(units,internal_units,option)
-          this%f_act = this%f_act * units_conversion
-        endif    
+        call InputErrorMsg(input,option,'f_act',error_string)
       case default
-        call InputKeywordUnrecognized(word, &
-                     'CHEMISTRY,REACTION_SANDBOX,CYBERNETIC',option)
+        call InputKeywordUnrecognized(word,error_string,option)
     end select
   enddo
   

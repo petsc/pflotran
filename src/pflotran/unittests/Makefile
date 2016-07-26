@@ -29,6 +29,7 @@ PFLOTRAN_OBJS = \
 	$(SRC_DIR)/saturation_function.o \
         $(SRC_DIR)/characteristic_curves.o \
 	$(SRC_DIR)/string.o \
+	$(SRC_DIR)/units.o \
 	$(SRC_DIR)/utility.o
 
 FFLAGS = -g -I. -I$(SRC_DIR) -I$(PFUNIT_DIR)/source -I$(PFUNIT_DIR)/include

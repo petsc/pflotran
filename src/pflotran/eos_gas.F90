@@ -1198,12 +1198,12 @@ subroutine EOSGasInputRecord()
     write(id,'(a)') 'default'
   endif
   
-  ! gas enthalpy [MJ/kg]
+  ! gas enthalpy [J/kmol]
   if (associated(EOSGasDensityEnergyPtr,EOSGasDensityEnergyGeneral) .and. &
       associated(EOSGasEnergyPtr,EOSGasEnergyConstant)) then
     write(id,'(a29)',advance='no') 'gas enthalpy: '
     write(word1,*) constant_enthalpy
-    write(id,'(a)') 'constant, ' // trim(word1) // ' MJ/kg'
+    write(id,'(a)') 'constant, ' // trim(word1) // 'J/kmol'
   endif
   if (associated(EOSGasDensityEnergyPtr,EOSGasDensityEnergyGeneral) .and. &
       associated(EOSGasEnergyPtr,EOSGasEnergyIdeal)) then

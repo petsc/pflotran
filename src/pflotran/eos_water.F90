@@ -1269,7 +1269,7 @@ subroutine EOSWaterEnthalpyConstant(t,p,calculate_derivatives, &
   PetscReal, intent(out) :: hw,hwp,hwt
   PetscErrorCode, intent(out) :: ierr
   
-  hw = constant_enthalpy ! MJ/kmol
+  hw = constant_enthalpy ! J/kmol
   
   hwp = 0.d0
   hwt = 0.d0
@@ -1343,7 +1343,7 @@ end subroutine EOSWaterSteamDenEnthDerive
 subroutine EOSWaterSteamDensityEnthalpyIFC67(t,pv,calculate_derivatives, &
                                              dg,dgmol,hg, &
                                              dgp,dgt,hgp,hgt,ierr)
-! t/C  p/Pa dgmol/(mol/m^3)  h/MJ/mol
+! t/C  p/Pa dgmol/(mol/m^3)  h/J/kmol
   implicit none
   
   PetscReal, intent(in) :: t   ! Temperature in centigrade.
@@ -1648,7 +1648,7 @@ end subroutine EOSWaterSteamDensityEnthalpyIFC67
 
 subroutine EOSWaterSteamDenEnthConstant(t,pv,calculate_derivatives, &
                                         dg,dgmol,hg,dgp,dgt,hgp,hgt,ierr)
-! t/C  p/Pa dgmol/(mol/m^3)  h/MJ/mol
+! t/C  p/Pa dgmol/(mol/m^3)  h/J/kmol
   implicit none
   
   PetscReal, intent(in) :: t   ! Temperature in centigrade.
@@ -2645,11 +2645,11 @@ subroutine EOSWaterInputRecord()
     write(id,'(a)') 'Batzle and Wang'
   endif
   
-  ! water enthalpy [MJ/kg]
+  ! water enthalpy [J/kmol]
   if (associated(EOSWaterViscosityPtr,EOSWaterEnthalpyConstant)) then
     write(id,'(a29)',advance='no') 'water enthalpy: '
     write(word1,*) constant_enthalpy
-    write(id,'(a)') 'constant, ' // trim(word1) // ' MJ/kg'
+    write(id,'(a)') 'constant, ' // trim(word1) // ' J/kmol'
   endif
   if (associated(EOSWaterViscosityPtr,EOSWaterEnthalpyIFC67)) then
     write(id,'(a29)',advance='no') 'water enthalpy: '
@@ -2673,12 +2673,12 @@ subroutine EOSWaterInputRecord()
     write(id,'(a)') 'default, IFC67'
   endif
   
-  ! steam enthalpy [MJ/kg]
+  ! steam enthalpy [J/kmol]
   if (associated(EOSWaterSteamDensityEnthalpyPtr, &
                  EOSWaterSteamDenEnthConstant)) then
     write(id,'(a29)',advance='no') 'steam enthalpy: '
     write(word1,*) constant_steam_enthalpy
-    write(id,'(a)') 'constant, ' // trim(word1) // ' MJ/kg'
+    write(id,'(a)') 'constant, ' // trim(word1) // ' J/kmol'
   endif
   if (associated(EOSWaterSteamDensityEnthalpyPtr, &
                  EOSWaterSteamDensityEnthalpyIFC67)) then
