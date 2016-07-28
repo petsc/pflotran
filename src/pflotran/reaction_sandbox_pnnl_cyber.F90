@@ -55,6 +55,7 @@ module Reaction_Sandbox_Cyber_class
     PetscReal :: stoich_3_o2
     PetscReal :: stoich_3_co2
     PetscReal :: stoich_3_biomass
+    PetscReal :: activation_energy
     PetscInt :: nrxn
     PetscInt, pointer :: nrow(:)
     PetscInt, pointer :: ncol(:)
@@ -126,6 +127,7 @@ function CyberCreate()
   CyberCreate%stoich_3_o2 = UNINITIALIZED_DOUBLE  
   CyberCreate%stoich_3_co2 = UNINITIALIZED_DOUBLE  
   CyberCreate%stoich_3_biomass = UNINITIALIZED_DOUBLE  
+  CyberCreate%activation_energy = UNINITIALIZED_DOUBLE  
   CyberCreate%nrxn = UNINITIALIZED_INTEGER
   nullify(CyberCreate%nrow)
   nullify(CyberCreate%ncol)
@@ -235,6 +237,9 @@ subroutine CyberRead(this,input,option)
       case('F_ACT')
         call InputReadDouble(input,option,this%f_act)  
         call InputErrorMsg(input,option,'f_act',error_string)
+      case('ACTIVATION_ENERGY')
+        call InputReadDouble(input,option,this%activation_energy)  
+        call InputErrorMsg(input,option,'activation energy',error_string)         
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
@@ -478,6 +483,8 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: du2_ddoc, du2_dno3, du2_dno2, du2_do2
   PetscReal :: du3_ddoc, du3_dno3, du3_dno2, du3_do2
   PetscReal :: molality_to_molarity
+  PetscReal :: temperature_scaling_factor
+  PetscReal :: k1_scaled, k2_scaled, k3_scaled, k_deg_scaled
 
   PetscReal :: rate(3), derivative_col(6,3)
   
@@ -492,6 +499,13 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
     option%io_buffer = 'Activity coefficients not currently supported in &
       &CyberReact().'
     call printErrMsg(option)
+  endif
+  
+  temperature_scaling_factor = 1.d0
+  if (Initialized(this%activation_energy)) then
+    temperature_scaling_factor = &
+      exp(this%activation_energy/IDEAL_GAS_CONSTANT* &
+          (1.d0/298.15d0-1.d0/(global_auxvar%temp+273.15d0)))
   endif
   
   ! concentrations are molarities [M]
@@ -511,26 +525,31 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   X = rt_auxvar%pri_molal(this%biomass_id)* &
       rt_auxvar%pri_act_coef(this%biomass_id)*molality_to_molarity
   
+  k1_scaled = this%k1 * temperature_scaling_factor
+  k2_scaled = this%k2 * temperature_scaling_factor
+  k3_scaled = this%k3 * temperature_scaling_factor
+  k_deg_scaled = this%k_deg * temperature_scaling_factor
+      
   ! NO3- -> NO2-
   r1docmonod_denom = Cdoc+this%Kd1
   r1docmonod = Cdoc/r1docmonod_denom
   r1no3monod_denom = Cno3+this%Ka1
   r1no3monod = Cno3/r1no3monod_denom
-  r1kin = this%k1*r1docmonod*r1no3monod
+  r1kin = k1_scaled*r1docmonod*r1no3monod
                  
   ! NO2- -> N2
   r2docmonod_denom = Cdoc+this%Kd2 
   r2docmonod = Cdoc/r2docmonod_denom
   r2no2monod_denom = Cno2+this%Ka2
   r2no2monod = Cno2/r2no2monod_denom
-  r2kin = this%k2*r2docmonod*r2no2monod
+  r2kin = k2_scaled*r2docmonod*r2no2monod
                  
   ! O2 -> 
   r3docmonod_denom = Cdoc+this%Kd3
   r3docmonod = Cdoc/r3docmonod_denom
   r3o2monod_denom = Co2+this%Ka3
   r3o2monod = Co2/r3o2monod_denom
-  r3kin = this%k3*r3docmonod*r3o2monod
+  r3kin = k3_scaled*r3docmonod*r3o2monod
                  
   sumkin = r1kin + r2kin + r3kin
   sumkinsq = sumkin * sumkin
@@ -562,37 +581,37 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   ! if biomass is aqueous multiply by L_water
   ! if biomass is immobile multiply by material_auxvar%volume
   Residual(this%biomass_id) = Residual(this%biomass_id) + &
-                              this%k_deg * X * L_water
+                              k_deg_scaled * X * L_water
 
   ! production of doc by biomass decay
   ! note the addition
   ! mol/sec
   Residual(this%doc_id) = Residual(this%doc_id) - &
-                          this%k_deg/this%f_act * X * L_water
+                          k_deg_scaled/this%f_act * X * L_water
                  
   if (compute_derivative) then
   
-    dr1kin_ddoc = this%k1 * &
+    dr1kin_ddoc = k1_scaled * &
                   (r1docmonod/Cdoc - r1docmonod/r1docmonod_denom) * &
                   r1no3monod * &
                   rt_auxvar%pri_act_coef(this%doc_id)
-    dr1kin_dno3 = this%k1 * &
+    dr1kin_dno3 = k1_scaled * &
                   r1docmonod * &
                   (r1no3monod/Cno3 - r1no3monod/r1no3monod_denom) * &
                   rt_auxvar%pri_act_coef(this%no3_id)
-    dr2kin_ddoc = this%k2 * &
+    dr2kin_ddoc = k2_scaled * &
                   (r2docmonod/Cdoc - r2docmonod/r2docmonod_denom) * &
                   r2no2monod * &
                   rt_auxvar%pri_act_coef(this%doc_id)
-    dr2kin_dno2 = this%k2 * &
+    dr2kin_dno2 = k2_scaled * &
                   r2docmonod * &
                   (r2no2monod/Cno2 - r2no2monod/r2no2monod_denom) * &
                   rt_auxvar%pri_act_coef(this%no2_id)
-    dr3kin_ddoc = this%k3 * &
+    dr3kin_ddoc = k3_scaled * &
                   (r3docmonod/Cdoc - r3docmonod/r3docmonod_denom) * &
                   r3o2monod * &
                   rt_auxvar%pri_act_coef(this%doc_id)
-    dr3kin_do2 = this%k3 * &
+    dr3kin_do2 = k3_scaled * &
                   r3docmonod * &
                   (r3o2monod/Co2 - r3o2monod/r3o2monod_denom) * &
                   rt_auxvar%pri_act_coef(this%o2_id)
@@ -679,13 +698,13 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
     !   material_auxvar%volume
     Jacobian(this%biomass_id,this%biomass_id) = &
       Jacobian(this%biomass_id,this%biomass_id) + &
-      this%k_deg * kg_water
+      k_deg_scaled * kg_water
 
     ! production of doc by biomass decay
     ! units = kg water/sec. Multiply by kg_water
     Jacobian(this%doc_id,this%biomass_id) = &
       Jacobian(this%doc_id,this%biomass_id) - &
-      this%k_deg/this%f_act * kg_water
+      k_deg_scaled/this%f_act * kg_water
     
   endif
   
