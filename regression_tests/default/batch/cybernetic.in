@@ -24,7 +24,7 @@ END
 
 #=========================== useful tranport parameters ==================
 UNIFORM_VELOCITY 0.d0 0.d0 0.d0 m/yr
-REFERENCE_TEMPERATURE 25.d0 C
+REFERENCE_TEMPERATURE 24.d0 C
 
 #=========================== chemistry ========================================
 # Uncomment to debug reactions
@@ -56,6 +56,7 @@ CHEMISTRY
       Kd3   0.25d0 mM
       Kdeg  0.532d0 1/d
       F_act 0.126d0
+      ACTIVATION_ENERGY 89.d0
     /
   /
   DATABASE ./cybernetic.dat
