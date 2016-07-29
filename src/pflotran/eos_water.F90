@@ -893,7 +893,6 @@ subroutine EOSWaterDensityIFC67(t,p,calculate_derivatives,dw,dwmol, &
 
   tc1 = H2O_CRITICAL_TEMPERATURE    ! K
   pc1 = H2O_CRITICAL_PRESSURE     ! Pa 
-  pc1 = pc1 + 1.d-10*H2O_CRITICAL_PRESSURE     ! Pa 
   vc1 = 0.00317d0  ! m^3/kg
   utc1 = one/tc1   ! 1/C
   upc1 = one/pc1   ! 1/Pa
