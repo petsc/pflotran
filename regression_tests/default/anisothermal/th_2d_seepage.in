@@ -1,0 +1,185 @@
+#Description: 1D test problem for THC mode
+#===================== THC mode ===============================================
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE TH
+    /
+  /
+END
+
+SUBSURFACE
+
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 2
+  CELLS
+    20
+    80
+    140
+    200
+    260
+    320
+  /
+END
+
+#=========================== chemistry ========================================
+#===================== Discretization =========================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 20 1 20
+  BOUNDS
+    0.d0 0.d0 0.d0
+    20.d0 1.d0 5.d0
+  /
+END
+
+#===================== Solver options =========================================
+
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+END
+
+#========================= fluid properties ===================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#========================= material properties ================================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.5d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.8d3
+  SPECIFIC_HEAT 1d3
+  THERMAL_CONDUCTIVITY_DRY 0.5d0
+  THERMAL_CONDUCTIVITY_WET 0.5d0
+  SATURATION_FUNCTION default
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+END
+
+#========================= saturation functions ===============================
+SATURATION_FUNCTION default
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.1d0
+  LAMBDA 0.5d0
+  ALPHA 1.d-4
+END
+
+#========================= output options =====================================
+skip
+OUTPUT
+  PERIODIC TIME 0.1 y
+  PERIODIC_OBSERVATION TIMESTEP 1
+  PRINT_COLUMN_IDS
+  FORMAT TECPLOT POINT
+  FORMAT HDF5
+  VELOCITY_AT_CENTER
+END
+noskip
+
+#======================== times ===============================================
+TIME
+  FINAL_TIME 1.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d-8 y
+  MAXIMUM_TIMESTEP_SIZE 0.1d0  y
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    20.d0 1.d0 5.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 5.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    20.d0 0.d0 0.d0
+    20.d0 1.d0 5.d0
+  /
+END
+
+REGION obs_pt
+  COORDINATE 20.d0 0.5d0 4.d0
+END
+
+OBSERVATION
+  REGION obs_pt
+  VELOCITY
+END
+
+#======================= flow conditions ======================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE HYDROSTATIC
+    TEMPERATURE DIRICHLET
+  /
+  DATUM 0.d0 0.d0 3.d0
+  PRESSURE 101325.d0
+  TEMPERATURE 25.d0
+END
+
+FLOW_CONDITION east
+  TYPE
+    PRESSURE SEEPAGE
+    TEMPERATURE DIRICHLET
+  /
+  DATUM LIST
+    TIME_UNITS y
+    0.d0 0.d0 0.d0 3.d0
+    0.5d0 0.d0 0.d0 4.d0
+    1.d0 0.d0 0.d0 2.d0
+  /
+  INTERPOLATION LINEAR
+  PRESSURE 101325.d0
+  TEMPERATURE 15.d0
+END
+
+#=========================== transport conditions =============================
+#=========================== constraints ======================================
+#========================== initial and boundary conditions ===================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+# west boundary condition
+BOUNDARY_CONDITION
+  FLOW_CONDITION initial
+  REGION west
+END
+
+# east boundary condition
+BOUNDARY_CONDITION
+  FLOW_CONDITION east
+  REGION east
+END
+
+#===================== stratigraphy couplers ==================================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+#=========================== checkpoint / restart =============================
+#CHECKPOINT 10
+END_SUBSURFACE

@@ -2468,7 +2468,9 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: rho
   PetscReal :: dq_lin,dP_lin
   PetscReal :: q_approx,dq_approx
+  PetscBool :: skip_thermal_conduction
 
+  skip_thermal_conduction = PETSC_FALSE
   T_th  = 0.5d0
 
   fluxm = 0.d0
@@ -2544,11 +2546,16 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
         endif
 
         if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC) then
-              ! flow in         ! boundary cell is <= pref
-          if (dphi > 0.d0 .and. global_auxvar_up%pres(1)-option%reference_pressure < eps) then
-            dphi = 0.d0
-            dphi_dp_dn = 0.d0
-            dphi_dt_dn = 0.d0
+          ! boundary cell is <= pref 
+          if (global_auxvar_up%pres(1)-option%reference_pressure < eps) then
+            ! skip thermal conduction whenever water table is lower than cell
+            skip_thermal_conduction = PETSC_TRUE
+            ! flow inward
+            if (dphi > 0.d0) then
+              dphi = 0.d0
+              dphi_dp_dn = 0.d0
+              dphi_dt_dn = 0.d0
+            endif
           endif
         endif
 
@@ -2823,31 +2830,39 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
       Dk =  auxvar_dn%Dk_eff / dd_dn
       !cond = Dk*area*(global_auxvar_up%temp-global_auxvar_dn%temp)
 
-      if (option%use_th_freezing) then
-        Dk_eff_dn    = auxvar_dn%Dk_eff
-        dKe_dp_dn    = auxvar_dn%dKe_dp
-        dKe_dt_dn    = auxvar_dn%dKe_dt
-        dKe_fr_dt_dn = auxvar_dn%ice%dKe_fr_dt
-        dKe_fr_dp_dn = auxvar_dn%ice%dKe_fr_dp
-        Dk           = Dk_eff_dn/dd_dn
-
-        dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dt_dn + &
-            Dk_ice_dn*dKe_fr_dt_dn + (- dKe_dt_dn - dKe_fr_dt_dn)* &
-            Dk_dry_dn)
-        dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dp_dn + &
-            Dk_ice_dn*dKe_fr_dp_dn + (- dKe_dp_dn - dKe_fr_dp_dn)* &
-            Dk_dry_dn)
-
+      if (skip_thermal_conduction) then
+        ! skip thermal conducton when the boundary pressure is below the
+        ! reference pressure (e.g. river stage is below cell center).
+        dDk_dt_dn = 0.d0
+        dDk_dp_dn = 0.d0
+        Dk = 0.d0
       else
+        if (option%use_th_freezing) then
+          Dk_eff_dn    = auxvar_dn%Dk_eff
+          dKe_dp_dn    = auxvar_dn%dKe_dp
+          dKe_dt_dn    = auxvar_dn%dKe_dt
+          dKe_fr_dt_dn = auxvar_dn%ice%dKe_fr_dt
+          dKe_fr_dp_dn = auxvar_dn%ice%dKe_fr_dp
+          Dk           = Dk_eff_dn/dd_dn
 
-        Dk_eff_dn = auxvar_dn%Dk_eff
-        dKe_dp_dn = auxvar_dn%dKe_dp
-        dKe_dt_dn = auxvar_dn%dKe_dt
-        Dk        = Dk_eff_dn/dd_dn
+          dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dt_dn + &
+              Dk_ice_dn*dKe_fr_dt_dn + (- dKe_dt_dn - dKe_fr_dt_dn)* &
+              Dk_dry_dn)
+          dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dp_dn + &
+              Dk_ice_dn*dKe_fr_dp_dn + (- dKe_dp_dn - dKe_fr_dp_dn)* &
+              Dk_dry_dn)
+  
+        else
+  
+          Dk_eff_dn = auxvar_dn%Dk_eff
+          dKe_dp_dn = auxvar_dn%dKe_dp
+          dKe_dt_dn = auxvar_dn%dKe_dt
+          Dk        = Dk_eff_dn/dd_dn
+  
+          dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dt_dn
+          dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dp_dn
 
-        dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dt_dn
-        dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dp_dn
-
+        endif
       endif
 
       if (.not. option%surf_flow_on) then
@@ -3152,6 +3167,9 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscReal :: rho,dum1
   PetscReal :: q_approx, dq_approx
   PetscReal :: T_th,fctT,fct
+  PetscBool :: skip_thermal_conduction
+
+  skip_thermal_conduction = PETSC_FALSE
   T_th  = 0.5d0
 
   fluxm = 0.d0
@@ -3201,9 +3219,14 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
         endif
 
         if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC) then
-          ! flow in         ! boundary cell is <= pref
-          if (dphi > 0.d0 .and. global_auxvar_up%pres(1) - option%reference_pressure < eps) then
-            dphi = 0.d0
+          ! boundary cell is <= pref 
+          if (global_auxvar_up%pres(1)-option%reference_pressure < eps) then
+            ! skip thermal conduction whenever water table is lower than cell
+            skip_thermal_conduction = PETSC_TRUE
+            ! flow inward
+            if (dphi > 0.d0) then
+              dphi = 0.d0
+            endif
           endif
         endif
         
@@ -3369,6 +3392,12 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
     case(DIRICHLET_BC,HET_DIRICHLET)
       Dk =  auxvar_dn%Dk_eff / dd_dn
       cond = Dk*area*(global_auxvar_up%temp-global_auxvar_dn%temp)
+
+      if (skip_thermal_conduction) then
+        ! skip thermal conducton when the boundary pressure is below the
+        ! reference pressure (e.g. river stage is below cell center).
+        cond = 0.d0
+      endif
 
       if (option%surf_flow_on) then
 
