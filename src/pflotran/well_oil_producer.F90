@@ -115,7 +115,8 @@ end subroutine OilProdInitDensity
 
 ! ************************************************************************** !
 
-subroutine WellOilProdVarsExplUpdate(this,grid,ss_fluxes,option)
+!subroutine WellOilProdVarsExplUpdate(this,grid,ss_fluxes,option)
+subroutine WellOilProdVarsExplUpdate(this,grid,option)
   !
   ! Explicit update of well variable for a water injector
   !
@@ -128,7 +129,7 @@ subroutine WellOilProdVarsExplUpdate(this,grid,ss_fluxes,option)
 
   class(well_oil_producer_type) :: this
   type(grid_type), pointer :: grid
-  PetscReal :: ss_fluxes(:,:)
+  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   !PetscReal :: enth_src_h2o, dw_h2o_kg,dw_h2o_mol
@@ -168,7 +169,8 @@ subroutine WellOilProdVarsExplUpdate(this,grid,ss_fluxes,option)
   end do
 
   !update well fluid temperature as perforated grid block average 
-  call this%AverageTemp(grid,ss_fluxes,option)
+  !call this%AverageTemp(grid,ss_fluxes,option)
+  call this%AverageTemp(grid,option)
 
   !The well fluid density is treated as full explicit and it is updated
   !when computing the well connection densities for hydro corrections

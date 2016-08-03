@@ -195,7 +195,8 @@ end subroutine WellFlowEnergyExplJDerivative
 
 ! ************************************************************************** !
 
-subroutine WellFlowEnergyAverageTemp(this,grid,ss_fluxes,option)
+!subroutine WellFlowEnergyAverageTemp(this,grid,ss_fluxes,option)
+subroutine WellFlowEnergyAverageTemp(this,grid,option)
   !
   ! Compute connection densities for producers
   ! to be overwritten for injectors 
@@ -212,9 +213,10 @@ subroutine WellFlowEnergyAverageTemp(this,grid,ss_fluxes,option)
 
   class(well_flow_energy_type) :: this
   type(grid_type), pointer :: grid 
-  PetscReal :: ss_fluxes(:,:)      
+  !PetscReal :: ss_fluxes(:,:)      
   type(option_type) :: option
 
+  PetscReal, pointer :: ss_fluxes(:,:)
   PetscReal :: q_sum
   PetscReal :: q_ph(option%nphase)
 
@@ -231,6 +233,8 @@ subroutine WellFlowEnergyAverageTemp(this,grid,ss_fluxes,option)
   temp_q_well = 0.0d0
   temp_lc = 0.0d0
   temp_well = 0.0d0
+
+  ss_fluxes => this%ss_flow_vol_fluxes
 
   do iconn = 1,this%connection_set%num_connections
     local_id = this%connection_set%id_dn(iconn)
@@ -275,7 +279,8 @@ end subroutine WellFlowEnergyAverageTemp
 
 ! ************************************************************************** !
 
-subroutine FlowEnergyHydrostaticUpdate(this,grid,ss_fluxes,option)
+!subroutine FlowEnergyHydrostaticUpdate(this,grid,ss_fluxes,option)
+subroutine FlowEnergyHydrostaticUpdate(this,grid,option)
   !
   ! computes hydrostatic corrections for producers computing first 
   ! the pressure/densities profiles as for the hydrostatic couplers 
@@ -293,9 +298,10 @@ subroutine FlowEnergyHydrostaticUpdate(this,grid,ss_fluxes,option)
 
   class(well_flow_energy_type) :: this
   type(grid_type), pointer :: grid
-  PetscReal :: ss_fluxes(:,:)
+  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
+  PetscReal, pointer :: ss_fluxes(:,:)
   PetscReal :: xm_nacl
   PetscReal :: dist_x, dist_y, dist_z
   PetscReal :: dist_z_for_pressure
@@ -323,6 +329,8 @@ subroutine FlowEnergyHydrostaticUpdate(this,grid,ss_fluxes,option)
   !and on the vertical finer grid performing an interpolation
   !from flow_energy_auxvars - now called in well_update
   !call this%TempUpdate(grid,option)
+
+  ss_fluxes => this%ss_flow_vol_fluxes 
 
   do i_ph = 1,option%nphase
 
@@ -459,7 +467,8 @@ end subroutine FlowEnergyTempUpdate
 
 ! ************************************************************************** !
 
-subroutine FlowEnergyVarsExplUpdate(this,grid,ss_fluxes,option)
+!subroutine FlowEnergyVarsExplUpdate(this,grid,ss_fluxes,option)
+subroutine FlowEnergyVarsExplUpdate(this,grid,option)
 
   use Grid_module
   use Option_module
@@ -468,7 +477,7 @@ subroutine FlowEnergyVarsExplUpdate(this,grid,ss_fluxes,option)
 
   class(well_flow_energy_type) :: this
   type(grid_type), pointer :: grid
-  PetscReal :: ss_fluxes(:,:)
+  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   print *, "FlowEnergyVarsExplUpdate must be extended"

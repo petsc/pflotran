@@ -663,7 +663,8 @@ end subroutine BaseTempUpdate
 
 ! *************************************************************************** !
 
-subroutine BaseHydroCorrUpdate(this,grid,ss_fluxes,option)
+!subroutine BaseHydroCorrUpdate(this,grid,ss_fluxes,option)
+subroutine BaseHydroCorrUpdate(this,grid,option) 
   !
   ! Updtae well hydrostatic correction for each well connection
   !
@@ -678,7 +679,7 @@ subroutine BaseHydroCorrUpdate(this,grid,ss_fluxes,option)
 
   class(well_base_type) :: this
   type(grid_type), pointer :: grid
-  PetscReal :: ss_fluxes(:,:)
+  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   print *, "Well => BaseHydroCorrUpdate must be extended"
@@ -688,7 +689,8 @@ end subroutine BaseHydroCorrUpdate
 
 ! *************************************************************************** !
 
-subroutine BaseExplUpdate(this,grid,ss_fluxes,option)
+!subroutine BaseExplUpdate(this,grid,ss_fluxes,option)
+subroutine BaseExplUpdate(this,grid,option)
   ! 
   ! - Update FlowEnergy well vars
   ! - Perform a limit on well checks 
@@ -705,7 +707,7 @@ subroutine BaseExplUpdate(this,grid,ss_fluxes,option)
 
   class(well_base_type) :: this
   type(grid_type), pointer :: grid
-  PetscReal :: ss_fluxes(:,:)
+  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   print *, "Well => BaseExplUpdate must be extended"

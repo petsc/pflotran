@@ -399,23 +399,28 @@ subroutine AllWellsInit(this)
         !need to initialize pressure and well densities for injectectors
         call source_sink%well%InitDensity(this%realization%patch%grid, &
                                           this%realization%option )
+        !call source_sink%well%ExplUpdate(this%realization%patch%grid, &
+        !              this%realization%patch% &
+        !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
+        !                                 this%realization%option)
         call source_sink%well%ExplUpdate(this%realization%patch%grid, &
-                      this%realization%patch% &
-                      ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
                                          this%realization%option)
         call source_sink%well%TempUpdate(this%realization%patch%grid, &
-                             this%realization%option)
+                                         this%realization%option)
+        !call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
+        !              this%realization%patch% &
+        !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
+        !              this%realization%option)
         call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
-                      this%realization%patch% &
-                      ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
-                      this%realization%option)
+                                               this%realization%option)
         !update the pressure again after H correction, 
         ! only to print the right value at t=0
+        !call source_sink%well%ExplUpdate(this%realization%patch%grid, &
+        !              this%realization%patch% &
+        !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
+        !                                 this%realization%option)
         call source_sink%well%ExplUpdate(this%realization%patch%grid, &
-                      this%realization%patch% &
-                      ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
                                          this%realization%option)
-
         
        ! create well outputfile - should be moved into a well class
        ! For now open files to print the well variables by default 
@@ -578,10 +583,13 @@ subroutine AllWellsUpdate(this)
         !commenting this freezes the hydrostatic corrections at the intial solution 
         call source_sink%well%TempUpdate(this%realization%patch%grid, &
                              this%realization%option)
+        !call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
+        !              this%realization%patch% &
+        !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
+        !              this%realization%option)
         call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
-                      this%realization%patch% &
-                      ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
-                      this%realization%option)
+                                               this%realization%option)
+
 
       end if
     end if

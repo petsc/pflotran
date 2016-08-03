@@ -120,7 +120,8 @@ end subroutine WatInjInitDensity
 
 ! ************************************************************************** !
 
-subroutine WellWatInjVarsExplUpdate(this,grid,ss_fluxes,option)
+!subroutine WellWatInjVarsExplUpdate(this,grid,ss_fluxes,option)
+subroutine WellWatInjVarsExplUpdate(this,grid,option)
   !
   ! Explicit update of well variable for a water injector
   !
@@ -134,7 +135,7 @@ subroutine WellWatInjVarsExplUpdate(this,grid,ss_fluxes,option)
 
   class(well_water_injector_type) :: this
   type(grid_type), pointer :: grid
-  PetscReal :: ss_fluxes(:,:)      !not curently used 
+  !PetscReal :: ss_fluxes(:,:)      !not curently used 
   type(option_type) :: option
 
   PetscReal :: enth_src_h2o, dw_h2o_kg,dw_h2o_mol
@@ -250,7 +251,8 @@ end subroutine WellWatInjLimitCheck
 
 ! ************************************************************************** !
 
-subroutine WellWatInjConnDenUpdate(this,grid,ss_fluxes,option)
+!subroutine WellWatInjConnDenUpdate(this,grid,ss_fluxes,option)
+subroutine WellWatInjConnDenUpdate(this,grid,option)
   !
   ! Compute connection densities for a water injector 
   !
@@ -266,7 +268,7 @@ subroutine WellWatInjConnDenUpdate(this,grid,ss_fluxes,option)
 
   class(well_water_injector_type) :: this
   type(grid_type), pointer :: grid !not currently used
-  PetscReal :: ss_fluxes(:,:)      !not currently used
+  !PetscReal :: ss_fluxes(:,:)      !not currently used
   type(option_type) :: option
 
   PetscReal :: dw_kg_injw, dw_mol_injw   
@@ -287,7 +289,8 @@ end subroutine WellWatInjConnDenUpdate
 
 ! ************************************************************************** !
 
-subroutine WatInjHydrostaticUpdate(this,grid,ss_fluxes,option)
+!subroutine WatInjHydrostaticUpdate(this,grid,ss_fluxes,option)
+subroutine WatInjHydrostaticUpdate(this,grid,option)
   !
   ! computes hydrostatic corrections for injectors computing first 
   ! the pressure/densities profiles as for the hydrostatic couplers 
@@ -303,7 +306,7 @@ subroutine WatInjHydrostaticUpdate(this,grid,ss_fluxes,option)
 
   class(well_water_injector_type) :: this
   type(grid_type), pointer :: grid
-  PetscReal :: ss_fluxes(:,:)
+  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   PetscReal :: xm_nacl

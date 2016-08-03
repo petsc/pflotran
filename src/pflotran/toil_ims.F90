@@ -2554,9 +2554,10 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
         !call source_sink%well%HydroCorrUpdates(grid, patch% &
         !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
         !              option)
-        call source_sink%well%ExplUpdate(grid, patch% &
-                       ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
-                       option)
+        !call source_sink%well%ExplUpdate(grid, patch% &
+        !               ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
+        !               option)
+        call source_sink%well%ExplUpdate(grid,option)
       end if
     end if 
 

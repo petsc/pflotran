@@ -152,20 +152,27 @@ subroutine AllWellsSetup(realization)
 
   class(realization_subsurface_type) :: realization
   type(coupler_type), pointer :: source_sink
+  PetscInt :: cpl_idx_start
 
   source_sink => realization%patch%source_sink_list%first
 
+  cpl_idx_start = 1
   do
     if (.not.associated(source_sink)) exit
     if( associated(source_sink%well) ) then
       !exlude empty wells - not included in well comms
       if(source_sink%connection_set%num_connections > 0) then
+        !call WellAuxVarSetUp(source_sink%well,source_sink%connection_set, &
+        !                 source_sink%flow_condition,realization%patch%aux, &
+        !                 realization%option)
         call WellAuxVarSetUp(source_sink%well,source_sink%connection_set, &
                          source_sink%flow_condition,realization%patch%aux, &
+                         cpl_idx_start,realization%patch%ss_flow_vol_fluxes, &
                          realization%option)
         !could point also to connection set and to flow_condition
       end if
     end if
+    cpl_idx_start = cpl_idx_start + source_sink%connection_set%num_connections
     source_sink => source_sink%next
   end do
 

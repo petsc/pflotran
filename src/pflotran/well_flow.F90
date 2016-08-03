@@ -27,6 +27,7 @@ module Well_Flow_class
     PetscReal, pointer :: well_conn_h_sorted(:)  ! connection hydrostatic pressure corrections sorted by ascending elevation (entire well)
     PetscReal, pointer :: well_fine_grid_pres(:,:) !pressure values on fine grid, well_fine_grid_pres(iphase,inode)
     PetscReal, pointer :: well_fine_grid_den_kg(:,:) !density values on fine grid, well_fine_grid_den_kg(iphase,inode)
+    PetscReal, pointer :: ss_flow_vol_fluxes(:,:) ! local volumetric fluxes (m^3/s), point to a section of patch%ss_flow_vol_fluxes 
     class(auxvar_flow_type), pointer :: flow_auxvars(:,:) !pointer to flow auxvars
     type(flow_condition_type), pointer :: flow_condition ! pointer to flow_condition associated with the well
     !PetscReal, pointer :: conn_mobs(:,:)       ! well connection mobilities ! TO REMOVE - computed when needed flight
@@ -106,7 +107,8 @@ subroutine WellFlowInit(this,option)
   this%q_fld = 0.0d0;
   allocate( this%mr_fld(option%nphase) );
   this%mr_fld = 0.0d0;
-  
+
+  nullify(this%ss_flow_vol_fluxes)
   nullify(this%flow_auxvars) 
   nullify(this%well_fine_grid_pres) 
 
@@ -162,7 +164,8 @@ end subroutine WellFlow1DGridVarsSetup
 
 ! ************************************************************************** !
 
-subroutine FlowExplUpdate(this,grid,ss_fluxes,option)
+!subroutine FlowExplUpdate(this,grid,ss_fluxes,option)
+subroutine FlowExplUpdate(this,grid,option)
   ! 
   ! - Update FlowEnergy well vars
   ! - Perform a limit on well checks 
@@ -179,7 +182,7 @@ subroutine FlowExplUpdate(this,grid,ss_fluxes,option)
 
   class(well_flow_type) :: this
   type(grid_type), pointer :: grid
-  PetscReal :: ss_fluxes(:,:)
+  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   PetscBool :: pass
@@ -199,7 +202,8 @@ subroutine FlowExplUpdate(this,grid,ss_fluxes,option)
   do
     if(pass) exit ! the well limits are satisfied
 
-    call this%VarsExplUpdate(grid,ss_fluxes,option)
+    !call this%VarsExplUpdate(grid,ss_fluxes,option)
+    call this%VarsExplUpdate(grid,option)
 
     call this%LimitCheck(pass,option)
     ! NOW IMPLEMENT CHECK
@@ -229,7 +233,8 @@ end subroutine FlowExplUpdate
 
 ! ************************************************************************** !
 
-subroutine FlowVarsExplUpdate(this,grid,ss_fluxes,option)
+!subroutine FlowVarsExplUpdate(this,grid,ss_fluxes,option)
+subroutine FlowVarsExplUpdate(this,grid,option)
 
   use Grid_module
   use Option_module
@@ -238,7 +243,7 @@ subroutine FlowVarsExplUpdate(this,grid,ss_fluxes,option)
 
   class(well_flow_type) :: this
   type(grid_type), pointer :: grid
-  PetscReal :: ss_fluxes(:,:)
+  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   print *, "FlowVarsExplUpdate must be extended"
@@ -745,7 +750,8 @@ end subroutine WellFlowLimitCheck
 
 !*****************************************************************************!
 
-subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
+!subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
+subroutine FlowHydroCorrUpdate(this,grid,option)
   !
   ! Updtae well hydrostatic correction for each well connection
   !
@@ -760,10 +766,10 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
 
   class(well_flow_type) :: this
   type(grid_type), pointer :: grid
-  PetscReal :: ss_fluxes(:,:)
+  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
-  
+  !PetscReal, pointer :: ss_fluxes(:,:)
   PetscInt, pointer :: ord(:), l2w(:)
   PetscReal, pointer :: zcn(:) 
   PetscReal, pointer :: well_conn_h(:)
@@ -776,6 +782,7 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
 
   if( this%connection_set%num_connections == 0 ) return
 
+  !ss_fluxes => this%ss_flow_vol_fluxes
   
   ! add here call to compute all well connection densities and 
   ! and well connection (for z-ordered)
@@ -785,7 +792,8 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
   !create here a one
   if (this%hydrostatic_method == WELL_HYDROSTATIC_ITERATIVE) then
 
-    call this%HydrostaticUpdate(grid,ss_fluxes,option)
+    !call this%HydrostaticUpdate(grid,ss_fluxes,option)
+    call this%HydrostaticUpdate(grid,option)
   
     ! concatanate densities from different ranks
     call MPI_Allgatherv(this%conn_den_kg,this%connection_set%num_connections, &
@@ -839,7 +847,8 @@ subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
 !  print *,"After HUpdate MPI_Allgatherv" 
 !#endif
 
-    call this%ConnDenUpdate(grid,ss_fluxes,option) 
+    !call this%ConnDenUpdate(grid,ss_fluxes,option)
+    call this%ConnDenUpdate(grid,option) 
 
     ! concatanate densities from different ranks
     call MPI_Allgatherv(this%conn_den_kg,this%connection_set%num_connections, &
@@ -945,7 +954,8 @@ end subroutine FlowTempUpdate
 
 !*****************************************************************************!
 
-subroutine FlowHydrostaticUpdate(this,grid,ss_fluxes,option)
+!subroutine FlowHydrostaticUpdate(this,grid,ss_fluxes,option)
+subroutine FlowHydrostaticUpdate(this,grid,option)
   !
   ! computes hydrostatic corrections for producers computing first 
   ! the pressure/densities profiles as for the hydrostatic couplers 
@@ -963,7 +973,7 @@ subroutine FlowHydrostaticUpdate(this,grid,ss_fluxes,option)
 
   class(well_flow_type) :: this
   type(grid_type), pointer :: grid
-  PetscReal :: ss_fluxes(:,:)
+  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   print *, "FlowHydrostaticUpdate must be extended"
@@ -974,7 +984,8 @@ end subroutine FlowHydrostaticUpdate
 
 !*****************************************************************************!
 
-subroutine WellFlowConnDenUpdate(this,grid,ss_fluxes,option)
+!subroutine WellFlowConnDenUpdate(this,grid,ss_fluxes,option)
+subroutine WellFlowConnDenUpdate(this,grid,option)
   !
   ! Compute connection densities for producers
   ! to be overwritten for injectors 
@@ -991,9 +1002,10 @@ subroutine WellFlowConnDenUpdate(this,grid,ss_fluxes,option)
 
   class(well_flow_type) :: this
   type(grid_type), pointer :: grid 
-  PetscReal :: ss_fluxes(:,:)      
+  !PetscReal :: ss_fluxes(:,:)      
   type(option_type) :: option
 
+  PetscReal, pointer :: ss_fluxes(:,:)
   PetscReal :: q_sum
   PetscReal :: q_ph(option%nphase)
   PetscReal :: den_ph(option%nphase)
@@ -1011,6 +1023,8 @@ subroutine WellFlowConnDenUpdate(this,grid,ss_fluxes,option)
   den_q_lc = 0.0d0
   den_q_well = 0.0d0
   den_sum_well = 0.0d0
+
+  ss_fluxes => this%ss_flow_vol_fluxes
 
   do iconn = 1,this%connection_set%num_connections
     local_id = this%connection_set%id_dn(iconn)
@@ -1226,6 +1240,7 @@ subroutine FlowWellStrip(well)
   call DeallocateArray(well%well_fine_grid_den_kg)
 
   !these are pointer only
+  nullify(well%ss_flow_vol_fluxes) 
   nullify(well%flow_auxvars)
   nullify(well%flow_condition)
 

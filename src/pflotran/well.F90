@@ -71,7 +71,8 @@ function CreateWell(well_spec,option)
 end function CreateWell
 
 ! ************************************************************************** !
-subroutine WellAuxVarSetUp(well,connection_set,flow_condition,aux,option)
+subroutine WellAuxVarSetUp(well,connection_set,flow_condition,aux, &
+                           cpl_idx_start,ss_flow_vol_fluxes,option)
   ! 
   ! Create a toil ims well object based on type specified in the well_spec
   ! 
@@ -90,7 +91,11 @@ subroutine WellAuxVarSetUp(well,connection_set,flow_condition,aux,option)
   type(connection_set_type), pointer :: connection_set 
   type(flow_condition_type), pointer :: flow_condition
   type(auxiliary_type) :: aux  
+  PetscInt, intent(in) :: cpl_idx_start
+  PetscReal, pointer, intent(in) :: ss_flow_vol_fluxes(:,:) 
   type(option_type) :: option
+
+  PetscInt :: cpl_idx_end
 
 #ifdef WELL_DEBUG
   !write(*,"('WS d11 before = ',e10.4)"), aux%TOil_ims%auxvars(0,1)%den(1)
@@ -125,6 +130,10 @@ subroutine WellAuxVarSetUp(well,connection_set,flow_condition,aux,option)
       nullify(well%well_conn_h_sorted)
       allocate(well%well_conn_h_sorted(well%well_num_conns))
       well%well_conn_h_sorted = 0.0d0
+
+      cpl_idx_end = cpl_idx_start + connection_set%num_connections - 1  
+      well%ss_flow_vol_fluxes => &
+                ss_flow_vol_fluxes(1:option%nphase,cpl_idx_start:cpl_idx_end)
 
   end select
 
