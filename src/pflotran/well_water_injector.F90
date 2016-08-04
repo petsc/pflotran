@@ -16,7 +16,6 @@ module Well_WaterInjector_class
     ! .................
   contains  ! add here type-bound procedure 
     procedure, public :: PrintMsg => PrintWatInj
-    !procedure, public :: ConnInit => WellTOilImsConnInit !should go in parent classes 
     procedure, public  :: PrintOutputHeader => WellWatInjPrintOutputHeader
     procedure, public :: VarsExplUpdate => WellWatInjVarsExplUpdate
     procedure, public :: LimitCheck => WellWatInjLimitCheck
@@ -251,7 +250,6 @@ end subroutine WellWatInjLimitCheck
 
 ! ************************************************************************** !
 
-!subroutine WellWatInjConnDenUpdate(this,grid,ss_fluxes,option)
 subroutine WellWatInjConnDenUpdate(this,grid,option)
   !
   ! Compute connection densities for a water injector 
@@ -268,7 +266,6 @@ subroutine WellWatInjConnDenUpdate(this,grid,option)
 
   class(well_water_injector_type) :: this
   type(grid_type), pointer :: grid !not currently used
-  !PetscReal :: ss_fluxes(:,:)      !not currently used
   type(option_type) :: option
 
   PetscReal :: dw_kg_injw, dw_mol_injw   

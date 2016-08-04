@@ -1,6 +1,7 @@
 module Well_FlowEnergy_class
 
   use PFLOTRAN_Constants_module
+  use Well_Base_class
   use Well_Flow_class
   use AuxVars_FlowEnergy_module
 
@@ -20,6 +21,8 @@ module Well_FlowEnergy_class
   contains  ! add here type-bound procedure 
     procedure, public :: PrintMsg => PrintFlowEnergy
     procedure, public :: ConnInit => WellFlowEnergyConnInit
+    procedure, public :: InitRun => WellFlowEnergyInitRun
+    procedure, public :: InitTimeStep => WellFlowEnergyInitTimeStep
     procedure, public :: VarsExplUpdate => FlowEnergyVarsExplUpdate
     procedure, public :: ExplJDerivative => WellFlowEnergyExplJDerivative
     procedure, public :: AverageTemp => WellFlowEnergyAverageTemp
@@ -96,6 +99,78 @@ subroutine WellFlowEnergyConnInit(this,num_connections,option)
   this%conn_temp = 0.0d0; 
 
 end subroutine WellFlowEnergyConnInit
+
+! ************************************************************************** !
+
+subroutine WellFlowEnergyInitRun(this,grid,material_auxvars, &
+                                 output_option,option)
+  ! 
+  ! Initialise well for a run
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 4/08/16
+  ! 
+
+  use Grid_module
+  use Material_Aux_class, only : material_auxvar_type
+  use Output_Aux_module
+  use Option_module
+
+  implicit none
+
+  class(well_flow_energy_type) :: this
+  type(grid_type), pointer :: grid
+  type(material_auxvar_type), intent(in) :: material_auxvars(:)
+  type(output_option_type), intent(in) :: output_option
+  type(option_type) :: option
+
+  call WellBaseInitRun(this,grid,material_auxvars,output_option,option)
+
+  !initialize pressure and well densities for injectectors
+  call this%InitDensity(grid,option )
+
+  call this%ExplUpdate(grid,option)
+  !init well temperature 
+  call this%TempUpdate(grid,option)
+  !init well hydrostatic corrections
+  call this%HydroCorrUpdates(grid,option)
+
+  !update the pressure again after H correction, 
+  ! only to print the right value at t=0
+  ! move to InitRun/well_last_extension - as in 2. above
+  call this%ExplUpdate(grid,option)
+
+end subroutine WellFlowEnergyInitRun
+
+! ************************************************************************** !
+
+subroutine WellFlowEnergyInitTimeStep(this,grid,material_auxvars,option)
+  ! 
+  ! Initialise well time step
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 4/08/16
+  ! 
+
+  use Grid_module
+  use Material_Aux_class, only : material_auxvar_type
+  use Option_module
+
+  implicit none
+  
+  class(well_flow_energy_type) :: this
+  type(grid_type), pointer :: grid
+  type(material_auxvar_type), intent(in) :: material_auxvars(:)
+  type(option_type) :: option
+
+  ! update well connection factors if variable permeability 
+  call WellBaseInitTimeStep(this,grid,material_auxvars,option)
+
+  call this%TempUpdate(grid,option)
+
+  call this%HydroCorrUpdates(grid,option)   
+
+end subroutine WellFlowEnergyInitTimeStep
 
 ! ************************************************************************** !
 
@@ -279,7 +354,6 @@ end subroutine WellFlowEnergyAverageTemp
 
 ! ************************************************************************** !
 
-!subroutine FlowEnergyHydrostaticUpdate(this,grid,ss_fluxes,option)
 subroutine FlowEnergyHydrostaticUpdate(this,grid,option)
   !
   ! computes hydrostatic corrections for producers computing first 
@@ -298,7 +372,6 @@ subroutine FlowEnergyHydrostaticUpdate(this,grid,option)
 
   class(well_flow_energy_type) :: this
   type(grid_type), pointer :: grid
-  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   PetscReal, pointer :: ss_fluxes(:,:)
@@ -325,11 +398,6 @@ subroutine FlowEnergyHydrostaticUpdate(this,grid,option)
 
   !one dim grid already available
 
-  !update well temperatures on local and global connections,
-  !and on the vertical finer grid performing an interpolation
-  !from flow_energy_auxvars - now called in well_update
-  !call this%TempUpdate(grid,option)
-
   ss_fluxes => this%ss_flow_vol_fluxes 
 
   do i_ph = 1,option%nphase
@@ -340,20 +408,6 @@ subroutine FlowEnergyHydrostaticUpdate(this,grid,option)
                this%well_fine_grid_pres(i_ph,:), &
                this%well_fine_grid_den_kg(i_ph,:) )
   end do
-
-  !compute hydrostatic pressures and densities for water   
-  !call PhaseHydrostaticPressure(this%fine_grid,option%gravity, &
-  !           HYDRO_LIQ_PHASE,this%pw_ref, &
-  !           this%fine_grid%idatum,xm_nacl,this%well_fine_grid_temp, &
-  !           this%well_fine_grid_pres(option%liquid_phase,:), &
-  !           this%well_fine_grid_den_kg(option%liquid_phase,:) )
-
-  !compute hydrostatic pressures and densities for oil   
-  !call PhaseHydrostaticPressure(this%fine_grid,option%gravity, &
-  !           HYDRO_OIL_PHASE,this%pw_ref, &
-  !           this%fine_grid%idatum,xm_nacl,this%well_fine_grid_temp, &
-  !           this%well_fine_grid_pres(option%oil_phase,:), &
-  !           this%well_fine_grid_den_kg(option%oil_phase,:) )
 
   dist_x = 0.0d0;
   dist_y = 0.0d0;
@@ -372,18 +426,6 @@ subroutine FlowEnergyHydrostaticUpdate(this,grid,option)
                           dummy_pres_grad)
     end do
 
-    !interpolated water pressure
-    !pw_conn = PressInterp(ipressure,dist_x,dist_y,dist_z_for_pressure, &
-    !                      option%gravity, &
-    !                      this%well_fine_grid_pres(option%liquid_phase,:), &
-    !                      this%well_fine_grid_den_kg(option%liquid_phase,:), &
-    !                      dummy_pres_grad)
-    !interpolated oil pressure
-    !p0_conn = PressInterp(ipressure,dist_x,dist_y,dist_z_for_pressure, &
-    !                      option%gravity, &
-    !                      this%well_fine_grid_pres(option%oil_phase,:), &
-    !                      this%well_fine_grid_den_kg(option%oil_phase,:), &
-    !                      dummy_pres_grad)
     !could move the fluxes weigthing factors computation to well_flow                         
     q_sum = 0.0d0
     do i_ph = 1,option%nphase

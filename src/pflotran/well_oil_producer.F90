@@ -115,7 +115,6 @@ end subroutine OilProdInitDensity
 
 ! ************************************************************************** !
 
-!subroutine WellOilProdVarsExplUpdate(this,grid,ss_fluxes,option)
 subroutine WellOilProdVarsExplUpdate(this,grid,option)
   !
   ! Explicit update of well variable for a water injector

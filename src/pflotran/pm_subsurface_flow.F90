@@ -377,73 +377,14 @@ subroutine AllWellsInit(this)
   !beg_cpl_conns = 1
   do
     if (.not.associated(source_sink)) exit
-    if( associated(source_sink%well) ) then
+    if (associated(source_sink%well) ) then
       !exlude empty wells - not included in well comms
-      if(source_sink%connection_set%num_connections > 0) then
+      if (source_sink%connection_set%num_connections > 0) then
 
-      call source_sink%well%InitRun(this%realization%patch%grid, &
+        call source_sink%well%InitRun(this%realization%patch%grid, &
                                 this%realization%patch%aux%Material%auxvars, &
                                 this%realization%output_option, &
                                 this%realization%option)
-#if 0
-        !TO DO - move all of this chunk of code into (well_base.F90) 
-        !        well%InitRun(Material%auxvars,grid,option,source_sink%name) 
-  
-        end_cpl_conns = beg_cpl_conns + &
-                        source_sink%connection_set%num_connections - 1  
-
-#ifdef WELL_DEBUG
-        print *,"AllWellsInit - cntrl_lcell_id", source_sink%well%cntrl_lcell_id
-        print *, "perm_yy", this%realization%patch%aux%Material% &
-                                  auxvars(1)%permeability(2)
-#endif   
-        
-        call source_sink%well%WellFactorUpdate(this%realization%patch%grid, &
-                                        source_sink%connection_set, &
-                                this%realization%patch%aux%Material%auxvars, &
-                                           this%realization%option)
-        !need to initialize pressure and well densities for injectectors
-        call source_sink%well%InitDensity(this%realization%patch%grid, &
-                                          this%realization%option )
-        !call source_sink%well%ExplUpdate(this%realization%patch%grid, &
-        !              this%realization%patch% &
-        !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
-        !                                 this%realization%option)
-        call source_sink%well%ExplUpdate(this%realization%patch%grid, &
-                                         this%realization%option)
-        call source_sink%well%TempUpdate(this%realization%patch%grid, &
-                                         this%realization%option)
-        !call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
-        !              this%realization%patch% &
-        !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
-        !              this%realization%option)
-        call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
-                                               this%realization%option)
-        !update the pressure again after H correction, 
-        ! only to print the right value at t=0
-        !call source_sink%well%ExplUpdate(this%realization%patch%grid, &
-        !              this%realization%patch% &
-        !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
-        !                                 this%realization%option)
-        call source_sink%well%ExplUpdate(this%realization%patch%grid, &
-                                         this%realization%option)
-        
-       ! create well outputfile - should be moved into a well class
-       ! For now open files to print the well variables by default 
-       ! TODO: add to well_spec user options to control well printing
-       call MPI_Comm_rank(source_sink%well%comm, cur_w_myrank, ierr )  
-       if(source_sink%well%cntr_rank == cur_w_myrank ) then
-         !w_file_id = source_sink%id 
-         wfile_name = trim(this%realization%option%global_prefix) // "_" // &
-                      trim(source_sink%name) // ".tec" 
-         !open(unit=w_file_id,file=wfile_name)
-         !can close the file, and reopen it in appending mode later??
-         open(unit=IUNIT_TEMP,file=wfile_name)
-         call source_sink%well%PrintOutputHeader(this%realization% &
-                                                 output_option,IUNIT_TEMP)
-         close(unit=IUNIT_TEMP)
-       end if
-#endif
 
       end if
     end if
@@ -567,42 +508,13 @@ subroutine AllWellsUpdate(this)
   beg_cpl_conns = 1
   do
     if (.not.associated(source_sink)) exit
-    if( associated(source_sink%well) ) then
+    if (associated(source_sink%well) ) then
       !exlude empty wells - not included in well comms
-      if(source_sink%connection_set%num_connections > 0) then
+      if (source_sink%connection_set%num_connections > 0) then
 
         call source_sink%well%InitTimeStep(this%realization%patch%grid, &
                                 this%realization%patch%aux%Material%auxvars, &
                                 this%realization%option)
-
-#if 0
-        !TO DO: move this chunk of code in well_base class
-        !       well%InitTimeStep() 
-        if(this%realization%option%update_flow_perm) then
-          call source_sink%well%WellFactorUpdate(this%realization%patch%grid, &
-                                         source_sink%connection_set, &
-                                 this%realization%patch%aux%Material%auxvars, &
-                                            this%realization%option)
-        end if
-
-        end_cpl_conns = beg_cpl_conns + &
-                        source_sink%connection_set%num_connections - 1  
-
-        ! for fully explicit well - or extra coupling
-        !call source_sink%well%ExplUpdate(this%realization%patch%grid, &
-        !              this%realization%patch% &
-        !             ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
-        !                                 this%realization%option)
-        !commenting this freezes the hydrostatic corrections at the intial solution 
-        call source_sink%well%TempUpdate(this%realization%patch%grid, &
-                             this%realization%option)
-        !call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
-        !              this%realization%patch% &
-        !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
-        !              this%realization%option)
-        call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
-                                               this%realization%option)
-#endif
 
       end if
     end if

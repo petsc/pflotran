@@ -44,9 +44,10 @@ module Well_Flow_class
     procedure, public :: QPhase => FlowQPhase
     procedure, public :: MRPhase => FlowMRPhase
     procedure, public :: LimitCheck => WellFlowLimitCheck
-    procedure, public :: TempUpdate => FlowTempUpdate
+    !procedure, public :: TempUpdate => FlowTempUpdate
     procedure, public :: HydroCorrUpdates => FlowHydroCorrUpdate
     procedure, public :: ConnDenUpdate => WellFlowConnDenUpdate
+    procedure, public :: InitDensity => WellFlowInitDensity
     procedure, public :: HydrostaticUpdate => FlowHydrostaticUpdate
     procedure, public :: OneDimGridVarsSetup => WellFlow1DGridVarsSetup
     procedure, public :: DataOutput => FlowDataOutput
@@ -750,7 +751,6 @@ end subroutine WellFlowLimitCheck
 
 !*****************************************************************************!
 
-!subroutine FlowHydroCorrUpdate(this,grid,ss_fluxes,option)
 subroutine FlowHydroCorrUpdate(this,grid,option)
   !
   ! Updtae well hydrostatic correction for each well connection
@@ -766,7 +766,6 @@ subroutine FlowHydroCorrUpdate(this,grid,option)
 
   class(well_flow_type) :: this
   type(grid_type), pointer :: grid
-  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   !PetscReal, pointer :: ss_fluxes(:,:)
@@ -782,8 +781,6 @@ subroutine FlowHydroCorrUpdate(this,grid,option)
 
   if( this%connection_set%num_connections == 0 ) return
 
-  !ss_fluxes => this%ss_flow_vol_fluxes
-  
   ! add here call to compute all well connection densities and 
   ! and well connection (for z-ordered)
   ! note this operation is repeated in all processors sharing the well 
@@ -792,7 +789,6 @@ subroutine FlowHydroCorrUpdate(this,grid,option)
   !create here a one
   if (this%hydrostatic_method == WELL_HYDROSTATIC_ITERATIVE) then
 
-    !call this%HydrostaticUpdate(grid,ss_fluxes,option)
     call this%HydrostaticUpdate(grid,option)
   
     ! concatanate densities from different ranks
@@ -839,15 +835,10 @@ subroutine FlowHydroCorrUpdate(this,grid,option)
   ! end of iterative method
   else if (this%hydrostatic_method == WELL_HYDROSTATIC_LINEAR) then 
 
-!skip here the old way of computing hydrostatic corrections 
-!#if 0   
-!if (this%hydrostatic_method == WELL_HYDROSTATIC_LINEAR) then
-
 !#ifdef WELL_DEBUG
 !  print *,"After HUpdate MPI_Allgatherv" 
 !#endif
 
-    !call this%ConnDenUpdate(grid,ss_fluxes,option)
     call this%ConnDenUpdate(grid,option) 
 
     ! concatanate densities from different ranks
@@ -921,16 +912,13 @@ subroutine FlowHydroCorrUpdate(this,grid,option)
     nullify(l2w)
     nullify(zcn)
   
-  end if !Edn well_hydrostatic_method
-
-!ends here the old way of computing the hydrstatic corroctions
-!#endif 
+  end if !End WELL_HYDROSTATIC_LINEAR method
 
 end subroutine FlowHydroCorrUpdate
 
 !*****************************************************************************!
 
-subroutine FlowTempUpdate(this,grid,option)
+!subroutine FlowTempUpdate(this,grid,option)
   !
   !update well flow temperature from flow_energy_auxvars
   !to be extended at least up to well_flow_energy
@@ -938,23 +926,22 @@ subroutine FlowTempUpdate(this,grid,option)
   ! Author: Paolo Orsini (OpenGoSim)  
   ! Date : 6/12/2016
 
-  use Grid_module
-  use Option_module
+!  use Grid_module
+!  use Option_module
 
-  implicit none
+!  implicit none
 
-  class(well_flow_type) :: this
-  type(grid_type), pointer :: grid
-  type(option_type) :: option
-
-  print *, "Well => FlowTempUpdate must be extended"
-  stop  
-
-end subroutine FlowTempUpdate
+!  class(well_flow_type) :: this
+!  type(grid_type), pointer :: grid
+!  type(option_type) :: option
+!
+!  print *, "Well => FlowTempUpdate must be extended"
+!  stop  
+!
+!end subroutine FlowTempUpdate
 
 !*****************************************************************************!
 
-!subroutine FlowHydrostaticUpdate(this,grid,ss_fluxes,option)
 subroutine FlowHydrostaticUpdate(this,grid,option)
   !
   ! computes hydrostatic corrections for producers computing first 
@@ -973,7 +960,6 @@ subroutine FlowHydrostaticUpdate(this,grid,option)
 
   class(well_flow_type) :: this
   type(grid_type), pointer :: grid
-  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   print *, "FlowHydrostaticUpdate must be extended"
@@ -984,7 +970,6 @@ end subroutine FlowHydrostaticUpdate
 
 !*****************************************************************************!
 
-!subroutine WellFlowConnDenUpdate(this,grid,ss_fluxes,option)
 subroutine WellFlowConnDenUpdate(this,grid,option)
   !
   ! Compute connection densities for producers
@@ -1002,7 +987,6 @@ subroutine WellFlowConnDenUpdate(this,grid,option)
 
   class(well_flow_type) :: this
   type(grid_type), pointer :: grid 
-  !PetscReal :: ss_fluxes(:,:)      
   type(option_type) :: option
 
   PetscReal, pointer :: ss_fluxes(:,:)
@@ -1083,6 +1067,28 @@ subroutine WellFlowConnDenUpdate(this,grid,option)
   end do
 
 end subroutine WellFlowConnDenUpdate
+
+!*****************************************************************************!
+
+subroutine WellFlowInitDensity(this,grid,option)
+  !
+  ! Author: Paolo Orsini (OpenGoSim)  
+  ! Date : 8/04/2016
+  !
+
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  class(well_flow_type) :: this
+  type(grid_type), pointer :: grid  
+  type(option_type) :: option
+
+  print *, "Well WellFlowInitDensity must be extended"
+  stop
+
+end subroutine WellFlowInitDensity
 
 !*****************************************************************************!
 

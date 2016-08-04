@@ -39,14 +39,11 @@ module Well_Base_class
     procedure, public :: PrintMsg => PrintBase
     procedure, public :: ConnInit => WellBaseConnInit
     procedure, public :: ExplUpdate => BaseExplUpdate
-    procedure, public :: HydroCorrUpdates => BaseHydroCorrUpdate
-    procedure, public :: TempUpdate => BaseTempUpdate
     procedure, public :: PrintOutputHeader => PrintOutputHeaderWellBase
     procedure, public :: ExplRes => WellBaseExplRes
     procedure, public :: ExplJDerivative => WellBaseExplJDerivative
     procedure, public :: InitRun => WellBaseInitRun
     procedure, public :: InitTimeStep => WellBaseInitTimeStep
-    procedure, public :: InitDensity => BaseInitDensity
     procedure, public :: Output => BaseOutput  
     procedure, public :: Setup
     procedure, public :: WellFactorUpdate
@@ -56,7 +53,8 @@ module Well_Base_class
     procedure  :: WellConnSort
   end type  well_base_type
 
-  public :: WellBaseInit, WellBaseConnInit, BaseWellStrip
+  public :: WellBaseInit, WellBaseConnInit, BaseWellStrip, &
+            WellBaseInitRun, WellBaseInitTimeStep
 
 contains
 
@@ -642,56 +640,6 @@ end subroutine WellFactorUpdate
 
 ! *************************************************************************** !
 
-subroutine BaseTempUpdate(this,grid,option)
-  !
-  !update well flow temperature from flow_energy_auxvars
-  !to be extended at least up to well_flow_energy
-  !
-  ! Author: Paolo Orsini (OpenGoSim)  
-  ! Date : 6/12/2016
-
-  use Grid_module
-  use Option_module
-
-  implicit none
-
-  class(well_base_type) :: this
-  type(grid_type), pointer :: grid
-  type(option_type) :: option
-
-  print *, "Well => BaseTempUpdate must be extended"
-  stop  
-
-end subroutine BaseTempUpdate
-
-! *************************************************************************** !
-
-!subroutine BaseHydroCorrUpdate(this,grid,ss_fluxes,option)
-subroutine BaseHydroCorrUpdate(this,grid,option) 
-  !
-  ! Updtae well hydrostatic correction for each well connection
-  !
-  ! Author: Paolo Orsini (OpenGoSim)  
-  ! Date : 6/06/2016
-  !
-
-  use Grid_module
-  use Option_module
-
-  implicit none
-
-  class(well_base_type) :: this
-  type(grid_type), pointer :: grid
-  !PetscReal :: ss_fluxes(:,:)
-  type(option_type) :: option
-
-  print *, "Well => BaseHydroCorrUpdate must be extended"
-  stop  
-
-end subroutine BaseHydroCorrUpdate
-
-! *************************************************************************** !
-
 !subroutine BaseExplUpdate(this,grid,ss_fluxes,option)
 subroutine BaseExplUpdate(this,grid,option)
   ! 
@@ -710,7 +658,6 @@ subroutine BaseExplUpdate(this,grid,option)
 
   class(well_base_type) :: this
   type(grid_type), pointer :: grid
-  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   print *, "Well => BaseExplUpdate must be extended"
@@ -776,30 +723,12 @@ subroutine WellBaseInitRun(this,grid,material_auxvars,output_option,option)
                                               !can get rid of connection_set   
   call this%WellFactorUpdate(grid,this%connection_set, &
                              material_auxvars,option)
-
-
-  !move the following three calls to doughters classes 
-  !need to initialize pressure and well densities for injectectors
-  !1. -> move to InitRun/well_water_injector
-  call this%InitDensity(grid,option )
-  !well_flow - or even further - can go anywhere since will be defined from base
-  !2. -> move to the InitRun/Well_last_extension
-  call this%ExplUpdate(grid,option)
-  !3. -> move to InitRun/well_flow_energy 
-  call this%TempUpdate(grid,option)
-
-  call this%HydroCorrUpdates(grid,option)
-
-  !update the pressure again after H correction, 
-  ! only to print the right value at t=0
-  ! move to InitRun/well_last_extension - as in 2. above
-  call this%ExplUpdate(grid,option)
-        
+     
   ! create well outputfile - should be moved into a well class
   ! For now open files to print the well variables by default 
   ! TODO: add to well_spec user options to control well printing
   call MPI_Comm_rank(this%comm, cur_w_myrank, ierr )  
-  if(this%cntr_rank == cur_w_myrank ) then
+  if (this%cntr_rank == cur_w_myrank ) then
     wfile_name = trim(option%global_prefix) // "_" // &
                       trim(this%name) // ".tec" 
     open(unit=IUNIT_TEMP,file=wfile_name)
@@ -831,15 +760,10 @@ subroutine WellBaseInitTimeStep(this,grid,material_auxvars,option)
   type(material_auxvar_type), intent(in) :: material_auxvars(:)
   type(option_type) :: option
 
-  if(option%update_flow_perm) then
+  if (option%update_flow_perm) then
     call this%WellFactorUpdate(grid,this%connection_set, &
                                material_auxvars,option)
   end if
-
-  ! move this to InitTimeStep/well_flow_energy
-  call this%TempUpdate(grid,option)
-  ! move this to InitTimeStep/well_flow
-  call this%HydroCorrUpdates(grid,option)
 
 end subroutine WellBaseInitTimeStep
 
@@ -918,28 +842,6 @@ subroutine BaseDataOutput(this,grid,src_name,option)
   stop  
 
 end subroutine BaseDataOutput
-!*****************************************************************************!
-
-
-subroutine BaseInitDensity(this,grid,option)
-  !
-  ! Author: Paolo Orsini (OpenGoSim)  
-  ! Date : 6/08/2016
-  !
-
-  use Grid_module
-  use Option_module
-
-  implicit none
-
-  class(well_base_type) :: this
-  type(grid_type), pointer :: grid  
-  type(option_type) :: option
-
-  print *, "Well BaseInitDensity must be extended"
-  stop
-
-end subroutine BaseInitDensity
 
 !*****************************************************************************!
 
