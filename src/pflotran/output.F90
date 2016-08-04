@@ -2211,10 +2211,8 @@ subroutine OutputWell(realization_base)
     if (.not.associated(source_sink)) exit
     if( associated(source_sink%well) ) then
       if (source_sink%connection_set%num_connections > 0 ) then
-        !well_auxvar => source_sink%well_auxvar
-        !call source_sink%well%OutputOutput(source_sink%name,option, &
-        !                                   output_option)
-        call WellOutput(source_sink%well,output_option,source_sink%name,option)
+        !call WellOutput(source_sink%well,output_option,source_sink%name,option)
+        call WellOutput(source_sink%well,output_option,option)
       end if 
     end if
     source_sink => source_sink%next

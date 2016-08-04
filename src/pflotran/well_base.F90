@@ -15,7 +15,7 @@ module Well_Base_class
 
   type, public :: well_base_type 
     !PetscInt :: id                            ! well id is not needed - use coupler id
-    !character(len=MAXWORDLENGTH) :: name      ! well name is not needed - use coupler name
+    character(len=MAXWORDLENGTH) :: name       ! same as associated coupler name
     PetscMPIInt :: comm                        ! well communicator
     PetscMPIInt :: group                       ! well group 
     PetscMPIInt :: cntr_rank                   ! rank where the controlling connection is located
@@ -44,6 +44,8 @@ module Well_Base_class
     procedure, public :: PrintOutputHeader => PrintOutputHeaderWellBase
     procedure, public :: ExplRes => WellBaseExplRes
     procedure, public :: ExplJDerivative => WellBaseExplJDerivative
+    procedure, public :: InitRun => WellBaseInitRun
+    procedure, public :: InitTimeStep => WellBaseInitTimeStep
     procedure, public :: InitDensity => BaseInitDensity
     procedure, public :: Output => BaseOutput  
     procedure, public :: Setup
@@ -106,6 +108,7 @@ subroutine WellBaseInit(this,well_spec,option)
   class(well_spec_base_type), pointer :: well_spec
   type(option_type) :: option
 
+  this%name='';
   this%comm=0;                         
   this%group=0;
   this%cntr_rank=0;                       
@@ -742,6 +745,103 @@ subroutine WellBaseExplJDerivative(this,iconn,ghosted_id,isothermal, &
   stop  
   
 end subroutine WellBaseExplJDerivative
+
+! ************************************************************************** !
+
+subroutine WellBaseInitRun(this,grid,material_auxvars,output_option,option)
+  ! 
+  ! Initialise well for a run
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 4/08/16
+  ! 
+
+  use Grid_module
+  use Material_Aux_class, only : material_auxvar_type
+  use Output_Aux_module
+  use Option_module
+
+  implicit none
+
+  class(well_base_type) :: this
+  type(grid_type), pointer :: grid
+  type(material_auxvar_type), intent(in) :: material_auxvars(:)
+  type(output_option_type), intent(in) :: output_option
+  type(option_type) :: option
+
+  PetscMPIInt :: cur_w_myrank
+  PetscInt :: ierr
+  character(len=MAXSTRINGLENGTH) :: wfile_name
+
+                                              !can get rid of connection_set   
+  call this%WellFactorUpdate(grid,this%connection_set, &
+                             material_auxvars,option)
+
+
+  !move the following three calls to doughters classes 
+  !need to initialize pressure and well densities for injectectors
+  !1. -> move to InitRun/well_water_injector
+  call this%InitDensity(grid,option )
+  !well_flow - or even further - can go anywhere since will be defined from base
+  !2. -> move to the InitRun/Well_last_extension
+  call this%ExplUpdate(grid,option)
+  !3. -> move to InitRun/well_flow_energy 
+  call this%TempUpdate(grid,option)
+
+  call this%HydroCorrUpdates(grid,option)
+
+  !update the pressure again after H correction, 
+  ! only to print the right value at t=0
+  ! move to InitRun/well_last_extension - as in 2. above
+  call this%ExplUpdate(grid,option)
+        
+  ! create well outputfile - should be moved into a well class
+  ! For now open files to print the well variables by default 
+  ! TODO: add to well_spec user options to control well printing
+  call MPI_Comm_rank(this%comm, cur_w_myrank, ierr )  
+  if(this%cntr_rank == cur_w_myrank ) then
+    wfile_name = trim(option%global_prefix) // "_" // &
+                      trim(this%name) // ".tec" 
+    open(unit=IUNIT_TEMP,file=wfile_name)
+    call this%PrintOutputHeader(output_option,IUNIT_TEMP)
+    close(unit=IUNIT_TEMP)
+  end if
+
+
+end subroutine WellBaseInitRun
+
+! ************************************************************************** !
+
+subroutine WellBaseInitTimeStep(this,grid,material_auxvars,option)
+  ! 
+  ! Initialise well time step
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 4/08/16
+  ! 
+
+  use Grid_module
+  use Material_Aux_class, only : material_auxvar_type
+  use Option_module
+
+  implicit none
+  
+  class(well_base_type) :: this
+  type(grid_type), pointer :: grid
+  type(material_auxvar_type), intent(in) :: material_auxvars(:)
+  type(option_type) :: option
+
+  if(option%update_flow_perm) then
+    call this%WellFactorUpdate(grid,this%connection_set, &
+                               material_auxvars,option)
+  end if
+
+  ! move this to InitTimeStep/well_flow_energy
+  call this%TempUpdate(grid,option)
+  ! move this to InitTimeStep/well_flow
+  call this%HydroCorrUpdates(grid,option)
+
+end subroutine WellBaseInitTimeStep
 
 ! ************************************************************************** !
 

@@ -153,7 +153,8 @@ end subroutine WellAuxVarSetUp
 
 ! ************************************************************************** !
 
-subroutine WellOutput(well,output_option,src_name,option)
+!subroutine WellOutput(well,output_option,src_name,option)
+subroutine WellOutput(well,output_option,option)
   ! 
   ! Handle the well output part common to all type of wells
   ! 
@@ -168,7 +169,7 @@ subroutine WellOutput(well,output_option,src_name,option)
 
   class(well_base_type), pointer :: well
   type(output_option_type), pointer :: output_option
-  character(len=MAXWORDLENGTH) :: src_name
+  !character(len=MAXWORDLENGTH) :: src_name
   type(option_type) :: option
 
   character(len=MAXSTRINGLENGTH) :: wfile_name
@@ -179,7 +180,8 @@ subroutine WellOutput(well,output_option,src_name,option)
     call MPI_Comm_rank(well%comm, cur_w_myrank, ierr )  
     if(well%cntr_rank == cur_w_myrank ) then
       wfile_name = trim(option%global_prefix) // "_" // &
-                        trim(src_name) // ".tec" 
+                        trim(well%name) // ".tec"
+                        !trim(src_name) // ".tec" 
       open(unit=IUNIT_TEMP,file=wfile_name,action="write", &
            position="append",status="old",iostat=ios)
 

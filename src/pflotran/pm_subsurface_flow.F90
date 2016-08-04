@@ -369,17 +369,23 @@ subroutine AllWellsInit(this)
 
   PetscMPIInt :: cur_w_myrank
   character(len=MAXSTRINGLENGTH) :: wfile_name
-  PetscInt :: beg_cpl_conns, end_cpl_conns
+  !PetscInt :: beg_cpl_conns, end_cpl_conns
   PetscInt :: ierr 
 
   source_sink => this%realization%patch%source_sink_list%first
 
-  beg_cpl_conns = 1
+  !beg_cpl_conns = 1
   do
     if (.not.associated(source_sink)) exit
     if( associated(source_sink%well) ) then
       !exlude empty wells - not included in well comms
       if(source_sink%connection_set%num_connections > 0) then
+
+      call source_sink%well%InitRun(this%realization%patch%grid, &
+                                this%realization%patch%aux%Material%auxvars, &
+                                this%realization%output_option, &
+                                this%realization%option)
+#if 0
         !TO DO - move all of this chunk of code into (well_base.F90) 
         !        well%InitRun(Material%auxvars,grid,option,source_sink%name) 
   
@@ -437,6 +443,7 @@ subroutine AllWellsInit(this)
                                                  output_option,IUNIT_TEMP)
          close(unit=IUNIT_TEMP)
        end if
+#endif
 
       end if
     end if
@@ -563,6 +570,12 @@ subroutine AllWellsUpdate(this)
     if( associated(source_sink%well) ) then
       !exlude empty wells - not included in well comms
       if(source_sink%connection_set%num_connections > 0) then
+
+        call source_sink%well%InitTimeStep(this%realization%patch%grid, &
+                                this%realization%patch%aux%Material%auxvars, &
+                                this%realization%option)
+
+#if 0
         !TO DO: move this chunk of code in well_base class
         !       well%InitTimeStep() 
         if(this%realization%option%update_flow_perm) then
@@ -589,7 +602,7 @@ subroutine AllWellsUpdate(this)
         !              this%realization%option)
         call source_sink%well%HydroCorrUpdates(this%realization%patch%grid, &
                                                this%realization%option)
-
+#endif
 
       end if
     end if
