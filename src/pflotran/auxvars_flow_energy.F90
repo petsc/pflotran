@@ -19,26 +19,29 @@ module AuxVars_FlowEnergy_module
    !..............
   end type auxvar_flow_energy_type
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+  public :: AuxVarFlowEnergyStrip
 
-!  interface TOilImsAuxVarDestroy
-!    module procedure TOilImsAuxVarSingleDestroy
-!    module procedure TOilImsAuxVarArray1Destroy
-!    module procedure TOilImsAuxVarArray2Destroy
-!  end interface TOilImsAuxVarDestroy
-  
-!  public :: TOilImsAuxCreate, &
-!            TOilImsAuxDestroy, &
-!            TOilImsAuxVarInit, &
-!            TOilImsAuxVarCompute, &
-!            TOilImsAuxVarPerturb, &
-!            TOilImsAuxVarDestroy, &
-!            TOilImsAuxVarStrip
-
-!contains
-
+contains
 
 ! ************************************************************************** !
+
+subroutine AuxVarFlowEnergyStrip(this)
+  ! 
+  ! AuxVarFlowDestroy: Deallocates a toil_ims auxiliary object
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 8/5/16
+  ! 
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+
+  class(auxvar_flow_energy_type) :: this
+
+  call DeallocateArray(this%H)  
+  call DeallocateArray(this%U)  
+
+end subroutine AuxVarFlowEnergyStrip
 
 ! ************************************************************************** !
 

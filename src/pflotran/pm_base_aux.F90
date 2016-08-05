@@ -31,7 +31,7 @@ module PM_Base_Aux_module
   end type pm_base_aux_type
 
  
-  public :: PMBaseAuxInit, InitBaseAuxVars , &
+  public :: PMBaseAuxInit, PMBaseAuxSetup, &
             PMBaseAuxStrip 
 
 contains
@@ -67,7 +67,7 @@ end subroutine PMBaseAuxInit
 
 ! ************************************************************************** !
 
-subroutine InitBaseAuxVars(this,grid,option)
+subroutine PMBaseAuxSetup(this,grid,option)
   ! 
   ! Initialize pm_aux  
   ! 
@@ -91,7 +91,7 @@ subroutine InitBaseAuxVars(this,grid,option)
   !inactive_rows_local and inactive_rows_local_ghosted
   ! are allocated in InitSubsurfaceCreateZeroArray 
 
-end subroutine InitBaseAuxVars
+end subroutine PMBaseAuxSetup
 
 ! ************************************************************************** !
 

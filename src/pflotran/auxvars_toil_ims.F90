@@ -15,17 +15,17 @@ module AuxVars_TOilIms_module
   type, public, extends(auxvar_flow_energy_type) :: auxvar_toil_ims_type
     ! no data at the moment
   contains
-    procedure, public :: Init => TOilImsAuxVarInit
-    procedure, public :: Strip => StripTOilImsAuxVar
+    procedure, public :: Init => AuxVarTOilImsInit
+    procedure, public :: Strip => AuxVarTOilImsStrip
   end type auxvar_toil_ims_type
 
-  public :: StripTOilImsAuxVar
+  public :: AuxVarTOilImsStrip
 
 contains
 
 ! ************************************************************************** !
 
-subroutine TOilImsAuxVarInit(this,option)
+subroutine AuxVarTOilImsInit(this,option)
   ! 
   ! Initialize auxiliary object
   ! 
@@ -72,11 +72,11 @@ subroutine TOilImsAuxVarInit(this,option)
     this%U = 0.d0
   !  
 
-end subroutine TOilImsAuxVarInit
+end subroutine AuxVarTOilImsInit
 
 ! ************************************************************************** !
 
-subroutine StripTOilImsAuxVar(this)
+subroutine AuxVarTOilImsStrip(this)
   ! 
   ! TOilImsAuxVarDestroy: Deallocates a toil_ims auxiliary object
   ! 
@@ -89,18 +89,11 @@ subroutine StripTOilImsAuxVar(this)
 
   class(auxvar_toil_ims_type) :: this
 
-    !write(*,*) this%pres(1), this%pres(2)
-    call DeallocateArray(this%pres)  
-    call DeallocateArray(this%sat)  
-    call DeallocateArray(this%den)  
-    call DeallocateArray(this%den_kg)  
-    call DeallocateArray(this%mobility)  
+  call AuxVarFlowStrip(this)
 
-  ! this should be moved to auxvar_flow_energy class
-    call DeallocateArray(this%H)  
-    call DeallocateArray(this%U)  
+  call AuxVarFlowEnergyStrip(this)
 
-end subroutine StripTOilImsAuxVar
+end subroutine AuxVarTOilImsStrip
 ! ************************************************************************** !
 
 end module AuxVars_TOilIms_module

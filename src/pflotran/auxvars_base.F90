@@ -8,42 +8,18 @@ module AuxVars_Base_module
 
 #include "petsc/finclude/petscsys.h"
 
-  !BEGINNING-Paramters to move into toil_ims_paramters 
-
-  ! Primary DOF indices 
-  ! Indices used to map aux_real for condition values 
-  ! these variables, which are global to general, can be modified
-
-  !phase mapping:
-
   type, public :: auxvar_base_type
     PetscReal :: effective_porosity ! factors in compressibility - common to all modes??
     PetscReal :: pert ! common to all modes to (perturbation for numerical jacobian)
   contains
-    procedure, public :: Init => InitAuxVarBase
-  end type auxvar_base_type
-
-
-!  interface TOilImsAuxVarDestroy
-!    module procedure TOilImsAuxVarSingleDestroy
-!    module procedure TOilImsAuxVarArray1Destroy
-!    module procedure TOilImsAuxVarArray2Destroy
-!  end interface TOilImsAuxVarDestroy
-  
-!  public :: TOilImsAuxCreate, &
-!            TOilImsAuxDestroy, &
-!            TOilImsAuxVarInit, &
-!            TOilImsAuxVarCompute, &
-!            TOilImsAuxVarPerturb, &
-!            TOilImsAuxVarDestroy, &
-!            TOilImsAuxVarStrip
-            
+    procedure, public :: Init => AuxVarBaseInit
+  end type auxvar_base_type     
 
 contains
 
 ! ************************************************************************** !
 
-subroutine InitAuxVarBase(this,option)
+subroutine AuxVarBaseInit(this,option)
   ! 
   ! Initialize auxiliary object
   ! 
@@ -62,7 +38,7 @@ subroutine InitAuxVarBase(this,option)
   print *, 'Must extend InitBaseAuxVars '
   stop    
 
-end subroutine InitAuxVarBase
+end subroutine AuxVarBaseInit
 
 
 ! ************************************************************************** !

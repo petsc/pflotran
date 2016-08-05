@@ -464,8 +464,9 @@ auxiliary.o : flash2_aux.o general_aux.o global_aux.o immis_aux.o \
               pm_toil_ims_aux.o reactive_transport_aux.o richards_aux.o \
               secondary_continuum_aux.o th_aux.o
 auxvars_base.o : option.o pflotran_constants.o
-auxvars_flow.o : auxvars_base.o option.o pflotran_constants.o
-auxvars_flow_energy.o : auxvars_base.o auxvars_flow.o pflotran_constants.o
+auxvars_flow.o : auxvars_base.o option.o pflotran_constants.o utility.o
+auxvars_flow_energy.o : auxvars_base.o auxvars_flow.o pflotran_constants.o \
+                        utility.o
 auxvars_toil_ims.o : auxvars_base.o auxvars_flow.o auxvars_flow_energy.o \
                      option.o pflotran_constants.o utility.o
 block_solve.o :

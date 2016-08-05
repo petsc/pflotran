@@ -25,25 +25,12 @@ module AuxVars_Flow_module
     !procedure, public :: Init => InitAuxVarFlow
   end type auxvar_flow_type
 
-!  interface TOilImsAuxVarDestroy
-!    module procedure TOilImsAuxVarSingleDestroy
-!    module procedure TOilImsAuxVarArray1Destroy
-!    module procedure TOilImsAuxVarArray2Destroy
-!  end interface TOilImsAuxVarDestroy
-  
-!  public :: TOilImsAuxCreate, &
-!            TOilImsAuxDestroy, &
-!            TOilImsAuxVarInit, &
-!            TOilImsAuxVarCompute, &
-!            TOilImsAuxVarPerturb, &
-!            TOilImsAuxVarDestroy, &
-!            TOilImsAuxVarStrip
-!            
+  public :: AuxVarFlowStrip
 
 contains
 
 ! ************************************************************************** !
-subroutine InitAuxVarFlow(this,option)
+subroutine AuxVarFlowInit(this,option)
   ! 
   ! Initialize auxiliary object
   ! 
@@ -64,10 +51,30 @@ subroutine InitAuxVarFlow(this,option)
   !print *, 'Must extend InitAuxVarFlow '
   !stop    
 
-end subroutine InitAuxVarFlow
+end subroutine AuxVarFlowInit
 
+! ************************************************************************** !
 
+subroutine AuxVarFlowStrip(this)
+  ! 
+  ! AuxVarFlowDestroy: Deallocates a toil_ims auxiliary object
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 8/5/16
+  ! 
+  use Utility_module, only : DeallocateArray
 
+  implicit none
+
+  class(auxvar_flow_type) :: this
+
+  call DeallocateArray(this%pres)  
+  call DeallocateArray(this%sat)  
+  call DeallocateArray(this%den)  
+  call DeallocateArray(this%den_kg)  
+  call DeallocateArray(this%mobility)  
+
+end subroutine AuxVarFlowStrip
 ! ************************************************************************** !
 
 end module AuxVars_Flow_module

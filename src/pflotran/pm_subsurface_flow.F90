@@ -369,12 +369,10 @@ subroutine AllWellsInit(this)
 
   PetscMPIInt :: cur_w_myrank
   character(len=MAXSTRINGLENGTH) :: wfile_name
-  !PetscInt :: beg_cpl_conns, end_cpl_conns
   PetscInt :: ierr 
 
   source_sink => this%realization%patch%source_sink_list%first
 
-  !beg_cpl_conns = 1
   do
     if (.not.associated(source_sink)) exit
     if (associated(source_sink%well) ) then

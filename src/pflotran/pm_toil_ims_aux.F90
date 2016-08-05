@@ -207,11 +207,7 @@ subroutine InitTOilImsAuxVars(this,grid,num_bc_connection, &
   endif
   this%num_aux_ss = num_ss_connection
 
-  call InitBaseAuxVars(this,grid,option)
-  ! done within InitBaseAuxVars
-  !allocate(this%row_zeroing_array(grid%nlmax))
-  !this%row_zeroing_array = 0
-
+  call PMBaseAuxSetup(this,grid,option)
 
 end subroutine InitTOilImsAuxVars
 
@@ -256,13 +252,9 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
   PetscErrorCode :: ierr
 
   ! from SubsurfaceSetFlowMode
-!    class is (pm_toil_ims_type)
-!      option%iflowmode = TOIL_IMS_MODE
-!      option%nphase = 2
-!      option%liquid_phase = 1           ! liquid_pressure
-!      option%oil_phase = 2              ! oil_pressure
-!      option%capillary_pressure_id = 3  ! capillary pressure
-!
+  ! option%liquid_phase = 1           ! liquid_pressure
+  ! option%oil_phase = 2              ! oil_pressure
+  ! option%capillary_pressure_id = 3  ! capillary pressure
  
   lid = option%liquid_phase
   oid = option%oil_phase
@@ -493,7 +485,7 @@ end subroutine PerturbTOilIms
 
 ! ************************************************************************** !
 ! this could (actually should) be moved to auxvar_toil_ims as done for Init
-
+! see example abive
 subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
                                 material_auxvar, &
                                 characteristic_curves,natural_id, &
@@ -566,7 +558,7 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
      pert(TOIL_IMS_SATURATION_DOF) = sat_perturb_tolerance
   endif
 
-! below constrains from ims and mphase - might not be needed is post-solve checks
+! below constrains from ims and mphase - might not be needed with post-solve checks
 !  if (pert(TOIL_IMS_SATURATION_DOF) < 1D-12 .and. pert(TOIL_IMS_SATURATION_DOF) >= 0.D0) &
 !     pert(TOIL_IMS_SATURATION_DOF) = 1D-12
 !  if (pert(TOIL_IMS_SATURATION_DOF) > -1D-12 .and. pert(TOIL_IMS_SATURATION_DOF) < 0.D0) &
@@ -591,27 +583,6 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
                               material_auxvar, &
                               characteristic_curves,natural_id,option)
 
-!#ifdef DEBUG_GENERAL
-!    call GlobalAuxVarCopy(global_auxvar,global_auxvar_debug,option)
-!    call GeneralAuxVarCopy(gen_auxvar(idof),general_auxvar_debug,option)
-!    call GeneralAuxVarUpdateState(x_pert,general_auxvar_debug, &
-!                                  global_auxvar_debug, &
-!                                  material_auxvar, &
-!                                  characteristic_curves, &
-!                                  natural_id,option)
-!    if (global_auxvar%istate /= global_auxvar_debug%istate) then
-!      write(option%io_buffer, &
-!            &'(''Change in state due to perturbation: '',i3,'' -> '',i3, &
-!            &'' at cell '',i3,'' for dof '',i3)') &
-!        global_auxvar%istate, global_auxvar_debug%istate, natural_id, idof
-!      call printMsg(option)
-!      write(option%io_buffer,'(''orig: '',6es17.8)') x(1:3)
-!      call printMsg(option)
-!      write(option%io_buffer,'(''pert: '',6es17.8)') x_pert_save(1:3)
-!      call printMsg(option)
-!    endif
-!#endif
-
   enddo
 
   toil_auxvar(TOIL_IMS_PRESSURE_DOF)%pert = &
@@ -619,11 +590,6 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
 
   !write(*,"('within TOilImsAuxVarPerturb perturb = ',(4(e10.4,1x)))"), &
   !         toil_auxvar(0:3)%pert
-
-!#ifdef DEBUG_GENERAL
-!  call GlobalAuxVarStrip(global_auxvar_debug)
-!  call GeneralAuxVarStrip(general_auxvar_debug)
-!#endif
  
 end subroutine TOilImsAuxVarPerturb
 
@@ -698,7 +664,6 @@ subroutine TOilImsAuxDestroy(aux)
   !print *, "den oil 31 int = ", aux%auxvars(3,1)%den(2)
   if (associated(aux%auxvars) ) then
     call TOilImsAuxVarStrip(aux%auxvars)
-    !call TOilImsAuxVarArray2Strip(aux%auxvars)
     deallocate(aux%auxvars)
   end if 
   nullify(aux%auxvars) 
@@ -717,10 +682,6 @@ subroutine TOilImsAuxDestroy(aux)
   end if
   nullify(aux%auxvars_ss)
 
-  !moved to PmBaseAuxStrip
-  !call DeallocateArray(aux%inactive_rows_local)
-  !call DeallocateArray(aux%inactive_rows_local_ghosted)
-  !call DeallocateArray(aux%row_zeroing_array)
   call PMBaseAuxStrip(aux)
 
   if (associated(aux%parameter)) then
@@ -759,19 +720,9 @@ subroutine  TOilImsAuxVarArray1Strip(auxvars)
 
   !print *, "den oil bc/ss pass = ", auxvars(1)%den(2)
   
-  !if (associated(auxvars)) then
-    do iaux = 1, size(auxvars)
-      !print *, "i am in TOilImsAuxVarArray1Destroy iaux loop", iaux
-      !call TOilImsAuxVarStrip(auxvars(iaux))
-      !print *, "den oil = ", auxvars(iaux)%den(2) 
-      call auxvars(iaux)%Strip
-    enddo  
-    !print *, "i am in TOilImsAuxVarArray1Destroy after auxvars loop"
-    !deallocate(auxvars)
-    !print *, "after deallocation 1D auxvars"
-  !endif
-  !nullify(auxvars)  
-  !print *, "after 1D nullify auxvars"
+  do iaux = 1, size(auxvars)
+    call auxvars(iaux)%Strip
+  enddo  
 
 end subroutine TOilImsAuxVarArray1Strip
 
@@ -800,88 +751,16 @@ subroutine TOilImsAuxVarArray2Strip(auxvars)
 
   PetscInt :: iaux, idof
 
-  !print *, "i am in TOilImsAuxVarArray2Destroy"
-
-  !print *, "den oil 01 int pass = ", auxvars(0,1)%den(2)
-  !print *, "den oil 11 int pass= ", auxvars(1,1)%den(2)
-  !print *, "den oil 21 int pass= ", auxvars(2,1)%den(2)
-  !print *, "den oil 31 int pass= ", auxvars(3,1)%den(2)
-  
-  !if (associated(auxvars)) then
-    do iaux = 1, size(auxvars,2)
-      do idof = 1, size(auxvars,1)
-        !print *, "i am before TOilImsAuxVarStrip"
-        !call TOilImsAuxVarStrip(auxvars(idof-1,iaux))
-        call auxvars(idof-1,iaux)%Strip()
-      enddo
-    enddo  
-    !deallocate(auxvars)
-  !endif
-  !nullify(auxvars)  
+  do iaux = 1, size(auxvars,2)
+    do idof = 1, size(auxvars,1)
+      !print *, "i am before TOilImsAuxVarStrip"
+      !call TOilImsAuxVarStrip(auxvars(idof-1,iaux))
+      call auxvars(idof-1,iaux)%Strip()
+    enddo
+  enddo  
 
 end subroutine TOilImsAuxVarArray2Strip
 
 ! ************************************************************************** !
-
-! ************************************************************************** !
-! this has been moved to auxvar_toil_ims_type
-#if 0
-
-subroutine TOilImsAuxVarInit(auxvar,option)
-  ! 
-  ! Initialize auxiliary object
-  ! 
-  ! Author: PAolo Orsini
-  ! Date: 5/27/16
-  ! 
-
-  use Option_module
-
-  implicit none
-  
-  class(toil_ims_auxvar_type) :: auxvar
-  type(option_type) :: option
-
-  auxvar%effective_porosity = 0.d0
-  auxvar%pert = 0.d0
-  
-  !part of this initialization could be common to all modes
-  ! need to agree a standard filling for the pressure:
-  ! nphases and capillaty pressure afterwards? (can be 2 for three phases) 
-
-  !the indended part below should go on AuxvarsFlowInit, however we need a
-  !standard for the pressure array entry, e.g. 
-  !nphases and capillaty pressure afterwards? (pcs be 2 for three phases)
-  !otherwise define a pc array which is mode dependent
-    !two phases (water,oil) and capillary pressure
-    allocate(auxvar%pres(option%nphase+ONE_INTEGER))
-    auxvar%pres = 0.d0
-    allocate(auxvar%sat(option%nphase))
-    auxvar%sat = 0.d0
-    allocate(auxvar%den(option%nphase))
-    auxvar%den = 0.d0
-    allocate(auxvar%den_kg(option%nphase))
-    auxvar%den_kg = 0.d0
-    allocate(auxvar%mobility(option%nphase))
-    auxvar%mobility = 0.d0
-
-  !this could go on AuxvarsFlowEnergyInit
-    auxvar%temp = 0.d0
-    allocate(auxvar%H(option%nphase))
-    auxvar%H = 0.d0
-    allocate(auxvar%U(option%nphase))
-    auxvar%U = 0.d0
-  !!!  
-
-end subroutine TOilImsAuxVarInit
-
-#endif
-
-! ************************************************************************** !
-
-
-
-! ************************************************************************** !
-
 
 end module PM_TOilIms_Aux_module

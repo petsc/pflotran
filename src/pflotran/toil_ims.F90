@@ -81,15 +81,6 @@ subroutine TOilImsSetup(realization)
   PetscInt :: i, idof, count
   PetscBool :: error_found
   PetscInt :: flag(10)
-                                                ! extra index for derivatives
-  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
-  !type(toil_ims_auxvar_type), pointer :: toil_auxvars_bc(:)
-  !type(toil_ims_auxvar_type), pointer :: toil_auxvars_ss(:)
-  !switch to polymorphic auxvars - needed for bloc enclosed in #if 0
-  !class(auxvar_toil_ims_type), pointer :: toil_auxvars(:,:)
-  !class(auxvar_toil_ims_type), pointer :: toil_auxvars_bc(:)
-  !class(auxvar_toil_ims_type), pointer :: toil_auxvars_ss(:)
-
 
   class(material_auxvar_type), pointer :: material_auxvars(:)
   !type(fluid_property_type), pointer :: cur_fluid_property
@@ -99,8 +90,6 @@ subroutine TOilImsSetup(realization)
   grid => patch%grid
   
   patch%aux%TOil_ims => TOilImsAuxCreate(option)
-  !patch%aux%TOil_ims => TOilImsAuxCreate(option)
-
 
   ! ensure that material properties specific to this module are properly
   ! initialized
@@ -171,77 +160,6 @@ subroutine TOilImsSetup(realization)
   num_ss_connection = CouplerGetNumConnectionsInList(patch%source_sink_list)
 
   call patch%aux%TOil_ims%Init(grid,num_bc_connection,num_ss_connection,option)
-
-
-! the three instructions above cut the code between if 0
-#if 0
-  !all part indended below can be shared by all flow modes
-  !AuxVarInit => TOilImsAuxVarInit
-  !define pm_aux%Init() in pm_base_auxvars_type,  !no need to pass the array down
-  ! pm_aux%Init(grid,option) 
-  ! this solve also the pointer problem - allocate done internally
-    ! allocate auxvar data structures for all grid cells  
-    allocate(toil_auxvars(0:option%nflowdof,grid%ngmax))
-    do ghosted_id = 1, grid%ngmax
-      do idof = 0, option%nflowdof
-        call TOilImsAuxVarInit(toil_auxvars(idof,ghosted_id),option)
-      enddo
-    enddo
-
-    !patch%aux%TOil_ims%auxvars => toil_auxvars
-    !patch%aux%TOil_ims%num_aux = grid%ngmax
-    !THIS IS A DANGEROUS OPERATION - to be checked!!! Possible compiler bug
-    !pointing to an array of classes 
-    patch%aux%pm_auvars%auxvars => toil_auxvars
-    patch%aux%pm_auvars%num_aux = grid%ngmax
-
-    !if issues here I should operate withoout pointer as follows
-    !allocate(patch%aux%pm_auvars%auxvars(0:option%nflowdof,grid%ngmax))
-    !do ghosted_id = 1, grid%ngmax
-    !  do idof = 0, option%nflowdof
-    !    call TOilImsAuxVarInit(patch%aux%pm_auvars%auxvars(idof,ghosted_id), &
-    !                            option)
-    !  enddo
-    !enddo
-
-    ! count the number of boundary connections and allocate
-    ! auxvar data structures for them 
-    sum_connection = CouplerGetNumConnectionsInList(patch%boundary_condition_list)
-    if (sum_connection > 0) then
-      allocate(toil_auxvars_bc(sum_connection))
-      do iconn = 1, sum_connection
-        call TOilImsAuxVarInit(toil_auxvars_bc(iconn),option)
-      enddo
-      !patch%aux%TOil_ims%auxvars_bc => toil_auxvars_bc
-      !DANGER - if issues avoid pointer
-      patch%aux%pm_aux%auxvars_bc => toil_auxvars_bc
-    endif
-    !patch%aux%TOil_ims%num_aux_bc = sum_connection
-    patch%aux%pm_aux%num_aux_bc = sum_connection
-
-    ! count the number of source/sink connections and allocate
-    ! auxvar data structures for them  
-    sum_connection = CouplerGetNumConnectionsInList(patch%source_sink_list)
-    if (sum_connection > 0) then
-      allocate(toil_auxvars_ss(sum_connection))
-      do iconn = 1, sum_connection
-        call TOilImsAuxVarInit(toil_auxvars_ss(iconn),option)
-      enddo
-      !patch%aux%TOil_ims%auxvars_ss => toil_auxvars_ss
-      !DANGER pointer to an array of classes
-      patch%aux%pm_aux%auxvars_ss => toil_auxvars_ss
-    endif
-    !patch%aux%TOil_ims%num_aux_ss = sum_connection
-    patch%aux%pm_aux%num_aux_ss = sum_connection
-
-    ! create array for zeroing Jacobian entries if isothermal
-    !allocate(patch%aux%TOil_ims%row_zeroing_array(grid%nlmax))
-    !patch%aux%TOil_ims%row_zeroing_array = 0
-
-    allocate(patch%aux%pm_aux%row_zeroing_array(grid%nlmax))
-    patch%aux%pm_aux%row_zeroing_array = 0
-  !end common-part
-#endif
 
   list => realization%output_option%output_snap_variable_list
   call TOilImsSetPlotVariables(list)
@@ -376,32 +294,6 @@ subroutine TOilImsTimeCut(realization)
   
   type(realization_subsurface_type) :: realization
 
-  !type(option_type), pointer :: option
-  !type(patch_type), pointer :: patch
-  !type(grid_type), pointer :: grid
-  !type(global_auxvar_type), pointer :: global_auxvars(:)  
-  !type(general_auxvar_type), pointer :: gen_auxvars(:,:)
-  
-  !PetscInt :: local_id, ghosted_id
-  !PetscErrorCode :: ierr
-
-  !option => realization%option
-  !patch => realization%patch
-  !grid => patch%grid
-  !global_auxvars => patch%aux%Global%auxvars
-  !gen_auxvars => patch%aux%General%auxvars
-
-  ! restore stored state there is not state in ims modules
-  !do ghosted_id = 1, grid%ngmax
-  !  global_auxvars(ghosted_id)%istate = &
-  !    gen_auxvars(ZERO_INTEGER,ghosted_id)%istate_store(PREV_TS)
-  !enddo
-
-!#ifdef DEBUG_GENERAL_FILEOUTPUT
-!  debug_timestep_cut_count = debug_timestep_cut_count + 1
-!#endif 
-
-  ! PO
   ! if anything else to do when specific to cutting time step - 
   ! for TOIL IMS - add here
 
@@ -474,23 +366,25 @@ subroutine TOilImsUpdateAuxVars(realization)
   grid => patch%grid
   field => realization%field
 
-  !toil_auxvars => patch%aux%TOil_ims%auxvars
-  !toil_auxvars_bc => patch%aux%TOil_ims%auxvars_bc
+  !idea to generalise pm_xxx_aux using three classes: 
+  !  pm_base_aux,pm_subsurface_flow_aux,pm_xxx_aux
+  ! pm_subsurface_flow_aux extension of pm_base_aux
+  ! type, public, extends(pm_base_aux) :: pm_subsurface_flow_aux
+  !   class(auxvar_base_type) :: auxvars_base  !pointer as in well
+  !   ! class(auxvar_flow_energy_type) :: auxvars_flow_energy !pointer as in wells
+  !   ....................
+  ! end 
+  ! 
+  ! (from TOilImsUpdateAuxVars calls )
+  ! PMSubSurfFlowUpdateAuxVars(grid,field,global_auxvars,characteristic_curves_array,..) 
+  ! PMSubSurfFlowUpdateAuxVars as member function of pm_subsurface_flow_aux
   !
-  ! the statement below compile, but the pointer return garbage: 
-  ! seems to be a gfrotran bug compiler - to verify
-
-  ! toil_aux => patch%aux%pm_aux would require:
-  !  select type(patch%aux%pm_aux) 
-  !    class is (pm_toil_ims_aux_type)
-  !       toil_aux => patch%aux%pm_aux
-  ! without this select type - (which could be computationally inefficient)
-  ! the code does not see the pm_aux's members that belong to pm_toil_ims_aux_type
-  ! only the base members defined in pm_toil_ims_aux_type
-  ! probably another select type class is () is needed to 
-  ! access class(auxvar_toil_ims_type) :: auxvars, otherwise only auxvar_base
-  ! would be seen. TO avoid this, use class members without components       
-  ! e.g. patch%aux%pm_aux%auxvars, patch%aux%pm_aux%auxvars_bc 
+  ! ...............................
+  ! do ghosted_id = 1, grid%ngmax
+  !   pm_subsurface_flow_aux%auxvars_flow_energy(ZERO_INTEGER,ghosted_id)%compute(
+  !                       grid,field,global_auxvars,characteristic_curves_array
+  !                        option)
+  ! end do
 
   global_auxvars => patch%aux%Global%auxvars
   global_auxvars_bc => patch%aux%Global%auxvars_bc
@@ -706,37 +600,14 @@ subroutine TOilImsUpdateSolution(realization)
   ! 
 
   use Realization_Subsurface_class
-  !use Field_module
-  !use Patch_module
-  !use Discretization_module
-  !use Option_module
-  !use Grid_module
   
   implicit none
   
   type(realization_subsurface_type) :: realization
 
-  !type(option_type), pointer :: option
-  !type(patch_type), pointer :: patch
-  !type(grid_type), pointer :: grid
-  !type(field_type), pointer :: field
-  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
-  !type(global_auxvar_type), pointer :: global_auxvars(:)  
-  !PetscInt :: local_id, ghosted_id
-  !PetscErrorCode :: ierr
-  
-  !option => realization%option
-  !field => realization%field
-  !patch => realization%patch
-  !grid => patch%grid
-  !gen_auxvars => patch%aux%General%auxvars  
-  !global_auxvars => patch%aux%Global%auxvars
-  
   if (realization%option%compute_mass_balance_new) then
     call TOilImsUpdateMassBalance(realization)
   endif
-  
-  
   
 end subroutine TOilImsUpdateSolution
 
@@ -849,8 +720,6 @@ subroutine TOilImsUpdateMassBalance(realization)
 
   ! updating with mass balance, assuming molar quantity loaded in:
   ! mass_balance and mass_balance_delta
-
-  !write(*,*) "toil fmw", toil_ims_fmw_comp(1), toil_ims_fmw_comp(2)
 
   do iconn = 1, patch%aux%TOil_ims%num_aux_bc
     do icomp = 1, option%nflowspec
@@ -1128,7 +997,7 @@ subroutine TOilImsFlux(toil_auxvar_up,global_auxvar_up, &
   call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
   
   ! Fracture permeability change only available for structured grid (Heeho)
-  ! PO nu fractures considered for now
+  ! PO no fractures considered for now
   !if (associated(material_auxvar_up%fracture)) then
   !  call FracturePermEvaluate(material_auxvar_up,perm_up,perm_up, &
   !                            dummy_perm_up,dist)
@@ -1305,36 +1174,6 @@ subroutine TOilImsFlux(toil_auxvar_up,global_auxvar_up, &
   Res(energy_id) = Res(energy_id) + heat_flux
 ! CONDUCTION
 #endif
-
-!#ifdef DEBUG_FLUXES  
-!  if (debug_connection) then  
-!!    write(*,'(a,7es12.4)') 'in: ', adv_flux(:)*dist(1), diff_flux(:)*dist(1)
-!    write(*,'('' phase: gas'')')
-!    write(*,'(''  pressure   :'',2es12.4)') gen_auxvar_up%pres(2), gen_auxvar_dn%pres(2)
-!    write(*,'(''  saturation :'',2es12.4)') gen_auxvar_up%sat(2), gen_auxvar_dn%sat(2)
-!    write(*,'(''  water --'')')
-!    write(*,'(''   darcy flux:'',es12.4)') adv_flux(1,2)
-!    write(*,'(''   xmol      :'',2es12.4)') gen_auxvar_up%xmol(1,2), gen_auxvar_dn%xmol(1,2)
-!    write(*,'(''   diff flux :'',es12.4)') diff_flux(1,2)
-!    write(*,'(''  air --'')')
-!    write(*,'(''   darcy flux:'',es12.4)') adv_flux(2,2)
-!    write(*,'(''   xmol      :'',2es12.4)') gen_auxvar_up%xmol(2,2), gen_auxvar_dn%xmol(2,2)
-!    write(*,'(''   diff flux :'',es12.4)') diff_flux(2,2)
-!    write(*,'(''  heat flux  :'',es12.4)') (adv_flux(3,2) + heat_flux)*1.d6
-!    write(*,'('' phase: liquid'')')
-!    write(*,'(''  pressure   :'',2es12.4)') gen_auxvar_up%pres(1), gen_auxvar_dn%pres(1)
-!    write(*,'(''  saturation :'',2es12.4)') gen_auxvar_up%sat(1), gen_auxvar_dn%sat(1)
-!    write(*,'(''  water --'')')
-!    write(*,'(''   darcy flux:'',es12.4)') adv_flux(1,1)
-!    write(*,'(''   xmol      :'',2es12.4)') gen_auxvar_up%xmol(1,1), gen_auxvar_dn%xmol(1,1)
-!    write(*,'(''   diff flux :'',es12.4)') diff_flux(1,1)
-!    write(*,'(''  air --'')')
-!    write(*,'(''   darcy flux:'',es12.4)') adv_flux(2,1)
-!    write(*,'(''   xmol      :'',2es12.4)') gen_auxvar_up%xmol(2,1), gen_auxvar_dn%xmol(2,1)
-!    write(*,'(''   diff flux :'',es12.4)') diff_flux(2,1)
-!    write(*,'(''  heat flux  :'',es12.4)') (adv_flux(3,1) + heat_flux)*1.d6
-!  endif
-!#endif
 
 !#ifdef DEBUG_GENERAL_FILEOUTPUT
 !  debug_flux(energy_id,1) = debug_flux(energy_id,1) + heat_flux
@@ -1654,44 +1493,6 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
 #endif 
 ! end of TOIL_CONDUCTION
 
-!#ifdef DEBUG_FLUXES  
-!  if (debug_connection) then  
-!!    write(*,'(a,7es12.4)') 'in: ', adv_flux(:)*dist(1), diff_flux(:)*dist(1)
-!    write(*,'('' phase: gas'')')
-!    write(*,'(''  pressure   :'',2es12.4)') gen_auxvar_up%pres(2), gen_auxvar_dn%pres(2)
-!    write(*,'(''  saturation :'',2es12.4)') gen_auxvar_up%sat(2), gen_auxvar_dn%sat(2)
-!    write(*,'(''  water --'')')
-!    write(*,'(''   darcy flux:'',es12.4)') adv_flux(1,2)
-!    write(*,'(''   xmol      :'',2es12.4)') gen_auxvar_up%xmol(1,2), gen_auxvar_dn%xmol(1,2)
-!    write(*,'(''   diff flux :'',es12.4)') diff_flux(1,2)
-!    write(*,'(''  air --'')')
-!    write(*,'(''   darcy flux:'',es12.4)') adv_flux(2,2)
-!    write(*,'(''   xmol      :'',2es12.4)') gen_auxvar_up%xmol(2,2), gen_auxvar_dn%xmol(2,2)
-!    write(*,'(''   diff flux :'',es12.4)') diff_flux(2,2)
-!    write(*,'(''  heat flux  :'',es12.4)') (adv_flux(3,2) + heat_flux)*1.d6
-!    write(*,'('' phase: liquid'')')
-!    write(*,'(''  pressure   :'',2es12.4)') gen_auxvar_up%pres(1), gen_auxvar_dn%pres(1)
-!    write(*,'(''  saturation :'',2es12.4)') gen_auxvar_up%sat(1), gen_auxvar_dn%sat(1)
-!    write(*,'(''  water --'')')
-!    write(*,'(''   darcy flux:'',es12.4)') adv_flux(1,1)
-!    write(*,'(''   xmol      :'',2es12.4)') gen_auxvar_up%xmol(1,1), gen_auxvar_dn%xmol(1,1)
-!    write(*,'(''   diff flux :'',es12.4)') diff_flux(1,1)
-!    write(*,'(''  air --'')')
-!    write(*,'(''   darcy flux:'',es12.4)') adv_flux(2,1)
-!    write(*,'(''   xmol      :'',2es12.4)') gen_auxvar_up%xmol(2,1), gen_auxvar_dn%xmol(2,1)
-!    write(*,'(''   diff flux :'',es12.4)') diff_flux(2,1)
-!    write(*,'(''  heat flux  :'',es12.4)') (adv_flux(3,1) + heat_flux)*1.d6
-!  endif
-!#endif
-
-!#ifdef DEBUG_GENERAL_FILEOUTPUT
-!  debug_flux(energy_id,1) = debug_flux(energy_id,1) + heat_flux
-!  if (debug_flag > 0) then  
-!    write(debug_unit,'(a,7es24.15)') 'bc dif flux (liquid):', debug_flux(:,1)*dist(3)
-!    write(debug_unit,'(a,7es24.15)') 'bc dif flux (gas):', debug_flux(:,2)*dist(3)
-!  endif
-!#endif
-  
 end subroutine TOilImsBCFlux
 
 ! ************************************************************************** !
@@ -2323,8 +2124,6 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
   PetscInt :: icap_up, icap_dn
   PetscReal :: Res(realization%option%nflowdof)
   PetscReal :: v_darcy(realization%option%nphase)
-
-  PetscInt :: beg_cpl_conns, end_cpl_conns 
  
   discretization => realization%discretization
   option => realization%option
@@ -2537,7 +2336,6 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sink_list%first 
   sum_connection = 0
-  beg_cpl_conns = 1
   do 
     if (.not.associated(source_sink)) exit
     
@@ -2549,14 +2347,6 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
 
     if ( associated(source_sink%well) ) then
       if (cur_connection_set%num_connections > 0 ) then
-        end_cpl_conns = beg_cpl_conns + &
-                        source_sink%connection_set%num_connections - 1  
-        !call source_sink%well%HydroCorrUpdates(grid, patch% &
-        !              ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
-        !              option)
-        !call source_sink%well%ExplUpdate(grid, patch% &
-        !               ss_flow_vol_fluxes(:,beg_cpl_conns:end_cpl_conns), &
-        !               option)
         call source_sink%well%ExplUpdate(grid,option)
       end if
     end if 
@@ -2768,31 +2558,10 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
 
   call MatZeroEntries(J,ierr);CHKERRQ(ierr)
 
-!#ifdef DEBUG_GENERAL_FILEOUTPUT
-!  if (debug_flag > 0) then
-!    write(word,*) debug_timestep_count
-!    string = 'jacobian_debug_data_' // trim(adjustl(word))
-!    write(word,*) debug_timestep_cut_count
-!    string = trim(string) // '_' // trim(adjustl(word))
-!    write(word,*) debug_iteration_count
-!    debug_filename = trim(string) // '_' // trim(adjustl(word)) // '.txt'
-!    open(debug_unit, file=debug_filename, action="write", status="unknown")
-!    open(debug_info_unit, file='debug_info.txt', action="write", &
-!         position="append", status="unknown")
-!    write(debug_info_unit,*) 'jacobian ', debug_timestep_count, &
-!      debug_timestep_cut_count, debug_iteration_count
-!    close(debug_info_unit)
-!  endif
-!#endif
-
   ! Perturb aux vars
   do ghosted_id = 1, grid%ngmax  ! For each local node do...
     if (patch%imat(ghosted_id) <= 0) cycle
 
-    !call TOilImsAuxVarPerturb(toil_auxvars(:,ghosted_id), &
-    ! here there could be issues, since I am passing a class arrays - to verify
-    ! otherwise pass the whole TOil_ims, or external loop on dof and 
-    ! TOilImsAuxVarPerturb to auxvar_toil_ims 
     call TOilImsAuxVarPerturb(patch%aux%TOil_ims%auxvars(:,ghosted_id), &
                               global_auxvars(ghosted_id), &
                               material_auxvars(ghosted_id), &
@@ -2802,8 +2571,8 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
 !#ifdef WELL_DEBUG    
 !  write(*,"('after perturb = ',(4(e10.4,1x)))"), patch%aux%TOil_ims%auxvars(0:3,ghosted_id)%pert
 !#endif 
-    ! if issues as expected above - exploit class member
-    !call patch%aux%Perturb(ghosted_id, &
+    ! alternative way to call TOilImsAuxVarPerturb using a type-bound procedure 
+    !call patch%aux%TOil_ims%Perturb(ghosted_id, &
     !                       global_auxvars(ghosted_id), &
     !                       material_auxvars(ghosted_id), &
     !                       patch%characteristic_curves_array( &
