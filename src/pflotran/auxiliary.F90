@@ -34,16 +34,11 @@ module Auxiliary_module
     type(miscible_type), pointer :: Miscible
     type(flash2_type), pointer :: Flash2
     type(general_type), pointer :: General
-    !type(toil_ims_type), pointer :: TOil_ims replaced by new auxvar data structure
     type(material_type), pointer :: Material
     type(sc_heat_type), pointer :: SC_heat
     type(sc_rt_type), pointer :: SC_RT
-    !new extendible pm_aux
-    !class(pm_base_aux_type), pointer :: pm_aux 
-    !type(pm_toil_ims_aux_type), pointer :: TOil_ims
+    !type(toil_ims_type), pointer :: TOil_ims replaced by new auxvar data structure
     class(pm_toil_ims_aux_type), pointer :: TOil_ims
-    ! Material, global_type, sc_heat_type, are common to all pms, and
-    ! could be moved to pm_base_aux_type eliminating auxiliary_type
   end type auxiliary_type
   
   public :: AuxInit, &

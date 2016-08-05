@@ -19,29 +19,26 @@ module PM_Base_Aux_module
     PetscInt :: num_aux, num_aux_bc, num_aux_ss
 
     !if required to operate with auxvar_base objects use pointers below
-    !to be pointed to doughter classes auxvars passed down as dummy arguments
+    !they must point to doughter classes auxvars (e.g. see: well_flow, well_flow_eenergy) 
     !class(auxvar_base_type), pointer :: auxvars_base(:,:)
     !class(auxvar_base_type), pointer :: auxvars_bc_base(:)
     !class(auxvar_base_type), pointer :: auxvars_ss_base(:)
-    !gfrotran 4.8.4 bugs. class arrays cannot be passed corretly
-    ! covert type ouside calling fucntion using a class pointer, and pass
-    ! and use compatible "type()" to declair the dummy arguments. 
+    !gfrotran 4.8.4 bugs. class arrays cannot be passed corretly as dummy arguments
+    ! workaround: covert type ouside calling fucntion using a class pointers
+    ! and use compatible "type()" to declair the dummy arguments in the called function. 
   contains
     !add here type-bound-procedure
-    ! procedure, public :: Init => InitBaseAuxVars
   end type pm_base_aux_type
 
  
-  public :: PM_Base_AuxInit, InitBaseAuxVars , &
+  public :: PMBaseAuxInit, InitBaseAuxVars , &
             PMBaseAuxStrip 
-  !          AuxDestroy
-  ! create only the base part of the aux_vars   
 
 contains
 
 ! ************************************************************************** !
 
-subroutine PM_Base_AuxInit(this)
+subroutine PMBaseAuxInit(this)
   ! 
   ! Initialize pm auvars 
   ! 
@@ -66,7 +63,7 @@ subroutine PM_Base_AuxInit(this)
   nullify(this%inactive_rows_local_ghosted)
   nullify(this%row_zeroing_array)
 
-end subroutine PM_Base_AuxInit
+end subroutine PMBaseAuxInit
 
 ! ************************************************************************** !
 

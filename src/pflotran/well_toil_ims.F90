@@ -14,25 +14,13 @@ module Well_TOilIms_class
 
 #include "petsc/finclude/petscsys.h"
 
-  !type, public, extends(well_flow_energy_type) :: well_toil_ims_type
-  !  !class(auxvar_toil_ims_type), pointer :: toil_ims_auxvars(:,:)
-  !  ! .................
-  !contains  ! add here type-bound procedure 
-  !  procedure, public :: PrintMsg => PrintTOilIms
-  !  procedure, public :: ConnInit => WellTOilImsConnInit
-  !  procedure, public  :: PrintOutputHeader => PrintOutputHeaderWellTOilIms
-  !  procedure, public :: VarsExplUpdate => TOilImsVarsExplUpdate
-  !end type  well_toil_ims_type
-
   type, public, extends(well_water_injector_type) :: well_toil_ims_wat_inj_type
     ! ......................
   contains
     procedure, public :: PrintMsg => PrintTOilImsWatInj
     procedure, public :: ExplRes => TOilImsWatInjExplRes
-    !procedure, public :: VarsExplUpdate => TOilImsWatInjVarsExplUpdate ! to go on parent classes
     procedure, public  :: PrintOutputHeader => TOilImsWatInjOutputHeader
     procedure, public :: Output => TOilImsWatInjOutput
-    !procedure, public :: ConnInit => WellTOilImsConnInit !to go on parents level
   end type well_toil_ims_wat_inj_type
 
   type, public, extends(well_oil_producer_type) :: well_toil_ims_oil_prod_type
@@ -43,17 +31,17 @@ module Well_TOilIms_class
     procedure, public :: Output => TOilImsOilProdOutput
   end type well_toil_ims_oil_prod_type
 
-
-  !type, public, extends(well_toil_ims_type) :: well_toil_ims_oil_inj_type
-  !  ! ......................
-  !end type
-
+  !Below another data structure considered for the well
+  !discarded in the attempt to build a water_injector, oil_producer, 
+  ! etc reusable by other modules  
+  !type, public, extends(well_flow_energy_type) :: well_toil_ims_type
+  !  !class(auxvar_toil_ims_type), pointer :: toil_ims_auxvars(:,:)
+  !  ! .................
+  !contains  ! add here type-bound procedure 
+  !  procedure, public  :: PrintOutputHeader => PrintOutputHeaderWellTOilIms
+  !end type  well_toil_ims_type
   !type, public, extends(well_toil_ims_type) :: well_toil_ims_oil_prod_type
-  !  ! ......................
-  !end type
-
-  !type, public, extends(well_toil_ims_type) :: well_toil_ims_wat_prod_type
-  !  ! ......................
+  ! ......................
   !end type
 
   public :: CreateTOilImsWell
@@ -261,8 +249,6 @@ function CreateTOilImsWell(well_spec,option)
   class(well_spec_base_type), pointer :: well_spec
   type(option_type) :: option
 
-  !class(well_toil_ims_type), pointer :: CreateTOilImsWell
-  !class(well_base_type), pointer :: CreateTOilImsWell
   class(well_flow_energy_type), pointer :: CreateTOilImsWell
 
   class(well_toil_ims_wat_inj_type), pointer :: well_toil_ims_wat_inj
@@ -520,15 +506,8 @@ subroutine TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
         !call EOSOilDensity(temp,this%pw_ref+hc,well_oil_mol_den,ierr)  
         !mol_den_av = ( this%flow_auxvars(dof,ghosted_id)%den(i_ph) + &
         !               well_oil_mol_den ) * 0.5d0 
-        !oss: can use Res(i_ph) here because i_ph conicide with equation indices
+        !obs: can use Res(i_ph) here because i_ph conicide with equation indices
         !the minus sign indicate component fluxes out the reservoir
-        !Res(i_ph) = - vol_flux * this%flow_auxvars(dof,ghosted_id)%den(i_ph)
-        !write(*,*) 'I am updatating RES  = '
-        !write(*,*) 'I am updatating RES  = '
-        !write(*,*) 'I am updatating RES  = '
-        !write(*,*) 'I am updatating RES  = '
-        !write(*,*) 'I am updatating RES  = '  
-        !Res(i_ph) = - vol_flux * mol_den_av
         Res(i_ph) = - vol_flux * phase_mol_den(i_ph)
         !Res(i_ph) = 0.d0
         if (.not.isothermal) then
@@ -564,73 +543,6 @@ subroutine TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
 
 
 end subroutine TOilImsProducerExplRes
-
-! ************************************************************************** !
-
-!subroutine WellTOilImsConnInit(this,num_connections,option)
-!  ! 
-!  ! Allocate and initilize well_base connections arrays
-!  ! 
-!  ! Author: Paolo Orsini - OpenGoSim
-!  ! Date: 5/20/2016
-!
-!  use Option_module
-!
-!  implicit none
-!
-!  class(well_toil_ims_type) :: this
-!  PetscInt, intent(in) :: num_connections 
-!  type(option_type) :: option  
-!
-!  call WellBaseConnInit(this,num_connections,option);
-!  call WellFlowConnInit(this,num_connections,option);
-!
-!end subroutine WellTOilImsConnInit
-
-! ************************************************************************** !
-
-!subroutine TOilImsVarsExplUpdate(this,grid,option)
-!
-!  use Grid_module
-!  use Option_module
-!
-!  class(well_toil_ims_type) :: this
-!  type(grid_type), pointer :: grid
-!  type(option_type) :: option
-!
-!  print *, "TOilImsVarsExplUpdate must be extended"
-!  stop
-!
-!end subroutine TOilImsVarsExplUpdate
-
-! ************************************************************************** !
-
-!subroutine TOilImsWatInjVarsExplUpdate(this,grid,option)
-!
-!  use Grid_module
-!  use Option_module
-!
-!  class(well_toil_ims_wat_inj_type) :: this
-!  type(grid_type), pointer :: grid
-!  type(option_type) :: option
-!
-!  write(*,"('TOilImsWatInj d11 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%den(1)
-!  write(*,"('TOilImsWatInj d12 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%den(2) 
-!  write(*,"('TOilImsWatInj p11 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%pres(1) 
-!  write(*,"('TOilImsWatInj t1 before = ',e10.4)"), this%flow_energy_auxvars(0,1)%temp 
-!
-!  write(*,"('TOilImsWatInj rate = ',e10.4)"), &
-!          !this%flow_condition%toil_ims%rate%dataset%rarray(1)
-!          this%flow_condition%flow_well%rate%dataset%rarray(1)
-!  write(*,"('TOilImsWatInj temp = ',e10.4)"), &
-!          !this%flow_condition%toil_ims%temperature%dataset%rarray(1)
-!          this%flow_condition%flow_well%temperature%dataset%rarray(1) 
-!
-!  write(*,"('TOilImsWatInj press = ',e10.4)"), &
-!          !this%flow_condition%toil_ims%pressure%dataset%rarray(1)
-!          this%flow_condition%flow_well%pressure%dataset%rarray(1) 
-!
-!end subroutine TOilImsWatInjVarsExplUpdate
 
 ! ************************************************************************** !
 

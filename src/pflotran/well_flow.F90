@@ -44,23 +44,12 @@ module Well_Flow_class
     procedure, public :: QPhase => FlowQPhase
     procedure, public :: MRPhase => FlowMRPhase
     procedure, public :: LimitCheck => WellFlowLimitCheck
-    !procedure, public :: TempUpdate => FlowTempUpdate
     procedure, public :: HydroCorrUpdates => FlowHydroCorrUpdate
     procedure, public :: ConnDenUpdate => WellFlowConnDenUpdate
     procedure, public :: InitDensity => WellFlowInitDensity
     procedure, public :: HydrostaticUpdate => FlowHydrostaticUpdate
     procedure, public :: OneDimGridVarsSetup => WellFlow1DGridVarsSetup
     procedure, public :: DataOutput => FlowDataOutput
-    !------------------------------------------------
-    !procedure, public :: Init => WellAuxVarBaseInit
-    !procedure, public :: Read => WellAuxVarBaseRead
-    !procedure, public :: WellAuxVarClear => WellAuxVarBaseClear
-    !procedure, public :: WellInit => WellBaseInit
-    !procedure, public :: UpdateConnFactor
-    !procedure, public :: Output
-    !procedure  WellConnInit ! init all vars related to well connections
-    !procedure  :: InitWellZRefCntrlConn
-    !procedure  :: WellConnSort
   end type  well_flow_type
 
   public :: WellFlowInit, FlowWellStrip, WellFlow1DGridVarsSetup, &
@@ -165,7 +154,6 @@ end subroutine WellFlow1DGridVarsSetup
 
 ! ************************************************************************** !
 
-!subroutine FlowExplUpdate(this,grid,ss_fluxes,option)
 subroutine FlowExplUpdate(this,grid,option)
   ! 
   ! - Update FlowEnergy well vars
@@ -183,7 +171,6 @@ subroutine FlowExplUpdate(this,grid,option)
 
   class(well_flow_type) :: this
   type(grid_type), pointer :: grid
-  !PetscReal :: ss_fluxes(:,:)
   type(option_type) :: option
 
   PetscBool :: pass
@@ -203,32 +190,13 @@ subroutine FlowExplUpdate(this,grid,option)
   do
     if(pass) exit ! the well limits are satisfied
 
-    !call this%VarsExplUpdate(grid,ss_fluxes,option)
     call this%VarsExplUpdate(grid,option)
 
     call this%LimitCheck(pass,option)
-    ! NOW IMPLEMENT CHECK
 
-    !print *, "pw_ref = ", pw_ref," ivar = ", ivar
-    !pass = PETSC_TRUE ! at the moment no checks
-    ! at the moment only checks for gas producer 
-    !call this%WellMphaseCheck(flow_condition,pw_ref,q_liq,q_gas,m_liq,m_gas, &
-    !                          dw_kg_ref,cntrl_var,ivar,pass)
+    ! well check against VFPs - is pw admissible for volumtric rates given in VFPs?
 
-    ! call this%CheckLimits(pass,cntrl_var,pw_ref,q_liq,q_gas)
-    ! during the well checks limits, cntrl_var,pw_ref,q_liq,q_gas can change    
-
-    ! end IPR computation
- 
-    ! well check - is pw admissible? volumtric rates needed for VFPs
-    ! if updates might change the well control variable, those repeating 
-    ! the previous operations
-
-  !if well check ok, ends IPR iterative computation
   end do
-
-  !print *, "Well => FlowExplUpdate must be extended"
-  !stop  
 
 end subroutine FlowExplUpdate
 
@@ -915,30 +883,6 @@ subroutine FlowHydroCorrUpdate(this,grid,option)
   end if !End WELL_HYDROSTATIC_LINEAR method
 
 end subroutine FlowHydroCorrUpdate
-
-!*****************************************************************************!
-
-!subroutine FlowTempUpdate(this,grid,option)
-  !
-  !update well flow temperature from flow_energy_auxvars
-  !to be extended at least up to well_flow_energy
-  !
-  ! Author: Paolo Orsini (OpenGoSim)  
-  ! Date : 6/12/2016
-
-!  use Grid_module
-!  use Option_module
-
-!  implicit none
-
-!  class(well_flow_type) :: this
-!  type(grid_type), pointer :: grid
-!  type(option_type) :: option
-!
-!  print *, "Well => FlowTempUpdate must be extended"
-!  stop  
-!
-!end subroutine FlowTempUpdate
 
 !*****************************************************************************!
 

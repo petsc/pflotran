@@ -78,7 +78,8 @@ module PM_TOilIms_Aux_module
   !  PetscBool :: check_post_converged
   end type toil_ims_parameter_type
 
-
+  !if required, could add other classes in the middle:
+  ! pm_base_aux's doughters & pm_toil_ims_aux'parents 
   type, public, extends(pm_base_aux_type) :: pm_toil_ims_aux_type 
     type(toil_ims_parameter_type), pointer :: parameter
     !type(auxvar_toil_ims_type), pointer :: auxvars(:,:)
@@ -124,12 +125,8 @@ function TOilImsAuxCreate(option)
 
   type(option_type) :: option
     
-  !type(toil_ims_type), pointer :: TOilImsAuxCreate
-  !type(pm_toil_ims_aux_type), pointer :: TOilImsAuxCreate
   class(pm_toil_ims_aux_type), pointer :: TOilImsAuxCreate  
 
-  !type(toil_ims_type), pointer :: aux
-  !type(pm_toil_ims_aux_type), pointer :: aux
   class(pm_toil_ims_aux_type), pointer :: aux
 
   ! there is no variable switch, but this map can be used 
@@ -145,26 +142,11 @@ function TOilImsAuxCreate(option)
     !allocate here to define this is a pm_toil_ims_aux_type
     allocate(aux) 
 
-    call PM_Base_AuxInit(aux) 
+    call PMBaseAuxInit(aux) 
 
     nullify(aux%auxvars)
     nullify(aux%auxvars_bc)
     nullify(aux%auxvars_ss)
-
-    !this is all common part - done in PM_Base_AuxvarsInit   
-      !aux%auxvars_up_to_date = PETSC_FALSE
-      !aux%inactive_cells_exist = PETSC_FALSE
-      !aux%num_aux = 0
-      !aux%num_aux_bc = 0
-      !aux%num_aux_ss = 0
-      !nullify(aux%auxvars)
-      !nullify(aux%auxvars_bc)
-      !nullify(aux%auxvars_ss)
-      !aux%n_inactive_rows = 0
-      !nullify(aux%inactive_rows_local)
-      !nullify(aux%inactive_rows_local_ghosted)
-      !nullify(aux%row_zeroing_array)
-   !this is all common part
 
    !parameter not needed for now toil_ims
    allocate(aux%parameter)
@@ -195,18 +177,10 @@ subroutine InitTOilImsAuxVars(this,grid,num_bc_connection, &
   PetscInt :: num_ss_connection  
   type(grid_type) :: grid
   type(option_type) :: option
-  !type(option_type), pointer :: option
-  !type(grid_type), pointer :: grid
 
   PetscInt :: ghosted_id, iconn, local_id
   PetscInt :: idof 
-  !PetscInt :: i, idof , count
-  !PetscBool :: error_found
  
-  !use either local auxvar_toil_ims_type class or type pointers,
-  ! allocate them and point this%auxvars to them
-  ! or type allocation
-  !allocate(auxvar_toil_ims_type::this%auxvars(0:option%nflowdof,grid%ngmax))
   allocate(this%auxvars(0:option%nflowdof,grid%ngmax)) 
   do ghosted_id = 1, grid%ngmax
     do idof = 0, option%nflowdof
@@ -218,7 +192,6 @@ subroutine InitTOilImsAuxVars(this,grid,num_bc_connection, &
   this%num_aux = grid%ngmax
 
   if (num_bc_connection > 0) then
-    !allocate(auxvar_toil_ims_type::this%auxvars_bc(num_bc_connection))
     allocate(this%auxvars_bc(num_bc_connection))
     do iconn = 1, num_bc_connection
       call this%auxvars_bc(iconn)%Init(option)
@@ -227,7 +200,6 @@ subroutine InitTOilImsAuxVars(this,grid,num_bc_connection, &
   this%num_aux_bc = num_bc_connection
 
   if (num_ss_connection > 0) then
-    !allocate(auxvar_toil_ims_type::this%auxvars_ss(num_ss_connection))
     allocate(this%auxvars_ss(num_ss_connection))
     do iconn = 1, num_ss_connection
       call this%auxvars_ss(iconn)%Init(option)

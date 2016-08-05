@@ -181,21 +181,12 @@ subroutine WellWatInjVarsExplUpdate(this,grid,option)
       call this%PressRefQ(grid,option%liquid_phase,option)
       call this%MRPhase(grid,option%liquid_phase,option)
   end select
-  ! should not be required, they are initialised to zero 
-  !this%q_fld(option%oil_phase) = 0.0d0
-  !this%mr_fld(option%oil_phase) = 0.0d0
-  !call EOSWaterDensityEnthalpy(this%tw_ref,this%pw_ref,dw_h2o_kg,dw_h2o_mol, &
-  !                             enth_src_h2o,ierr)
 
   call EOSWaterDensity(this%tw_ref,this%pw_ref, &
                        dw_h2o_kg,dw_h2o_mol,ierr) 
   !call EOSWaterEnthalpy(toil_auxvar%temp,cell_pressure,toil_auxvar%H(lid),ierr)
 
-  !can load modlar density as well - 
-  !might be worth computing the enthalpy as well?? Required in the Res comp later..
   this%dw_kg_ref(option%liquid_phase) = dw_h2o_kg
-  ! should not be required, this is already initialised to zero
-  !this%dw_kg_ref(option%oil_phase) = 0.0d0
 
 
 end subroutine WellWatInjVarsExplUpdate
