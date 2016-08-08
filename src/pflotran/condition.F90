@@ -3552,7 +3552,7 @@ end function FlowConditionTOilImsIsTransient
 
 ! ************************************************************************** !
 
-function FlowWellConditionIsTransient
+function FlowWellConditionIsTransient(condition)
   ! 
   ! Returns PETSC_TRUE
   ! 
