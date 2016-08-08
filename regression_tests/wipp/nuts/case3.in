@@ -43,7 +43,7 @@ CHEMISTRY
 # First order decay of Tracer2 to Tracer3
   RADIOACTIVE_DECAY_REACTION
     REACTION Tracer1 <-> Tracer2
-    RATE_CONSTANT  8.0225d-7   ! half life of 8.64d+5 seconds
+    RATE_CONSTANT  8.0225d-7 1/sec  ! half life of 8.64d+5 seconds
 #    HALF_LIFE  864003.964552d0
 #    HALF_LIFE  0.027397385989d0 y
   /

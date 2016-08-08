@@ -28,6 +28,7 @@ module Reaction_Mineral_Aux_module
   end type mineral_rxn_type
 
   type, public :: transition_state_rxn_type
+    PetscReal :: min_scale_factor
     PetscReal :: affinity_factor_sigma
     PetscReal :: affinity_factor_beta
     PetscReal :: affinity_threshold
@@ -102,7 +103,7 @@ module Reaction_Mineral_Aux_module
     PetscReal, pointer :: kinmnrlh2ostoich(:)
     PetscReal, pointer :: kinmnrl_logK(:)
     PetscReal, pointer :: kinmnrl_logKcoef(:,:)
-    PetscReal, pointer :: kinmnrl_rate(:)
+    PetscReal, pointer :: kinmnrl_rate_constant(:)
     PetscReal, pointer :: kinmnrl_activation_energy(:)
     PetscReal, pointer :: kinmnrl_molar_vol(:)
     PetscReal, pointer :: kinmnrl_molar_wt(:)
@@ -113,6 +114,7 @@ module Reaction_Mineral_Aux_module
     PetscReal, pointer :: kinmnrl_pref_atten_coef(:,:,:)
     PetscReal, pointer :: kinmnrl_pref_rate(:,:)
     PetscReal, pointer :: kinmnrl_pref_activation_energy(:,:)
+    PetscReal, pointer :: kinmnrl_min_scale_factor(:)
     PetscReal, pointer :: kinmnrl_Temkin_const(:)
     PetscReal, pointer :: kinmnrl_affinity_power(:)
     PetscReal, pointer :: kinmnrl_affinity_threshold(:)
@@ -190,7 +192,7 @@ function MineralCreate()
   nullify(mineral%kinmnrlh2ostoich)
   nullify(mineral%kinmnrl_logK)
   nullify(mineral%kinmnrl_logKcoef)
-  nullify(mineral%kinmnrl_rate)
+  nullify(mineral%kinmnrl_rate_constant)
   nullify(mineral%kinmnrl_activation_energy)
   nullify(mineral%kinmnrl_molar_vol)
   nullify(mineral%kinmnrl_molar_wt)
@@ -203,6 +205,7 @@ function MineralCreate()
   nullify(mineral%kinmnrl_pref_rate)
   nullify(mineral%kinmnrl_pref_activation_energy)
 
+  nullify(mineral%kinmnrl_min_scale_factor)
   nullify(mineral%kinmnrl_Temkin_const)
   nullify(mineral%kinmnrl_affinity_power)
   nullify(mineral%kinmnrl_affinity_threshold)
@@ -267,6 +270,7 @@ function TransitionStateTheoryRxnCreate()
   type(transition_state_rxn_type), pointer :: tstrxn
 
   allocate(tstrxn)
+  tstrxn%min_scale_factor = UNINITIALIZED_DOUBLE
   tstrxn%affinity_factor_sigma = UNINITIALIZED_DOUBLE
   tstrxn%affinity_factor_beta = UNINITIALIZED_DOUBLE
   tstrxn%affinity_threshold = 0.d0
@@ -722,7 +726,7 @@ subroutine MineralDestroy(mineral)
   call DeallocateArray(mineral%kinmnrlh2ostoich)
   call DeallocateArray(mineral%kinmnrl_logK)
   call DeallocateArray(mineral%kinmnrl_logKcoef)
-  call DeallocateArray(mineral%kinmnrl_rate)
+  call DeallocateArray(mineral%kinmnrl_rate_constant)
   call DeallocateArray(mineral%kinmnrl_molar_vol)
   call DeallocateArray(mineral%kinmnrl_molar_wt)
 
@@ -734,6 +738,7 @@ subroutine MineralDestroy(mineral)
   call DeallocateArray(mineral%kinmnrl_pref_rate)
   call DeallocateArray(mineral%kinmnrl_pref_activation_energy)
   
+  call DeallocateArray(mineral%kinmnrl_min_scale_factor)
   call DeallocateArray(mineral%kinmnrl_Temkin_const)
   call DeallocateArray(mineral%kinmnrl_affinity_power)
   call DeallocateArray(mineral%kinmnrl_affinity_threshold)

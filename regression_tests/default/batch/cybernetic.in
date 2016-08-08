@@ -1,0 +1,172 @@
+#Description: 0D microbial degradation problem with biomass
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+#      NUMERICAL_JACOBIAN
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS
+    1
+  /
+END
+
+#=========================== flow mode ========================================
+# Uniform velocity (see below). No flow mode specified.
+
+#=========================== useful tranport parameters ==================
+UNIFORM_VELOCITY 0.d0 0.d0 0.d0 m/yr
+REFERENCE_TEMPERATURE 24.d0 C
+
+#=========================== chemistry ========================================
+# Uncomment to debug reactions
+#NUMERICAL_JACOBIAN_RXN
+CHEMISTRY
+  PRIMARY_SPECIES
+    C5H7O2N(aq)
+    CH2O(aq)
+    CO2(aq)
+    NH4+
+    NO2-
+    NO3-
+    N2(aq)
+    O2(aq)
+  /
+  REACTION_SANDBOX 
+    CYBERNETIC
+      F1    0.497d0
+      F2    0.999d0
+      F3    0.066d0
+      K1    25.04d0 1/d
+      Ka1   0.001d0 mM
+      Kd1   0.25d0 mM
+      K2    17.82d0 1/d
+      Ka2   0.004d0 mM
+      Kd2   0.25d0 mM
+      K3    75.12d0 1/d
+      Ka3   0.001d0 mM
+      Kd3   0.25d0 mM
+      Kdeg  0.532d0 1/d
+      F_act 0.126d0
+      ACTIVATION_ENERGY 89.d0
+    /
+  /
+  DATABASE ./cybernetic.dat
+  LOG_FORMULATION
+  ACTIVITY_COEFFICIENTS OFF
+  TRUNCATE_CONCENTRATION 1.d-40
+  OUTPUT
+    all
+    TOTAL
+  /
+END
+
+#=========================== solver options ===================================
+NEWTON_SOLVER TRANSPORT
+  MAXIT 12
+END
+
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 1 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+END
+
+#=========================== output options ===================================
+OUTPUT
+#  TIMES y 5. 10. 15. 20.
+#  FORMAT TECPLOT POINT
+#  PERIODIC_OBSERVATION TIMESTEP 1
+END
+
+#=========================== times ============================================
+TIME
+#  FINAL_TIME 20.d0 d 
+  FINAL_TIME 1.d0 d 
+#  INITIAL_TIMESTEP_SIZE 1.d0 h
+  INITIAL_TIMESTEP_SIZE 1.d0 s
+  MAXIMUM_TIMESTEP_SIZE 1.d0 h
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    -1.d20 -1.d20 -1.d20
+    1.d20 1.d20 1.d20
+  /
+END
+
+REGION pt
+  COORDINATE 0.5d0 0.5d0 0.5d0
+END
+
+#=========================== observation points ===============================
+OBSERVATION
+  REGION pt
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+#=========================== constraints ======================================
+CONSTRAINT initial
+  CONCENTRATIONS
+    C5H7O2N(aq) 1.d-5    T
+    CH2O(aq)    61.13d-3 T
+    CO2(aq)     1.d-3    T
+    N2(aq)      1.d-10   T
+    NH4+        1.d0     T
+    NO2-        1.d-10   T
+#    NO2-        1.d-2   T
+    NO3-        18.25d-3 T
+    O2(aq)      1.d-3    T
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+END_SUBSURFACE

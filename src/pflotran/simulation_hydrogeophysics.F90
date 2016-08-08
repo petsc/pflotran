@@ -29,6 +29,7 @@ module Simulation_Hydrogeophysics_class
     PetscBool :: pflotran_process
     Vec :: tracer_mpi
     Vec :: saturation_mpi
+    Vec :: temperature_mpi
     ! these PetscMPIInts are used to save the process decomposition that 
     ! enters hydrogeophysics_simulation.F90:HydrogeophysicsInitialize()
     ! - they are set in HydrogeophysicsInitialize() 
@@ -98,6 +99,7 @@ subroutine HydrogeophysicsInit(this,option)
   nullify(this%hydrogeophysics_coupler)
   this%tracer_mpi = 0
   this%saturation_mpi = 0
+  this%temperature_mpi = 0
   ! UNINITIALIZED_INTEGER denotes uninitialized
   this%pf_e4d_scatter_comm = MPI_COMM_NULL
   this%pf_e4d_scatter_grp = UNINITIALIZED_INTEGER
@@ -230,14 +232,21 @@ subroutine HydrogeophysicsStrip(this)
     call HydrogeophysicsWrapperDestroy(this%option)
   endif
   ! created in HydrogeophysicsInitialize()
+  ! tracer
   if (this%tracer_mpi /= 0) then
     call VecDestroy(this%tracer_mpi ,ierr);CHKERRQ(ierr)
   endif
   this%tracer_mpi = 0
+  ! saturation
   if (this%saturation_mpi /= 0) then
     call VecDestroy(this%saturation_mpi ,ierr);CHKERRQ(ierr)
   endif
   this%saturation_mpi = 0
+  ! temperature
+  if (this%temperature_mpi /= 0) then
+    call VecDestroy(this%temperature_mpi ,ierr);CHKERRQ(ierr)
+  endif
+  this%temperature_mpi = 0
 
   if (this%pf_e4d_scatter_comm /= MPI_COMM_NULL)  then
     call MPI_Comm_free(this%pf_e4d_scatter_comm,ierr)

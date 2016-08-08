@@ -468,21 +468,33 @@ subroutine PMWFRead(this,input)
       if (matched) exit
       cur_mechanism => cur_mechanism%next
     enddo
+    ! error messaging: ----------------------------------------------
     if (.not.associated(cur_waste_form%mechanism)) then
       option%io_buffer = 'WASTE_FORM MECHANISM ' // &
                          trim(cur_waste_form%mech_name) // &
                          ' not found amoung given mechanism names.'
       call printErrMsg(option)
     endif
-    if (initialized(cur_waste_form%canister_vitality_rate) .and. &
-        .not. cur_waste_form%mechanism%canister_degradation_model) then
-      option%io_buffer = 'WASTE_FORM MECHANISM ' // &
-                         trim(cur_waste_form%mech_name) // &
-                         ' does not have the canister degradation model turned &
-                         &on, but at least one of the waste forms assigned to &
-                         &this mechanism specifies a canister vitality rate.'
-      call printErrMsg(option)
+    
+    if (.not.cur_waste_form%mechanism%canister_degradation_model) then
+      ! canister vitality specified, but can.deg. model is off:
+      if (initialized(cur_waste_form%canister_vitality_rate)) then
+        option%io_buffer = 'WASTE_FORM MECHANISM ' // &
+          trim(cur_waste_form%mech_name) // ' does not have the canister &
+          &degradation model turned on, but at least one of the waste forms &
+          &assigned to this mechanism specifies a canister vitality rate.'
+        call printErrMsg(option)
+      endif
+      ! canister breach time specified, but can.deg. model is off:
+      if (initialized(cur_waste_form%breach_time)) then
+        option%io_buffer = 'WASTE_FORM MECHANISM ' // &
+          trim(cur_waste_form%mech_name) // ' does not have the canister &
+          &degradation model turned on, but at least one of the waste forms &
+          &assigned to this mechanism specifies a canister breach time.'
+        call printErrMsg(option)
+      endif
     endif
+
     ! both waste form and mechanism canister vitality rate parameters 
     ! are specified:
     if (initialized(cur_waste_form%canister_vitality_rate) .and. &
@@ -490,54 +502,66 @@ subroutine PMWFRead(this,input)
           initialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
           initialized(cur_waste_form%mechanism%vitality_rate_trunc) )) then
       option%io_buffer = 'Either CANISTER_VITALITY_RATE within the &
-                         &WASTE_FORM blocks -or- the VITALITY_LOG10_MEAN, &
-                         &VITALITY_LOG10_STDEV, and VITALITY_UPPER_TRUNCATION & 
-                         &within the WASTE_FORM MECHANISM ' // &
-                         trim(cur_waste_form%mechanism%name) // &
-                         ' block should be specified, but not both.'
+        &WASTE_FORM blocks -or- the VITALITY_LOG10_MEAN, &
+        &VITALITY_LOG10_STDEV, and VITALITY_UPPER_TRUNCATION within &
+        &the WASTE_FORM MECHANISM ' // trim(cur_waste_form%mechanism%name) &
+        // ' block should be specified, but not both.'
       call printErrMsg(option)
     endif
-    ! the canister degradation model is on, but neither canister vitality
-    ! rate parameters were given:
+    
+    ! the canister degradation model is on, but there are problems with
+    ! the parameters provided:
     if (cur_waste_form%mechanism%canister_degradation_model) then 
+      ! all parameters are missing:
       if ( (uninitialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
             uninitialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
             uninitialized(cur_waste_form%mechanism%vitality_rate_trunc) ) .and. &
-          uninitialized(cur_waste_form%canister_vitality_rate) )  then 
-        option%io_buffer = 'CANISTER_VITALITY_RATE within the &
-                         &WASTE_FORM blocks -or- the VITALITY_LOG10_MEAN, &
-                         &VITALITY_LOG10_STDEV, and VITALITY_UPPER_TRUNCATION & 
-                         &within the WASTE_FORM MECHANISM ' // &
-                         trim(cur_waste_form%mechanism%name) // &
-                         ' block should be specified (but not both).'
+          uninitialized(cur_waste_form%canister_vitality_rate) .and. &
+          uninitialized(cur_waste_form%breach_time)                 )  then 
+        option%io_buffer = 'CANISTER_VITALITY_RATE within the WASTE_FORM &
+          &blocks -or- CANISTER_BREACH_TIME within the WASTE_FORM blocks &
+          &-or- the VITALITY_LOG10_MEAN, VITALITY_LOG10_STDEV, and &
+          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM MECHANISM ' // &
+          trim(cur_waste_form%mechanism%name) // ' is missing.'
         call printErrMsg(option)
       endif
-    endif
-    ! the canister degradation model is on, but neither canister vitality
-    ! rate parameters were given:
-    if (uninitialized(cur_waste_form%canister_vitality_rate) .and. &
-        cur_waste_form%canister_degradation_flag) then
-      if (uninitialized(cur_waste_form%mechanism%vitality_rate_mean)) then
-        option%io_buffer = 'VITALITY_LOG10_MEAN must be given in the '&
-                            // trim(error_string) // ' ' // &
-                            trim(cur_waste_form%mechanism%name) // &
-                            ', CANISTER_DEGRADATION_MODEL block.'
+      ! all parameters are given:
+      if ( (initialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
+            initialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
+            initialized(cur_waste_form%mechanism%vitality_rate_trunc) ) .and. &
+          initialized(cur_waste_form%canister_vitality_rate) .and. &
+          initialized(cur_waste_form%breach_time)                 )  then 
+        option%io_buffer = 'CANISTER_VITALITY_RATE within the WASTE_FORM &
+          &blocks -or- CANISTER_BREACH_TIME within the WASTE_FORM blocks &
+          &-or- the VITALITY_LOG10_MEAN, VITALITY_LOG10_STDEV, and &
+          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM MECHANISM ' // &
+          trim(cur_waste_form%mechanism%name) // ' should be specified, &
+          &but not all.'
         call printErrMsg(option)
       endif
-      if (uninitialized(cur_waste_form%mechanism%vitality_rate_stdev)) then
-        option%io_buffer = 'VITALITY_LOG10_STDEV must be given in the '&
-                           // trim(error_string) // ' ' // &
-                           trim(cur_waste_form%mechanism%name) // &
-                           ', CANISTER_DEGRADATION_MODEL block.'
+      ! both breach time and can. deg. rate were given
+      if (initialized(cur_waste_form%canister_vitality_rate) .and. &
+          initialized(cur_waste_form%breach_time)) then
+        option%io_buffer = 'Either CANISTER_VITALITY_RATE -or- &
+          &CANISTER_BREACH_TIME within the WASTE_FORM block with &
+          &WASTE_FORM MECHANISM ' // trim(cur_waste_form%mechanism%name) &
+          // ' should be specified, but not both.'
         call printErrMsg(option)
       endif
-      if (uninitialized(cur_waste_form%mechanism%vitality_rate_trunc)) then
-        option%io_buffer = 'VITALITY_UPPER_TRUNCATION must be given in the '&
-                           // trim(error_string) // ' ' // &
-                           trim(cur_waste_form%mechanism%name) // &
-                           ', CANISTER_DEGRADATION_MODEL block.'
+      ! both breach time and can. deg. distribution were given
+      if ((initialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
+           initialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
+           initialized(cur_waste_form%mechanism%vitality_rate_trunc)) .and. &
+          initialized(cur_waste_form%breach_time)) then
+        option%io_buffer = 'Either CANISTER_BREACH_TIME within the &
+          &WASTE_FORM block with WASTE_FORM MECHANISM ' &
+          // trim(cur_waste_form%mechanism%name) // ' -or- the &
+          &VITALITY_LOG10_MEAN, VITALITY_LOG10_STDEV, and &
+          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM MECHANISM ' // &
+          trim(cur_waste_form%mechanism%name) // ' should be specified, &
+          &but not both.'
         call printErrMsg(option)
-      endif 
+      endif
     endif
     cur_waste_form => cur_waste_form%next
   enddo
@@ -649,12 +673,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             call InputReadDouble(input,option,double)
             call InputErrorMsg(input,option,'specific surface area', &
                                error_string)
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            if (input%ierr == 0) then
-              internal_units = 'm^2/kg'
-              double = UnitsConvertToInternal(word,internal_units,option) * &
-                       double
-            endif
+            call InputReadAndConvertUnits(input,double,'m^2/kg', &
+                                  error_string//',specific surface area',option)
             select type(new_mechanism)
               type is(wf_mechanism_dsnf_type)
                 option%io_buffer = 'SPECIFIC_SURFACE_AREA cannot be &
@@ -671,12 +691,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
           case('MATRIX_DENSITY')
             call InputReadDouble(input,option,new_mechanism%matrix_density)
             call InputErrorMsg(input,option,'matrix density',error_string)
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            if (input%ierr == 0) then
-              internal_units = 'kg/m^3'
-              new_mechanism%matrix_density = UnitsConvertToInternal(word, &
-                   internal_units,option) * new_mechanism%matrix_density
-            endif
+            call InputReadAndConvertUnits(input,new_mechanism%matrix_density, &
+                              'kg/m^3',error_string//',matrix density',option)
         !--------------------------
           case('FRACTIONAL_DISSOLUTION_RATE')
             select type(new_mechanism)
@@ -685,13 +701,9 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                      new_mechanism%frac_dissolution_rate)
                 call InputErrorMsg(input,option,'fractional dissolution rate', &
                                    error_string)
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                if (input%ierr == 0) then
-                  internal_units = 'unitless/sec'
-                  new_mechanism%frac_dissolution_rate = &
-                    UnitsConvertToInternal(word,internal_units,option) * &
-                    new_mechanism%frac_dissolution_rate
-                endif
+                call InputReadAndConvertUnits(input, &
+                         new_mechanism%frac_dissolution_rate,'unitless/sec', &
+                         error_string//',fractional dissolution rate',option)
               class default
                 option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE cannot be &
                                    &specified for ' // trim(error_string)
@@ -704,13 +716,9 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                 call InputReadDouble(input,option, &
                      new_mechanism%dissolution_rate)
                 call InputErrorMsg(input,option,'dissolution rate',error_string)
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                if (input%ierr == 0) then
-                  internal_units = 'kg/m^2-sec'
-                  new_mechanism%dissolution_rate = &
-                    UnitsConvertToInternal(word,internal_units,option) * &
-                    new_mechanism%dissolution_rate
-                endif
+                call InputReadAndConvertUnits(input, &
+                       new_mechanism%dissolution_rate, &
+                       'kg/m^2-sec',error_string//',dissolution_rate',option)
               class default
                 option%io_buffer = 'DISSOLUTION_RATE cannot be specified for ' &
                                    // trim(error_string)
@@ -724,12 +732,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                 call InputErrorMsg(input,option,'burnup',error_string)
 #ifndef FMDM_MODEL
                 ! if fmdm model is not on, then burnup is dissolution rate
-                call InputReadWord(input,option,word,PETSC_TRUE)
-                if (input%ierr == 0) then
-                  internal_units = 'kg/m^2-sec'
-                  new_mechanism%burnup = UnitsConvertToInternal(word, &
-                    internal_units,option) * new_mechanism%burnup
-                endif
+                call InputReadAndConvertUnits(input,new_mechanism%burnup, &
+                                'kg/m^2-sec',error_string//',burnup',option)
                 option%io_buffer = 'Warning: FMDM is not linked, but an &
                                    &FMDM mechanism was defined. BURNUP &
                                    &will be used for fuel dissolution rate.'
@@ -1009,18 +1013,12 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
           case('VOLUME')
             call InputReadDouble(input,option,new_waste_form%volume)
             call InputErrorMsg(input,option,'volume',error_string)
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            if (input%ierr == 0) then
-              internal_units = 'm^3'
-              new_waste_form%volume = UnitsConvertToInternal(word, &
-                   internal_units,option) * new_waste_form%volume
-            endif
-            new_waste_form%init_volume = new_waste_form%volume
+            call InputReadAndConvertUnits(input,new_waste_form%volume, &
+                                          'm^3',error_string//',volume',option)
         !-----------------------------
           case('COORDINATE')
             call GeometryReadCoordinate(input,option, &
                                         new_waste_form%coordinate,error_string)
-            ! check if coordinate is within the domain
         !-----------------------------
           case('MECHANISM_NAME')
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1031,14 +1029,18 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
           case('CANISTER_VITALITY_RATE')
             call InputReadDouble(input,option, &
                                  new_waste_form%canister_vitality_rate)
-            call InputErrorMsg(input,option,'canister vitality rate',error_string)
-            call InputReadWord(input,option,word,PETSC_TRUE)
-            if (input%ierr == 0) then
-              internal_units = 'unitless/sec'
-              new_waste_form%canister_vitality_rate = UnitsConvertToInternal(word, &
-                   internal_units,option) * &
-                   new_waste_form%canister_vitality_rate
-            endif
+            call InputErrorMsg(input,option,'canister vitality rate', &
+                               error_string)
+            call InputReadAndConvertUnits(input, &
+                        new_waste_form%canister_vitality_rate,'unitless/sec', &
+                        error_string//'canister vitality rate',option)
+        !-----------------------------
+          case('CANISTER_BREACH_TIME')
+            call InputReadDouble(input,option, &
+                                 new_waste_form%breach_time)
+            call InputErrorMsg(input,option,'CANISTER_BREACH_TIME',error_string)
+            call InputReadAndConvertUnits(input,new_waste_form%breach_time, &
+                           'sec',error_string//',CANISTER_BREACH_TIME',option)
         !-----------------------------    
           case default
             call InputKeywordUnrecognized(word,error_string,option)
@@ -1295,7 +1297,14 @@ end subroutine PMWFSetup
     if (cur_waste_form%mechanism%canister_degradation_model) then
       cur_waste_form%canister_degradation_flag = PETSC_TRUE
       cur_waste_form%canister_vitality = 1.d0
-      if (Uninitialized(cur_waste_form%canister_vitality_rate)) then
+      ! waste form breach time specified:
+      if (initialized(cur_waste_form%breach_time) .and. &
+          uninitialized(cur_waste_form%canister_vitality_rate)) then
+        cur_waste_form%eff_canister_vit_rate = &
+          (1.d0/cur_waste_form%breach_time)
+      ! distribution for canister degradation rate specified:
+      elseif (uninitialized(cur_waste_form%canister_vitality_rate) .and. &
+              uninitialized(cur_waste_form%breach_time)) then
         call GetRndNumFromNormalDist( &
              cur_waste_form%mechanism%vitality_rate_mean, &
              cur_waste_form%mechanism%vitality_rate_stdev,&
@@ -1435,6 +1444,9 @@ subroutine PMWFInitializeTimestep(this)
     write(*,'(/,2("=")," WASTE FORM MODEL ",60("="))')
   endif
 
+  ! zero entries from previous time step
+  call VecZeroEntries(this%data_mediator%vec,ierr);CHKERRQ(ierr)
+
   cur_waste_form => this%waste_form_list
   do 
     if (.not.associated(cur_waste_form)) exit
@@ -1443,13 +1455,25 @@ subroutine PMWFInitializeTimestep(this)
     allocate(Coeff(num_species))
     allocate(concentration_old(num_species))
     ! ------ update mass balances after transport step ---------------------
-    cur_waste_form%cumulative_mass = cur_waste_form%cumulative_mass + &
-                                     cur_waste_form%instantaneous_mass_rate*dt
+    select type(cwfm => cur_waste_form%mechanism)
+      type is(wf_mechanism_dsnf_type)
+        ! note: do nothing here because the cumulative mass update for dsnf
+        ! mechanisms has already occured (if breached)
+      class default
+        cur_waste_form%cumulative_mass = cur_waste_form%cumulative_mass + &
+          cur_waste_form%instantaneous_mass_rate*dt
+    end select
     ! ------ update matrix volume ------------------------------------------
-    dV = cur_waste_form%eff_dissolution_rate / &      ! kg-matrix/sec
-         cwfm%matrix_density * &                      ! kg-matrix/m^3-matrix
-         dt                                           ! sec
-    cur_waste_form%volume = cur_waste_form%volume - dV
+    select type(cwfm => cur_waste_form%mechanism)
+      type is(wf_mechanism_dsnf_type)
+        ! note: do nothing here because the volume update for dsnf
+        ! mechanisms has already occured (if breached)
+      class default
+         dV = cur_waste_form%eff_dissolution_rate / &   ! kg-matrix/sec
+           cwfm%matrix_density * &                      ! kg-matrix/m^3-matrix
+           dt                                           ! sec
+         cur_waste_form%volume = cur_waste_form%volume - dV
+    end select
     if (cur_waste_form%volume <= 1.d-8) then
       cur_waste_form%volume = 0.d0
     endif
@@ -1467,27 +1491,32 @@ subroutine PMWFInitializeTimestep(this)
     enddo
 
     !---------------- vitality degradation function ------------------------
-    if (cur_waste_form%canister_degradation_flag) then
-      if (cur_waste_form%canister_vitality < 1.d-3) then
-        cur_waste_form%canister_vitality = 0.d0
-        cur_waste_form%eff_canister_vit_rate = 0.d0
+    if (cur_waste_form%canister_degradation_flag .and. &
+        (cur_waste_form%canister_vitality > 1.d-3)) then
+      if (.not.cur_waste_form%breached .and. &
+          initialized(cur_waste_form%breach_time)) then
+        ! do not modify eff_canister_vit_rate from what it was set to
+        cur_waste_form%eff_canister_vit_rate = &
+          cur_waste_form%eff_canister_vit_rate   
       else
         cur_waste_form%eff_canister_vit_rate = &
           cur_waste_form%canister_vitality_rate * &
           exp( cwfm%canister_material_constant * ( (1.d0/333.15d0) - &
           (1.d0/(global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))% &
            temp+273.15d0))) )
-        cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
-                     - (cur_waste_form%eff_canister_vit_rate*dt)
-        if (cur_waste_form%canister_vitality < 1.d-3) then
-          cur_waste_form%canister_vitality = 0.d0
-        endif
+      endif
+      cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
+                                 - (cur_waste_form%eff_canister_vit_rate*dt)
+      if (cur_waste_form%canister_vitality <= 1.d-3) then
+        cur_waste_form%canister_vitality = 0.d0
+        cur_waste_form%eff_canister_vit_rate = 0.d0
+        cur_waste_form%canister_vitality_rate = 0.d0
       endif
     endif
 
     !------- instantaneous release ----------------------------------------- 
     if (.not.cur_waste_form%breached .and. &
-           cur_waste_form%canister_vitality == 0.d0) then
+        cur_waste_form%canister_vitality < 1.d-3) then
       call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
       do k = 1,num_species
         cur_waste_form%inst_release_amount(k) = &
@@ -1502,9 +1531,9 @@ subroutine PMWFInitializeTimestep(this)
            cwfm%rad_species_list(k)%formula_weight
         ! update transport solution vector with mass injection molality
         ! as an alternative to a source term (issue with tran_dt changing)
-        idof = cwfm%rad_species_list(k)%ispecies + &
-               ((cur_waste_form%local_cell_id - 1) * option%ntrandof) 
         cell_id = cur_waste_form%local_cell_id
+        idof = cwfm%rad_species_list(k)%ispecies + &
+               ((cell_id - 1) * option%ntrandof) 
         inst_release_molality = &                    ! [mol-rad/kg-water]
            ! [mol-rad]
           (cur_waste_form%inst_release_amount(k) * & ! [mol-rad/g-matrix]
@@ -1524,9 +1553,7 @@ subroutine PMWFInitializeTimestep(this)
     endif
     
     ! Save the concentration after inst. release for the decay step
-    do k = 1,num_species
-      concentration_old(k) = cur_waste_form%rad_concentration(k)
-    enddo
+    concentration_old = cur_waste_form%rad_concentration
 
     if (cur_waste_form%volume >= 0.d0) then
       !------- decay the radionuclide species --------------------------------
@@ -1613,7 +1640,7 @@ subroutine PMWFInitializeTimestep(this)
         cur_waste_form%rad_concentration(k) * &       ! [mol-rad/g-wf]
           cur_waste_form%mechanism%rad_species_list(k)%formula_weight
         ! to avoid errors in plotting data when conc is very very low:  
-        if (cur_waste_form%rad_mass_fraction(k) <= 1e-40) then
+        if (cur_waste_form%rad_mass_fraction(k) <= 1d-40) then
           cur_waste_form%rad_mass_fraction(k) = 0.d0
         endif
       enddo
@@ -1637,6 +1664,9 @@ subroutine PMWFSolve(this,time,ierr)
   ! Date: 08/26/15
   ! Updated/modified by Jenn Frederick 04/2016
   
+  use Global_Aux_module
+  use Material_Aux_class
+  
   implicit none
 
 #include "petsc/finclude/petscvec.h"
@@ -1649,14 +1679,24 @@ subroutine PMWFSolve(this,time,ierr)
   class(waste_form_base_type), pointer :: cur_waste_form
   PetscInt :: i, j
   PetscInt :: num_species
+  PetscInt :: cell_id
+  PetscInt :: idof
+  PetscReal :: inst_diss_molality
   PetscReal, pointer :: vec_p(:)  
+  PetscReal, pointer :: xx_p(:)
   PetscInt :: fmdm_count_global, fmdm_count_local
   character(len=MAXWORDLENGTH) :: word
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
   
   fmdm_count_global = 0
   fmdm_count_local = 0
+  global_auxvars => this%realization%patch%aux%Global%auxvars
+  material_auxvars => this%realization%patch%aux%Material%auxvars
 
   call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(this%realization%field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
+  
   cur_waste_form => this%waste_form_list
   i = 0
   do 
@@ -1664,14 +1704,9 @@ subroutine PMWFSolve(this,time,ierr)
     num_species = cur_waste_form%mechanism%num_species    
     if ((cur_waste_form%volume > 0.d0) .and. &
         (cur_waste_form%canister_vitality <= 1.d-40)) then
-      ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]
+      ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]:
       call cur_waste_form%mechanism%Dissolution(cur_waste_form,this,ierr)
-      ! count the number of time FMDM was called
-      select type(cwfm => cur_waste_form%mechanism)
-        type is(wf_mechanism_fmdm_type)
-          fmdm_count_local = fmdm_count_local + 1
-      end select
-      ! mol/sec
+      ! calculate the instantaneous mass rate [mol/sec]:
       do j = 1,num_species
         i = i + 1
         cur_waste_form%instantaneous_mass_rate(j) = &
@@ -1679,8 +1714,42 @@ subroutine PMWFSolve(this,time,ierr)
            cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kg-rad/kmol-rad
            cur_waste_form%rad_mass_fraction(j) * &            ! kg-rad/kg-matrix
            1.d3)                                              ! kmol -> mol
-        vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)  ! mol/sec
+        select type(cwfm => cur_waste_form%mechanism)
+          ! ignore source term if dsnf type, and directly update the
+          ! solution vector instead (see note in WFMechDSNFDissolution):
+          type is(wf_mechanism_dsnf_type)
+            vec_p(i) = 0.d0                                  ! mol/sec
+            inst_diss_molality = 0.d0                        ! mol-rad/kg-water
+            cell_id = cur_waste_form%local_cell_id
+            idof = cwfm%rad_species_list(j)%ispecies + &
+               ((cell_id - 1) * this%option%ntrandof)
+            inst_diss_molality = &                           ! mol-rad/kg-water
+              cur_waste_form%instantaneous_mass_rate(j) * &  ! mol-rad/sec
+              this%realization%option%tran_dt / &            ! sec
+              ! [kg-water]
+              (material_auxvars(cell_id)%porosity * &        ! [-]
+               global_auxvars(cell_id)%sat(LIQUID_PHASE) * & ! [-]
+               material_auxvars(cell_id)%volume * &          ! [m^3]
+               global_auxvars(cell_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
+            xx_p(idof) = xx_p(idof) + inst_diss_molality     ! mol-rad/kg-water
+            ! update the cumulative mass now, not at next timestep:
+            cur_waste_form%cumulative_mass(j) = &
+              cur_waste_form%cumulative_mass(j) + &          ! mol-rad
+              cur_waste_form%instantaneous_mass_rate(j) * &  ! mol-rad/sec
+              this%realization%option%tran_dt                ! sec
+            ! update the volume now, not at next timestep:
+            cur_waste_form%volume = 0.d0                     ! m^3
+          ! for all other waste form types, load the source term, and update
+          ! the cumulative mass and volume at next timestep:
+          class default
+            vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)  ! mol/sec
+        end select
       enddo
+      ! count the number of times FMDM was called:
+      select type(cwfm => cur_waste_form%mechanism)
+        type is(wf_mechanism_fmdm_type)
+          fmdm_count_local = fmdm_count_local + 1
+      end select
     else ! (canister not breached, or all waste form has dissolved already)
       i = i + num_species
       cur_waste_form%eff_dissolution_rate = 0.d0
@@ -1688,7 +1757,7 @@ subroutine PMWFSolve(this,time,ierr)
     endif
     cur_waste_form => cur_waste_form%next
   enddo
-  
+ 
   ! ideally, this print statement would go inside the dissolution subroutine
   call MPI_Allreduce(fmdm_count_local,fmdm_count_global,ONE_INTEGER_MPI, &
                      MPI_INTEGER,MPI_SUM,this%realization%option%mycomm,ierr)
@@ -1696,9 +1765,12 @@ subroutine PMWFSolve(this,time,ierr)
       this%realization%option%print_screen_flag) then
     write(word,'(i5)') fmdm_count_global
     write(*,'(/,2("=")," FMDM ",72("="))')
+  ! ** START (this can be removed after FMDM profiling is finished) **
     write(*,'(a)') '== ' // adjustl(trim(word)) // ' calls to FMDM.'
+  ! ** END (this can be removed after FMDM profiling is finished) **
   endif
   
+  call VecRestoreArrayF90(this%realization%field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
   call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   
 end subroutine PMWFSolve
@@ -1753,6 +1825,12 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   
   ierr = 0
 
+  ! Glass dissolution equation: Kienzler et al. (2012) Eq. 6 pg. 17
+  ! Kienzler, B., M. Altmaier, et al. (2012) Radionuclide Source Term form
+  ! HLW Glass, Spent Nuclear Fuel, and Compacted Hulls and End Pieces
+  ! (CSD-C Waste). KIT Scientific Reports 7624. Karlsruhe Institute of
+  ! Technology, Baden-Wurttemberg, Germany.
+  
   ! kg-glass/m^2/sec
   this%dissolution_rate = time_conversion * 560.d0*exp(-7397.d0/ &
     (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))
@@ -1776,9 +1854,6 @@ subroutine WFMechDSNFDissolution(this,waste_form,pm,ierr)
   ! Author: Jenn Frederick
   ! Date: 03/28/2016
 
-  use Grid_module  
-  use Global_Aux_module
-
   implicit none
 
   class(wf_mechanism_dsnf_type) :: this
@@ -1788,8 +1863,17 @@ subroutine WFMechDSNFDissolution(this,waste_form,pm,ierr)
   
   ierr = 0
   
-  ! 91% of waste form dissolves in first timestep after breach:
-  this%frac_dissolution_rate = 1.d0 / (1.1d0*pm%realization%option%tran_dt) 
+  ! Because the DSNF dissolution rate is instantaneous, the amount of
+  ! released isotopes gets updated directly in the solution vector after
+  ! this routine is called, within PMWFSolve.
+  ! Doing the direct update to the solution vector resolves the potential
+  ! error that may occur if the next timestep size is different from the
+  ! current timestep size, when the dissolution rate would have been
+  ! calculated. This potential error is greatly reduced in magnitude for
+  ! the other dissolution models, so we only do the direct update for DSNF.
+  
+  ! the entire waste form dissolves in the current timestep:
+  this%frac_dissolution_rate = 1.d0 / pm%realization%option%tran_dt
 
   ! kg-matrix/sec
   waste_form%eff_dissolution_rate = &

@@ -16,7 +16,10 @@ SIMULATION
         TWO_PHASE_ENERGY_DOF TEMPERATURE
         GAS_COMPONENT_FORMULA_WEIGHT 2.01588D0 ! kg/kmol
         MAXIMUM_PRESSURE_CHANGE 1.0D6
-	TOUGH2_ITOL_SCALED_RESIDUAL 1.d-5
+        ! the default TOUGH2_ITOL_SCALED_RESIDUAL tolerance is 1.d-5. leave
+        ! this here to catch any changes to default tolerances.
+	TOUGH2_ITOL_SCALED_RESIDUAL ! the default is 1.d-5
+#	TOUGH2_ITOL_SCALED_RESIDUAL 1.d-5
       /
     /
   /

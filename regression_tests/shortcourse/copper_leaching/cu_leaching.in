@@ -17,6 +17,9 @@ SUBSURFACE
 #=========================== regression =======================================
 REGRESSION
   CELLS_PER_PROCESS 5
+  CELLS
+    16
+  /
 END
 
 #=========================== checkpointing ====================================
@@ -166,7 +169,7 @@ END
 #=========================== discretization ===================================
 GRID
   TYPE STRUCTURED
-  NXYZ 8 8 1
+  NXYZ 4 4 1
   BOUNDS
     0.d0 0.d0 0.d0
     16.d0 16.d0 128.d0
@@ -205,7 +208,8 @@ END
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 0.25d0 y
+#  FINAL_TIME 0.25d0 y
+  FINAL_TIME 1.d-2 y
   INITIAL_TIMESTEP_SIZE 1.d-3 s
   MAXIMUM_TIMESTEP_SIZE 0.01 y
 END

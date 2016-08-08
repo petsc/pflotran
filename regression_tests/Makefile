@@ -48,6 +48,7 @@ STANDARD_CFG = \
 	default/materials/soil_compressibility/soil_compressibility.cfg \
 	default/materials/mineral_volume/mineral_volume.cfg \
 	default/infiltrometer/infiltrometer.cfg \
+	default/numerical/numerical.cfg \
 	default/steady/steady.cfg \
 	default/condition/condition.cfg \
 	default/condition/dataset/dataset.cfg \
@@ -58,14 +59,14 @@ STANDARD_CFG = \
 	default/salinity/salinity.cfg \
 	default/timestepping/timestepping.cfg \
 	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\
-        general/general.cfg \
-        hydrogeophysics/hydrogeophysics.cfg \
+	general/general.cfg \
+	hydrogeophysics/hydrogeophysics.cfg \
 	ngee/ngee.cfg \
-        shortcourse/1D_Calcite/calcite.cfg \
+	shortcourse/1D_Calcite/calcite.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/regional_doublet/regional_doublet.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
-        toil_ims/toil_ims.cfg \
+	toil_ims/toil_ims.cfg \
 	ufd/ufd.cfg \
 	wipp/nuts/nuts.cfg \
 	wipp/bragflo/bragflo.cfg
@@ -73,7 +74,9 @@ STANDARD_CFG = \
 ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
 		default/discretization/discretization.cfg \
-		surfaceflow/surface_flow_only/surface_only.cfg \
+		geomech/uniaxial_strain/uniaxial_strain.cfg \
+        geomech/uniaxial_loading/uniaxial_loading.cfg \
+        surfaceflow/surface_flow_only/surface_only.cfg \
 		surfaceflow/surface_th/surface_th.cfg
 endif
 
@@ -94,6 +97,10 @@ GEOCHEMISTRY_CFG = \
 	shortcourse/copper_leaching/cu_leaching.cfg \
 	ufd/ufd.cfg \
 	wipp/nuts/nuts.cfg
+
+GEOMECHANICS_CFG = \
+	geomech/uniaxial_strain/uniaxial_strain.cfg \
+	geomech/uniaxial_loading/uniaxial_loading.cfg
 
 FLOW_CFG = \
 	default/543/543.cfg \
@@ -169,10 +176,20 @@ check :
 		--suite standard standard_parallel \
 		--config-files $(CHECK_CFG)
 
-
 geochemistry :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
 		--config-files $(GEOCHEMISTRY_CFG) --suite geochemistry 
+
+geomechanics :
+ifneq ($(strip $(PARMETIS_LIB)),)
+	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \
+		--config-files $(GEOMECHANICS_CFG) --suite geomechanics 
+else
+	@echo "********************************************************"
+	@echo "  PFLOTRAN does not appear to be compiled with Parmetis."
+	@echo "  Skipping geomechanics tests."
+	@echo "********************************************************"
+endif
 
 flow :
 	-$(PYTHON) $(TEST_MANAGER) -e $(PFLOTRAN) $(TEST_OPTIONS) \

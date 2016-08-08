@@ -88,8 +88,10 @@ private
             RealizationPassPtrsToPatches, &
             RealLocalToLocalWithArray, &
             RealizationCalculateCFL1Timestep, &
-            RealizationNonInitializedData, &
-            RealizUpdateAllCouplerAuxVars
+            RealizUpdateAllCouplerAuxVars, &
+            RealizUnInitializedVarsFlow, &
+            RealizUnInitializedVarsTran, &
+            RealizSetSoilReferencePressure
 
   !TODO(intel)
   ! public from Realization_Base_class
@@ -402,7 +404,7 @@ subroutine RealizationCreateDiscretization(realization)
 
     ! vx
     call VecCreateMPI(option%mycomm, &
-        (option%nflowdof*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
+        (option%nflowspec*MAX_FACE_PER_CELL+1)*realization%patch%grid%nlmax, &
         PETSC_DETERMINE,field%vx_face_inst,ierr);CHKERRQ(ierr)
     call VecSet(field%vx_face_inst,0.d0,ierr);CHKERRQ(ierr)
 
@@ -1211,7 +1213,6 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
    
 98 format(40('=+'))
 99 format(80('-'))
-100 format(a)
   
   flow_condition => coupler%flow_condition
   tran_condition => coupler%tran_condition
@@ -2312,81 +2313,186 @@ end subroutine RealizationCalculateCFL1Timestep
 
 ! ************************************************************************** !
 
-subroutine RealizationNonInitializedData(realization)
+subroutine RealizUnInitializedVarsFlow(realization)
   ! 
-  ! Checks for non-initialized data sets
-  ! i.e. porosity, permeability
+  ! Checks for uninitialized flow variables
   ! 
   ! Author: Glenn Hammond
-  ! Date: 02/08/13
+  ! Date: 07/06/16
+  ! 
+  use Option_module
+  use Material_Aux_class
+  use Variables_module, only : VOLUME, MINERAL_POROSITY, PERMEABILITY_X, &
+                               PERMEABILITY_Y, PERMEABILITY_Z
+
+  implicit none
+  
+  class(realization_subsurface_type) :: realization
+
+  character(len=MAXWORDLENGTH) :: var_name
+  PetscInt :: i
+
+  call RealizUnInitializedVar1(realization,VOLUME,'volume')
+  ! mineral porosity is the base, unmodified porosity
+  call RealizUnInitializedVar1(realization,MINERAL_POROSITY,'porosity')
+  call RealizUnInitializedVar1(realization,PERMEABILITY_X,'permeability X')
+  call RealizUnInitializedVar1(realization,PERMEABILITY_Y,'permeability Y')
+  call RealizUnInitializedVar1(realization,PERMEABILITY_Z,'permeability Z')
+  do i = 1, max_material_index
+    var_name = MaterialAuxIndexToPropertyName(i)
+    call RealizUnInitializedVar1(realization,i,var_name)
+  enddo
+
+end subroutine RealizUnInitializedVarsFlow
+
+! ************************************************************************** !
+
+subroutine RealizUnInitializedVarsTran(realization)
+  ! 
+  ! Checks for uninitialized transport variables
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/06/16
   ! 
 
   use Grid_module
   use Patch_module
   use Option_module
-  use Field_module
+  use Material_module
+  use Material_Aux_class
+  use Variables_module, only : VOLUME, MINERAL_POROSITY, TORTUOSITY
 
   implicit none
   
   class(realization_subsurface_type) :: realization
+
+  call RealizUnInitializedVar1(realization,VOLUME,'volume')
+  ! mineral porosity is the base, unmodified porosity
+  call RealizUnInitializedVar1(realization,MINERAL_POROSITY,'porosity')
+  call RealizUnInitializedVar1(realization,TORTUOSITY,'tortuosity')
+
+end subroutine RealizUnInitializedVarsTran
+
+! ************************************************************************** !
+
+subroutine RealizUnInitializedVar1(realization,ivar,var_name)
+  ! 
+  ! Checks whether a variable is initialized at all active grid cells
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/06/16
+  ! 
+
+  use Option_module
+  use Field_module
+  use Patch_module
+  use Grid_module
+
+  implicit none
   
-  type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
+  class(realization_subsurface_type) :: realization
+  PetscInt :: ivar
+  character(len=*) :: var_name
+  
   type(option_type), pointer :: option
-  type(field_type), pointer :: field  
-  PetscReal, pointer :: vec_p(:), vecy_p(:), vecz_p(:)
-  PetscReal :: min_value, global_value
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  PetscReal, pointer :: vec_p(:)
   PetscInt :: local_id
+  PetscInt :: imin
+  PetscReal :: rmin
+  character(len=MAXWORDLENGTH) :: word
   PetscErrorCode :: ierr
-  
-  patch => realization%patch
-  grid => patch%grid
+
   option => realization%option
   field => realization%field
-  
-  ! cannot use VecMin as there may be inactive cells without data assigned.
-  
-  min_value = 1.d20
-  ! porosity
-  call VecGetArrayF90(field%porosity0,vec_p,ierr);CHKERRQ(ierr)
+  patch => realization%patch
+  grid => patch%grid
+
+  call RealizationGetVariable(realization,realization%field%work, &
+                              ivar,ZERO_INTEGER)
+  ! apply mask to filter inactive cells
+  call VecGetArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
   do local_id = 1, grid%nlmax
-    if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
-    min_value = min(min_value,vec_p(local_id)) 
+    ! if inactive, set to 1.d-40
+    if (patch%imat(grid%nL2G(local_id)) <= 0) vec_p(local_id) = 1.d-40
   enddo
-  call VecRestoreArrayF90(field%porosity0,vec_p,ierr);CHKERRQ(ierr)
-  call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
-                     MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-  
-  if (Uninitialized(global_value)) then
-    option%io_buffer = 'Porosity not initialized at all cells.  ' // &
-                       'Ensure that REGIONS cover entire domain!!!'
+  call VecRestoreArrayF90(field%work,vec_p,ierr);CHKERRQ(ierr)
+  call VecMin(field%work,imin,rmin,ierr);CHKERRQ(ierr)
+  if (Uninitialized(rmin)) then
+    write(word,*) imin+1 ! zero to one based indexing
+    option%io_buffer = 'Incorrect assignment of variable (' &
+      // trim(var_name) // ',cell=' // trim(adjustl(word)) // &
+      '). Please send this error message and your input file to &
+      &pflotran-dev@googlegroups.com.'
     call printErrMsg(option)
   endif
-  
-  if (option%iflowmode /= NULL_MODE) then
-    call VecGetArrayF90(field%perm0_xx,vec_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(field%perm0_yy,vecy_p,ierr);CHKERRQ(ierr)
-    call VecGetArrayF90(field%perm0_zz,vecz_p,ierr);CHKERRQ(ierr)
-    min_value = 1.d20
-    do local_id = 1, grid%nlmax
-      if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
-      min_value = min(min_value,vec_p(local_id),vecy_p(local_id), &
-                      vecz_p(local_id)) 
-    enddo        
-    call VecRestoreArrayF90(field%perm0_xx,vec_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%perm0_yy,vecy_p,ierr);CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%perm0_zz,vecz_p,ierr);CHKERRQ(ierr)
-    call MPI_Allreduce(min_value,global_value,ONE_INTEGER_MPI, &
-                       MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-    if (global_value < 1.d-60) then
-      option%io_buffer = &
-        'A positive non-zero permeability must be defined throughout ' // &
-        'domain in X, Y and Z.'
-      call printErrMsg(option)
-    endif
-  endif
 
-end subroutine RealizationNonInitializedData
+end subroutine RealizUnInitializedVar1
+
+! ************************************************************************** !
+
+subroutine RealizSetSoilReferencePressure(realization)
+  ! 
+  ! Deallocates a realization
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/06/16
+  ! 
+  use Patch_module
+  use Grid_module
+  use Material_Aux_class
+  use Fracture_module
+  use Variables_module, only : MAXIMUM_PRESSURE, SOIL_REFERENCE_PRESSURE
+
+  implicit none
+
+  type(realization_subsurface_type) :: realization
+
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(material_type), pointer :: Material
+  type(material_property_ptr_type), pointer :: material_property_array(:)
+  PetscReal, pointer :: vec_loc_p(:)
+
+  PetscInt :: ghosted_id
+  PetscInt :: imat
+  PetscErrorCode :: ierr
+
+  patch => realization%patch
+  grid => patch%grid
+  material_property_array => patch%material_property_array
+  material_auxvars => patch%aux%Material%auxvars
+
+  call RealizationGetVariable(realization,realization%field%work, &
+                              MAXIMUM_PRESSURE,ZERO_INTEGER)
+  call DiscretizationGlobalToLocal(realization%discretization, &
+                                   realization%field%work, &
+                                   realization%field%work_loc, &
+                                   ONEDOF)
+  call VecGetArrayReadF90(realization%field%work_loc,vec_loc_p, &
+                          ierr); CHKERRQ(ierr)
+
+  do ghosted_id = 1, grid%ngmax
+    imat = patch%imat(ghosted_id)
+    if (imat <= 0) cycle
+    if (associated(material_auxvars(ghosted_id)%fracture)) then
+      call FractureSetInitialPressure(material_auxvars(ghosted_id)%fracture, &
+                                      vec_loc_p(ghosted_id))
+    endif
+    if (material_property_array(imat)%ptr%soil_reference_pressure_initial) then
+      call MaterialAuxVarSetValue(material_auxvars(ghosted_id), &
+                                  SOIL_REFERENCE_PRESSURE, &
+                                  vec_loc_p(ghosted_id))
+    endif
+  enddo
+
+  call VecRestoreArrayReadF90(realization%field%work_loc,vec_loc_p, &
+                              ierr); CHKERRQ(ierr)
+
+end subroutine RealizSetSoilReferencePressure
 
 ! ************************************************************************** !
 

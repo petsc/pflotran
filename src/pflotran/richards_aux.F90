@@ -219,11 +219,11 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
   PetscReal :: kr, ds_dp, dkr_dp
-  PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
+  PetscReal :: dvis_dt, dvis_dp
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
   PetscReal :: pert, pw_pert, dw_kg_pert
   PetscReal :: fs, ani_A, ani_B, ani_C, ani_n, ani_coef
-  PetscReal :: dkr_Se
+  PetscReal :: dkr_sat
   PetscReal :: aux(1)
   PetscReal, parameter :: tol = 1.d-3
   
@@ -262,9 +262,8 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
     else
       call characteristic_curves%liq_rel_perm_function% &
                        RelativePermeability(global_auxvar%sat(1), &
-                                            kr,dkr_Se,option)
-      dkr_dp = characteristic_curves%liq_rel_perm_function% &
-                                  DRelPerm_DPressure(ds_dp,dkr_Se)
+                                            kr,dkr_sat,option)
+      dkr_dp = ds_dp * dkr_sat
     endif
   else
     saturated = PETSC_TRUE
@@ -288,18 +287,16 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
     call EOSWaterSaturationPressure(global_auxvar%temp,sat_pressure,ierr)
     !geh: 0.d0 passed in for derivative of pressure w/respect to temp
     call EOSWaterViscosity(global_auxvar%temp,pw,sat_pressure,0.d0, &
-                           visl,dvis_dt,dvis_dp,dvis_dpsat,ierr) 
-    !geh  dvis_dpsat = -dvis_dp   ! already handled in EOSWaterViscosity
+                           visl,dvis_dt,dvis_dp,ierr) 
   else
     aux(1) = global_auxvar%m_nacl(1)
     call EOSWaterDensityExt(global_auxvar%temp,pw,aux, &
                             dw_kg,dw_mol,dw_dp,dw_dt,ierr)
     call EOSWaterViscosityExt(global_auxvar%temp,pw,sat_pressure,0.d0,aux, &
-                              visl,dvis_dt,dvis_dp,dvis_dpsat,ierr) 
+                              visl,dvis_dt,dvis_dp,ierr) 
   endif
   if (.not.saturated) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
-    dvis_dpsat = 0.d0
     dw_dp = 0.d0
     hw_dp = 0.d0
   endif

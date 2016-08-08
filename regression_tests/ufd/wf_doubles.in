@@ -1,0 +1,455 @@
+#Description: 2D problem for testing the waste form dissolution model with the
+#canister degradation model including isotope decay and ingrowth.
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+    WASTE_FORM general
+      TYPE GENERAL
+    /
+    UFD_DECAY ufd_decay
+    /
+  /
+END
+
+SUBSURFACE
+#=========================== regression =======================================
+REGRESSION
+  CELLS
+    1 2 3
+  /
+END
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    I-129
+    Am-241        
+    Np-237
+    U-233  
+    Th-229 
+    Pu-240
+    Tc-99
+    C-tracer
+  /
+  MINERALS
+    I-129(s)
+    Am-241(s)        
+    Np-237(s)
+    U-233(s)  
+    Th-229(s) 
+    Pu-240(s)
+    Tc-99(s)
+    C-tracer(s)
+  /
+  MINERAL_KINETICS
+    I-129(s)
+      RATE_CONSTANT 0.d0
+    /
+    Am-241(s)
+      RATE_CONSTANT 0.d0
+    /
+    Np-237(s)
+      RATE_CONSTANT 0.d0
+    /
+    U-233(s) 
+      RATE_CONSTANT 0.d0
+    /
+    Th-229(s) 
+      RATE_CONSTANT 0.d0
+    /
+    Pu-240(s)
+      RATE_CONSTANT 0.d0
+    /
+    Tc-99(s)
+      RATE_CONSTANT 0.d0
+    /
+    C-tracer(s)
+      RATE_CONSTANT 0.d0
+    /
+  /
+  
+  OUTPUT
+    TOTAL
+    I-129
+    Am-241        
+    Np-237
+    U-233  
+    Th-229
+    Pu-240
+    Tc-99
+    C-tracer
+  /
+  
+  DATABASE ./ufd-decay.dat
+  
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  TS_ACCELERATION 8
+END
+
+NEWTON_SOLVER FLOW
+END
+
+LINEAR_SOLVER FLOW
+#  KSP_TYPE PREONLY
+#  PC_TYPE LU
+END
+
+NEWTON_SOLVER TRANSPORT
+END
+
+LINEAR_SOLVER TRANSPORT
+#  KSP_TYPE PREONLY
+#  PC_TYPE LU
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 1 1 3
+  BOUNDS
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 3.d0
+  END
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+END
+
+MATERIAL_PROPERTY soil2
+  ID 2
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES sf1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.286
+    ALPHA  1.9401d-4
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.286
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  SNAPSHOT_FILE
+    PERIODIC TIME 50 day
+    FORMAT VTK
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 500.d0 day
+  INITIAL_TIMESTEP_SIZE 1.d-6 day
+  MAXIMUM_TIMESTEP_SIZE 5.d0 day
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 3.d0
+  /
+END
+
+REGION 3
+  COORDINATES
+    0.d0 0.d0 2.d0
+    1.d0 1.d0 3.d0
+  /
+END
+
+#=========================== observation points ===============================
+OBSERVATION
+  REGION all
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE dirichlet
+  /
+  PRESSURE 201325 Pa
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION groundwater
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 groundwater
+  /
+END
+
+#=========================== transport constraints ============================
+CONSTRAINT groundwater
+  CONCENTRATIONS
+    I-129     1.e-20        F
+    Am-241    1.e-20        F    
+    Np-237    1.e-20        F
+    U-233     1.e-20        F
+    Th-229    1.e-20        F
+    Pu-240    1.e-20        F
+    Tc-99     1.e-20        F
+    C-tracer  1.e-20        F
+  /
+  MINERALS
+    I-129(s)  0.d0 1.d0
+    Am-241(s) 0.d0 1.d0
+    Np-237(s) 0.d0 1.d0
+    U-233(s)  0.d0 1.d0
+    Th-229(s) 0.d0 1.d0
+    Pu-240(s) 0.d0 1.d0
+    Tc-99(s)  0.d0 1.d0
+    C-tracer(s) 0.d0 1.d0
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION groundwater
+  REGION all
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil1
+  REGION all
+END
+
+STRATA
+  MATERIAL soil2
+  REGION 3
+END
+
+#=========================== checkpoint / restart =============================
+#CHECKPOINT 10
+
+END_SUBSURFACE
+
+#=========================== waste forms ======================================
+WASTE_FORM_GENERAL
+
+  MECHANISM GLASS 
+    NAME glass01
+    SPECIFIC_SURFACE_AREA 2.78d-3 m^2/kg
+    MATRIX_DENSITY 2.46d3 kg/m^3
+    SPECIES
+     #name,   MW[g/mol],dcy[1/s], initMF, inst_rel_frac, daughter               
+      I-129   128.90d0  1.29d-15  2.18d-4   0.2d0
+      Am-241  241.06d0  5.08d-11  8.70d-4   0.0d0  Np-237
+      Np-237  237.05d0  1.03d-14  8.59d-4   0.2d0  U-233
+      U-233   233.04d0  1.38d-13  9.70d-9   0.0d0  Th-229
+      Th-229  229.03d0  2.78d-12  4.43d-12  0.0d0  
+    /  
+    CANISTER_DEGRADATION_MODEL
+      VITALITY_LOG10_MEAN -0.1
+      VITALITY_LOG10_STDEV 0.5
+      VITALITY_UPPER_TRUNCATION 0
+      CANISTER_MATERIAL_CONSTANT 1500
+    /
+  /
+  
+  MECHANISM DSNF
+    NAME dsnf01
+    MATRIX_DENSITY 3.70d3 kg/m^3
+    SPECIES
+     #name,   MW[g/mol],dcy[1/s], initMF, inst_rel_frac, daughter             
+      Pu-240  240.05d0  3.34d-12  2.84d-6  0.2d0
+      Tc-99   98.91d0   1.04d-13  8.87d-6  0.0d0
+    /  
+    CANISTER_DEGRADATION_MODEL
+      CANISTER_MATERIAL_CONSTANT 1500
+    /
+  /
+  
+  MECHANISM CUSTOM
+    NAME custom01
+    MATRIX_DENSITY 2.70d3 kg/m^3
+    FRACTIONAL_DISSOLUTION_RATE 2.5d-8 1/day
+    SPECIES
+     #name,    MW[g/mol],dcy[1/s], initMF, inst_rel_frac, daughter               
+      C-tracer 100.0d0   1.00d-9   5.00d-6  0.0d0
+    /  
+    CANISTER_DEGRADATION_MODEL
+      VITALITY_LOG10_MEAN -0.1
+      VITALITY_LOG10_STDEV 0.5
+      VITALITY_UPPER_TRUNCATION 0
+      CANISTER_MATERIAL_CONSTANT 1500
+    /
+  /
+  
+  WASTE_FORM
+    COORDINATE 1.0d0 1.0d0 0.5d0
+    EXPOSURE_FACTOR 10.0d0
+    VOLUME 1.14d0 m^3
+    MECHANISM_NAME dsnf01
+    CANISTER_VITALITY_RATE 0.50 1/day
+  /
+  WASTE_FORM
+    COORDINATE 1.0d0 1.0d0 1.5d0
+    EXPOSURE_FACTOR 20.0d0
+    VOLUME 1.14d0 m^3
+    MECHANISM_NAME glass01
+  /
+  WASTE_FORM
+    COORDINATE 1.0d0 1.0d0 2.5d0
+    EXPOSURE_FACTOR 5.0d0
+    VOLUME 1.14d0 m^3
+    MECHANISM_NAME custom01
+  /
+  WASTE_FORM
+    COORDINATE 1.0d0 1.0d0 0.5d0
+    EXPOSURE_FACTOR 12.0d0
+    VOLUME 1.14d0 m^3
+    MECHANISM_NAME glass01
+  /
+  WASTE_FORM
+    COORDINATE 1.0d0 1.0d0 1.5d0
+    EXPOSURE_FACTOR 18.0d0
+    VOLUME 1.14d0 m^3
+    MECHANISM_NAME custom01
+  /
+  WASTE_FORM
+    COORDINATE 1.0d0 1.0d0 2.5d0
+    EXPOSURE_FACTOR 6.0d0
+    VOLUME 1.14d0 m^3
+    CANISTER_VITALITY_RATE 0.50 1/day
+    MECHANISM_NAME dsnf01
+  /
+  
+  PRINT_MASS_BALANCE
+  
+END_WASTE_FORM_GENERAL
+
+#=========================== ufd decay ========================================
+UFD_DECAY
+  ELEMENT I
+    SOLUBILITY 1.d4
+    KD
+      soil1 0.d0 #kg water/m^3 bulk
+      soil2 0.d0 #kg water/m^3 bulk
+    /
+  /
+  ELEMENT Am
+    SOLUBILITY 3.39d-7
+    KD
+      soil1 6.d6
+      soil2 6.d6
+    /
+  /
+  ELEMENT Np
+    SOLUBILITY 4.07d-9
+    KD
+      soil1 3.5d5
+      soil2 4.5d5
+    /
+  /
+  ELEMENT U
+    SOLUBILITY 3.16d-14
+    KD
+      soil1 6.1d5
+      soil2 6.1d5
+    /
+  /
+  ELEMENT Th
+    SOLUBILITY 7.94d-11
+    KD
+      soil1 2.5d6
+      soil2 2.5d6
+    /
+  /
+  ELEMENT Tc
+    SOLUBILITY 7.94d-11
+    KD
+      soil1 2.5d6
+      soil2 2.5d6
+    /
+  /
+  ELEMENT Pu
+    SOLUBILITY 7.94d-11
+    KD
+      soil1 2.5d6
+      soil2 2.5d6
+    /
+  /
+  ELEMENT C
+    SOLUBILITY 1.d4
+    KD
+      soil1 0.d0
+      soil2 0.d0
+    /
+  /
+  ISOTOPE I-129
+    ELEMENT I
+    DECAY_RATE 1.29d-15
+  /
+  ISOTOPE Am-241
+    ELEMENT Am
+    DECAY_RATE 5.08d-11
+    DAUGHTER Np-237 1.d0
+  /
+  ISOTOPE Np-237
+    ELEMENT Np
+    DECAY_RATE 1.03d-14
+    DAUGHTER U-233 1.d0
+  /
+  ISOTOPE U-233
+    ELEMENT U
+    DECAY_RATE 1.38d-13
+    DAUGHTER Th-229 1.d0
+  /
+  ISOTOPE Th-229
+    ELEMENT Th
+    DECAY_RATE 2.78d-12
+  /
+  ISOTOPE Tc-99
+    ELEMENT Tc
+    DECAY_RATE 1.04d-13
+  /
+  ISOTOPE Pu-240
+    ELEMENT Pu
+    DECAY_RATE 3.34d-12
+  /
+  ISOTOPE C-tracer
+    ELEMENT C
+    DECAY_RATE 1.00d-20
+  /
+END

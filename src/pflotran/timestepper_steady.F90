@@ -210,7 +210,8 @@ subroutine TimestepperSteadyStepDT(this, process_model, stop_flag)
   PetscInt :: stop_flag
 
   PetscBool :: failure
-
+  PetscLogDouble :: log_start_time
+  PetscLogDouble :: log_end_time
   PetscErrorCode :: ierr
   PetscInt :: sum_newton_iterations, sum_linear_iterations
   PetscInt :: num_newton_iterations, num_linear_iterations
@@ -235,14 +236,25 @@ subroutine TimestepperSteadyStepDT(this, process_model, stop_flag)
 
   call process_model%PreSolve()
 
+  call PetscTime(log_start_time, ierr);CHKERRQ(ierr)
+
   call SNESSolve(solver%snes, PETSC_NULL_OBJECT, &
                  process_model%solution_vec, ierr);CHKERRQ(ierr)
+
+  call PetscTime(log_end_time, ierr);CHKERRQ(ierr)
+
+  this%cumulative_solver_time = &
+      this%cumulative_solver_time + &
+      (log_end_time - log_start_time)
      
   call SNESGetIterationNumber(solver%snes, num_newton_iterations,  &
                               ierr);CHKERRQ(ierr)
   call SNESGetLinearSolveIterations(solver%snes, num_linear_iterations,  &
                                     ierr);CHKERRQ(ierr)
   call SNESGetConvergedReason(solver%snes, snes_reason, ierr);CHKERRQ(ierr)
+
+  sum_newton_iterations = sum_newton_iterations + num_newton_iterations
+  sum_linear_iterations = sum_linear_iterations + num_linear_iterations
 
   if (snes_reason <= 0) then
     if (option%print_screen_flag) then
@@ -253,9 +265,6 @@ subroutine TimestepperSteadyStepDT(this, process_model, stop_flag)
     stop_flag = TS_STOP_END_SIMULATION
     return
   endif
-
-  sum_newton_iterations = sum_newton_iterations + num_newton_iterations
-  sum_linear_iterations = sum_linear_iterations + num_linear_iterations
   
   this%steps = this%steps + 1
   this%cumulative_newton_iterations = &

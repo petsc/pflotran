@@ -195,7 +195,7 @@ subroutine ConvergenceTest(snes_,i_iteration,xnorm,unorm,fnorm,reason,context, &
     reason = -9
   endif
    
-  if (solver%check_post_convergence .and. option%converged) then
+  if (option%converged) then
     reason = 12
     ! set back to false
     option%converged = PETSC_FALSE

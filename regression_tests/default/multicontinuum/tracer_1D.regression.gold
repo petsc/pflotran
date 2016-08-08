@@ -1,12 +1,12 @@
 -- CONCENTRATION: Total A(aq) --
-      Max:   1.0014637621014E-08
-      Min:   1.0000001722101E-08
-     Mean:   1.0003543712168E-08
-        1:   1.0000001722101E-08
-       21:   1.0000180934962E-08
-       41:   1.0000858089240E-08
-       61:   1.0002749422647E-08
-       81:   1.0007266577285E-08
+      Max:   1.0000000000081E-02
+      Min:   5.0328451303980E-04
+     Mean:   9.5455258046423E-03
+        1:   5.0328451303980E-04
+       21:   9.9997814207902E-03
+       41:   1.0000000000081E-02
+       61:   1.0000000000081E-02
+       81:   1.0000000000081E-02
 -- VOLUME_FRACTION: A(s) VF --
       Max:   1.0000000000000E+05
       Min:   1.0000000000000E+05
@@ -35,10 +35,10 @@
        61:         1
        81:         1
 -- SOLUTION: Transport --
-   Time (seconds):   9.2193624973297E+00
-   Time Steps:         1927
-   Newton Iterations:         1927
-   Solver Iterations:         1927
+   Time (seconds):   6.1181712150574E-01
+   Time Steps:          123
+   Newton Iterations:          123
+   Solver Iterations:          123
    Time Step Cuts:            0
-   Solution 2-Norm:   1.0003544611477E-07
-   Residual 2-Norm:   3.7328932427709E-26
+   Solution 2-Norm:   9.6850697370811E-02
+   Residual 2-Norm:   5.0250925296713E-19

@@ -19,6 +19,7 @@ module PMC_Geomechanics_class
     procedure, public :: RunToTime => PMCGeomechanicsRunToTime
     procedure, public :: GetAuxData => PMCGeomechanicsGetAuxData
     procedure, public :: SetAuxData => PMCGeomechanicsSetAuxData
+    procedure, public :: Destroy => PMCGeomechanicsDestroy
   end type pmc_geomechanics_type
 
   public :: PMCGeomechanicsCreate
@@ -116,13 +117,17 @@ recursive subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
   snapshot_plot_flag = PETSC_FALSE
   observation_plot_flag = PETSC_FALSE
   massbal_plot_flag = PETSC_FALSE
-  checkpoint_flag = PETSC_FALSE
 
   call this%timestepper%SetTargetTime(sync_time,this%option,local_stop_flag, &
                                       snapshot_plot_flag, &
                                       observation_plot_flag, &
                                       massbal_plot_flag,checkpoint_flag)
   call this%timestepper%StepDT(this%pm_list,local_stop_flag)
+  
+  ! Check if it is initial solve
+  if (this%timestepper%steps == 1) then
+    this%option%geomech_initial = PETSC_TRUE
+  endif
 
   ! Have to loop over all process models coupled in this object and update
   ! the time step size.  Still need code to force all process models to
@@ -162,9 +167,9 @@ recursive subroutine PMCGeomechanicsRunToTime(this,sync_time,stop_flag)
           periodic_msbl_output_ts_imod) == 0) then
     massbal_plot_flag = PETSC_TRUE
   endif
+    
   call OutputGeomechanics(this%geomech_realization,snapshot_plot_flag, &
                           observation_plot_flag,massbal_plot_flag)
-     
   ! Set data needed by process-model
   call this%SetAuxData()
 
@@ -326,5 +331,60 @@ subroutine PMCGeomechanicsGetAuxData(this)
   end select
 
 end subroutine PMCGeomechanicsGetAuxData
+
+! ************************************************************************** !
+
+subroutine PMCGeomechanicsStrip(this)
+  !
+  ! Deallocates members of PMC Geomechanics.
+  !
+  ! Author: Satish Karra
+  ! Date: 06/01/16
+  
+  implicit none
+  
+  class(pmc_geomechanics_type) :: this
+
+  call PMCBaseStrip(this)
+  ! realizations destroyed elsewhere
+  nullify(this%subsurf_realization)
+  nullify(this%geomech_realization)
+
+end subroutine PMCGeomechanicsStrip
+
+! ************************************************************************** !
+
+recursive subroutine PMCGeomechanicsDestroy(this)
+  ! 
+  ! Author: Satish Karra
+  ! Date: 06/01/16
+  ! 
+  use Option_module
+
+  implicit none
+  
+  class(pmc_geomechanics_type) :: this
+  
+#ifdef DEBUG
+  call printMsg(this%option,'PMCGeomechanics%Destroy()')
+#endif
+
+  if (associated(this%child)) then
+    call this%child%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%child)
+    nullify(this%child)
+  endif 
+  
+  if (associated(this%peer)) then
+    call this%peer%Destroy()
+    ! destroy does not currently destroy; it strips
+    deallocate(this%peer)
+    nullify(this%peer)
+  endif
+  
+  call PMCGeomechanicsStrip(this)
+
+end subroutine PMCGeomechanicsDestroy
 
 end module PMC_Geomechanics_class

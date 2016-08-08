@@ -94,6 +94,7 @@ module Material_Aux_class
             MaterialAuxVarStrip, &
             MaterialAuxVarGetValue, &
             MaterialAuxVarSetValue, &
+            MaterialAuxIndexToPropertyName, &
             MaterialAuxDestroy
   
 contains
@@ -166,7 +167,7 @@ subroutine MaterialAuxVarInit(auxvar,option)
   if (max_material_index > 0) then
     allocate(auxvar%soil_properties(max_material_index))
     ! initialize these to zero for now
-    auxvar%soil_properties = 0.d0
+    auxvar%soil_properties = UNINITIALIZED_DOUBLE
   else
     nullify(auxvar%soil_properties)
   endif
@@ -229,11 +230,24 @@ subroutine MaterialDiagPermTensorToScalar(material_auxvar,dist, &
   ! 3 = unit z-dir
   PetscReal, intent(in) :: dist(-1:3)
   PetscReal, intent(out) :: scalar_permeability
-  
+
+  PetscReal :: kx, ky, kz
+  PetscReal :: ux, uy, uz
+  PetscReal :: theta, phi 
+#if 1
   scalar_permeability = &
             material_auxvar%permeability(perm_xx_index)*dabs(dist(1))+ &
             material_auxvar%permeability(perm_yy_index)*dabs(dist(2))+ &
             material_auxvar%permeability(perm_zz_index)*dabs(dist(3))
+#else
+  kx = material_auxvar%permeability(perm_xx_index)
+  ky = material_auxvar%permeability(perm_yy_index)
+  kz = material_auxvar%permeability(perm_zz_index)
+  ux = dabs(dist(1))
+  uy = dabs(dist(2))
+  uz = dabs(dist(3))
+  scalar_permeability =  
+#endif
 
 end subroutine MaterialDiagPermTensorToScalar
 
@@ -396,6 +410,36 @@ subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
   dcompressed_porosity_dp = compressibility * compressed_porosity
   
 end subroutine MaterialCompressSoilBRAGFLO
+
+! ************************************************************************** !
+
+function MaterialAuxIndexToPropertyName(i)
+  ! 
+  ! Returns the name of the soil property associated with an index
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/06/16
+  ! 
+  
+  implicit none
+
+  PetscInt :: i
+
+  character(len=MAXWORDLENGTH) :: MaterialAuxIndexToPropertyName
+
+  if (i == soil_compressibility_index) then
+    MaterialAuxIndexToPropertyName = 'soil compressibility'
+  else if (i == soil_reference_pressure_index) then
+    MaterialAuxIndexToPropertyName = 'soil reference pressure'
+!  else if (i == soil_thermal_conductivity_index) then
+!    MaterialAuxIndexToPropertyName = 'soil thermal conductivity'
+!  else if (i == soil_heat_capacity_index) then
+!    MaterialAuxIndexToPropertyName = 'soil heat capacity'
+  else
+    MaterialAuxIndexToPropertyName = 'unknown property'
+  end if
+
+end function MaterialAuxIndexToPropertyName
 
 ! ************************************************************************** !
 

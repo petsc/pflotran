@@ -113,6 +113,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   geomech_grid%nlmax_elem = ugrid%nlmax
   geomech_grid%nmax_node = ugrid%num_vertices_global
   
+  ! Element natural ids
   allocate(geomech_grid%elem_ids_natural(geomech_grid%nlmax_elem))
   do local_id = 1, geomech_grid%nlmax_elem
     geomech_grid%elem_ids_natural(local_id) = ugrid%cell_ids_natural(local_id)
@@ -130,6 +131,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call printMsg(option,'Removing ghosted elements (cells)')
 #endif
   
+  ! Type of element
   allocate(geomech_grid%elem_type(geomech_grid%nlmax_elem))
   do local_id = 1, geomech_grid%nlmax_elem
     geomech_grid%elem_type(local_id) = ugrid%cell_type(local_id)
@@ -139,14 +141,13 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call printMsg(option,'Reordering nodes (vertices)')
 #endif
 
-  ! Read all the cells including ghosted ones and remove the ghosted ones
-  ! Find the nodes which are on the local cells
+  ! First calculate number of elements on local domain (without ghosted elements)
   vertex_count = 0
-  ! First calculate number of nodes on local domain (without ghosted elements)
   do local_id = 1, geomech_grid%nlmax_elem
     vertex_count = vertex_count + ugrid%cell_vertices(0,local_id)
   enddo
   
+  ! Store all the vertices in int_array
   count = 0
   allocate(int_array(vertex_count))
   do local_id = 1, geomech_grid%nlmax_elem
@@ -185,6 +186,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   vertex_count = count
   deallocate(int_array)
   
+  ! Store the vertices including ghosted ones in natural order
   allocate(geomech_grid%node_ids_ghosted_natural(vertex_count))
   do ivertex = 1, vertex_count
     geomech_grid%node_ids_ghosted_natural(ivertex) = ugrid% &
@@ -206,6 +208,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
             0:geomech_grid%max_nnode_per_elem,geomech_grid%nlmax_elem))
   geomech_grid%elem_nodes = 0
   
+  
+  ! Store the vertices (natural ordering) of each element
   count = 0
   do local_id = 1, geomech_grid%nlmax_elem
     geomech_grid%elem_nodes(0,local_id) = ugrid%cell_vertices(0,local_id)
@@ -231,6 +235,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   deallocate(int_array2)
   deallocate(int_array4)
     
+  ! Store the coordinates of the vertices on each process  
   allocate(geomech_grid%nodes(vertex_count))
   do ivertex = 1, vertex_count
     geomech_grid%nodes(ivertex)%id = &
@@ -256,7 +261,17 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   geomech_grid%ngmax_node = vertex_count
 
   deallocate(int_array3)
-    
+  
+  ! So far we have stored the ghosted vertices on each process
+  ! Now we will assign the local vertices on each process
+  ! For this, we first calculate the maximum rank of all the processes
+  ! that share a vertex. This rank will have the vertex as its local 
+  ! vertex.
+  
+  
+  ! Create a nmax_node X mycommsize matrix  
+  ! For each row numbered by vertex (-1, zero-base),
+  ! the ranks of the processes that possess the vertex are stored  
   call MatCreateAIJ(option%mycomm,PETSC_DECIDE,ONE_INTEGER, &
                     geomech_grid%nmax_node,option%mycommsize, &
                     option%mycommsize,PETSC_NULL_INTEGER, &
@@ -274,6 +289,14 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call MatAssemblyBegin(Rank_Mat,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
   call MatAssemblyEnd(Rank_Mat,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
 
+#ifdef GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'Rank_Mat.out', &
+                            viewer,ierr);CHKERRQ(ierr)
+  call MatView(Rank_Mat,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
+
+  ! Now find the maximum of all the ranks for each vertex
   allocate(val(option%mycommsize))
   allocate(cols(option%mycommsize))
   call MatGetOwnershipRange(Rank_Mat,istart,iend,ierr);CHKERRQ(ierr)
@@ -301,12 +324,12 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   string = 'geomech_node_ranks' // trim(adjustl(string)) // '.out'
   open(unit=86,file=trim(string))
   do row = 1, count
-    write(86,'(i5)') int_array(count)
+    write(86,'(i5)') int_array(row)
   enddo  
   close(86)
 #endif    
     
-  ! Find the local nodes on a process
+  ! Now count the number of vertices that are local to each rank
   allocate(vertex_count_array(option%mycommsize))
   allocate(vertex_count_array2(option%mycommsize))
   vertex_count_array = 0
@@ -333,6 +356,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     endif
   enddo
 
+
   if (allocated(vertex_count_array)) deallocate(vertex_count_array)
   if (allocated(vertex_count_array2)) deallocate(vertex_count_array2)
   
@@ -345,7 +369,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
     option%io_buffer = 'Error: Too many processes for the size of the domain.'
     call printErrMsg(option)
   endif
-    
+  
+  ! Create an index set of the ranks of each vertex    
   call ISCreateGeneral(option%mycomm,count,int_array,PETSC_COPY_VALUES, &
                        is_rank,ierr);CHKERRQ(ierr)
 
@@ -384,11 +409,11 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
                   
 #ifdef GEOMECH_DEBUG
   write(string,*) option%myrank
-  print *, 'Number of local vertices on process' // &
+  print *, 'Number of local vertices on rank ' // &
   trim(adjustl(string)) // ' is:', geomech_grid%nlmax_node
-  print *, 'Global offset of vertices on process' // &
+  print *, 'Global offset of vertices on rank ' // &
   trim(adjustl(string)) // ' is:', global_offset_old  
-  print *, 'Number of ghosted vertices on process' // &
+  print *, 'Number of ghosted vertices on rank ' // &
   trim(adjustl(string)) // ' is:', geomech_grid%ngmax_node  
 #endif
 
@@ -436,6 +461,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   ! Rewrite the IS with natural numbering
   call AOPetscToApplicationIS(ao_natural_to_petsc_nodes,is_natural, &
                               ierr);CHKERRQ(ierr)
+                              
+  ! These are the natural ids of the vertices local to each process
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
                             'geomech_is_natural_after_ordering.out', &
@@ -444,7 +471,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif    
 
-  ! Get the local indices (natural)
+  ! Get the local indices (natural) and store them
   allocate(geomech_grid%node_ids_local_natural(geomech_grid%nlmax_node))
   call ISGetIndicesF90(is_natural,int_ptr,ierr);CHKERRQ(ierr)
   do local_id = 1, geomech_grid%nlmax_node
@@ -511,6 +538,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
                        int_array2,PETSC_COPY_VALUES,is_ghost_petsc, &
                        ierr);CHKERRQ(ierr)
   
+  ! Natural ids of ghost vertices on each rank
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_ghost_natural.out', &
                             viewer,ierr);CHKERRQ(ierr)
@@ -521,6 +549,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   ! Rewrite the IS with natural numbering
   call AOApplicationtoPetscIS(ao_natural_to_petsc_nodes,is_ghost_petsc, &
                               ierr);CHKERRQ(ierr)
+                              
+  ! Petsc ids of ghost vertices on each rank                            
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'geomech_is_ghost_petsc.out', &
                             viewer,ierr);CHKERRQ(ierr)
@@ -529,13 +559,15 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
 #endif     
  
   if (allocated(int_array2)) then
-    allocate(geomech_grid%ghosted_node_ids_natural(vertex_count))
-    ! Change back to 1-based
-    geomech_grid%ghosted_node_ids_natural = int_array2 + 1
+    if (vertex_count > 0) then
+      allocate(geomech_grid%ghosted_node_ids_natural(vertex_count))
+      ! Change back to 1-based
+      geomech_grid%ghosted_node_ids_natural = int_array2 + 1
+    endif
     deallocate(int_array2)
   endif
   
-  ! Get the petsc indices for ghost nodes
+  ! Store the petsc indices for ghost nodes
   if (geomech_grid%num_ghost_nodes  > 0) then
     allocate(geomech_grid%ghosted_node_ids_petsc(geomech_grid%num_ghost_nodes))
     call ISGetIndicesF90(is_ghost_petsc,int_ptr,ierr);CHKERRQ(ierr)
@@ -575,6 +607,9 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
                                    int_array2,ierr);CHKERRQ(ierr)
   int_array2 = int_array2+1
    
+  ! Here the local ghosted ids in the elements need to be changed to reflect
+  ! the change in ordering to first nlmax_node being local nodes and
+  ! the rest being ghost nodes 
   do local_id = 1, geomech_grid%nlmax_elem
     do ivertex = 1, geomech_grid%elem_nodes(0,local_id)
       geomech_grid%elem_nodes(ivertex,local_id) = &
@@ -595,6 +630,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   close(86)
 #endif      
   
+  ! Now re-order the geomech_grid%nodes datastructure due to the re-ordering of
+  ! the vertices. Temporarily store in vertices 
   allocate(vertices(geomech_grid%ngmax_node))
   do ghosted_id = 1, geomech_grid%ngmax_node
     vertices(ghosted_id)%id = geomech_grid%nodes(ghosted_id)%id
@@ -631,6 +668,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   
   int_array = geomech_grid%node_ids_ghosted_natural
   
+  ! Store the natural ids of all the local and ghost nodes in the new
+  ! re-ordered system
   do ghosted_id = 1, geomech_grid%ngmax_node
     geomech_grid%node_ids_ghosted_natural(int_array2(ghosted_id)) = &
                                           int_array(ghosted_id)
@@ -650,18 +689,23 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   deallocate(int_array)
   deallocate(int_array2)
   
+  ! Initialize the Gauss data structure in each element
   allocate(geomech_grid%gauss_node(geomech_grid%nlmax_elem))
   do local_id = 1, geomech_grid%nlmax_elem
     call GaussInitialize(geomech_grid%gauss_node(local_id))  
     geomech_grid%gauss_node(local_id)%Eletype = &
       geomech_grid%Elem_type(local_id)
+    ! Set to 3D although we have gauss point calculations for 2D
     geomech_grid%gauss_node(local_id)%dim = THREE_DIM_GRID
-    geomech_grid%gauss_node(local_id)%NGPTS = TWO_INTEGER
+    ! Three gauss points in each direction
+    geomech_grid%gauss_node(local_id)%NGPTS = THREE_INTEGER  
     if (geomech_grid%gauss_node(local_id)%Eletype == PYR_TYPE) &
       geomech_grid%gauss_node(local_id)%NGPTS = FIVE_INTEGER
     call GaussCalculatePoints(geomech_grid%gauss_node(local_id))
   enddo
   
+  ! Store petsc ids of the local and ghost nodes in the new re-ordered system on
+  ! each rank
   allocate(int_array(geomech_grid%ngmax_node))
   do local_id = 1, geomech_grid%nlmax_node
     int_array(local_id) = local_id + geomech_grid%global_offset
@@ -684,6 +728,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   close(86)
 #endif    
  
+  ! Vector that stores for each vertex the number of elements it is shared by
+  ! locally on a rank
   ! local vector
   call VecCreate(PETSC_COMM_SELF,geomech_grid%no_elems_sharing_node_loc, &
                  ierr);CHKERRQ(ierr)
@@ -693,6 +739,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call VecSetFromOptions(geomech_grid%no_elems_sharing_node_loc, &
                          ierr);CHKERRQ(ierr)
 
+  ! Vector that stores for each vertex the number of elements it is shared by
+  ! globally across all ranks
   ! global vector
   call VecCreate(option%mycomm,geomech_grid%no_elems_sharing_node, &
                  ierr);CHKERRQ(ierr)
@@ -702,8 +750,8 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   call VecSetFromOptions(geomech_grid%no_elems_sharing_node, &
                          ierr);CHKERRQ(ierr)
 
-  call VecSet(geomech_grid%no_elems_sharing_node_loc,0,ierr);CHKERRQ(ierr)
-  call VecSet(geomech_grid%no_elems_sharing_node,0,ierr);CHKERRQ(ierr)
+  call VecSet(geomech_grid%no_elems_sharing_node_loc,0.d0,ierr);CHKERRQ(ierr)
+  call VecSet(geomech_grid%no_elems_sharing_node,0.d0,ierr);CHKERRQ(ierr)
  
 end subroutine CopySubsurfaceGridtoGeomechGrid
 
@@ -1117,8 +1165,6 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
   PetscInt :: remainder
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_region_read_ascii,ierr);CHKERRQ(ierr)
-    
   max_size = 1000
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
@@ -1219,8 +1265,6 @@ subroutine GeomechSubsurfMapFromFileId(grid,input,option)
   close(86)
 #endif    
     
-  call PetscLogEventEnd(logging%event_region_read_ascii,ierr);CHKERRQ(ierr)
-
 end subroutine GeomechSubsurfMapFromFileId
 
 end module Geomechanics_Grid_module

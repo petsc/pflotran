@@ -9,17 +9,17 @@
      Mean:   1.0000000000000E+00
         1:   1.0000000000000E+00
 -- RATE: A(s) Rate --
-      Max:   0.0000000000000E+00
-      Min:   0.0000000000000E+00
+      Max:  -0.0000000000000E+00
+      Min:  -0.0000000000000E+00
      Mean:   0.0000000000000E+00
-        1:   0.0000000000000E+00
+        1:  -0.0000000000000E+00
 -- DISCRETE: Material ID --
       Max:         1
       Min:         1
      Mean:   1.0000000000000E+00
         1:         1
 -- SOLUTION: Transport --
-   Time (seconds):   4.5113563537598E-03
+   Time (seconds):   1.8582344055176E-03
    Time Steps:            2
    Newton Iterations:            2
    Solver Iterations:            2

@@ -51,32 +51,33 @@ Surface Site Density: & mole/meter$^{3}$ [mol/m$^{3}$]\\
 \protect\hypertarget{target_simulation}{}
 
 PFLOTRAN input files are divided into blocks based on the process models employed. Process models are defined within the SIMULATION block which for convenience should be located at the top of the input file (but this is not required). 
-Keywords for subsurface processes are listed in Table~\ref{flkeywd}. At present  manual pages and keywords for surface processes is still under development.
+Keywords for subsurface processes are listed in Table~\ref{flkeywd}. 
+At present manual pages and keywords for surface processes are still under development.
 Keywords within the SIMULATION block include:
 \begin{description}
-\item {\bf SIMULATION}
+\item \textbf{SIMULATION}
 \begin{description}
     \item Opens the SIMULATION block.
     \end{description}
 
-\item {\bf SIMULATION\_TYPE}  <string>
+\item \textbf{SIMULATION\_TYPE}  <string>
 \begin{description}
     \item Defines the domain to be modeled and the types of process 
     models employed. Options include:
     
-    \item {\bf SUBSURFACE}
+    \item \textbf{SUBSURFACE}
 
-    \item {\bf SURFACE\_SUBSURFACE}
+    \item \textbf{SURFACE\_SUBSURFACE}
 
-    \item {\bf HYDROGEOPHYSICS}
+    \item \textbf{HYDROGEOPHYSICS}
 \end{description}
 
-\item {\bf PROCESS\_MODELS}
+\item \textbf{PROCESS\_MODELS}
 \begin{description}
 \item Opens a block for defining all process models employed. 
     At this point, the ordering and linkage of these process 
     models is preset. For instance, SUBSURFACE\_FLOW processes 
-    always precede SUBSURFACE\_TRANSPORT processes in timestep 
+    always precede SUBSURFACE\_TRANSPORT processes in time step 
     execution. Options include:
     
 \item {\bf SUBSURFACE\_FLOW} \ <string>
@@ -240,7 +241,7 @@ END
 \toprule[1.5pt]
 \multicolumn{1}{c}{\hypertarget{target_key}{\bf Keyword}} & \multicolumn{1}{c}{\bf Description}\\
 \midrule[1pt]
-\hyperlink{target_bcon}{\bf BOUNDARY\_CONDITION} & \\
+\hyperlink{target_bcon}{\textbf{BOUNDARY\_CONDITION}} & \\
 %\hyperlink{target_brk}{\bf BREAKTHROUGH} & \\
 \hyperlink{target_brine}{\bf BRINE} & \\
 \hyperlink{target_charcrv}{\bf CHARCTERISTIC\_CURVES} & \\
@@ -2647,6 +2648,27 @@ END
 \hfill\hyperlink{target_key}{\return}
 
 \noindent{\bf Description:} Condition coupler between regions and geomechanics boundary conditions. Since the geomechanics is solved in a quasi-steady manner, initial conditions are not needed. 
+Displacement or force conditions can be specified. Note that the values specified
+for displacement or force conditions will be applied to all the nodes of the region
+that the condition is coupled to. If one wants to specify a force $F$ on
+on a face, then the $F$ needs to be distributed based on the area around each node
+on that face. 
+For example, if the top face has nodes configuration as follows:
+\newline 1 -- 2 -- 3
+\newline | \quad   | \quad   |
+\newline 4 -- 5 -- 6     
+\newline |  \quad  | \quad   |
+\newline 7 -- 8 -- 9
+\newline with x and y in the horizontal and vertical direction, 
+and if a force $F$ on the entire face is applied in the negative z direction,
+assuming equal spacing in x and y directions, the load distribution will be:
+\newline Nodes 1, 7, 9, 3 will get $(\frac{F}{4\Delta_x\Delta_y})\times(\frac{\Delta_x\Delta_y}{4}) = \frac{F}{16}$.
+\newline Nodes 4, 2, 6, 8 will get $(\frac{F}{4\Delta_x\Delta_y})\times(\frac{\Delta_x\Delta_y}{2}) = \frac{F}{8}$.
+\newline Node 5 will get $(\frac{F}{4\Delta_x\Delta_y})\times(\Delta_x\Delta_y) = \frac{F}{4}$. 
+\newline One will then have to specify three separate regions (one with internal 
+nodes, one with corners and one with boundary nodes that are not corners), 
+and then specify three FORCE\_Z boundary conditions.
+
 
 
 {\noindent\bf Input:}

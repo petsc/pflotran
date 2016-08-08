@@ -18,6 +18,8 @@ module Option_Flow_module
     PetscBool :: only_vertical_flow
     PetscBool :: density_depends_on_salinity
     PetscBool :: quasi_3d
+    PetscBool :: numerical_derivatives
+    PetscBool :: only_energy_eq
 
   end type flow_option_type
   
@@ -100,6 +102,8 @@ subroutine OptionFlowInitRealization(option)
   option%only_vertical_flow = PETSC_FALSE
   option%density_depends_on_salinity = PETSC_FALSE
   option%quasi_3d = PETSC_FALSE
+  option%numerical_derivatives = PETSC_FALSE
+  option%only_energy_eq = PETSC_FALSE
 
 end subroutine OptionFlowInitRealization
 

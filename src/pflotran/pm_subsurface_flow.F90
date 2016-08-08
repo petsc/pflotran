@@ -24,7 +24,6 @@ module PM_Subsurface_Flow_class
   type, public, extends(pm_base_type) :: pm_subsurface_flow_type
     class(realization_subsurface_type), pointer :: realization
     class(communicator_type), pointer :: comm1
-    PetscBool :: transient_permeability
     PetscBool :: store_porosity_for_ts_cut
     PetscBool :: store_porosity_for_transport
     PetscBool :: check_post_convergence
@@ -103,7 +102,6 @@ subroutine PMSubsurfaceFlowCreate(this)
   
   nullify(this%realization)
   nullify(this%comm1)
-  this%transient_permeability = PETSC_FALSE
   this%store_porosity_for_ts_cut = PETSC_FALSE
   this%store_porosity_for_transport = PETSC_FALSE
   this%check_post_convergence = PETSC_FALSE
@@ -193,6 +191,9 @@ subroutine PMSubsurfaceFlowReadSelectCase(this,input,keyword,found,option)
       call InputReadDouble(input,option,this%cfl_governor)
       call InputErrorMsg(input,option,'MAX_CFL', &
                           'SUBSURFACE_FLOW OPTIONS')
+
+    case('NUMERICAL_JACOBIAN')
+      option%flow%numerical_derivatives = PETSC_TRUE
 
     case default
       found = PETSC_FALSE
@@ -300,6 +301,11 @@ recursive subroutine PMSubsurfaceFlowInitializeRun(this)
   
   class(pm_subsurface_flow_type) :: this
   PetscBool :: update_initial_porosity
+
+  ! must come before RealizUnInitializedVarsTran
+  call RealizSetSoilReferencePressure(this%realization)
+  ! check for uninitialized flow variables
+  call RealizUnInitializedVarsTran(this%realization)
 
   ! overridden in pm_general only
   if (associated(this%realization%reaction)) then
@@ -409,22 +415,6 @@ subroutine PMSubsurfaceFlowInitializeTimestepA(this)
   class(pm_subsurface_flow_type) :: this
 
   this%option%flow_dt = this%option%dt
-
-  if (this%transient_permeability) then
-  !geh:remove
-    call MaterialAuxVarCommunicate(this%comm1, &
-                                   this%realization%patch%aux%Material, &
-                                   this%realization%field%work_loc, &
-                                   PERMEABILITY_X,ZERO_INTEGER)
-    call MaterialAuxVarCommunicate(this%comm1, &
-                                   this%realization%patch%aux%Material, &
-                                   this%realization%field%work_loc, &
-                                   PERMEABILITY_Y,ZERO_INTEGER)
-    call MaterialAuxVarCommunicate(this%comm1, &
-                                   this%realization%patch%aux%Material, &
-                                   this%realization%field%work_loc, &
-                                   PERMEABILITY_Z,ZERO_INTEGER)
-  endif
 
   if (this%store_porosity_for_ts_cut) then
     ! store base properties for reverting at time step cut
@@ -731,10 +721,12 @@ subroutine PMSubsurfaceFlowUpdateSolution(this)
   if (associated(this%realization%uniform_velocity_dataset)) then
     call RealizUpdateUniformVelocity(this%realization)
   endif
-  call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
-                          this%realization%patch%internal_flow_fluxes, &
-                          this%realization%patch%boundary_flow_fluxes, &
-                          INTEGRATE_FLOW,this%option)
+  if (this%option%flow%store_fluxes) then
+    call IntegralFluxUpdate(this%realization%patch%integral_flux_list, &
+                            this%realization%patch%internal_flow_fluxes, &
+                            this%realization%patch%boundary_flow_fluxes, &
+                            INTEGRATE_FLOW,this%option)
+  endif
   ! end from RealizationUpdate()
 
 end subroutine PMSubsurfaceFlowUpdateSolution  

@@ -43,6 +43,7 @@ module Material_module
     character(len=MAXWORDLENGTH) :: soil_compressibility_function
     PetscReal :: soil_compressibility
     PetscReal :: soil_reference_pressure
+    PetscBool :: soil_reference_pressure_initial
 !    character(len=MAXWORDLENGTH) :: compressibility_dataset_name
     class(dataset_base_type), pointer :: compressibility_dataset
 
@@ -168,6 +169,7 @@ function MaterialPropertyCreate()
   material_property%soil_compressibility_function = ''
   material_property%soil_compressibility = UNINITIALIZED_DOUBLE
   material_property%soil_reference_pressure = UNINITIALIZED_DOUBLE
+  material_property%soil_reference_pressure_initial = PETSC_FALSE
 !  material_property%compressibility_dataset_name = ''
   nullify(material_property%compressibility_dataset)
 
@@ -218,7 +220,6 @@ subroutine MaterialPropertyRead(material_property,input,option)
   use String_module
   use Fracture_module
   use Dataset_module
-  use Units_module
   
   implicit none
   
@@ -268,7 +269,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('INACTIVE')
         material_property%active = PETSC_FALSE
       case('SATURATION_FUNCTION','CHARACTERISTIC_CURVES') 
-        call InputReadWord(input,option, &
+        call InputReadWordDbaseCompatible(input,option, &
                            material_property%saturation_function_name, &
                            PETSC_TRUE)
         call InputErrorMsg(input,option,'saturation function name', &
@@ -276,21 +277,13 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('ROCK_DENSITY') 
         call InputReadDouble(input,option,material_property%rock_density)
         call InputErrorMsg(input,option,'rock density','MATERIAL_PROPERTY')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'kg/m^3'
-          material_property%rock_density = material_property%rock_density * &
-            UnitsConvertToInternal(word,internal_units,option)
-        endif
+        call InputReadAndConvertUnits(input,material_property%rock_density, &
+                          'kg/m^3','MATERIAL_PROPERTY,rock density',option)
       case('SPECIFIC_HEAT','HEAT_CAPACITY') 
         call InputReadDouble(input,option,material_property%specific_heat)
         call InputErrorMsg(input,option,'specific heat','MATERIAL_PROPERTY')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'J/kg-C'
-          material_property%specific_heat = material_property%specific_heat * &
-            UnitsConvertToInternal(word,internal_units,option)
-        endif
+        call InputReadAndConvertUnits(input,material_property%specific_heat, &
+                          'J/kg-C','MATERIAL_PROPERTY,specific heat',option)
       case('LONGITUDINAL_DISPERSIVITY') 
         call InputReadDouble(input,option,material_property%dispersivity(1))
         call InputErrorMsg(input,option,'longitudinal_dispersivity', &
@@ -308,25 +301,17 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%thermal_conductivity_dry)
         call InputErrorMsg(input,option,'dry thermal conductivity', &
                            'MATERIAL_PROPERTY')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'W/m-C'
-          material_property%thermal_conductivity_dry = &
-            material_property%thermal_conductivity_dry * &
-            UnitsConvertToInternal(word,internal_units,option)
-        endif
+        call InputReadAndConvertUnits(input, &
+                   material_property%thermal_conductivity_dry, &
+                   'W/m-C','MATERIAL_PROPERTY,dry thermal conductivity',option)
       case('THERMAL_CONDUCTIVITY_WET') 
         call InputReadDouble(input,option, &
                              material_property%thermal_conductivity_wet)
         call InputErrorMsg(input,option,'wet thermal conductivity', &
                            'MATERIAL_PROPERTY')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'W/m-C'
-          material_property%thermal_conductivity_wet = &
-            material_property%thermal_conductivity_wet * &
-            UnitsConvertToInternal(word,internal_units,option)
-        endif
+        call InputReadAndConvertUnits(input, &
+                   material_property%thermal_conductivity_wet, &
+                   'W/m-C','MATERIAL_PROPERTY,wet thermal conductivity',option)
       case('THERMAL_COND_EXPONENT') 
         call InputReadDouble(input,option, &
                              material_property%alpha)
@@ -338,13 +323,9 @@ subroutine MaterialPropertyRead(material_property,input,option)
                              material_property%thermal_conductivity_frozen)
         call InputErrorMsg(input,option,'frozen thermal conductivity', &
                            'MATERIAL_PROPERTY')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'W/m-C'
-          material_property%thermal_conductivity_frozen = &
-            material_property%thermal_conductivity_frozen * &
-            UnitsConvertToInternal(word,internal_units,option)
-        endif
+        call InputReadAndConvertUnits(input, &
+                 material_property%thermal_conductivity_frozen, &
+                 'W/m-C','MATERIAL_PROPERTY,frozen thermal conductivity',option)
       case('THERMAL_COND_EXPONENT_FROZEN') 
         therm_k_exp_frz = PETSC_TRUE
         call InputReadDouble(input,option, &
@@ -370,10 +351,24 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                         'soil compressibility', &
                                         'MATERIAL_PROPERTY',option)
       case('SOIL_REFERENCE_PRESSURE') 
-        call InputReadDouble(input,option, &
-                             material_property%soil_reference_pressure)
+        string = trim(input%buf)
+        ! first read the word to determine if it is the keyword 
+        ! INITIAL_CELL_PRESSURE.
+        call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'soil reference pressure', &
                            'MATERIAL_PROPERTY')
+        length = 16
+        if (StringCompare(word,'INITIAL_PRESSURE',length)) then
+          material_property%soil_reference_pressure_initial = PETSC_TRUE
+        else
+          ! if not the keyword above, copy back into buffer to be read as a
+          ! double precision.
+          input%buf = string
+          call InputReadDouble(input,option, &
+                               material_property%soil_reference_pressure)
+          call InputErrorMsg(input,option,'soil reference pressure', &
+                             'MATERIAL_PROPERTY')
+        endif
       case('THERMAL_EXPANSITIVITY') 
         call InputReadDouble(input,option, &
                              material_property%thermal_expansitivity)
@@ -735,11 +730,19 @@ subroutine MaterialPropertyRead(material_property,input,option)
         '", but SOIL_COMPRESSIBILITY is not defined.'
       call printErrMsg(option)
     endif
-    if (Uninitialized(material_property%soil_reference_pressure)) then
+    if (Uninitialized(material_property%soil_reference_pressure) .and. &
+        .not.material_property%soil_reference_pressure_initial) then
       option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in &
         &inputdeck for MATERIAL_PROPERTY "' // &
         trim(material_property%name) // &
-        '", but SOIL_REFERENCE_PRESSURE is not defined.'
+        '", but a SOIL_REFERENCE_PRESSURE is not defined.'
+      call printErrMsg(option)
+    endif
+    if (Initialized(material_property%soil_reference_pressure) .and. &
+        material_property%soil_reference_pressure_initial) then
+      option%io_buffer = 'SOIL_REFERENCE_PRESSURE may not be defined by the &
+        &initial pressure and a specified pressure in material "' // &
+        trim(material_property%name) // '".'
       call printErrMsg(option)
     endif
   endif
@@ -1291,7 +1294,9 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
       endif
       num_soil_compress = num_soil_compress + 1
     endif
-    if (Initialized(material_property_ptrs(i)%ptr%soil_reference_pressure)) then
+    if (Initialized(material_property_ptrs(i)%ptr%&
+                      soil_reference_pressure) .or. &
+        material_property_ptrs(i)%ptr%soil_reference_pressure_initial) then
       if (soil_reference_pressure_index == 0) then
         icount = icount + 1
         soil_reference_pressure_index = icount
@@ -1377,8 +1382,12 @@ subroutine MaterialAssignPropertyToAux(material_auxvar,material_property, &
       material_property%soil_compressibility
   endif
   if (soil_reference_pressure_index > 0) then
-    material_auxvar%soil_properties(soil_reference_pressure_index) = &
-      material_property%soil_reference_pressure
+    ! soil reference pressure may be assigned as the initial cell pressure, and
+    ! in that case, it will be assigned elsewhere
+    if (Initialized(material_property%soil_reference_pressure)) then
+      material_auxvar%soil_properties(soil_reference_pressure_index) = &
+        material_property%soil_reference_pressure
+    endif
   endif
 !  if (soil_heat_capacity_index > 0) then
 !    material_auxvar%soil_properties(soil_heat_capacity_index) = &
@@ -2000,6 +2009,10 @@ subroutine MaterialPropInputRecord(material_property_list)
       write(id,'(a29)',advance='no') 'soil reference pressure: '
       write(word1,*) cur_matprop%soil_reference_pressure
       write(id,'(a)') adjustl(trim(word1)) // ' Pa'
+    endif
+    if (cur_matprop%soil_reference_pressure_initial) then
+      write(id,'(a29)',advance='no') 'soil reference pressure: '
+      write(id,'(a)') 'initial cell pressure'
     endif
     
     if (cur_matprop%dispersivity(1) > 0.d0 .or. &

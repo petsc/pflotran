@@ -1,0 +1,385 @@
+#Description: Crownpoint 5 Spot Uranium Leaching problem
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+      ITOL_RELATIVE_UPDATE 1.d-8
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 4
+  CELLS
+    10
+  /
+END
+
+UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Na+
+    Ca++
+    H+
+    UO2++
+    SiO2(aq)
+    HCO3-
+    Cl-
+    O2(aq)
+    Tracer
+  /
+  SECONDARY_SPECIES
+    CO(aq)
+    ClO-
+    ClO2-
+    ClO3-
+    ClO4-
+    H2(aq)
+    U+++
+    U++++
+    (UO2)11(CO3)6(OH)12--
+    (UO2)2(OH)2++
+    (UO2)2CO3(OH)3-
+    (UO2)2OH+++
+    (UO2)3(CO3)6(6-)
+    (UO2)3(OH)4++
+    (UO2)3(OH)5+
+    (UO2)3(OH)5CO2+
+    (UO2)3(OH)7-
+    (UO2)3O(OH)2(HCO3)+
+    (UO2)4(OH)7+
+    CO2(aq)
+    CO3--
+    CaCO3(aq)
+    CaCl+
+    CaCl2(aq)
+    CaHCO3+
+    CaOH+
+    CH4(aq)
+    H2SiO4--
+    HCl(aq)
+    HO2-
+    HSiO3-
+    H3SiO4-
+    NaCO3-
+    NaCl(aq)
+    NaHCO3(aq)
+    NaHSiO3(aq)
+    NaOH(aq)
+    OH-
+    UO2(CO3)2--
+    UO2(CO3)3----
+    UO2(OH)2(aq)
+    UO2(OH)3-
+    UO2(OH)4--
+    UO2CO3(aq)
+    UO2Cl+
+    UO2Cl2(aq)
+    UO2OH+
+    Ca2UO2(CO3)3(aq)
+    CaUO2(CO3)3--
+    HClO(aq)
+    HClO2(aq)
+    U(CO3)4----
+    U(CO3)5(6-)
+    U(OH)4(aq)
+    UCl+++
+    UO2ClO3+
+    UOH+++
+  /
+  GAS_SPECIES
+    CO2(g)
+    O2(g)
+  /
+  MINERALS
+    Aragonite
+    Calcite
+    Quartz
+    Chalcedony
+    SiO2(am)
+    Uraninite
+    Schoepite
+    Coffinite
+  /
+  MINERAL_KINETICS
+    Uraninite
+      SURFACE_AREA_VOL_FRAC_POWER 0.666667d0
+      PREFACTOR
+        RATE_CONSTANT 3.5d-8      mol/m^2-sec
+        PREFACTOR_SPECIES O2(aq)
+          ALPHA 0.31d0
+        /
+        PREFACTOR_SPECIES H+
+          ALPHA 0.37d0
+          ATTENUATION_COEF 1.d9
+          BETA 1.d0
+        /
+      /
+    /
+    Schoepite
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    Coffinite
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    Calcite
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    SiO2(am)
+      RATE_CONSTANT 1.d-10 mol/cm^2-sec
+    /
+    Quartz
+      RATE_CONSTANT 1.d-17 mol/cm^2-sec
+    /
+  /
+  DATABASE ../../../database/hanford.dat
+
+  LOG_FORMULATION
+  ACTIVITY_COEFFICIENTS TIMESTEP
+  MOLAL
+  UPDATE_MINERAL_SURFACE_AREA
+  OUTPUT
+    all
+    pH
+    FREE_ION
+    TOTAL
+  /
+END
+
+
+#=========================== solver options ===================================
+TIMESTEPPER TRANSPORT
+  TS_ACCELERATION 16
+END
+
+# == transport solvers ========================================================
+NEWTON_SOLVER TRANSPORT
+  ATOL 1.d-8
+  RTOL 1.d-8
+  STOL 1.d-30
+  DTOL 1.d15
+  ITOL 1.d-8
+  MAXIT 25
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY NW
+  ID 1
+  POROSITY 0.20d0
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_X 0.64d-12
+    PERM_Y 0.64d-12
+    PERM_Z 0.64d-12
+  /
+  CHARACTERISTIC_CURVES default
+END
+
+MATERIAL_PROPERTY NE
+  ID 2
+  POROSITY 0.21d0
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_X 1.75d-12
+    PERM_Y 1.75d-12
+    PERM_Z 1.75d-12
+  /
+  CHARACTERISTIC_CURVES default
+END
+
+MATERIAL_PROPERTY SW
+  ID 3
+  POROSITY 0.16d0
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_X 0.75d-12
+    PERM_Y 0.75d-12
+    PERM_Z 0.75d-12
+  /
+  CHARACTERISTIC_CURVES default
+END
+
+MATERIAL_PROPERTY SE
+  ID 4
+  POROSITY 0.23d0
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_X 0.85d-12
+    PERM_Y 0.85d-12
+    PERM_Z 0.85d-12
+  /
+  CHARACTERISTIC_CURVES default
+END
+
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  DEFAULT
+END
+
+#=========================== output options ===================================
+OUTPUT
+#  FORMAT TECPLOT POINT
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 0.1d0 d
+  INITIAL_TIMESTEP_SIZE 1.d-8 d
+  MAXIMUM_TIMESTEP_SIZE 1.e-2 d
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE STRUCTURED
+  NXYZ 20 1 1
+  BOUNDS
+    0.0 0.0 0.0
+    0.2 1.0 1.0
+  /
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+     -1.d20 -1.d20 -1.d20
+     1.d20 1.d20 1.d20
+  /
+/
+
+REGION east
+  COORDINATES
+     0.2 1.0 1.0
+     0.2 0.0 0.0
+  /
+  FACE EAST
+/
+REGION west
+  COORDINATES
+     0.0 1.0 1.0
+     0.0 0.0 0.0
+  /
+  FACE WEST
+/
+
+#=========================== condition couplers ===============================
+INITIAL_CONDITION all
+  TRANSPORT_CONDITION initial_ore
+  REGION all
+END
+
+BOUNDARY_CONDITION inlet
+  TRANSPORT_CONDITION inlet
+  REGION west
+END
+
+BOUNDARY_CONDITION outlet
+  TRANSPORT_CONDITION initial_ore
+  REGION east
+END
+
+#=========================== flow conditions ==================================
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION initial_ore
+  TYPE DIRICHLET_ZERO_GRADIENT
+  CONSTRAINT_LIST
+    0.d0 initial_ore
+  /
+END
+
+TRANSPORT_CONDITION inlet
+  TYPE DIRICHLET
+  CONSTRAINT_LIST
+    0.d0 inlet0
+  /
+END
+
+TRANSPORT_CONDITION outlet
+  TYPE DIRICHLET_ZERO_GRADIENT
+  CONSTRAINT_LIST
+    0.d0 initial_ore
+  /
+END
+
+#=========================== constraints ======================================
+CONSTRAINT initial_ore
+  CONCENTRATIONS
+    Na+        4.34976e-3  Z
+    Ca++       7.984d-5    M Calcite
+    H+         8.3d0      pH
+    UO2++      1.3503E-6   M Uraninite
+    SiO2(aq)   8.15367e-4  M Coffinite
+    HCO3-      3.49082e-3  T
+    Cl-        7.0798d-4   T
+    O2(aq)     1.d-69      F
+    Tracer     1.e-8       T
+  /
+  FREE_ION_GUESS
+    Na+        4.8829E-03
+    Ca++       1.8006E-01
+    H+         8.2479E-07
+    UO2++      1.3709E-15
+    SiO2(aq)   1.8703E-04
+    HCO3-      2.2687E-04
+    Cl-        3.6763E-01
+    O2(aq)     4.4614E-62
+    Tracer     1.e-8
+  /
+  MINERALS
+#   mineral       vol. frac. surface area
+    Uraninite     0.000182352 3818.36 m^2/m^3
+    Schoepite     0.d0      1.d0 cm^2/cm^3
+    Coffinite     0.d0      1.d0 cm^2/cm^3
+    Calcite       0.01d0    1.d0 cm^2/cm^3
+    SiO2(am)      0.d0     10.d0 cm^2/cm^3
+    Quartz        0.8d0     1.d0 cm^2/cm^3
+  /
+END
+
+CONSTRAINT inlet0
+  CONCENTRATIONS
+    Na+        0.233314    Z
+    Ca++       7.984d-5    M Calcite
+    H+         8.3d0      pH
+    UO2++      1.d-16      T 
+    SiO2(aq)   8.15367e-4  T 
+    HCO3-      0.233314    T
+    Cl-        7.0798d-4   T
+    O2(aq)     0.21        G O2(g)
+    Tracer     1.e-0       T
+  /
+END
+
+CONSTRAINT inlet1
+  CONCENTRATIONS
+    Na+        0.233314    Z
+    Ca++       7.984d-5    M Calcite
+    H+         8.3d0      pH
+    UO2++      1.d-16      T 
+    SiO2(aq)   8.15367e-4  T 
+    HCO3-      0.233314    T
+    Cl-        7.0798d-4   T
+    O2(aq)     0.0587983   F
+    Tracer     1.e-0       T
+  /
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL NW
+END
+
+END_SUBSURFACE

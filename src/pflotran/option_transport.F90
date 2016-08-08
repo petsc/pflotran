@@ -21,12 +21,12 @@ module Option_Transport_module
     
     PetscReal :: inf_rel_update_tol
     PetscReal :: inf_scaled_res_tol
-    PetscBool :: check_post_convergence
   
     PetscBool :: jumpstart_kinetic_sorption
     PetscBool :: no_checkpoint_kinetic_sorption
     PetscBool :: no_restart_kinetic_sorption
     PetscBool :: no_restart_mineral_vol_frac
+    PetscBool :: numerical_derivatives
         
   end type transport_option_type
   
@@ -110,6 +110,7 @@ subroutine OptionTransportInitRealization(option)
   option%store_fluxes = PETSC_FALSE
   
   option%reactive_transport_coupling = GLOBAL_IMPLICIT
+  option%numerical_derivatives = PETSC_FALSE
   
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   option%no_checkpoint_kinetic_sorption = PETSC_FALSE
@@ -119,7 +120,6 @@ subroutine OptionTransportInitRealization(option)
   option%tran_weight_t0 = 0.d0
   option%tran_weight_t1 = 0.d0
 
-  option%check_post_convergence = PETSC_FALSE
   option%inf_rel_update_tol = UNINITIALIZED_DOUBLE
   option%inf_scaled_res_tol = UNINITIALIZED_DOUBLE 
   

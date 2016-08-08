@@ -1,0 +1,176 @@
+#Description: QA test
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE GENERAL
+    /
+  /
+  #INPUT_RECORD_FILE
+END
+
+SUBSURFACE
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 25 1 1
+  DXYZ
+   1.0
+   1.0
+   1.0
+  END
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0   0.d0  0.d0
+    25.d0 1.d0  1.d0
+  /
+END
+
+REGION left_end
+  FACE WEST
+  COORDINATES
+    0.d0  0.d0  0.d0
+    0.d0  1.d0  1.d0
+  /
+END
+
+REGION right_end
+  FACE EAST
+  COORDINATES
+    25.d0  0.d0  0.d0
+    25.d0  1.d0  1.d0
+  /
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY beam
+  ID 1
+  POROSITY 1.d-5
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.0d3 kg/m^3
+  HEAT_CAPACITY 0.01 J/kg-C
+  THERMAL_CONDUCTIVITY_DRY 1.16 W/m-C
+  THERMAL_CONDUCTIVITY_WET 1.16 W/m-C
+  CHARACTERISTIC_CURVES cc1
+  PERMEABILITY
+    PERM_X 1.d-20
+    PERM_Y 1.d-20
+    PERM_Z 1.d-20
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    LIQUID_RESIDUAL_SATURATION 0.5d-1
+    M 0.75
+    ALPHA 1.d-3
+  /
+  PERMEABILITY_FUNCTION MUALEM
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_GAS
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    GAS_RESIDUAL_SATURATION 0.1d0
+    M 0.5d0
+  /
+END
+
+#===================== stratigraphy couplers ==================================
+STRATA
+  REGION all
+  MATERIAL beam
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== output options ===================================
+OUTPUT
+  SNAPSHOT_FILE
+    TIMES day 0.01 0.04 0.09 0.12
+    NO_PRINT_INITIAL
+    FORMAT VTK
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 0.50 day
+  INITIAL_TIMESTEP_SIZE 1.d-4 day
+  MAXIMUM_TIMESTEP_SIZE 0.01 day at 0.d0 day
+END
+
+#======================= flow conditions ======================================
+FLOW_CONDITION initial
+  TYPE
+    TEMPERATURE dirichlet
+    LIQUID_PRESSURE dirichlet
+    MOLE_FRACTION dirichlet
+  /
+  TEMPERATURE 0.0d0 C
+  LIQUID_PRESSURE 101325 Pa
+  MOLE_FRACTION 1.d-10
+END
+
+FLOW_CONDITION left_end
+  TYPE
+    ENERGY_FLUX neumann
+    LIQUID_FLUX neumann
+    GAS_FLUX neumann
+  /
+  ENERGY_FLUX 0.d0 W/m^2
+  LIQUID_FLUX 0.d0 m/yr
+  GAS_FLUX 0.d0 m/yr
+END
+
+FLOW_CONDITION right_end
+  TYPE
+    ENERGY_FLUX neumann
+    LIQUID_FLUX neumann
+    GAS_FLUX neumann
+  /
+  ENERGY_FLUX LIST
+    # flux = 0.385802*t [W/m^2]
+    TIME_UNITS day
+    DATA_UNITS W/m^2
+    INTERPOLATION LINEAR
+    #time  #heat_flux
+    0.00d0 0.0d0
+    1.00d0 0.385802
+  /
+  LIQUID_FLUX 0.d0 m/yr
+  GAS_FLUX 0.d0 m/yr
+END
+
+#========================== initial and boundary conditions ===================
+# initial condition
+INITIAL_CONDITION initial
+  REGION all
+  FLOW_CONDITION initial
+END
+
+# west boundary condition
+BOUNDARY_CONDITION left_end
+  REGION left_end
+  FLOW_CONDITION left_end
+END
+
+# east boundary condition
+BOUNDARY_CONDITION right_end
+  FLOW_CONDITION right_end
+  REGION right_end
+END
+
+
+
+END_SUBSURFACE
+

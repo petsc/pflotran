@@ -10,6 +10,10 @@ module String_module
 
 #include "petsc/finclude/petscsys.h"
 
+  PetscInt, parameter, public :: STRING_IS_INTEGER = 1
+  PetscInt, parameter, public :: STRING_IS_DOUBLE = 2
+  PetscInt, parameter, public :: STRING_IS_WORD = 3
+
   public :: StringCompare, &
             StringCompareIgnoreCase, &
             StringToUpper, &
@@ -23,7 +27,8 @@ module String_module
             StringSplit, &
             StringSwapChar, &
             StringFormatInt, &
-            StringFormatDouble
+            StringFormatDouble, &
+            StringIntegerDoubleOrWord
   
   interface StringCompare
     module procedure StringCompare1
@@ -591,5 +596,53 @@ function StringFormatDouble(real_value)
   StringFormatDouble = adjustl(StringFormatDouble)
   
 end function StringFormatDouble
+
+! ************************************************************************** !
+
+function StringIntegerDoubleOrWord(string)
+  ! 
+  ! Writes a double or real to a string
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 01/13/12
+  ! 
+
+  implicit none
+  
+  character(len=*) :: string
+
+  PetscInt :: StringIntegerDoubleOrWord
+
+  PetscReal :: d
+  PetscInt :: i
+  PetscBool :: double_syntax_found
+  character(len=MAXWORDLENGTH) :: word
+  PetscErrorCode :: ierr
+
+  StringIntegerDoubleOrWord = -999
+  ierr = 0
+  double_syntax_found = (index(string,'.') > 0 .or. &
+      index(string,'d') > 0 .or. index(string,'D') > 0 .or. &
+      index(string,'e') > 0 .or. index(string,'E') > 0) 
+  read(string,*,iostat=ierr) i
+  if (ierr == 0) then
+    ! the Intel compiler does not alway catch the misread of a double to an 
+    ! integer
+    if (double_syntax_found) then
+      StringIntegerDoubleOrWord = STRING_IS_DOUBLE
+      return
+    endif
+    StringIntegerDoubleOrWord = STRING_IS_INTEGER
+    return
+  endif
+  ierr = 0
+  read(string,*,iostat=ierr) d
+  if (ierr == 0) then
+    StringIntegerDoubleOrWord = STRING_IS_DOUBLE
+    return
+  endif
+  if (len_trim(string) > 0) StringIntegerDoubleOrWord = STRING_IS_WORD
+  
+end function StringIntegerDoubleOrWord
 
 end module String_module

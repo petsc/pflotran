@@ -70,9 +70,11 @@ module vars
   real, dimension(:,:), allocatable :: e_pos
   real, dimension(:,:), allocatable :: nodes               !!node positions
   real, dimension(:,:), allocatable :: poles               !!pole solutions
+  real, dimension(:), allocatable :: pf_porosity           !!pflotran porosity
   real, dimension(:), allocatable :: pf_tracer             !!pflotran tracer solution
   real, dimension(:), allocatable :: pf_saturation         !!pflotran saturation solution
   real, dimension(:), allocatable :: pf_saturation_0       !!pflotran saturation solution at time 0
+  real, dimension(:), allocatable :: pf_temperature        !!pflotran temperature
   real, dimension(:), allocatable :: sigma                 !!element conductivities
   real, dimension(:), allocatable :: dpred                 !!simulated data vector
   real, dimension(:), allocatable :: dobs                  !!observed data
@@ -107,6 +109,8 @@ module vars
   Vec :: pflotran_tracer_vec_seq
   Vec :: pflotran_saturation_vec_mpi
   Vec :: pflotran_saturation_vec_seq
+  Vec :: pflotran_temperature_vec_mpi
+  Vec :: pflotran_temperature_vec_seq
   VecScatter :: pflotran_scatter
   PetscInt :: pflotran_vec_size
   character(len=32) :: pflotran_group_prefix

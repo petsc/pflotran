@@ -7,9 +7,9 @@
        49:   2.1666666667504E+01
        73:   2.0000000000803E+01
        97:   2.6666666667684E+01
-      121:   2.5000000000969E+01
+      121:   2.5000000000972E+01
       145:   2.3333333334255E+01
-      169:   3.0000000001113E+01
+      169:   3.0000000001114E+01
       193:   2.8333333333891E+01
 -- DISCRETE: Material ID --
       Max:         1
@@ -25,10 +25,10 @@
       169:         1
       193:         1
 -- SOLUTION: Flow --
-   Time (seconds):   1.4420986175537E-02
+   Time (seconds):   2.9508113861084E-02
    Time Steps:            1
    Newton Iterations:            2
    Solver Iterations:            2
    Time Step Cuts:            0
-   Solution 2-Norm:   1.4696939314025E+07
-   Residual 2-Norm:   8.9646957212124E-06
+   Solution 2-Norm:   1.4696939314024E+07
+   Residual 2-Norm:   8.4547877176546E-06

@@ -16,7 +16,7 @@
       Max:   4.2831374290846E-04
       Min:   1.0110784495091E-07
      Mean:   6.8507179684642E-05
-       29:   1.1912349000397E-04
+       29:   1.1912349000398E-04
         1:   1.0675731563052E-06
        31:   5.3944623435513E-07
 -- CONCENTRATION: Total Tracer2 --
@@ -34,22 +34,22 @@
         1:         1
        31:         3
 -- GENERIC: LIQUID VELOCITY [m/d] --
-       29:   1.6066493265804E-01 -1.0572565186555E-01  2.6591774923019E-04
+       29:   1.6066493265803E-01 -1.0572565186556E-01  2.6591774923020E-04
         1:   1.8283372331921E-02 -1.0872642071490E-03 -7.9797956837206E-04
        31:   3.1866573339345E-01  4.8193089104467E-02 -9.7825103046311E-04
 -- SOLUTION: Flow --
-   Time (seconds):   1.0337901115417E-01
+   Time (seconds):   1.2408614158630E-01
    Time Steps:           34
    Newton Iterations:           90
    Solver Iterations:           90
    Time Step Cuts:            0
    Solution 2-Norm:   1.8522091616857E+06
-   Residual 2-Norm:   5.1816601949947E-10
+   Residual 2-Norm:   5.1816597985288E-10
 -- SOLUTION: Transport --
-   Time (seconds):   4.1674375534058E-02
+   Time (seconds):   4.7502756118774E-02
    Time Steps:           34
    Newton Iterations:           34
    Solver Iterations:           34
    Time Step Cuts:            0
    Solution 2-Norm:   9.9207407331616E-04
-   Residual 2-Norm:   2.7940336964569E-19
+   Residual 2-Norm:   7.7392684869581E-19

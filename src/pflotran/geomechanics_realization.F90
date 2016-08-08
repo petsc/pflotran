@@ -573,7 +573,8 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
 
   call VecScatterCopy(scatter,dm_ptr%gmdm%scatter_geomech_to_subsurf_ndof, &
                       ierr);CHKERRQ(ierr)
-  
+ 
+  call VecScatterDestroy(scatter,ierr);CHKERRQ(ierr) 
   call ISDestroy(is_geomech,ierr);CHKERRQ(ierr)
   call ISDestroy(is_subsurf,ierr);CHKERRQ(ierr)
   call ISDestroy(is_subsurf_natural,ierr);CHKERRQ(ierr)
@@ -587,7 +588,7 @@ end subroutine GeomechRealizMapSubsurfGeomechGrid
 
 ! ************************************************************************** !
 
-subroutine GeomechGridElemSharedByNodes(geomech_realization)
+subroutine GeomechGridElemSharedByNodes(geomech_realization,option)
   ! 
   ! GeomechGridElemsSharedByNodes: Calculates the number of elements common
   ! to a node (vertex)
@@ -596,6 +597,7 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
   ! Date: 09/17/13
   ! 
   
+  use Option_module
   use Geomechanics_Grid_Aux_module
 
   implicit none
@@ -605,32 +607,36 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
 
   class(realization_geomech_type) :: geomech_realization
   type(geomech_grid_type), pointer :: grid
+  type(option_type) :: option
   
   PetscInt :: ielem
   PetscInt :: ivertex
   PetscInt :: ghosted_id
-  PetscInt, allocatable :: elenodes(:)
+  PetscInt :: elenodes(10)
   PetscReal, pointer :: elem_sharing_node_loc_p(:)
   PetscErrorCode :: ierr
+  PetscViewer :: viewer
+  character(len=MAXSTRINGLENGTH) :: string
   
   grid => geomech_realization%geomech_discretization%grid
   
   call VecGetArrayF90(grid%no_elems_sharing_node_loc,elem_sharing_node_loc_p, &
                       ierr);CHKERRQ(ierr)
   
+  ! Calculate the common elements to a node on a process
   do ielem = 1, grid%nlmax_elem
-    elenodes = grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
+    elenodes(1:grid%elem_nodes(0,ielem)) = &
+      grid%elem_nodes(1:grid%elem_nodes(0,ielem),ielem)
     do ivertex = 1, grid%elem_nodes(0,ielem)
-      ghosted_id = elenodes(ivertex) 
+      ghosted_id = elenodes(ivertex)
       elem_sharing_node_loc_p(ghosted_id) = &
         elem_sharing_node_loc_p(ghosted_id) + 1
     enddo
   enddo
-  
+    
   call VecRestoreArrayF90(grid%no_elems_sharing_node_loc, &
-                         elem_sharing_node_loc_p,ierr);CHKERRQ(ierr)
-
-  
+                          elem_sharing_node_loc_p,ierr);CHKERRQ(ierr)
+                          
   ! Local to global scatter
   call GeomechDiscretizationLocalToGlobalAdd(&
                                 geomech_realization%geomech_discretization, &
@@ -638,6 +644,20 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization)
                                 grid%no_elems_sharing_node, &
                                 ONEDOF)  
                                              
+#if GEOMECH_DEBUG
+  write(string,*) option%myrank
+  string = 'no_elems_sharing_node_loc_' // trim(adjustl(string)) // '.out'
+
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string), &
+                            viewer,ierr);CHKERRQ(ierr)
+  call VecView(grid%no_elems_sharing_node_loc,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'no_elems_sharing_node.out', &
+                            viewer,ierr);CHKERRQ(ierr)
+  call VecView(grid%no_elems_sharing_node,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
+
 end subroutine GeomechGridElemSharedByNodes
 
 ! ************************************************************************** !
@@ -1070,7 +1090,7 @@ subroutine GeomechRealizDestroy(geomech_realization)
   class(realization_geomech_type), pointer :: geomech_realization
   
   if (.not.associated(geomech_realization)) return
-  
+    
   call GeomechFieldDestroy(geomech_realization%geomech_field)
 
   call OutputOptionDestroy(geomech_realization%output_option)

@@ -1314,7 +1314,7 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   J(TH_TEMPERATURE_DOF,TH_PRESSURE_DOF) = (dsat_dp*den*u + &
                                            sat*dden_dp*u + &
                                            sat*den*du_dp)*porXvol + &
-                        (den*sat*u - rock_dencpr)*vol*dcompressed_porosity_dp
+                        (den*sat*u - rock_dencpr*temp)*vol*dcompressed_porosity_dp
   J(TH_TEMPERATURE_DOF,TH_TEMPERATURE_DOF) = sat*(dden_dt*u + den*du_dt)*porXvol +  &
                                              (1.d0 - por)*vol*rock_dencpr
 
@@ -1376,7 +1376,16 @@ subroutine THAccumDerivative(TH_auxvar,global_auxvar, &
   J = J/option%flow_dt
   J(option%nflowdof,:) = vol_frac_prim*J(option%nflowdof,:)
 
-  if (option%numerical_derivatives_flow) then
+  ! If only solving the energy equation,
+  !  - Set jacobian term corresponding to mass-equation to zero, and
+  !  - Set off-diagonal jacobian terms to zero.
+  if (option%flow%only_energy_eq) then
+    J(1,1) = 1.d0
+    J(1,2) = 0.d0
+    J(2,1) = 0.d0
+  endif
+
+  if (option%flow%numerical_derivatives) then
     call GlobalAuxVarInit(global_auxvar_pert,option)  
     call MaterialAuxVarInit(material_auxvar_pert,option)  
 
@@ -1779,6 +1788,16 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
       dq_dt_up = Dq*(dukvr_dt_up*dphi+ukvr*dphi_dt_up)*area
       dq_dt_dn = Dq*(dukvr_dt_dn*dphi+ukvr*dphi_dt_dn)*area
         
+
+      ! If only solving the energy equation, ensure Jup(2,2) & Jdn(2,2)
+      ! have no contribution from the mass equation
+      if (option%flow%only_energy_eq) then
+         v_darcy = 0.d0
+         q = 0.d0
+         dq_dt_up = 0.d0
+         dq_dt_dn = 0.d0
+      endif
+
       Jup(1,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)
       Jup(1,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)
 
@@ -1897,32 +1916,30 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   endif ! if (use_th_freezing)
 
         
-  if (option%use_th_freezing) then
-            
     dKe_dp_up = auxvar_up%dKe_dp
     dKe_dp_dn = auxvar_dn%dKe_dp
 
+    dKe_dt_up = auxvar_up%dKe_dt
+    dKe_dt_dn = auxvar_dn%dKe_dt
+
+  if (option%use_th_freezing) then
+            
     Dk_eff_up = auxvar_up%Dk_eff
     Dk_eff_dn = auxvar_dn%Dk_eff
 
     Ke_fr_up = auxvar_up%ice%Ke_fr
     Ke_fr_dn = auxvar_dn%ice%Ke_fr
 
-    dKe_dt_up = auxvar_up%dKe_dt
-    dKe_dt_dn = auxvar_dn%dKe_dt
-
     dKe_fr_dt_up = auxvar_up%ice%dKe_fr_dt
     dKe_fr_dt_dn = auxvar_dn%ice%dKe_fr_dt
 
     dKe_fr_dp_up = auxvar_up%ice%dKe_fr_dp
     dKe_fr_dp_dn = auxvar_dn%ice%dKe_fr_dp
+
   else
 
     Dk_eff_up = auxvar_up%Dk_eff
     Dk_eff_dn = auxvar_dn%Dk_eff
-
-    dKe_dt_up = auxvar_up%dKe_dt
-    dKe_dt_dn = auxvar_dn%dKe_dt
 
   endif
  
@@ -1970,10 +1987,24 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
                            area*(global_auxvar_up%temp - & 
                            global_auxvar_dn%temp)*dDk_dt_dn 
 
+  ! If only solving the energy equation,
+  !  - Set jacobian term corresponding to mass-equation to zero, and
+  !  - Set off-diagonal jacobian terms to zero.
+  if (option%flow%only_energy_eq) then
+    Jup(1,1) = 0.d0
+    Jup(1,2) = 0.d0
+    Jup(option%nflowdof,1) = 0.d0
+
+    Jdn(1,1) = 0.d0
+    Jdn(1,2) = 0.d0
+    Jdn(option%nflowdof,1) = 0.d0
+
+  endif
+
   ! note: Res is the flux contribution, for node up J = J + Jup
   !                                              dn J = J - Jdn  
 
-  if (option%numerical_derivatives_flow) then
+  if (option%flow%numerical_derivatives) then
     call THAuxVarCopy(auxvar_up,auxvar_pert_up,option)
     call THAuxVarCopy(auxvar_dn,auxvar_pert_dn,option)
 
@@ -2238,6 +2269,11 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
     if (ukvr > floweps) then
       v_darcy = Dq * ukvr * dphi
    
+      ! If only solving the energy equation, ensure Res(2) has no
+      ! contribution from mass equation by setting darcy velocity
+      ! to be zero
+      if (option%flow%only_energy_eq) v_darcy = 0.d0
+
       q = v_darcy * area
         
       fluxm = fluxm + q*density_ave
@@ -2312,6 +2348,9 @@ subroutine THFlux(auxvar_up,global_auxvar_up, &
   cond = Dk*area*(global_auxvar_up%temp - global_auxvar_dn%temp)
 
   fluxe = fluxe + cond
+
+  ! If only solving the energy equation, ensure Res(1) is zero
+  if (option%flow%only_energy_eq) fluxm = 0.d0
 
   Res(1:option%nflowdof-1) = fluxm
   Res(option%nflowdof) = fluxe
@@ -2429,7 +2468,9 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   PetscReal :: rho
   PetscReal :: dq_lin,dP_lin
   PetscReal :: q_approx,dq_approx
+  PetscBool :: skip_thermal_conduction
 
+  skip_thermal_conduction = PETSC_FALSE
   T_th  = 0.5d0
 
   fluxm = 0.d0
@@ -2505,11 +2546,16 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
         endif
 
         if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC) then
-              ! flow in         ! boundary cell is <= pref
-          if (dphi > 0.d0 .and. global_auxvar_up%pres(1)-option%reference_pressure < eps) then
-            dphi = 0.d0
-            dphi_dp_dn = 0.d0
-            dphi_dt_dn = 0.d0
+          ! boundary cell is <= pref 
+          if (global_auxvar_up%pres(1)-option%reference_pressure < eps) then
+            ! skip thermal conduction whenever water table is lower than cell
+            skip_thermal_conduction = PETSC_TRUE
+            ! flow inward
+            if (dphi > 0.d0) then
+              dphi = 0.d0
+              dphi_dp_dn = 0.d0
+              dphi_dt_dn = 0.d0
+            endif
           endif
         endif
 
@@ -2765,6 +2811,13 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
   Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)
       
+  ! If only solving the energy equation, ensure Jdn(2,2) has no
+  ! contribution from mass equation
+  if (option%flow%only_energy_eq) then
+    q = 0.d0
+    dq_dt_dn = 0.d0
+  endif
+
   ! based on flux = q*density_ave*uh
   Jdn(option%nflowdof,1) =  &
      ((dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn)
@@ -2777,31 +2830,39 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
       Dk =  auxvar_dn%Dk_eff / dd_dn
       !cond = Dk*area*(global_auxvar_up%temp-global_auxvar_dn%temp)
 
-      if (option%use_th_freezing) then
-        Dk_eff_dn    = auxvar_dn%Dk_eff
-        dKe_dp_dn    = auxvar_dn%dKe_dp
-        dKe_dt_dn    = auxvar_dn%dKe_dt
-        dKe_fr_dt_dn = auxvar_dn%ice%dKe_fr_dt
-        dKe_fr_dp_dn = auxvar_dn%ice%dKe_fr_dp
-        Dk           = Dk_eff_dn/dd_dn
-
-        dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dt_dn + &
-            Dk_ice_dn*dKe_fr_dt_dn + (- dKe_dt_dn - dKe_fr_dt_dn)* &
-            Dk_dry_dn)
-        dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dp_dn + &
-            Dk_ice_dn*dKe_fr_dp_dn + (- dKe_dp_dn - dKe_fr_dp_dn)* &
-            Dk_dry_dn)
-
+      if (skip_thermal_conduction) then
+        ! skip thermal conducton when the boundary pressure is below the
+        ! reference pressure (e.g. river stage is below cell center).
+        dDk_dt_dn = 0.d0
+        dDk_dp_dn = 0.d0
+        Dk = 0.d0
       else
+        if (option%use_th_freezing) then
+          Dk_eff_dn    = auxvar_dn%Dk_eff
+          dKe_dp_dn    = auxvar_dn%dKe_dp
+          dKe_dt_dn    = auxvar_dn%dKe_dt
+          dKe_fr_dt_dn = auxvar_dn%ice%dKe_fr_dt
+          dKe_fr_dp_dn = auxvar_dn%ice%dKe_fr_dp
+          Dk           = Dk_eff_dn/dd_dn
 
-        Dk_eff_dn = auxvar_dn%Dk_eff
-        dKe_dp_dn = auxvar_dn%dKe_dp
-        dKe_dt_dn = auxvar_dn%dKe_dt
-        Dk        = Dk_eff_dn/dd_dn
+          dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dt_dn + &
+              Dk_ice_dn*dKe_fr_dt_dn + (- dKe_dt_dn - dKe_fr_dt_dn)* &
+              Dk_dry_dn)
+          dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn*dKe_dp_dn + &
+              Dk_ice_dn*dKe_fr_dp_dn + (- dKe_dp_dn - dKe_fr_dp_dn)* &
+              Dk_dry_dn)
+  
+        else
+  
+          Dk_eff_dn = auxvar_dn%Dk_eff
+          dKe_dp_dn = auxvar_dn%dKe_dp
+          dKe_dt_dn = auxvar_dn%dKe_dt
+          Dk        = Dk_eff_dn/dd_dn
+  
+          dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dt_dn
+          dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dp_dn
 
-        dDk_dt_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dt_dn
-        dDk_dp_dn = Dk**2/Dk_eff_dn**2*dd_dn*(Dk_dn - Dk_dry_dn)*dKe_dp_dn
-
+        endif
       endif
 
       if (.not. option%surf_flow_on) then
@@ -2891,8 +2952,17 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
 
   end select
 
+  ! If only solving the energy equation,
+  !  - Set jacobian term corresponding to mass-equation to zero, and
+  !  - Set off-diagonal jacobian terms to zero.
+  if (option%flow%only_energy_eq) then
+    Jdn(1,1) = 0.d0
+    Jdn(1,2) = 0.d0
+    Jdn(option%nflowdof,1) = 0.d0
+  endif
+
 #if 0
-  if (option%numerical_derivatives_flow) then
+  if (option%flow%numerical_derivatives) then
     allocate(material_auxvar_pert_up,material_auxvar_pert_dn)
 
     call MaterialAuxVarInit(material_auxvar_pert_up,option)
@@ -3097,6 +3167,9 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   PetscReal :: rho,dum1
   PetscReal :: q_approx, dq_approx
   PetscReal :: T_th,fctT,fct
+  PetscBool :: skip_thermal_conduction
+
+  skip_thermal_conduction = PETSC_FALSE
   T_th  = 0.5d0
 
   fluxm = 0.d0
@@ -3146,9 +3219,14 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
         endif
 
         if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC) then
-          ! flow in         ! boundary cell is <= pref
-          if (dphi > 0.d0 .and. global_auxvar_up%pres(1) - option%reference_pressure < eps) then
-            dphi = 0.d0
+          ! boundary cell is <= pref 
+          if (global_auxvar_up%pres(1)-option%reference_pressure < eps) then
+            ! skip thermal conduction whenever water table is lower than cell
+            skip_thermal_conduction = PETSC_TRUE
+            ! flow inward
+            if (dphi > 0.d0) then
+              dphi = 0.d0
+            endif
           endif
         endif
         
@@ -3292,6 +3370,11 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
 
   end select
 
+  ! If only solving the energy equation, ensure Res(2) has no
+  ! contribution from mass equation by setting darcy velocity
+  ! to be zero
+  if (option%flow%only_energy_eq) q = 0.d0
+
   q = v_darcy * area
 
   if (v_darcy >= 0.D0) then
@@ -3309,6 +3392,12 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
     case(DIRICHLET_BC,HET_DIRICHLET)
       Dk =  auxvar_dn%Dk_eff / dd_dn
       cond = Dk*area*(global_auxvar_up%temp-global_auxvar_dn%temp)
+
+      if (skip_thermal_conduction) then
+        ! skip thermal conducton when the boundary pressure is below the
+        ! reference pressure (e.g. river stage is below cell center).
+        cond = 0.d0
+      endif
 
       if (option%surf_flow_on) then
 
@@ -3385,6 +3474,9 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
         '" not implemented in TH mode.'
       call printErrMsg(option)
   end select
+
+  ! If only solving the energy equation, set Res(1) is 0.d0
+  if (option%flow%only_energy_eq) fluxm = 0.d0
 
   Res(1:option%nflowspec) = fluxm
   Res(option%nflowdof) = fluxe

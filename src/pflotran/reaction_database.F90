@@ -1984,8 +1984,8 @@ subroutine BasisInit(reaction,option)
       mineral%kinmnrl_rate_limiter = 0.d0
       allocate(mineral%kinmnrl_irreversible(mineral%nkinmnrl))
       mineral%kinmnrl_irreversible = 0
-      allocate(mineral%kinmnrl_rate(mineral%nkinmnrl))
-      mineral%kinmnrl_rate = 0.d0
+      allocate(mineral%kinmnrl_rate_constant(mineral%nkinmnrl))
+      mineral%kinmnrl_rate_constant = 0.d0
       allocate(mineral%kinmnrl_activation_energy(mineral%nkinmnrl))
       mineral%kinmnrl_activation_energy = 0.d0
       allocate(mineral%kinmnrl_molar_vol(mineral%nkinmnrl))
@@ -2025,6 +2025,24 @@ subroutine BasisInit(reaction,option)
       endif
     endif
     
+    ! Determine whether mineral scale factor is used in any TST reactions
+    cur_mineral => mineral%mineral_list
+    found = PETSC_FALSE
+    do
+      if (.not.associated(cur_mineral)) exit
+      if (associated(cur_mineral%tstrxn)) then 
+        if (Initialized(cur_mineral%tstrxn%min_scale_factor)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    if (found) then
+      allocate(mineral%kinmnrl_min_scale_factor(mineral%nkinmnrl))
+      mineral%kinmnrl_min_scale_factor = 1.d0
+    endif
+
     ! Determine whether Temkin's constant is used in any TST reactions
     cur_mineral => mineral%mineral_list
     found = PETSC_FALSE
@@ -2075,7 +2093,7 @@ subroutine BasisInit(reaction,option)
       endif
       cur_mineral => cur_mineral%next
     enddo
-    if (found) then
+    if (reaction%update_mineral_surface_area .or. found) then
       allocate(mineral%kinmnrl_surf_area_vol_frac_pwr(mineral%nkinmnrl))
       mineral%kinmnrl_surf_area_vol_frac_pwr = 0.d0    
     endif
@@ -2308,9 +2326,13 @@ subroutine BasisInit(reaction,option)
 
           if (mineral%kinmnrl_num_prefactors(ikinmnrl) == 0) then
             ! no prefactors, rates stored in upper level
-            mineral%kinmnrl_rate(ikinmnrl) = tstrxn%rate
+            mineral%kinmnrl_rate_constant(ikinmnrl) = tstrxn%rate
             mineral%kinmnrl_activation_energy(ikinmnrl) = &
               tstrxn%activation_energy
+          endif
+          if (Initialized(tstrxn%min_scale_factor)) then
+            mineral%kinmnrl_min_scale_factor(ikinmnrl) = &
+              tstrxn%min_scale_factor
           endif
           if (Initialized(tstrxn%affinity_factor_sigma)) then
             mineral%kinmnrl_Temkin_const(ikinmnrl) = &
@@ -3761,7 +3783,7 @@ subroutine BasisInit(reaction,option)
       write(86,'(a," ; TST ; log10_rate_constant ")',advance='no') &
         trim(mineral%kinmnrl_names(imnrl))
       write(86,'(1es13.5," moles/cm^2/sec ")',advance='no') &
-        log10(mineral%kinmnrl_rate(imnrl))
+        log10(mineral%kinmnrl_rate_constant(imnrl))
       if (mineral%kinmnrl_num_prefactors(imnrl) /= 0) then
         write(86,'(" ; ")',advance='no')
         do i = 1, mineral%kinmnrl_num_prefactors(imnrl)
@@ -3916,7 +3938,7 @@ subroutine BasisInit(reaction,option)
       write(86,'(1es13.5)') mineral%kinmnrl_logK(imnrl)
       write(86,'(1es13.5)') mineral%kinmnrl_molar_vol(imnrl)
       write(86,'(1es13.5)') mineral%kinmnrl_molar_wt(imnrl)
-      write(86,'(1es13.5)') mineral%kinmnrl_rate(1,imnrl)
+      write(86,'(1es13.5)') mineral%kinmnrl_rate_constant(1,imnrl)
       write(86,'(1es13.5)') 1.d0 ! specific surface area 1 cm^2 / cm^3
     enddo
         close(86)

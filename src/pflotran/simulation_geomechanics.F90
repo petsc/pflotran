@@ -2,7 +2,7 @@ module Simulation_Geomechanics_class
 
   use Option_module
   use Simulation_Subsurface_class
-  use Regression_module
+  use Geomechanics_Regression_module
   use PMC_Base_class
   use PMC_Subsurface_class
   use PMC_Geomechanics_class
@@ -10,6 +10,8 @@ module Simulation_Geomechanics_class
   use Geomechanics_Realization_class
   use PFLOTRAN_Constants_module
   use Waypoint_module
+  use Simulation_Aux_module
+  use Output_Aux_module 
   
   implicit none
 
@@ -25,6 +27,7 @@ module Simulation_Geomechanics_class
     class(pmc_geomechanics_type), pointer :: geomech_process_model_coupler
     class(realization_geomech_type), pointer :: geomech_realization
     type(waypoint_list_type), pointer :: waypoint_list_geomechanics
+    type(geomechanics_regression_type), pointer :: geomech_regression
   contains
     procedure, public :: Init => GeomechanicsSimulationInit
     procedure, public :: InitializeRun => GeomechanicsSimulationInitializeRun
@@ -72,6 +75,7 @@ subroutine GeomechanicsSimulationInit(this, option)
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 01/01/14
+  ! Modified: Satish Karra, 06/01/2016
   ! 
   use Waypoint_module
   use Option_module
@@ -83,6 +87,7 @@ subroutine GeomechanicsSimulationInit(this, option)
 
   call SubsurfaceSimulationInit(this, option)
   nullify(this%geomech_realization)
+  nullify(this%geomech_regression)
   this%waypoint_list_geomechanics => WaypointListCreate()
 
 end subroutine GeomechanicsSimulationInit
@@ -187,6 +192,7 @@ subroutine GeomechanicsSimulationExecuteRun(this)
         endif
 
         time = time + dt
+        this%geomech_process_model_coupler%timestepper%dt = dt
         call this%RunToTime(time)
 
         if (this%stop_flag /= TS_CONTINUE) exit ! end simulation
@@ -207,18 +213,30 @@ subroutine GeomechanicsSimulationFinalizeRun(this)
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 01/01/14
-  ! 
+  ! Modified by Satish Karra, 06/22/16
 
-  use Timestepper_Base_class
+  use Timestepper_Steady_class
 
   implicit none
 
   class(simulation_geomechanics_type) :: this
+  class(timestepper_steady_type), pointer :: geomech_timestepper
 
   call printMsg(this%option,'GeomechanicsSimulationFinalizeRun')
 
   call SubsurfaceFinalizeRun(this)
   !call GeomechanicsFinalizeRun(this)
+  nullify(geomech_timestepper)
+  if (associated(this%geomech_process_model_coupler)) then
+    select type(ts => this%geomech_process_model_coupler%timestepper)
+      class is(timestepper_steady_type)
+        geomech_timestepper => ts
+    end select
+  endif
+  call GeomechanicsRegressionOutput(this%geomech_regression, &
+                                    this%geomech_realization, &
+                                    geomech_timestepper)  
+
 
 end subroutine GeomechanicsSimulationFinalizeRun
 
@@ -230,8 +248,8 @@ subroutine GeomechanicsSimulationStrip(this)
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 01/01/14
+  ! Modified by Satish Karra, 06/01/16
   ! 
-
 
   implicit none
   
@@ -240,9 +258,10 @@ subroutine GeomechanicsSimulationStrip(this)
   call printMsg(this%option,'GeomechanicsSimulationStrip()')
   
   call SubsurfaceSimulationStrip(this)
-  call RegressionDestroy(this%regression)
-  call WaypointListDestroy(this%waypoint_list_geomechanics)  
-  
+  call GeomechanicsRegressionDestroy(this%geomech_regression)
+  call WaypointListDestroy(this%waypoint_list_subsurface)
+  call WaypointListDestroy(this%waypoint_list_geomechanics)
+   
 end subroutine GeomechanicsSimulationStrip
 
 ! ************************************************************************** !

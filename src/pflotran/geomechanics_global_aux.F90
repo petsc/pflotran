@@ -11,7 +11,7 @@ module Geomechanics_Global_Aux_module
   type, public :: geomech_global_auxvar_type
     PetscReal, pointer :: disp_vector(:)       ! [m]
     PetscReal, pointer :: rel_disp_vector(:)   ! [m]
-    PetscReal, pointer :: strain(:)            ! dimensionless
+    PetscReal, pointer :: strain(:)            ! dimensionless -- xx, yy, zz, xy, yz, zx
     PetscReal, pointer :: stress(:)            ! [Pa]
     PetscInt :: count                      ! Number of elements shared by a vertex
     ! The count above will be used for averaging the strains and stresses

@@ -908,7 +908,6 @@ module WIPP_module
 #include "petsc/finclude/petscsys.h"
 
   type :: wipp_type
-    PetscBool :: cell_by_cell_soil_ref_pres
     class(creep_closure_type), pointer :: creep_closure
   end type wipp_type
   
@@ -960,7 +959,6 @@ function WIPPGetPtr()
 
   if (.not.associated(wipp)) then
     allocate(wipp)
-    wipp%cell_by_cell_soil_ref_pres = PETSC_FALSE
     nullify(wipp%creep_closure)
   endif
   
@@ -1003,9 +1001,6 @@ subroutine WIPPRead(input,option)
     call StringToUpper(keyword)   
       
     select case(trim(keyword))
-    
-      case('SET_CELL_BY_CELL_SOIL_REF_PRES')
-        wipp%cell_by_cell_soil_ref_pres = PETSC_TRUE
       case('CREEP_CLOSURE')
         call CreepClosureInit()
         creep_closure => CreepClosureCreate()

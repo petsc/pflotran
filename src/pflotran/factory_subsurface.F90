@@ -808,8 +808,6 @@ subroutine SubsurfaceInitSimulation(simulation)
   call InitSubsurfaceSetupZeroArrays(realization)
   call OutputVariableAppendDefaults(realization%output_option% &
                                       output_snap_variable_list,option)
-    ! check for non-initialized data sets, e.g. porosity, permeability
-  call RealizationNonInitializedData(realization)
 
   if (option%nflowdof > 0) then
     select type(ts => simulation%flow_process_model_coupler%timestepper)
@@ -962,23 +960,20 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
           select type(cur_pm)
           !-----------------------------------
             class is(pm_subsurface_flow_type)
-              if (ts%solver%check_post_convergence .or. &
-                  cur_pm%check_post_convergence) then
+              if (cur_pm%check_post_convergence) then
                 call SNESLineSearchSetPostCheck(linesearch,PMCheckUpdatePost, &
                      pmc%pm_ptr,ierr);CHKERRQ(ierr)
                 !geh: it is possible that the other side has not been set
-                ts%solver%check_post_convergence = PETSC_TRUE
                 cur_pm%check_post_convergence = PETSC_TRUE
               endif
           !------------------------------------
             class is(pm_rt_type)
-              if (ts%solver%check_post_convergence .or. &
-                  cur_pm%print_EKG .or. option%use_mc) then
+              if (cur_pm%print_EKG .or. option%use_mc .or. &
+                  cur_pm%check_post_convergence) then
                 call SNESLineSearchSetPostCheck(linesearch,PMCheckUpdatePost, &
                      pmc%pm_ptr,ierr);CHKERRQ(ierr)
                 if (cur_pm%print_EKG) then
-                  ts%solver%check_post_convergence = PETSC_TRUE
-                  option%transport%check_post_convergence = PETSC_TRUE
+                  cur_pm%check_post_convergence = PETSC_TRUE
                 endif
               endif
           !-------------------------------------
@@ -1216,7 +1211,8 @@ subroutine SubsurfaceJumpStart(simulation)
   
   option => realization%option
 
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
+  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+                           PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr);CHKERRQ(ierr)
 
 #if 0
@@ -1507,7 +1503,6 @@ subroutine SubsurfaceReadInput(simulation)
   character(len=1) :: backslash
   PetscReal :: temp_real, temp_real2
   PetscReal, pointer :: temp_real_array(:)
-  PetscReal :: units_conversion
   PetscInt :: temp_int
   PetscInt :: id
   
@@ -1553,6 +1548,7 @@ subroutine SubsurfaceReadInput(simulation)
   
   PetscReal :: dt_init
   PetscReal :: dt_min
+  PetscReal :: units_conversion
   
   class(timestepper_BE_type), pointer :: flow_timestepper
   class(timestepper_BE_type), pointer :: tran_timestepper
@@ -1628,13 +1624,11 @@ subroutine SubsurfaceReadInput(simulation)
         call InputReadDouble(input,option,uniform_velocity_dataset%values(3,1))
         call InputErrorMsg(input,option,'velz','UNIFORM_VELOCITY')
         ! read units, if present
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          internal_units = 'meter/sec'
-          units_conversion = UnitsConvertToInternal(word,internal_units,option) 
-          uniform_velocity_dataset%values(:,1) = &
-            uniform_velocity_dataset%values(:,1) * units_conversion
-        endif
+        temp_real = 1.d0
+        call InputReadAndConvertUnits(input,temp_real, &
+                                    'meter/sec','UNIFORM_VELOCITY,units',option)
+        uniform_velocity_dataset%values(:,1) = &
+          uniform_velocity_dataset%values(:,1) * temp_real
         call UniformVelocityDatasetVerify(option,uniform_velocity_dataset)
         realization%uniform_velocity_dataset => uniform_velocity_dataset
       
@@ -1654,20 +1648,6 @@ subroutine SubsurfaceReadInput(simulation)
 !....................
       case ('PRINT_DUAL_GRID')
         option%print_explicit_dual_grid = PETSC_TRUE
-
-!geh: remove after 2/25/2016
-#if 0        
-!....................
-      case ('MAX_CHANGE')
-        call InputReadDouble(input,option,option%dpmxe)
-        call InputErrorMsg(input,option,'dpmxe','MAX_CHANGE')
-        call InputReadDouble(input,option,option%dtmpmxe)
-        call InputErrorMsg(input,option,'dtmpmxe','MAX_CHANGE')
-        call InputReadDouble(input,option,option%dsmxe)
-        call InputErrorMsg(input,option,'dsmxe','MAX_CHANGE')
-        call InputReadDouble(input,option,option%dcmxe)
-        call InputErrorMsg(input,option,'dcmxe','MAX_CHANGE')
-#endif
 
 !....................
       case ('PROC')
@@ -1970,12 +1950,19 @@ subroutine SubsurfaceReadInput(simulation)
 !......................
 
       case ('NUMERICAL_JACOBIAN_FLOW')
-        option%numerical_derivatives_flow = PETSC_TRUE
+        option%io_buffer = 'The NUMERICAL_JACOBIAN_FLOW card within &
+          &SUBSURFACE block must be listed under the SIMULATION/&
+          &PROCESS_MODELS/SUBSURFACE_FLOW/OPTIONS block as NUMERICAL_JACOBIAN.'
+        call printErrMsg(option)
 
 !......................
 
       case ('NUMERICAL_JACOBIAN_RXN')
-        option%numerical_derivatives_rxn = PETSC_TRUE
+        option%io_buffer = 'The NUMERICAL_JACOBIAN_FLOW card within &
+          &SUBSURFACE block must be listed under the SIMULATION/&
+          &PROCESS_MODELS/SUBSURFACE_TRANSPORT block as &
+          &NUMERICAL_JACOBIAN.'
+        call printErrMsg(option)
 
 !......................
 
@@ -2032,23 +2019,8 @@ subroutine SubsurfaceReadInput(simulation)
         select case(word)
           case('FLOW')
             call SolverReadNewton(flow_timestepper%solver,input,option)
-!TODO(geh): remove after 11/30/15 as inf_scaled_res_tol is no longer used
-!            if (flow_timestepper%solver%check_post_convergence) then
-!              option%flow%check_post_convergence = PETSC_TRUE
-!            option%flow%inf_scaled_res_tol = &
-!              flow_timestepper%solver%newton_inf_scaled_res_tol
-!              option%flow%inf_rel_update_tol = &
-!                flow_timestepper%solver%newton_inf_rel_update_tol
-!            endif
           case('TRAN','TRANSPORT')
             call SolverReadNewton(tran_timestepper%solver,input,option)
-            if (tran_timestepper%solver%check_post_convergence) then
-              option%transport%check_post_convergence = PETSC_TRUE
-              option%transport%inf_scaled_res_tol = &
-                tran_timestepper%solver%newton_inf_scaled_res_tol
-              option%transport%inf_rel_update_tol = &
-                tran_timestepper%solver%newton_inf_rel_update_tol
-            endif
           case default
             option%io_buffer = 'NEWTON_SOLVER must specify FLOW or TRANSPORT.'
             call printErrMsg(option)
@@ -2130,7 +2102,8 @@ subroutine SubsurfaceReadInput(simulation)
         option%use_touch_options = PETSC_TRUE
 
       case ('MPI_IO')
-!        call PetscOptionsInsertString('-viewer_binary_mpiio')
+!        call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
+!                                       '-viewer_binary_mpiio')
 
       case ('HANDSHAKE_IO')
         call InputReadInt(input,option,option%io_handshake_buffer_size)
@@ -2777,6 +2750,14 @@ subroutine SubsurfaceReadInput(simulation)
         option%flow%only_vertical_flow = PETSC_TRUE
         if (option%iflowmode /= RICHARDS_MODE) then
           option%io_buffer = 'QUASI_3D implemented in RICHARDS mode.'
+          call printErrMsg(option)
+        endif
+
+!....................
+      case ('ONLY_ENERGY_EQ')
+        option%flow%only_energy_eq = PETSC_TRUE
+        if (option%iflowmode /= TH_MODE) then
+          option%io_buffer = 'ONLY_ENERGY_EQ applicable only in TH mode.'
           call printErrMsg(option)
         endif
 

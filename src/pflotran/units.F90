@@ -44,8 +44,8 @@ function UnitsConvertToInternal(units,internal_units,option)
   internal_units_buff2 = trim(internal_units)
   multi_option = PETSC_FALSE
   successful = PETSC_FALSE
-  conversion_factor = 1d0
-  UnitsConvertToInternal = 1d0
+  conversion_factor = 1.d0
+  UnitsConvertToInternal = 1.d0
   num_options = 0
   ind_or = 1
   length = 0
@@ -346,11 +346,13 @@ subroutine UnitsCategory(unit,unit_category,error,error_msg)
       case('s','sec','second','min','minute','h','hr','hour','d','day','w', &
            'week','mo','month','y','yr','year')
         unit_category(k) = 'time'
-      case('J','KJ','MJ')
+      case('J','kJ','MJ')
         unit_category(k) = 'energy'
-      case('W','KW','MW')
+      case('W','kW','MW')
         unit_category(k) = 'power'
-      case('mol','mole','moles','ug','mg','g','kg')
+      case('mol','mole','moles','kmol')
+        unit_category(k) = 'molar_mass'
+      case('ug','mg','g','kg')
         unit_category(k) = 'mass'
       case('C','Celcius')
         unit_category(k) = 'temperature'
@@ -358,9 +360,9 @@ subroutine UnitsCategory(unit,unit_category,error,error_msg)
         unit_category(k) = 'temperature'
         error_msg = 'Kelvin temperature units are not supported. Use Celcius.' 
         error = PETSC_TRUE
-      case('Pa','KPa','MPa','Bar')
+      case('Pa','kPa','MPa','Bar')
         unit_category(k) = 'pressure'
-      case('M')
+      case('M','mM')
         unit_category(k) = 'concentration'
       case('N')
         unit_category(k) = 'force'
@@ -447,20 +449,23 @@ subroutine UnitsConvertToSI(unit,conversion_factor,error,error_msg)
   ! ---> ENERGY ---> (Joule)
     case('J')   
       conversion_factor = 1.d0
-    case('KJ')   
+    case('kJ')   
       conversion_factor = 1.d3
     case('MJ')   
       conversion_factor = 1.d6
   ! ---> ENERGY FLUX or POWER ---> (Watt)
     case('W')   
       conversion_factor = 1.d0
-    case('KW')   
+    case('kW')   
       conversion_factor = 1.d3
     case('MW')   
       conversion_factor = 1.d6
-  ! ---> MASS ---> (kilogram, mole)
+  ! ---> MOLAR MASS ---> (kilogram, mole)
     case('mol','mole','moles')
       conversion_factor = 1.d0
+    case('kmol')
+      conversion_factor = 1.d3
+  ! ---> MASS ---> (kilogram, mole)
     case('ug')
       conversion_factor = 1.d-9
     case('mg')
@@ -475,12 +480,17 @@ subroutine UnitsConvertToSI(unit,conversion_factor,error,error_msg)
   ! ---> PRESSURE ---> (Pascal)
     case('Pa') 
       conversion_factor = 1.d0
-    case('KPa')
+    case('kPa')
       conversion_factor = 1.d3
     case('MPa')
       conversion_factor = 1.d6
     case('Bar')
       conversion_factor = 1.d5
+  ! ---> CONCENTRATION ---> (M)
+    case('M') 
+      conversion_factor = 1.d0
+    case('mM') 
+      conversion_factor = 1.d-3
   ! ---> FORCE ---> (Newton)
     case('N') 
       conversion_factor = 1.d0

@@ -388,6 +388,14 @@ subroutine CouplerComputeConnections(grid,option,coupler)
         else if (associated(coupler%flow_condition%concentration)) then
           ! need to calculate connection set
         endif
+        !geh: this is a workaround for defining temperature with a gridded
+        !     dataset.  still need to set up the connections.
+        if (associated(coupler%flow_condition%temperature)) then
+          select type(selector => coupler%flow_condition%temperature%dataset)
+            class is(dataset_gridded_hdf5_type)
+              nullify_connection_set = PETSC_FALSE
+          end select
+        endif
       else
         nullify_connection_set = PETSC_TRUE
       endif

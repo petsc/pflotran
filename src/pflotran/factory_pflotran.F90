@@ -245,14 +245,8 @@ subroutine PFLOTRANReadSimulation(simulation,option)
         call InputErrorMsg(input,option,'RESTART','Restart file name') 
         call InputReadDouble(input,option,option%restart_time)
         if (input%ierr == 0) then
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          if (input%ierr == 0) then
-            internal_units = 'sec'
-            option%restart_time = option%restart_time* &
-              UnitsConvertToInternal(word,internal_units,option)
-          else
-            call InputDefaultMsg(input,option,'RESTART, time units')
-          endif
+          call InputReadAndConvertUnits(input,option%restart_time, &
+                                        'sec','RESTART,time units',option)
         endif    
       case('INPUT_RECORD_FILE')
         option%input_record = PETSC_TRUE

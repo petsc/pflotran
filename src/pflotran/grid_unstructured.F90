@@ -1026,7 +1026,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
         endif
     end select
   enddo
-  call MPI_Allreduce(error_count,MPI_IN_PLACE,ONE_INTEGER_MPI,MPI_INTEGER, &
+  call MPI_Allreduce(MPI_IN_PLACE,error_count,ONE_INTEGER_MPI,MPI_INTEGER, &
                      MPI_MAX,option%mycomm,ierr)
   if (error_count > 0) then
     option%io_buffer = 'Unknown cell types in ' // trim(filename) // '.'
@@ -2871,14 +2871,14 @@ subroutine UGridComputeQuality(unstructured_grid,option)
     mean_quality = mean_quality + quality
   enddo
 
-  call MPI_Allreduce(mean_quality,MPI_IN_PLACE,ONE_INTEGER_MPI, &
+  call MPI_Allreduce(MPI_IN_PLACE,mean_quality,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
   mean_quality = mean_quality / unstructured_grid%nmax
 
-  call MPI_Allreduce(max_quality,MPI_IN_PLACE,ONE_INTEGER_MPI, &
+  call MPI_Allreduce(MPI_IN_PLACE,max_quality,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
 
-  call MPI_Allreduce(min_quality,MPI_IN_PLACE,ONE_INTEGER_MPI, &
+  call MPI_Allreduce(MPI_IN_PLACE,min_quality,ONE_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
 
   if (OptionPrintToScreen(option)) then

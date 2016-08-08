@@ -40,12 +40,10 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: enthalpy
     type(flow_sub_condition_type), pointer :: energy_rate
     type(flow_sub_condition_type), pointer :: energy_flux
-    type(flow_sub_condition_type), pointer :: displacement_x
-    type(flow_sub_condition_type), pointer :: displacement_y
-    type(flow_sub_condition_type), pointer :: displacement_z
     type(flow_general_condition_type), pointer :: general
     type(flow_toil_ims_condition_type), pointer :: toil_ims  
     type(flow_well_condition_type), pointer :: flow_well  ! flow_well to avoid conflict with well
+    ! any new sub conditions must be added to FlowConditionIsTransient
     type(sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
     type(flow_condition_type), pointer :: next ! pointer to next condition_type for linked-lists
   end type flow_condition_type
@@ -56,11 +54,13 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: gas_pressure
     type(flow_sub_condition_type), pointer :: gas_saturation
     type(flow_sub_condition_type), pointer :: mole_fraction
+    type(flow_sub_condition_type), pointer :: relative_humidity
     type(flow_sub_condition_type), pointer :: temperature
     type(flow_sub_condition_type), pointer :: rate
     type(flow_sub_condition_type), pointer :: liquid_flux
     type(flow_sub_condition_type), pointer :: gas_flux
     type(flow_sub_condition_type), pointer :: energy_flux
+    ! any new sub conditions must be added to FlowConditionIsTransient
   end type flow_general_condition_type
 
   ! data structure for toil_ims
@@ -79,6 +79,7 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: energy_flux
     type(flow_sub_condition_type), pointer :: owc   ! oil water contact 
     type(flow_sub_condition_type), pointer :: liq_press_grad ! water piezometric head gradient
+    ! any new sub conditions must be added to FlowConditionIsTransient
   end type flow_toil_ims_condition_type
 
   type, public :: flow_well_condition_type
@@ -86,6 +87,7 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: rate
     type(flow_sub_condition_type), pointer :: temperature
     !when needed add here other variables such as WOR, WGR, etc 
+    !any new sub conditions must be added to FlowConditionIsTransient
   end type flow_well_condition_type
     
   type, public :: flow_sub_condition_type
@@ -186,9 +188,6 @@ function FlowConditionCreate(option)
   nullify(condition%temperature)
   nullify(condition%concentration)
   nullify(condition%enthalpy)
-  nullify(condition%displacement_x)
-  nullify(condition%displacement_y)
-  nullify(condition%displacement_z)
   nullify(condition%sub_condition_ptr)
   nullify(condition%general)
   nullify(condition%toil_ims)
@@ -264,6 +263,7 @@ function FlowGeneralConditionCreate(option)
   nullify(general_condition%liquid_pressure)
   nullify(general_condition%gas_pressure)
   nullify(general_condition%gas_saturation)
+  nullify(general_condition%relative_humidity)
   nullify(general_condition%mole_fraction)
   nullify(general_condition%temperature)
   nullify(general_condition%liquid_flux)
@@ -391,6 +391,13 @@ function FlowGeneralSubConditionPtr(sub_condition_name,general, &
       else
         sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
         general%temperature => sub_condition_ptr
+      endif
+    case('RELATIVE_HUMIDITY')
+      if (associated(general%relative_humidity)) then
+        sub_condition_ptr => general%relative_humidity
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        general%relative_humidity => sub_condition_ptr
       endif
     case('MOLE_FRACTION')
       if (associated(general%mole_fraction)) then
@@ -764,9 +771,7 @@ subroutine FlowConditionRead(condition,input,option)
   type(flow_sub_condition_type), pointer :: pressure, flux, temperature, &
                                        concentration, enthalpy, rate, well,&
                                        sub_condition_ptr, saturation, &
-                                       displacement_x, displacement_y, &
-                                       displacement_z, energy_rate, &
-                                       energy_flux
+                                       energy_rate, energy_flux
   PetscReal :: default_time
   PetscInt :: default_iphase
   PetscInt :: idof
@@ -807,13 +812,6 @@ subroutine FlowConditionRead(condition,input,option)
   concentration%name = 'concentration'
   enthalpy => FlowSubConditionCreate(option%nphase)
   enthalpy%name = 'enthalpy'
-  displacement_x => FlowSubConditionCreate(ONE_INTEGER)
-  displacement_y => FlowSubConditionCreate(ONE_INTEGER)
-  displacement_z => FlowSubConditionCreate(ONE_INTEGER)
-  displacement_x%name = 'displacement_x'
-  displacement_y%name = 'displacement_y'
-  displacement_z%name = 'displacement_z'
-
 
   condition%time_units = 'yr'
   condition%length_units = 'm'
@@ -825,10 +823,7 @@ subroutine FlowConditionRead(condition,input,option)
   saturation%units = ' '
   temperature%units = 'C'
   concentration%units = 'M'
-  enthalpy%units = 'KJ/mol'
-  displacement_x%units = 'm'
-  displacement_y%units = 'm'
-  displacement_z%units = 'm'
+  enthalpy%units = 'kJ/mol'
 
   ! read the condition
   input%ierr = 0
@@ -867,7 +862,7 @@ subroutine FlowConditionRead(condition,input,option)
               temperature%units = trim(word)
             case('M','mol/L')
               concentration%units = trim(word)
-            case('KJ/mol')
+            case('kJ/mol')
               enthalpy%units = trim(word)
             case default
               call InputKeywordUnrecognized(word,'condition,units',option)
@@ -935,15 +930,6 @@ subroutine FlowConditionRead(condition,input,option)
             case('ENTHALPY')
               sub_condition_ptr => enthalpy
               internal_units = 'MJ/mol'
-            case('DISPLACEMENT_X')
-              sub_condition_ptr => displacement_x
-              internal_units = 'meter'
-            case('DISPLACEMENT_Y')
-              sub_condition_ptr => displacement_y
-              internal_units = 'meter'
-            case('DISPLACEMENT_Z')
-              sub_condition_ptr => displacement_z
-              internal_units = 'meter'
             case default
               call InputKeywordUnrecognized(word,'condition,type',option)
           end select
@@ -1094,7 +1080,7 @@ subroutine FlowConditionRead(condition,input,option)
               internal_units = 'unitless'
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
-              internal_units = 'KJ/mol-meter'
+              internal_units = 'kJ/mol-meter'
             case default
               call InputKeywordUnrecognized(word, &
                      'FLOW CONDITION,GRADIENT,TYPE',option)
@@ -1116,7 +1102,7 @@ subroutine FlowConditionRead(condition,input,option)
                                  temperature%dataset, &
                                  temperature%units,internal_units)
       case('ENTHALPY','H')
-        internal_units = 'KJ/mol'
+        internal_units = 'kJ/mol'
         call ConditionReadValues(input,option,word, &
                                  enthalpy%dataset, &
                                  enthalpy%units,internal_units)
@@ -1165,21 +1151,6 @@ subroutine FlowConditionRead(condition,input,option)
         call ConditionReadValues(input,option,word, &
                                  saturation%dataset, &
                                  saturation%units,internal_units)
-      case('DISPLACEMENT_X')
-        internal_units = 'meter'
-        call ConditionReadValues(input,option,word, &
-                                 displacement_x%dataset, &
-                                 displacement_x%units,internal_units)
-      case('DISPLACEMENT_Y')
-        internal_units = 'meter'
-        call ConditionReadValues(input,option,word, &
-                                 displacement_y%dataset, &
-                                 displacement_y%units,internal_units) 
-      case('DISPLACEMENT_Z')
-        internal_units = 'meter'
-        call ConditionReadValues(input,option,word, &
-                                 displacement_z%dataset, &
-                                 displacement_z%units,internal_units)
       case('CONDUCTANCE')
         call InputReadDouble(input,option,pressure%aux_real(1))
         call InputErrorMsg(input,option,'CONDUCTANCE','CONDITION')   
@@ -1260,18 +1231,6 @@ subroutine FlowConditionRead(condition,input,option)
                               PETSC_TRUE)
   word = 'enthalpy'
   call FlowSubConditionVerify(option,condition,word,enthalpy, &
-                              default_time_storage, &
-                              PETSC_TRUE)
-  word = 'displacement_x'
-  call FlowSubConditionVerify(option,condition,word,displacement_x, &
-                              default_time_storage, &
-                              PETSC_TRUE)
-  word = 'displacement_y'
-  call FlowSubConditionVerify(option,condition,word,displacement_y, &
-                              default_time_storage, &
-                              PETSC_TRUE)
-  word = 'displacement_z'
-  call FlowSubConditionVerify(option,condition,word,displacement_z, &
                               default_time_storage, &
                               PETSC_TRUE)
 
@@ -1797,7 +1756,7 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         call InputErrorMsg(input,option,'LIQUID_CONDUCTANCE','CONDITION')   
       case('LIQUID_PRESSURE','GAS_PRESSURE','LIQUID_SATURATION', &
            'GAS_SATURATION','TEMPERATURE','MOLE_FRACTION','RATE', &
-           'LIQUID_FLUX','GAS_FLUX','ENERGY_FLUX')
+           'LIQUID_FLUX','GAS_FLUX','ENERGY_FLUX','RELATIVE_HUMIDITY')
         select case(option%iflowmode)
           case(G_MODE)
             sub_condition_ptr => FlowGeneralSubConditionPtr(word,general, &
@@ -1806,7 +1765,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         select case(trim(word))
           case('LIQUID_PRESSURE','GAS_PRESSURE')
             internal_units = 'Pa'
-          case('LIQUID_SATURATION','GAS_SATURATION','MOLE_FRACTION')
+          case('LIQUID_SATURATION','GAS_SATURATION','MOLE_FRACTION', &
+               'RELATIVE_HUMIDITY')
             internal_units = 'unitless'
           case('TEMPERATURE')
             internal_units = 'C'
@@ -1883,9 +1843,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         call printErrMsg(option)
       endif
       if (.not.associated(general%mole_fraction) .and. &
+          .not.associated(general%relative_humidity) .and. &
           .not.associated(general%gas_saturation)) then
         option%io_buffer = 'General Phase non-rate condition must ' // &
-          'include mole fraction or gas/liquid saturation'
+          'include mole fraction, relative humidity, or gas/liquid saturation'
         call printErrMsg(option)
       endif
       if (.not.associated(general%temperature)) then
@@ -1902,7 +1863,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
         ! liquid phase condition
         condition%iphase = LIQUID_STATE
       else if (associated(general%gas_pressure) .and. &
-               associated(general%mole_fraction)) then
+               (associated(general%mole_fraction) .or. &
+                associated(general%relative_humidity))) then
         ! gas phase condition
         condition%iphase = GAS_STATE
       endif
@@ -1925,6 +1887,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
                               PETSC_TRUE)
   word = 'gas saturation'
   call FlowSubConditionVerify(option,condition,word,general%gas_saturation, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+  word = 'relative humidity'
+  call FlowSubConditionVerify(option,condition,word,general%relative_humidity, &
                               default_time_storage, &
                               PETSC_TRUE)
   word = 'mole fraction'
@@ -1960,6 +1926,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
     i = i + 1
   if (associated(general%gas_saturation)) &
     i = i + 1
+  if (associated(general%relative_humidity)) &
+    i = i + 1
   if (associated(general%mole_fraction)) &
     i = i + 1
   if (associated(general%temperature)) &
@@ -1989,6 +1957,10 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   if (associated(general%gas_saturation)) then
     i = i + 1
     condition%sub_condition_ptr(i)%ptr => general%gas_saturation
+  endif  
+  if (associated(general%relative_humidity)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => general%relative_humidity
   endif  
   if (associated(general%mole_fraction)) then
     i = i + 1
@@ -3495,11 +3467,13 @@ function FlowConditionIsTransient(condition)
       FlowSubConditionIsTransient(condition%well) .or. &
       FlowSubConditionIsTransient(condition%enthalpy) .or. &
       FlowSubConditionIsTransient(condition%energy_rate) .or. &
+      FlowSubConditionIsTransient(condition%energy_flux) .or. &
       FlowConditionTOilImsIsTransient(condition%toil_ims) .or. &
+      FlowWellConditionIsTransient(condition%flow_well) .or. &
       FlowConditionGeneralIsTransient(condition%general)) then
     FlowConditionIsTransient = PETSC_TRUE
   endif
-  
+
 end function FlowConditionIsTransient
 
 ! ************************************************************************** !
@@ -3527,6 +3501,7 @@ function FlowConditionGeneralIsTransient(condition)
   if (FlowSubConditionIsTransient(condition%liquid_pressure) .or. &
       FlowSubConditionIsTransient(condition%gas_pressure) .or. &
       FlowSubConditionIsTransient(condition%gas_saturation) .or. &
+      FlowSubConditionIsTransient(condition%relative_humidity) .or. &
       FlowSubConditionIsTransient(condition%mole_fraction) .or. &
       FlowSubConditionIsTransient(condition%temperature) .or. &
       FlowSubConditionIsTransient(condition%rate) .or. &
@@ -3563,6 +3538,7 @@ function FlowConditionTOilImsIsTransient(condition)
   if (FlowSubConditionIsTransient(condition%pressure) .or. &
       FlowSubConditionIsTransient(condition%saturation) .or. &
       FlowSubConditionIsTransient(condition%temperature) .or. &
+      FlowSubConditionIsTransient(condition%enthalpy) .or. &
       FlowSubConditionIsTransient(condition%rate) .or. &
       FlowSubConditionIsTransient(condition%liquid_flux) .or. &
       FlowSubConditionIsTransient(condition%oil_flux) .or. &
@@ -3573,6 +3549,36 @@ function FlowConditionTOilImsIsTransient(condition)
   endif
   
 end function FlowConditionTOilImsIsTransient
+
+! ************************************************************************** !
+
+function FlowWellConditionIsTransient
+  ! 
+  ! Returns PETSC_TRUE
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 8/05/16
+  ! 
+
+  use Dataset_module
+
+  implicit none
+  
+  type(flow_well_condition_type), pointer :: condition
+  
+  PetscBool :: FlowWellConditionIsTransient
+  
+  FlowWellConditionIsTransient = PETSC_FALSE
+
+  if (.not.associated(condition)) return
+  
+  if (FlowSubConditionIsTransient(condition%pressure) .or. &
+      FlowSubConditionIsTransient(condition%rate) .or. &
+      FlowSubConditionIsTransient(condition%temperature)) then
+    FlowWellConditionIsTransient = PETSC_TRUE
+  endif
+
+end function FlowWellConditionIsTransient
 
 ! ************************************************************************** !
 
@@ -3936,9 +3942,6 @@ subroutine FlowConditionDestroy(condition)
   call FlowSubConditionDestroy(condition%concentration)
   call FlowSubConditionDestroy(condition%enthalpy)
   call FlowSubConditionDestroy(condition%energy_rate)
-  call FlowSubConditionDestroy(condition%displacement_x)
-  call FlowSubConditionDestroy(condition%displacement_y)
-  call FlowSubConditionDestroy(condition%displacement_z)
 
   call TimeStorageDestroy(condition%default_time_storage)
   call FlowGeneralConditionDestroy(condition%general)
@@ -3973,6 +3976,7 @@ subroutine FlowGeneralConditionDestroy(general_condition)
   call FlowSubConditionDestroy(general_condition%liquid_pressure)
   call FlowSubConditionDestroy(general_condition%gas_pressure)
   call FlowSubConditionDestroy(general_condition%gas_saturation)
+  call FlowSubConditionDestroy(general_condition%relative_humidity)
   call FlowSubConditionDestroy(general_condition%mole_fraction)
   call FlowSubConditionDestroy(general_condition%temperature)
   call FlowSubConditionDestroy(general_condition%liquid_flux)

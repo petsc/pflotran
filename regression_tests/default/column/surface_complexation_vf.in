@@ -189,7 +189,7 @@ CHEMISTRY
   /
   SORPTION
     SURFACE_COMPLEXATION_RXN
-skip
+#skip
       SITE_FRACTION 0.02 0.02 0.02 0.02 0.02 \
         0.02 0.02 0.02 0.02 0.02 \
         0.02 0.02 0.02 0.02 0.02 \
@@ -211,7 +211,7 @@ skip
         1.3806E-07  1.6944E-07  2.1111E-07  2.6861E-07  3.5000E-07 \
         4.7778E-07  6.8611E-07  1.0778E-06  2.0278E-06  6.6944E-06
   #MULTIRATE_SCALE_FACTOR 1000.d0
-noskip
+#noskip
       MINERAL Calcite
 ! recall that this is being scaled by the Calcite vol frac
       SITE >SOH 152.64d0 ! 20 m^2/g, por = 0.25

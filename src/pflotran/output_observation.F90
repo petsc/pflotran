@@ -16,6 +16,7 @@ module Output_Observation_module
   ! simulation
   PetscBool :: observation_first
   PetscBool :: check_for_obs_points
+  PetscBool :: calculate_velocities ! true if any obs. pt. prints velocity
   PetscBool :: secondary_observation_first
   PetscBool :: secondary_check_for_obs_points
   PetscBool :: mass_balance_first
@@ -45,6 +46,7 @@ subroutine OutputObservationInit(num_steps)
   PetscInt :: num_steps
   
   check_for_obs_points = PETSC_TRUE
+  calculate_velocities = PETSC_FALSE
   secondary_check_for_obs_points = PETSC_TRUE
   if (num_steps == 0) then
     observation_first = PETSC_TRUE
@@ -127,6 +129,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
   type(output_option_type), pointer :: output_option
   type(observation_type), pointer :: observation
   PetscBool, save :: open_file = PETSC_FALSE
+  PetscReal, allocatable :: velocities(:,:,:)
   PetscInt :: local_id
   PetscInt :: icolumn
   PetscErrorCode :: ierr
@@ -144,6 +147,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
     observation => patch%observation_list%first
     do
       if (.not.associated(observation)) exit
+      if (observation%print_velocities) calculate_velocities = PETSC_TRUE
       if (observation%itype == OBSERVATION_SCALAR .or. &
           (observation%itype == OBSERVATION_FLUX .and. &
            option%myrank == option%io_rank)) then
@@ -155,7 +159,16 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
     check_for_obs_points = PETSC_FALSE
   endif
   
-  
+  if (calculate_velocities) then
+    allocate(velocities(3,realization_base%patch%grid%nlmax,option%nphase))
+    call PatchGetCellCenteredVelocities(realization_base%patch, &
+                                        ONE_INTEGER,velocities(:,:,1))
+    if (option%nphase > 1) then
+      call PatchGetCellCenteredVelocities(realization_base%patch, &
+                                          TWO_INTEGER,velocities(:,:,2))
+    endif
+  endif
+    
   if (open_file) then
     write(string,'(i6)') option%myrank
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
@@ -235,7 +248,8 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
                 local_id = observation%region%cell_ids(icell)
                 call WriteObservationDataForCell(fid,realization_base,local_id)
                 if (observation%print_velocities) then
-                  call WriteVelocityAtCell(fid,realization_base,local_id)
+                  call WriteVelocityAtCell2(fid,realization_base,local_id, &
+                                            velocities)
                 endif
               enddo
             endif
@@ -252,6 +266,7 @@ subroutine OutputObservationTecplotColumnTXT(realization_base)
   endif
 
   observation_first = PETSC_FALSE
+  if (allocated(velocities)) deallocate(velocities)
   
   call PetscLogEventEnd(logging%event_output_observation,ierr);CHKERRQ(ierr)
       
@@ -1084,8 +1099,8 @@ subroutine WriteObservationDataForBC(fid,realization_base,patch,connection_set)
         if (associated(connection_set)) then
           do iconn = 1, connection_set%num_connections
             sum_volumetric_flux(:) = sum_volumetric_flux(:) + &
-                                  patch%boundary_velocities(iphase,offset+iconn)* &
-                                  connection_set%area(iconn)
+                            patch%boundary_velocities(iphase,offset+iconn)* &
+                            connection_set%area(iconn)
           enddo
         endif
         int_mpi = option%nphase
@@ -1153,15 +1168,54 @@ subroutine WriteVelocityAtCell(fid,realization_base,local_id)
 
   iphase = 1
   velocity = GetVelocityAtCell(fid,realization_base,local_id,iphase)
-  write(fid,200,advance="no") velocity(1:3)*realization_base%output_option%tconv
+  write(fid,200,advance="no") velocity(1:3)* &
+                              realization_base%output_option%tconv
 
   if (option%nphase > 1) then
     iphase = 2
     velocity = GetVelocityAtCell(fid,realization_base,local_id,iphase)
-    write(fid,200,advance="no") velocity(1:3)*realization_base%output_option%tconv
+    write(fid,200,advance="no") velocity(1:3)* &
+                                realization_base%output_option%tconv
   endif
 
 end subroutine WriteVelocityAtCell
+
+! ************************************************************************** !
+
+subroutine WriteVelocityAtCell2(fid,realization_base,local_id,velocities)
+  ! 
+  ! Writes the velocity previoiusly calculated and stored in vecs at cell
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 07/08/16
+  ! 
+  use Realization_Base_class, only : realization_base_type
+  use Option_module
+
+  implicit none
+  
+  PetscInt :: fid
+  class(realization_base_type) :: realization_base
+  type(option_type), pointer :: option
+  PetscInt :: local_id
+  PetscReal :: velocities(:,:,:)
+
+  PetscReal :: velocity(3)
+  option => realization_base%option
+  
+200 format(3(es14.6))
+
+  velocity = velocities(:,local_id,1)
+  write(fid,200,advance="no") velocity(1:3)* &
+                              realization_base%output_option%tconv
+
+  if (option%nphase > 1) then
+    velocity = velocities(:,local_id,2)
+    write(fid,200,advance="no") velocity(1:3)* &
+                                realization_base%output_option%tconv
+  endif
+
+end subroutine WriteVelocityAtCell2
 
 ! ************************************************************************** !
 

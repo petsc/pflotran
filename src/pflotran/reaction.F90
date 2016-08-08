@@ -319,35 +319,21 @@ subroutine ReactionReadPass1(reaction,input,option)
               call InputErrorMsg(input,option,'reaction', &
                                'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,REACTION') 
             case('RATE_CONSTANT')
-              internal_units = 'unitless/sec'
               call InputReadDouble(input,option, &
                                    radioactive_decay_rxn%rate_constant)
               call InputErrorMsg(input,option,'rate constant', &
                 'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,RATE_CONSTANT') 
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              if (InputError(input)) then
-                call InputDefaultMsg(input,option, &
-                  'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,RATE_CONSTANT UNITS')
-              else
-                radioactive_decay_rxn%rate_constant = &
-                  UnitsConvertToInternal(word,internal_units,option) * &
-                  radioactive_decay_rxn%rate_constant
-              endif
+              call InputReadAndConvertUnits(input, &
+                     radioactive_decay_rxn%rate_constant,'unitless/sec', &
+                    'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,RATE_CONSTANT',option)
             case('HALF_LIFE')
-              internal_units = 'sec'
               call InputReadDouble(input,option, &
                                    radioactive_decay_rxn%half_life)
               call InputErrorMsg(input,option,'half life', &
                 'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,HALF_LIFE') 
-              call InputReadWord(input,option,word,PETSC_TRUE)
-              if (InputError(input)) then
-                call InputDefaultMsg(input,option, &
-                  'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,HALF_LIFE UNITS')
-              else
-                radioactive_decay_rxn%half_life = &
-                  UnitsConvertToInternal(word,internal_units,option) * &
-                  radioactive_decay_rxn%half_life
-              endif
+              call InputReadAndConvertUnits(input, &
+                     radioactive_decay_rxn%half_life,'sec', &
+                    'CHEMISTRY,RADIOACTIVE_DECAY_REACTION,HALF_LIFE',option)
               ! convert half life to rate constant
               radioactive_decay_rxn%rate_constant = &
                 -1.d0*log(0.5d0)/radioactive_decay_rxn%half_life
@@ -1687,9 +1673,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                 lnQK = lnQK + reaction%eqcplxstoich(jcomp,icplx)* &
                               log(rt_auxvar%pri_molal(comp_id)* &
                               rt_auxvar%pri_act_coef(comp_id))
-                print *,'pH: ',icomp,jcomp,comp_id,lnQK,reaction%eqcplx_logK(icplx), &
-                reaction%eqcplxstoich(jcomp,icplx), conc(icomp), &
-                rt_auxvar%pri_molal(comp_id)
               enddo
               lnQK = lnQK + conc(icomp)*LOG_TO_LN ! this is log activity H+
               QK = exp(lnQK)
@@ -3622,7 +3605,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
 
   ! add new reactions in the 3 locations below
 
-  if (.not.option%numerical_derivatives_rxn) then ! analytical derivative
+  if (.not.option%transport%numerical_derivatives) then ! analytical derivative
     compute_derivative = PETSC_TRUE
     call RReaction(Res,Jac,compute_derivative,rt_auxvar, &
                    global_auxvar,material_auxvar,reaction,option)  
@@ -3835,6 +3818,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: sum_molality
   PetscReal :: ln_conc(reaction%naqcomp)
   PetscReal :: ln_act(reaction%naqcomp)
+  PetscReal :: NaN
 
   if (reaction%use_activity_h2o) then
     sum_pri_molal = 0.d0
@@ -3864,8 +3848,16 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
       it = it + 1
       
       if (it > 50) then
-        print *,' too many iterations in computing activity coefficients-stop',it,f,I
-        stop
+        write(option%io_buffer,*) &
+          ' too many iterations in computing activity coefficients-stop',it,f,I, &
+          ' setting all activity coefficients to NaNs to crash the code.'
+        call printErrMsgNoStopByRank(option)
+        NaN = 0.d0
+        NaN = 1.d0/NaN
+        NaN = 0.d0*NaN
+        rt_auxvar%pri_molal = NaN
+        rt_auxvar%pri_act_coef = NaN
+        rt_auxvar%sec_act_coef = NaN
       endif
     
   ! add secondary species contribution to ionic strength

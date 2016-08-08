@@ -20,14 +20,22 @@ contains
        return
     end if
    
+    if (.not. allocated(pf_porosity)) allocate(pf_porosity(pflotran_vec_size))
     if (.not. allocated(pf_tracer)) allocate(pf_tracer(pflotran_vec_size))
-    if (.not. allocated(pf_saturation)) allocate(pf_saturation(pflotran_vec_size))
-    if (.not. allocated(pf_saturation_0)) allocate(pf_saturation_0(pflotran_vec_size))
+    if (.not. allocated(pf_saturation)) &
+      allocate(pf_saturation(pflotran_vec_size))
+    if (.not. allocated(pf_saturation_0)) &
+      allocate(pf_saturation_0(pflotran_vec_size))
+    ! if energy is being modeled, pflotran_temperature_vec_mpi will be non-zero
+    if (pflotran_temperature_vec_mpi /= 0 .and. &
+        .not. allocated(pf_temperature)) &
+      allocate(pf_temperature(pflotran_vec_size))
     if (.not. allocated(sigma)) allocate(sigma(nelem))
    
 
     call get_mcomm
     call cpu_time(Cbeg)
+    call get_pf_porosity       !!get the pflotran porosity
     do while (mcomm==1)
 
        call get_pf_time      !!get the pflotran solution time
@@ -141,6 +149,32 @@ contains
   !____________________________________________________________________
 
   !____________________________________________________________________
+  subroutine get_pf_porosity
+    implicit none
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+    integer ::  status(MPI_STATUS_SIZE)
+    PetscReal, pointer :: vec_ptr(:)
+
+ 
+    ! porosity
+    ! we actually hijack the tracer vec to transfer porosity
+    call VecScatterBegin(pflotran_scatter,pflotran_tracer_vec_mpi, &
+                         pflotran_tracer_vec_seq, &
+                         INSERT_VALUES,SCATTER_FORWARD,perr);CHKERRQ(perr)
+    call VecScatterEnd(pflotran_scatter,pflotran_tracer_vec_mpi, &
+                       pflotran_tracer_vec_seq, &
+                       INSERT_VALUES,SCATTER_FORWARD,perr);CHKERRQ(perr)
+    call VecGetArrayF90(pflotran_tracer_vec_seq,vec_ptr,perr);CHKERRQ(perr)
+    pf_porosity = real(vec_ptr)
+
+    call VecRestoreArrayF90(pflotran_tracer_vec_seq,vec_ptr, &
+                            perr);CHKERRQ(perr)
+
+  end subroutine get_pf_porosity
+  !____________________________________________________________________
+
+  !____________________________________________________________________
   subroutine get_pf_sol
     implicit none
 #include "petsc/finclude/petscvec.h"
@@ -174,6 +208,20 @@ contains
     call VecRestoreArrayF90(pflotran_saturation_vec_seq,vec_ptr, &
                             perr);CHKERRQ(perr)
 
+    ! temperature  (only modeled when energy is simulated)
+    if (pflotran_temperature_vec_mpi /= 0) then
+      call VecScatterBegin(pflotran_scatter,pflotran_temperature_vec_mpi, &
+                           pflotran_temperature_vec_seq, &
+                           INSERT_VALUES,SCATTER_FORWARD,perr);CHKERRQ(perr)
+      call VecScatterEnd(pflotran_scatter,pflotran_temperature_vec_mpi, &
+                         pflotran_temperature_vec_seq, &
+                         INSERT_VALUES,SCATTER_FORWARD,perr);CHKERRQ(perr)
+      call VecGetArrayF90(pflotran_temperature_vec_seq,vec_ptr, &
+                          perr);CHKERRQ(perr)
+      pf_temperature = real(vec_ptr)
+      call VecRestoreArrayF90(pflotran_temperature_vec_seq,vec_ptr, &
+                            perr);CHKERRQ(perr)
+    endif
  
   end subroutine get_pf_sol
   !____________________________________________________________________
@@ -456,11 +504,19 @@ contains
 !    call KSPSetOperators(KS,A,A,SAME_PRECONDITIONER,perr)
     call KSPSetOperators(KS,A,A,perr);CHKERRQ(perr)
     call KSPGetPC(KS,P,perr);CHKERRQ(perr)
+!geh - begin
+    call KSPSetErrorIfNotConverged(KS,PETSC_TRUE,perr);CHKERRQ(perr)
+!geh - end
     !call KSPSetType(KS,KSPGMRES,perr) !use default
     !call KSPGMRESSetRestart(KS,1000,perr);
     !call KSPGetTolerances(KS,rtol,atol,dtol,maxints,perr);CHKERRQ(perr)
     call KSPSetTolerances(KS,rtol,atol,dtol,maxints,perr);CHKERRQ(perr)
     call KSPSetFromOptions(KS,perr);CHKERRQ(perr)
+!geh - begin
+    ! this must come after KSPSetFromOptions (or PCSetFromOptions) as it is
+    ! overwritten by the defaults otherwise.
+    call PCFactorSetZeroPivot(P,1.d-40,perr);CHKERRQ(perr)
+!geh - end
     
   end subroutine build_ksp
   !__________________________________________________________________

@@ -124,7 +124,10 @@ OUTPUT
 
 #======================== times ====================================
 TIME
-  FINAL_TIME 1.d6 s
+# reduced time to quicken regression testing.  Block coverage is actually
+# better with shorter time.
+#  FINAL_TIME 1.d6 s
+  FINAL_TIME 1.d3 s
   INITIAL_TIMESTEP_SIZE 1.d-6 s
   MAXIMUM_TIMESTEP_SIZE 10.d0 s
   MAXIMUM_TIMESTEP_SIZE 1.d2 s at 5.d3 s
