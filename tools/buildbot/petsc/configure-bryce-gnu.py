@@ -23,3 +23,4 @@ if __name__ == '__main__':
     'PETSC_ARCH=bryce-gnu',
   ]
   configure.petsc_configure(configure_options)
+
