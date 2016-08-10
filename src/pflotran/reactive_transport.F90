@@ -166,7 +166,7 @@ subroutine RTSetup(realization)
   patch%aux%RT%rt_parameter%ncomp = reaction%ncomp
   patch%aux%RT%rt_parameter%naqcomp = reaction%naqcomp
   patch%aux%RT%rt_parameter%offset_aqueous = reaction%offset_aqueous
-  patch%aux%RT%rt_parameter%nimcomp = reaction%nimcomp
+  patch%aux%RT%rt_parameter%nimcomp = reaction%immobile%nimmobile
   patch%aux%RT%rt_parameter%offset_immobile = reaction%offset_immobile
   if (reaction%ncollcomp > 0) then
     patch%aux%RT%rt_parameter%ncoll = reaction%ncoll
@@ -180,8 +180,8 @@ subroutine RTSetup(realization)
     patch%aux%RT%rt_parameter%coll_spec_to_pri_spec = &
       reaction%coll_spec_to_pri_spec
   endif
-  if (reaction%nimcomp > 0) then
-    patch%aux%RT%rt_parameter%nimcomp = reaction%nimcomp
+  if (reaction%immobile%nimmobile > 0) then
+    patch%aux%RT%rt_parameter%nimcomp = reaction%immobile%nimmobile
     patch%aux%RT%rt_parameter%offset_immobile = reaction%offset_immobile
   endif
   
@@ -411,7 +411,7 @@ subroutine RTComputeMassBalance(realization,mass_balance)
         enddo
 
         ! add contribution of immobile mass (still considered aqueous phase)
-        do i = 1, reaction%nimcomp
+        do i = 1, reaction%immobile%nimmobile
           mass_balance(reaction%offset_immobile+i,iphase) = &
             mass_balance(reaction%offset_immobile+i,iphase) + &
             rt_auxvars(ghosted_id)%immobile(i) * &
@@ -802,9 +802,9 @@ subroutine RTUpdateFixedAccumulation(realization)
         global_auxvars(ghosted_id)%den_kg(1)*1.d-3
     endif
     
-    if (reaction%nimcomp > 0) then
+    if (reaction%immobile%nimmobile > 0) then
       istartim = dof_offset + reaction%offset_immobile + 1
-      iendim = dof_offset + reaction%offset_immobile + reaction%nimcomp
+      iendim = dof_offset + reaction%offset_immobile + reaction%immobile%nimmobile
       rt_auxvars(ghosted_id)%immobile = xx_p(istartim:iendim)
     endif
 
@@ -1307,9 +1307,9 @@ subroutine RTCalculateRHS_t1(realization)
           
           select case(source_sink%flow_condition%itype(1))
             case(MASS_RATE_SS)
-              do ieqgas = 1, reaction%ngas
+              do ieqgas = 1, reaction%gas%npassive_gas
                 if (abs(reaction%species_idx%co2_gas_id) == ieqgas) then
-                  icomp = reaction%eqgasspecid(1,ieqgas)
+                  icomp = reaction%gas%paseqspecid(1,ieqgas)
                   iendall = local_id*reaction%ncomp
                   istartall = iendall-reaction%ncomp
                   Res(icomp) = -msrc(2)
@@ -1668,9 +1668,9 @@ subroutine RTReact(realization)
                 num_iterations,reaction,option)
     ! set primary dependent var back to free-ion molality
     tran_xx_p(istart:iendaq) = rt_auxvars(ghosted_id)%pri_molal
-    if (reaction%nimcomp > 0) then
+    if (reaction%immobile%nimmobile > 0) then
       tran_xx_p(reaction%offset_immobile: &
-                reaction%offset_immobile + reaction%nimcomp) = &
+                reaction%offset_immobile + reaction%immobile%nimmobile) = &
         rt_auxvars(ghosted_id)%immobile
     endif
 #ifdef OS_STATISTICS
@@ -2654,9 +2654,9 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
           
           select case(source_sink%flow_condition%itype(1))
             case(MASS_RATE_SS)
-              do ieqgas = 1, reaction%ngas
+              do ieqgas = 1, reaction%gas%npassive_gas
                 if (abs(reaction%species_idx%co2_gas_id) == ieqgas) then
-                  icomp = reaction%eqgasspecid(1,ieqgas)
+                  icomp = reaction%gas%paseqspecid(1,ieqgas)
                   iendall = local_id*reaction%ncomp
                   istartall = iendall-reaction%ncomp
                   Res(icomp) = -msrc(2)
@@ -3423,9 +3423,9 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,realization,ierr)
         istartaq = offset + reaction%offset_aqueous + 1
         iendaq = offset + reaction%offset_aqueous + reaction%naqcomp
         work_loc_p(istartaq:iendaq) = rt_auxvars(ghosted_id)%pri_molal(:)
-        if (reaction%nimcomp > 0) then
+        if (reaction%immobile%nimmobile > 0) then
           istart = offset + reaction%offset_immobile + 1
-          iend = offset + reaction%offset_immobile + reaction%nimcomp
+          iend = offset + reaction%offset_immobile + reaction%immobile%nimmobile
           work_loc_p(istart:iend) = &
             rt_auxvars(ghosted_id)%immobile(:)
         endif
@@ -3648,9 +3648,9 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
       iendaq = offset + reaction%offset_aqueous + reaction%naqcomp
       
       patch%aux%RT%auxvars(ghosted_id)%pri_molal = xx_loc_p(istartaq:iendaq)
-      if (reaction%nimcomp > 0) then
+      if (reaction%immobile%nimmobile > 0) then
         istartim = offset + reaction%offset_immobile + 1
-        iendim = offset + reaction%offset_immobile + reaction%nimcomp
+        iendim = offset + reaction%offset_immobile + reaction%immobile%nimmobile
         patch%aux%RT%auxvars(ghosted_id)%immobile = xx_loc_p(istartim:iendim)
       endif
       if (reaction%ncoll > 0) then
@@ -4159,9 +4159,9 @@ subroutine RTSetPlotVariables(realization,list)
     enddo
   endif  
   
-  if (reaction%print_all_gas_species) then
-    do i=1,reaction%ngas
-      name = 'Gas species ' // trim(reaction%gas_species_names(i))
+  if (reaction%gas%print_all) then
+    do i=1,reaction%gas%npassive_gas
+      name = 'Gas species ' // trim(reaction%gas%passive_names(i))
       units = trim('mol/m^3')
       call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
           GAS_CONCENTRATION,i)

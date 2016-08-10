@@ -39,30 +39,40 @@ subroutine ImmobileRead(immobile,input,option)
   type(option_type) :: option
   
   type(immobile_species_type), pointer :: new_immobile_species, &
-                                         prev_immobile_species
+                                          prev_immobile_species
            
-  nullify(prev_immobile_species)
+  ! find end of list if it exists
+  if (associated(immobile%list)) then
+    new_immobile_species => immobile%list
+    do
+      if (.not.associated(new_immobile_species%next)) exit
+      new_immobile_species => new_immobile_species%next
+    enddo
+    prev_immobile_species => new_immobile_species
+    nullify(new_immobile_species)
+  else
+    nullify(prev_immobile_species)
+  endif
   do
     call InputReadPflotranString(input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
-          
-    immobile%nimmobile = immobile%nimmobile + 1
-          
+    ! this count is required for comparisons prior to BasisInit()
+    immobile%nimmobile = immobile%nimmobile + 1          
     new_immobile_species => ImmobileSpeciesCreate()
-    call InputReadWord(input,option,new_immobile_species%name,PETSC_TRUE)  
-    call InputErrorMsg(input,option,'keyword','CHEMISTRY,IMMOBILE_SPECIES')    
-    if (.not.associated(immobile%list)) then
+    call InputReadWord(input,option,new_immobile_species%name,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword', &
+                        'CHEMISTRY,IMMOBILE_SPECIES')
+    if (.not.associated(prev_immobile_species)) then
       immobile%list => new_immobile_species
       new_immobile_species%id = 1
-    endif
-    if (associated(prev_immobile_species)) then
+    else
       prev_immobile_species%next => new_immobile_species
       new_immobile_species%id = prev_immobile_species%id + 1
     endif
     prev_immobile_species => new_immobile_species
     nullify(new_immobile_species)
-  enddo
+  enddo   
 
 end subroutine ImmobileRead
 

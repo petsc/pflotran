@@ -5,6 +5,7 @@ module Reaction_Aux_module
   use Reaction_Microbial_Aux_module
   use Reaction_Immobile_Aux_module
   use Reaction_Surface_Complexation_Aux_module
+  use Reaction_Gas_Aux_module
   
 #ifdef SOLID_SOLUTION  
   use Reaction_Solid_Soln_Aux_module
@@ -50,16 +51,6 @@ module Reaction_Aux_module
     type(database_rxn_type), pointer :: dbaserxn
     type(aq_species_type), pointer :: next
   end type aq_species_type
-
-  type, public :: gas_species_type
-    PetscInt :: id
-    character(len=MAXWORDLENGTH) :: name
-    PetscReal :: molar_volume
-    PetscReal :: molar_weight
-    PetscBool :: print_me
-    type(database_rxn_type), pointer :: dbaserxn
-    type(gas_species_type), pointer :: next    
-  end type gas_species_type
 
   type, public :: colloid_type
     PetscInt :: id
@@ -157,7 +148,6 @@ module Reaction_Aux_module
     PetscBool :: print_all_species
     PetscBool :: print_all_primary_species
     PetscBool :: print_all_secondary_species
-    PetscBool :: print_all_gas_species
     PetscBool :: print_pH
     PetscBool :: print_Eh
     PetscBool :: print_pe
@@ -183,7 +173,6 @@ module Reaction_Aux_module
 
     type(aq_species_type), pointer :: primary_species_list
     type(aq_species_type), pointer :: secondary_species_list
-    type(gas_species_type), pointer :: gas_species_list
     type(colloid_type), pointer :: colloid_list
     type(ion_exchange_rxn_type), pointer :: ion_exchange_rxn_list
     type(general_rxn_type), pointer :: general_rxn_list
@@ -203,6 +192,7 @@ module Reaction_Aux_module
     type(mineral_type), pointer :: mineral
     type(microbial_type), pointer :: microbial
     type(immobile_type), pointer :: immobile
+    type(gas_type), pointer :: gas
     
     ! secondary continuum reaction objects
     type(kd_rxn_type), pointer :: sec_cont_kd_rxn_list
@@ -249,17 +239,6 @@ module Reaction_Aux_module
     PetscReal :: debyeA  ! Debye-Huckel A coefficient
     PetscReal :: debyeB  ! Debye-Huckel B coefficient
     PetscReal :: debyeBdot  ! Debye-Huckel Bdot coefficient
-    
-    ! gas species
-    PetscInt :: ngas
-    character(len=MAXWORDLENGTH), pointer :: gas_species_names(:)
-    PetscBool, pointer :: gas_species_print(:)
-    PetscInt, pointer :: eqgasspecid(:,:)   ! (0:ncomp in rxn)
-    PetscReal, pointer :: eqgasstoich(:,:)
-    PetscInt, pointer :: eqgash2oid(:)       ! id of water, if present
-    PetscReal, pointer :: eqgash2ostoich(:)  ! stoichiometry of water, if present
-    PetscReal, pointer :: eqgas_logK(:)
-    PetscReal, pointer :: eqgas_logKcoef(:,:)
 
     PetscInt :: nsorb
     PetscInt :: neqsorb
@@ -366,9 +345,6 @@ module Reaction_Aux_module
             GetPrimarySpeciesIDFromName, &
             GetSecondarySpeciesCount, &
             GetSecondarySpeciesNames, &
-            GetGasCount, &
-            GetGasNames, &
-            GetGasIDFromName, &
             GetColloidCount, &
             GetColloidNames, &
             GetColloidIDFromName, &
@@ -418,8 +394,6 @@ function ReactionCreate()
   ! Date: 05/02/08
   ! 
 
-  use Option_module
-
   implicit none
   
   type(reaction_type), pointer :: ReactionCreate
@@ -439,7 +413,6 @@ function ReactionCreate()
   reaction%print_all_species = PETSC_FALSE
   reaction%print_all_primary_species = PETSC_FALSE
   reaction%print_all_secondary_species = PETSC_FALSE
-  reaction%print_all_gas_species = PETSC_FALSE
   reaction%print_pH = PETSC_FALSE
   reaction%print_Eh = PETSC_FALSE
   reaction%print_pe = PETSC_FALSE
@@ -471,7 +444,6 @@ function ReactionCreate()
 
   nullify(reaction%primary_species_list)
   nullify(reaction%secondary_species_list)
-  nullify(reaction%gas_species_list)
   nullify(reaction%colloid_list)
   nullify(reaction%ion_exchange_rxn_list)
   nullify(reaction%radioactive_decay_rxn_list)
@@ -486,6 +458,7 @@ function ReactionCreate()
   reaction%mineral => MineralCreate()
   reaction%microbial => MicrobialCreate()
   reaction%immobile => ImmobileCreate()
+  reaction%gas => GasCreate()
 #ifdef SOLID_SOLUTION  
   nullify(reaction%solid_solution_list)
 #endif
@@ -493,14 +466,12 @@ function ReactionCreate()
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
   nullify(reaction%eqcplx_basis_names)
-  nullify(reaction%gas_species_names)
   nullify(reaction%colloid_names)
   nullify(reaction%colloid_species_names)
 
   nullify(reaction%primary_species_print)
   nullify(reaction%secondary_species_print)
   nullify(reaction%eqcplx_basis_print)
-  nullify(reaction%gas_species_print)
   nullify(reaction%kd_print)
   nullify(reaction%total_sorb_print)
   nullify(reaction%total_sorb_mobile_print)
@@ -510,7 +481,6 @@ function ReactionCreate()
   reaction%naqcomp = 0
   reaction%ncoll = 0
   reaction%ncollcomp = 0
-  reaction%nimcomp = 0
   reaction%offset_aqueous = 0
   reaction%offset_colloid = 0
   reaction%offset_collcomp = 0
@@ -518,14 +488,6 @@ function ReactionCreate()
   nullify(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_Z)
   nullify(reaction%primary_spec_molar_wt)
-
-  reaction%ngas = 0
-  nullify(reaction%eqgasspecid)
-  nullify(reaction%eqgasstoich)
-  nullify(reaction%eqgash2oid)
-  nullify(reaction%eqgash2ostoich)
-  nullify(reaction%eqgas_logK)
-  nullify(reaction%eqgas_logKcoef)
   
   reaction%neqcplx = 0
   nullify(reaction%eqcplxspecid)
@@ -625,8 +587,6 @@ function SpeciesIndexCreate()
   ! Date: 01/29/10
   ! 
 
-  use Option_module
-
   implicit none
   
   type(species_idx_type), pointer :: SpeciesIndexCreate
@@ -660,8 +620,6 @@ function AqueousSpeciesCreate()
   ! Date: 05/02/08
   ! 
 
-  use Option_module
-
   implicit none
   
   type(aq_species_type), pointer :: AqueousSpeciesCreate
@@ -685,37 +643,6 @@ end function AqueousSpeciesCreate
 
 ! ************************************************************************** !
 
-function GasSpeciesCreate()
-  ! 
-  ! Allocate and initialize a gas species object
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 05/02/08
-  ! 
-
-  use Option_module
-
-  implicit none
-  
-  type(gas_species_type), pointer :: GasSpeciesCreate
-  
-  type(gas_species_type), pointer :: species
-
-  allocate(species)  
-  species%id = 0
-  species%name = ''
-  species%molar_volume = 0.d0
-  species%molar_weight = 0.d0
-  species%print_me = PETSC_FALSE
-  nullify(species%dbaserxn)
-  nullify(species%next)
-
-  GasSpeciesCreate => species
-  
-end function GasSpeciesCreate
-
-! ************************************************************************** !
-
 function ColloidCreate()
   ! 
   ! Allocate and initialize a colloid object
@@ -723,8 +650,6 @@ function ColloidCreate()
   ! Author: Glenn Hammond
   ! Date: 02/24/10
   ! 
-
-  use Option_module
 
   implicit none
   
@@ -1208,102 +1133,6 @@ end function GetSecondarySpeciesCount
 
 ! ************************************************************************** !
 
-function GetGasNames(reaction)
-  ! 
-  ! Returns the names of gases in an array
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 10/21/08
-  ! 
-
-  implicit none
-  
-  character(len=MAXWORDLENGTH), pointer :: GetGasNames(:)
-  type(reaction_type) :: reaction
-
-  PetscInt :: count
-  character(len=MAXWORDLENGTH), pointer :: names(:)
-  type(gas_species_type), pointer :: gas
-
-  count = GetGasCount(reaction)
-  allocate(names(count))
-  
-  count = 1
-  gas => reaction%gas_species_list
-  do
-    if (.not.associated(gas)) exit
-    names(count) = gas%name
-    count = count + 1
-    gas => gas%next
-  enddo
-
-  GetGasNames => names
-  
-end function GetGasNames
-
-! ************************************************************************** !
-
-function GetGasCount(reaction)
-  ! 
-  ! Returns the number of primary species
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 06/02/08
-  ! 
-
-  implicit none
-  
-  PetscInt :: GetGasCount
-  type(reaction_type) :: reaction
-
-  type(gas_species_type), pointer :: gas
-
-  GetGasCount = 0
-  gas => reaction%gas_species_list
-  do
-    if (.not.associated(gas)) exit
-    GetGasCount = GetGasCount + 1
-    gas => gas%next
-  enddo
-
-end function GetGasCount
-
-! ************************************************************************** !
-
-function GetGasIDFromName(reaction,name)
-  ! 
-  ! Returns the id of gas with the corresponding name
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 09/04/08
-  ! 
-
-  use String_module
-  
-  implicit none
-  
-  type(reaction_type) :: reaction
-  character(len=MAXWORDLENGTH) :: name
-
-  PetscInt :: GetGasIDFromName
-  type(gas_species_type), pointer :: gas
-
-  GetGasIDFromName = -1
- 
-  gas => reaction%gas_species_list
-  do
-    if (.not.associated(gas)) exit
-    if (StringCompare(name,gas%name,MAXWORDLENGTH)) then
-      GetGasIDFromName = gas%id
-      exit
-    endif
-    gas => gas%next
-  enddo
-
-end function GetGasIDFromName
-
-! ************************************************************************** !
-
 function GetColloidIDFromName(reaction,name)
   ! 
   ! Returns the id of colloid with the corresponding name
@@ -1742,16 +1571,36 @@ subroutine ReactionInputRecord(rxn)
     enddo
     write(id,'(a29)') '---------------------------: '
   endif
-! --------- gas species list -------------------------------------------------
-  if (associated(rxn%gas_species_list)) then
-    write(id,'(a29)',advance='no') 'gas species list: '
-    cur_gas_species => rxn%gas_species_list
+! --------- active gas species list ------------------------------------------
+  if (associated(rxn%gas%list)) then
+    write(id,'(a29)',advance='no') 'active gas species list: '
+    cur_gas_species => rxn%gas%list
     write(id,'(a)') trim(cur_gas_species%name)
     cur_gas_species => cur_gas_species%next
     do
       if (.not.associated(cur_gas_species)) exit
-      write(id,'(a29)',advance='no') ' '
-      write(id,'(a)') trim(cur_gas_species%name)
+      if (cur_gas_species%itype == ACTIVE_GAS .or. &
+          cur_gas_species%itype == ACTIVE_AND_PASSIVE_GAS) then
+        write(id,'(a29)',advance='no') ' '
+        write(id,'(a)') trim(cur_gas_species%name)
+      endif
+      cur_gas_species => cur_gas_species%next
+    enddo
+    write(id,'(a29)') '---------------------------: '
+  endif
+! --------- passive gas species list -----------------------------------------
+  if (associated(rxn%gas%list)) then
+    write(id,'(a29)',advance='no') 'passive gas species list: '
+    cur_gas_species => rxn%gas%list
+    write(id,'(a)') trim(cur_gas_species%name)
+    cur_gas_species => cur_gas_species%next
+    do
+      if (.not.associated(cur_gas_species)) exit
+      if (cur_gas_species%itype == PASSIVE_GAS .or. &
+          cur_gas_species%itype == ACTIVE_AND_PASSIVE_GAS) then
+        write(id,'(a29)',advance='no') ' '
+        write(id,'(a)') trim(cur_gas_species%name)
+      endif
       cur_gas_species => cur_gas_species%next
     enddo
     write(id,'(a29)') '---------------------------: '
@@ -1892,26 +1741,6 @@ subroutine AqueousSpeciesListDestroy(aq_species_list)
   nullify(aq_species_list)
 
 end subroutine AqueousSpeciesListDestroy
-
-! ************************************************************************** !
-
-subroutine GasSpeciesDestroy(species)
-  ! 
-  ! Deallocates a gas species
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 05/29/08
-  ! 
-
-  implicit none
-    
-  type(gas_species_type), pointer :: species
-
-  if (associated(species%dbaserxn)) call DatabaseRxnDestroy(species%dbaserxn)
-  deallocate(species)  
-  nullify(species)
-
-end subroutine GasSpeciesDestroy
 
 ! ************************************************************************** !
 
@@ -2170,16 +1999,6 @@ subroutine ReactionDestroy(reaction,option)
   if (associated(reaction%secondary_species_list)) &
     call AqueousSpeciesListDestroy(reaction%secondary_species_list)
   nullify(reaction%secondary_species_list)
-
-  ! gas species
-  gas_species => reaction%gas_species_list
-  do
-    if (.not.associated(gas_species)) exit
-    prev_gas_species => gas_species
-    gas_species => gas_species%next
-    call GasSpeciesDestroy(prev_gas_species)
-  enddo  
-  nullify(reaction%gas_species_list)
   
   ! colloid species
   colloid => reaction%colloid_list
@@ -2247,6 +2066,7 @@ subroutine ReactionDestroy(reaction,option)
   call MineralDestroy(reaction%mineral)
   call MicrobialDestroy(reaction%microbial)
   call ImmobileDestroy(reaction%immobile)
+  call GasDestroy(reaction%gas)
 #ifdef SOLID_SOLUTION  
   call SolidSolutionDestroy(reaction%solid_solution_list)
 #endif  
@@ -2262,14 +2082,12 @@ subroutine ReactionDestroy(reaction,option)
   
   call DeallocateArray(reaction%primary_species_names)
   call DeallocateArray(reaction%secondary_species_names)
-  call DeallocateArray(reaction%gas_species_names)
   call DeallocateArray(reaction%eqcplx_basis_names)
   call DeallocateArray(reaction%colloid_names)
   call DeallocateArray(reaction%colloid_species_names)  
   
   call DeallocateArray(reaction%primary_species_print)
   call DeallocateArray(reaction%secondary_species_print)
-  call DeallocateArray(reaction%gas_species_print)
   call DeallocateArray(reaction%eqcplx_basis_print)
   call DeallocateArray(reaction%kd_print)
   call DeallocateArray(reaction%total_sorb_print)
@@ -2289,13 +2107,6 @@ subroutine ReactionDestroy(reaction,option)
   call DeallocateArray(reaction%eqcplx_molar_wt)
   call DeallocateArray(reaction%eqcplx_logK)
   call DeallocateArray(reaction%eqcplx_logKcoef)
-  
-  call DeallocateArray(reaction%eqgasspecid)
-  call DeallocateArray(reaction%eqgasstoich)
-  call DeallocateArray(reaction%eqgash2oid)
-  call DeallocateArray(reaction%eqgash2ostoich)
-  call DeallocateArray(reaction%eqgas_logK)
-  call DeallocateArray(reaction%eqgas_logKcoef)
   
   call DeallocateArray(reaction%eqionx_rxn_Z_flag)
   call DeallocateArray(reaction%eqionx_rxn_cation_X_offset)
