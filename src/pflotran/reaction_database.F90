@@ -41,6 +41,7 @@ subroutine DatabaseRead(reaction,option)
   use Reaction_Microbial_module
   use Reaction_Immobile_Aux_module
   use Reaction_Immobile_module
+  use Reaction_Gas_Aux_module
   
   implicit none
   
@@ -89,7 +90,7 @@ subroutine DatabaseRead(reaction,option)
     cur_aq_spec%id = -abs(cur_aq_spec%id)
     cur_aq_spec => cur_aq_spec%next
   enddo  
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     cur_gas_spec%id = -abs(cur_gas_spec%id)
@@ -289,7 +290,7 @@ subroutine DatabaseRead(reaction,option)
         
                     
       case(2) ! gas species
-        cur_gas_spec => reaction%gas_species_list
+        cur_gas_spec => reaction%gas%list
         if (.not.associated(cur_gas_spec)) cycle
         found = PETSC_FALSE
         do
@@ -460,7 +461,7 @@ subroutine DatabaseRead(reaction,option)
       cur_aq_spec2 => cur_aq_spec2%next
     enddo
 
-    cur_gas_spec2 => reaction%gas_species_list
+    cur_gas_spec2 => reaction%gas%list
     do
       if (.not.associated(cur_gas_spec2)) exit
       if (StringCompare(cur_aq_spec%name, &
@@ -498,7 +499,7 @@ subroutine DatabaseRead(reaction,option)
       cur_aq_spec2 => cur_aq_spec2%next
     enddo
 
-    cur_gas_spec2 => reaction%gas_species_list
+    cur_gas_spec2 => reaction%gas%list
     do
       if (.not.associated(cur_gas_spec2)) exit
       if (StringCompare(cur_aq_spec%name, &
@@ -515,7 +516,7 @@ subroutine DatabaseRead(reaction,option)
   enddo
   
   ! gas species
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_aq_spec)) exit
     
@@ -694,7 +695,7 @@ subroutine DatabaseRead(reaction,option)
     endif
     cur_aq_spec => cur_aq_spec%next
   enddo  
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     if (cur_gas_spec%id < 0) then
@@ -785,6 +786,7 @@ subroutine BasisInit(reaction,option)
   use Reaction_Mineral_Aux_module
   use Reaction_Microbial_Aux_module
   use Reaction_Immobile_Aux_module
+  use Reaction_Gas_Aux_module
   
 #ifdef SOLID_SOLUTION  
   use Reaction_Solid_Solution_module
@@ -860,7 +862,7 @@ subroutine BasisInit(reaction,option)
   PetscInt :: icount_old, icount_new, icount, icount2, icount3
   PetscInt :: i, j, irow, icol
   PetscInt :: icomp, icplx, irxn, ieqrxn
-  PetscInt :: ipri_spec, isec_spec, imnrl, igas_spec, ikinmnrl, icoll
+  PetscInt :: ipri_spec, isec_spec, imnrl, ikinmnrl, icoll
   PetscInt :: i_old, i_new
   PetscInt :: isrfcplx
   PetscInt :: ication
@@ -1015,7 +1017,7 @@ subroutine BasisInit(reaction,option)
   
   reaction%naqcomp = GetPrimarySpeciesCount(reaction)
   reaction%neqcplx = GetSecondarySpeciesCount(reaction)
-  reaction%ngas = GetGasCount(reaction)
+  reaction%gas%ngas = GasGetCount(reaction%gas%list,ACTIVE_AND_PASSIVE_GAS)
   reaction%nimcomp = GetImmobileCount(reaction)
   reaction%ncoll = GetColloidCount(reaction)
   reaction%ncollcomp = reaction%naqcomp ! set to naqcomp for now, will be adjusted later
@@ -1048,7 +1050,7 @@ subroutine BasisInit(reaction,option)
     cur_aq_spec => cur_aq_spec%next
   enddo
 
-  ncomp_secondary = reaction%neqcplx+reaction%ngas
+  ncomp_secondary = reaction%neqcplx+reaction%gas%ngas
   
   ! check to ensure that the number of secondary aqueous and gas species
   ! (i.e. those with a reaction defined from the database) is equal to the 
@@ -1074,7 +1076,7 @@ subroutine BasisInit(reaction,option)
     cur_sec_aq_spec => cur_sec_aq_spec%next
   enddo
 
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     if (associated(cur_gas_spec%dbaserxn)) then
@@ -1103,7 +1105,7 @@ subroutine BasisInit(reaction,option)
   sec_matrix = 0.d0
   allocate(sec_names(reaction%neqcplx))
   sec_names = ''
-  allocate(gas_names(reaction%ngas))
+  allocate(gas_names(reaction%gas%ngas))
   gas_names = ''
   
   allocate(logKvector(num_logKs,ncomp_secondary))
@@ -1128,7 +1130,7 @@ subroutine BasisInit(reaction,option)
     cur_aq_spec => cur_aq_spec%next
   enddo
   icount= 0
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     icount = icount + 1
@@ -1202,7 +1204,7 @@ subroutine BasisInit(reaction,option)
     cur_sec_aq_spec => cur_sec_aq_spec%next
   enddo
 
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     if (associated(cur_gas_spec%dbaserxn)) then
@@ -1331,7 +1333,7 @@ subroutine BasisInit(reaction,option)
     cur_sec_aq_spec => cur_sec_aq_spec%next
   enddo
 
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     icount = icount + 1
@@ -1388,7 +1390,7 @@ subroutine BasisInit(reaction,option)
   nullify(cur_srfcplx)
     
   ! first off, lets remove all the secondary gases from all other reactions
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     
@@ -1736,12 +1738,25 @@ subroutine BasisInit(reaction,option)
   isec_spec = -1 ! to catch bugs
 
   ! gas complexes
-  reaction%ngas = GetGasCount(reaction)
+  call ReactionDatabaseSetupGases(reaction,num_logKs,option,h2o_id, &
+                                  temp_high,temp_low,itemp_high,itemp_low, &
+                                  reaction%gas%list,ACTIVE_GAS, &
+                                  reaction%gas%nactive_gas, &
+                                  reaction%gas%active_names, &
+                                  reaction%gas%active_print_me, &
+                                  reaction%gas%acteqspecid, &
+                                  reaction%gas%acteqstoich, &
+                                  reaction%gas%acteqh2oid, &
+                                  reaction%gas%acteqh2ostoich, &
+                                  reaction%gas%acteqlogK, &
+                                  reaction%gas%acteqlogKcoef)
   
-  if (reaction%ngas > 0) then
+#if 0  
+  
+  if (reaction%gas%ngas > 0) then
   
     ! get maximum # of aqueous species in a gas reaction
-    cur_gas_spec => reaction%gas_species_list
+    cur_gas_spec => reaction%gas%list
     max_aq_species = 0
     do
       if (.not.associated(cur_gas_spec)) exit
@@ -1777,7 +1792,7 @@ subroutine BasisInit(reaction,option)
     reaction%eqgas_logKcoef = 0.d0
 
     ! pack in reaction arrays
-    cur_gas_spec => reaction%gas_species_list
+    cur_gas_spec => reaction%gas%list
     igas_spec = 1
     do
       if (.not.associated(cur_gas_spec)) exit
@@ -1834,7 +1849,8 @@ subroutine BasisInit(reaction,option)
   endif
   nullify(cur_gas_spec)
   igas_spec = -1 ! to catch bugs
-
+#endif
+  
   ! immobile species
   immobile%nimmobile = ImmobileGetCount(immobile)
   if (immobile%nimmobile > 0) then
@@ -3617,22 +3633,23 @@ subroutine BasisInit(reaction,option)
     endif
   enddo
 
-  do ispec = 1, reaction%ngas
+  ! these are passive gases used in CONSTRAINTS
+  do ispec = 1, reaction%gas%npassive_gas
     if (reaction%species_idx%o2_gas_id == 0) then
       word = 'O2(g)'
-      if (StringCompareIgnoreCase(reaction%gas_species_names(ispec), &
+      if (StringCompareIgnoreCase(reaction%gas%passive_names(ispec), &
                                   word)) then
         reaction%species_idx%o2_gas_id = ispec
       endif
     endif
     if (reaction%species_idx%co2_gas_id == 0) then
       word = 'CO2(g)'
-      if (StringCompareIgnoreCase(reaction%gas_species_names(ispec), &
+      if (StringCompareIgnoreCase(reaction%gas%passive_names(ispec), &
                                   word)) then
         reaction%species_idx%co2_gas_id = ispec
       endif
       word = 'CO2(g)*'
-      if (StringCompareIgnoreCase(reaction%gas_species_names(ispec), &
+      if (StringCompareIgnoreCase(reaction%gas%passive_names(ispec), &
                                   word)) then
         reaction%species_idx%co2_gas_id = ispec
       endif
@@ -3658,8 +3675,13 @@ subroutine BasisInit(reaction,option)
     write(option%fid_out,100) reaction%neqcplx, 'Secondary Complex Species'
     write(option%fid_out,110) (reaction%secondary_species_names(i),i=1,reaction%neqcplx)
     
-    write(option%fid_out,100) reaction%ngas, 'Gas Species'
-    write(option%fid_out,110) (reaction%gas_species_names(i),i=1,reaction%ngas)
+    write(option%fid_out,100) reaction%gas%nactive_gas, 'Active Gas Species'
+    write(option%fid_out,110) (reaction%gas%active_names(i),i=1, &
+                               reaction%gas%nactive_gas)
+    
+    write(option%fid_out,100) reaction%gas%npassive_gas, 'Passive Gas Species'
+    write(option%fid_out,110) (reaction%gas%passive_names(i),i=1, &
+                               reaction%gas%npassive_gas)
     
     write(option%fid_out,100) mineral%nmnrl, 'Reference Minerals'
     write(option%fid_out,110) (mineral%mineral_names(i),i=1,mineral%nmnrl)
@@ -4003,9 +4025,9 @@ function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
       return
     endif
   enddo
-  do i=1,reaction%ngas
+  do i=1,reaction%gas%ngas
     if (StringCompare(species_name, &
-                        gas_names(i),MAXWORDLENGTH)) then
+                      gas_names(i),MAXWORDLENGTH)) then
       GetSpeciesBasisID = -(reaction%neqcplx+i)
       return
     endif
@@ -4022,6 +4044,153 @@ end function GetSpeciesBasisID
 
 ! ************************************************************************** !
 
+subroutine ReactionDatabaseSetupGases(reaction,num_logKs,option,h2o_id, &
+                                      temp_high,temp_low, &
+                                      itemp_high,itemp_low, &
+                                      gas_species_list,gas_itype, &
+                                      ngas,gas_names,gas_print, &
+                                      eqspecid,eqstoich,eqh2oid,eqh2ostoich, &
+                                      eqlogK,eqlogKcoef)
+  ! 
+  ! Sets up gas reactions (both active and passive).  Placing setup of both
+  ! active and passive gases in a single subroutine removes redundancy
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 08/10/16
+  ! 
+  use Option_module
+  use Reaction_Gas_Aux_module
+  use Utility_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  PetscInt :: num_logKs
+  type(option_type) :: option
+  PetscInt :: h2o_id
+  PetscReal :: temp_high, temp_low
+  PetscInt :: itemp_high, itemp_low
+  type(gas_species_type), pointer :: gas_species_list
+  PetscInt :: gas_itype
+  PetscInt :: ngas
+  character(len=MAXWORDLENGTH), pointer :: gas_names(:)
+  PetscBool, pointer :: gas_print(:)
+  PetscInt, pointer :: eqspecid(:,:)
+  PetscReal, pointer :: eqstoich(:,:)
+  PetscInt, pointer :: eqh2oid(:)
+  PetscReal, pointer :: eqh2ostoich(:)
+  PetscReal, pointer :: eqlogK(:)
+  PetscReal, pointer :: eqlogKcoef(:,:)
+  
+  type(gas_species_type), pointer :: cur_gas_spec
+  PetscInt :: max_aq_species
+  PetscInt :: igas_spec
+  PetscInt :: ispec
+  PetscInt :: i
+  PetscInt :: spec_id
+    
+  ngas = GasGetCount(gas_species_list,gas_itype)
+  if (ngas > 0) then
+  
+    ! get maximum # of aqueous species in a gas reaction
+    cur_gas_spec => gas_species_list
+    max_aq_species = 0
+    do
+      if (.not.associated(cur_gas_spec)) exit
+      if (cur_gas_spec%itype == gas_itype .or. &
+          cur_gas_spec%itype == ACTIVE_AND_PASSIVE_GAS) then
+        max_aq_species = max(cur_gas_spec%dbaserxn%nspec,max_aq_species)
+      endif
+      cur_gas_spec => cur_gas_spec%next
+    enddo
+    
+    allocate(gas_names(ngas))
+    gas_names = ''
+    allocate(gas_print(ngas))
+    gas_print = PETSC_FALSE
+    allocate(eqspecid(0:max_aq_species,ngas))
+    eqspecid = 0
+    allocate(eqstoich(0:max_aq_species,ngas))
+    eqstoich = 0.d0
+    allocate(eqh2oid(ngas))
+    eqh2oid = 0
+    allocate(eqh2ostoich(ngas))
+    eqh2ostoich = 0.d0
+    allocate(eqlogK(ngas))
+    eqlogK = 0.d0
+    if (.not.reaction%use_geothermal_hpt) then
+      if (option%use_isothermal) then
+        allocate(eqlogKcoef(reaction%num_dbase_temperatures, &
+                                         ngas))
+      else
+        allocate(eqlogKcoef(FIVE_INTEGER,ngas))
+      endif
+    else
+      allocate(eqlogKcoef(num_logKs,ngas))
+    endif
+    
+    eqlogKcoef = 0.d0
+
+    ! pack in reaction arrays
+    cur_gas_spec => reaction%gas%list
+    igas_spec = 1
+    do
+      if (.not.associated(cur_gas_spec)) exit
+      if (cur_gas_spec%itype == gas_itype .or. &
+          cur_gas_spec%itype == ACTIVE_AND_PASSIVE_GAS) then      
+
+        gas_names(igas_spec) = cur_gas_spec%name
+        gas_print(igas_spec) = cur_gas_spec%print_me .or. &
+                               reaction%gas%print_all
+        ispec = 0
+        do i = 1, cur_gas_spec%dbaserxn%nspec
+          if (cur_gas_spec%dbaserxn%spec_ids(i) /= h2o_id) then
+            ispec = ispec + 1
+            spec_id = cur_gas_spec%dbaserxn%spec_ids(i)
+            if (spec_id > h2o_id) spec_id = spec_id - 1
+            eqspecid(ispec,igas_spec) = spec_id
+            eqstoich(ispec,igas_spec) = cur_gas_spec%dbaserxn%stoich(i)
+            
+          else ! fill in h2o id and stoich
+            eqh2oid(igas_spec) = h2o_id
+            eqh2ostoich(igas_spec) = cur_gas_spec%dbaserxn%stoich(i)
+          endif
+        enddo
+        eqspecid(0,igas_spec) = ispec
+      
+        if (.not.reaction%use_geothermal_hpt) then
+          if (option%use_isothermal) then
+            eqlogKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
+            call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                             cur_gas_spec%dbaserxn%logK(itemp_high), &
+                             cur_gas_spec%dbaserxn%logK(itemp_low), &
+                             eqlogK(igas_spec))
+          else
+            call ReactionFitLogKCoef(eqlogKcoef(:,igas_spec), &
+                                     cur_gas_spec%dbaserxn%logK, &
+                                     gas_names(igas_spec), &
+                                     option,reaction)
+            call ReactionInitializeLogK(eqlogKcoef(:,igas_spec), &
+                                        cur_gas_spec%dbaserxn%logK, &
+                                        eqlogK(igas_spec), &
+                                        option,reaction)
+          endif
+        else
+          eqlogKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
+          call ReactionInitializeLogK_hpt(eqlogKcoef(:,igas_spec), &
+                                          eqlogK(igas_spec), &
+                                          option,reaction)  
+        endif
+        igas_spec = igas_spec + 1
+      endif
+      cur_gas_spec => cur_gas_spec%next
+    enddo
+  endif
+
+end subroutine ReactionDatabaseSetupGases
+
+! ************************************************************************** !
+
 subroutine BasisPrint(reaction,title,option)
   ! 
   ! Prints the basis
@@ -4034,6 +4203,7 @@ subroutine BasisPrint(reaction,title,option)
   use Reaction_module
   use Reaction_Surface_Complexation_Aux_module
   use Reaction_Mineral_Aux_module
+  use Reaction_Gas_Aux_module
 
   implicit none
   
@@ -4172,7 +4342,7 @@ subroutine BasisPrint(reaction,title,option)
     close(fid)
 #endif
     
-    cur_gas_spec => reaction%gas_species_list
+    cur_gas_spec => reaction%gas%list
     if (associated(cur_gas_spec)) then
       write(option%fid_out,*)
       write(option%fid_out,*) 'Gas Components:'

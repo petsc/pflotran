@@ -9,11 +9,13 @@ module Reaction_module
   use Reaction_Mineral_module
   use Reaction_Microbial_module
   use Reaction_Immobile_module
+  use Reaction_Gas_module
 
   use Reaction_Surface_Complexation_Aux_module
   use Reaction_Mineral_Aux_module
   use Reaction_Microbial_Aux_module
   use Reaction_Immobile_Aux_module
+  use Reaction_Gas_Aux_module
 
 #ifdef SOLID_SOLUTION  
   use Reaction_Solid_Solution_module
@@ -237,63 +239,14 @@ subroutine ReactionReadPass1(reaction,input,option)
           prev_species => species
           nullify(species)
         enddo
-      case('GAS_SPECIES')
-        nullify(prev_gas)
-        do
-          call InputReadPflotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit
-
-          reaction%ngas = reaction%ngas + 1
-          
-          gas => GasSpeciesCreate()
-          call InputReadWord(input,option,gas%name,PETSC_TRUE)  
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,GAS_SPECIES')    
-          if (.not.associated(reaction%gas_species_list)) then
-            reaction%gas_species_list => gas
-            gas%id = 1
-          endif
-          if (associated(prev_gas)) then
-            prev_gas%next => gas
-            gas%id = prev_gas%id + 1
-          endif
-          prev_gas => gas
-          nullify(gas)
-        enddo
+      case('ACTIVE_GAS_SPECIES')
+        string = 'CHEMISTRY,ACTIVE_GAS_SPECIES'
+        call RGasRead(reaction%gas%list,ACTIVE_GAS,string,input,option)
+      case('PASSIVE_GAS_SPECIES')
+        string = 'CHEMISTRY,PASSIVE_GAS_SPECIES'
+        call RGasRead(reaction%gas%list,PASSIVE_GAS,string,input,option)
       case('IMMOBILE_SPECIES')
-        ! find end of list if it exists
-        if (associated(reaction%immobile%list)) then
-          immobile_species => reaction%immobile%list
-          do
-            if (.not.associated(immobile_species%next)) exit
-            immobile_species => immobile_species%next
-          enddo
-          prev_immobile_species => immobile_species
-          nullify(immobile_species)
-        else
-          nullify(prev_immobile_species)
-        endif
-        do
-          call InputReadPflotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit
-
-          reaction%immobile%nimmobile = reaction%immobile%nimmobile + 1
-          
-          immobile_species => ImmobileSpeciesCreate()
-          call InputReadWord(input,option,immobile_species%name,PETSC_TRUE)  
-          call InputErrorMsg(input,option,'keyword', &
-                             'CHEMISTRY,IMMOBILE_SPECIES')
-          if (.not.associated(prev_immobile_species)) then
-            reaction%immobile%list => immobile_species
-            immobile_species%id = 1
-          else
-            prev_immobile_species%next => immobile_species
-            immobile_species%id = prev_immobile_species%id + 1
-          endif
-          prev_immobile_species => immobile_species
-          nullify(immobile_species)
-        enddo        
+        call ImmobileRead(reaction%immobile,input,option)
       case('IMMOBILE_DECAY_REACTION')
         call ImmobileDecayRxnRead(reaction%immobile,input,option)
       case('RADIOACTIVE_DECAY_REACTION')
@@ -995,10 +948,10 @@ subroutine ReactionReadPass2(reaction,input,option)
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'word','CHEMISTRY') 
     select case(trim(word))
-      case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
+      case('PRIMARY_SPECIES','SECONDARY_SPECIES','ACTIVE_GAS_SPECIES', &
             'MINERALS','COLLOIDS','GENERAL_REACTION', &
             'IMMOBILE_SPECIES','RADIOACTIVE_DECAY_REACTION', &
-            'IMMOBILE_DECAY_REACTION')
+            'IMMOBILE_DECAY_REACTION','PASSIVE_GAS_SPECIES')
         call InputSkipToEND(input,option,card)
       case('REDOX_SPECIES')
         call ReactionReadRedoxSpecies(reaction,input,option)
@@ -1237,10 +1190,10 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
           endif
         case(CONSTRAINT_GAS, CONSTRAINT_SUPERCRIT_CO2)
           found = PETSC_FALSE
-          do igas = 1, reaction%ngas
+          do igas = 1, reaction%gas%npassive_gas
             if (StringCompare(constraint_aux_string(jcomp), &
-                                reaction%gas_species_names(igas), &
-                                MAXWORDLENGTH)) then
+                              reaction%gas%passive_names(igas), &
+                              MAXWORDLENGTH)) then
               constraint_id(jcomp) = igas
               found = PETSC_TRUE
               exit
@@ -1716,20 +1669,20 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         case(CONSTRAINT_GAS)
 
           igas = constraint_id(icomp)
-          lnQK = -reaction%eqgas_logK(igas)*LOG_TO_LN
+          lnQK = -reaction%gas%paseqlogK(igas)*LOG_TO_LN
  
           ! divide K by RT
           !lnQK = lnQK - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONSTANT)
           
           ! activity of water
-          if (reaction%eqgash2oid(igas) > 0) then
-            lnQK = lnQK + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
+          if (reaction%gas%paseqh2oid(igas) > 0) then
+            lnQK = lnQK + reaction%gas%paseqh2ostoich(igas)*rt_auxvar%ln_act_h2o
           endif
 
           ! compute ion activity product
-          do jcomp = 1, reaction%eqgasspecid(0,igas)
-            comp_id = reaction%eqgasspecid(jcomp,igas)
-            lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
+          do jcomp = 1, reaction%gas%paseqspecid(0,igas)
+            comp_id = reaction%gas%paseqspecid(jcomp,igas)
+            lnQK = lnQK + reaction%gas%paseqstoich(jcomp,igas)* &
               log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
           enddo
           
@@ -1738,11 +1691,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !         Res(icomp) = QK - conc(icomp)
           Res(icomp) = lnQK - log(conc(icomp)) ! gas pressure
           Jac(icomp,:) = 0.d0
-          do jcomp = 1,reaction%eqgasspecid(0,igas)
-            comp_id = reaction%eqgasspecid(jcomp,igas)
+          do jcomp = 1,reaction%gas%paseqspecid(0,igas)
+            comp_id = reaction%gas%paseqspecid(jcomp,igas)
 !           Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
 !                                reaction%eqgasstoich(jcomp,igas)
-            Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/ &
+            Jac(icomp,comp_id) = reaction%gas%paseqstoich(jcomp,igas)/ &
               rt_auxvar%pri_molal(comp_id)
           enddo
 
@@ -1797,18 +1750,18 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             
             lnQk = -log(xphico2*henry)-lngamco2
 
-            reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
+            reaction%gas%paseqlogK(igas) = -lnQK*LN_TO_LOG
 !           reaction%scco2_eq_logK = -lnQK*LN_TO_LOG
 !geh: scco2_eq_logK is only used in one location.  Why add to global_auxvar???
 !geh            global_auxvar%scco2_eq_logK = -lnQK*LN_TO_LOG
                         
             ! activity of water
-            if (reaction%eqgash2oid(igas) > 0) then
-              lnQK = lnQK + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
+            if (reaction%gas%paseqh2oid(igas) > 0) then
+              lnQK = lnQK + reaction%gas%paseqh2ostoich(igas)*rt_auxvar%ln_act_h2o
             endif
-            do jcomp = 1, reaction%eqgasspecid(0,igas)
-              comp_id = reaction%eqgasspecid(jcomp,igas)
-              lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
+            do jcomp = 1, reaction%gas%paseqspecid(0,igas)
+              comp_id = reaction%gas%paseqspecid(jcomp,igas)
+              lnQK = lnQK + reaction%gas%paseqstoich(jcomp,igas)* &
 !                log(rt_auxvar%pri_molal(comp_id))
                log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
 !                print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
@@ -1819,11 +1772,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
              
             Res(icomp) = lnQK - log(pco2*1D-5) ! gas pressure bars
             Jac(icomp,:) = 0.d0
-            do jcomp = 1,reaction%eqgasspecid(0,igas)
-              comp_id = reaction%eqgasspecid(jcomp,igas)
+            do jcomp = 1,reaction%gas%paseqspecid(0,igas)
+              comp_id = reaction%gas%paseqspecid(jcomp,igas)
 !             Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
 !                                reaction%eqgasstoich(jcomp,igas)
-              Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/ &
+              Jac(icomp,comp_id) = reaction%gas%paseqstoich(jcomp,igas)/ &
                 rt_auxvar%pri_molal(comp_id)
               
             enddo
@@ -2075,7 +2028,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscBool :: finished, found
   PetscReal :: conc, conc2
   PetscReal :: lnQK(reaction%mineral%nmnrl), QK(reaction%mineral%nmnrl)
-  PetscReal :: lnQKgas(reaction%ngas), QKgas(reaction%ngas)
+  PetscReal :: lnQKgas(reaction%gas%npassive_gas)
+  PetscReal :: QKgas(reaction%gas%npassive_gas)
   PetscReal :: charge_balance, ionic_strength
   PetscReal :: percent(reaction%neqcplx+1)
   PetscReal :: totj, retardation, kd, ph
@@ -2168,7 +2122,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         (option%iflowmode == MPH_MODE .or. &
          option%iflowmode == FLASH2_MODE)) then
       call RUpdateTempDependentCoefs(global_auxvar,reaction,PETSC_TRUE,option)
-      if (associated(reaction%eqgas_logKcoef)) then
+      if (associated(reaction%gas%paseqlogKcoef)) then
         do i = 1, reaction%naqcomp
           if (aq_species_constraint%constraint_type(i) == &
               CONSTRAINT_SUPERCRIT_CO2) then
@@ -2217,15 +2171,15 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         ifo2 = reaction%species_idx%o2_gas_id
       
       ! compute gas partial pressure
-        lnQKgas(ifo2) = -reaction%eqgas_logK(ifo2)*LOG_TO_LN
+        lnQKgas(ifo2) = -reaction%gas%paseqlogK(ifo2)*LOG_TO_LN
       
       ! activity of water
-        if (reaction%eqgash2oid(ifo2) > 0) then
-          lnQKgas(ifo2) = lnQKgas(ifo2) + reaction%eqgash2ostoich(ifo2)*rt_auxvar%ln_act_h2o
+        if (reaction%gas%paseqh2oid(ifo2) > 0) then
+          lnQKgas(ifo2) = lnQKgas(ifo2) + reaction%gas%paseqh2ostoich(ifo2)*rt_auxvar%ln_act_h2o
         endif
-        do jcomp = 1, reaction%eqgasspecid(0,ifo2)
-          comp_id = reaction%eqgasspecid(jcomp,ifo2)
-          lnQKgas(ifo2) = lnQKgas(ifo2) + reaction%eqgasstoich(jcomp,ifo2)* &
+        do jcomp = 1, reaction%gas%paseqspecid(0,ifo2)
+          comp_id = reaction%gas%paseqspecid(jcomp,ifo2)
+          lnQKgas(ifo2) = lnQKgas(ifo2) + reaction%gas%paseqstoich(jcomp,ifo2)* &
                       log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
         enddo
 
@@ -2659,7 +2613,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     enddo
   endif
     
-  if (reaction%ngas > 0) then
+  if (reaction%gas%npassive_gas > 0) then
     
     132 format(/,'  gas        log part. press.  part. press. [bars]      log K')
     133 format(2x,a10,2x,1pe12.4,6x,1pe12.4,8x,1pe12.4)
@@ -2667,29 +2621,30 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,132)
     write(option%fid_out,90)
     
-    do igas = 1, reaction%ngas
+    do igas = 1, reaction%gas%npassive_gas
       
       ! compute gas partial pressure
-      lnQKgas(igas) = -reaction%eqgas_logK(igas)*LOG_TO_LN
+      lnQKgas(igas) = -reaction%gas%paseqlogK(igas)*LOG_TO_LN
       
       ! divide K by RT
       !lnQKgas = lnQKgas - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONSTANT)
       
       ! activity of water
-      if (reaction%eqgash2oid(igas) > 0) then
-        lnQKgas(igas) = lnQKgas(igas) + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
+      if (reaction%gas%paseqh2oid(igas) > 0) then
+        lnQKgas(igas) = lnQKgas(igas) + reaction%gas%paseqh2ostoich(igas)* &
+                                        rt_auxvar%ln_act_h2o
       endif
 
-      do jcomp = 1, reaction%eqgasspecid(0,igas)
-        comp_id = reaction%eqgasspecid(jcomp,igas)
-        lnQKgas(igas) = lnQKgas(igas) + reaction%eqgasstoich(jcomp,igas)* &
+      do jcomp = 1, reaction%gas%paseqspecid(0,igas)
+        comp_id = reaction%gas%paseqspecid(jcomp,igas)
+        lnQKgas(igas) = lnQKgas(igas) + reaction%gas%paseqstoich(jcomp,igas)* &
                       log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
       enddo
       
       QKgas(igas) = exp(lnQKgas(igas))
           
-      write(option%fid_out,133) reaction%gas_species_names(igas),lnQKgas(igas)*LN_TO_LOG, &
-      QKgas(igas),reaction%eqgas_logK(igas)
+      write(option%fid_out,133) reaction%gas%passive_names(igas),lnQKgas(igas)*LN_TO_LOG, &
+      QKgas(igas),reaction%gas%paseqlogK(igas)
     enddo
   endif
 
@@ -3053,7 +3008,7 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_all_species = PETSC_FALSE
         reaction%print_all_primary_species = PETSC_FALSE
         reaction%print_all_secondary_species = PETSC_FALSE
-        reaction%print_all_gas_species = PETSC_FALSE
+        reaction%gas%print_all = PETSC_FALSE
         reaction%mineral%print_all = PETSC_FALSE
         reaction%print_pH = PETSC_FALSE
         reaction%print_Eh = PETSC_FALSE
@@ -3080,7 +3035,7 @@ subroutine ReactionReadOutput(reaction,input,option)
       case('SECONDARY_SPECIES')
         reaction%print_all_secondary_species = PETSC_TRUE
       case('GASES')
-        reaction%print_all_gas_species = PETSC_TRUE
+        reaction%gas%print_all = PETSC_TRUE
       case('MINERALS')
         reaction%mineral%print_all = PETSC_TRUE
       case('MINERAL_SATURATION_INDEX')
@@ -3163,7 +3118,9 @@ subroutine ReactionReadOutput(reaction,input,option)
         endif
         ! gas
         if (.not.found) then
-          cur_gas_spec => reaction%gas_species_list
+          ! be sure to check both lists, not skipping the passive list
+          ! if found in the active list
+          cur_gas_spec => reaction%gas%list
           do
             if (.not.associated(cur_gas_spec)) exit
             if (StringCompare(name,cur_gas_spec%name,MAXWORDLENGTH)) then
@@ -3373,10 +3330,10 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
 #endif  
   
   ! update immobile concentrations
-  if (reaction%nimcomp > 0) then
+  if (reaction%immobile%nimmobile > 0) then
     immobile_start = reaction%offset_immobile + 1
-    immobile_end = reaction%offset_immobile + reaction%nimcomp
-    rt_auxvar%immobile(1:reaction%nimcomp)  = &
+    immobile_end = reaction%offset_immobile + reaction%immobile%nimmobile
+    rt_auxvar%immobile(1:reaction%immobile%nimmobile)  = &
       tran_xx_p(immobile_start:immobile_end)
   endif
   
@@ -3435,9 +3392,9 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
                 reaction%use_log_formulation)
     
     prev_solution(1:reaction%naqcomp) = rt_auxvar%pri_molal(1:reaction%naqcomp)
-    if (reaction%nimcomp > 0) then
+    if (reaction%immobile%nimmobile > 0) then
       prev_solution(immobile_start:immobile_end) = &
-        rt_auxvar%immobile(1:reaction%nimcomp)
+        rt_auxvar%immobile(1:reaction%immobile%nimmobile)
     endif
 
     if (reaction%use_log_formulation) then
@@ -3485,8 +3442,8 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
     endif
     
     rt_auxvar%pri_molal(1:reaction%naqcomp) = new_solution(1:reaction%naqcomp)
-    if (reaction%nimcomp > 0) then
-      rt_auxvar%immobile(1:reaction%nimcomp) = &
+    if (reaction%immobile%nimmobile > 0) then
+      rt_auxvar%immobile(1:reaction%immobile%nimmobile) = &
         new_solution(immobile_start:immobile_end)
     endif    
   
@@ -3643,7 +3600,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       enddo
     enddo
     ! immobile species
-    do jcomp = 1, reaction%nimcomp
+    do jcomp = 1, reaction%immobile%nimmobile
       Res_pert = 0.d0
       call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
       ! leave pri_molal, total, total sorbed as is; just copy
@@ -4108,7 +4065,8 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
     rt_auxvar%sec_molal(icplx) = exp(lnQK)/rt_auxvar%sec_act_coef(icplx)
   
     ! add contribution to primary totals
-    ! units of total = mol/L
+    ! units of total here are mol/kg water (molality) since we are summing 
+    ! molalities, but it will be coverted to molarity [mol/L] below     
     do i = 1, ncomp
       icomp = reaction%eqcplxspecid(i,icplx)
       rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
@@ -4118,6 +4076,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
     
     ! add contribution to derivatives of total with respect to free
     ! bear in mind that the water density portion is scaled below
+    ! dtotal units here are [mol/kg water * kg water/mol] = [-]
     do j = 1, ncomp
       jcomp = reaction%eqcplxspecid(j,icplx)
       tempreal = reaction%eqcplxstoich(j,icplx)*exp(lnQK-ln_conc(jcomp))/ &
@@ -4138,6 +4097,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! units of dtotal = kg water/L water
   rt_auxvar%aqueous%dtotal = rt_auxvar%aqueous%dtotal*den_kg_per_L
 
+#if 0  
   if (option%iflowmode == G_MODE) return
 
 ! *********** Add SC phase and gas contributions ***********************  
@@ -4230,7 +4190,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! units of dtotal = kg water/L water
   ! rt_auxvar%dtotal(:, :,iphase) = rt_auxvar%dtotal(:,:,iphase)!*den_kg_per_L
   endif
-  
+#endif  
 end subroutine RTotal
 
 ! ************************************************************************** !
@@ -5173,8 +5133,8 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
   iend = reaction%naqcomp
   Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase) 
 
-  if (reaction%nimcomp > 0) then
-    do iimob = 1, reaction%nimcomp
+  if (reaction%immobile%nimmobile > 0) then
+    do iimob = 1, reaction%immobile%nimmobile
       idof = reaction%offset_immobile + iimob
       Res(idof) = Res(idof) + rt_auxvar%immobile(iimob)* &
                               material_auxvar%volume/option%tran_dt 
@@ -5264,8 +5224,8 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     enddo
   endif
 
-  if (reaction%nimcomp > 0) then
-    do iimob = 1, reaction%nimcomp
+  if (reaction%immobile%nimmobile > 0) then
+    do iimob = 1, reaction%immobile%nimmobile
       idof = reaction%offset_immobile + iimob
       J(idof,idof) = material_auxvar%volume/option%tran_dt
     enddo
@@ -5539,11 +5499,11 @@ subroutine RUpdateTempDependentCoefs(global_auxvar,reaction, &
                                     temp, &
                                     reaction%neqcplx)
     endif
-    if (associated(reaction%eqgas_logKcoef)) then
-      call ReactionInterpolateLogK(reaction%eqgas_logKcoef, &
-                                    reaction%eqgas_logK, &
+    if (associated(reaction%gas%paseqlogKcoef)) then
+      call ReactionInterpolateLogK(reaction%gas%paseqlogKcoef, &
+                                    reaction%gas%paseqlogK, &
                                     temp, &
-                                    reaction%ngas)
+                                    reaction%gas%npassive_gas)
     endif
     call MineralUpdateTempDepCoefs(temp,pres,reaction%mineral, &
                                    reaction%use_geothermal_hpt, &
@@ -5566,12 +5526,12 @@ subroutine RUpdateTempDependentCoefs(global_auxvar,reaction, &
                                        pres, &
                                        reaction%neqcplx)
     endif
-    if (associated(reaction%eqgas_logKcoef)) then
-      call ReactionInterpolateLogK_hpt(reaction%eqgas_logKcoef, &
-                                       reaction%eqgas_logK, &
+    if (associated(reaction%gas%paseqlogKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%gas%paseqlogKcoef, &
+                                       reaction%gas%paseqlogK, &
                                        temp, &
                                        pres, &
-                                       reaction%ngas)
+                                       reaction%gas%npassive_gas)
     endif   
     call MineralUpdateTempDepCoefs(temp,pres,reaction%mineral, &
                                    reaction%use_geothermal_hpt, &

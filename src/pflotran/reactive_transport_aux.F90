@@ -27,10 +27,11 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: total_sorb_eq(:)    ! mol/m^3 bulk
     PetscReal, pointer :: dtotal_sorb_eq(:,:) ! kg water/m^3 bulk
     
-    ! aqueous species
     ! aqueous complexes
     PetscReal, pointer :: sec_molal(:)
-    PetscReal, pointer :: gas_molar(:)
+    
+    ! gases
+    PetscReal, pointer :: gas_pp(:) ! gas partial pressure
     
     ! sorption reactions
     PetscReal, pointer :: srfcplxrxn_free_site_conc(:)
@@ -236,11 +237,11 @@ subroutine RTAuxVarInit(auxvar,reaction,option)
     nullify(auxvar%sec_molal)
   endif
 
-  if (reaction%ngas > 0) then
-    allocate(auxvar%gas_molar(reaction%ngas))
-    auxvar%gas_molar = 0.d0
+  if (reaction%gas%nactive_gas > 0) then
+    allocate(auxvar%gas_pp(reaction%gas%nactive_gas))
+    auxvar%gas_pp = 0.d0
   else
-    nullify(auxvar%gas_molar)
+    nullify(auxvar%gas_pp)
   endif
 
   if (reaction%neqsorb > 0) then
@@ -371,8 +372,8 @@ subroutine RTAuxVarInit(auxvar,reaction,option)
     nullify(auxvar%colloid)
   endif
   
-  if (reaction%nimcomp > 0) then
-    allocate(auxvar%immobile(reaction%nimcomp))
+  if (reaction%immobile%nimmobile > 0) then
+    allocate(auxvar%immobile(reaction%immobile%nimmobile))
     auxvar%immobile = 0.d0
   else
     nullify(auxvar%immobile)
@@ -412,8 +413,8 @@ subroutine RTAuxVarCopy(auxvar,auxvar2,option)
     auxvar%dtotal_sorb_eq = auxvar2%dtotal_sorb_eq
   endif
   
-  if (associated(auxvar%gas_molar)) &
-    auxvar%gas_molar = auxvar2%gas_molar
+  if (associated(auxvar%gas_pp)) &
+    auxvar%gas_pp = auxvar2%gas_pp
   
   if (associated(auxvar%srfcplxrxn_free_site_conc)) then
     auxvar%srfcplxrxn_free_site_conc = auxvar2%srfcplxrxn_free_site_conc
@@ -553,7 +554,7 @@ subroutine RTAuxVarStrip(auxvar)
   call MatrixBlockAuxVarDestroy(auxvar%aqueous)
 
   call DeallocateArray(auxvar%sec_molal)
-  call DeallocateArray(auxvar%gas_molar)
+  call DeallocateArray(auxvar%gas_pp)
   call DeallocateArray(auxvar%total_sorb_eq)
   call DeallocateArray(auxvar%dtotal_sorb_eq)
   

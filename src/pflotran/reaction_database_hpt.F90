@@ -6,6 +6,7 @@ module Reaction_Database_hpt_module
   use Reaction_Database_Aux_module
   use Reaction_Surface_Complexation_Aux_module
   use Reaction_Mineral_Aux_module
+  use Reaction_Gas_Aux_module
 
   use PFLOTRAN_Constants_module
 
@@ -71,7 +72,7 @@ subroutine DatabaseRead_hpt(reaction,option)
     cur_aq_spec%id = -abs(cur_aq_spec%id)
     cur_aq_spec => cur_aq_spec%next
   enddo  
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     cur_gas_spec%id = -abs(cur_gas_spec%id)
@@ -232,7 +233,7 @@ subroutine DatabaseRead_hpt(reaction,option)
         
                     
       case(2) ! gas species
-        cur_gas_spec => reaction%gas_species_list
+        cur_gas_spec => reaction%gas%list
         if (.not.associated(cur_gas_spec)) cycle
         found = PETSC_FALSE
         do
@@ -451,7 +452,7 @@ subroutine DatabaseRead_hpt(reaction,option)
       cur_aq_spec2 => cur_aq_spec2%next
     enddo
 
-    cur_gas_spec2 => reaction%gas_species_list
+    cur_gas_spec2 => reaction%gas%list
     do
       if (.not.associated(cur_gas_spec2)) exit
       if (StringCompare(cur_aq_spec%name, &
@@ -489,7 +490,7 @@ subroutine DatabaseRead_hpt(reaction,option)
       cur_aq_spec2 => cur_aq_spec2%next
     enddo
 
-    cur_gas_spec2 => reaction%gas_species_list
+    cur_gas_spec2 => reaction%gas%list
     do
       if (.not.associated(cur_gas_spec2)) exit
       if (StringCompare(cur_aq_spec%name, &
@@ -506,7 +507,7 @@ subroutine DatabaseRead_hpt(reaction,option)
   enddo
   
   ! gas species
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_aq_spec)) exit
     
@@ -605,7 +606,7 @@ subroutine DatabaseRead_hpt(reaction,option)
     endif
     cur_aq_spec => cur_aq_spec%next
   enddo  
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     if (cur_gas_spec%id < 0) then
@@ -922,7 +923,7 @@ subroutine BasisInit_hpt(reaction,option)
     cur_sec_aq_spec => cur_sec_aq_spec%next
   enddo
 
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     if (associated(cur_gas_spec%dbaserxn)) then
@@ -976,7 +977,7 @@ subroutine BasisInit_hpt(reaction,option)
     cur_aq_spec => cur_aq_spec%next
   enddo
   icount= 0
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     icount = icount + 1
@@ -1050,7 +1051,7 @@ subroutine BasisInit_hpt(reaction,option)
     cur_sec_aq_spec => cur_sec_aq_spec%next
   enddo
 
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     if (associated(cur_gas_spec%dbaserxn)) then
@@ -1179,7 +1180,7 @@ subroutine BasisInit_hpt(reaction,option)
     cur_sec_aq_spec => cur_sec_aq_spec%next
   enddo
 
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     icount = icount + 1
@@ -1236,7 +1237,7 @@ subroutine BasisInit_hpt(reaction,option)
   nullify(cur_srfcplx)
     
   ! first off, lets remove all the secondary gases from all other reactions
-  cur_gas_spec => reaction%gas_species_list
+  cur_gas_spec => reaction%gas%list
   do
     if (.not.associated(cur_gas_spec)) exit
     
@@ -1575,7 +1576,7 @@ subroutine BasisInit_hpt(reaction,option)
     reaction%eqgas_logKcoef = 0.d0
 
     ! pack in reaction arrays
-    cur_gas_spec => reaction%gas_species_list
+    cur_gas_spec => reaction%gas%list
     igas_spec = 1
     do
       if (.not.associated(cur_gas_spec)) exit

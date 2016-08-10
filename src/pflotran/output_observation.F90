@@ -2074,7 +2074,7 @@ subroutine OutputMassBalance(realization_base)
           endif
         enddo
 
-        do i=1,reaction%nimcomp
+        do i=1,reaction%immobile%nimmobile
           if (reaction%immobile%print_me(i)) then
             string = 'Global ' // trim(reaction%immobile%names(i))
             call OutputWriteToHeader(fid,string,'mol','',icol)
@@ -2347,7 +2347,7 @@ subroutine OutputMassBalance(realization_base)
         enddo
 !      enddo
         ! immobile species
-        do icomp = 1, reaction%nimcomp
+        do icomp = 1, reaction%immobile%nimmobile
           if (reaction%immobile%print_me(icomp)) then
             write(fid,110,advance="no") &
               sum_mol_global(reaction%offset_immobile+icomp,iphase)
