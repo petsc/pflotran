@@ -128,11 +128,55 @@ subroutine InitSubsurfFlowSetupRealization(realization)
 #endif
     endif
   endif  
+
+  call AllWellsSetup(realization)
+
   
 end subroutine InitSubsurfFlowSetupRealization
 
 ! ************************************************************************** !
 
+subroutine AllWellsSetup(realization)
+  ! 
+  ! Point well auxvars to the domain auxvars te wells belong to
+  ! does nothing if well are not defined
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 06/03/16
+  ! 
+  use Realization_Subsurface_class
+  use Coupler_module
+  use Well_module
+
+  implicit none
+
+  class(realization_subsurface_type) :: realization
+  type(coupler_type), pointer :: source_sink
+  PetscInt :: cpl_idx_start
+
+  source_sink => realization%patch%source_sink_list%first
+
+  cpl_idx_start = 1
+  do
+    if (.not.associated(source_sink)) exit
+    if( associated(source_sink%well) ) then
+      !exclude empty wells - not included in well comms
+      if(source_sink%connection_set%num_connections > 0) then
+        source_sink%well%name = source_sink%name    
+        call WellAuxVarSetUp(source_sink%well,source_sink%connection_set, &
+                         source_sink%flow_condition,realization%patch%aux, &
+                         cpl_idx_start,realization%patch%ss_flow_vol_fluxes, &
+                         realization%option)
+      end if
+    end if
+    cpl_idx_start = cpl_idx_start + source_sink%connection_set%num_connections
+    source_sink => source_sink%next
+  end do
+
+end subroutine AllWellsSetup
+
+! ************************************************************************** !
+  
 subroutine InitSubsurfFlowSetupSolvers(realization,convergence_context,solver)
   ! 
   ! Initializes material property data structres and assign them to the domain.

@@ -18,12 +18,12 @@ module PM_TOilIms_class
 #include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_subsurface_flow_type) :: pm_toil_ims_type
-    PetscReal :: dPmax
-    PetscReal :: dTmax
-    PetscReal :: dSmax
-    PetscReal :: dPmax_allowable
-    PetscReal :: dTmax_allowable
-    PetscReal :: dSmax_allowable
+    !PetscReal :: dPmax
+    !PetscReal :: dTmax
+    !PetscReal :: dSmax
+    !PetscReal :: dPmax_allowable
+    !PetscReal :: dTmax_allowable
+    !PetscReal :: dSmax_allowable
     PetscInt, pointer :: max_change_ivar(:)
     PetscInt, pointer :: max_change_isubvar(:)
   contains
@@ -77,12 +77,12 @@ function PMTOilImsCreate()
 
   allocate(toil_ims_pm)
 
-  toil_ims_pm%dPmax = 0.d0
-  toil_ims_pm%dTmax = 0.d0
-  toil_ims_pm%dSmax = 0.d0
-  toil_ims_pm%dPmax_allowable = 5.d5 !Pa
-  toil_ims_pm%dTmax_allowable = 5.d0
-  toil_ims_pm%dSmax_allowable = 1.d0
+  !toil_ims_pm%dPmax = 0.d0
+  !toil_ims_pm%dTmax = 0.d0
+  !toil_ims_pm%dSmax = 0.d0
+  !toil_ims_pm%dPmax_allowable = 5.d5 !Pa
+  !toil_ims_pm%dTmax_allowable = 5.d0
+  !toil_ims_pm%dSmax_allowable = 1.d0
   allocate(toil_ims_pm%max_change_ivar(4))
   toil_ims_pm%max_change_ivar = [LIQUID_PRESSURE, OIL_PRESSURE, &
                                 OIL_SATURATION, TEMPERATURE]
@@ -106,7 +106,8 @@ subroutine PMTOilImsRead(this,input)
   ! Date: Date: 9/9/15
   !
   ! use TOilIms_module ! shouldn't need this... 
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module 
   use Input_Aux_module
   use String_module
   use Option_module
@@ -121,6 +122,7 @@ subroutine PMTOilImsRead(this,input)
   type(option_type), pointer :: option
   PetscReal :: tempreal
   character(len=MAXSTRINGLENGTH) :: error_string
+  PetscBool :: found
 
   option => this%option
 
@@ -136,7 +138,11 @@ subroutine PMTOilImsRead(this,input)
     call InputReadWord(input,option,keyword,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword',error_string)
     call StringToUpper(keyword)   
-      
+
+    found = PETSC_FALSE
+    call PMSubsurfaceFlowReadSelectCase(this,input,keyword,found,option)    
+    if (found) cycle
+          
     select case(trim(keyword))
       case('ITOL_SCALED_RESIDUAL')
         call InputReadDouble(input,option,toil_ims_itol_scaled_res)
@@ -177,16 +183,16 @@ subroutine PMTOilImsRead(this,input)
         call InputReadDouble(input,option,toil_ims_damping_factor)
         call InputErrorMsg(input,option,'damping factor',error_string)
       case('GOVERN_MAXIMUM_PRESSURE_CHANGE')
-        call InputReadDouble(input,option,this%dPmax_allowable)
+        call InputReadDouble(input,option,this%pressure_change_governor)
         call InputErrorMsg(input,option,'maximum allowable pressure change', &
                            error_string)
       case('GOVERN_MAXIMUM_TEMPERATURE_CHANGE')
-        call InputReadDouble(input,option,this%dTmax_allowable)
+        call InputReadDouble(input,option,this%temperature_change_governor)
         call InputErrorMsg(input,option, &
                            'maximum allowable temperature change', &
                            error_string)
       case('GOVERN_MAXIMUM_SATURATION_CHANGE')
-        call InputReadDouble(input,option,this%dSmax_allowable)
+        call InputReadDouble(input,option,this%saturation_change_governor)
         call InputErrorMsg(input,option,'maximum allowable saturation change', &
                            error_string)
       case('DEBUG_CELL')
@@ -341,7 +347,12 @@ subroutine PMTOilImsUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   ! 
   ! Author: Paolo Orsini
   ! Date: 11/09/15
-  ! 
+  ! Date modified : 08/08/16 
+
+  use Realization_Base_class, only : RealizationGetVariable
+  use Field_module
+  use Global_module, only : GlobalSetAuxVarVecLoc
+  use Variables_module, only : LIQUID_SATURATION, OIL_SATURATION
 
   implicit none
   
@@ -356,19 +367,19 @@ subroutine PMTOilImsUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   PetscInt :: ifac
   PetscReal :: up, ut, us, umin
   PetscReal :: dtt
-  
-!#ifdef PM_GENERAL_DEBUG  
-!  call printMsg(this%option,'PMGeneral%UpdateTimestep()')
-!#endif
-  
+  type(field_type), pointer :: field
+    
   fac = 0.5d0
   if (num_newton_iterations >= iacceleration) then
     fac = 0.33d0
     umin = 0.d0
   else
-    up = this%dPmax_allowable/(this%dPmax+0.1)
-    ut = this%dTmax_allowable/(this%dTmax+1.d-5)
-    us = this%dSmax_allowable/(this%dSmax+1.d-5)
+    !up = this%dPmax_allowable/(this%dPmax+0.1)
+    !ut = this%dTmax_allowable/(this%dTmax+1.d-5)
+    !us = this%dSmax_allowable/(this%dSmax+1.d-5)
+    up = this%pressure_change_governor/(this%max_pressure_change+0.1)
+    ut = this%temperature_change_governor/(this%max_temperature_change+1.d-5)
+    us = this%saturation_change_governor/(this%max_saturation_change+1.d-5)
     umin = min(up,ut,us)
   endif
   ifac = max(min(num_newton_iterations,size(tfac)),1)
@@ -376,7 +387,23 @@ subroutine PMTOilImsUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   dt = min(dtt,tfac(ifac)*dt,dt_max)
   dt = max(dt,dt_min)
 
-  call PMSubsurfaceFlowLimitDTByCFL(this,dt)
+  if (Initialized(this%cfl_governor)) then
+    ! Since saturations are not stored in global_auxvar for general mode, we
+    ! must copy them over for the CFL check
+    ! liquid saturation
+    field => this%realization%field
+    call RealizationGetVariable(this%realization,field%work, &
+                                LIQUID_SATURATION,ZERO_INTEGER)
+    call this%realization%comm1%GlobalToLocal(field%work,field%work_loc)
+    call GlobalSetAuxVarVecLoc(this%realization,field%work_loc, &
+                               LIQUID_SATURATION,TIME_NULL)
+    call RealizationGetVariable(this%realization,field%work, &
+                                OIL_SATURATION,ZERO_INTEGER)
+    call this%realization%comm1%GlobalToLocal(field%work,field%work_loc)
+    call GlobalSetAuxVarVecLoc(this%realization,field%work_loc, &
+                               OIL_SATURATION,TIME_NULL)
+    call PMSubsurfaceFlowLimitDTByCFL(this,dt)
+  endif
 
 end subroutine PMTOilImsUpdateTimestep
 
@@ -459,7 +486,8 @@ subroutine PMTOilImsCheckUpdatePre(this,line_search,X,dX,changed,ierr)
   ! 
   !use Realization_Subsurface_class
   use Grid_module
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module
   !use Global_Aux_module
   use Field_module
   use Option_module
@@ -642,7 +670,8 @@ subroutine PMTOilImsCheckUpdatePost(this,line_search,X0,dX,X1,dX_changed, &
   ! Date: 11/09/15
   ! 
   !use Global_Aux_module
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module
   use Grid_module
   use Option_module
   !use Realization_Subsurface_class
@@ -846,7 +875,7 @@ end subroutine PMTOilImsTimeCut
 
 subroutine PMTOilImsMaxChange(this)
   ! 
-  ! Not needed given GeneralMaxChange is called in PostSolve
+  ! Not needed given ToilImsMaxChange is called in PostSolve
   ! 
   ! Author: Paolo Orsini
   ! Date: 11/09/15
@@ -924,9 +953,9 @@ subroutine PMTOilImsMaxChange(this)
       & " dt= ",1pe12.4)') &
       max_change_global(1:4)
   endif
-  this%dPmax = maxval(max_change_global(1:2))
-  this%dSmax = max_change_global(3)
-  this%dTmax = max_change_global(4)
+  this%max_pressure_change = maxval(max_change_global(1:2))
+  this%max_saturation_change = max_change_global(3)
+  this%max_temperature_change = max_change_global(4)
   
 end subroutine PMTOilImsMaxChange
 

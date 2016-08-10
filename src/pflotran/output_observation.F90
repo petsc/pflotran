@@ -1914,7 +1914,10 @@ subroutine OutputMassBalance(realization_base)
   use Reactive_Transport_module, only : RTComputeMassBalance
   use General_module, only : GeneralComputeMassBalance
   use TOilIms_module, only : TOilImsComputeMassBalance
-  use TOilIms_Aux_module ! for formula weights
+  !use TOilIms_Aux_module ! for formula weights
+  use  PM_TOilIms_Aux_module
+    ! for formula weights toil_ims_fmw_comp()
+    ! could work something out to eliminate this dependency here
 
   use Global_Aux_module
   use Reactive_Transport_Aux_module
