@@ -1035,10 +1035,12 @@ subroutine TSrcSinkCoef(option,qsrc,tran_src_sink_type,T_in,T_out)
   implicit none
 
   type(option_type) :: option
-  PetscReal :: qsrc
+  PetscReal :: qsrc(2)
   PetscInt :: tran_src_sink_type
-  PetscReal :: T_in ! coefficient that scales concentration at cell
-  PetscReal :: T_out ! concentration that scales external concentration
+  PetscReal :: T_in(2) ! coefficient that scales concentration at cell
+  PetscReal :: T_out(2) ! concentration that scales external concentration
+  
+  PetscInt :: iphase
       
   T_in = 0.d0 
   T_out = 0.d0
@@ -1057,13 +1059,15 @@ subroutine TSrcSinkCoef(option,qsrc,tran_src_sink_type,T_in,T_out)
       T_out = -1.d0
     case default
       ! qsrc always in m^3/sec
-      if (qsrc > 0.d0) then ! injection
-        T_in = 0.d0
-        T_out = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
-      else
-        T_out = 0.d0
-        T_in = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
-      endif
+      do iphase = 1, option%nphase
+        if (qsrc(iphase) > 0.d0) then ! injection
+          T_in(iphase) = 0.d0
+          T_out(iphase) = -1.d0*qsrc(iphase)*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
+        else
+          T_out(iphase) = 0.d0
+          T_in(iphase) = -1.d0*qsrc(iphase)*1000.d0 ! m^3/sec * 1000 L/m^3 -> L/s
+        endif
+      enddo
   end select
 
   ! Units of Tin & Tout should be L/s.  When multiplied by Total (M) you get
