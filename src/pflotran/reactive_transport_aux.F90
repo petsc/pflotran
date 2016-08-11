@@ -72,6 +72,7 @@ module Reactive_Transport_Aux_module
     PetscInt :: ncomp
     PetscInt :: naqcomp
     PetscInt :: nimcomp
+    PetscInt :: ngas
     PetscInt :: ncoll
     PetscInt :: ncollcomp
     PetscInt :: offset_aqueous
@@ -94,6 +95,7 @@ module Reactive_Transport_Aux_module
     PetscReal :: newton_inf_rel_update_tol
     PetscReal :: newton_inf_scaled_res_tol
     PetscBool :: check_post_converged
+    PetscBool :: calculate_transverse_dispersion
   end type reactive_transport_param_type
 
   ! Colloids
@@ -176,6 +178,7 @@ function RTAuxCreate(option)
   aux%rt_parameter%ncomp = 0
   aux%rt_parameter%naqcomp = 0
   aux%rt_parameter%nimcomp = 0
+  aux%rt_parameter%ngas = 0
   aux%rt_parameter%ncoll = 0
   aux%rt_parameter%ncollcomp = 0
   aux%rt_parameter%offset_aqueous = 0
@@ -184,6 +187,7 @@ function RTAuxCreate(option)
   aux%rt_parameter%offset_immobile = 0
   nullify(aux%rt_parameter%pri_spec_to_coll_spec)
   nullify(aux%rt_parameter%coll_spec_to_pri_spec)
+  aux%rt_parameter%calculate_transverse_dispersion = PETSC_FALSE
 #ifdef OS_STATISTICS
   aux%rt_parameter%newton_call_count = 0
   aux%rt_parameter%sum_newton_call_count = 0.d0

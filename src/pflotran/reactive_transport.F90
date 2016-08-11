@@ -150,6 +150,7 @@ subroutine RTSetup(realization)
   type(coupler_type), pointer :: initial_condition
   type(tran_constraint_type), pointer :: sec_tran_constraint
   class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(material_property_type), pointer :: cur_material_property
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: iphase, local_id, i
@@ -167,6 +168,7 @@ subroutine RTSetup(realization)
   patch%aux%RT%rt_parameter%naqcomp = reaction%naqcomp
   patch%aux%RT%rt_parameter%offset_aqueous = reaction%offset_aqueous
   patch%aux%RT%rt_parameter%nimcomp = reaction%immobile%nimmobile
+  patch%aux%RT%rt_parameter%ngas = reaction%gas%nactive_gas
   patch%aux%RT%rt_parameter%offset_immobile = reaction%offset_immobile
   if (reaction%ncollcomp > 0) then
     patch%aux%RT%rt_parameter%ncoll = reaction%ncoll
@@ -184,6 +186,17 @@ subroutine RTSetup(realization)
     patch%aux%RT%rt_parameter%nimcomp = reaction%immobile%nimmobile
     patch%aux%RT%rt_parameter%offset_immobile = reaction%offset_immobile
   endif
+  ! loop over material properties and determine if any transverse 
+  ! dispersivities are defined.
+  cur_material_property => realization%material_properties                            
+  do                                      
+    if (.not.associated(cur_material_property)) exit
+    if (maxval(cur_material_property%dispersivity(2:3)) > 0.d0) then
+      patch%aux%RT%rt_parameter%calculate_transverse_dispersion = PETSC_TRUE
+      exit
+    endif
+    cur_material_property => cur_material_property%next
+  enddo
   
   material_auxvars => patch%aux%Material%auxvars
   flag = 0
@@ -882,9 +895,10 @@ subroutine RTUpdateTransportCoefs(realization)
   PetscInt :: sum_connection, iconn, num_connections
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal, allocatable :: cell_centered_Darcy_velocities(:,:)
-  PetscReal, allocatable :: cell_centered_Darcy_velocities_ghosted(:,:)
+  PetscReal, allocatable :: cell_centered_Darcy_velocities_ghosted(:,:,:)
   PetscReal, pointer :: vec_ptr(:)
   PetscInt :: i
+  PetscInt :: iphase, max_phase
   PetscErrorCode :: ierr
     
   option => realization%option
@@ -896,25 +910,30 @@ subroutine RTUpdateTransportCoefs(realization)
   grid => patch%grid
   rt_parameter => patch%aux%RT%rt_parameter
 
-  allocate(cell_centered_Darcy_velocities_ghosted(3,patch%grid%ngmax))
-  if (patch%material_property_array(1)%ptr%dispersivity(2) > 0.d0) then
+  if (rt_parameter%calculate_transverse_dispersion) then
+    allocate(cell_centered_Darcy_velocities_ghosted(3,option%nphase, &
+                                                    patch%grid%ngmax))
     allocate(cell_centered_Darcy_velocities(3,patch%grid%nlmax))
-    call PatchGetCellCenteredVelocities(patch,LIQUID_PHASE, &
-                                        cell_centered_Darcy_velocities)
-    ! at this point, velocities are at local cell centers; we need ghosted too.
-    do i=1,3
-      call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
-      vec_ptr(:) = cell_centered_Darcy_velocities(i,:)
-      call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
-      call DiscretizationGlobalToLocal(realization%discretization,field%work, &
-                                       field%work_loc,ONEDOF)
-      call VecGetArrayF90(field%work_loc,vec_ptr,ierr);CHKERRQ(ierr)
-      cell_centered_Darcy_velocities_ghosted(i,:) = vec_ptr(:)
-      call VecRestoreArrayF90(field%work_loc,vec_ptr,ierr);CHKERRQ(ierr)
+    max_phase = 1
+    if (rt_parameter%ngas > 0) max_phase = 2
+    do iphase = 1, max_phase
+      call PatchGetCellCenteredVelocities(patch,iphase, &
+                                          cell_centered_Darcy_velocities)
+      ! at this point, velocities are at local cell centers; we need 
+      ! ghosted too.
+      do i=1,3
+        call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
+        vec_ptr(:) = cell_centered_Darcy_velocities(i,:)
+        call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         field%work, &
+                                         field%work_loc,ONEDOF)
+        call VecGetArrayF90(field%work_loc,vec_ptr,ierr);CHKERRQ(ierr)
+        cell_centered_Darcy_velocities_ghosted(i,iphase,:) = vec_ptr(:)
+        call VecRestoreArrayF90(field%work_loc,vec_ptr,ierr);CHKERRQ(ierr)
+      enddo
     enddo
     deallocate(cell_centered_Darcy_velocities)
-  else
-    cell_centered_Darcy_velocities_ghosted = 0.d0
   endif
   
   ! Interior Flux Terms -----------------------------------
@@ -937,12 +956,12 @@ subroutine RTUpdateTransportCoefs(realization)
 
       call TDispersion(global_auxvars(ghosted_id_up), &
                       material_auxvars(ghosted_id_up), &
-                      cell_centered_Darcy_velocities_ghosted(:,ghosted_id_up), &
+                      cell_centered_Darcy_velocities_ghosted(:,:,ghosted_id_up), &
                       patch%material_property_array(patch%imat(ghosted_id_up))% &
                         ptr%dispersivity, &
                       global_auxvars(ghosted_id_dn), &
                       material_auxvars(ghosted_id_dn), &
-                      cell_centered_Darcy_velocities_ghosted(:,ghosted_id_dn), &
+                      cell_centered_Darcy_velocities_ghosted(:,:,ghosted_id_dn), &
                       patch%material_property_array(patch%imat(ghosted_id_dn))% &
                         ptr%dispersivity, &
                       cur_connection_set%dist(:,iconn), &
@@ -973,7 +992,7 @@ subroutine RTUpdateTransportCoefs(realization)
                         global_auxvars_bc(sum_connection), &
                         global_auxvars(ghosted_id), &
                         material_auxvars(ghosted_id), &
-                        cell_centered_Darcy_velocities_ghosted(:,ghosted_id), &
+                        cell_centered_Darcy_velocities_ghosted(:,:,ghosted_id), &
                         patch%material_property_array(patch%imat(ghosted_id))% &
                           ptr%dispersivity, &
                         cur_connection_set%dist(:,iconn), &
@@ -1158,6 +1177,7 @@ subroutine RTCalculateRHS_t1(realization)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   type(coupler_type), pointer :: source_sink
+  type(reactive_transport_param_type), pointer :: rt_parameter
   PetscInt :: sum_connection, iconn  
   PetscReal :: qsrc
   PetscInt :: offset, istartcoll, iendcoll, istartall, iendall, icomp, ieqgas
@@ -1174,7 +1194,8 @@ subroutine RTCalculateRHS_t1(realization)
   global_auxvars => patch%aux%Global%auxvars
   grid => patch%grid
   reaction => realization%reaction
-
+  rt_parameter => patch%aux%RT%rt_parameter
+  
   iphase = 1
 
 !geh - activity coef updates must always be off!!!
@@ -1206,7 +1227,7 @@ subroutine RTCalculateRHS_t1(realization)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      call TFluxCoef(option,cur_connection_set%area(iconn), &
+      call TFluxCoef(rt_parameter,option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
                      patch%boundary_tran_coefs(:,sum_connection), &
                      0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
@@ -1374,6 +1395,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   type(coupler_type), pointer :: source_sink
+  type(reactive_transport_param_type), pointer :: rt_parameter
   PetscInt :: sum_connection, iconn
   PetscReal :: coef
   PetscReal :: coef_up(1), coef_dn(1)
@@ -1393,7 +1415,8 @@ subroutine RTCalculateTransportMatrix(realization,T)
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
   grid => patch%grid  
-
+  rt_parameter => patch%aux%RT%rt_parameter
+    
   call MatZeroEntries(T,ierr);CHKERRQ(ierr)
   
   ! Get vectors
@@ -1416,7 +1439,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
       if (patch%imat(ghosted_id_up) <= 0 .or.  &
           patch%imat(ghosted_id_dn) <= 0) cycle
 
-      call TFluxCoef(option,cur_connection_set%area(iconn), &
+      call TFluxCoef(rt_parameter,option,cur_connection_set%area(iconn), &
                      patch%internal_velocities(:,sum_connection), &
                      patch%internal_tran_coefs(:,sum_connection), &
                      cur_connection_set%dist(-1,iconn), &
@@ -1461,7 +1484,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      call TFluxCoef(option,cur_connection_set%area(iconn), &
+      call TFluxCoef(rt_parameter,option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
                      patch%boundary_tran_coefs(:,sum_connection), &
                      0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
@@ -1850,7 +1873,7 @@ subroutine RTComputeBCMassBalanceOS(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
 
       ! TFluxCoef accomplishes the same as what TBCCoef would
-      call TFluxCoef(option,cur_connection_set%area(iconn), &
+      call TFluxCoef(rt_parameter,option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
                      patch%boundary_tran_coefs(:,sum_connection), &
                      0.5d0, &
@@ -2241,7 +2264,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       
       
 #ifndef CENTRAL_DIFFERENCE        
-      call TFluxCoef(option,cur_connection_set%area(iconn), &
+      call TFluxCoef(rt_parameter,option,cur_connection_set%area(iconn), &
                 patch%internal_velocities(:,sum_connection), &
                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
@@ -2327,7 +2350,7 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
-      call TFluxCoef(option,cur_connection_set%area(iconn), &
+      call TFluxCoef(rt_parameter,option,cur_connection_set%area(iconn), &
                   patch%boundary_velocities(:,sum_connection), &
                   patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                   0.5d0, &
@@ -3055,7 +3078,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,realization,ierr)
       endif 
 
 #ifndef CENTRAL_DIFFERENCE
-      call TFluxCoef(option,cur_connection_set%area(iconn), &
+      call TFluxCoef(rt_parameter,option,cur_connection_set%area(iconn), &
                 patch%internal_velocities(:,sum_connection), &
                 patch%internal_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 cur_connection_set%dist(-1,iconn), &
@@ -3143,7 +3166,7 @@ subroutine RTJacobianFlux(snes,xx,A,B,realization,ierr)
 
 #ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
-      call TFluxCoef(option,cur_connection_set%area(iconn), &
+      call TFluxCoef(rt_parameter,option,cur_connection_set%area(iconn), &
                 patch%boundary_velocities(:,sum_connection), &
                 patch%boundary_tran_coefs(:,sum_connection)*vol_frac_prim, &
                 0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)

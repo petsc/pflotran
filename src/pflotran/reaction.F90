@@ -1530,6 +1530,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                      reaction,option)
       endif
     endif
+    if (reaction%gas%nactive_gas > 0) then
+      call RTotalGas(rt_auxvar,global_auxvar,reaction,option)
+    endif
     
     ! geh - for debugging
     !call RTPrintAuxVar(rt_auxvar,reaction,option)
@@ -1926,6 +1929,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                    reaction,option)
     endif
   endif
+  if (reaction%gas%nactive_gas > 0) then
+    call RTotalGas(rt_auxvar,global_auxvar,reaction,option)
+  endif  
   
   ! WARNING: below assumes site concentration multiplicative factor
   if (surface_complexation%nsrfcplxrxn > 0) then
@@ -3593,6 +3599,9 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
         call RTotalSorb(rt_auxvar_pert,global_auxvar,material_auxvar, &
                         reaction,option)
       endif
+      if (reaction%gas%nactive_gas > 0) then
+        call RTotalGas(rt_auxvar,global_auxvar,reaction,option)
+      endif
       call RReaction(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                      global_auxvar,material_auxvar,reaction,option)    
 
@@ -5027,7 +5036,7 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
   PetscReal :: Res_orig(reaction%ncomp)
   PetscReal :: Res_pert(reaction%ncomp)
   PetscInt :: icomp, jcomp
-  PetscReal :: dtotal(reaction%naqcomp,reaction%naqcomp)
+  PetscReal :: dtotal(reaction%naqcomp,reaction%naqcomp,2)
   PetscReal :: dtotalsorb(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: pert
   type(reactive_transport_auxvar_type) :: rt_auxvar_pert
@@ -5038,6 +5047,9 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
   if (reaction%neqsorb > 0) then
     call RTotalSorb(rt_auxvar,global_auxvar,material_auxvar,reaction,option)
   endif
+  if (reaction%gas%nactive_gas > 0) then
+    call RTotalGas(rt_auxvar,global_auxvar,reaction,option)
+  endif  
 
 #if 0
 ! numerical check
@@ -5066,12 +5078,16 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
     rt_auxvar_pert%pri_molal(jcomp) = rt_auxvar_pert%pri_molal(jcomp) + pert
     
     call RTotal(rt_auxvar_pert,global_auxvar,reaction,option)
-    dtotal(:,jcomp) = (rt_auxvar_pert%total(:,1) - rt_auxvar%total(:,1))/pert
+    dtotal(:,jcomp,1) = (rt_auxvar_pert%total(:,1) - rt_auxvar%total(:,1))/pert
     if (reaction%neqsorb > 0) then
       call RTotalSorb(rt_auxvar_pert,global_auxvar,reaction,option)
       dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb_eq(:) - &
                              rt_auxvar%total_sorb_eq(:))/pert
     endif
+    if (reaction%gas%nactive_gas > 0) then
+      call RTotalGas(rt_auxvar,global_auxvar,reaction,option)
+      dtotal(:,jcomp,2) = (rt_auxvar_pert%total(:,2) - rt_auxvar%total(:,2))/pert
+    endif    
   enddo
   do icomp = 1, reaction%naqcomp
     do jcomp = 1, reaction%naqcomp
@@ -5081,7 +5097,7 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
       endif
     enddo
   enddo
-  rt_auxvar%aqueous%dtotal(:,:,1) = dtotal
+  rt_auxvar%aqueous%dtotal(:,:,:) = dtotal
   if (reaction%neqsorb > 0) rt_auxvar%dtotal_sorb_eq = dtotalsorb
   call RTAuxVarDestroy(rt_auxvar_pert)
 #endif
@@ -5120,7 +5136,6 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
   PetscInt :: iaqcomp
   PetscInt :: iimb
   PetscReal :: psv_t
-  PetscReal :: v_t
   
   iphase = 1
   Res = 0.d0
@@ -5155,7 +5170,16 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
         psv_t*rt_auxvar%colloid%total_eq_mob(icollcomp)
     enddo
   endif
+  if (reaction%gas%nactive_gas > 0) then
+    iphase = 2
+    psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
+            material_auxvar%volume / option%tran_dt  
+    istart = 1
+    iend = reaction%naqcomp
+    Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase)     
+  endif
 
+#if 0  
   ! CO2-specific
   if (option%iflowmode == G_MODE) return
 ! Add in multiphase, clu 12/29/08
@@ -5172,6 +5196,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
     endif 
 ! add code for other phases here
   enddo
+#endif    
   
 end subroutine RTAccumulation
 
@@ -5204,7 +5229,7 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
   PetscInt :: idof
   PetscInt :: icoll
   PetscInt :: iimob
-  PetscReal :: psvd_t, v_t
+  PetscReal :: psvd_t ! d is for density
 
   iphase = 1
   istart = 1
@@ -5247,7 +5272,15 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     ! dRj_dSic
     ! dRic_dCj                                 
   endif
-
+  if (reaction%gas%nactive_gas > 0) then
+    iphase = 2
+    ! units of dtotal(:,:,2) = kg water / L gas
+    psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
+             material_auxvar%volume/option%tran_dt
+    J(istart:iendaq,istart:iendaq) = rt_auxvar%aqueous%dtotal(:,:,iphase) * &
+                                     psvd_t
+  endif
+#if 0  
   ! CO2-specific
   if (option%iflowmode == G_MODE) return
 ! Add in multiphase, clu 12/29/08
@@ -5271,7 +5304,7 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
       endif   
     endif
   enddo
-
+#endif
 end subroutine RTAccumulationDerivative
 
 ! ************************************************************************** !

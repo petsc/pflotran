@@ -79,17 +79,18 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
 
   implicit none
   
+  type(option_type) :: option
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn 
   class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   PetscReal :: dispersivity_up(3), dispersivity_dn(3)
-  PetscReal :: cell_centered_velocity_up(3), cell_centered_velocity_dn(3)
+  PetscReal :: cell_centered_velocity_up(3,option%nphase), &
+               cell_centered_velocity_dn(3,option%nphase)
   PetscReal :: dist(-1:3)
   PetscReal :: qdarcy(*)
-  type(option_type) :: option
   type(reactive_transport_param_type) :: rt_parameter
   PetscReal :: dispersion(option%nphase)
   
-  PetscInt :: iphase
+  PetscInt :: iphase, max_phase
   PetscReal :: stp_ave_over_dist, disp_ave_over_dist
   PetscReal :: dist_up, dist_dn
   PetscReal :: sat_up, sat_dn
@@ -108,83 +109,87 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
   PetscReal :: weight_new
 #endif
 
-  dispersion(:) = 0.d0    
-  iphase = 1
-  q = qdarcy(iphase)
+  max_phase = 1
+  if (rt_parameter%ngas > 0) max_phase = 2
   
-  sat_up = global_auxvar_up%sat(iphase)
-  sat_dn = global_auxvar_dn%sat(iphase)
-
+  dispersion(:) = 0.d0    
   call ConnectionCalculateDistances(dist,option%gravity,dist_up, &
                                     dist_dn,distance_gravity, &
                                     upwind_weight)
-  
-  if (dispersivity_up(2) > 0.d0 .and. dispersivity_dn(2) > 0.d0) then
-    velocity_dn = q*dist(1:3) + (1.d0-dist(1:3))*cell_centered_velocity_dn
-    velocity_up = q*dist(1:3) + (1.d0-dist(1:3))*cell_centered_velocity_up
-    Dxx_up = dispersivity_up(1)*dabs(velocity_up(X_DIRECTION)) + &
-             dispersivity_up(2)*dabs(velocity_up(Y_DIRECTION)) + &
-             dispersivity_up(3)*dabs(velocity_up(Z_DIRECTION))
-    Dxx_dn = dispersivity_dn(1)*dabs(velocity_dn(X_DIRECTION)) + &
-             dispersivity_dn(2)*dabs(velocity_dn(Y_DIRECTION)) + &
-             dispersivity_dn(3)*dabs(velocity_dn(Z_DIRECTION))
-    Dyy_up = dispersivity_up(2)*dabs(velocity_up(X_DIRECTION)) + &
-             dispersivity_up(1)*dabs(velocity_up(Y_DIRECTION)) + &
-             dispersivity_up(3)*dabs(velocity_up(Z_DIRECTION))
-    Dyy_dn = dispersivity_dn(2)*dabs(velocity_dn(X_DIRECTION)) + &
-             dispersivity_dn(1)*dabs(velocity_dn(Y_DIRECTION)) + &
-             dispersivity_dn(3)*dabs(velocity_dn(Z_DIRECTION))
-    Dzz_up = dispersivity_up(3)*dabs(velocity_up(X_DIRECTION)) + &
-             dispersivity_up(3)*dabs(velocity_up(Y_DIRECTION)) + &
-             dispersivity_up(1)*dabs(velocity_up(Z_DIRECTION))
-    Dzz_dn = dispersivity_dn(3)*dabs(velocity_dn(X_DIRECTION)) + &
-             dispersivity_dn(3)*dabs(velocity_dn(Y_DIRECTION)) + &
-             dispersivity_dn(1)*dabs(velocity_dn(Z_DIRECTION))
-    D_up = max(dist(1)*Dxx_up+dist(2)*Dyy_up+dist(3)*Dzz_up,1.d-40)
-    D_dn = max(dist(1)*Dxx_dn+dist(2)*Dyy_dn+dist(3)*Dzz_dn,1.d-40)
-    dispersion(iphase) = D_up*D_dn/(D_up*dist_dn+D_dn*dist_up)
-  else
-    
-    ! Weighted harmonic mean of dispersivity divided by distance
-    if (dispersivity_up(1) > eps .and. dispersivity_dn(1) > eps) then
-      disp_ave_over_dist = (dispersivity_up(1)*dispersivity_dn(1)) / &
-                           (dispersivity_up(1)*dist_dn+dispersivity_dn(1)*dist_up)
+  do iphase = 1, max_phase
+    sat_up = global_auxvar_up%sat(iphase)
+    sat_dn = global_auxvar_dn%sat(iphase)
+    q = qdarcy(iphase)
+    if (rt_parameter%calculate_transverse_dispersion) then
+      velocity_dn = q*dist(1:3) + (1.d0-dist(1:3))* &
+                    cell_centered_velocity_dn(:,iphase)
+      velocity_up = q*dist(1:3) + (1.d0-dist(1:3))* &
+                    cell_centered_velocity_up(:,iphase)
+      Dxx_up = dispersivity_up(1)*dabs(velocity_up(X_DIRECTION)) + &
+               dispersivity_up(2)*dabs(velocity_up(Y_DIRECTION)) + &
+               dispersivity_up(3)*dabs(velocity_up(Z_DIRECTION))
+      Dxx_dn = dispersivity_dn(1)*dabs(velocity_dn(X_DIRECTION)) + &
+               dispersivity_dn(2)*dabs(velocity_dn(Y_DIRECTION)) + &
+               dispersivity_dn(3)*dabs(velocity_dn(Z_DIRECTION))
+      Dyy_up = dispersivity_up(2)*dabs(velocity_up(X_DIRECTION)) + &
+               dispersivity_up(1)*dabs(velocity_up(Y_DIRECTION)) + &
+               dispersivity_up(3)*dabs(velocity_up(Z_DIRECTION))
+      Dyy_dn = dispersivity_dn(2)*dabs(velocity_dn(X_DIRECTION)) + &
+               dispersivity_dn(1)*dabs(velocity_dn(Y_DIRECTION)) + &
+               dispersivity_dn(3)*dabs(velocity_dn(Z_DIRECTION))
+      Dzz_up = dispersivity_up(3)*dabs(velocity_up(X_DIRECTION)) + &
+               dispersivity_up(3)*dabs(velocity_up(Y_DIRECTION)) + &
+               dispersivity_up(1)*dabs(velocity_up(Z_DIRECTION))
+      Dzz_dn = dispersivity_dn(3)*dabs(velocity_dn(X_DIRECTION)) + &
+               dispersivity_dn(3)*dabs(velocity_dn(Y_DIRECTION)) + &
+               dispersivity_dn(1)*dabs(velocity_dn(Z_DIRECTION))
+      D_up = max(dist(1)*Dxx_up+dist(2)*Dyy_up+dist(3)*Dzz_up,1.d-40)
+      D_dn = max(dist(1)*Dxx_dn+dist(2)*Dyy_dn+dist(3)*Dzz_dn,1.d-40)
+      dispersion(iphase) = D_up*D_dn/(D_up*dist_dn+D_dn*dist_up)
     else
-      ! still need to set this as it is used later in CO2 below.
-      disp_ave_over_dist = 0.d0
+    
+      ! Weighted harmonic mean of dispersivity divided by distance
+      if (dispersivity_up(1) > eps .and. dispersivity_dn(1) > eps) then
+        disp_ave_over_dist = (dispersivity_up(1)*dispersivity_dn(1)) / &
+                       (dispersivity_up(1)*dist_dn+dispersivity_dn(1)*dist_up)
+      else
+        ! still need to set this as it is used later in CO2 below.
+        disp_ave_over_dist = 0.d0
+      endif
+      dispersion(iphase) = disp_ave_over_dist*dabs(q) 
     endif
-    dispersion(iphase) = disp_ave_over_dist*dabs(q) 
-  endif
   
-  if (sat_up > eps .and. sat_dn > eps) then
-    stp_up = sat_up*material_auxvar_up%tortuosity*material_auxvar_up%porosity 
-    stp_dn = sat_dn*material_auxvar_dn%tortuosity*material_auxvar_dn%porosity 
-    ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-    stp_ave_over_dist = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
-    ! need to account for multiple phases
-    ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-    dispersion(iphase) = dispersion(iphase) + &
-                         stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)
+    if (sat_up > eps .and. sat_dn > eps) then
+      stp_up = sat_up*material_auxvar_up%tortuosity*material_auxvar_up%porosity 
+      stp_dn = sat_dn*material_auxvar_dn%tortuosity*material_auxvar_dn%porosity 
+      ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+      stp_ave_over_dist = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+      ! need to account for multiple phases
+      ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+      dispersion(iphase) = dispersion(iphase) + &
+                           stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)
                         
-! Add the effect of temperature on diffusivity, Satish Karra, LANL, 10/29/2011
+  ! Add the effect of temperature on diffusivity, Satish Karra, LANL, 10/29/2011
 
 #if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
-    T_ref_inv = 1.d0/(25.d0 + 273.15d0)
-    temp_up = global_auxvar_up%temp  ! getting data from global to local variables
-    temp_dn = global_auxvar_dn%temp
-    Ddiff_up = rt_parameter%diffusion_coefficient(iphase)* &
-               exp(rt_parameter%diffusion_activation_energy(iphase) &
-               /IDEAL_GAS_CONSTANT*(T_ref_inv - 1.d0/(temp_up + 273.15d0)))
-    Ddiff_dn = rt_parameter%diffusion_coefficient(iphase)* &
-               exp(rt_parameter%diffusion_activation_energy(iphase) &
-               /IDEAL_GAS_CONSTANT*(T_ref_inv - 1.d0/(temp_dn + 273.15d0)))
-    weight_new = (stp_up*Ddiff_up*stp_dn*Ddiff_dn)/ &
-                 (stp_up*Ddiff_up*dist_dn + stp_dn*Ddiff_dn*dist_up)
-    dispersion(iphase) = dispersion(iphase) + weight_new - &
-                        stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)
+      T_ref_inv = 1.d0/(25.d0 + 273.15d0)
+      temp_up = global_auxvar_up%temp  ! getting data from global to local variables
+      temp_dn = global_auxvar_dn%temp
+      Ddiff_up = rt_parameter%diffusion_coefficient(iphase)* &
+                 exp(rt_parameter%diffusion_activation_energy(iphase) &
+                 /IDEAL_GAS_CONSTANT*(T_ref_inv - 1.d0/(temp_up + 273.15d0)))
+      Ddiff_dn = rt_parameter%diffusion_coefficient(iphase)* &
+                 exp(rt_parameter%diffusion_activation_energy(iphase) &
+                 /IDEAL_GAS_CONSTANT*(T_ref_inv - 1.d0/(temp_dn + 273.15d0)))
+      weight_new = (stp_up*Ddiff_up*stp_dn*Ddiff_dn)/ &
+                   (stp_up*Ddiff_up*dist_dn + stp_dn*Ddiff_dn*dist_up)
+      dispersion(iphase) = dispersion(iphase) + weight_new - &
+                          stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)
 #endif
-  endif
+    endif
+  enddo
 
+#if 0  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
@@ -229,6 +234,7 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
       endif
     enddo
   endif
+#endif  
   
 end subroutine TDispersion
 
@@ -253,17 +259,17 @@ subroutine TDispersionBC(ibndtype, &
   implicit none
   
   PetscInt :: ibndtype
+  type(option_type) :: option
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
   class(material_auxvar_type) :: material_auxvar_dn
-  PetscReal :: cell_centered_velocity_dn(3)
+  PetscReal :: cell_centered_velocity_dn(3,option%nphase)
   PetscReal :: dispersivity_dn(3), dist_dn(-1:3)
   PetscReal :: qdarcy(1)
   type(reactive_transport_param_type) :: rt_parameter
-  type(option_type) :: option
   PetscReal :: dispersion(option%nphase)
   
   PetscInt :: icomp
-  PetscInt :: iphase
+  PetscInt :: iphase, max_phase
   PetscReal :: stp_ave_over_dist
   PetscReal :: q
   PetscReal :: sat_up
@@ -276,60 +282,41 @@ subroutine TDispersionBC(ibndtype, &
   PetscReal :: T_ref_inv
 #endif
 
+  max_phase = 1
+  if (rt_parameter%ngas > 0) max_phase = 2
+  
   temp_dispersion(:) = 0.d0
   dispersion(:) = 0.d0
-  iphase = 1
-  q = qdarcy(iphase)
   
-  ! we use upwind saturation as that is the saturation at the boundary face
-  sat_up = global_auxvar_up%sat(iphase)
+  do iphase = 1, max_phase
+    q = qdarcy(iphase)
   
-  if (dispersivity_dn(2) > 0.d0) then
-    velocity_dn = q*dist_dn(1:3) + (1.d0-dist_dn(1:3))*cell_centered_velocity_dn
-    Dxx_dn = dispersivity_dn(1)*dabs(velocity_dn(X_DIRECTION)) + &
-             dispersivity_dn(2)*dabs(velocity_dn(Y_DIRECTION)) + &
-             dispersivity_dn(3)*dabs(velocity_dn(Z_DIRECTION))
-    Dyy_dn = dispersivity_dn(2)*dabs(velocity_dn(X_DIRECTION)) + &
-             dispersivity_dn(1)*dabs(velocity_dn(Y_DIRECTION)) + &
-             dispersivity_dn(3)*dabs(velocity_dn(Z_DIRECTION))
-    Dzz_dn = dispersivity_dn(3)*dabs(velocity_dn(X_DIRECTION)) + &
-             dispersivity_dn(3)*dabs(velocity_dn(Y_DIRECTION)) + &
-             dispersivity_dn(1)*dabs(velocity_dn(Z_DIRECTION))
-    D_dn = max(Dxx_dn+Dyy_dn+Dzz_dn,1.d-40)
-    temp_dispersion(iphase) = D_dn
-  else
-    temp_dispersion(iphase) = dispersivity_dn(1)*dabs(q)/dist_dn(0)
-  endif  
+    ! we use upwind saturation as that is the saturation at the boundary face
+    sat_up = global_auxvar_up%sat(iphase)
+  
+    if (rt_parameter%calculate_transverse_dispersion) then
+      velocity_dn = q*dist_dn(1:3) + (1.d0-dist_dn(1:3))* &
+                    cell_centered_velocity_dn(:,iphase)
+      Dxx_dn = dispersivity_dn(1)*dabs(velocity_dn(X_DIRECTION)) + &
+               dispersivity_dn(2)*dabs(velocity_dn(Y_DIRECTION)) + &
+               dispersivity_dn(3)*dabs(velocity_dn(Z_DIRECTION))
+      Dyy_dn = dispersivity_dn(2)*dabs(velocity_dn(X_DIRECTION)) + &
+               dispersivity_dn(1)*dabs(velocity_dn(Y_DIRECTION)) + &
+               dispersivity_dn(3)*dabs(velocity_dn(Z_DIRECTION))
+      Dzz_dn = dispersivity_dn(3)*dabs(velocity_dn(X_DIRECTION)) + &
+               dispersivity_dn(3)*dabs(velocity_dn(Y_DIRECTION)) + &
+               dispersivity_dn(1)*dabs(velocity_dn(Z_DIRECTION))
+      D_dn = max(Dxx_dn+Dyy_dn+Dzz_dn,1.d-40)
+      temp_dispersion(iphase) = D_dn
+    else
+      temp_dispersion(iphase) = dispersivity_dn(1)*dabs(q)/dist_dn(0)
+    endif  
 
-  select case(ibndtype)
-    case(DIRICHLET_BC)
-      ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = 
-      !         m^3 water/m^4 bulk
-
-      stp_ave_over_dist = (material_auxvar_dn%tortuosity* &
-                           material_auxvar_dn%porosity*sat_up) / dist_dn(0)
-
-      ! need to account for multiple phases
-      ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-      dispersion(iphase) = temp_dispersion(iphase) + &
-                          stp_ave_over_dist* &
-                          rt_parameter%diffusion_coefficient(iphase)
-                          
-#if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
-      T_ref_inv = 1.d0/(25.d0 + 273.15d0)
-      temp_up = global_auxvar_up%temp      
-      dispersion(iphase) = dispersion(iphase) + &
-        stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
-        (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
-        IDEAL_GAS_CONSTANT*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
-#endif
-
-    case(DIRICHLET_ZERO_GRADIENT_BC)
-      if (q >= 0.d0) then
-        ! same as dirichlet above
+    select case(ibndtype)
+      case(DIRICHLET_BC)
         ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = 
         !         m^3 water/m^4 bulk
-          
+
         stp_ave_over_dist = (material_auxvar_dn%tortuosity* &
                              material_auxvar_dn%porosity*sat_up) / dist_dn(0)
 
@@ -338,8 +325,8 @@ subroutine TDispersionBC(ibndtype, &
         dispersion(iphase) = temp_dispersion(iphase) + &
                             stp_ave_over_dist* &
                             rt_parameter%diffusion_coefficient(iphase)
-                            
-#if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)  
+                          
+#if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)
         T_ref_inv = 1.d0/(25.d0 + 273.15d0)
         temp_up = global_auxvar_up%temp      
         dispersion(iphase) = dispersion(iphase) + &
@@ -347,11 +334,36 @@ subroutine TDispersionBC(ibndtype, &
           (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
           IDEAL_GAS_CONSTANT*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
 #endif
-      endif
-    case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
-  end select
 
+      case(DIRICHLET_ZERO_GRADIENT_BC)
+        if (q >= 0.d0) then
+          ! same as dirichlet above
+          ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = 
+          !         m^3 water/m^4 bulk
+          
+          stp_ave_over_dist = (material_auxvar_dn%tortuosity* &
+                               material_auxvar_dn%porosity*sat_up) / dist_dn(0)
 
+          ! need to account for multiple phases
+          ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+          dispersion(iphase) = temp_dispersion(iphase) + &
+                              stp_ave_over_dist* &
+                              rt_parameter%diffusion_coefficient(iphase)
+                            
+#if defined(TEMP_DEPENDENT_LOGK) || defined (CHUAN_HPT)  
+          T_ref_inv = 1.d0/(25.d0 + 273.15d0)
+          temp_up = global_auxvar_up%temp      
+          dispersion(iphase) = dispersion(iphase) + &
+            stp_ave_over_dist*rt_parameter%diffusion_coefficient(iphase)* &
+            (exp(rt_parameter%diffusion_activation_energy(iphase)/ &
+            IDEAL_GAS_CONSTANT*(T_ref_inv-1.d0/(temp_up + 273.15d0))) - 1.d0)
+#endif
+        endif
+      case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
+    end select
+  enddo
+
+#if 0  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
@@ -411,6 +423,7 @@ subroutine TDispersionBC(ibndtype, &
       end select
     enddo
   endif
+#endif  
 
 end subroutine TDispersionBC
 
@@ -475,7 +488,12 @@ subroutine TFlux(rt_parameter, &
         coef_dn(iphase)*rt_auxvar_dn%colloid%total_eq_mob(icollcomp)
     enddo
   endif
-  
+  if (rt_parameter%ngas > 0) then
+    iphase = 2
+    Res(1:ndof) = coef_up(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
+                  coef_dn(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
+  endif
+#if 0  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
@@ -491,6 +509,7 @@ subroutine TFlux(rt_parameter, &
                 coef_dn(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
     enddo
   endif
+#endif  
 
 end subroutine TFlux
 
@@ -535,7 +554,7 @@ subroutine TFlux_CD(rt_parameter, &
   Res_2 = 0.d0
   
   ! units = (L water/sec)*(mol/L) = mol/s
-  ! total = mol/L water
+  ! total(:,1) = mol/L water
   Res_1(1:ndof) = coef_11(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
                   coef_12(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
   Res_2(1:ndof) = coef_21(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
@@ -563,7 +582,16 @@ subroutine TFlux_CD(rt_parameter, &
         coef_22(iphase)*rt_auxvar_dn%colloid%total_eq_mob(icollcomp)
     enddo
   endif
+  if (rt_parameter%ngas > 0) then
+    iphase = 2
+  ! total(:,2) = mol/L gas
+    Res_1(1:ndof) = coef_11(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
+                    coef_12(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
+    Res_2(1:ndof) = coef_21(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
+                    coef_22(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
+  endif
   
+#if 0  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
@@ -582,6 +610,7 @@ subroutine TFlux_CD(rt_parameter, &
                        coef_22(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
     enddo
   endif
+#endif
 
 end subroutine TFlux_CD
 
@@ -616,8 +645,10 @@ subroutine TFluxDerivative(rt_parameter, &
   PetscInt :: idof
   PetscInt :: istart
   PetscInt :: iendaq
+  PetscInt :: max_phase
  
-  iphase = 1
+  max_phase = 1
+  if (rt_parameter%ngas > 0) max_phase = 2
   
   ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water)
   !       = kg water/sec
@@ -625,20 +656,23 @@ subroutine TFluxDerivative(rt_parameter, &
   iendaq = rt_parameter%naqcomp
   J_up = 0.d0
   J_dn = 0.d0
-  if (associated(rt_auxvar_dn%aqueous%dtotal)) then
-    J_up(istart:iendaq,istart:iendaq) = &
-      rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
-    J_dn(istart:iendaq,istart:iendaq) = &
-      rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
-  else  
-    do icomp = istart, iendaq
-      J_up(icomp,icomp) = coef_up(iphase)* &
-                          global_auxvar_up%den_kg(iphase)*1.d-3
-      J_dn(icomp,icomp) = coef_dn(iphase)* &
-                          global_auxvar_dn%den_kg(iphase)*1.d-3
-    enddo
-  endif
+  do iphase = 1, max_phase
+    if (associated(rt_auxvar_dn%aqueous%dtotal)) then
+      J_up(istart:iendaq,istart:iendaq) = &
+        rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
+      J_dn(istart:iendaq,istart:iendaq) = &
+        rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
+    else  
+      do icomp = istart, iendaq
+        J_up(icomp,icomp) = coef_up(iphase)* &
+                            global_auxvar_up%den_kg(iphase)*1.d-3
+        J_dn(icomp,icomp) = coef_dn(iphase)* &
+                            global_auxvar_dn%den_kg(iphase)*1.d-3
+      enddo
+    endif
+  enddo
 
+  iphase = 1
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
       idof = rt_parameter%offset_colloid + icoll
@@ -659,6 +693,7 @@ subroutine TFluxDerivative(rt_parameter, &
     ! dRic_dCj
   endif
 
+#if 0  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
@@ -686,6 +721,7 @@ subroutine TFluxDerivative(rt_parameter, &
       endif
     enddo
   endif
+#endif
 
 end subroutine TFluxDerivative
 
@@ -723,8 +759,10 @@ subroutine TFluxDerivative_CD(rt_parameter, &
   PetscInt :: idof
   PetscInt :: istart
   PetscInt :: iendaq
- 
-  iphase = 1
+  PetscInt :: max_phase
+  
+  max_phase = 1
+  if (rt_parameter%ngas > 0) max_phase = 2
   
   ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   istart = 1
@@ -733,20 +771,31 @@ subroutine TFluxDerivative_CD(rt_parameter, &
   J_12 = 0.d0
   J_21 = 0.d0
   J_22 = 0.d0
-  if (associated(rt_auxvar_dn%aqueous%dtotal)) then
-    J_11(istart:iendaq,istart:iendaq) = rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_11(iphase)
-    J_12(istart:iendaq,istart:iendaq) = rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_12(iphase)
-    J_21(istart:iendaq,istart:iendaq) = rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_21(iphase)
-    J_22(istart:iendaq,istart:iendaq) = rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_22(iphase)
-  else  
-    do icomp = istart, iendaq
-      J_11(icomp,icomp) = coef_11(iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
-      J_12(icomp,icomp) = coef_12(iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
-      J_21(icomp,icomp) = coef_21(iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
-      J_22(icomp,icomp) = coef_22(iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
-    enddo
-  endif
+  do iphase = 1, max_phase
+    if (associated(rt_auxvar_dn%aqueous%dtotal)) then
+      J_11(istart:iendaq,istart:iendaq) = &
+        rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_11(iphase)
+      J_12(istart:iendaq,istart:iendaq) = &
+        rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_12(iphase)
+      J_21(istart:iendaq,istart:iendaq) = &
+        rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_21(iphase)
+      J_22(istart:iendaq,istart:iendaq) = &
+        rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_22(iphase)
+    else  
+      do icomp = istart, iendaq
+        J_11(icomp,icomp) = &
+          coef_11(iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
+        J_12(icomp,icomp) = &
+          coef_12(iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
+        J_21(icomp,icomp) = &
+          coef_21(iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
+        J_22(icomp,icomp) = &
+          coef_22(iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
+      enddo
+    endif
+  enddo
 
+  iphase = 1
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll
       idof = rt_parameter%offset_colloid + icoll
@@ -773,6 +822,7 @@ subroutine TFluxDerivative_CD(rt_parameter, &
     ! dRic_dCj
   endif
 
+#if 0  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
@@ -804,12 +854,14 @@ subroutine TFluxDerivative_CD(rt_parameter, &
       endif
     enddo
   endif
-
+#endif
+  
 end subroutine TFluxDerivative_CD
 
 ! ************************************************************************** !
 
-subroutine TFluxCoef(option,area,velocity,diffusion,fraction_upwind,T_up,T_dn)
+subroutine TFluxCoef(rt_parameter,option,area,velocity,diffusion, &
+                     fraction_upwind,T_up,T_dn)
   ! 
   ! Computes flux coefficients for transport matrix
   ! 
@@ -821,6 +873,7 @@ subroutine TFluxCoef(option,area,velocity,diffusion,fraction_upwind,T_up,T_dn)
 
   implicit none
   
+  type(reactive_transport_param_type) :: rt_parameter  
   type(option_type) :: option
   PetscReal :: area
   PetscReal :: velocity(*)
@@ -828,37 +881,41 @@ subroutine TFluxCoef(option,area,velocity,diffusion,fraction_upwind,T_up,T_dn)
   PetscReal :: fraction_upwind
   PetscReal :: T_up(*), T_dn(*)
 
-  PetscInt :: iphase
+  PetscInt :: iphase, max_phase
   PetscReal :: coef_up, coef_dn
   PetscReal :: q
   
-  iphase = 1
+  max_phase = 1
+  if (rt_parameter%ngas > 0) max_phase = 2
   
-  q = velocity(iphase)
+  do iphase = 1, max_phase
+    q = velocity(iphase)
 
-  if (option%use_upwinding) then
-    ! upstream weighting
-    ! units = (m^3 water/m^2 bulk/sec)
-    if (q > 0.d0) then
-      coef_up =  diffusion(iphase)+q
-      coef_dn = -diffusion(iphase)
+    if (option%use_upwinding) then
+      ! upstream weighting
+      ! units = (m^3 water/m^2 bulk/sec)
+      if (q > 0.d0) then
+        coef_up =  diffusion(iphase)+q
+        coef_dn = -diffusion(iphase)
+      else
+        coef_up =  diffusion(iphase)
+        coef_dn = -diffusion(iphase)+q
+      endif
     else
-      coef_up =  diffusion(iphase)
-      coef_dn = -diffusion(iphase)+q
-    endif
-  else
-    ! central difference, currently assuming uniform grid spacing
-    ! units = (m^3 water/m^2 bulk/sec)
-    ! 
-    coef_up =  diffusion(iphase)+ (1.d0-fraction_upwind)*q
-    coef_dn = -diffusion(iphase)+ fraction_upwind*q
-  endif  
+      ! central difference, currently assuming uniform grid spacing
+      ! units = (m^3 water/m^2 bulk/sec)
+      ! 
+      coef_up =  diffusion(iphase)+ (1.d0-fraction_upwind)*q
+      coef_dn = -diffusion(iphase)+ fraction_upwind*q
+    endif  
   
-  ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
-  !       = L water/sec
-  T_up(iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-  T_dn(iphase) = coef_dn*area*1000.d0
-
+    ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
+    !       = L water/sec
+    T_up(iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+    T_dn(iphase) = coef_dn*area*1000.d0
+  enddo
+    
+#if 0  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
@@ -891,6 +948,7 @@ subroutine TFluxCoef(option,area,velocity,diffusion,fraction_upwind,T_up,T_dn)
   
     enddo
   endif
+#endif  
 
 end subroutine TFluxCoef
 
