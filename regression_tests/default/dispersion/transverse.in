@@ -1,0 +1,305 @@
+#Description: 1D flow and disperive transport in a 3D square pipe
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 7
+  CELLS
+    140
+    250
+    360
+  /
+END
+
+#=========================== flow mode ========================================
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Tracer
+  /
+  OUTPUT
+    TOTAL
+  /
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+END
+
+NEWTON_SOLVER FLOW
+  ITOL_UPDATE 1.d0     ! Convergences with max change in pressure is 1 Pa.
+END
+
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+END
+
+NEWTON_SOLVER TRANSPORT
+END
+
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE STRUCTURED
+  NXYZ 10 10 5
+  BOUNDS
+    0.d0 0.d0 0.d0
+    10.d0 10.d0 10.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+
+#=========================== data sets ========================================
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 0.5d0
+  LONGITUDINAL_DISPERSIVITY 40.d0 
+  TRANSVERSE_DISPERSIVITY_H 25.d0
+  TRANSVERSE_DISPERSIVITY_V 10.d0
+  CHARACTERISTIC_CURVES cc1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-13
+  /
+END
+
+MATERIAL_PROPERTY soil4
+  ID 4
+  POROSITY 0.2d0
+  TORTUOSITY 0.45d0
+  LONGITUDINAL_DISPERSIVITY 20.d0 
+  TRANSVERSE_DISPERSIVITY_H 12.5d0
+  TRANSVERSE_DISPERSIVITY_V 20.d0
+  CHARACTERISTIC_CURVES cc1
+  PERMEABILITY
+    PERM_X 1.d-13
+    PERM_Y 1.d-12
+    PERM_Z 1.d-14
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES cc1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA  1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+    MAX_CAPILLARY_PRESSURE 1.d8
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+skip
+  TIMES y 1.25 1.5 1.75
+  PERIODIC TIME 1. y
+#  PERIODIC_OBSERVATION TIMESTEP 1
+  FORMAT HDF5
+  VELOCITY_AT_CENTER
+noskip
+  VARIABLES
+    LIQUID_PRESSURE
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 2.d0 y
+#  INITIAL_TIMESTEP_SIZE 1.d-2 d
+  INITIAL_TIMESTEP_SIZE 0.2 y
+  MAXIMUM_TIMESTEP_SIZE 0.2 y 
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    -1.d20 -1.d20 -1.d20
+    1.d20 1.d20 1.d20
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 -1.d20 -1.d20
+    0.d0 1.d20 1.d20
+  /
+END
+
+REGION west_bottom
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 10.d0 4.d0
+  /
+END
+
+REGION west_south
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 4.d0
+    0.d0 4.d0 6.d0
+  /
+END
+
+REGION west_north
+  FACE WEST
+  COORDINATES
+    0.d0 6.d0 4.d0
+    0.d0 10.d0 6.d0
+  /
+END
+
+REGION west_top
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 6.d0
+    0.d0 10.d0 10.d0
+  /
+END
+
+REGION west_center
+  FACE WEST
+  COORDINATES
+    0.d0 4.d0 4.d0
+    0.d0 6.d0 6.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    10.d0 -1.d20 -1.d20
+    10.d0 1.d20 1.d20
+  /
+END
+
+REGION center_block
+  COORDINATES
+    2.d0 4.d0 4.d0
+    7.d0 7.d0 8.d0
+  /
+END
+
+#=========================== observation points ===============================
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE HYDROSTATIC
+  /
+  DATUM 0.d0 0.d0 11.d0
+  PRESSURE 101325.d0
+END
+
+FLOW_CONDITION inlet
+  TYPE
+    FLUX NEUMANN
+  /
+  FLUX 1.d0 m/y
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE DIRICHLET_ZERO_GRADIENT
+  CONSTRAINT initial
+    CONCENTRATIONS
+      Tracer  1.d-10 T
+    /
+  /
+END
+
+TRANSPORT_CONDITION inlet
+  TYPE DIRICHLET_ZERO_GRADIENT
+  CONSTRAINT west
+    CONCENTRATIONS
+      Tracer  1.d-4 T
+    /
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+# west boundary condition
+BOUNDARY_CONDITION west_bottom
+  FLOW_CONDITION inlet
+  TRANSPORT_CONDITION initial
+  REGION west_bottom
+END
+
+BOUNDARY_CONDITION west_south
+  FLOW_CONDITION inlet
+  TRANSPORT_CONDITION initial
+  REGION west_south
+END
+
+BOUNDARY_CONDITION west_north
+  FLOW_CONDITION inlet
+  TRANSPORT_CONDITION initial
+  REGION west_north
+END
+
+BOUNDARY_CONDITION west_top
+  FLOW_CONDITION inlet
+  TRANSPORT_CONDITION initial
+  REGION west_top
+END
+
+BOUNDARY_CONDITION west
+  FLOW_CONDITION inlet
+  TRANSPORT_CONDITION inlet
+  REGION west_center
+END
+
+# east boundary condition
+BOUNDARY_CONDITION east
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION east
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+STRATA
+  REGION center_block
+  MATERIAL soil4
+END
+
+END_SUBSURFACE

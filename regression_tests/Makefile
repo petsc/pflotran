@@ -44,6 +44,7 @@ STANDARD_CFG = \
 	default/column/column.cfg \
 	default/batch/batch.cfg \
 	default/eos/eos.cfg \
+	default/dispersion/dispersion.cfg \
 	default/materials/materials.cfg \
 	default/materials/soil_compressibility/soil_compressibility.cfg \
 	default/materials/mineral_volume/mineral_volume.cfg \
@@ -119,6 +120,7 @@ FLOW_CFG = \
 TRANSPORT_CFG = \
 	default/543/543.cfg \
 	default/column/column.cfg \
+	default/dispersion/dispersion.cfg \
 	default/multicontinuum/multicontinuum.cfg \
 
 MESH_CFG = \
