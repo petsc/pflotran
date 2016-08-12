@@ -54,6 +54,7 @@ STANDARD_CFG = \
 	default/condition/dataset/dataset.cfg \
 	default/multicontinuum/multicontinuum.cfg \
 	default/scco2/mphase/mphase.cfg \
+	default/scco2/mphase_chem/mphase_chem.cfg \
 	default/scco2/flash2/flash2.cfg \
 	default/regions/regions.cfg \
 	default/salinity/salinity.cfg \

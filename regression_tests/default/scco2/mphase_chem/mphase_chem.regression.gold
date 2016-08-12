@@ -1,0 +1,152 @@
+-- GENERIC: Temperature --
+      Max:   7.2808537439882E+01
+      Min:   7.1977910076029E+01
+     Mean:   7.2215209856171E+01
+-- PRESSURE: Liquid Pressure --
+      Max:   2.8494234793238E+07
+      Min:   1.0832865848076E+07
+     Mean:   1.5592345226236E+07
+-- PRESSURE: Gas Pressure --
+      Max:   2.8494442229404E+07
+      Min:   1.0832865848076E+07
+     Mean:   1.5592347299002E+07
+-- SATURATION: Liquid Saturation --
+      Max:   1.0000000000000E+00
+      Min:   9.8766689371752E-01
+     Mean:   9.9987683953570E-01
+-- SATURATION: Gas Saturation --
+      Max:   1.2333106282482E-02
+      Min:   0.0000000000000E+00
+     Mean:   1.2316046429513E-04
+-- GENERIC: Liquid Density --
+      Max:   1.0290597229672E+03
+      Min:   1.0167939453536E+03
+     Mean:   1.0188336822705E+03
+-- GENERIC: Gas Density --
+      Max:   9.8525110590468E+02
+      Min:   7.6151974381630E+02
+     Mean:   9.8000920168643E+02
+-- GENERIC: Liquid Energy --
+      Max:   5.4022172415727E+00
+      Min:   5.3417017988078E+00
+     Mean:   5.3731976886642E+00
+-- GENERIC: Gas Energy --
+      Max:   1.7810431068569E+01
+      Min:   1.3194116196810E+01
+     Mean:   1.5797354195833E+01
+-- GENERIC: Liquid Viscosity --
+      Max:   3.9277764766529E-04
+      Min:   3.8941649418169E-04
+     Mean:   3.9103470061071E-04
+-- GENERIC: Gas Viscosity --
+      Max:   6.6036268439088E-05
+      Min:   2.4240937088833E-05
+     Mean:   3.7848699290712E-05
+-- GENERIC: Liquid Mobility --
+      Max:   2.5679446426669E+03
+      Min:   1.5976537716962E+03
+     Mean:   2.5477736020515E+03
+-- GENERIC: Gas Mobility --
+      Max:   7.7471085612174E+01
+      Min:   0.0000000000000E+00
+     Mean:   7.7237640980413E-01
+-- GENERIC: Liquid Mole Fraction H2O --
+      Max:   9.9999740889917E-01
+      Min:   9.8114102035192E-01
+     Mean:   9.9980165953601E-01
+-- GENERIC: Liquid Mole Fraction CO2 --
+      Max:   1.8858979648081E-02
+      Min:   2.5911008268266E-06
+     Mean:   1.9834046398786E-04
+-- GENERIC: Gas Mole Fraction H2O --
+      Max:   9.9985538648246E-01
+      Min:   1.2127883828348E-03
+     Mean:   9.8945137383087E-01
+-- GENERIC: Gas Mole Fraction CO2 --
+      Max:   9.9878721161717E-01
+      Min:   1.4461351753938E-04
+     Mean:   1.0548626169131E-02
+-- GENERIC: Phase --
+      Max:   3.0000000000000E+00
+      Min:   1.0000000000000E+00
+     Mean:   1.0200000000000E+00
+-- GENERIC: pH --
+      Max:   8.1233726698478E+00
+      Min:   4.2941124321500E+00
+     Mean:   8.0141548727828E+00
+-- GENERIC: Eh --
+      Max:  -2.3295483621157E-01
+      Min:  -4.8645761583804E-01
+     Mean:  -4.7791602729518E-01
+-- GENERIC: pe --
+      Max:  -3.3975013552012E+00
+      Min:  -7.0939324701247E+00
+     Mean:  -6.9740875686583E+00
+-- CONCENTRATION: Total Ca++ --
+      Max:   2.0265401910276E-04
+      Min:   1.9413236009941E-04
+     Mean:   2.0251056396297E-04
+-- CONCENTRATION: Total Na+ --
+      Max:   1.0152711319326E+00
+      Min:   9.7257347675197E-01
+     Mean:   1.0145523627987E+00
+-- CONCENTRATION: Total K+ --
+      Max:   3.4179127663191E-03
+      Min:   3.2741710049867E-03
+     Mean:   3.4154930282546E-03
+-- CONCENTRATION: Total Cl- --
+      Max:   9.9844547905482E-01
+      Min:   9.5645640820079E-01
+     Mean:   9.9773867276890E-01
+-- CONCENTRATION: Total SiO2(aq) --
+      Max:   1.0002671350743E-04
+      Min:   9.5820056765737E-05
+     Mean:   9.9955900669986E-05
+-- CONCENTRATION: Total O2(aq) --
+      Max:   1.9239129884743E-71
+      Min:   5.5618516794237E-72
+     Mean:   1.9046127397680E-71
+-- CONCENTRATION: Total H+ --
+      Max:  -1.9779502588888E-02
+      Min:  -2.0649786210333E-02
+     Mean:  -2.0634204206010E-02
+-- CONCENTRATION: Total CO2(aq) --
+      Max:   1.1052664557210E+00
+      Min:   1.9899805687812E-02
+     Mean:   3.1154281035028E-02
+-- VOLUME_FRACTION: Quartz VF --
+      Max:   4.9590000000000E-01
+      Min:   4.9590000000000E-01
+     Mean:   4.9590000000000E-01
+-- VOLUME_FRACTION: Calcite VF --
+      Max:   4.8600000000365E-02
+      Min:   4.8599999999879E-02
+     Mean:   4.8600000000340E-02
+-- RATE: Quartz Rate --
+      Max:  -7.9370237569076E-13
+      Min:  -8.9197970958959E-13
+     Mean:  -8.8631062577815E-13
+-- RATE: Calcite Rate --
+      Max:   8.9440538520433E-11
+      Min:  -2.9574607663342E-11
+     Mean:   8.2715747888370E-11
+-- DISCRETE: Material ID --
+      Max:         1
+      Min:         1
+     Mean:   1.0000000000000E+00
+-- SOLUTION: Flow --
+   Time (seconds):   5.5025421903701E-01
+   Time Steps:           10
+   Newton Iterations:           24
+   Solver Iterations:          131
+   Time Step Cuts:            0
+   Solution 2-Norm:   3.5657298962444E+08
+   Residual 2-Norm:   7.4570184218146E-10
+-- SOLUTION: Transport --
+   Time (seconds):   1.0224898639717E+00
+   Time Steps:           10
+   Newton Iterations:           38
+   Solver Iterations:           38
+   Time Step Cuts:            0
+   Solution 2-Norm:   2.9176092152556E+01
+   Residual 2-Norm:   1.1454880308356E-06
