@@ -62,6 +62,7 @@ module Reaction_Gas_Aux_module
             GasSpeciesCreate, &
             GasGetNames, &
             GasGetCount, &
+            GasSpeciesListMergeDuplicates, &
             GasDestroy
              
 contains

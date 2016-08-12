@@ -2055,6 +2055,10 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
       q = v_darcy(iphase) * area
       ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
       !                              density_ave[kmol phase/m^3 phase]
+      if (density_ave < 1.d-40) then
+        option%io_buffer = 'Zero density in GeneralBCFlux()'
+        call printErrMsgByRank(option)
+      endif
       mole_flux = q*density_ave       
       ! Res[kmol total/sec]
       do icomp = 1, option%nflowspec

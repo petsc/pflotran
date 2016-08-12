@@ -4154,8 +4154,14 @@ subroutine ReactionDatabaseSetupGases(reaction,num_logKs,option,h2o_id, &
           cur_gas_spec%itype == ACTIVE_AND_PASSIVE_GAS) then      
 
         gas_names(igas_spec) = cur_gas_spec%name
-        gas_print(igas_spec) = cur_gas_spec%print_me .or. &
-                               reaction%gas%print_all
+        ! if the gas is active and passive, we only print the active side
+        if (cur_gas_spec%print_me .or. reaction%gas%print_all) then
+          if (.not.(cur_gas_spec%itype == ACTIVE_AND_PASSIVE_GAS .and. &
+                    gas_itype == PASSIVE_GAS)) then
+            gas_print(igas_spec) = PETSC_TRUE
+          endif
+        endif
+
         ispec = 0
         do i = 1, cur_gas_spec%dbaserxn%nspec
           if (cur_gas_spec%dbaserxn%spec_ids(i) /= h2o_id) then

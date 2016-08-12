@@ -490,7 +490,8 @@ subroutine TFlux(rt_parameter, &
   endif
   if (rt_parameter%ngas > 0) then
     iphase = 2
-    Res(1:ndof) = coef_up(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
+    Res(1:ndof) = Res(1:ndof) + &
+                  coef_up(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
                   coef_dn(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
   endif
 #if 0  
@@ -659,14 +660,16 @@ subroutine TFluxDerivative(rt_parameter, &
   do iphase = 1, max_phase
     if (associated(rt_auxvar_dn%aqueous%dtotal)) then
       J_up(istart:iendaq,istart:iendaq) = &
+        J_up(istart:iendaq,istart:iendaq) + &
         rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
       J_dn(istart:iendaq,istart:iendaq) = &
+        J_dn(istart:iendaq,istart:iendaq) + &
         rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
     else  
       do icomp = istart, iendaq
-        J_up(icomp,icomp) = coef_up(iphase)* &
+        J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up(iphase)* &
                             global_auxvar_up%den_kg(iphase)*1.d-3
-        J_dn(icomp,icomp) = coef_dn(iphase)* &
+        J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn(iphase)* &
                             global_auxvar_dn%den_kg(iphase)*1.d-3
       enddo
     endif
@@ -774,22 +777,30 @@ subroutine TFluxDerivative_CD(rt_parameter, &
   do iphase = 1, max_phase
     if (associated(rt_auxvar_dn%aqueous%dtotal)) then
       J_11(istart:iendaq,istart:iendaq) = &
+        J_11(istart:iendaq,istart:iendaq) + &
         rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_11(iphase)
       J_12(istart:iendaq,istart:iendaq) = &
+        J_12(istart:iendaq,istart:iendaq) + &
         rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_12(iphase)
       J_21(istart:iendaq,istart:iendaq) = &
+        J_21(istart:iendaq,istart:iendaq) + &
         rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_21(iphase)
       J_22(istart:iendaq,istart:iendaq) = &
+        J_22(istart:iendaq,istart:iendaq) + &
         rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_22(iphase)
     else  
       do icomp = istart, iendaq
         J_11(icomp,icomp) = &
+          J_11(icomp,icomp) + &
           coef_11(iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
         J_12(icomp,icomp) = &
+          J_12(icomp,icomp) + &
           coef_12(iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
         J_21(icomp,icomp) = &
+          J_21(icomp,icomp) + &
           coef_21(iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
         J_22(icomp,icomp) = &
+          J_22(icomp,icomp) + &
           coef_22(iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
       enddo
     endif

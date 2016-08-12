@@ -4200,14 +4200,28 @@ subroutine RTSetPlotVariables(realization,list)
     enddo
   endif  
   
-  if (reaction%gas%print_all) then
-    do i=1,reaction%gas%npassive_gas
-      name = 'Gas species ' // trim(reaction%gas%passive_names(i))
-      units = trim('mol/m^3')
+#if 0
+!geh: not yet supported as we have no function set up to calculate the
+!     passive gas partial pressures at this point.  They are calculated
+!     in the CONSTRAINT output.
+  do i=1,reaction%gas%npassive_gas
+    if (reaction%gas%passive_print_me(i)) then
+      name = 'Passive Gas ' // trim(reaction%gas%passive_names(i))
+      units = trim('Pa')
       call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
           GAS_CONCENTRATION,i)
-    enddo
-  endif
+    endif
+  enddo
+#endif
+
+  do i=1,reaction%gas%nactive_gas
+    if (reaction%gas%active_print_me(i)) then
+      name = 'Active Gas ' // trim(reaction%gas%active_names(i))
+      units = trim('Pa')
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+          GAS_CONCENTRATION,i)
+    endif
+  enddo
 
   if (reaction%print_total_bulk) then
     do i=1,reaction%naqcomp

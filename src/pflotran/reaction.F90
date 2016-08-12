@@ -861,6 +861,8 @@ subroutine ReactionReadPass1(reaction,input,option)
         call InputKeywordUnrecognized(word,'CHEMISTRY',option)
     end select
   enddo
+
+  call GasSpeciesListMergeDuplicates(reaction%gas%list)
   
   reaction%neqsorb = reaction%neqionxrxn + &
                      reaction%neqkdrxn + &
@@ -3033,7 +3035,7 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_all_species = PETSC_TRUE
         reaction%print_all_primary_species = PETSC_TRUE
  !       reaction%print_all_secondary_species = PETSC_TRUE
- !       reaction%print_all_gas_species = PETSC_TRUE
+ !       reaction%gas%print_all = PETSC_TRUE
         reaction%mineral%print_all = PETSC_TRUE
         reaction%immobile%print_all = PETSC_TRUE
 !        reaction%print_pH = PETSC_TRUE
@@ -5176,7 +5178,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
             material_auxvar%volume / option%tran_dt  
     istart = 1
     iend = reaction%naqcomp
-    Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase)     
+    Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase)     
   endif
 
 #if 0  
@@ -5277,7 +5279,8 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     ! units of dtotal(:,:,2) = kg water / L gas
     psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
              material_auxvar%volume/option%tran_dt
-    J(istart:iendaq,istart:iendaq) = rt_auxvar%aqueous%dtotal(:,:,iphase) * &
+    J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
+                                     rt_auxvar%aqueous%dtotal(:,:,iphase) * &
                                      psvd_t
   endif
 #if 0  
