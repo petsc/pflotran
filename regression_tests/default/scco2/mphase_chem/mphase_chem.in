@@ -29,14 +29,13 @@ SUBSURFACE
 #=========================== regression test ========================================
 REGRESSION
   CELLS
-    1000
+    22
+    23
+    54
   /
-# CELLS_PER_PROCESS 2
 END
 
-#CO2_DATABASE /glade/u/home/mingkanz/pflotran-dev/database/co2data0.dat
-CO2_DATABASE /Users/lichtner/pflotran/pflotran-dev-petsc3.7/database/co2data0.dat
-#CO2_DATABASE ../../../../co2data0.dat
+CO2_DATABASE ../../../../database/co2data0.dat
 
 !=========================== chemistry ========================================
 CHEMISTRY
@@ -401,13 +400,9 @@ CHEMISTRY
       /
     /
     noskip
-/
-! DATABASE ../xu_revised.dat
-!  DATABASE ./pflotran_thermXu5.dat
-# DATABASE ../../../../hanford.dat
-  DATABASE /Users/lichtner/pflotran/pflotran-dev-petsc3.7/database/hanford.dat
+  /
+  DATABASE ../../../../database/hanford.dat
   LOG_FORMULATION
-! OPERATOR_SPLITTING
   ACTIVITY_COEFFICIENTS TIMESTEP
   MOLAL
   OUTPUT
@@ -471,12 +466,12 @@ END
 !=========================== discretization ===================================
 GRID
 TYPE structured
-ORIGIN 0.d0 0.d0 0.d0
-NXYZ 10 10 5
-BOUNDS
-0.d0 0.d0 0.d0
-100.d0 100.d0 10.d0
-/
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 4 4 5
+  BOUNDS
+    0.d0 0.d0 0.d0
+    40.d0 40.d0 10.d0
+  /
 END
 
 !=========================== times ============================================
@@ -509,32 +504,24 @@ noskip
 
 !=========================== material properties ==============================
 MATERIAL_PROPERTY soil1
-ID 1
-!POROSITY DATASET Porosity
-POROSITY 0.1d0
-TORTUOSITY 1.d0
-ROCK_DENSITY 2.65d3
-SPECIFIC_HEAT 1.d3
-THERMAL_CONDUCTIVITY_DRY 2.5
-THERMAL_CONDUCTIVITY_WET 2.5 
-SATURATION_FUNCTION sf1
-PERMEABILITY
-! ANISOTROPIC
-!ISOTROPIC
-!  DATASET Permeability
-PERM_ISO 1.02e-13
-!PERM_Y 1.02e-13
-!PERM_Z 1.02e-13
+  ID 1
+  !POROSITY DATASET Porosity
+  POROSITY 0.1d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.65d3
+  SPECIFIC_HEAT 1.d3
+  THERMAL_CONDUCTIVITY_DRY 2.5
+  THERMAL_CONDUCTIVITY_WET 2.5 
+  SATURATION_FUNCTION sf1
+  PERMEABILITY
+  ! ANISOTROPIC
+  !ISOTROPIC
+  !  DATASET Permeability
+  PERM_ISO 1.02e-13
+  !PERM_Y 1.02e-13
+  !PERM_Z 1.02e-13
+  /
 /
-/
-
-!DATASET Permeability
-!FILENAME ../permeability.h5
-!/
-
-!DATASET Porosity
-!FILENAME ../porosity.h5
-!/
 
 !=========================== saturation functions =============================
 SATURATION_FUNCTION sf1
@@ -549,222 +536,222 @@ MAX_CAPILLARY_PRESSURE 1.89d4
 
 !=========================== regions ==========================================
 REGION all
-COORDINATES
-0.d0 0.d0 0.d0
-100.d0 100.d0 10.d0
-/
+  COORDINATES
+    0.d0 0.d0 0.d0
+    40.d0 40.d0 10.d0
+  /
 END
 
 
 REGION east
-FACE EAST
-COORDINATES
-100.d0 0.d0 0.d0
-100.d0 100.d0 10.d0
-/
+  FACE EAST
+  COORDINATES
+    40.d0 0.d0 0.d0
+    40.d0 40.d0 10.d0
+  /
 END
 
 REGION west
-FACE WEST
-COORDINATES
-0.d0 0.d0 0.d0
-0.d0 100.d0 10.d0
-/
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 40.d0 10.d0
+  /
 END
 
 REGION north
-FACE NORTH
-COORDINATES
-0.d0 100.d0 0.d0
-100.d0 100.d0 100.d0
-/
+  FACE NORTH
+  COORDINATES
+    0.d0 40.d0 0.d0
+    40.d0 40.d0 10.d0
+  /
 END
 
 REGION south
-FACE SOUTH
-COORDINATES
-0.d0 0.d0 0.d0
-100.d0 0.d0 10.d0
-/
+  FACE SOUTH
+  COORDINATES
+    0.d0 0.d0 0.d0
+    40.d0 0.d0 10.d0
+  /
 END
 
 REGION top
-FACE TOP
-COORDINATES
-0.d0 0.d0 10.d0
-100.d0 100.d0 10.d0
-/
+  FACE TOP
+  COORDINATES
+    0.d0 0.d0 10.d0
+    40.d0 40.d0 10.d0
+  /
 END
 
 REGION bottom
-FACE BOTTOM
-COORDINATES
-0.d0 0.d0 0.d0
-100.d0 100.d0 0.d0
-/
+  FACE BOTTOM
+  COORDINATES
+    0.d0 0.d0 0.d0
+    40.d0 40.d0 0.d0
+  /
 END
 
 REGION well
-COORDINATES
-50.d0 50.d0 0.d0
-50.d0 50.d0 10.d0
-/
+  COORDINATES
+    20.d0 20.d0 0.d0
+    20.d0 20.d0 10.d0
+  /
 END
 
 !=========================== flow conditions ==================================
 FLOW_CONDITION initial
-UNITS Pa,C,M,yr
-TYPE
-PRESSURE hydrostatic
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-ENTHALPY dirichlet
-/
-DATUM 0.d0 0.d0 100.d0
-GRADIENT
-  TEMPERATURE 0.d0 0.d0 -0.050d0
-/
-IPHASE 1
-PRESSURE 2.D7 2.D7
-TEMPERATURE 67.5d0 
-CONCENTRATION 1.d-8 
-ENTHALPY 0.d0  0.d0
+  UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE hydrostatic
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+  DATUM 0.d0 0.d0 100.d0
+  GRADIENT
+    TEMPERATURE 0.d0 0.d0 -0.050d0
+  /
+  IPHASE 1
+  PRESSURE 2.D7 2.D7
+  TEMPERATURE 67.5d0 
+  CONCENTRATION 1.d-8 
+  ENTHALPY 0.d0  0.d0
 /
 
 FLOW_CONDITION east
-UNITS Pa,C,M,yr
-TYPE
-PRESSURE hydrostatic
-!PRESSURE zero_gradient
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-ENTHALPY dirichlet
-/
-DATUM 0.d0 0.d0 100.d0
-GRADIENT
-  TEMPERATURE 0.d0 0.d0 -0.050d0
-/
-IPHASE 1
-PRESSURE 2.D7 2.D7
-TEMPERATURE 67.5d0
-CONCENTRATION 1.d-8 
-ENTHALPY 0.d0  0.d0
+  UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE hydrostatic
+    !PRESSURE zero_gradient
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+  DATUM 0.d0 0.d0 100.d0
+  GRADIENT
+    TEMPERATURE 0.d0 0.d0 -0.050d0
+  /
+  IPHASE 1
+  PRESSURE 2.D7 2.D7
+  TEMPERATURE 67.5d0
+  CONCENTRATION 1.d-8 
+  ENTHALPY 0.d0  0.d0
 /
 
 FLOW_CONDITION west
-UNITS Pa,C,M,yr
-TYPE
-PRESSURE hydrostatic
-!PRESSURE zero_gradient
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-ENTHALPY dirichlet
-/
-DATUM 0.d0 0.d0 100.d0
-GRADIENT
-  TEMPERATURE 0.d0 0.d0 -0.050d0
-/
-IPHASE 1
-PRESSURE 9.81d6 9.81d6
-TEMPERATURE 67.5d0
-CONCENTRATION 1.d-8 
-ENTHALPY 0.d0  0.d0
+  UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE hydrostatic
+    !PRESSURE zero_gradient
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+  DATUM 0.d0 0.d0 100.d0
+  GRADIENT
+    TEMPERATURE 0.d0 0.d0 -0.050d0
+  /
+  IPHASE 1
+  PRESSURE 9.81d6 9.81d6
+  TEMPERATURE 67.5d0
+  CONCENTRATION 1.d-8 
+  ENTHALPY 0.d0  0.d0
 /
 
 FLOW_CONDITION north
-UNITS Pa,C,M,yr
-TYPE
-PRESSURE hydrostatic
-!PRESSURE zero_gradient
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-ENTHALPY dirichlet
-/
-DATUM 0.d0 0.d0 100.d0
-GRADIENT
-  TEMPERATURE 0.d0 0.d0 -0.050d0
-/
-IPHASE 1
-PRESSURE 9.81d6 9.81d6
-TEMPERATURE 67.5d0
-CONCENTRATION 1.d-8 
-ENTHALPY 0.d0  0.d0
+  UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE hydrostatic
+    !PRESSURE zero_gradient
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+  DATUM 0.d0 0.d0 100.d0
+  GRADIENT
+    TEMPERATURE 0.d0 0.d0 -0.050d0
+  /
+  IPHASE 1
+  PRESSURE 9.81d6 9.81d6
+  TEMPERATURE 67.5d0
+  CONCENTRATION 1.d-8 
+  ENTHALPY 0.d0  0.d0
 /
 
 FLOW_CONDITION south
-UNITS Pa,C,M,yr
-TYPE
-PRESSURE hydrostatic
-!PRESSURE zero_gradient
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-ENTHALPY dirichlet
-/
-DATUM 0.d0 0.d0 100.d0
-GRADIENT
-  TEMPERATURE 0.d0 0.d0 -0.050d0
-/
-IPHASE 1
-PRESSURE 9.81d6 9.81d6
-TEMPERATURE 67.5d0
-CONCENTRATION 1.d-8 
-ENTHALPY 0.d0  0.d0
+  UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE hydrostatic
+    !PRESSURE zero_gradient
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+  DATUM 0.d0 0.d0 100.d0
+  GRADIENT
+    TEMPERATURE 0.d0 0.d0 -0.050d0
+  /
+  IPHASE 1
+  PRESSURE 9.81d6 9.81d6
+  TEMPERATURE 67.5d0
+  CONCENTRATION 1.d-8 
+  ENTHALPY 0.d0  0.d0
 /
 
 
 FLOW_CONDITION top
-UNITS Pa,C,M,yr
-TYPE
-PRESSURE zero_gradient
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-ENTHALPY dirichlet
-/
-DATUM 0.d0 0.d0 100.d0
-IPHASE 1
-PRESSURE 9.81d6 9.81d6
-TEMPERATURE 67.5d0
-CONCENTRATION 1.d-8 
-ENTHALPY 0.d0  0.d0
+  UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE zero_gradient
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+  DATUM 0.d0 0.d0 100.d0
+  IPHASE 1
+  PRESSURE 9.81d6 9.81d6
+  TEMPERATURE 67.5d0
+  CONCENTRATION 1.d-8 
+  ENTHALPY 0.d0  0.d0
 /
 
 FLOW_CONDITION bottom
-UNITS Pa,C,M,yr
-TYPE
-PRESSURE zero_gradient
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-ENTHALPY dirichlet
-/
-DATUM 0.d0 0.d0 100.d0
-IPHASE 1
-PRESSURE 9.81d6 9.81d6
-TEMPERATURE 67.5d0
-CONCENTRATION 1.d-8 
-ENTHALPY 0.d0  0.d0
+  UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE zero_gradient
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+  DATUM 0.d0 0.d0 100.d0
+  IPHASE 1
+  PRESSURE 9.81d6 9.81d6
+  TEMPERATURE 67.5d0
+  CONCENTRATION 1.d-8 
+  ENTHALPY 0.d0  0.d0
 /
 
 FLOW_CONDITION source
-!UNITS Pa,C,M,yr
-SYNC_TIMESTEP_WITH_UPDATE
-TYPE
-RATE mass_rate
-PRESSURE dirichlet
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-ENTHALPY dirichlet
-/
-RATE LIST
-  TIME_UNITS y
-  DATA_UNITS kg/s
-# 0.  0  7.92
-  0.  0 10.
-  10. 0. 0.
-/
-PRESSURE 9.81d6 9.81d6
-TEMPERATURE 67.5d0
-CONCENTRATION 1.D-8 
-ENTHALPY 0.d0  0.d0
+  !UNITS Pa,C,M,yr
+  SYNC_TIMESTEP_WITH_UPDATE
+  TYPE
+    RATE mass_rate
+    PRESSURE dirichlet
+    TEMPERATURE dirichlet
+    CONCENTRATION dirichlet
+    ENTHALPY dirichlet
+  /
+  RATE LIST
+    TIME_UNITS y
+    DATA_UNITS kg/s
+  # 0.  0  7.92
+    0.  0 10.
+    10. 0. 0.
+  /
+  PRESSURE 9.81d6 9.81d6
+  TEMPERATURE 67.5d0
+  CONCENTRATION 1.D-8 
+  ENTHALPY 0.d0  0.d0
 /
 
 !=========================== transport conditions =============================

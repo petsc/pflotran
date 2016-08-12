@@ -714,7 +714,7 @@ subroutine  TOilImsAuxVarArray1Strip(auxvars)
   !class(auxvar_toil_ims_type), pointer :: auxvars(:)
   !here we can pass by pointer, we could destroy the array within the routine
   !but we don't to be consistent with TOilImsAuxVarArray2Strip 
-  type(auxvar_toil_ims_type), pointer :: auxvars(:)
+  class(auxvar_toil_ims_type), pointer :: auxvars(:)
 
   PetscInt :: iaux
 
@@ -747,7 +747,7 @@ subroutine TOilImsAuxVarArray2Strip(auxvars)
   !cannot use type(...) with pointer attribute.
   !because the compiler does not allow to specify lower 0-bound in auxvar
   !type(auxvar_toil_ims_type), pointer :: auxvars(:,:)
-  type(auxvar_toil_ims_type) :: auxvars(0:,:)
+  class(auxvar_toil_ims_type) :: auxvars(0:,:)
 
   PetscInt :: iaux, idof
 
