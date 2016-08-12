@@ -9,10 +9,13 @@ module Auxiliary_module
   use Miscible_Aux_module
   use Flash2_Aux_module
   use General_Aux_module
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
   use Material_Aux_class
   use Secondary_Continuum_Aux_module
-  
+
+  !use PM_Base_Aux_module  !new auxvar data structure
+  use PM_TOilIms_Aux_module  !new auxvar data structure  
+
   use PFLOTRAN_Constants_module
 
   implicit none
@@ -31,10 +34,11 @@ module Auxiliary_module
     type(miscible_type), pointer :: Miscible
     type(flash2_type), pointer :: Flash2
     type(general_type), pointer :: General
-    type(toil_ims_type), pointer :: TOil_ims
     type(material_type), pointer :: Material
     type(sc_heat_type), pointer :: SC_heat
     type(sc_rt_type), pointer :: SC_RT
+    !type(toil_ims_type), pointer :: TOil_ims replaced by new auxvar data structure
+    class(pm_toil_ims_aux_type), pointer :: TOil_ims
   end type auxiliary_type
   
   public :: AuxInit, &
@@ -70,7 +74,7 @@ subroutine AuxInit(aux)
   nullify(aux%Material)
   nullify(aux%SC_heat)
   nullify(aux%SC_RT)
-  
+ 
 end subroutine AuxInit
 
 ! ************************************************************************** !
@@ -94,10 +98,12 @@ subroutine AuxDestroy(aux)
   call MphaseAuxDestroy(aux%Mphase)
   call MiscibleAuxDestroy(aux%Miscible)
   call GeneralAuxDestroy(aux%General)
-  call TOilImsAuxDestroy(aux%TOil_ims)
+  call TOilImsAuxDestroy(aux%TOil_ims) 
+  !deallocate(aux%TOil_ims); nullify(aux%TOil_ims) 
   call MaterialAuxDestroy(aux%Material)
   call SecondaryAuxHeatDestroy(aux%SC_heat)
   call SecondaryAuxRTDestroy(aux%SC_RT)
+
   nullify(aux%Global)
   nullify(aux%RT)
   nullify(aux%Richards)
@@ -105,7 +111,7 @@ subroutine AuxDestroy(aux)
   nullify(aux%Immis)
   nullify(aux%Miscible)
   nullify(aux%General)
-  nullify(aux%TOil_ims)
+  nullify(aux%TOil_ims) 
   nullify(aux%Material)
   nullify(aux%SC_Heat)
   nullify(aux%SC_RT)

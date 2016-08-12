@@ -1171,6 +1171,8 @@ subroutine Output(realization_base,snapshot_plot_flag,observation_plot_flag, &
   ! Output temporally average variables 
   call OutputAvegVars(realization_base)
 
+  call OutputWell(realization_base)
+
   if (snapshot_plot_flag) then
     realization_base%output_option%plot_number = &
       realization_base%output_option%plot_number + 1
@@ -2171,5 +2173,53 @@ subroutine OutputAvegVars(realization_base)
 
 
 end subroutine OutputAvegVars
+
+! ************************************************************************** !
+
+subroutine OutputWell(realization_base)
+  ! 
+  ! Prints out the well variables
+  ! 
+  ! Author: Paolo Orsini - OpenGoSim
+  ! Date: 10/7/15
+  ! 
+  use Realization_Base_class, only : realization_base_type
+  use Option_module
+  use Coupler_module
+  use Patch_module
+  use Well_module
+
+  implicit none
+
+  class(realization_base_type) :: realization_base  
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch  
+  type(output_option_type), pointer :: output_option
+  type(coupler_type), pointer :: source_sink
+  !class(well_auxvar_base_type), pointer :: well_auxvar 
+
+  PetscInt :: iconn
+  PetscInt :: local_id, ghosted_id
+
+  patch => realization_base%patch
+  !grid => patch%grid
+  option => realization_base%option
+  output_option => realization_base%output_option
+
+  source_sink => patch%source_sink_list%first
+  do
+    if (.not.associated(source_sink)) exit
+    if( associated(source_sink%well) ) then
+      if (source_sink%connection_set%num_connections > 0 ) then
+        !call WellOutput(source_sink%well,output_option,source_sink%name,option)
+        call WellOutput(source_sink%well,output_option,option)
+      end if 
+    end if
+    source_sink => source_sink%next
+  enddo
+
+end subroutine OutputWell
+
+! ************************************************************************** !
 
 end module Output_module

@@ -7,6 +7,7 @@ module Realization_Subsurface_class
   use Input_Aux_module
   use Region_module
   use Condition_module
+  use WellSpec_Base_class
   use Transport_Constraint_module
   use Material_module
   use Saturation_Function_module
@@ -36,6 +37,7 @@ private
 
     type(region_list_type), pointer :: region_list
     type(condition_list_type), pointer :: flow_conditions
+    type(well_spec_list_type), pointer :: well_specs
     type(tran_condition_list_type), pointer :: transport_conditions
     type(tran_constraint_list_type), pointer :: transport_constraints
     
@@ -145,6 +147,8 @@ function RealizationCreate2(option)
 
   allocate(realization%flow_conditions)
   call FlowConditionInitList(realization%flow_conditions)
+  allocate(realization%well_specs)
+  call WellSpecInitList(realization%well_specs)
   allocate(realization%transport_conditions)
   call TranConditionInitList(realization%transport_conditions)
   allocate(realization%transport_constraints)
@@ -592,6 +596,7 @@ subroutine RealizationProcessCouplers(realization)
   
   call PatchProcessCouplers( realization%patch,realization%flow_conditions, &
                              realization%transport_conditions, &
+                             realization%well_specs, &
                              realization%option)
   
 end subroutine RealizationProcessCouplers
@@ -2514,6 +2519,7 @@ subroutine RealizationDestroyLegacy(realization)
   call RegionDestroyList(realization%region_list)
   
   call FlowConditionDestroyList(realization%flow_conditions)
+  call WellSpecDestroyList(realization%well_specs)
   call TranConditionDestroyList(realization%transport_conditions)
   call TranConstraintDestroyList(realization%transport_constraints)
 
@@ -2569,6 +2575,7 @@ subroutine RealizationStrip(this)
   call RegionDestroyList(this%region_list)
   
   call FlowConditionDestroyList(this%flow_conditions)
+  call WellSpecDestroyList(this%well_specs)
   call TranConditionDestroyList(this%transport_conditions)
   call TranConstraintDestroyList(this%transport_constraints)
 

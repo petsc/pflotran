@@ -1,6 +1,7 @@
 module HydrostaticMultiPhase_module
  
   use PFLOTRAN_Constants_module
+  use Hydrostatic_Common_module
 
   implicit none
 
@@ -8,11 +9,11 @@ module HydrostaticMultiPhase_module
 
 #include "petsc/finclude/petscsys.h"
 
+#if 0
   !LIQ = water to be consistent with the remainder fo the code
   PetscInt, parameter :: HYDRO_LIQ_PHASE = 1  
   PetscInt, parameter :: HYDRO_GAS_PHASE = 2
   PetscInt, parameter :: HYDRO_OIL_PHASE = 3 
-
 
   type :: one_dim_grid_type
     PetscReal :: delta_z
@@ -23,7 +24,7 @@ module HydrostaticMultiPhase_module
   contains 
     procedure :: ElevationIdLoc
   end type one_dim_grid_type
-
+#endif
 
   public :: TOIHydrostaticUpdateCoupler
   !          HydrostaticTest 
@@ -89,9 +90,13 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   use Utility_module
   use Dataset_Gridded_HDF5_class
   use Dataset_Ascii_class
+ 
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module 
+    ! to use constant paramters such as TOIL_IMS_PRESSURE_DOF
+    ! could work something out to eliminate this dependency here 
   
-  use TOilIms_Aux_module
-  
+
   implicit none
 
   type(coupler_type) :: coupler
@@ -236,7 +241,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   end if
   
   dist_x = 0.d0
-  dist_x = 0.d0
+  dist_y = 0.d0
   dist_z = owc(Z_DIRECTION) - datum(Z_DIRECTION)
   po_owc = 0.d0
   pw_owc = 0.d0
@@ -249,7 +254,9 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   end if
 
   ghosted_id_min_dist = &
-      GetCouplerCellOnPhaseConact(coupler,grid,imat,owc(Z_DIRECTION),option)
+      !GetCouplerCellOnPhaseConact(coupler,grid,imat,owc(Z_DIRECTION),option)
+       GetCellOnPhaseConact(coupler%connection_set,grid, &
+                            imat,owc(Z_DIRECTION),option)
 
   !write(*,*) "my_rank", option%myrank, "min_ghost", ghosted_id_min_dist, &
   !           "sat_fun_id", sat_func_id(ghosted_id_min_dist)
@@ -269,7 +276,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   if (datum_in_water) then 
     if (pw_hydrostatic) then
       call PhaseHydrostaticPressure(one_d_grid,option%gravity, &
-                HYDRO_LIQ_PHASE,pressure_at_datum, &
+                LIQUID_PHASE,pressure_at_datum, &
                 one_d_grid%idatum,xm_nacl,temperature_array, &
                 wat_pressure_array,wat_density_array)   
       pw_owc = PressInterp(i_owc,dist_x,dist_y,dist_z_for_pressure, &
@@ -290,17 +297,17 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
       !  ipress_start = size(one_d_grid%z(:))
       dist_owc_start = one_d_grid%z(ipress_start) - owc(Z_DIRECTION)
       press_start = po_owc + dist_owc_start * &
-                    PhaseDensity(HYDRO_OIL_PHASE,po_owc,temp_owc,xm_nacl) * &
+                    PhaseDensity(OIL_PHASE,po_owc,temp_owc,xm_nacl) * &
                     option%gravity(Z_DIRECTION)
       call PhaseHydrostaticPressure(one_d_grid,option%gravity, &
-                HYDRO_OIL_PHASE,press_start, &
+                OIL_PHASE,press_start, &
                 ipress_start,xm_nacl,temperature_array, &
                 oil_pressure_array,oil_density_array)   
     end if
   else ! datum is in the oil region
     if (po_hydrostatic) then
       call PhaseHydrostaticPressure(one_d_grid,option%gravity, &
-                HYDRO_OIL_PHASE,pressure_at_datum, &
+                OIL_PHASE,pressure_at_datum, &
                 one_d_grid%idatum,xm_nacl,temperature_array, &
                 oil_pressure_array,oil_density_array)   
       po_owc = PressInterp(i_owc,dist_x,dist_y,dist_z_for_pressure, &
@@ -319,10 +326,10 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
       ipress_start = i_owc + 1
       dist_owc_start = one_d_grid%z(ipress_start) - owc(Z_DIRECTION)
       press_start = pw_owc + dist_owc_start * &
-                    PhaseDensity(HYDRO_LIQ_PHASE,pw_owc,temp_owc,xm_nacl) * &
+                    PhaseDensity(LIQUID_PHASE,pw_owc,temp_owc,xm_nacl) * &
                     option%gravity(Z_DIRECTION)
       call PhaseHydrostaticPressure(one_d_grid,option%gravity, &
-                HYDRO_LIQ_PHASE,press_start, &
+                LIQUID_PHASE,press_start, &
                 ipress_start,xm_nacl,temperature_array, &
                 wat_pressure_array,wat_density_array) 
     end if
@@ -412,6 +419,14 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
       if ( pc_comp <= 0.d0 ) then ! water-only region 
         coupler%flow_aux_real_var(1,iconn) = pw_cell
         coupler%flow_aux_real_var(2,iconn) = 1.0d-6 !to avoid truncation erros
+      !oil region - case of zero capillary pressure - can assign So < So_ir
+      else if ( (pc_comp > 0.d0) .and. &
+                (characteristic_curves%saturation_function%pcmax < 1.0d-40 ) &
+              ) then  
+        !OIL SATURATION from input
+        coupler%flow_aux_real_var(1,iconn) = po_cell
+        coupler%flow_aux_real_var(2,iconn) = &
+                coupler%flow_condition%toil_ims%saturation%dataset%rarray(1)        
       else if ( pc_comp >= characteristic_curves%saturation_function%pcmax ) &
         then
         ! oil region: can consider here connate water if required, or Sw_ir
@@ -450,6 +465,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
 
 end subroutine TOIHydrostaticUpdateCoupler
 
+#if 0
 ! ************************************************************************** !
 
 function GetCouplerCellOnPhaseConact(coupler,grid,imat,z_phase_contact,option)
@@ -864,6 +880,7 @@ subroutine DestroyOneDimGrid(one_d_grid)
 end subroutine DestroyOneDimGrid
 
 ! ************************************************************************** !
+#endif
 
 end module HydrostaticMultiPhase_module
 
