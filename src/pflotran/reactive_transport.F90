@@ -916,9 +916,7 @@ subroutine RTUpdateTransportCoefs(realization)
     cell_centered_Darcy_velocities_ghosted = 0.d0
     allocate(cell_centered_Darcy_velocities(3,patch%grid%nlmax))
     max_phase = 1
-#ifndef CO2_SPECIFIC
     if (rt_parameter%ngas > 0) max_phase = 2
-#endif
     do iphase = 1, max_phase
       call PatchGetCellCenteredVelocities(patch,iphase, &
                                           cell_centered_Darcy_velocities)
@@ -2515,9 +2513,12 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   endif
   
   max_phase = 1
-#ifndef CO2_SPECIFIC
-  if (reaction%gas%nactive_gas > 0) max_phase = 2
-#endif
+  if (reaction%gas%nactive_gas > 0 .and. &
+      .not.(option%iflowmode == MPH_MODE .or. &
+            option%iflowmode == IMS_MODE .or. &
+            option%iflowmode == FLASH2_MODE)) then
+    max_phase = 2
+  endif
   
   ! Get pointer to Vector data
   call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
@@ -3311,9 +3312,12 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,realization,ierr)
   endif
 
   max_phase = 1
-#ifndef CO2_SPECIFIC
-  if (reaction%gas%nactive_gas > 0) max_phase = 2  
-#endif
+  if (reaction%gas%nactive_gas > 0 .and. &
+      .not.(option%iflowmode == MPH_MODE .or. &
+            option%iflowmode == IMS_MODE .or. &
+            option%iflowmode == FLASH2_MODE)) then
+    max_phase = 2
+  endif
   vol_frac_prim = 1.d0
   
   if (.not.option%steady_state) then
@@ -4802,9 +4806,7 @@ subroutine RTExplicitAdvection(realization)
   
   ntvddof = patch%aux%RT%rt_parameter%naqcomp
   max_phase = 1
-#ifndef CO2_SPECIFIC
   if (reaction%gas%nactive_gas > 0) max_phase = 2 
-#endif
   
   if (realization%option%transport%tvd_flux_limiter /= TVD_LIMITER_UPWIND) then
     allocate(total_up2(option%nphase,ntvddof))

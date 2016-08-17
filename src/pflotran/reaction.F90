@@ -2058,7 +2058,6 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   iphase = 1
 
   90 format(2x,76('-'))
-  91 format(a)
 
   write(option%fid_out,'(/,''  Constraint: '',a)') &
     trim(constraint_coupler%constraint_name)
@@ -2150,9 +2149,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       endif
     endif
 
-200 format('')
 201 format(a20,i5)
-202 format(a20,f10.2)
 203 format(a20,f8.4)
 204 format(a20,es12.4)
 
@@ -4032,21 +4029,16 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   type(reaction_type) :: reaction
   type(option_type) :: option
   
-  PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp, ieqgas
+  PetscInt :: i, j, icplx, icomp, jcomp, ncomp
+  PetscInt, parameter :: iphase = 1
   PetscErrorCode :: ierr
   PetscReal :: ln_conc(reaction%naqcomp)
   PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: lnQK, tempreal
   PetscReal :: den_kg_per_L, xmass
-  PetscReal :: pressure, temperature, xphico2, muco2, den, m_na, m_cl
   
-  ! CO2-specific
-  PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
-               yco2,pco2,sat_pressure,lngamco2
   rt_auxvar%total = 0.d0 !debugging 
   
-  iphase = 1           
-!  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3              
   xmass = 1.d0
   if (associated(global_auxvar%xmass)) xmass = global_auxvar%xmass(iphase)
   den_kg_per_L = global_auxvar%den_kg(iphase)*xmass*1.d-3
@@ -4110,100 +4102,12 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! units of dtotal = kg water/L water
   rt_auxvar%aqueous%dtotal = rt_auxvar%aqueous%dtotal*den_kg_per_L
 
-#ifdef CO2_SPECIFIC
-  if (option%iflowmode == G_MODE) return
-
-! *********** Add SC phase and gas contributions ***********************  
-  ! CO2-specific
-
-  iphase = 2
-
-  if (iphase > option%nphase) return 
-  rt_auxvar%total(:,iphase) = 0.D0
-  rt_auxvar%aqueous%dtotal(:,:,iphase) = 0.D0
-
-!  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
-
-  if (global_auxvar%sat(iphase) > 1.D-20) then
-    do ieqgas = 1, reaction%gas%npassive_gas ! all gas phase species are secondary
-
-      pressure = global_auxvar%pres(2)
-      temperature = global_auxvar%temp
-      xphico2 = global_auxvar%fugacoeff(1)
-      den = global_auxvar%den(2)
- 
-      call EOSWaterSaturationPressure(temperature, sat_pressure, ierr)
-      pco2 = pressure - sat_pressure
-!     call co2_span_wagner(pressure*1.D-6,temperature+273.15D0,dg,dddt,dddp,fg, &
-!              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
-!
-!            fg = fg*1D6
-!            xphico2 = fg / pco2
-!            global_auxvar%fugacoeff(1) = xphico2
-
-
-      if (abs(reaction%species_idx%co2_gas_id) == ieqgas ) then
-
-        if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
-          m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
-          m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
-          call Henry_duan_sun(temperature,pressure*1D-5,muco2, &
-                lngamco2,m_na,m_cl)
-        else
-          call Henry_duan_sun(temperature,pressure*1D-5,muco2, &
-                lngamco2,option%m_nacl,option%m_nacl)
-        endif
-        !lnQk = - log(muco2) 
-        lnQk = - log(muco2)-lngamco2
-           
-      else   
-        lngamco2 = 0.d0
-        lnQK = -reaction%gas%acteqlogK(ieqgas)*LOG_TO_LN
-      endif 
-          
-      if (reaction%gas%acteqh2oid(ieqgas) > 0) then
-        lnQK = lnQK + reaction%gas%acteqh2ostoich(ieqgas)*rt_auxvar%ln_act_h2o
-      endif
-   
-   ! contribute to %total          
-   !     do i = 1, ncomp
-   ! removed loop over species, suppose only one primary species is related
-      icomp = reaction%gas%acteqspecid(1,ieqgas)
-      pressure = pressure * 1.D-5
-        
-!     rt_auxvar%gas_pp(ieqgas) = &
-!         exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp) &
-!         /(IDEAL_GAS_CONSTANT*1.d-2*(temperature+273.15D0)*xphico2)
-
-!     This form includes factor Z in pV = ZRT for nonideal gas
-      rt_auxvar%gas_pp(ieqgas) = &
-          exp(lnQK)*rt_auxvar%pri_act_coef(icomp)*rt_auxvar%pri_molal(icomp)* &
-          den/pressure/xphico2
-
-      rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
-          reaction%gas%acteqstoich(1,ieqgas)* &
-          rt_auxvar%gas_pp(ieqgas)
-
-!       print *,'RTotal: ',icomp,ieqgas,pressure, temperature, xphico2, &
-!         global_auxvar%sat(iphase),rt_auxvar%gas_pp(ieqgas), &
-!         rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp) &
-!         /pressure/xphico2*den
-
-
-   ! contribute to %dtotal
-   !      tempreal = exp(lnQK+lngamco2)/pressure/xphico2*den
-!     tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK) &
-!         /pressure/xphico2*den
-      tempreal = rt_auxvar%gas_pp(ieqgas)/rt_auxvar%pri_molal(icomp)
-      rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = &
-          rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) + &
-          reaction%gas%acteqstoich(1,ieqgas)*tempreal
-    enddo
-  ! rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)!*den_kg_per_L
-  ! units of dtotal = kg water/L water
-  ! rt_auxvar%dtotal(:, :,iphase) = rt_auxvar%dtotal(:,:,iphase)!*den_kg_per_L
+  if (option%iflowmode == MPH_MODE .or. &
+      option%iflowmode == IMS_MODE .or. &
+      option%iflowmode == FLASH2_MODE) then
+    call RTotalCO2(rt_auxvar,global_auxvar,reaction,option)
   endif
-#endif  
+
 end subroutine RTotal
 
 ! ************************************************************************** !
@@ -5172,7 +5076,6 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
         psv_t*rt_auxvar%colloid%total_eq_mob(icollcomp)
     enddo
   endif
-#ifndef CO2_SPECIFIC 
   if (reaction%gas%nactive_gas > 0) then
     iphase = 2
     psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
@@ -5181,27 +5084,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
     iend = reaction%naqcomp
     Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase)     
   endif
-#endif
 
-#ifdef CO2_SPECIFIC 
-  ! CO2-specific
-  if (option%iflowmode == G_MODE) return
-! Add in multiphase, clu 12/29/08
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
-
-! super critical CO2 phase
-    if (iphase == 2) then
-      psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
-              material_auxvar%volume / option%tran_dt 
-      Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase) 
-      ! should sum over gas component only need more implementations
-    endif 
-! add code for other phases here
-  enddo
-#endif    
-  
 end subroutine RTAccumulation
 
 ! ************************************************************************** !
@@ -5276,7 +5159,6 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     ! dRj_dSic
     ! dRic_dCj                                 
   endif
-#ifndef CO2_SPECIFIC 
   if (reaction%gas%nactive_gas > 0) then
     iphase = 2
     ! units of dtotal(:,:,2) = kg water / L gas
@@ -5286,33 +5168,7 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
                                      rt_auxvar%aqueous%dtotal(:,:,iphase) * &
                                      psvd_t
   endif
-#endif
 
-#ifdef CO2_SPECIFIC 
-  ! CO2-specific
-  if (option%iflowmode == G_MODE) return
-! Add in multiphase, clu 12/29/08
-  do
-    iphase = iphase +1 
-    if (iphase > option%nphase) exit
-! super critical CO2 phase
-    if (iphase == 2) then
-      if (associated(rt_auxvar%aqueous%dtotal)) then
-        psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
-                 material_auxvar%volume/option%tran_dt  
-        J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
-          rt_auxvar%aqueous%dtotal(:,:,iphase)*psvd_t
-      else
-        psvd_t = material_auxvar%porosity*global_auxvar%sat(iphase)* &
-                 global_auxvar%den_kg(iphase)*material_auxvar%volume/ &
-                 option%tran_dt ! units of den = kg water/m^3 water
-        do icomp=istart,iendaq
-          J(icomp,icomp) = J(icomp,icomp) + psvd_t
-        enddo
-      endif   
-    endif
-  enddo
-#endif
 end subroutine RTAccumulationDerivative
 
 ! ************************************************************************** !
