@@ -1,0 +1,232 @@
+# TOUGH2 EOS8 - Sample 9 case - RCOL8 input 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  !SIMULATION_TYPE GEOMECHANICS_SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW Flow
+      MODE TOIL_IMS
+      OPTIONS
+       !ISOTHERMAL
+       !TOUGH2_ITOL_SCALED_RESIDUAL 1.d-5 1.d0
+      /
+    / ! end of subsurface_flow
+    !GEOMECHANICS_SUBSURFACE geomech ! geomech not currenlty used
+    !GEOMECHANICS_SUBSURFACE xxx ! at least one "x" to avoid input error 
+  / ! end of process models
+END  !! end simulation 
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS
+    1
+    2
+    13
+    14
+    23
+    24
+  /
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 1 1 24
+  BOUNDS
+    0.d0 0.0 0.0
+    50.d0  50.d0  120.d0
+  /
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  TS_ACCELERATION 4
+  !TS_ACCELERATION 12
+  !MAX_PRESSURE_CHANGE 5.e5
+  !MAX_TEMPERATURE_CHANGE 5.d0
+  !MAX_SATURATION_CHANGE 0.025
+/
+
+NEWTON_SOLVER FLOW
+  ATOL 1D-8
+  RTOL 1D-8
+  STOL 1D-30
+  DTOL 1D15
+  ITOL 1D-7
+  ITOL_UPDATE 1.d0
+  MAXIT 8
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 0.1d0 d
+  INITIAL_TIMESTEP_SIZE 1.0d-2 d  
+  MAXIMUM_TIMESTEP_SIZE 50.d0 d
+/
+
+#=========================== output options ===================================
+skip
+OUTPUT
+  TIMES d 0.0 0.10d0
+  FORMAT HDF5
+  VARIABLES
+    TEMPERATURE
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+    LIQUID_DENSITY
+    LIQUID_MOBILITY
+    LIQUID_ENERGY
+    OIL_PRESSURE
+    OIL_SATURATION
+    OIL_DENSITY
+    OIL_MOBILITY
+    OIL_ENERGY
+    CAPILLARY_PRESSURE
+  END
+END
+noskip
+#=========================== fluid properties =================================
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY formation
+  ID 1
+  POROSITY 0.3d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.65d3
+  SPECIFIC_HEAT 1.d3
+  THERMAL_CONDUCTIVITY_DRY 2.1
+  THERMAL_CONDUCTIVITY_WET 2.1 
+  !SATURATION_FUNCTION sf2
+  CHARACTERISTIC_CURVES ch1
+  PERMEABILITY
+    PERM_X 1.e-13
+    PERM_Y 1.e-13
+    PERM_Z 1.e-14
+  /
+/
+
+#=========================== saturation functions =============================
+!SATURATION_FUNCTION sf2
+CHARACTERISTIC_CURVES ch1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.5d0
+    ALPHA 5.792e-05
+    !ALPHA 5.105e-04 
+    LIQUID_RESIDUAL_SATURATION 0.2d0
+    MAX_CAPILLARY_PRESSURE 5.d5
+    !SMOOTH !when using smoothing option
+  /
+
+  PERMEABILITY_FUNCTION MOD_BC_LIQ
+    M 2.0d0
+    LIQUID_RESIDUAL_SATURATION 0.2d0 
+    OIL_RESIDUAL_SATURATION 0.2d0
+    GAS_RESIDUAL_SATURATION 0.0d0
+    LIQUID_MAX_REL_PERM 1.0d0 !if not included defaulted to 1
+    !SMOOTH !when using smoothing option
+  /
+  PERMEABILITY_FUNCTION MOD_BC_OIL
+    M 2.0d0
+    LIQUID_RESIDUAL_SATURATION 0.2d0 
+    OIL_RESIDUAL_SATURATION 0.2d0
+    GAS_RESIDUAL_SATURATION 0.0d0
+    OIL_MAX_REL_PERM 1.0d0 !if not included defaulted to 1
+    !SMOOTH !when using smoothing option
+  /
+
+/
+
+#=========================== EOSs =============================================
+
+! if all commented, initialised IFC67 for density, enthaplty and viscosity  
+!EOS WATER
+!  DENSITY CONSTANT 997.16d0
+!  ENTHALPY CONSTANT 1.8890d0
+!  VISCOSITY CONSTANT 8.904156d-4
+!   VISCOSITY CONSTANT 0.3d-3
+!END
+
+EOS OIL
+  !DENSITY CONSTANT 300.00d0 !kg/m3
+  !DENSITY CONSTANT 734.29d0 !kg/m3
+  ! den = den0 + C(p-p1) - E(t-t1)
+  DENSITY LINEAR
+    REFERENCE_VALUE 734.29d0        !den0 [kg/m3]  
+    PRES_REF_VAULE 1.d5             !p1 [Pa]
+    TEMP_REF_VALUE 15.0             !t1 [°C]
+    COMPRESS_COEFF 0.7345d-6        !C [kg/m3/Pa]
+    THERMAL_EXPANSION_COEFF 0.774d0 !E [kg/m3/°C]
+  END
+  ENTHALPY LINEAR_TEMP 1.d3 !J/kg/°C 
+  VISCOSITY CONSTANT 3.0d-3
+END
+
+#=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+2000.0 2000.0 120.0
+/
+/
+
+#=========================== well specifications ==============================
+!skip
+ WELL_SPEC wat_injector
+   !RADIUS 0.1 m
+   RADIUS 0.25 m
+   SKIN_FACTOR 0.0
+   WELL_TYPE WATER_INJECTOR
+   VAR_CONTROL MASS_RATE
+   !VAR_CONTROL BHP
+   VAR_LIMIT
+     BHP_MAX
+   END
+   CONST_DRILL_DIR DIR_Z  ! or DIR_X or DIR_Y
+   !CONSTANT_WELL_FACTOR 2.6e-15
+   !CONSTANT_WELL_FACTOR 1.0e-13 
+   THETA_FRACTION 0.25d0 ! btween 0 and 1 
+   !Z_REF 25.0 m ! at the moment this method is not implemented
+ END
+
+!noskip
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial_water
+  !UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE hydrostatic
+    OIL_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  !GRADIENT
+  !  PRESSURE 0.d0 0.d0 -7845.44d0
+  !  SATURATION 0.d0 0.d0 0.0d0
+  !  TEMPERATURE 0.d0 0.d0 0.0d0
+  !/
+  PRESSURE 9.81D6  !about 1000m below sea level
+  OIL_SATURATION 1.0d-6 
+  TEMPERATURE 50.d0 C  !up to here it refers to primary vars
+  DATUM 0.d0 0.d0 0.d0
+  !define OWC and WATER_PRESSURE_GRAD as new optional sub_condition 
+  OWC 0.0d0 0.d0 64.0d0 ! oil water contact
+  !OWC 0.0d0 0.d0 150.0d0 ! oil water contact
+  !WATER_PRESSURE_GRAD 0.d0 0.d0 0.d0! might be neded when owc is defined 
+/
+
+
+#=========================== condition couplers ===============================
+INITIAL_CONDITION initial_water
+FLOW_CONDITION initial_water
+REGION all
+/
+
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL formation
+END
+
+END_SUBSURFACE
+

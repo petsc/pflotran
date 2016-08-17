@@ -38,7 +38,10 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Dataset_Ascii_class
   
   use General_Aux_module
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module 
+    ! to use constant paramters such as TOIL_IMS_PRESSURE_DOF
+    ! could work something out to eliminate this dependency here 
   
   implicit none
 

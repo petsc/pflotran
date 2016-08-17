@@ -326,7 +326,7 @@ end subroutine PatchLocalizeRegions
 ! ************************************************************************** !
 
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
-                                option)
+                                well_specs, option)
   ! 
   ! Assigns conditions and regions to couplers
   ! 
@@ -339,12 +339,15 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   use Condition_module
   use Transport_Constraint_module
   use Connection_module
+  use Well_module
+  use WellSpec_Base_class
 
   implicit none
   
   type(patch_type) :: patch
   type(condition_list_type) :: flow_conditions
   type(tran_condition_list_type) :: transport_conditions
+  type(well_spec_list_type), pointer :: well_specs
   type(option_type) :: option
   
   type(coupler_type), pointer :: coupler
@@ -352,7 +355,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(strata_type), pointer :: strata
   type(observation_type), pointer :: observation, next_observation
   type(integral_flux_type), pointer :: integral_flux
-  
+  class(well_spec_base_type), pointer :: well_spec 
+
   PetscInt :: temp_int, isub
   PetscErrorCode :: ierr
   
@@ -491,6 +495,15 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                  '" not found in region list'
       call printErrMsg(option)
     endif
+    !Create a well only if a well_spec is associated with the source_sink coupler 
+    nullify(well_spec)
+    well_spec => WellSpecGetPtrFromList(coupler%well_spec_name,well_specs) 
+    if ( associated(well_spec) ) then
+      coupler%well => CreateWell(well_spec,option)
+      option%nwells = option%nwells + 1
+    end if  
+    nullify(well_spec)
+   
     ! pointer to flow condition
     if (option%nflowdof > 0) then    
       if (len_trim(coupler%flow_condition_name) > 0) then
@@ -515,6 +528,13 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           endif
           if (associated(coupler%flow_condition%toil_ims)) then          
             if (associated(coupler%flow_condition%toil_ims%rate)) then
+              temp_int = 1
+            endif
+          end if
+          if (associated(coupler%flow_condition%flow_well)) then          
+            if ( associated(coupler%flow_condition%flow_well%rate) .or. &
+                 associated(coupler%flow_condition%flow_well%pressure) &
+               ) then
               temp_int = 1
             endif
           end if
@@ -743,6 +763,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     if (option%nflowdof > 0) then
       allocate(patch%ss_flow_fluxes(option%nflowdof,temp_int))
       patch%ss_flow_fluxes = 0.d0
+      if (option%nwells > 0) then
+        ! needed by wells
+        allocate(patch%ss_flow_vol_fluxes(option%nphase,temp_int))
+        patch%ss_flow_vol_fluxes = 0.d0
+      end if 
     endif
     ! transport
     if (option%ntrandof > 0) then
@@ -754,7 +779,270 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     endif
   endif
 
+  !create well communicators - if no wells exit without any operation 
+  call PatchCreateWellComms(patch,option)
+
 end subroutine PatchProcessCouplers
+
+! ************************************************************************** !
+
+subroutine PatchCreateWellComms(patch,option)
+  ! 
+  ! Create well groups and communicators 
+  ! Wells are defined as source_sink couplers
+  !
+  ! Author: Paolo Orsini - OpenGoSim
+  ! Date: 6/10/2015
+  ! 
+
+  use Option_module
+  !use Connection_module ! do I need this??
+  !use Well_Base_class
+
+  implicit none
+
+  
+  type(patch_type) :: patch
+  type(option_type) :: option
+
+  PetscInt :: num_couplers,num_wells, comm_size
+  PetscInt :: i_well, well_idx, i_rank
+  PetscInt, pointer :: rnk_idx(:) 
+  PetscInt :: temp_int
+  PetscInt :: recvbuf
+  PetscErrorCode :: ierr
+  PetscInt, pointer :: snd_well_ranks(:), rcv_well_ranks(:) 
+  PetscInt, pointer :: clp_to_well(:)
+  PetscInt :: nw
+  type(coupler_type), pointer :: coupler
+  type(coupler_list_type), pointer :: coupler_list 
+
+  type wells_loc_type
+    PetscInt :: cpl_id
+    PetscInt :: num_ranks
+    PetscMPIInt :: comm      
+    PetscMPIInt :: group    
+    PetscInt, pointer :: ranks(:)
+  end type wells_loc_type
+  
+  type(wells_loc_type), pointer :: wells_loc(:)
+
+  ! to be redesigned so that:
+  ! number of well spec can be repeated to define more wells: 
+  ! WELL_SPEC read from the input deck can
+  ! be used to create more coupler_wells (new type of coupler or extended type)
+
+  num_couplers = patch%source_sink_list%num_couplers 
+  allocate(clp_to_well(num_couplers))
+  clp_to_well = -1
+
+  num_wells = 0
+  ! count the number of wells and create couplers to wells map  
+  coupler => patch%source_sink_list%first
+  do
+    if (.not.associated(coupler)) exit
+    if ( associated(coupler%well) ) then
+      num_wells = num_wells + 1
+      clp_to_well(coupler%id) = num_wells
+    end if 
+    coupler => coupler%next
+  enddo
+
+  if (num_wells == 0) return
+
+  allocate(snd_well_ranks(num_wells))
+  ! flag with -1 processors/ranks that do not share a well 
+  snd_well_ranks = -1
+  comm_size=option%mycommsize
+  allocate(rcv_well_ranks(num_wells*comm_size))
+
+  allocate(wells_loc(num_wells))
+  do i_well=1,num_wells
+    wells_loc(i_well)%cpl_id=-9
+    wells_loc(i_well)%num_ranks = 0
+    wells_loc(i_well)%comm = 0
+    wells_loc(i_well)%group = 0
+    nullify(wells_loc(i_well)%ranks) 
+  end do
+
+  ! detecting and saving ranks containing each well
+  coupler => patch%source_sink_list%first
+  do
+    if (.not.associated(coupler)) exit
+    if ( associated(coupler%well) ) then
+      ! empty well coupler (num_connections=0) can exist because of
+      ! global regions that do not exist in the current processor/sub-domain    
+      ! only non-empty well are added to the well group/communicator 
+      if (coupler%connection_set%num_connections > 0) then  
+        nw = clp_to_well(coupler%id)
+        snd_well_ranks(nw) = option%myrank
+        wells_loc(nw)%cpl_id = coupler%id ! well to coupler map
+      end if
+    end if 
+    coupler => coupler%next
+  enddo
+
+#ifdef WELL_DEBUG
+  print *, "rank= ", option%myrank
+  print *, "before MPI_Allgather"
+  do i_well=1,num_wells
+    print *, "i_well",i_well,"snd=",snd_well_ranks(i_well),"  rank= ",option%myrank
+  end do 
+  !print *, "snd1= ", snd_well_ranks(1),"  snd2= ",snd_well_ranks(2),"  rank= ",option%myrank
+#endif
+  ! if in the current processor/rank there are no wells snd_well_ranks = -1 
+  call MPI_Allgather(snd_well_ranks, num_wells, MPI_INTEGER, rcv_well_ranks, &
+                     num_wells, MPI_INTEGER, option%mycomm, ierr);
+#ifdef WELL_DEBUG
+  well_idx = 1
+  do i_rank=1,comm_size
+    print *, "rcv rank segment = ", i_rank,"  rank= ",option%myrank
+    do i_well=1,num_wells 
+      print *, "rcv_idx= ", well_idx, "rcv= ", rcv_well_ranks(well_idx),& 
+               "  rank= ",option%myrank
+      well_idx = well_idx + 1
+    end do
+  end do
+ ! print *, "rcv1= ", rcv_well_ranks(1),"  rcv2= ",rcv_well_ranks(2),"  rank= ",option%myrank
+ ! print *, "rcv3= ", rcv_well_ranks(3),"  rcv4= ",rcv_well_ranks(4),"  rank= ",option%myrank
+ ! print *, "rcv5= ", rcv_well_ranks(5),"  rcv6= ",rcv_well_ranks(6),"  rank= ",option%myrank
+ ! print *, "rcv7= ", rcv_well_ranks(7),"  rcv8= ",rcv_well_ranks(8),"  rank= ",option%myrank
+  print *, "after MPI_Allgather"
+#endif
+
+  ! First, it defines how many processors/ranks share each well, 
+  ! then, it loops again to allocate and load the ranks.
+  ! This could be done with a list to avoid the double loop, 
+  ! but this is not an expensive operation ( max_num_wells= 100-200)
+  well_idx=1
+  do i_rank=1,comm_size
+    do i_well=1,num_wells 
+      if ( rcv_well_ranks(well_idx) /= -1) then  
+        wells_loc(i_well)%num_ranks = wells_loc(i_well)%num_ranks + 1
+      end if
+      well_idx = well_idx + 1
+    end do
+  end do 
+
+  do i_well=1,num_wells
+    if (wells_loc(i_well)%num_ranks > 0) then
+      allocate(wells_loc(i_well)%ranks(wells_loc(i_well)%num_ranks))
+      wells_loc(i_well)%ranks=-11
+    end if
+  end do   
+
+  allocate(rnk_idx(num_wells))
+  rnk_idx=1
+  do i_well=1,num_wells
+    do i_rank=1,comm_size
+      well_idx = i_well + (i_rank-1)*num_wells  
+      if (rcv_well_ranks(well_idx) /= -1 .and. rcv_well_ranks(well_idx)>=0) then  
+        wells_loc(i_well)%ranks(rnk_idx(i_well)) = rcv_well_ranks(well_idx) 
+        rnk_idx(i_well) = rnk_idx(i_well) + 1
+      else if (rcv_well_ranks(well_idx)/=-1.and.rcv_well_ranks(well_idx)<0) then
+        option%io_buffer = 'WELL processing: well ranks must be greater than 0'
+        call printErrMsg(option)
+      end if
+    end do
+  end do  
+  deallocate(rnk_idx)
+  nullify(rnk_idx) 
+
+#ifdef WELL_DEBUG
+  print *,"num_wells=", num_wells, "rank= ",option%myrank
+  do i_well=1,num_wells
+    print *,"well id= ",i_well,"num rank=",wells_loc(i_well)%num_ranks, &
+             "rank= ",option%myrank
+    do i_rank=1,wells_loc(i_well)%num_ranks
+      print *,"well id= ",i_well,"i_rank=", wells_loc(i_well)%ranks(i_rank), &
+            "rank= ",option%myrank 
+    end do
+   ! print *,"well id= ",i_well,"ranks=", wells_loc(i_well)%ranks(1), &
+   !                      wells_loc(i_well)%ranks(2), &
+   !                     "rank= ",option%myrank 
+  end do
+#endif
+
+  ! create well groups and communicators for in each process
+  ! each well must have at least one rank associated 
+  ! each well must have at least one group and one comm
+  ! all processes call MPI_GROUP_INCL and MPI_COMM_CREATE
+  do i_well=1,num_wells
+    call MPI_GROUP_INCL(option%mygroup,wells_loc(i_well)%num_ranks,&
+                        wells_loc(i_well)%ranks,wells_loc(i_well)%group,ierr)    
+    call MPI_COMM_CREATE(option%mycomm, wells_loc(i_well)%group, &
+                         wells_loc(i_well)%comm, ierr) 
+  end do 
+
+  ! assign well group and communicators to well-couplers
+  coupler => patch%source_sink_list%first
+  do
+    if (.not.associated(coupler)) exit
+    if ( associated(coupler%well) ) then
+#ifdef WELL_DEBUG
+      print *, "well= ", coupler%id, "  num_conn= ", &
+                coupler%connection_set%num_connections,"rank= ", option%myrank
+      print *, coupler%id, wells_loc(coupler%id)%group
+      print *, coupler%id, wells_loc(coupler%id)%comm
+      print *, coupler%id, coupler%well%group
+      print *, coupler%id, coupler%well%comm     
+#endif
+      nw = clp_to_well(coupler%id)
+      coupler%well%group = wells_loc(nw)%group
+      coupler%well%comm = wells_loc(nw)%comm
+    end if     
+    coupler => coupler%next
+  end do 
+
+#ifdef WELL_DEBUG
+  ! testing
+  coupler => patch%source_sink_list%first
+  do
+    if (.not.associated(coupler)) exit
+    !if (associated(coupler%well)) then
+    ! only the non-empty wells in the rank can use the well communicators 
+    ! only ranks with a non-empty portion of the well are included in the 
+    ! well communicators. Only ranks belonging to the well can use the well comm   
+    if ( associated(coupler%well) ) then
+      if (coupler%connection_set%num_connections > 0) then 
+        if (coupler%id==1) then
+          print *, "before MPI_ALLREDUCE, well_id= ",coupler%id, "rank= ", option%myrank
+          call MPI_ALLREDUCE(1, recvbuf, 1, MPI_INTEGER,MPI_SUM, &
+                           coupler%well%comm, ierr)
+          print *, "result reduce well 1 =", recvbuf, "rank= ", option%myrank
+        end if
+        if (coupler%id==2) then 
+          print *, "before MPI_ALLREDUCE, well_id= ",coupler%id, "rank= ", option%myrank 
+          call MPI_ALLREDUCE(2, recvbuf, 1, MPI_INTEGER,MPI_SUM, &
+                             coupler%well%comm, ierr)
+          print *, "result reduce well 2 =", recvbuf, "rank= ", option%myrank        
+        end if
+      end if
+    end if
+    coupler => coupler%next
+  end do
+#endif
+
+ ! deallocate local variables
+  deallocate(clp_to_well)
+  nullify(clp_to_well)
+  deallocate(snd_well_ranks)
+  nullify(snd_well_ranks)
+  deallocate(rcv_well_ranks)
+  nullify(rcv_well_ranks)   
+
+  do i_well=1,size(wells_loc(:))
+    if(associated(wells_loc(i_well)%ranks)) then
+      deallocate(wells_loc(i_well)%ranks)
+      nullify(wells_loc(i_well)%ranks)
+    end if  
+  end do
+  deallocate(wells_loc)
+  nullify(wells_loc)
+
+  nullify(coupler)
+
+end subroutine PatchCreateWellComms 
 
 ! ************************************************************************** !
 
@@ -812,8 +1100,12 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   use Condition_module
   use Transport_Constraint_module
   use General_Aux_module
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module 
+    ! to use constant paramters such as TOIL_IMS_MAX_INDEX
+    ! could work something out to eliminate this dependency here 
   
+
   implicit none
   
   type(coupler_list_type), pointer :: coupler_list
@@ -978,6 +1270,12 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
         cur_constraint_coupler => cur_constraint_coupler%next
       enddo
     endif
+
+    !Well Setup
+    if (associated(coupler%well)) then
+      call coupler%well%Setup(coupler%connection_set,patch%grid, &
+                                        option)
+    end if
       
     coupler => coupler%next
   enddo
@@ -1544,7 +1842,9 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
   use HydrostaticMultiPhase_module  
   use Saturation_module
   
-  use TOilIms_Aux_module
+  !use TOilIms_Aux_module
+  use PM_TOilIms_Aux_module 
+
   use Grid_module
   use Dataset_Common_HDF5_class
   use Dataset_Gridded_HDF5_class
@@ -3227,7 +3527,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
   use Output_Aux_module
   use Variables_module
   use Material_Aux_class
-  
+
   implicit none
 
 #include "petsc/finclude/petscvec.h"
@@ -3255,9 +3555,10 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
   PetscInt :: ivar_temp
   PetscErrorCode :: ierr
 
+  
   grid => patch%grid
   material_auxvars => patch%aux%Material%auxvars
-  
+
   call VecGetArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
 
   iphase = 1
@@ -3894,40 +4195,47 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
             enddo
         end select 
 
-      else if (associated(patch%aux%TOil_ims)) then
+      !new auvar data structure
+      !else if (associated(patch%aux%TOil_ims)) then
+      else if (associated(patch%aux%TOil_ims)) then 
 
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%TOil_ims% &
-                auxvars(ZERO_INTEGER,grid%nL2G(local_id))%temp
+              !vec_ptr(local_id) = patch%aux%TOil_ims% &
+               vec_ptr(local_id) = patch%aux%TOil_ims% &
+                 auxvars(ZERO_INTEGER,grid%nL2G(local_id))%temp
             enddo
           case(MAXIMUM_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               vec_ptr(local_id) = &
-                  maxval(patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                  !maxval(patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                  maxval(patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% & 
                            pres(option%liquid_phase:option%oil_phase))
             enddo
           case(LIQUID_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               vec_ptr(local_id) = &
-                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                !patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                 patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
                   pres(option%liquid_phase)
             enddo
           case(OIL_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               vec_ptr(local_id) = &
-                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                !patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% & 
                   pres(option%oil_phase)
             enddo
           case(CAPILLARY_PRESSURE)
             do local_id=1,grid%nlmax
               ghosted_id = grid%nL2G(local_id)
               vec_ptr(local_id) = &
-                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                !patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% & 
                   pres(option%capillary_pressure_id)
             enddo
           case(LIQUID_SATURATION)
@@ -4502,7 +4810,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   PetscErrorCode :: ierr
 
   grid => patch%grid
-  material_auxvars => patch%aux%Material%auxvars
+  material_auxvars => patch%aux%Material%auxvars  
   
   value = UNINITIALIZED_DOUBLE
 

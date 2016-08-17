@@ -205,7 +205,8 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
                                LIQUID_DENSITY, GAS_PRESSURE, &
                                GAS_DENSITY, GAS_SATURATION, &
                                TEMPERATURE, SC_FUGA_COEFF, GAS_DENSITY_MOL, &
-                               STATE
+                               STATE, OIL_PRESSURE, OIL_SATURATION, &
+                               OIL_DENSITY, OIL_DENSITY_MOL
   
   implicit none
 
@@ -266,6 +267,23 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
             patch%aux%Global%auxvars(ghosted_id)%pres(option%gas_phase) = vec_loc_p(ghosted_id)
           enddo
       end select
+    case(OIL_PRESSURE)
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%pres_store(option%oil_phase,TIME_T) = &
+                vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%pres_store(option%oil_phase,TIME_TpDT) = &
+                vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%pres(option%oil_phase) = vec_loc_p(ghosted_id)
+          enddo
+      end select
     case(TEMPERATURE)
       select case(isubvar)
         case(TIME_T)
@@ -320,6 +338,25 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
               vec_loc_p(ghosted_id)
           enddo
       end select
+    case(OIL_SATURATION)
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%sat_store(option%oil_phase,TIME_T) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%sat_store(option%oil_phase,TIME_TpDT) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%sat(option%oil_phase) = &
+              vec_loc_p(ghosted_id)
+          enddo
+      end select
+
     case(GAS_DENSITY)
       select case(isubvar)
         case(TIME_T)
@@ -354,6 +391,42 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
             patch%aux%Global%auxvars(ghosted_id)%den(option%gas_phase) = vec_loc_p(ghosted_id)
           enddo
       end select
+
+    case(OIL_DENSITY)
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%den_kg_store(option%oil_phase,TIME_T) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%den_kg_store(option%oil_phase,TIME_TpDT) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%den_kg(option%oil_phase) = vec_loc_p(ghosted_id)
+          enddo
+      end select
+    case(OIL_DENSITY_MOL)
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%den_store(option%oil_phase,TIME_T) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%den_store(option%oil_phase,TIME_TpDT) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%auxvars(ghosted_id)%den(option%oil_phase) = vec_loc_p(ghosted_id)
+          enddo
+      end select
+
     case(LIQUID_SATURATION)
       select case(isubvar)
         case(TIME_T)

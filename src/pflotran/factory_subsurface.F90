@@ -407,6 +407,9 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%nphase = 2
       option%liquid_phase = 1           ! liquid_pressure
       option%oil_phase = 2              ! oil_pressure
+      option%phase_map(1) = LIQUID_PHASE 
+      option%phase_map(2) = OIL_PHASE
+      option%phase_map(3) = UNINITIALIZED_INTEGER ! no third phase
 
       option%capillary_pressure_id = 3  ! capillary pressure
 
@@ -1477,11 +1480,11 @@ subroutine SubsurfaceReadInput(simulation)
   use WIPP_module
   use Utility_module
   use Checkpoint_module
-  
   use Simulation_Subsurface_class
   use PMC_Subsurface_class
   use Timestepper_BE_class
   use Timestepper_Steady_class
+  use WellSpec_Base_class
   
 #ifdef SOLID_SOLUTION
   use Reaction_Solid_Solution_module, only : SolidSolutionReadFromInputFile
@@ -1513,6 +1516,7 @@ subroutine SubsurfaceReadInput(simulation)
   
   type(region_type), pointer :: region
   type(flow_condition_type), pointer :: flow_condition
+  class(well_spec_base_type), pointer :: well_spec
   type(tran_condition_type), pointer :: tran_condition
   type(tran_constraint_type), pointer :: tran_constraint
   type(tran_constraint_type), pointer :: sec_tran_constraint
@@ -1675,7 +1679,17 @@ subroutine SubsurfaceReadInput(simulation)
         endif
         call FlowConditionAddToList(flow_condition,realization%flow_conditions)
         nullify(flow_condition)
-        
+
+!....................
+      case ('WELL_SPEC')
+        well_spec => WellSpecBaseCreate()
+        call InputReadWord(input,option,well_spec%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'WELL_SPEC','name') 
+        call printMsg(option,well_spec%name)
+        call well_spec%Read(input,option)
+        call WellSpecAddToList(well_spec,realization%well_specs)
+        nullify(well_spec)
+
 !....................
       case ('TRANSPORT_CONDITION')
         if (.not.associated(reaction)) then

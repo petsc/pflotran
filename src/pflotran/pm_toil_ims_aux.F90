@@ -1,10 +1,13 @@
-module TOilIms_Aux_module
+module PM_TOilIms_Aux_module
 
   use PFLOTRAN_Constants_module
 
+  use PM_Base_Aux_module
+  use AuxVars_TOilIms_module
+
   implicit none
-  
-  private 
+
+  private
 
 #include "petsc/finclude/petscsys.h"
 
@@ -66,25 +69,6 @@ module TOilIms_Aux_module
   !                      a different index). Need mapping in any case
   PetscInt, parameter, public :: TOIL_IMS_OIL_PHASE = 2
 
-  type, public :: toil_ims_auxvar_type
-    !PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
-    PetscReal, pointer :: pres(:)   ! (iphase)
-    PetscReal, pointer :: sat(:)    ! (iphase)
-    PetscReal, pointer :: den(:)    ! (iphase) kmol/m^3 phase
-    PetscReal, pointer :: den_kg(:) ! (iphase) kg/m^3 phase
-    PetscReal :: temp
-    PetscReal, pointer :: H(:) ! MJ/kmol
-    PetscReal, pointer :: U(:) ! MJ/kmol
-!    PetscReal, pointer :: dsat_dp(:,:)
-!    PetscReal, pointer :: dden_dp(:,:)
-!    PetscReal, pointer :: dsat_dt(:)
-!    PetscReal, pointer :: dden_dt(:)
-    PetscReal, pointer :: mobility(:) ! relative perm / kinematic viscosity
-    PetscReal :: effective_porosity ! factors in compressibility
-    PetscReal :: pert
-!    PetscReal, pointer :: dmobility_dp(:)
-  end type toil_ims_auxvar_type
-
   ! it might be required for thermal diffusion terms and tough conv criteria
   ! consider to pput here all 
   type, public :: toil_ims_parameter_type
@@ -94,41 +78,35 @@ module TOilIms_Aux_module
   !  PetscBool :: check_post_converged
   end type toil_ims_parameter_type
 
-  type, public :: toil_ims_type
-    PetscInt :: n_inactive_rows
-    PetscInt, pointer :: inactive_rows_local(:), inactive_rows_local_ghosted(:)
-    PetscInt, pointer :: row_zeroing_array(:)
-
-    PetscBool :: auxvars_up_to_date
-    PetscBool :: inactive_cells_exist
-    PetscInt :: num_aux, num_aux_bc, num_aux_ss
+  !if required, could add other classes in the middle:
+  ! pm_base_aux's doughters & pm_toil_ims_aux'parents 
+  type, public, extends(pm_base_aux_type) :: pm_toil_ims_aux_type 
     type(toil_ims_parameter_type), pointer :: parameter
-    type(toil_ims_auxvar_type), pointer :: auxvars(:,:)
-    type(toil_ims_auxvar_type), pointer :: auxvars_bc(:)
-    type(toil_ims_auxvar_type), pointer :: auxvars_ss(:)
-  end type toil_ims_type
+    !type(auxvar_toil_ims_type), pointer :: auxvars(:,:)
+    !type(auxvar_toil_ims_type), pointer :: auxvars_bc(:)
+    !type(auxvar_toil_ims_type), pointer :: auxvars_ss(:)
+    class(auxvar_toil_ims_type), pointer :: auxvars(:,:)
+    class(auxvar_toil_ims_type), pointer :: auxvars_bc(:)
+    class(auxvar_toil_ims_type), pointer :: auxvars_ss(:)
+  contains
+    !add bound-procedure
+    
+    procedure, public :: Init => InitTOilImsAuxVars
+    !procedure, public :: Perturb => PerturbTOilIms
+  end type pm_toil_ims_aux_type
 
-  interface TOilImsAuxVarDestroy
-    module procedure TOilImsAuxVarSingleDestroy
-    module procedure TOilImsAuxVarArray1Destroy
-    module procedure TOilImsAuxVarArray2Destroy
-  end interface TOilImsAuxVarDestroy
-  
-!  interface TOilImsOutputAuxVars
-!    module procedure TOilImsOutputAuxVars1
-!    module procedure TOilImsOutputAuxVars2
-!  end interface TOilImsOutputAuxVars
-  public :: TOilImsAuxCreate, &
-            TOilImsAuxDestroy, &
-            TOilImsAuxVarInit, &
-            TOilImsAuxVarCompute, &
-            TOilImsAuxVarPerturb, &
-            TOilImsAuxVarDestroy, &
+  interface TOilImsAuxVarStrip
+    module procedure TOilImsAuxVarArray1Strip
+    module procedure TOilImsAuxVarArray2Strip
+  end interface TOilImsAuxVarStrip
+ 
+  public :: TOilImsAuxCreate, TOilImsAuxVarCompute, &
+            TOilImsAuxVarPerturb, TOilImsAuxDestroy, &
             TOilImsAuxVarStrip
-            
+  !          AuxDestroy
+  ! create only the base part of the aux_vars   
 
 contains
-
 
 ! ************************************************************************** !
 
@@ -147,9 +125,9 @@ function TOilImsAuxCreate(option)
 
   type(option_type) :: option
     
-  type(toil_ims_type), pointer :: TOilImsAuxCreate
-  
-  type(toil_ims_type), pointer :: aux
+  class(pm_toil_ims_aux_type), pointer :: TOilImsAuxCreate  
+
+  class(pm_toil_ims_aux_type), pointer :: aux
 
   ! there is no variable switch, but this map can be used 
   ! to change the primary variable set 
@@ -160,34 +138,19 @@ function TOilImsAuxCreate(option)
   toil_ims_fmw_comp(LIQUID_PHASE) = FMWH2O
   !toil_ims_fmw_comp(TOIL_IMS_OIL_PHASE) = fmw_oil ! this defines the dead oil
   toil_ims_fmw_comp(TOIL_IMS_OIL_PHASE) = EOSOilGetFMW() !defines the dead oil
-  
-  allocate(aux) 
-  aux%auxvars_up_to_date = PETSC_FALSE
-  aux%inactive_cells_exist = PETSC_FALSE
-  aux%num_aux = 0
-  aux%num_aux_bc = 0
-  aux%num_aux_ss = 0
-  nullify(aux%auxvars)
-  nullify(aux%auxvars_bc)
-  nullify(aux%auxvars_ss)
-  aux%n_inactive_rows = 0
-  nullify(aux%inactive_rows_local)
-  nullify(aux%inactive_rows_local_ghosted)
-  nullify(aux%row_zeroing_array)
 
-  allocate(aux%parameter)
-  !aux%parameter%window_epsilon = 1.d-4 
+    !allocate here to define this is a pm_toil_ims_aux_type
+    allocate(aux) 
 
-  ! fluid diffusion not needed 
-  !allocate(aux%general_parameter)
-  !allocate(aux%general_parameter%diffusion_coefficient(option%nphase))
-  !geh: there is no point in setting default lquid diffusion coeffcient values 
-  !     here as they will be overwritten by the fluid property defaults.
-  !aux%general_parameter%diffusion_coefficient(LIQUID_PHASE) = &
-  !                                                         UNINITIALIZED_DOUBLE
-  !aux%general_parameter%diffusion_coefficient(GAS_PHASE) = 2.13d-5
-  !aux%general_parameter%newton_inf_scaled_res_tol = 1.d-50
-  !aux%general_parameter%check_post_converged = PETSC_FALSE
+    call PMBaseAuxInit(aux) 
+
+    nullify(aux%auxvars)
+    nullify(aux%auxvars_bc)
+    nullify(aux%auxvars_ss)
+
+   !parameter not needed for now toil_ims
+   allocate(aux%parameter)
+
 
   TOilImsAuxCreate => aux
   
@@ -195,45 +158,62 @@ end function TOilImsAuxCreate
 
 ! ************************************************************************** !
 
-subroutine TOilImsAuxVarInit(auxvar,option)
+subroutine InitTOilImsAuxVars(this,grid,num_bc_connection, &
+                              num_ss_connection,option)
   ! 
-  ! Initialize auxiliary object
+  ! Initialize pm_aux  
   ! 
-  ! Author: PAolo Orsini
-  ! Date: 10/20/15
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 5/27/16
   ! 
 
   use Option_module
+  use Grid_module 
 
   implicit none
-  
-  type(toil_ims_auxvar_type) :: auxvar
+
+  class(pm_toil_ims_aux_type) :: this
+  PetscInt :: num_bc_connection
+  PetscInt :: num_ss_connection  
+  type(grid_type) :: grid
   type(option_type) :: option
 
-  !auxvar%istate_store = NULL_STATE
-  auxvar%temp = 0.d0
-  auxvar%effective_porosity = 0.d0
-  auxvar%pert = 0.d0
-  
-  ! pressure for the two phases (water,oil) and capillary pressure
-  allocate(auxvar%pres(option%nphase+ONE_INTEGER))
-  auxvar%pres = 0.d0
-  allocate(auxvar%sat(option%nphase))
-  auxvar%sat = 0.d0
-  allocate(auxvar%den(option%nphase))
-  auxvar%den = 0.d0
-  allocate(auxvar%den_kg(option%nphase))
-  auxvar%den_kg = 0.d0
-  allocate(auxvar%H(option%nphase))
-  auxvar%H = 0.d0
-  allocate(auxvar%U(option%nphase))
-  auxvar%U = 0.d0
-  allocate(auxvar%mobility(option%nphase))
-  auxvar%mobility = 0.d0
-  
-end subroutine TOilImsAuxVarInit
+  PetscInt :: ghosted_id, iconn, local_id
+  PetscInt :: idof 
+ 
+  allocate(this%auxvars(0:option%nflowdof,grid%ngmax)) 
+  do ghosted_id = 1, grid%ngmax
+    do idof = 0, option%nflowdof
+      !call TOilImsAuxVarInit(toil_auxvars(idof,ghosted_id),option)
+      call this%auxvars(idof,ghosted_id)%Init(option)
+    enddo
+  enddo
+
+  this%num_aux = grid%ngmax
+
+  if (num_bc_connection > 0) then
+    allocate(this%auxvars_bc(num_bc_connection))
+    do iconn = 1, num_bc_connection
+      call this%auxvars_bc(iconn)%Init(option)
+    enddo
+  endif
+  this%num_aux_bc = num_bc_connection
+
+  if (num_ss_connection > 0) then
+    allocate(this%auxvars_ss(num_ss_connection))
+    do iconn = 1, num_ss_connection
+      call this%auxvars_ss(iconn)%Init(option)
+    enddo
+  endif
+  this%num_aux_ss = num_ss_connection
+
+  call PMBaseAuxSetup(this,grid,option)
+
+end subroutine InitTOilImsAuxVars
+
 
 ! ************************************************************************** !
+! this could (actually should) be moved to auxvar_toil_ims as done for Init
 
 subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
                                 characteristic_curves,natural_id,option)
@@ -256,7 +236,8 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
   type(option_type) :: option
   class(characteristic_curves_type) :: characteristic_curves
   PetscReal :: x(option%nflowdof)
-  type(toil_ims_auxvar_type) :: toil_auxvar
+  !type(toil_ims_auxvar_type) :: toil_auxvar
+  class(auxvar_toil_ims_type) :: toil_auxvar
   type(global_auxvar_type) :: global_auxvar ! passing this for salt conc.
                                             ! not currenty used  
   class(material_auxvar_type) :: material_auxvar
@@ -271,13 +252,9 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
   PetscErrorCode :: ierr
 
   ! from SubsurfaceSetFlowMode
-!    class is (pm_toil_ims_type)
-!      option%iflowmode = TOIL_IMS_MODE
-!      option%nphase = 2
-!      option%liquid_phase = 1           ! liquid_pressure
-!      option%oil_phase = 2              ! oil_pressure
-!      option%capillary_pressure_id = 3  ! capillary pressure
-!
+  ! option%liquid_phase = 1           ! liquid_pressure
+  ! option%oil_phase = 2              ! oil_pressure
+  ! option%capillary_pressure_id = 3  ! capillary pressure
  
   lid = option%liquid_phase
   oid = option%oil_phase
@@ -401,17 +378,15 @@ end subroutine TOilImsAuxVarCompute
 
 ! ************************************************************************** !
 
-subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
-                                material_auxvar, &
-                                characteristic_curves,natural_id, &
-                                option)
-  ! 
+#if 0
+subroutine PerturbTOilIms(this,ghosted_id,global_auxvar,material_auxvar, &
+                   characteristic_curves, natural_id,option)
+  !
   ! Calculates auxiliary variables for perturbed system
   ! 
   ! Author: Paolo Orsini
-  ! Date: 11/05/15
+  ! Date: 5/28/16
   ! 
-
   use Option_module
   use Characteristic_Curves_module
   use Global_Aux_module
@@ -419,13 +394,17 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
 
   implicit none
 
+  class(pm_toil_ims_aux_type) :: this
+  !type(grid_type) :: grid
+  PetscInt :: ghosted_id
   type(option_type) :: option
   PetscInt :: natural_id !only for debugging/print out - currently not used 
-  type(toil_ims_auxvar_type) :: toil_auxvar(0:)
+  !type(toil_ims_auxvar_type) :: toil_auxvar(0:)
+  !class(auxvar_toil_ims_type) :: toil_auxvar(0:)
   type(global_auxvar_type) :: global_auxvar
   class(material_auxvar_type) :: material_auxvar
   class(characteristic_curves_type) :: characteristic_curves
-     
+
   PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), &
                pert(option%nflowdof), x_pert_save(option%nflowdof)
 
@@ -443,21 +422,20 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
   PetscReal, parameter :: min_perturbation = 1.d-10
   !PetscReal, parameter :: min_perturbation = 1.d-7
   PetscInt :: idof
-
+  
+  !in here we would need "select type" for auxvars so that
+  ! the compiler could see the auxvar_toil_ims_type components
+  ! no idea!!
   x(TOIL_IMS_PRESSURE_DOF) = &
-     toil_auxvar(ZERO_INTEGER)%pres(option%oil_phase)
+     this%auxvars(ZERO_INTEGER,ghosted_id)%pres(option%oil_phase)
   x(TOIL_IMS_SATURATION_DOF) = &
-     toil_auxvar(ZERO_INTEGER)%sat(option%oil_phase)
+     this%auxvars(ZERO_INTEGER,ghosted_id)%sat(option%oil_phase)
 
-  x(TOIL_IMS_ENERGY_DOF) = toil_auxvar(ZERO_INTEGER)%temp
+  x(TOIL_IMS_ENERGY_DOF) = this%auxvars(ZERO_INTEGER,ghosted_id)%temp
 
   pert(TOIL_IMS_ENERGY_DOF) = &
            perturbation_tolerance*x(TOIL_IMS_ENERGY_DOF)+min_perturbation
 
-  ! below how the water pressure is perturbed in general
-  ! pert(GENERAL_LIQUID_PRESSURE_DOF) = &
-  !      perturbation_tolerance*x(GENERAL_LIQUID_PRESSURE_DOF) + &
-  !      min_perturbation
   pert(TOIL_IMS_PRESSURE_DOF) = &
          perturbation_tolerance*x(TOIL_IMS_PRESSURE_DOF)+min_perturbation
 
@@ -489,186 +467,227 @@ subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
     x_pert = x
     x_pert(idof) = x(idof) + pert(idof)
     x_pert_save = x_pert
+    !call TOilImsAuxVarCompute(x_pert,toil_auxvar(idof),global_auxvar, &
+    !                          material_auxvar, &
+    !                          characteristic_curves,natural_id,option)
+    call TOilImsAuxVarCompute(x_pert,this%auxvars(idof,ghosted_id),global_auxvar, &
+                              material_auxvar, &
+                              characteristic_curves,natural_id,option)
+  enddo
+
+  toil_auxvar(TOIL_IMS_PRESSURE_DOF)%pert = &
+     toil_auxvar(TOIL_IMS_PRESSURE_DOF)%pert / toil_ims_pressure_scale
+
+
+end subroutine PerturbTOilIms
+! ************************************************************************** !
+#endif
+
+! ************************************************************************** !
+! this could (actually should) be moved to auxvar_toil_ims as done for Init
+! see example abive
+subroutine TOilImsAuxVarPerturb(toil_auxvar,global_auxvar, &
+                                material_auxvar, &
+                                characteristic_curves,natural_id, &
+                                option)
+  ! 
+  ! Calculates auxiliary variables for perturbed system
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 11/05/15
+  ! 
+
+  use Option_module
+  use Characteristic_Curves_module
+  use Global_Aux_module
+  use Material_Aux_class
+
+  implicit none
+
+  type(option_type) :: option
+  PetscInt :: natural_id !only for debugging/print out - currently not used 
+  !type(toil_ims_auxvar_type) :: toil_auxvar(0:)
+  !class(auxvar_toil_ims_type) :: toil_auxvar(0:)
+  type(auxvar_toil_ims_type) :: toil_auxvar(0:)
+  type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
+  class(characteristic_curves_type) :: characteristic_curves
+     
+  PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), &
+               pert(option%nflowdof), x_pert_save(option%nflowdof)
+
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscReal :: tempreal
+
+  ! IMS uses 1.d-8 for Press and 1.d-5 for Sat ad Temp
+  ! MPHASE uses 1.d-8 for Press, Sat and Temp  
+  ! GENERAL uses 1.d-8 for Press, Sat and Temp
+  PetscReal, parameter :: perturbation_tolerance = 1.d-8
+  PetscReal, parameter :: sat_perturb_tolerance = 1.d-8
+  !PetscReal, parameter :: perturbation_tolerance = 1.d-5
+
+  !PetscReal, parameter :: min_mole_fraction_pert = 1.d-12
+  ! From General (min perturb = 1.d-10)
+  PetscReal, parameter :: min_perturbation = 1.d-10
+  !PetscReal, parameter :: min_perturbation = 1.d-7
+  PetscInt :: idof
+
+  x(TOIL_IMS_PRESSURE_DOF) = &
+     toil_auxvar(ZERO_INTEGER)%pres(option%oil_phase)
+  x(TOIL_IMS_SATURATION_DOF) = &
+     toil_auxvar(ZERO_INTEGER)%sat(option%oil_phase)
+
+  x(TOIL_IMS_ENERGY_DOF) = toil_auxvar(ZERO_INTEGER)%temp
+
+  pert(TOIL_IMS_ENERGY_DOF) = &
+           perturbation_tolerance*x(TOIL_IMS_ENERGY_DOF)+min_perturbation
+
+  ! below how the water pressure is perturbed in general
+  ! pert(GENERAL_LIQUID_PRESSURE_DOF) = &
+  !      perturbation_tolerance*x(GENERAL_LIQUID_PRESSURE_DOF) + &
+  !      min_perturbation
+  pert(TOIL_IMS_PRESSURE_DOF) = &
+         perturbation_tolerance*x(TOIL_IMS_PRESSURE_DOF)+min_perturbation
+
+  ! always perturb toward 0.5 (0.9 is used in ims and mphase
+  if (x(TOIL_IMS_SATURATION_DOF) > 0.5d0) then 
+      !pert(TOIL_IMS_SATURATION_DOF) = -1.d0 * perturbation_tolerance
+      pert(TOIL_IMS_SATURATION_DOF) = -1.d0 * sat_perturb_tolerance
+  else
+     !pert(TOIL_IMS_SATURATION_DOF) = perturbation_tolerance
+     pert(TOIL_IMS_SATURATION_DOF) = sat_perturb_tolerance
+  endif
+
+! below constrains from ims and mphase - might not be needed with post-solve checks
+!  if (pert(TOIL_IMS_SATURATION_DOF) < 1D-12 .and. pert(TOIL_IMS_SATURATION_DOF) >= 0.D0) &
+!     pert(TOIL_IMS_SATURATION_DOF) = 1D-12
+!  if (pert(TOIL_IMS_SATURATION_DOF) > -1D-12 .and. pert(TOIL_IMS_SATURATION_DOF) < 0.D0) &
+!     pert(TOIL_IMS_SATURATION_DOF) = -1D-12
+!       
+!  if ( ( pert(TOIL_IMS_SATURATION_DOF)+ x(TOIL_IMS_SATURATION_DOF) )>1.D0) then
+!    pert(TOIL_IMS_SATURATION_DOF) = (1.D0-pert(TOIL_IMS_SATURATION_DOF))*1D-6
+!  endif
+!  if (( pert(TOIL_IMS_SATURATION_DOF)+x(TOIL_IMS_SATURATION_DOF) ) < 0.D0)then
+!    pert(TOIL_IMS_SATURATION_DOF) = x(TOIL_IMS_SATURATION_DOF)*1D-6
+!  endif
+
+
+  ! TOIL_IMS_UPDATE_FOR_DERIVATIVE indicates call from perturbation
+  option%iflag = TOIL_IMS_UPDATE_FOR_DERIVATIVE
+  do idof = 1, option%nflowdof
+    toil_auxvar(idof)%pert = pert(idof)
+    x_pert = x
+    x_pert(idof) = x(idof) + pert(idof)
+    x_pert_save = x_pert
     call TOilImsAuxVarCompute(x_pert,toil_auxvar(idof),global_auxvar, &
                               material_auxvar, &
                               characteristic_curves,natural_id,option)
-
-!#ifdef DEBUG_GENERAL
-!    call GlobalAuxVarCopy(global_auxvar,global_auxvar_debug,option)
-!    call GeneralAuxVarCopy(gen_auxvar(idof),general_auxvar_debug,option)
-!    call GeneralAuxVarUpdateState(x_pert,general_auxvar_debug, &
-!                                  global_auxvar_debug, &
-!                                  material_auxvar, &
-!                                  characteristic_curves, &
-!                                  natural_id,option)
-!    if (global_auxvar%istate /= global_auxvar_debug%istate) then
-!      write(option%io_buffer, &
-!            &'(''Change in state due to perturbation: '',i3,'' -> '',i3, &
-!            &'' at cell '',i3,'' for dof '',i3)') &
-!        global_auxvar%istate, global_auxvar_debug%istate, natural_id, idof
-!      call printMsg(option)
-!      write(option%io_buffer,'(''orig: '',6es17.8)') x(1:3)
-!      call printMsg(option)
-!      write(option%io_buffer,'(''pert: '',6es17.8)') x_pert_save(1:3)
-!      call printMsg(option)
-!    endif
-!#endif
 
   enddo
 
   toil_auxvar(TOIL_IMS_PRESSURE_DOF)%pert = &
      toil_auxvar(TOIL_IMS_PRESSURE_DOF)%pert / toil_ims_pressure_scale
 
-  
-!#ifdef DEBUG_GENERAL
-!  call GlobalAuxVarStrip(global_auxvar_debug)
-!  call GeneralAuxVarStrip(general_auxvar_debug)
-!#endif
+  !write(*,"('within TOilImsAuxVarPerturb perturb = ',(4(e10.4,1x)))"), &
+  !         toil_auxvar(0:3)%pert
  
 end subroutine TOilImsAuxVarPerturb
 
-! ************************************************************************** !
-
-subroutine TOilImsAuxVarSingleDestroy(auxvar)
-  ! 
-  ! Deallocates a mode auxiliary object
-  ! this could be generalised for different modes 
-  ! using class(*) (unlimited polymorphic)
-  ! 
-  ! Author: Paolo Orsini
-  ! Date: 10/20/15
-  ! 
-
-  implicit none
-
-  type(toil_ims_auxvar_type), pointer :: auxvar
-  
-  if (associated(auxvar)) then
-    call TOilImsAuxVarStrip(auxvar)
-    deallocate(auxvar)
-  endif
-  nullify(auxvar)  
-
-end subroutine TOilImsAuxVarSingleDestroy
-
-! ************************************************************************** !
-
-subroutine TOilImsAuxVarArray1Destroy(auxvars)
-  ! 
-  ! Deallocates a mode auxiliary object
-  ! this could be generalised for different modes 
-  ! using class(*) (unlimited polymorphic)
-  ! 
-  ! Author: Paolo Orsini
-  ! Date: 10/20/15
-  ! 
-
-  implicit none
-
-  type(toil_ims_auxvar_type), pointer :: auxvars(:)
-  
-  PetscInt :: iaux
-  
-  if (associated(auxvars)) then
-    do iaux = 1, size(auxvars)
-      call TOilImsAuxVarStrip(auxvars(iaux))
-    enddo  
-    deallocate(auxvars)
-  endif
-  nullify(auxvars)  
-
-end subroutine TOilImsAuxVarArray1Destroy
-
-! ************************************************************************** !
-
-subroutine TOilImsAuxVarArray2Destroy(auxvars)
-  ! 
-  ! Deallocates a mode auxiliary object
-  ! this could be generalised for different modes 
-  ! using class(*) (unlimited polymorphic)
-  ! 
-  ! Author: Paolo Orsini
-  ! Date: 10/20/15
-  ! 
-
-  implicit none
-
-  type(toil_ims_auxvar_type), pointer :: auxvars(:,:)
-  
-  PetscInt :: iaux, idof
-  
-  if (associated(auxvars)) then
-    do iaux = 1, size(auxvars,2)
-      do idof = 1, size(auxvars,1)
-        call TOilImsAuxVarStrip(auxvars(idof-1,iaux))
-      enddo
-    enddo  
-    deallocate(auxvars)
-  endif
-  nullify(auxvars)  
-
-end subroutine TOilImsAuxVarArray2Destroy
-
-! ************************************************************************** !
-
-subroutine TOilImsAuxVarStrip(auxvar)
-  ! 
-  ! TOilImsAuxVarDestroy: Deallocates a general auxiliary object
-  ! 
-  ! Author: Paolo Orsini
-  ! Date: 10/20/15
-  ! 
-  use Utility_module, only : DeallocateArray
-
-  implicit none
-
-  type(toil_ims_auxvar_type) :: auxvar
-  
-  call DeallocateArray(auxvar%pres)  
-  call DeallocateArray(auxvar%sat)  
-  call DeallocateArray(auxvar%den)  
-  call DeallocateArray(auxvar%den_kg)  
-  call DeallocateArray(auxvar%H)  
-  call DeallocateArray(auxvar%U)  
-  call DeallocateArray(auxvar%mobility)  
-  
-end subroutine TOilImsAuxVarStrip
 
 ! ************************************************************************** !
 
 subroutine TOilImsAuxDestroy(aux)
   ! 
-  ! Deallocates a general auxiliary object
+  ! Deallocates a toil_ims auxiliary object
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/07/11
+  ! Author: Paolo Orsini
+  ! Date: 05/30/16
   ! 
   use Utility_module, only : DeallocateArray
 
   implicit none
 
-  type(TOil_ims_type), pointer :: aux
+  !type(TOil_ims_type), pointer :: aux
+  class(pm_toil_ims_aux_type), pointer :: aux
+  !class(pm_toil_ims_aux_type) :: aux
   PetscInt :: iaux, idof
   
   if (.not.associated(aux)) return
   
-  call TOilImsAuxVarDestroy(aux%auxvars)
-  call TOilImsAuxVarDestroy(aux%auxvars_bc)
-  call TOilImsAuxVarDestroy(aux%auxvars_ss)
+!debug testing 
+#if 0  
+  if (associated(aux%auxvars_bc)) then
+    do iaux = 1, size(aux%auxvars_bc(:))
+      !print *, "i am in TOilImsAuxVarArray1Destroy iaux loop", iaux
+      !call TOilImsAuxVarStrip(auxvars(iaux))
+      call aux%auxvars_bc(iaux)%Strip()
+    enddo  
+    !print *, "i am in TOilImsAuxVarArray1Destroy after auxvars loop"
+    deallocate(aux%auxvars_bc)
+    !print *, "after deallocation 1D auxvars"
+  endif
+  nullify(aux%auxvars_bc)  
+  !print *, "after 1D nullify auxvars"
 
-  call DeallocateArray(aux%inactive_rows_local)
-  call DeallocateArray(aux%inactive_rows_local_ghosted)
-  call DeallocateArray(aux%row_zeroing_array)
+
+  if (associated(aux%auxvars_ss)) then
+    do iaux = 1, size(aux%auxvars_ss(:))
+      !print *, "i am in TOilImsAuxVarArray1Destroy iaux loop", iaux
+      !call TOilImsAuxVarStrip(auxvars(iaux))
+      call aux%auxvars_ss(iaux)%Strip()
+    enddo  
+    !print *, "i am in TOilImsAuxVarArray1Destroy after auxvars loop"
+    deallocate(aux%auxvars_ss)
+    !print *, "after deallocation 1D auxvars"
+  endif
+  nullify(aux%auxvars_ss)  
+  !print *, "after 1D nullify auxvars"
+
+
+  if (associated(aux%auxvars)) then
+    do iaux = 1, size(aux%auxvars,2)
+      do idof = 1, size(aux%auxvars,1)
+        !print *, "i am before TOilImsAuxVarStrip"
+        !call TOilImsAuxVarStrip(aux%auxvars(idof-1,iaux))
+        call aux%auxvars(idof-1,iaux)%Strip()
+      enddo
+    enddo  
+    deallocate(aux%auxvars)
+  endif
+  nullify(aux%auxvars)  
+#endif
+
+  !debug printing  
+  !print *, "den oil 01 int = ", aux%auxvars(0,1)%den(2)
+  !print *, "den oil 11 int = ", aux%auxvars(1,1)%den(2)
+  !print *, "den oil 21 int = ", aux%auxvars(2,1)%den(2)
+  !print *, "den oil 31 int = ", aux%auxvars(3,1)%den(2)
+  if (associated(aux%auxvars) ) then
+    call TOilImsAuxVarStrip(aux%auxvars)
+    deallocate(aux%auxvars)
+  end if 
+  nullify(aux%auxvars) 
+
+  !print *, "den oil bc = ", aux%auxvars_bc(1)%den(2)
+  if (associated(aux%auxvars_bc) ) then
+    call TOilImsAuxVarStrip(aux%auxvars_bc)
+    deallocate(aux%auxvars_bc)
+  end if
+  nullify(aux%auxvars_bc)
+
+  !print *, "den oil bc = ", aux%auxvars_ss(1)%den(2)
+  if ( associated(aux%auxvars_ss) ) then
+    call TOilImsAuxVarStrip(aux%auxvars_ss)
+    deallocate(aux%auxvars_ss)
+  end if
+  nullify(aux%auxvars_ss)
+
+  call PMBaseAuxStrip(aux)
 
   if (associated(aux%parameter)) then
     deallocate(aux%parameter) 
   end if
   nullify(aux%parameter)
-  !if (associated(aux%general_parameter)) then
-  !  call DeallocateArray(aux%general_parameter%diffusion_coefficient)
-  !  deallocate(aux%general_parameter)
-  !endif
-  !nullify(aux%general_parameter)
   
   deallocate(aux)
   nullify(aux)
@@ -677,5 +696,71 @@ end subroutine TOilImsAuxDestroy
 
 ! ************************************************************************** !
 
-end module TOilIms_Aux_module
+subroutine  TOilImsAuxVarArray1Strip(auxvars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! this could be generalised for different modes 
+  ! using class(*) (unlimited polymorphic)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/20/15
+  ! 
 
+  use AuxVars_TOilIms_module
+
+  implicit none
+
+  !can't use class due to gfortran (4.8.4) bug (values passed are not correct)
+  !class(auxvar_toil_ims_type), pointer :: auxvars(:)
+  !here we can pass by pointer, we could destroy the array within the routine
+  !but we don't to be consistent with TOilImsAuxVarArray2Strip 
+  class(auxvar_toil_ims_type), pointer :: auxvars(:)
+
+  PetscInt :: iaux
+
+  !print *, "den oil bc/ss pass = ", auxvars(1)%den(2)
+  
+  do iaux = 1, size(auxvars)
+    call auxvars(iaux)%Strip
+  enddo  
+
+end subroutine TOilImsAuxVarArray1Strip
+
+! ************************************************************************** !
+
+subroutine TOilImsAuxVarArray2Strip(auxvars)
+  ! 
+  ! Deallocates a mode auxiliary object
+  ! this could be generalised for different modes 
+  ! using class(*) (unlimited polymorphic)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/20/15
+  ! 
+
+  use AuxVars_TOilIms_module
+
+  implicit none
+
+  !can't use class due to gfortran (4.8.4) bug (values passed are not correct)
+  !class(auxvar_toil_ims_type) :: auxvars(0:,:)
+  !cannot use type(...) with pointer attribute.
+  !because the compiler does not allow to specify lower 0-bound in auxvar
+  !type(auxvar_toil_ims_type), pointer :: auxvars(:,:)
+  class(auxvar_toil_ims_type) :: auxvars(0:,:)
+
+  PetscInt :: iaux, idof
+
+  do iaux = 1, size(auxvars,2)
+    do idof = 1, size(auxvars,1)
+      !print *, "i am before TOilImsAuxVarStrip"
+      !call TOilImsAuxVarStrip(auxvars(idof-1,iaux))
+      call auxvars(idof-1,iaux)%Strip()
+    enddo
+  enddo  
+
+end subroutine TOilImsAuxVarArray2Strip
+
+! ************************************************************************** !
+
+end module PM_TOilIms_Aux_module
