@@ -250,9 +250,9 @@ subroutine DatasetGlobalHDF5ReadData(this,option,data_type)
   
   buffer_size = size(this%rbuffer)
   buffer_rank2_size = buffer_size / this%local_size
-  file_rank1_size = dims(1)
+  file_rank1_size = int(dims(1))
   if (ndims > 1) then
-    file_rank2_size = dims(2)
+    file_rank2_size = int(dims(2))
   else
     if (option%mycommsize > 1) then
       option%io_buffer = 'Dataset "' // trim(this%hdf5_dataset_name) // &

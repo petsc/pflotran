@@ -329,7 +329,7 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
         call h5dopen_f(grp_id,string,dataset_id,hdf5_err)
         call h5dget_space_f(dataset_id,file_space_id,hdf5_err)
         call h5sget_simple_extent_npoints_f(file_space_id,num_times,hdf5_err)
-        num_times_read_by_iorank = num_times
+        num_times_read_by_iorank = int(num_times)
       else
         num_times_read_by_iorank = -1
       endif
@@ -358,7 +358,7 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
   endif
   
   time_storage => TimeStorageCreate()
-  time_storage%max_time_index = num_times
+  time_storage%max_time_index = int(num_times)
   allocate(time_storage%times(num_times))
   time_storage%times = 0.d0
   
@@ -390,7 +390,7 @@ subroutine DatasetCommonHDF5ReadTimes(filename,dataset_name,time_storage, &
       UnitsConvertToInternal(time_units,internal_units,option)
   endif
 
-  int_mpi = num_times
+  int_mpi = int(num_times)
   call MPI_Bcast(time_storage%times,int_mpi,MPI_DOUBLE_PRECISION, &
                  option%io_rank,option%mycomm,ierr)
 

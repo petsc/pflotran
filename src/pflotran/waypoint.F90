@@ -822,9 +822,7 @@ subroutine WaypointPrint(waypoint,option,output_option)
   character(len=MAXSTRINGLENGTH) :: string
 
   10 format('  ',a20,':',10es13.5)
-  20 format('  ',a20,':',10i6)
   30 format('  ',a20,':',10l)
-  40 format('  ',a20,':',a20)
   100 format(/)
   110 format(a)
 

@@ -289,7 +289,7 @@ subroutine DatasetMapHDF5ReadData(this,option)
     allocate(max_dims_h5(ndims_h5))
     call h5sget_simple_extent_dims_f(file_space_id,dims_h5,max_dims_h5,hdf5_err)
     if (associated(this%time_storage)) then
-      num_times_in_h5_file = dims_h5(1)
+      num_times_in_h5_file = int(dims_h5(1))
     else
       num_times_in_h5_file = 0
     endif

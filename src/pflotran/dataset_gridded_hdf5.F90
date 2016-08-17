@@ -371,7 +371,7 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
       ! dimensions and decrement rank (we don't want to include time)
       this%rank = ndims_h5-1
       ! the first dimension of dims_h5 is the time dimension
-      num_times_in_h5_file = dims_h5(1)
+      num_times_in_h5_file = int(dims_h5(1))
     else
       this%rank = ndims_h5
       num_times_in_h5_file = 0
