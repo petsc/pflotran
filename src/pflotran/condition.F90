@@ -611,7 +611,6 @@ function FlowWellSubConditionPtr(sub_condition_name,flow_well, &
 
 end function FlowWellSubConditionPtr
 
-
 ! ************************************************************************** !
 
 function FlowSubConditionCreate(ndof)
@@ -636,7 +635,7 @@ function FlowSubConditionCreate(ndof)
   
   allocate(sub_condition)
   sub_condition%units = ''
-  sub_condition%itype = 0
+  sub_condition%itype = NULL_CONDITION
   sub_condition%isubtype = 0
   sub_condition%ctype = ''
   sub_condition%name = ''
@@ -719,25 +718,37 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
   type(time_storage_type), pointer :: default_time_storage
   PetscBool :: destroy_if_null
 
+  character(len=MAXSTRINGLENGTH) :: header
+
   if (.not.associated(sub_condition)) return
 
   ! dataset is not optional
   if (.not.(associated(sub_condition%dataset%rarray) .or. &
             associated(sub_condition%dataset%rbuffer) .or. &
             ! if a dataset name is read, instead of data at this point
-            len_trim(sub_condition%dataset%name) > 0)) then
+            len_trim(sub_condition%dataset%name) > 0 .or. &
+            sub_condition%itype /= NULL_CONDITION)) then
     if (destroy_if_null) call FlowSubConditionDestroy(sub_condition)
     return
   endif
   
-  if (len_trim(sub_condition%ctype) == NULL_CONDITION) then
+!  if (len_trim(sub_condition%ctype) == NULL_CONDITION) then
+  if (sub_condition%itype == NULL_CONDITION) then
     option%io_buffer = 'TYPE of condition ' // trim(condition%name) // &
       ' ' // trim(sub_condition_name) // ' dataset not defined.'
     call printErrMsg(option)
   endif
   
-  call DatasetVerify(sub_condition%dataset,default_time_storage,option)
-  call DatasetVerify(sub_condition%gradient,default_time_storage,option)
+  header = 'SUBSURFACE/FLOW_CONDITION' // '/' // &
+           trim(condition%name) // '/' // &
+           trim(sub_condition_name) // '/Value(s)'
+  call DatasetVerify(sub_condition%dataset,default_time_storage, &
+                     header,option)
+  header = 'SUBSURFACE/FLOW_CONDITION' // '/' // &
+           trim(condition%name) // '/' // &
+           trim(sub_condition_name) // '/Gradient'
+  call DatasetVerify(sub_condition%gradient,default_time_storage, &
+                     header,option)
 
 end subroutine FlowSubConditionVerify
 
@@ -1170,7 +1181,8 @@ subroutine FlowConditionRead(condition,input,option)
   endif
   
   ! datum is not required
-  call DatasetVerify(condition%datum,default_time_storage,option)
+  string = trim(condition%name) // '/' // 'Datum'
+  call DatasetVerify(condition%datum,default_time_storage,string,option)
 
   ! check to ensure that a rate condition is not of type pressure   
   if (associated(rate)) then
@@ -1802,7 +1814,8 @@ subroutine FlowConditionGeneralRead(condition,input,option)
   enddo  
   
   ! datum is not required
-  call DatasetVerify(condition%datum,default_time_storage,option)
+  string = 'SUBSURFACE/FLOW_CONDITION' // trim(condition%name) // '/Datum'
+  call DatasetVerify(condition%datum,default_time_storage,string,option)
 
   ! need mole fraction and some sort of saturation
   if (.false.) then
@@ -2375,7 +2388,8 @@ subroutine FlowConditionTOilImsRead(condition,input,option)
   enddo  
   
   ! datum, owc, and liq_press_grad are not required
-  call DatasetVerify(condition%datum,default_time_storage,option)
+  string = 'SUBSURFACE/FLOW_CONDITION' // trim(condition%name) // '/Datum'
+  call DatasetVerify(condition%datum,default_time_storage,string,option)
 
   ! phase condition should never be used in TOilIms
   condition%iphase = ZERO_INTEGER

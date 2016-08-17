@@ -66,7 +66,7 @@ end function TimeStorageCreate
 ! ************************************************************************** !
 
 subroutine TimeStorageVerify(default_time, time_storage, &
-                             default_time_storage, option)
+                             default_time_storage, header, option)
   ! 
   ! Verifies the data in a time storage
   ! 
@@ -81,6 +81,7 @@ subroutine TimeStorageVerify(default_time, time_storage, &
   PetscReal :: default_time
   type(time_storage_type), pointer :: time_storage
   type(time_storage_type), pointer :: default_time_storage
+  character(len=MAXSTRINGLENGTH) :: header
   type(option_type) :: option
   
   PetscInt :: array_size
@@ -96,7 +97,8 @@ subroutine TimeStorageVerify(default_time, time_storage, &
   endif
   
   if (time_storage%time_interpolation_method == INTERPOLATION_NULL) then
-    option%io_buffer = 'Time interpolation method must be specified.'
+    option%io_buffer = 'Time interpolation method must be specified in ' // &
+      trim(header) // '.'
     call printErrMsg(option)
   endif
   

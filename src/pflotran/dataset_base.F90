@@ -150,7 +150,7 @@ end subroutine DatasetBaseCopy
 
 ! ************************************************************************** !
 
-subroutine DatasetBaseVerify(this,option)
+subroutine DatasetBaseVerify(this,dataset_error,option)
   ! 
   ! Verifies that data structure is properly set up.
   ! 
@@ -163,34 +163,39 @@ subroutine DatasetBaseVerify(this,option)
   implicit none
   
   class(dataset_base_type) :: this
+  PetscBool :: dataset_error
   type(option_type) :: option
-  
+
   if (associated(this%time_storage) .or. associated(this%iarray) .or. &
       associated(this%iarray) .or. associated(this%ibuffer) .or. &
       associated(this%rarray) .or. associated(this%rbuffer)) then
     if (len_trim(this%name) < 1) then
-      this%name = 'Unknown Dataset'
+      this%name = 'Unnamed Dataset'
     endif
     if (this%data_type == 0) then
       option%io_buffer = '"data_type" not defined in dataset: ' // &
                          trim(this%name)
-      call printErrMsg(option)
+      call printMsg(option)
+      dataset_error = PETSC_TRUE
     endif
     if (associated(this%ibuffer) .or. associated(this%rbuffer)) then
       if (.not.associated(this%dims)) then
         option%io_buffer = '"dims" not allocated in dataset: ' // &
                            trim(this%name)
-        call printErrMsg(option)
+        call printMsg(option)
+        dataset_error = PETSC_TRUE
       endif
       if (this%dims(1) == 0) then
         option%io_buffer = '"dims" not defined in dataset: ' // &
                            trim(this%name)
-        call printErrMsg(option)
+        call printMsg(option)
+        dataset_error = PETSC_TRUE
       endif
       if (size(this%dims) /= this%rank) then
         option%io_buffer = 'Size of "dims" not match "rank" in dataset: ' // &
                             trim(this%name)
-        call printErrMsg(option)
+        dataset_error = PETSC_TRUE
+        call printMsg(option)
       endif
     endif
     if (associated(this%ibuffer) .and. .not.associated(this%iarray)) then
@@ -202,8 +207,9 @@ subroutine DatasetBaseVerify(this,option)
       this%rarray = 0.d0
     endif
   else if (len_trim(this%name) < 1) then
-    option%io_buffer = 'NULL dataset in input deck.'
-    call printErrMsg(option)
+    option%io_buffer = 'NULL dataset.'
+    call printMsg(option)
+    dataset_error = PETSC_TRUE
   endif
     
 end subroutine DatasetBaseVerify

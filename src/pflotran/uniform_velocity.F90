@@ -386,7 +386,7 @@ subroutine UniformVelocityDatasetVerify(option, dataset)
       write(size1,*) size(dataset%times,1)
       write(size2,*) size(dataset%values,2)
       option%io_buffer = 'times/values ('//trim(size1)//'/'//trim(size2) // &
-                         ') array size mismatch in velocity dataaset'
+                         ') array size mismatch in velocity dataset'
       call printErrMsg(option) 
     endif
     dataset%is_transient = PETSC_TRUE

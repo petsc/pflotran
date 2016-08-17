@@ -367,7 +367,7 @@ end subroutine DatasetAsciiUpdate
 
 ! ************************************************************************** !
 
-subroutine DatasetAsciiVerify(this,option)
+subroutine DatasetAsciiVerify(this,dataset_error,option)
   ! 
   ! Verifies that data structure is properly set up.
   ! 
@@ -376,22 +376,24 @@ subroutine DatasetAsciiVerify(this,option)
   ! 
   
   use Option_module
+  use String_module
   
   implicit none
   
   class(dataset_ascii_type) :: this
+  PetscBool :: dataset_error
   type(option_type) :: option
-  
-  if (len_trim(this%name) < 1) then
+
+  call DatasetBaseVerify(this,dataset_error,option)
+  if (StringCompare(this%name,'Unnamed Dataset')) then
     this%name = 'Unnamed Ascii Dataset'
   endif
-  call DatasetBaseVerify(this,option)
   if (associated(this%rbuffer)) then
     if (this%array_width /= this%dims(1)) then
       option%io_buffer = &
-        '"array_width" is not equal to "dims(1)" in dataset: ' // &
-        trim(this%name)
-      call printErrMsg(option)
+        '"array_width" is not equal to "dims(1)"'
+      call printMsg(option)
+      dataset_error = PETSC_TRUE
     endif
     ! set initial values
     this%rarray(:) = this%rbuffer(1:this%array_width)

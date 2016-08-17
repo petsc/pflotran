@@ -164,7 +164,7 @@ end subroutine DatasetScreenForNonCellIndexed
 
 ! ************************************************************************** !
 
-subroutine DatasetVerify(dataset,default_time_storage,option)
+subroutine DatasetVerify(dataset,default_time_storage,header,option)
   ! 
   ! Verifies that a dataset is intact and useable.
   ! 
@@ -179,22 +179,37 @@ subroutine DatasetVerify(dataset,default_time_storage,option)
 
   class(dataset_base_type), pointer :: dataset
   type(time_storage_type), pointer :: default_time_storage
+  character(len=MAXSTRINGLENGTH) :: header
   type(option_type) :: option
-  
+
+  PetscBool :: dataset_error 
   type(time_storage_type), pointer :: default
 
   if (.not.associated(dataset)) return
 
-  call TimeStorageVerify(0.d0,dataset%time_storage,default_time_storage,option)
+  dataset_error = PETSC_FALSE 
+  dataset%header = trim(header)
+  call TimeStorageVerify(0.d0,dataset%time_storage,default_time_storage, &
+                         header,option)
   select type(dataset_ptr => dataset)
     class is(dataset_ascii_type)
-      call DatasetAsciiVerify(dataset_ptr,option)
+      call DatasetAsciiVerify(dataset_ptr,dataset_error,option)
     class is(dataset_base_type)
-      call DatasetBaseVerify(dataset_ptr,option)
+      call DatasetBaseVerify(dataset_ptr,dataset_error,option)
     class default
       option%io_buffer = 'DatasetXXXVerify needed for unknown dataset type'
-      call printErrMsg(option)
+      call printMsg(option) 
+      dataset_error = PETSC_TRUE
   end select
+
+  if (dataset_error) then
+    option%io_buffer = 'Dataset errors in ' // trim(dataset%header)
+    if (len_trim(dataset%name) > 0) then
+      option%io_buffer = trim(option%io_buffer) // '/' // trim(dataset%name) 
+    endif
+    option%io_buffer = trim(option%io_buffer) // '.'
+    call printErrMsg(option)
+  endif
   
 end subroutine DatasetVerify
 
@@ -333,7 +348,8 @@ subroutine DatasetFindInList(list,dataset_base,default_time_storage, &
         ! once a dataset is linked to the dataset list, it needs to be loaded
         ! immediately
         call DatasetLoad(dataset_base,option)
-        call DatasetVerify(dataset_base,default_time_storage,option)
+        call DatasetVerify(dataset_base,default_time_storage, &
+                           dataset%header,option)
         ! must update after DatasetVerify since the time interpolation method
         ! may not have been properly set during the load! Force the update.
         if (associated(dataset_base%time_storage)) then
