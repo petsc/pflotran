@@ -1701,7 +1701,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           do jcomp = 1,reaction%gas%paseqspecid(0,igas)
             comp_id = reaction%gas%paseqspecid(jcomp,igas)
 !           Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
-!                                reaction%eqgasstoich(jcomp,igas)
+!                                reaction%gas%paseqstoich(jcomp,igas)
             Jac(icomp,comp_id) = reaction%gas%paseqstoich(jcomp,igas)/ &
               rt_auxvar%pri_molal(comp_id)
           enddo
@@ -1752,7 +1752,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             else
               call Henry_duan_sun(tc,pres*1D-5,henry,lngamco2, &
                 option%m_nacl,option%m_nacl)
-             !   print *, 'SC: mnacl=', option%m_nacl,'stioh2o=',reaction%eqgash2ostoich(igas)
+             !   print *, 'SC: mnacl=', option%m_nacl,'stioh2o=',reaction%gas%paseqh2ostoich(igas)
             endif
             
             lnQk = -log(xphico2*henry)-lngamco2
@@ -1782,7 +1782,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             do jcomp = 1,reaction%gas%paseqspecid(0,igas)
               comp_id = reaction%gas%paseqspecid(jcomp,igas)
 !             Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
-!                                reaction%eqgasstoich(jcomp,igas)
+!                                reaction%gas%paseqstoich(jcomp,igas)
               Jac(icomp,comp_id) = reaction%gas%paseqstoich(jcomp,igas)/ &
                 rt_auxvar%pri_molal(comp_id)
               
@@ -2140,10 +2140,10 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
             if (abs(reaction%species_idx%co2_gas_id) == igas) then
               option%io_buffer = 'Adding "scco2_eq_logK" to ' // &
                 'global_auxvar_type solely so you can set reaction%' // &
-                '%eqgas_logK(igas) within ReactionPrintConstraint is not ' // &
+                '%gas%paseqlogK(igas) within ReactionPrintConstraint is not ' // &
                 'acceptable.  Find another way! - Regards, Glenn'
               call printErrMsg(option)
-!geh              reaction%eqgas_logK(igas) = global_auxvar%scco2_eq_logK
+!geh              reaction%gas%paseqlogK(igas) = global_auxvar%scco2_eq_logK
             endif
           endif
         enddo
@@ -4110,7 +4110,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! units of dtotal = kg water/L water
   rt_auxvar%aqueous%dtotal = rt_auxvar%aqueous%dtotal*den_kg_per_L
 
-#if 0  
+#ifdef CO2_SPECIFIC
   if (option%iflowmode == G_MODE) return
 
 ! *********** Add SC phase and gas contributions ***********************  
@@ -4125,7 +4125,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 !  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
 
   if (global_auxvar%sat(iphase) > 1.D-20) then
-    do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
+    do ieqgas = 1, reaction%gas%npassive_gas ! all gas phase species are secondary
 
       pressure = global_auxvar%pres(2)
       temperature = global_auxvar%temp
@@ -4158,34 +4158,34 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
            
       else   
         lngamco2 = 0.d0
-        lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
+        lnQK = -reaction%gas%acteqlogK(ieqgas)*LOG_TO_LN
       endif 
           
-      if (reaction%eqgash2oid(ieqgas) > 0) then
-        lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*rt_auxvar%ln_act_h2o
+      if (reaction%gas%acteqh2oid(ieqgas) > 0) then
+        lnQK = lnQK + reaction%gas%acteqh2ostoich(ieqgas)*rt_auxvar%ln_act_h2o
       endif
    
    ! contribute to %total          
    !     do i = 1, ncomp
    ! removed loop over species, suppose only one primary species is related
-      icomp = reaction%eqgasspecid(1,ieqgas)
+      icomp = reaction%gas%acteqspecid(1,ieqgas)
       pressure = pressure * 1.D-5
         
-!     rt_auxvar%gas_molar(ieqgas) = &
+!     rt_auxvar%gas_pp(ieqgas) = &
 !         exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp) &
 !         /(IDEAL_GAS_CONSTANT*1.d-2*(temperature+273.15D0)*xphico2)
 
 !     This form includes factor Z in pV = ZRT for nonideal gas
-      rt_auxvar%gas_molar(ieqgas) = &
+      rt_auxvar%gas_pp(ieqgas) = &
           exp(lnQK)*rt_auxvar%pri_act_coef(icomp)*rt_auxvar%pri_molal(icomp)* &
           den/pressure/xphico2
 
       rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
-          reaction%eqgasstoich(1,ieqgas)* &
-          rt_auxvar%gas_molar(ieqgas)
+          reaction%gas%acteqstoich(1,ieqgas)* &
+          rt_auxvar%gas_pp(ieqgas)
 
 !       print *,'RTotal: ',icomp,ieqgas,pressure, temperature, xphico2, &
-!         global_auxvar%sat(iphase),rt_auxvar%gas_molar(ieqgas), &
+!         global_auxvar%sat(iphase),rt_auxvar%gas_pp(ieqgas), &
 !         rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp) &
 !         /pressure/xphico2*den
 
@@ -4194,10 +4194,10 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
    !      tempreal = exp(lnQK+lngamco2)/pressure/xphico2*den
 !     tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK) &
 !         /pressure/xphico2*den
-      tempreal = rt_auxvar%gas_molar(ieqgas)/rt_auxvar%pri_molal(icomp)
+      tempreal = rt_auxvar%gas_pp(ieqgas)/rt_auxvar%pri_molal(icomp)
       rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = &
           rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) + &
-          reaction%eqgasstoich(1,ieqgas)*tempreal
+          reaction%gas%acteqstoich(1,ieqgas)*tempreal
     enddo
   ! rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)!*den_kg_per_L
   ! units of dtotal = kg water/L water
@@ -5172,6 +5172,7 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
         psv_t*rt_auxvar%colloid%total_eq_mob(icollcomp)
     enddo
   endif
+#ifndef CO2_SPECIFIC 
   if (reaction%gas%nactive_gas > 0) then
     iphase = 2
     psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
@@ -5180,8 +5181,9 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
     iend = reaction%naqcomp
     Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase)     
   endif
+#endif
 
-#if 0  
+#ifdef CO2_SPECIFIC 
   ! CO2-specific
   if (option%iflowmode == G_MODE) return
 ! Add in multiphase, clu 12/29/08
@@ -5274,6 +5276,7 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
     ! dRj_dSic
     ! dRic_dCj                                 
   endif
+#ifndef CO2_SPECIFIC 
   if (reaction%gas%nactive_gas > 0) then
     iphase = 2
     ! units of dtotal(:,:,2) = kg water / L gas
@@ -5283,7 +5286,9 @@ subroutine RTAccumulationDerivative(rt_auxvar,global_auxvar, &
                                      rt_auxvar%aqueous%dtotal(:,:,iphase) * &
                                      psvd_t
   endif
-#if 0  
+#endif
+
+#ifdef CO2_SPECIFIC 
   ! CO2-specific
   if (option%iflowmode == G_MODE) return
 ! Add in multiphase, clu 12/29/08
@@ -5537,6 +5542,12 @@ subroutine RUpdateTempDependentCoefs(global_auxvar,reaction, &
                                     temp, &
                                     reaction%neqcplx)
     endif
+    if (associated(reaction%gas%acteqlogKcoef)) then
+      call ReactionInterpolateLogK(reaction%gas%acteqlogKcoef, &
+                                    reaction%gas%acteqlogK, &
+                                    temp, &
+                                    reaction%gas%npassive_gas)
+    endif
     if (associated(reaction%gas%paseqlogKcoef)) then
       call ReactionInterpolateLogK(reaction%gas%paseqlogKcoef, &
                                     reaction%gas%paseqlogK, &
@@ -5564,6 +5575,13 @@ subroutine RUpdateTempDependentCoefs(global_auxvar,reaction, &
                                        pres, &
                                        reaction%neqcplx)
     endif
+    if (associated(reaction%gas%acteqlogKcoef)) then
+      call ReactionInterpolateLogK_hpt(reaction%gas%acteqlogKcoef, &
+                                       reaction%gas%acteqlogK, &
+                                       temp, &
+                                       pres, &
+                                       reaction%gas%npassive_gas)
+    endif   
     if (associated(reaction%gas%paseqlogKcoef)) then
       call ReactionInterpolateLogK_hpt(reaction%gas%paseqlogKcoef, &
                                        reaction%gas%paseqlogK, &

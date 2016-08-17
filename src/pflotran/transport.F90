@@ -110,7 +110,9 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
 #endif
 
   max_phase = 1
+#ifndef CO2_SPECIFIC
   if (rt_parameter%ngas > 0) max_phase = 2
+#endif
   
   dispersion(:) = 0.d0    
   call ConnectionCalculateDistances(dist,option%gravity,dist_up, &
@@ -189,11 +191,12 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
     endif
   enddo
 
-#if 0  
+#ifdef CO2_SPECIFIC  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
        .or. option%iflowmode == FLASH2_MODE) then
+    iphase = 1
     do
       iphase = iphase +1 
       if (iphase > option%nphase) exit
@@ -283,7 +286,9 @@ subroutine TDispersionBC(ibndtype, &
 #endif
 
   max_phase = 1
+#ifndef CO2_SPECIFIC
   if (rt_parameter%ngas > 0) max_phase = 2
+#endif
   
   temp_dispersion(:) = 0.d0
   dispersion(:) = 0.d0
@@ -363,11 +368,12 @@ subroutine TDispersionBC(ibndtype, &
     end select
   enddo
 
-#if 0  
+#ifdef CO2_SPECIFIC  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
       .or. option%iflowmode == FLASH2_MODE) then
+    iphase = 1
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -488,13 +494,15 @@ subroutine TFlux(rt_parameter, &
         coef_dn(iphase)*rt_auxvar_dn%colloid%total_eq_mob(icollcomp)
     enddo
   endif
+#ifndef CO2_SPECIFIC
   if (rt_parameter%ngas > 0) then
     iphase = 2
     Res(1:ndof) = Res(1:ndof) + &
                   coef_up(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
                   coef_dn(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
   endif
-#if 0  
+#endif
+#ifdef CO2_SPECIFIC  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
@@ -583,6 +591,7 @@ subroutine TFlux_CD(rt_parameter, &
         coef_22(iphase)*rt_auxvar_dn%colloid%total_eq_mob(icollcomp)
     enddo
   endif
+#ifndef CO2_SPECIFIC
   if (rt_parameter%ngas > 0) then
     iphase = 2
   ! total(:,2) = mol/L gas
@@ -591,8 +600,9 @@ subroutine TFlux_CD(rt_parameter, &
     Res_2(1:ndof) = coef_21(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
                     coef_22(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
   endif
+#endif
   
-#if 0  
+#ifdef CO2_SPECIFIC  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
@@ -649,7 +659,9 @@ subroutine TFluxDerivative(rt_parameter, &
   PetscInt :: max_phase
  
   max_phase = 1
+#ifndef CO2_SPECIFIC
   if (rt_parameter%ngas > 0) max_phase = 2
+#endif
   
   ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water)
   !       = kg water/sec
@@ -696,11 +708,12 @@ subroutine TFluxDerivative(rt_parameter, &
     ! dRic_dCj
   endif
 
-#if 0  
+#ifdef CO2_SPECIFIC  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
       .or. option%iflowmode == FLASH2_MODE) then
+    iphase = 1
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -765,7 +778,9 @@ subroutine TFluxDerivative_CD(rt_parameter, &
   PetscInt :: max_phase
   
   max_phase = 1
+#ifndef CO2_SPECIFIC
   if (rt_parameter%ngas > 0) max_phase = 2
+#endif
   
   ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   istart = 1
@@ -833,11 +848,12 @@ subroutine TFluxDerivative_CD(rt_parameter, &
     ! dRic_dCj
   endif
 
-#if 0  
+#ifdef CO2_SPECIFIC  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
       .or. option%iflowmode == FLASH2_MODE) then
+    iphase = 1
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -897,7 +913,9 @@ subroutine TFluxCoef(rt_parameter,option,area,velocity,diffusion, &
   PetscReal :: q
   
   max_phase = 1
+#ifndef CO2_SPECIFIC
   if (rt_parameter%ngas > 0) max_phase = 2
+#endif
   
   do iphase = 1, max_phase
     q = velocity(iphase)
@@ -926,11 +944,12 @@ subroutine TFluxCoef(rt_parameter,option,area,velocity,diffusion, &
     T_dn(iphase) = coef_dn*area*1000.d0
   enddo
     
-#if 0  
+#ifdef CO2_SPECIFIC  
   ! CO2-specific
 ! Add in multiphase, clu 12/29/08
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
       .or. option%iflowmode == FLASH2_MODE) then
+    iphase = 1
     do
       iphase = iphase +1 
       if (iphase > option%nphase) exit

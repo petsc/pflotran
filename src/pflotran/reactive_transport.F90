@@ -913,9 +913,12 @@ subroutine RTUpdateTransportCoefs(realization)
   if (rt_parameter%calculate_transverse_dispersion) then
     allocate(cell_centered_Darcy_velocities_ghosted(3,option%nphase, &
                                                     patch%grid%ngmax))
+    cell_centered_Darcy_velocities_ghosted = 0.d0
     allocate(cell_centered_Darcy_velocities(3,patch%grid%nlmax))
     max_phase = 1
+#ifndef CO2_SPECIFIC
     if (rt_parameter%ngas > 0) max_phase = 2
+#endif
     do iphase = 1, max_phase
       call PatchGetCellCenteredVelocities(patch,iphase, &
                                           cell_centered_Darcy_velocities)
@@ -2288,7 +2291,6 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
       rt_auxvars(local_id_up)%mass_balance_delta(:,iphase) = &
         rt_auxvars(local_id_up)%mass_balance_delta(:,iphase) - Res        
 #endif
-      
       if (local_id_up>0) then
         iend = local_id_up*reaction%ncomp
         istart = iend-reaction%ncomp+1
@@ -2367,7 +2369,6 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
                   rt_auxvars(ghosted_id), &
                   global_auxvars(ghosted_id), &
                   coef_up,coef_dn,option,Res)
-                  
       iend = local_id*reaction%ncomp
       istart = iend-reaction%ncomp+1
       r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
@@ -2514,7 +2515,9 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   endif
   
   max_phase = 1
+#ifndef CO2_SPECIFIC
   if (reaction%gas%nactive_gas > 0) max_phase = 2
+#endif
   
   ! Get pointer to Vector data
   call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
@@ -3308,7 +3311,9 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,realization,ierr)
   endif
 
   max_phase = 1
+#ifndef CO2_SPECIFIC
   if (reaction%gas%nactive_gas > 0) max_phase = 2  
+#endif
   vol_frac_prim = 1.d0
   
   if (.not.option%steady_state) then
@@ -4797,7 +4802,9 @@ subroutine RTExplicitAdvection(realization)
   
   ntvddof = patch%aux%RT%rt_parameter%naqcomp
   max_phase = 1
+#ifndef CO2_SPECIFIC
   if (reaction%gas%nactive_gas > 0) max_phase = 2 
+#endif
   
   if (realization%option%transport%tvd_flux_limiter /= TVD_LIMITER_UPWIND) then
     allocate(total_up2(option%nphase,ntvddof))

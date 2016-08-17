@@ -106,14 +106,14 @@ subroutine RTotalGas(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: RT
   type(gas_type), pointer :: gas
   
-  rt_auxvar%total(:,iphase) = 0.d0 !debugging 
+  if (option%nphase < 2 .or. option%iflowmode /= G_MODE) return
   
-  if (option%nphase < 2) return
+  rt_auxvar%total(:,iphase) = 0.d0 !debugging 
   
   gas => reaction%gas
   ! units of ideal gas constant = J/mol-K = kPa-L/mol-K
   ! units of RT = Pa-L/mol
-  RT = IDEAL_GAS_CONSTANT*global_auxvar%temp*1.d3
+  RT = IDEAL_GAS_CONSTANT*(global_auxvar%temp+273.15d0)*1.d3
   
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
