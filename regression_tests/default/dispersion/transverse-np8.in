@@ -44,14 +44,14 @@ NEWTON_SOLVER FLOW
 END
 
 LINEAR_SOLVER FLOW
-  SOLVER DIRECT
+#  SOLVER DIRECT
 END
 
 NEWTON_SOLVER TRANSPORT
 END
 
 LINEAR_SOLVER TRANSPORT
-  SOLVER DIRECT
+#  SOLVER DIRECT
 END
 
 #=========================== discretization ===================================

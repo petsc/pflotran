@@ -588,6 +588,7 @@ subroutine HDF5ReadDbase(filename,option)
   num_words = 0
   ! index is zero-based
   do i_object = 0, num_objects-1
+    ! read in to string in case the name is too large.
     call h5gget_obj_info_idx_f(file_id,'.',i_object,string, &
                                object_type,hdf5_err)
     if (len_trim(string) > MAXWORDLENGTH) then
