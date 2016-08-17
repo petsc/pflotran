@@ -643,9 +643,6 @@ subroutine GeomechanicsRegressionOutput(geomechanics_regression, &
     cur_variable => cur_variable%next
   enddo
   
-102 format(i12)    
-103 format(es21.13)
-
   ! timestep, newton iteration, solver iteration output
   if (associated(geomechanics_timestepper)) then
     call VecNorm(geomechanics_realization%geomech_field%disp_xx, &

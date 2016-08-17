@@ -315,7 +315,7 @@ subroutine SurfaceRestartBinary(surf_realization, surf_flow_prev_dt, surf_flow_r
     option%surf_flow_dt = surf_header%surf_flow_dt
     surf_flow_prev_dt = surf_header%surf_flow_prev_dt
 
-    option%subsurf_surf_coupling = surf_header%subsurf_surf_coupling
+    option%subsurf_surf_coupling = int(surf_header%subsurf_surf_coupling)
     option%surf_subsurf_coupling_time = surf_header%surf_subsurf_coupling_time
     option%surf_subsurf_coupling_flow_dt = surf_header%surf_subsurf_coupling_flow_dt
 

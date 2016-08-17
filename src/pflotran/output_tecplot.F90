@@ -1128,7 +1128,6 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   ! write points
 1000 format(es13.6,1x)
 1001 format(i4,1x)
-1002 format(3(es13.6,1x))
 1009 format('')
 
   if (option%nphase > 1) then
@@ -1326,7 +1325,6 @@ subroutine WriteTecplotStructuredGrid(fid,realization_base)
   PetscErrorCode :: ierr  
 
 1000 format(es13.6,1x)
-1001 format(10(es13.6,1x))
   
   call PetscLogEventBegin(logging%event_output_str_grid_tecplot, &
                           ierr);CHKERRQ(ierr)
@@ -2218,7 +2216,6 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   
 1000 format(es13.6,1x)
 1001 format(i10,1x)
-1009 format('')
  
  ! Order of printing for the 1st file
  ! id1 id2 darcy_vel[m/s] density[kg/m3]

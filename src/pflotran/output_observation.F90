@@ -884,8 +884,6 @@ subroutine WriteObservationDataForCell(fid,realization_base,local_id)
   field => realization_base%field
   output_option => realization_base%output_option
 
-100 format(es14.6)
-101 format(i2)
 110 format(es14.6)
 111 format(i2)
 
@@ -961,8 +959,6 @@ subroutine WriteObservationDataForCoord(fid,realization_base,region)
   field => realization_base%field
   output_option => realization_base%output_option
 
-100 format(es14.6)
-101 format(i2)
 110 format(es14.6)
 111 format(i2)
 
@@ -1079,12 +1075,7 @@ subroutine WriteObservationDataForBC(fid,realization_base,patch,connection_set)
   option => realization_base%option
   reaction => realization_base%reaction
 
-100 format(es14.6)
-!100 format(es16.9)
-101 format(i2)
 110 format(es14.6)
-!110 format(',',es16.9)
-111 format(i2)
  
   iphase = 1
 
@@ -1554,10 +1545,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
   field => realization_base%field
   output_option => realization_base%output_option
 
-100 format(es14.6)
-101 format(i2)
 110 format(es14.6)
-111 format(i2)
 
   ghosted_id = grid%nL2G(local_id)
 

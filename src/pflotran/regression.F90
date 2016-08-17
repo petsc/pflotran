@@ -769,9 +769,6 @@ subroutine RegressionOutput(regression,realization,flow_timestepper, &
   call VecDestroy(global_vec_vy,ierr);CHKERRQ(ierr)
   call VecDestroy(global_vec_vz,ierr);CHKERRQ(ierr)
 
-102 format(i12)    
-103 format(es21.13)
-
   ! timestep, newton iteration, solver iteration output
   if (associated(flow_timestepper)) then
     call VecNorm(realization%field%flow_xx,NORM_2,x_norm,ierr);CHKERRQ(ierr)
