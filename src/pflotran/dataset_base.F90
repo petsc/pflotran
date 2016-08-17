@@ -207,7 +207,7 @@ subroutine DatasetBaseVerify(this,dataset_error,option)
       this%rarray = 0.d0
     endif
   else if (len_trim(this%name) < 1) then
-    option%io_buffer = 'NULL dataset.'
+    option%io_buffer = 'ERROR: No value or dataset specified.'
     call printMsg(option)
     dataset_error = PETSC_TRUE
   endif
