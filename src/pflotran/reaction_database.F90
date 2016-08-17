@@ -1764,106 +1764,15 @@ subroutine BasisInit(reaction,option)
                                   reaction%gas%acteqh2ostoich, &
                                   reaction%gas%acteqlogK, &
                                   reaction%gas%acteqlogKcoef)
-  
-#if 0  
-  
-  if (reaction%gas%ngas > 0) then
-  
-    ! get maximum # of aqueous species in a gas reaction
-    cur_gas_spec => reaction%gas%list
-    max_aq_species = 0
-    do
-      if (.not.associated(cur_gas_spec)) exit
-      max_aq_species = max(cur_gas_spec%dbaserxn%nspec,max_aq_species)
-      cur_gas_spec => cur_gas_spec%next
-    enddo
-    
-    allocate(reaction%gas_species_names(reaction%ngas))
-    reaction%gas_species_names = ''
-    allocate(reaction%gas_species_print(reaction%ngas))
-    reaction%gas_species_print = PETSC_FALSE
-    allocate(reaction%eqgasspecid(0:max_aq_species,reaction%ngas))
-    reaction%eqgasspecid = 0
-    allocate(reaction%eqgasstoich(0:max_aq_species,reaction%ngas))
-    reaction%eqgasstoich = 0.d0
-    allocate(reaction%eqgash2oid(reaction%ngas))
-    reaction%eqgash2oid = 0
-    allocate(reaction%eqgash2ostoich(reaction%ngas))
-    reaction%eqgash2ostoich = 0.d0
-    allocate(reaction%eqgas_logK(reaction%ngas))
-    reaction%eqgas_logK = 0.d0
-    if (.not.reaction%use_geothermal_hpt) then
-      if (option%use_isothermal) then
-        allocate(reaction%eqgas_logKcoef(reaction%num_dbase_temperatures, &
-                                         reaction%ngas))
-      else
-        allocate(reaction%eqgas_logKcoef(FIVE_INTEGER,reaction%ngas))
-      endif
-    else
-      allocate(reaction%eqgas_logKcoef(num_logKs,reaction%ngas))
-    endif
-    
-    reaction%eqgas_logKcoef = 0.d0
-
-    ! pack in reaction arrays
-    cur_gas_spec => reaction%gas%list
-    igas_spec = 1
-    do
-      if (.not.associated(cur_gas_spec)) exit
-
-      reaction%gas_species_names(igas_spec) = cur_gas_spec%name
-      reaction%gas_species_print(igas_spec) = cur_gas_spec%print_me .or. &
-                                              reaction%print_all_gas_species
-      ispec = 0
-      do i = 1, cur_gas_spec%dbaserxn%nspec
-        if (cur_gas_spec%dbaserxn%spec_ids(i) /= h2o_id) then
-          ispec = ispec + 1
-          spec_id = cur_gas_spec%dbaserxn%spec_ids(i)
-          if (spec_id > h2o_id) spec_id = spec_id - 1
-          reaction%eqgasspecid(ispec,igas_spec) = spec_id
-          reaction%eqgasstoich(ispec,igas_spec) = &
-            cur_gas_spec%dbaserxn%stoich(i)
-            
-        else ! fill in h2o id and stoich
-          reaction%eqgash2oid(igas_spec) = h2o_id
-          reaction%eqgash2ostoich(igas_spec) = &
-            cur_gas_spec%dbaserxn%stoich(i)
-        endif
-      enddo
-      reaction%eqgasspecid(0,igas_spec) = ispec
-      
-      if (.not.reaction%use_geothermal_hpt) then
-        if (option%use_isothermal) then
-          reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
-          call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                           cur_gas_spec%dbaserxn%logK(itemp_high), &
-                           cur_gas_spec%dbaserxn%logK(itemp_low), &
-                           reaction%eqgas_logK(igas_spec))
-        else
-          call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec), &
-                                   cur_gas_spec%dbaserxn%logK, &
-                                   reaction%gas_species_names(igas_spec), &
-                                   option,reaction)
-          call ReactionInitializeLogK(reaction%eqgas_logKcoef(:,igas_spec), &
-                                      cur_gas_spec%dbaserxn%logK, &
-                                      reaction%eqgas_logK(igas_spec), &
-                                      option,reaction)
-        endif
-      else
-          reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
-          call ReactionInitializeLogK_hpt(reaction%eqgas_logKcoef(:,igas_spec), &
-                                          reaction%eqgas_logK(igas_spec), &
-                                          option,reaction)  
-      endif
-  
-      igas_spec = igas_spec + 1
-      cur_gas_spec => cur_gas_spec%next
-    enddo
-
+  if (option%nphase > 1 .and. reaction%gas%nactive_gas == 0 .and. &
+      (option%iflowmode == MPH_MODE .or. &
+       option%iflowmode == IMS_MODE .or. &
+       option%iflowmode == FLASH2_MODE)) then
+    option%io_buffer = 'An ACTIVE_GAS block must be specified in CHEMISTRY &
+      &to run a CO2 flow mode coupled with reactive transport.'
+    call printErrMsg(option)
   endif
-  nullify(cur_gas_spec)
-  igas_spec = -1 ! to catch bugs
-#endif
+  
   
   ! immobile species
   immobile%nimmobile = ImmobileGetCount(immobile)
