@@ -1726,7 +1726,7 @@ subroutine InputReadASCIIDbase(filename,option)
   
   implicit none
   
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=*) :: filename
   type(option_type) :: option
 
   character(len=MAXSTRINGLENGTH) :: string
@@ -1751,7 +1751,13 @@ subroutine InputReadASCIIDbase(filename,option)
   do
     call InputReadPflotranString(input,option)
     if (InputError(input)) exit
-    call InputReadWord(input,option,word,PETSC_FALSE)
+    call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_FALSE)
+    if (len_trim(string) > MAXWORDLENGTH) then
+      option%io_buffer = 'ASCII DBASE object names must be shorter than &
+        &32 characters: ' // trim(string)
+      call printErrMsg(option)
+    endif
+    word = trim(string)
     if (StringStartsWithAlpha(word)) then
       icount = icount + 1
       if (icount == 1) then

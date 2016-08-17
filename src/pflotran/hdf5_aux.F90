@@ -536,7 +536,7 @@ subroutine HDF5ReadDbase(filename,option)
   
   implicit none
   
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=*) :: filename
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH), allocatable :: wbuffer(:)
@@ -545,7 +545,9 @@ subroutine HDF5ReadDbase(filename,option)
   PetscInt, allocatable :: ibuffer(:)
   PetscInt :: dummy_int
   PetscInt :: value_index
-  character(len=MAXWORDLENGTH) :: object_name, word
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: object_name
+  character(len=MAXWORDLENGTH) :: word
 #if defined(PETSC_HAVE_HDF5)  
   integer(HID_T) :: file_id
   integer(HID_T) :: num_objects
@@ -586,8 +588,14 @@ subroutine HDF5ReadDbase(filename,option)
   num_words = 0
   ! index is zero-based
   do i_object = 0, num_objects-1
-    call h5gget_obj_info_idx_f(file_id,'.',i_object,object_name, &
+    call h5gget_obj_info_idx_f(file_id,'.',i_object,string, &
                                object_type,hdf5_err)
+    if (len_trim(string) > MAXWORDLENGTH) then
+      option%io_buffer = 'HDF5 DBASE object names must be shorter than &
+        &32 characters: ' // trim(string)
+      call printErrMsg(option)
+    endif
+    object_name = trim(string)
     if (object_type == H5G_DATASET_F) then
       call h5dopen_f(file_id,object_name,dataset_id,hdf5_err)
       call h5dget_type_f(dataset_id, datatype_id, hdf5_err)

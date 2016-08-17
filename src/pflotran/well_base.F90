@@ -305,7 +305,7 @@ subroutine InitWellZRefCntrlConn(this,grid,connection_set,option)
                        MPI_MAXLOC,this%comm, ierr)
     this%z_pw_ref = max_z_rcv(1)
     !output_rank = max_z_rcv(2) ! casting from double to interger (see MPI)
-    w_cntr_myrank = max_z_rcv(2) ! available to all ranks
+    w_cntr_myrank = int(max_z_rcv(2)) ! available to all ranks
     this%cntr_rank = w_cntr_myrank
 
 #ifdef WELL_DEBUG

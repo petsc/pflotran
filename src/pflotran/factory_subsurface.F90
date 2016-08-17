@@ -1345,14 +1345,14 @@ subroutine SubsurfaceReadRequiredCards(simulation)
 
 !....................
       case('DBASE_FILENAME')
-        call InputReadWord(input,option,word,PETSC_FALSE)
+        call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'filename','DBASE_FILENAME')
-        if (index(word,'.h5') > 0) then
+        if (index(string,'.h5') > 0) then
 #if defined(PETSC_HAVE_HDF5)
-          call HDF5ReadDbase(word,option)
+          call HDF5ReadDbase(string,option)
 #endif
         else
-          call InputReadASCIIDbase(word,option)
+          call InputReadASCIIDbase(string,option)
         endif
 
 !....................
