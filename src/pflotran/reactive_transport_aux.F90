@@ -31,7 +31,7 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: sec_molal(:)
     
     ! gases
-    PetscReal, pointer :: gas_pp(:) ! gas partial pressure
+    PetscReal, pointer :: gas_pp(:) ! gas partial pressure in bars
     
     ! sorption reactions
     PetscReal, pointer :: srfcplxrxn_free_site_conc(:)

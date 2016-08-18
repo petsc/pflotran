@@ -105,6 +105,7 @@ subroutine RTotalGas(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: lnQK, tempreal
   PetscReal :: RT
+  PetscReal :: gas_concentration
   type(gas_type), pointer :: gas
   
   if (option%nphase < 2 .or. option%iflowmode /= G_MODE) return
@@ -136,17 +137,18 @@ subroutine RTotalGas(rt_auxvar,global_auxvar,reaction,option)
       icomp = gas%acteqspecid(i,igas)
       lnQK = lnQK + gas%acteqstoich(i,igas)*ln_act(icomp)
     enddo
-    ! units = Pa
+    ! units = bars
     rt_auxvar%gas_pp(igas) = exp(lnQK)
-  
+    ! unit = mol/L gas
+    gas_concentration = rt_auxvar%gas_pp(igas) * 1.d5 / RT
+
     ! add contribution to primary totals
     ! units of total = mol/L gas
     do i = 1, ncomp
       icomp = gas%acteqspecid(i,igas)
       rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
                                       gas%acteqstoich(i,igas)* &
-                                      rt_auxvar%gas_pp(igas)/ &
-                                      RT
+                                      gas_concentration
     enddo
     
     ! add contribution to derivatives of total with respect to free
