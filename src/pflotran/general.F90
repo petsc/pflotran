@@ -109,17 +109,17 @@ subroutine GeneralSetup(realization)
   material_parameter => patch%aux%Material%material_parameter
   error_found = PETSC_FALSE
   if (minval(material_parameter%soil_residual_saturation(:,:)) < 0.d0) then
-    option%io_buffer = 'Non-initialized soil residual saturation.'
+    option%io_buffer = 'ERROR: Non-initialized soil residual saturation.'
     call printMsg(option)
     error_found = PETSC_TRUE
   endif
   if (minval(material_parameter%soil_heat_capacity(:)) < 0.d0) then
-    option%io_buffer = 'Non-initialized soil heat capacity.'
+    option%io_buffer = 'ERROR: Non-initialized soil heat capacity.'
     call printMsg(option)
     error_found = PETSC_TRUE
   endif
   if (minval(material_parameter%soil_thermal_conductivity(:,:)) < 0.d0) then
-    option%io_buffer = 'Non-initialized soil thermal conductivity.'
+    option%io_buffer = 'ERROR: Non-initialized soil thermal conductivity.'
     call printMsg(option)
     error_found = PETSC_TRUE
   endif
@@ -133,28 +133,28 @@ subroutine GeneralSetup(realization)
     if (patch%imat(ghosted_id) <= 0) cycle
     if (material_auxvars(ghosted_id)%volume < 0.d0 .and. flag(1) == 0) then
       flag(1) = 1
-      option%io_buffer = 'Non-initialized cell volume.'
+      option%io_buffer = 'ERROR: Non-initialized cell volume.'
       call printMsg(option)
     endif
     if (material_auxvars(ghosted_id)%porosity < 0.d0 .and. flag(2) == 0) then
       flag(2) = 1
-      option%io_buffer = 'Non-initialized porosity.'
+      option%io_buffer = 'ERROR: Non-initialized porosity.'
       call printMsg(option)
     endif
     if (material_auxvars(ghosted_id)%tortuosity < 0.d0 .and. flag(3) == 0) then
       flag(3) = 1
-      option%io_buffer = 'Non-initialized tortuosity.'
+      option%io_buffer = 'ERROR: Non-initialized tortuosity.'
       call printMsg(option)
     endif
     if (material_auxvars(ghosted_id)%soil_particle_density < 0.d0 .and. &
         flag(4) == 0) then
       flag(4) = 1
-      option%io_buffer = 'Non-initialized soil particle density.'
+      option%io_buffer = 'ERROR: Non-initialized soil particle density.'
       call printMsg(option)
     endif
     if (minval(material_auxvars(ghosted_id)%permeability) < 0.d0 .and. &
         flag(5) == 0) then
-      option%io_buffer = 'Non-initialized permeability.'
+      option%io_buffer = 'ERROR: Non-initialized permeability.'
       call printMsg(option)
       flag(5) = 1
     endif

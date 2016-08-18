@@ -170,14 +170,14 @@ subroutine THSetupPatch(realization)
   do i = 1, size(patch%material_property_array)
     word = patch%material_property_array(i)%ptr%name 
     if (Uninitialized(patch%material_property_array(i)%ptr%specific_heat)) then
-      option%io_buffer = 'Non-initialized HEAT_CAPACITY in material ' // &
-                         trim(word)
+      option%io_buffer = 'ERROR: Non-initialized HEAT_CAPACITY in material ' &
+                         // trim(word)
       call printMsg(option)
       error_found = PETSC_TRUE
     endif
     if (Uninitialized(patch%material_property_array(i)%ptr% &
                       thermal_conductivity_wet)) then
-      option%io_buffer = 'Non-initialized THERMAL_CONDUCTIVITY_WET in &
+      option%io_buffer = 'ERROR: Non-initialized THERMAL_CONDUCTIVITY_WET in &
                          &material ' // &
                          trim(word)
       call printMsg(option)
@@ -185,7 +185,7 @@ subroutine THSetupPatch(realization)
     endif
     if (Uninitialized(patch%material_property_array(i)%ptr% &
                       thermal_conductivity_dry)) then
-      option%io_buffer = 'Non-initialized THERMAL_CONDUCTIVITY_DRY in &
+      option%io_buffer = 'ERROR: Non-initialized THERMAL_CONDUCTIVITY_DRY in &
                          &material ' // &
                          trim(word)
       call printMsg(option)
@@ -194,17 +194,15 @@ subroutine THSetupPatch(realization)
     if (option%use_th_freezing) then
       if (Uninitialized(patch%material_property_array(i)%ptr% &
                         thermal_conductivity_frozen)) then
-        option%io_buffer = 'Non-initialized THERMAL_CONDUCTIVITY_FROZEN in &
-                           &material ' // &
-                           trim(word)
+        option%io_buffer = 'ERROR: Non-initialized THERMAL_CONDUCTIVITY_&
+                           &FROZEN in material ' // trim(word)
         call printMsg(option)
         error_found = PETSC_TRUE
       endif
       if (Uninitialized(patch%material_property_array(i)%ptr% &
                         alpha_fr)) then
-        option%io_buffer = 'Non-initialized THERMAL_COND_EXPONENT_FROZEN in &
-                           &material ' // &
-                           trim(word)
+        option%io_buffer = 'ERROR: Non-initialized THERMAL_COND_EXPONENT&
+                           &_FROZEN in material ' // trim(word)
         call printMsg(option)
         error_found = PETSC_TRUE
       endif
