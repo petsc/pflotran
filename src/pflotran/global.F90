@@ -724,7 +724,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
       call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,SC_FUGA_COEFF, &
                                  time_level)
-    case(TH_MODE,G_MODE)
+    case(TH_MODE)
       ! pressure
       call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
                                   ZERO_INTEGER)
@@ -738,7 +738,31 @@ subroutine GlobalUpdateAuxVars(realization,time_level,time)
       call realization%comm1%GlobalToLocal(field%work,field%work_loc)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE, &
                                  time_level)
-      
+    case(G_MODE)
+      ! pressure
+      call RealizationGetVariable(realization,field%work,LIQUID_PRESSURE, &
+                                  ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_PRESSURE, &
+                                 time_level)
+      ! temperature
+      call RealizationGetVariable(realization,field%work,TEMPERATURE, &
+                                  ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE, &
+                                 time_level)
+      ! Gas density
+      call RealizationGetVariable(realization,field%work,GAS_DENSITY, &
+                                 ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY, &
+                                 time_level)
+      ! Gas saturation
+      call RealizationGetVariable(realization,field%work,GAS_SATURATION, &
+                                  ZERO_INTEGER)
+      call realization%comm1%GlobalToLocal(field%work,field%work_loc)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION, &
+                                 time_level)                         
     case(IMS_MODE)
       ! Gas density
       call RealizationGetVariable(realization,field%work,GAS_DENSITY, &
