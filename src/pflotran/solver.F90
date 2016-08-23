@@ -244,6 +244,25 @@ subroutine SolverSetSNESOptions(solver)
   if (Initialized(solver%linear_zero_pivot_tol)) then
     call PCFactorSetZeroPivot(solver%pc,solver%linear_zero_pivot_tol, &
                               ierr);CHKERRQ(ierr)
+#if 0
++    if (solver%pc_type == PCLU .or. &
++        solver%pc_type == PCILU) then
++      call PCFactorSetZeroPivot(solver%pc,solver%linear_zero_pivot_tol, &
++                                ierr);CHKERRQ(ierr)
++    else if (solver%pc_type == PCBJACOBI) then
++      call PCSetup(solver%pc,ierr)
++      call PCBJacobiGetSubKSP(solver%pc,nsub_ksp,first_sub_ksp,sub_ksps,ierr)
++      do i = 1, nsub_ksp
++        call KSPGetPC(sub_ksps(i),pc,ierr)
++        call PCFactorSetZeroPivot(pc,solver%linear_zero_pivot_tol, &
++                                  ierr);CHKERRQ(ierr)
++      enddo
++    else
++      option%io_buffer = 'Setting of zero pivot tolerance for PC ' // &
++        trim(solver%pc_type) // ' is not supported at this time.'
++      call printErrMsg(option)
++    endif
+#endif
   endif
 
   ! Set the tolerances for the Newton solver.
