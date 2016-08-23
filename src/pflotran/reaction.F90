@@ -4942,10 +4942,11 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
 #if 0  
   PetscReal :: Res_orig(reaction%ncomp)
   PetscReal :: Res_pert(reaction%ncomp)
-  PetscInt :: icomp, jcomp
+  PetscInt :: icomp, jcomp, iphase
   PetscReal :: dtotal(reaction%naqcomp,reaction%naqcomp,2)
   PetscReal :: dtotalsorb(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: pert
+  PetscInt :: max_phase
   type(reactive_transport_auxvar_type) :: rt_auxvar_pert
 #endif
 
@@ -4960,6 +4961,8 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
 
 #if 0
 ! numerical check
+  max_phase = 1
+  if (reaction%gas%nactive_gas > 0) max_phase = 2
   Res_orig = 0.d0
   dtotal = 0.d0
   dtotalsorb = 0.d0
@@ -4971,12 +4974,12 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
     if (reaction%neqcplx > 0) then
       rt_auxvar%sec_molal = 0.d0
     endif
-    if (reaction%ngas > 0) then
-      rt_auxvar%gas_molar = 0.d0
+    if (reaction%gas%nactive_gas > 0) then
+      rt_auxvar%gas_pp = 0.d0
     endif
-    if (reaction%neqsrfcplxrxn > 0) then
-      rt_auxvar_pert%eqsrfcplx_free_site_conc = 1.d-9
-      rt_auxvar_pert%srfcplx_conc = 0.d0
+    if (reaction%surface_complexation%neqsrfcplxrxn > 0) then
+      rt_auxvar_pert%srfcplxrxn_free_site_conc = 1.d-9
+      rt_auxvar_pert%eqsrfcplx_conc = 0.d0
     endif
     if (reaction%neqionxrxn > 0) then
       rt_auxvar%eqionx_ref_cation_sorbed_conc = 1.d-9
@@ -4985,28 +4988,35 @@ subroutine RTAuxVarCompute(rt_auxvar,global_auxvar,material_auxvar,reaction, &
     rt_auxvar_pert%pri_molal(jcomp) = rt_auxvar_pert%pri_molal(jcomp) + pert
     
     call RTotal(rt_auxvar_pert,global_auxvar,reaction,option)
-    dtotal(:,jcomp,1) = (rt_auxvar_pert%total(:,1) - rt_auxvar%total(:,1))/pert
+    dtotal(:,jcomp,1) = (rt_auxvar_pert%total(:,1) - &
+                         rt_auxvar%total(:,1))/pert
     if (reaction%neqsorb > 0) then
-      call RTotalSorb(rt_auxvar_pert,global_auxvar,reaction,option)
+      call RTotalSorb(rt_auxvar_pert,global_auxvar,material_auxvar, &
+                      reaction,option)
       dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb_eq(:) - &
                              rt_auxvar%total_sorb_eq(:))/pert
     endif
     if (reaction%gas%nactive_gas > 0) then
-      call RTotalGas(rt_auxvar,global_auxvar,reaction,option)
-      dtotal(:,jcomp,2) = (rt_auxvar_pert%total(:,2) - rt_auxvar%total(:,2))/pert
+      call RTotalGas(rt_auxvar_pert,global_auxvar,reaction,option)
+      dtotal(:,jcomp,2) = (rt_auxvar_pert%total(:,2) - &
+                           rt_auxvar%total(:,2))/pert
     endif    
   enddo
-  do icomp = 1, reaction%naqcomp
-    do jcomp = 1, reaction%naqcomp
-      if (dabs(dtotal(icomp,jcomp)) < 1.d-16) dtotal(icomp,jcomp) = 0.d0
+  do iphase = 1, max_phase
+    do icomp = 1, reaction%naqcomp
+      do jcomp = 1, reaction%naqcomp
+        if (dabs(dtotal(icomp,jcomp,iphase)) < 1.d-16) &
+          dtotal(icomp,jcomp,iphase) = 0.d0
+      enddo
       if (reaction%neqsorb > 0) then
-        if (dabs(dtotalsorb(icomp,jcomp)) < 1.d-16) dtotalsorb(icomp,jcomp) = 0.d0
+        if (dabs(dtotalsorb(icomp,jcomp)) < 1.d-16) &
+          dtotalsorb(icomp,jcomp) = 0.d0
       endif
     enddo
   enddo
   rt_auxvar%aqueous%dtotal(:,:,:) = dtotal
   if (reaction%neqsorb > 0) rt_auxvar%dtotal_sorb_eq = dtotalsorb
-  call RTAuxVarDestroy(rt_auxvar_pert)
+  call RTAuxVarStrip(rt_auxvar_pert)
 #endif
   
 end subroutine RTAuxVarCompute

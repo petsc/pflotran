@@ -155,7 +155,7 @@ subroutine RTotalGas(rt_auxvar,global_auxvar,reaction,option)
     ! units of dtotal = kg water / L gas
     do j = 1, ncomp
       jcomp = gas%acteqspecid(j,igas)
-      tempreal = gas%acteqstoich(j,igas)*exp(lnQK-ln_conc(jcomp))/RT
+      tempreal = gas%acteqstoich(j,igas)*exp(lnQK-ln_conc(jcomp))*1.d5/RT
       do i = 1, ncomp
         icomp = gas%acteqspecid(i,igas)
         rt_auxvar%aqueous%dtotal(icomp,jcomp,iphase) = &
