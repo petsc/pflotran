@@ -128,14 +128,14 @@ subroutine InitSubsurfFlowSetupRealization(realization)
 #endif
     endif
   endif  
-
+#ifdef WELL_CLASS
   call AllWellsSetup(realization)
-
+#endif
   
 end subroutine InitSubsurfFlowSetupRealization
 
 ! ************************************************************************** !
-
+#ifdef WELL_CLASS
 subroutine AllWellsSetup(realization)
   ! 
   ! Point well auxvars to the domain auxvars te wells belong to
@@ -174,7 +174,7 @@ subroutine AllWellsSetup(realization)
   end do
 
 end subroutine AllWellsSetup
-
+#endif
 ! ************************************************************************** !
   
 subroutine InitSubsurfFlowSetupSolvers(realization,convergence_context,solver)

@@ -1171,7 +1171,9 @@ subroutine Output(realization_base,snapshot_plot_flag,observation_plot_flag, &
   ! Output temporally average variables 
   call OutputAvegVars(realization_base)
 
+#ifdef WELL_CLASS
   call OutputWell(realization_base)
+#endif
 
   if (snapshot_plot_flag) then
     realization_base%output_option%plot_number = &
@@ -2175,7 +2177,7 @@ subroutine OutputAvegVars(realization_base)
 end subroutine OutputAvegVars
 
 ! ************************************************************************** !
-
+#ifdef WELL_CLASS
 subroutine OutputWell(realization_base)
   ! 
   ! Prints out the well variables
@@ -2219,7 +2221,7 @@ subroutine OutputWell(realization_base)
   enddo
 
 end subroutine OutputWell
-
+#endif
 ! ************************************************************************** !
 
 end module Output_module

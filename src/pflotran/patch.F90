@@ -324,9 +324,14 @@ subroutine PatchLocalizeRegions(patch,regions,option)
 end subroutine PatchLocalizeRegions
 
 ! ************************************************************************** !
-
+#ifdef WELL_CLASS
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                                 well_specs, option)
+#else
+subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
+                                option)
+#endif
+
   ! 
   ! Assigns conditions and regions to couplers
   ! 
@@ -339,15 +344,19 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   use Condition_module
   use Transport_Constraint_module
   use Connection_module
+#ifdef WELL_CLASS
   use Well_module
   use WellSpec_Base_class
+#endif
 
   implicit none
   
   type(patch_type) :: patch
   type(condition_list_type) :: flow_conditions
   type(tran_condition_list_type) :: transport_conditions
+#ifdef WELL_CLASS
   type(well_spec_list_type), pointer :: well_specs
+#endif
   type(option_type) :: option
   
   type(coupler_type), pointer :: coupler
@@ -355,7 +364,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(strata_type), pointer :: strata
   type(observation_type), pointer :: observation, next_observation
   type(integral_flux_type), pointer :: integral_flux
+#ifdef WELL_CLASS
   class(well_spec_base_type), pointer :: well_spec 
+#endif
 
   PetscInt :: temp_int, isub
   PetscErrorCode :: ierr
@@ -495,6 +506,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                  '" not found in region list'
       call printErrMsg(option)
     endif
+#ifdef WELL_CLASS
     !Create a well only if a well_spec is associated with the source_sink coupler 
     nullify(well_spec)
     well_spec => WellSpecGetPtrFromList(coupler%well_spec_name,well_specs) 
@@ -503,6 +515,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       option%nwells = option%nwells + 1
     end if  
     nullify(well_spec)
+#endif
    
     ! pointer to flow condition
     if (option%nflowdof > 0) then    
@@ -779,13 +792,15 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     endif
   endif
 
+#ifdef WELL_CLASS
   !create well communicators - if no wells exit without any operation 
   call PatchCreateWellComms(patch,option)
+#endif
 
 end subroutine PatchProcessCouplers
 
 ! ************************************************************************** !
-
+#ifdef WELL_CLASS
 subroutine PatchCreateWellComms(patch,option)
   ! 
   ! Create well groups and communicators 
@@ -1043,7 +1058,7 @@ subroutine PatchCreateWellComms(patch,option)
   nullify(coupler)
 
 end subroutine PatchCreateWellComms 
-
+#endif  
 ! ************************************************************************** !
 
 subroutine PatchInitAllCouplerAuxVars(patch,option)
@@ -1272,11 +1287,13 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
     endif
 
     !Well Setup
+#ifdef WELL_CLASS
     if (associated(coupler%well)) then
       call coupler%well%Setup(coupler%connection_set,patch%grid, &
                                         option)
     end if
-      
+#endif      
+
     coupler => coupler%next
   enddo
   

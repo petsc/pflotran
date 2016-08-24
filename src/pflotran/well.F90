@@ -1,3 +1,4 @@
+#ifdef WELL_CLASS
 module Well_module
 
   use PFLOTRAN_Constants_module
@@ -221,5 +222,6 @@ end subroutine WellDestroy
 ! ************************************************************************** !
 
 end module Well_module
-
+!end of WELL_CLASS
+#endif  
 
