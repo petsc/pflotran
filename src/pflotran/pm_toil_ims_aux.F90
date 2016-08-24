@@ -711,10 +711,10 @@ subroutine  TOilImsAuxVarArray1Strip(auxvars)
   implicit none
 
   !can't use class due to gfortran (4.8.4) bug (values passed are not correct)
-  !class(auxvar_toil_ims_type), pointer :: auxvars(:)
   !here we can pass by pointer, we could destroy the array within the routine
   !but we don't to be consistent with TOilImsAuxVarArray2Strip 
-  class(auxvar_toil_ims_type), pointer :: auxvars(:)
+  !class(auxvar_toil_ims_type), pointer :: auxvars(:)
+  type(auxvar_toil_ims_type) :: auxvars(:)
 
   PetscInt :: iaux
 
@@ -747,7 +747,8 @@ subroutine TOilImsAuxVarArray2Strip(auxvars)
   !cannot use type(...) with pointer attribute.
   !because the compiler does not allow to specify lower 0-bound in auxvar
   !type(auxvar_toil_ims_type), pointer :: auxvars(:,:)
-  class(auxvar_toil_ims_type) :: auxvars(0:,:)
+  !class(auxvar_toil_ims_type) :: auxvars(0:,:)
+  type(auxvar_toil_ims_type) :: auxvars(0:,:)
 
   PetscInt :: iaux, idof
 
