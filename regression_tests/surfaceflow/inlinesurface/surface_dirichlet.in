@@ -1,0 +1,124 @@
+
+! Define simulation type and options --------------------------------
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+    PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+      OPTIONS 
+       INLINE_SURFACE_REGION top
+       INLINE_SURFACE_MANNINGS_COEFF 0.2 
+      END 
+    END
+  END
+END
+
+SUBSURFACE
+
+  REGRESSION
+    CELLS
+      1
+      2
+      3
+      4
+      5
+    /
+  END
+  
+  ! Simulation details and output control ---------------------------
+
+  TIME
+    FINAL_TIME             10. s 
+    INITIAL_TIMESTEP_SIZE  1.0d0 s
+    MAXIMUM_TIMESTEP_SIZE  1.0d0 s 
+  END
+
+  skip
+  OUTPUT
+    PERIODIC TIMESTEP 1
+    FORMAT TECPLOT POINT
+  END
+  noskip
+  
+  ! Domain and region information -----------------------------------
+
+  GRID
+    TYPE unstructured_explicit ./mesh1.uge 
+  END
+
+  REGION all  
+   COORDINATES 
+    -500. -500. -500.  
+     500.  500.  500. 
+    / 
+  END
+
+  REGION top 
+   FILE ./top1.ex 
+  END 
+ 
+  REGION west_top 
+    FILE ./westtop1.ex 
+  END 
+
+  ! Initial condition -----------------------------------------------
+
+  FLOW_CONDITION initial
+    UNITS Pa
+    TYPE
+      PRESSURE hydrostatic
+    END
+    DATUM 0.0d0 0.0d0 0.0d0
+    PRESSURE 101325.d0
+  END
+
+  INITIAL_CONDITION initial_coupler
+    FLOW_CONDITION initial
+    REGION all
+  END
+
+  ! Boundary condition  ---------------------------------------------
+  
+   FLOW_CONDITION source 
+    TYPE 
+     PRESSURE surface_dirichlet
+    END 
+    PRESSURE 0.05d0 ! actually a water depth 
+   END 
+
+   BOUNDARY_CONDITION east_boundary 
+    FLOW_CONDITION source
+    REGION west_top 
+   END 
+
+  ! Materials and their mapping to cells ----------------------------
+  
+  STRATA
+    REGION all
+    MATERIAL s1
+  END
+
+  CHARACTERISTIC_CURVES sf
+    SATURATION_FUNCTION VAN_GENUCHTEN
+      ALPHA 1.d-2
+      M 0.5d0
+      LIQUID_RESIDUAL_SATURATION 0.2d0
+    END
+    PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+      M 0.5d0
+      LIQUID_RESIDUAL_SATURATION 0.2d0
+    END
+  END
+
+  MATERIAL_PROPERTY s1
+    ID 1
+    POROSITY 0.40d0
+    SATURATION_FUNCTION sf
+    PERMEABILITY
+      ISOTROPIC   
+        PERM_ISO 1.04e-14 
+    END
+  END
+
+END_SUBSURFACE

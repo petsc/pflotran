@@ -88,6 +88,7 @@ subroutine PMRichardsRead(this,input)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   type(option_type), pointer :: option
+  PetscReal :: Mannings_coeff
   PetscBool :: found
 
   option => this%option
@@ -118,6 +119,13 @@ subroutine PMRichardsRead(this,input)
         call InputReadDouble(input,option,richards_itol_rel_update)
         call InputDefaultMsg(input,option,'richards_itol_rel_update')
         this%check_post_convergence = PETSC_TRUE
+      case('INLINE_SURFACE_REGION')
+        option%inline_surface_flow = PETSC_TRUE
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        option%inline_surface_region_name = word
+      case('INLINE_SURFACE_MANNINGS_COEFF')
+        call InputReadDouble(input,option,Mannings_coeff)
+        option%inline_surface_Mannings_coeff = Mannings_coeff
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select

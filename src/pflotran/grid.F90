@@ -81,6 +81,10 @@ module Grid_module
     type(connection_set_list_type), pointer :: internal_connection_set_list
     type(connection_set_list_type), pointer :: boundary_connection_set_list
 
+    ! list of connections defined over specific regions
+    type(connection_set_list_type), pointer :: reg_internal_connection_set_list
+    type(connection_set_list_type), pointer :: reg_boundary_connection_set_list
+    
   end type grid_type
   
   type, public :: face_type
@@ -110,7 +114,8 @@ module Grid_module
             GridGetGhostedNeighbors, &
             GridGetGhostedNeighborsWithCorners, &
             GridMapCellsInPolVol, &
-            GridGetLocalIDFromCoordinate
+            GridGetLocalIDFromCoordinate, &
+            GridRestrictRegionalConnect
   
 contains
 
@@ -138,6 +143,7 @@ function GridCreate()
   nullify(grid%unstructured_grid)
 
   nullify(grid%internal_connection_set_list)
+  nullify(grid%reg_internal_connection_set_list)
 
   nullify(grid%nL2G)
   nullify(grid%nG2L)
@@ -235,6 +241,103 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
   end select
 
 end subroutine GridComputeInternalConnect
+
+! ************************************************************************** !
+
+function ConnectionSetIntersectRegion(connection_set,region) result(reg_connection_set)
+  ! 
+  ! Returns a pointer to a new connection set created from the input
+  ! set, where cell ids belong to the input region. Important: the
+  ! cell ids of the regional set are local to the region.
+  !
+  ! Author: Nathan Collier
+  ! Date: 09/2015
+  ! 
+
+  use Region_module
+  
+  implicit none
+  type(connection_set_type), pointer :: connection_set,reg_connection_set  
+  type(region_type),         pointer :: region
+
+  PetscInt, allocatable :: ids(:,:)
+  PetscInt              :: i,j,up,dn,nconn
+
+  ! first pass to find connection ids and number of connections
+  nconn = 0
+  allocate(ids(connection_set%num_connections,3))
+  do i = 1,connection_set%num_connections
+     up = -1
+     dn = -1
+     do j = 1,region%num_cells
+        if (connection_set%id_up(i) == region%cell_ids(j)) up = j
+        if (connection_set%id_dn(i) == region%cell_ids(j)) dn = j
+        if (up > 0 .and. dn > 0) then
+           nconn = nconn + 1
+           ids(nconn,1) = i
+           ids(nconn,2) = up
+           ids(nconn,3) = dn
+           exit
+        endif
+     enddo
+  enddo
+
+  ! second pass to load the information
+  nullify(reg_connection_set)
+  if (nconn > 0) then
+     reg_connection_set => ConnectionCreate(nconn,connection_set%itype)
+     do i = 1,nconn
+        j = ids(i,1)
+        reg_connection_set%id_up  (  i) = ids(i,2)
+        reg_connection_set%id_dn  (  i) = ids(i,3)
+        reg_connection_set%dist   (:,i) = connection_set%dist   (:,j)
+        reg_connection_set%intercp(:,i) = connection_set%intercp(:,j)
+        reg_connection_set%area   (  i) = connection_set%area   (  j)
+        reg_connection_set%face_id(  i) = connection_set%face_id(  j)
+     enddo
+  endif
+
+  ! cleanup and return
+  deallocate(ids)
+  
+end function ConnectionSetIntersectRegion
+
+! ************************************************************************** !
+
+subroutine GridRestrictRegionalConnect(grid,region)
+  ! 
+  ! Populates the internal regional connection list of a grid
+  ! 
+  ! Author: Nathan Collier
+  ! Date: 09/2015
+  !
+  use Region_module
+  
+  implicit none
+  
+  type(grid_type)           :: grid
+  type(region_type),pointer :: region
+
+  type(connection_set_type), pointer :: cur_connection_set,reg_connection_set
+
+  ! initialize the regional connection list
+  if (.not.associated(grid%reg_internal_connection_set_list)) then
+     allocate(grid%reg_internal_connection_set_list)
+     call ConnectionInitList(grid%reg_internal_connection_set_list)
+  endif
+
+  ! populate the list
+  cur_connection_set => grid%internal_connection_set_list%first
+  do 
+     if (.not.associated(cur_connection_set)) exit
+     reg_connection_set => ConnectionSetIntersectRegion(cur_connection_set,region)
+     if (associated(reg_connection_set)) then
+        call ConnectionAddToList(reg_connection_set,grid%reg_internal_connection_set_list)
+     endif
+     cur_connection_set => cur_connection_set%next
+  enddo
+  
+end subroutine GridRestrictRegionalConnect
 
 ! ************************************************************************** !
 

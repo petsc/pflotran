@@ -205,7 +205,8 @@ mode_aux_obj = \
 	${common_src}pm_ufd_decay.o \
 	${common_src}pm_waste_form.o \
 	${common_src}richards_aux.o \
-	${common_src}th_aux.o
+	${common_src}th_aux.o \
+	${common_src}inlinesurface_aux.o
 
 mode_obj = \
 	${common_src}flash2.o \
@@ -218,7 +219,8 @@ mode_obj = \
 	${common_src}reactive_transport.o \
 	${common_src}richards.o \
 	${common_src}richards_common.o \
-	${common_src}th.o
+	${common_src}th.o \
+	${common_src}inlinesurface.o
 
 shared_mode_aux_obj = \
 	${common_src}co2eos.o \
@@ -809,6 +811,9 @@ init_surface.o : condition.o condition_control.o convergence.o \
                  solver.o strata.o string.o surface_auxiliary.o \
                  surface_field.o surface_flow.o surface_global.o \
                  surface_material.o surface_th.o timestepper_base.o waypoint.o
+inlinesurface.o : global_aux.o inlinesurface_aux.o material_aux.o option.o \
+                  pflotran_constants.o
+inlinesurface_aux.o : global_aux.o option.o
 input_aux.o : option.o pflotran_constants.o string.o units.o
 integral_flux.o : geometry.o input_aux.o option.o pflotran_constants.o \
                   string.o utility.o
@@ -1079,9 +1084,9 @@ reaction_database_hpt.o : input_aux.o option.o pflotran_constants.o reaction.o \
                           reaction_database_aux.o reaction_gas_aux.o \
                           reaction_mineral_aux.o reaction_surf_complex_aux.o \
                           string.o utility.o
-reaction_gas.o : global_aux.o input_aux.o option.o pflotran_constants.o \
-                 reaction_aux.o reaction_gas_aux.o reactive_transport_aux.o \
-                 string.o utility.o
+reaction_gas.o : co2eos.o eos_water.o global_aux.o input_aux.o option.o \
+                 pflotran_constants.o reaction_aux.o reaction_gas_aux.o \
+                 reactive_transport_aux.o string.o utility.o
 reaction_gas_aux.o : pflotran_constants.o reaction_database_aux.o string.o \
                      utility.o
 reaction_immobile.o : global_aux.o input_aux.o material_aux.o option.o \
