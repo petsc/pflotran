@@ -2405,9 +2405,9 @@ subroutine RichardsJacobianBoundaryConn(A,realization,ierr)
 
   ! Inline surface BCs
   if (option%inline_surface_flow) then
-
      sum_connection = 0
      boundary_condition => patch%boundary_condition_list%first
+     region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
      do
         if (.not.associated(boundary_condition)) exit
         if ( boundary_condition%flow_condition%pressure%itype == SURFACE_DIRICHLET .or. &
@@ -2431,7 +2431,7 @@ subroutine RichardsJacobianBoundaryConn(A,realization,ierr)
               Jdn = 0.0d0
               call InlineSurfaceBCFluxJac(boundary_condition%flow_condition%itype, &
                    patch%aux%InlineSurface%auxvars_bc(sum_connection),             &
-                   patch%aux%InlineSurface%auxvars   (local_id      ),             &
+                   patch%aux%InlineSurface%auxvars   (region_id     ),             &
                    boundary_condition%connection_set%area(  iconn),                &
                    boundary_condition%connection_set%dist(:,iconn),                &
                    option,Jdn)
