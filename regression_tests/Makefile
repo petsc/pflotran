@@ -78,7 +78,8 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 		geomech/uniaxial_strain/uniaxial_strain.cfg \
         geomech/uniaxial_loading/uniaxial_loading.cfg \
         surfaceflow/surface_flow_only/surface_only.cfg \
-		surfaceflow/surface_th/surface_th.cfg
+	surfaceflow/surface_th/surface_th.cfg \
+	surfaceflow/inlinesurface/inlinesurface.cfg
 endif
 
 #
