@@ -62,6 +62,7 @@ program test
   call PCSetFromOptions(pc,ierr)
 !  call KSPSetup(ksp,ierr)
 
+  call PCFactorSetShiftType(pc,MAT_SHIFT_INBLOCKS,ierr)
   tolerance = 1.d-20
   call PCFactorSetZeroPivot(pc,tolerance,ierr)
 

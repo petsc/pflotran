@@ -240,6 +240,8 @@ subroutine SolverSetSNESOptions(solver)
   ! get the ksp_type and pc_type incase of command line override.
   call KSPGetType(solver%ksp,solver%ksp_type,ierr);CHKERRQ(ierr)
   call PCGetType(solver%pc,solver%pc_type,ierr);CHKERRQ(ierr)
+
+!  call PCFactorSetShiftType(solver%pc,MAT_SHIFT_INBLOCKS,ierr);CHKERRQ(ierr)
   
   if (Initialized(solver%linear_zero_pivot_tol)) then
     call PCFactorSetZeroPivot(solver%pc,solver%linear_zero_pivot_tol, &
