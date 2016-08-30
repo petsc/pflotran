@@ -1,5 +1,5 @@
-#if WELL_CLASS
 module WellSpec_Base_class
+#if WELL_CLASS
 
   use PFLOTRAN_Constants_module
 
@@ -503,8 +503,8 @@ end subroutine WellSpecBaseClear
 
 ! ************************************************************************** !
 
+#endif  
 end module WellSpec_Base_class
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !end of WELL_CLASS
-#endif  

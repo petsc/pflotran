@@ -1,5 +1,5 @@
-#ifdef WELL_CLASS
 module Well_TOilIms_class
+#ifdef WELL_CLASS
 
   use PFLOTRAN_Constants_module
   use WellSpec_Base_class
@@ -547,7 +547,7 @@ end subroutine TOilImsProducerExplRes
 
 ! ************************************************************************** !
 
+#endif  
 end module Well_TOilIms_class
 !end of WELL_CLASS
-#endif  
 

@@ -1,5 +1,5 @@
-#ifdef WELL_CLASS
 module Well_WaterInjector_class
+#ifdef WELL_CLASS
 
   use PFLOTRAN_Constants_module
   use WellSpec_Base_class
@@ -419,9 +419,9 @@ function WellWatInjConnMob(this,mobility,iphase)
 end function WellWatInjConnMob
 !*****************************************************************************!
 
+#endif 
 end module Well_WaterInjector_class
 !end of WELL_CLASS
-#endif 
 
 
 

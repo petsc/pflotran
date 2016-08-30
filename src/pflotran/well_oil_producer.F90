@@ -1,5 +1,5 @@
-#ifdef WELL_CLASS
 module Well_OilProducer_class
+#ifdef WELL_CLASS
 
   use PFLOTRAN_Constants_module
   use WellSpec_Base_class
@@ -281,7 +281,7 @@ end subroutine WellOilProdLimitCheck
 
 ! ************************************************************************** !
 
+#endif  
 end module Well_OilProducer_class
 !end of WELL_CLASS
-#endif  
 

@@ -1,5 +1,5 @@
-#ifdef WELL_CLASS
 module Well_FlowEnergy_class
+#ifdef WELL_CLASS
 
   use PFLOTRAN_Constants_module
   use Well_Base_class
@@ -577,7 +577,7 @@ end subroutine FlowEnergyWellStrip
 
 !*****************************************************************************!
 
+#endif  
 end module Well_FlowEnergy_class
 !end of WELL_CLASS
-#endif  
 
