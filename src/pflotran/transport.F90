@@ -83,8 +83,8 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn 
   class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
   PetscReal :: dispersivity_up(3), dispersivity_dn(3)
-  PetscReal :: cell_centered_velocity_up(3,option%nphase), &
-               cell_centered_velocity_dn(3,option%nphase)
+  PetscReal :: cell_centered_velocity_up(3,2), &
+               cell_centered_velocity_dn(3,2)
   PetscReal :: dist(-1:3)
   PetscReal :: qdarcy(*)
   type(reactive_transport_param_type) :: rt_parameter

@@ -896,6 +896,8 @@ subroutine RTUpdateTransportCoefs(realization)
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal, allocatable :: cell_centered_Darcy_velocities(:,:)
   PetscReal, allocatable :: cell_centered_Darcy_velocities_ghosted(:,:,:)
+  PetscReal ::  local_Darcy_velocities_up(3,2)
+  PetscReal ::  local_Darcy_velocities_dn(3,2)
   PetscReal, pointer :: vec_ptr(:)
   PetscInt :: i
   PetscInt :: iphase, max_phase
@@ -909,6 +911,9 @@ subroutine RTUpdateTransportCoefs(realization)
   material_auxvars => patch%aux%Material%auxvars
   grid => patch%grid
   rt_parameter => patch%aux%RT%rt_parameter
+  
+  local_Darcy_velocities_up = UNINITIALIZED_DOUBLE
+  local_Darcy_velocities_dn = UNINITIALIZED_DOUBLE
 
   if (rt_parameter%calculate_transverse_dispersion) then
     allocate(cell_centered_Darcy_velocities_ghosted(3,option%nphase, &
@@ -954,15 +959,24 @@ subroutine RTUpdateTransportCoefs(realization)
 
       if (patch%imat(ghosted_id_up) <= 0 .or.  &
           patch%imat(ghosted_id_dn) <= 0) cycle
+          
+      ! have to use temporary array since unallocated arrays cannot be
+      ! indexed in call to subroutine.
+      if (allocated(cell_centered_Darcy_velocities_ghosted)) then
+        local_Darcy_velocities_up = &
+          cell_centered_Darcy_velocities_ghosted(:,1:max_phase,ghosted_id_up)
+        local_Darcy_velocities_dn = &
+          cell_centered_Darcy_velocities_ghosted(:,1:max_phase,ghosted_id_dn)
+      endif
 
       call TDispersion(global_auxvars(ghosted_id_up), &
                       material_auxvars(ghosted_id_up), &
-                      cell_centered_Darcy_velocities_ghosted(:,:,ghosted_id_up), &
+                      local_Darcy_velocities_up, &
                       patch%material_property_array(patch%imat(ghosted_id_up))% &
                         ptr%dispersivity, &
                       global_auxvars(ghosted_id_dn), &
                       material_auxvars(ghosted_id_dn), &
-                      cell_centered_Darcy_velocities_ghosted(:,:,ghosted_id_dn), &
+                      local_Darcy_velocities_dn, &
                       patch%material_property_array(patch%imat(ghosted_id_dn))% &
                         ptr%dispersivity, &
                       cur_connection_set%dist(:,iconn), &
@@ -989,11 +1003,16 @@ subroutine RTUpdateTransportCoefs(realization)
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) cycle
 
+      if (allocated(cell_centered_Darcy_velocities_ghosted)) then
+        local_Darcy_velocities_up = &
+          cell_centered_Darcy_velocities_ghosted(:,1:max_phase,ghosted_id)
+      endif
+      
       call TDispersionBC(boundary_condition%tran_condition%itype, &
                         global_auxvars_bc(sum_connection), &
                         global_auxvars(ghosted_id), &
                         material_auxvars(ghosted_id), &
-                        cell_centered_Darcy_velocities_ghosted(:,:,ghosted_id), &
+                        local_Darcy_velocities_up, &
                         patch%material_property_array(patch%imat(ghosted_id))% &
                           ptr%dispersivity, &
                         cur_connection_set%dist(:,iconn), &
