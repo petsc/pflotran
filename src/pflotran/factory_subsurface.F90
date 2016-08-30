@@ -808,7 +808,8 @@ subroutine SubsurfaceInitSimulation(simulation)
   call InitSubsurfaceSetupZeroArrays(realization)
   call OutputVariableAppendDefaults(realization%output_option% &
                                       output_snap_variable_list,option)
-
+!geh - remove
+#if 0                                      
   if (option%nflowdof > 0) then
     select type(ts => simulation%flow_process_model_coupler%timestepper)
       class is (timestepper_BE_type)
@@ -823,6 +824,8 @@ subroutine SubsurfaceInitSimulation(simulation)
                                          ts%solver)
     end select
   endif
+#endif  
+  
   call RegressionCreateMapping(simulation%regression,realization)
 ! end from old Init()
 
@@ -950,6 +953,8 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
     end select
     cur_pm%output_option => simulation%output_option
     call cur_pm%Setup()
+!geh - remove
+#if 0    
     if (associated(pmc%timestepper)) then
       select type(ts => pmc%timestepper)
       !----------------------------------
@@ -1013,7 +1018,8 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
           end select
       !----------------------------------
       end select
-    endif ! associated(pmc%timestepper)    
+    endif ! associated(pmc%timestepper)   
+#endif    
     cur_pm => cur_pm%next
   enddo
   call pmc%SetupSolvers()
