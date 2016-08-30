@@ -2147,13 +2147,15 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       if (.not.face_found) then
         write(string,*) option%myrank
         string = '(' // trim(adjustl(string)) // ')'
-        write(*,'(a,'' local_id = '',i3,'' natural_id = '',i3,''  vertices: '',8i3)') &
+        write(*,'(a,'' local_id = '',i6,'' natural_id = '',i6,&
+                  &''  vertices: '',8i6)') &
                    trim(string), &
                    cell_id,unstructured_grid%cell_ids_natural(cell_id), &
                    (unstructured_grid%vertex_ids_natural( &
                      unstructured_grid%cell_vertices(ivertex,cell_id)), &
                      ivertex=1,unstructured_grid%cell_vertices(0,cell_id))
-        write(*,'(a,'' local_id2 = '',i3,'' natural_id2 = '',i3,''  vertices2: '',8i3)') &
+        write(*,'(a,'' local_id2 = '',i6,'' natural_id2 = '',i6,&
+                  &''  vertices2: '',8i6)') &
                    trim(string), &
                    cell_id2,unstructured_grid%cell_ids_natural(cell_id2), &
                    (unstructured_grid%vertex_ids_natural( &
