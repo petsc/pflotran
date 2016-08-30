@@ -3193,6 +3193,24 @@ function GetSubConditionName(subcon_itype)
       string = 'heterogeneous surface seepage'
     case(SPILLOVER_BC)
       string = 'spillover'
+    case(WELL_MASS_RATE_TARGET)
+      string = 'well target mass rate'
+    case(WELL_MASS_RATE_MAX)
+      string = 'well maximum mass rate'
+    case(WELL_MASS_RATE_MIN)
+      string = 'well minimum mass rate'
+    case(WELL_VOL_RATE_TARGET)
+      string = 'well target volumetric rate'
+    case(WELL_VOL_RATE_MAX)
+      string = 'well maximum volumetric rate'
+    case(WELL_VOL_RATE_MIN)
+      string = 'well minimum volumetric rate'
+    case(WELL_BHP)
+      string = 'well bottom hole pressure'
+    case(WELL_BHP_MIN)
+      string = 'well minimum bottom hole pressure'
+    case(WELL_BHP_MAX)
+      string = 'well maximum bottom hole pressure'
   end select
 
   GetSubConditionName = trim(string)

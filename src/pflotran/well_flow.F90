@@ -1,3 +1,4 @@
+#ifdef WELL_CLASS
 module Well_Flow_class
 
   use PFLOTRAN_Constants_module
@@ -176,10 +177,10 @@ subroutine FlowExplUpdate(this,grid,option)
   PetscBool :: pass
 
 #ifdef WELL_DEBUG
-  write(*,"('FlowExpl d11 before = ',e10.4)"), this%flow_auxvars(0,1)%den(1)
-  write(*,"('FlowExpl d12 before = ',e10.4)"), this%flow_auxvars(0,1)%den(2) 
-  write(*,"('FlowExpl p11 before = ',e10.4)"), this%flow_auxvars(0,1)%pres(1) 
-  !write(*,"('FlowExpl t1 before = ',e10.4)"), this%flow_auxvars(0,1)%temp 
+  write(*,"('FlowExpl d11 before = ',e10.4)") this%flow_auxvars(0,1)%den(1)
+  write(*,"('FlowExpl d12 before = ',e10.4)") this%flow_auxvars(0,1)%den(2) 
+  write(*,"('FlowExpl p11 before = ',e10.4)") this%flow_auxvars(0,1)%pres(1) 
+  !write(*,"('FlowExpl t1 before = ',e10.4)") this%flow_auxvars(0,1)%temp 
 #endif
 
   if(this%connection_set%num_connections == 0 ) return
@@ -255,10 +256,10 @@ subroutine FlowPressRef(this,grid,phase,option)
   if(this%connection_set%num_connections > 0 ) then
 
 #ifdef WELL_DEBUG
-  write(*,"('FlowPressRef p011 = ',e10.4)"), this%flow_auxvars(0,1)%pres(1)
-  write(*,"('FlowPressRef p111 = ',e10.4)"), this%flow_auxvars(1,1)%pres(1)
-  write(*,"('FlowPressRef p211 = ',e10.4)"), this%flow_auxvars(2,1)%pres(1)
-  write(*,"('FlowPressRef p311 = ',e10.4)"), this%flow_auxvars(3,1)%pres(1) 
+  write(*,"('FlowPressRef p011 = ',e10.4)") this%flow_auxvars(0,1)%pres(1)
+  write(*,"('FlowPressRef p111 = ',e10.4)") this%flow_auxvars(1,1)%pres(1)
+  write(*,"('FlowPressRef p211 = ',e10.4)") this%flow_auxvars(2,1)%pres(1)
+  write(*,"('FlowPressRef p311 = ',e10.4)") this%flow_auxvars(3,1)%pres(1) 
 #endif
     
     rate =  this%flow_condition%flow_well%rate%dataset%rarray(1)
@@ -293,7 +294,7 @@ subroutine FlowPressRef(this,grid,phase,option)
       if(this%conn_status(iconn) == CONN_STATUS_OPEN ) then
         ! vol_rate > 0 for fluid entering the well  
 #ifdef WELL_DEBUG
-  write(*,"('gh = ',I5,'FlowExpl = ',e10.4)"), ghosted_id, &
+  write(*,"('gh = ',I5,'FlowExpl = ',e10.4)") ghosted_id, &
            this%flow_auxvars(ZERO_INTEGER,ghosted_id)%pres(phase) 
 #endif
         select case(this%spec%cntrl_var)
@@ -319,9 +320,9 @@ subroutine FlowPressRef(this,grid,phase,option)
   this%pw_ref = (conn_tot - rate) / press_div
 
 #ifdef WELL_DEBUG
-  write(*,"('FlowPressRef pw_ref = ',e10.4)"), this%pw_ref 
+  write(*,"('FlowPressRef pw_ref = ',e10.4)") this%pw_ref 
 #endif
-  write(*,"('FlowPressRef pw_ref = ',e16.10)"), this%pw_ref
+  write(*,"('FlowPressRef pw_ref = ',e16.10)") this%pw_ref
 
 end subroutine FlowPressRef
 
@@ -492,9 +493,9 @@ subroutine FlowPressRefMRInj(this,grid,phase,option)
   this%pw_ref = (conn_tot - rate) / press_div
 
 #ifdef WELL_DEBUG
-  write(*,"('FlowPressRefMRInj pw_ref = ',e10.4)"), this%pw_ref 
+  write(*,"('FlowPressRefMRInj pw_ref = ',e10.4)") this%pw_ref 
 #endif
-  write(*,"('FlowPressRefMRInj pw_ref = ',e10.4)"), this%pw_ref
+  write(*,"('FlowPressRefMRInj pw_ref = ',e10.4)") this%pw_ref
 
 end subroutine FlowPressRefMRInj
 
@@ -579,7 +580,7 @@ subroutine FlowPressRefMRProd(this,grid,phase,option)
   this%pw_ref = (conn_tot - rate) / press_div
 
 #ifdef WELL_DEBUG
-  write(*,"('FlowPressRefMRProd pw_ref = ',e10.4)"), this%pw_ref 
+  write(*,"('FlowPressRefMRProd pw_ref = ',e10.4)") this%pw_ref 
 #endif
 
 end subroutine FlowPressRefMRProd
@@ -634,8 +635,8 @@ subroutine FlowQPhase(this,grid,phase,option)
   this%q_fld(phase) = vol_rate
 
 #ifdef WELL_DEBUG
-  write(*,"('FlowQPhase pw_ref = ',e10.4)"), this%pw_ref 
-  write(*,"('FlowQPhase vol_rate = ',e10.4)"), vol_rate
+  write(*,"('FlowQPhase pw_ref = ',e10.4)") this%pw_ref 
+  write(*,"('FlowQPhase vol_rate = ',e10.4)") vol_rate
 #endif
 
 end subroutine FlowQPhase
@@ -1203,3 +1204,5 @@ end subroutine FlowWellStrip
 !*****************************************************************************!
 
 end module Well_Flow_class
+!end of WELL_CLASS
+#endif  

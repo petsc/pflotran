@@ -3,8 +3,10 @@ module Coupler_module
   use Condition_module
   use Connection_module
   use Region_module
+#ifdef WELL_CLASS
   use Well_Base_class
   use Well_module
+#endif
  
   use PFLOTRAN_Constants_module
 
@@ -40,7 +42,9 @@ module Coupler_module
     type(flow_condition_type), pointer :: flow_condition     ! pointer to condition in condition array/list
     type(tran_condition_type), pointer :: tran_condition     ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
+#ifdef WELL_CLASS
     class(well_base_type), pointer :: well              ! pointer to well model
+#endif
     type(connection_set_type), pointer :: connection_set ! pointer to an array/list of connections
     PetscInt :: numfaces_set
     type(coupler_type), pointer :: next                 ! pointer to next coupler
@@ -109,7 +113,9 @@ function CouplerCreate1()
   nullify(coupler%flow_aux_int_var)
   nullify(coupler%flow_aux_real_var)
   nullify(coupler%flow_condition)
+#ifdef WELL_CLASS
   nullify(coupler%well)
+#endif
   nullify(coupler%tran_condition)
   nullify(coupler%region)
   nullify(coupler%connection_set)
@@ -186,7 +192,9 @@ function CouplerCreateFromCoupler(coupler)
 
   ! these must remain null  
   nullify(coupler%flow_condition)
+#ifdef WELL_CLASS
   nullify(coupler%well)
+#endif
   nullify(coupler%tran_condition)
   nullify(coupler%region)
   nullify(coupler%flow_aux_mapping)
@@ -262,8 +270,10 @@ subroutine CouplerRead(coupler,input,option)
         call InputReadWord(input,option,coupler%flow_condition_name,PETSC_TRUE)
       case('TRANSPORT_CONDITION')
         call InputReadWord(input,option,coupler%tran_condition_name,PETSC_TRUE)
+#ifdef WELL_CLASS
       case('WELL_SPEC')
         call InputReadWord(input,option,coupler%well_spec_name,PETSC_TRUE)
+#endif
       case default
         call InputKeywordUnrecognized(word,'coupler ',option)
     end select 
@@ -575,8 +585,9 @@ subroutine CouplerDestroy(coupler)
   ! Date: 10/23/07
   ! 
   use Utility_module, only : DeallocateArray
+#ifdef WELL_CLASS
   use Well_module
-  
+#endif
   implicit none
   
   type(coupler_type), pointer :: coupler
@@ -586,11 +597,12 @@ subroutine CouplerDestroy(coupler)
   !well destroy here since its memory address is tracked only by this pointer 
   !within WellDestroy only nullify coupler%well%well_spec
   !since well_specs are realization members (defined-destroyed in realization)
+#ifdef WELL_CLASS
   if (associated(coupler%well)) then 
     call WellDestroy(coupler%well) 
     nullify(coupler%well)               ! since these are simply pointers to 
   end if
-  
+#endif  
   ! since the below are simply pointers to objects in list that have already
   ! or will be deallocated from the list, nullify instead of destroying
   

@@ -65,8 +65,10 @@ module PM_Subsurface_Flow_class
     procedure, public :: RestartHDF5 => PMSubsurfaceFlowRestartHDF5
 #endif
     procedure, public :: InputRecord => PMSubsurfaceFlowInputRecord
+#ifdef WELL_CLASS
     procedure  :: AllWellsInit
     procedure :: AllWellsUpdate
+#endif
 !    procedure, public :: Destroy => PMSubsurfaceFlowDestroy
   end type pm_subsurface_flow_type
   
@@ -352,12 +354,13 @@ recursive subroutine PMSubsurfaceFlowInitializeRun(this)
   call this%PreSolve()
   call this%UpdateAuxVars()
   call this%UpdateSolution() 
+#ifdef WELL_CLASS
   call this%AllWellsInit() !does nothing if no well exist
-    
+#endif    
 end subroutine PMSubsurfaceFlowInitializeRun
 
 ! ************************************************************************** !
-
+#ifdef WELL_CLASS
 subroutine AllWellsInit(this)
   !
   ! Initialise all wells - does nothing if no well exist
@@ -396,7 +399,7 @@ subroutine AllWellsInit(this)
   end do 
 
 end subroutine AllWellsInit
-
+#endif
 ! ************************************************************************** !
 
 subroutine PMSubsurfaceFlowInitializeTimestepA(this)
@@ -465,13 +468,13 @@ subroutine PMSubsurfaceFlowInitializeTimestepB(this)
       call RealizationUpdatePropertiesTS(this%realization)
     endif
   endif
-
+#ifdef WELL_CLASS
   call this%AllWellsUpdate()
-  
+#endif  
 end subroutine PMSubsurfaceFlowInitializeTimestepB
 
 ! ************************************************************************** !
-
+#ifdef WELL_CLASS
 subroutine AllWellsUpdate(this)
   !
   ! Update all wells at the beginning of each time step
@@ -510,7 +513,7 @@ subroutine AllWellsUpdate(this)
   end do 
 
 end subroutine AllWellsUpdate
-
+#endif
 ! ************************************************************************** !
 
 subroutine PMSubsurfaceFlowPreSolve(this)

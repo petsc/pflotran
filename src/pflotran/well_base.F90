@@ -1,3 +1,4 @@
+#ifdef WELL_CLASS
 module Well_Base_class
 
   use PFLOTRAN_Constants_module
@@ -880,5 +881,7 @@ end subroutine BaseWellStrip
 !*****************************************************************************!
 
 end module Well_Base_class
+!end of WELL_CLASS
+#endif   
 
 

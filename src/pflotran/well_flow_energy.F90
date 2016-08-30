@@ -1,3 +1,4 @@
+#ifdef WELL_CLASS
 module Well_FlowEnergy_class
 
   use PFLOTRAN_Constants_module
@@ -232,10 +233,10 @@ subroutine WellFlowEnergyExplJDerivative(this,iconn,ghosted_id,isothermal, &
   !                        global_auxvar,dummy_real,scale,Res)
 
 #ifdef WELL_DEBUG
-  write(*,"('ExplJDerivative p011 = ',e16.10)"), this%flow_energy_auxvars(0,1)%pres(1)
-  write(*,"('ExplJDerivative p111 = ',e16.10)"), this%flow_energy_auxvars(1,1)%pres(1)
-  write(*,"('ExplJDerivative p211 = ',e16.10)"), this%flow_energy_auxvars(2,1)%pres(1)
-  write(*,"('ExplJDerivative p311 = ',e16.10)"), this%flow_energy_auxvars(3,1)%pres(1) 
+  write(*,"('ExplJDerivative p011 = ',e16.10)") this%flow_energy_auxvars(0,1)%pres(1)
+  write(*,"('ExplJDerivative p111 = ',e16.10)") this%flow_energy_auxvars(1,1)%pres(1)
+  write(*,"('ExplJDerivative p211 = ',e16.10)") this%flow_energy_auxvars(2,1)%pres(1)
+  write(*,"('ExplJDerivative p311 = ',e16.10)") this%flow_energy_auxvars(3,1)%pres(1) 
 #endif
 
 
@@ -577,5 +578,6 @@ end subroutine FlowEnergyWellStrip
 !*****************************************************************************!
 
 end module Well_FlowEnergy_class
-
+!end of WELL_CLASS
+#endif  
 
