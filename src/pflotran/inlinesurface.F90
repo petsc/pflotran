@@ -77,8 +77,8 @@ contains
     type(inlinesurface_auxvar_type) :: auxvar_up,auxvar_dn
     PetscReal :: area,dist(-1:3),Res(1)
 
-#if 0
-    
+#if 0 
+    ! full diffusive wave approximation with no upwinding
     PetscReal :: rho,dz,Cf,gradZ,gradH,epsilon,v,havg
     epsilon = 1.0d-4
     rho     = 0.5d0*(auxvar_up%density             + auxvar_dn%density) 
@@ -86,17 +86,19 @@ contains
     Cf      = 0.5d0*(auxvar_up%Mannings_coeff      + auxvar_dn%Mannings_coeff)
     havg    = 0.5d0*(auxvar_up%surface_water_depth + auxvar_dn%surface_water_depth)
     havg    = MAX(havg,0.0d0)
-    gradH   = (auxvar_up%surface_water_depth - auxvar_dn%surface_water_depth + dist(3)*dist(0))/dist(0)
+    gradH   = (auxvar_up%surface_water_depth - auxvar_dn%surface_water_depth &
+         + dist(3)*dist(0))/dist(0)
     v       = -havg**(2./3.)/(Cf*SQRT(SQRT(gradH*gradH+epsilon*epsilon)))*gradH
     Res(1)  = rho*havg*v*(area/(2.0d0*dz))
 
 #else
-    
+    ! hybrid approximation with Scott's upwinding
     PetscReal :: Cf,dphi,dz,epsilon,have,rho,rhohu,slope
     epsilon = 1.0d-4
     slope   = ABS(dist(3)) + epsilon
-    dphi    = auxvar_up%surface_water_depth - auxvar_dn%surface_water_depth - dist(3)*dist(0)
-    if (dphi .gt. 0) then
+    dphi    = auxvar_up%surface_water_depth - auxvar_dn%surface_water_depth &
+         - dist(3)*dist(0)
+    if (dphi > 0) then
       have = auxvar_up%surface_water_depth - MAX(+dist(3)*dist(0),0.0d0)
     else
       have = auxvar_dn%surface_water_depth - MAX(-dist(3)*dist(0),0.0d0)
@@ -104,7 +106,7 @@ contains
     rho = 0.5d0*(auxvar_up%density         +auxvar_dn%density) 
     dz  = 0.5d0*(auxvar_up%half_cell_height+auxvar_dn%half_cell_height) 
     Cf  = 0.5d0*(auxvar_up%Mannings_coeff  +auxvar_dn%Mannings_coeff)
-    if (have .gt. 0.0d0) then
+    if (have > 0.0d0) then
        rhohu  = have**(5./3.)*dphi*rho/(Cf*dist(0)*SQRT(slope))
        Res(1) = 0.5d0*rhohu*area/dz
     else
@@ -168,14 +170,16 @@ contains
     
     epsilon  = 1.0d-4
     slope    = ABS(dist(3)) + epsilon
-    dphi     = auxvar_up%surface_water_depth - auxvar_dn%surface_water_depth - dist(3)*dist(0)
+    dphi     = auxvar_up%surface_water_depth - auxvar_dn%surface_water_depth &
+         - dist(3)*dist(0)
     rho      = 0.5d0*(auxvar_up%density         +auxvar_dn%density) 
     dz       = 0.5d0*(auxvar_up%half_cell_height+auxvar_dn%half_cell_height) 
     Cf       = 0.5d0*(auxvar_up%Mannings_coeff  +auxvar_dn%Mannings_coeff)
-    const    = 1.0d0/(SQRT(slope)*dist(0)*Cf)/ABS(option%gravity(3))/FMWH2O*area/(2.0d0*dz)
+    const    = 1.0d0/(SQRT(slope)*dist(0)*Cf)/ABS(option%gravity(3))/ &
+         FMWH2O*area/(2.0d0*dz)
     Jup(1,1) = 0.0d0
     Jdn(1,1) = 0.0d0
-    if (dphi .gt. 0) then
+    if (dphi > 0) then
        have = auxvar_up%surface_water_depth - MAX(+dist(3)*dist(0),0.0d0)
        if (have > 0.0d0) then
           deriv = have**(2./3.) * ( 5./3. *dphi + have )

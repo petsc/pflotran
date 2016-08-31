@@ -222,20 +222,20 @@ subroutine RichardsSetupPatch(realization)
 
     ! create the auxvar structure
     patch%aux%InlineSurface => InlineSurfaceAuxCreate()
-    
+
     ! allocate auxvar data structures for the region grid cells, we
     ! also need to compute a few extra quantities that aren't part of
     ! the standard structures.
     allocate(patch%aux%InlineSurface%auxvars(region%num_cells))
     patch%aux%InlineSurface%num_aux = region%num_cells
     do region_id = 1, patch%aux%InlineSurface%num_aux
-      
+
       call InlineSurfaceAuxVarInit(patch%aux%InlineSurface%auxvars(region_id),option)
-      
+
       ! find the half cell height, this is used in the approximation
       ghosted_id = region%cell_ids(region_id)
-      if ( associated(grid%unstructured_grid) ) then
-        if( associated(grid%unstructured_grid%explicit_grid) ) then
+      if (associated(grid%unstructured_grid)) then
+        if (associated(grid%unstructured_grid%explicit_grid)) then
           zcenter = grid%unstructured_grid%explicit_grid%cell_centroids(ghosted_id)%z 
           zface = region%explicit_faceset%face_centroids(region_id)%z  
           patch%aux%InlineSurface%auxvars(region_id)%half_cell_height = zface-zcenter
@@ -264,12 +264,12 @@ subroutine RichardsSetupPatch(realization)
              ' could not compute top cell half heights.'
         call printErrMsg(option)
       endif
-      
+
       ! set Manning's coefficient
       patch%aux%InlineSurface%auxvars(region_id)%Mannings_coeff = option%inline_surface_Mannings_coeff
-      
+
     enddo
-    
+
     ! loop over bc's, if a surface bc, repeat the above     
     sum_connection = 0
     coupler => patch%boundary_condition_list%first
@@ -279,11 +279,11 @@ subroutine RichardsSetupPatch(realization)
            coupler%flow_condition%pressure%itype == SURFACE_ZERO_GRADHEIGHT .or. &
            coupler%flow_condition%pressure%itype == SURFACE_SPILLOVER ) then
         do iconn = 1,coupler%connection_set%num_connections
-          
+
           ! the connection down cell must be in the surface region
           found = PETSC_FALSE
           do region_id = 1, region%num_cells
-            if (coupler%connection_set%id_dn(iconn) .eq. region%cell_ids(region_id)) then
+            if (coupler%connection_set%id_dn(iconn) == region%cell_ids(region_id)) then
               found = PETSC_TRUE
             endif
           enddo
@@ -297,7 +297,7 @@ subroutine RichardsSetupPatch(realization)
       endif
       coupler => coupler%next
     enddo
-    
+
     ! if we have something to allocate, then allocate it!
     if (sum_connection > 0) then
       allocate(patch%aux%InlineSurface%auxvars_bc(sum_connection))
@@ -307,7 +307,7 @@ subroutine RichardsSetupPatch(realization)
         patch%aux%InlineSurface%auxvars_bc(iconn)%Mannings_coeff = option%inline_surface_Mannings_coeff
       enddo
     endif
-    
+
     ! I will just get the half cell height from the interior auxvar
     sum_connection = 0
     coupler => patch%boundary_condition_list%first
@@ -319,8 +319,9 @@ subroutine RichardsSetupPatch(realization)
         do iconn = 1,coupler%connection_set%num_connections
           sum_connection = sum_connection + 1
           do region_id = 1, region%num_cells
-            if (coupler%connection_set%id_dn(iconn) .eq. region%cell_ids(region_id)) then
-              patch%aux%InlineSurface%auxvars_bc(sum_connection)%half_cell_height = patch%aux%InlineSurface%auxvars(region_id)%half_cell_height
+            if (coupler%connection_set%id_dn(iconn) == region%cell_ids(region_id)) then
+              patch%aux%InlineSurface%auxvars_bc(sum_connection)%half_cell_height = &
+                   patch%aux%InlineSurface%auxvars(region_id)%half_cell_height
               cycle
             endif
           enddo
@@ -328,7 +329,7 @@ subroutine RichardsSetupPatch(realization)
       endif
       coupler => coupler%next
     enddo
-    
+
   endif
   
 end subroutine RichardsSetupPatch
@@ -380,6 +381,7 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_auxvars(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(inlinesurface_auxvar_type), pointer :: inlinesurface_auxvars(:)
   type(region_type), pointer :: region
   
   PetscErrorCode :: ierr
@@ -408,13 +410,15 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
   enddo
 
   if (option%inline_surface_flow) then
-    region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
+    inlinesurface_auxvars => patch%aux%InlineSurface%auxvars
+    region => RegionGetPtrFromList(option%inline_surface_region_name, &
+                                   realization%region_list)
     do region_id = 1, patch%aux%InlineSurface%num_aux
       ghosted_id = region%cell_ids(region_id)
-      mass = patch%aux%InlineSurface%auxvars(region_id)%surface_water_depth
+      mass = inlinesurface_auxvars(region_id)%surface_water_depth
       mass = mass * global_auxvars(ghosted_id)%den_kg(1)
       mass = mass * material_auxvars(ghosted_id)%volume
-      mass = mass / (2.0d0*patch%aux%InlineSurface%auxvars(region_id)%half_cell_height)
+      mass = mass / (2.0d0*inlinesurface_auxvars(region_id)%half_cell_height)
       mass_balance = mass_balance + mass
     enddo
   endif
@@ -715,7 +719,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn, region_id
   PetscInt :: iphasebc, iphase, i
   PetscReal, pointer :: xx_loc_p(:)
-  PetscReal :: xxbc(realization%option%nflowdof)
+  PetscReal :: xxbc(realization%option%nflowdof), Pl
   PetscErrorCode :: ierr
   Vec :: phi
   
@@ -752,7 +756,8 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   enddo
 
   if (option%inline_surface_flow) then
-     region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
+    region => RegionGetPtrFromList(option%inline_surface_region_name, &
+                                   realization%region_list)
      do region_id = 1, patch%aux%InlineSurface%num_aux
         ghosted_id = region%cell_ids(region_id)
         call InlineSurfaceAuxVarCompute(patch%aux%InlineSurface%auxvars(region_id), &
@@ -793,7 +798,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-
+  
   ! inline surface boundary conditions
   if (option%inline_surface_flow) then  
     boundary_condition => patch%boundary_condition_list%first
@@ -806,31 +811,33 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
         if (patch%imat(ghosted_id) <= 0) cycle
-        
+
         select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
         case(SURFACE_DIRICHLET,SURFACE_SPILLOVER)
-          
+
           ! bc is specified as a water height, but we need pressure
-          if (global_auxvars_bc(sum_connection)%pres(1) < 100.0d0) then
-            global_auxvars_bc(sum_connection)%pres(1) =  &
-                 (global_auxvars_bc(sum_connection)%pres(1) + patch%aux%InlineSurface%auxvars_bc(iconn)%half_cell_height) * &
-                 patch%aux%InlineSurface%auxvars_bc(iconn)%density*FMWH2O*ABS(option%gravity(3)) &
+          Pl = global_auxvars_bc(sum_connection)%pres(1)
+          if (Pl < 100.0d0) then
+            Pl = (Pl + patch%aux%InlineSurface%auxvars_bc(iconn)%half_cell_height)* &
+                 patch%aux%InlineSurface%auxvars_bc(iconn)%density* &
+                 FMWH2O*ABS(option%gravity(3)) &
                  + option%reference_pressure
+            global_auxvars_bc(sum_connection)%pres(1) = Pl
           endif
 
           call InlineSurfaceAuxVarCompute(patch%aux%InlineSurface%auxvars_bc(iconn), &
                global_auxvars_bc(sum_connection),option)
-          
+
         case(SURFACE_ZERO_GRADHEIGHT)
           call InlineSurfaceAuxVarCompute(patch%aux%InlineSurface%auxvars_bc(iconn), &
                global_auxvars_bc(sum_connection),option)
         end select
-        
+
       enddo
       boundary_condition => boundary_condition%next
     enddo
   endif
-  
+
   ! source/sinks
   source_sink => patch%source_sink_list%first
   sum_connection = 0    
@@ -1049,7 +1056,8 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
 
   
   if (option%inline_surface_flow) then
-    region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
+    region => RegionGetPtrFromList(option%inline_surface_region_name, &
+                                   realization%region_list)
     do region_id = 1, patch%aux%InlineSurface%num_aux
       local_id = region%cell_ids(region_id)
       ghosted_id = grid%nL2G(local_id)
@@ -1461,7 +1469,8 @@ subroutine RichardsResidualInternalConn(r,realization,skip_conn_type,ierr)
   if (option%inline_surface_flow) then
     connection_set_list => grid%reg_internal_connection_set_list
     cur_connection_set => connection_set_list%first
-    region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
+    region => RegionGetPtrFromList(option%inline_surface_region_name, &
+                                   realization%region_list)
   else
     nullify(cur_connection_set)
   endif
@@ -1627,7 +1636,8 @@ subroutine RichardsResidualBoundaryConn(r,realization,ierr)
   if (option%inline_surface_flow) then
     sum_connection = 0
     boundary_condition => patch%boundary_condition_list%first
-    region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)    
+    region => RegionGetPtrFromList(option%inline_surface_region_name, &
+                                   realization%region_list)    
     do
       if (.not.associated(boundary_condition)) exit
       if ( boundary_condition%flow_condition%pressure%itype == SURFACE_DIRICHLET       .or. &
@@ -1907,12 +1917,13 @@ subroutine RichardsResidualAccumulation(r,realization,ierr)
   rich_auxvars => patch%aux%Richards%auxvars
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
-
+  
   if (option%inline_surface_flow) then
-    region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
+    region => RegionGetPtrFromList(option%inline_surface_region_name, &
+         realization%region_list)
     inlinesurface_auxvars => patch%aux%InlineSurface%auxvars
   endif
-  
+
   ! now assign access pointer to local variables
   call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
   call VecGetArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
@@ -1926,25 +1937,25 @@ subroutine RichardsResidualAccumulation(r,realization,ierr)
       !geh - Ignore inactive cells with inactive materials
       if (patch%imat(ghosted_id) <= 0) cycle
       call RichardsAccumulation(rich_auxvars(ghosted_id), &
-                                global_auxvars(ghosted_id), &
-                                material_auxvars(ghosted_id), &
-                                option,Res)
+           global_auxvars(ghosted_id), &
+           material_auxvars(ghosted_id), &
+           option,Res)
       istart = (local_id-1)*option%nflowdof + 1
       r_p(istart) = r_p(istart) + Res(1)
     enddo
 
-   if (option%inline_surface_flow) then
+    if (option%inline_surface_flow) then
       do region_id = 1, region%num_cells ! Loop through cells in the defined region
-         local_id = region%cell_ids(region_id)
-         ghosted_id = grid%nL2G(local_id)         
-         if (patch%imat(ghosted_id) <= 0) cycle
-         call InlineSurfaceAccumulation(inlinesurface_auxvars(region_id), &
-              material_auxvars(ghosted_id),option,Res)
-         istart = (local_id-1)*option%nflowdof + 1
-         r_p(istart) = r_p(istart) + Res(1)
+        local_id = region%cell_ids(region_id)
+        ghosted_id = grid%nL2G(local_id)         
+        if (patch%imat(ghosted_id) <= 0) cycle
+        call InlineSurfaceAccumulation(inlinesurface_auxvars(region_id), &
+             material_auxvars(ghosted_id),option,Res)
+        istart = (local_id-1)*option%nflowdof + 1
+        r_p(istart) = r_p(istart) + Res(1)
       enddo
     endif
-    
+
   endif
 
   call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
@@ -2217,11 +2228,12 @@ subroutine RichardsJacobianInternalConn(A,realization,ierr)
 
   ! Regional Interior Flux Terms -----------------------------------
   if (option%inline_surface_flow) then
-     connection_set_list => grid%reg_internal_connection_set_list
-     cur_connection_set => connection_set_list%first
-     region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
+    connection_set_list => grid%reg_internal_connection_set_list
+    cur_connection_set => connection_set_list%first
+    region => RegionGetPtrFromList(option%inline_surface_region_name, &
+         realization%region_list)
   else
-     nullify(cur_connection_set)
+    nullify(cur_connection_set)
   endif
   sum_connection = 0  
   do 
@@ -2234,36 +2246,36 @@ subroutine RichardsJacobianInternalConn(A,realization,ierr)
 
       ghosted_id_up = region%cell_ids(region_id_up)
       ghosted_id_dn = region%cell_ids(region_id_dn)
-      
+
       local_id_up = grid%nG2L(ghosted_id_up) 
       local_id_dn = grid%nG2L(ghosted_id_dn) 
 
       if (patch%imat(ghosted_id_up) <= 0 .or.  &
-          patch%imat(ghosted_id_dn) <= 0) cycle
+           patch%imat(ghosted_id_dn) <= 0) cycle
 
       call InlineSurfaceFluxJac(insurf_auxvars(region_id_up),     &
-                                insurf_auxvars(region_id_dn),     &
-                                cur_connection_set%area(iconn),   &
-                                cur_connection_set%dist(:,iconn), &
-                                option,                           &
-                                Jup,Jdn)
-                        
+           insurf_auxvars(region_id_dn),     &
+           cur_connection_set%area(iconn),   &
+           cur_connection_set%dist(:,iconn), &
+           option,                           &
+           Jup,Jdn)
+
       if (local_id_up>0) then
-         istart_up = (ghosted_id_up-1)*option%nflowdof + 1
-         istart_dn = (ghosted_id_dn-1)*option%nflowdof + 1
-         call MatSetValuesLocal(A,1,istart_up-1,1,istart_up-1, &
-              Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
-         call MatSetValuesLocal(A,1,istart_up-1,1,istart_dn-1, &
-              Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
+        istart_up = (ghosted_id_up-1)*option%nflowdof + 1
+        istart_dn = (ghosted_id_dn-1)*option%nflowdof + 1
+        call MatSetValuesLocal(A,1,istart_up-1,1,istart_up-1, &
+             Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
+        call MatSetValuesLocal(A,1,istart_up-1,1,istart_dn-1, &
+             Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
       endif
 
       if (local_id_dn>0) then
-         istart_up = (ghosted_id_up-1)*option%nflowdof + 1
-         istart_dn = (ghosted_id_dn-1)*option%nflowdof + 1
-         call MatSetValuesLocal(A,1,istart_dn-1,1,istart_dn-1, &
-              -Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
-         call MatSetValuesLocal(A,1,istart_dn-1,1,istart_up-1, &
-              -Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
+        istart_up = (ghosted_id_up-1)*option%nflowdof + 1
+        istart_dn = (ghosted_id_dn-1)*option%nflowdof + 1
+        call MatSetValuesLocal(A,1,istart_dn-1,1,istart_dn-1, &
+             -Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
+        call MatSetValuesLocal(A,1,istart_dn-1,1,istart_up-1, &
+             -Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
       endif
     enddo
     cur_connection_set => cur_connection_set%next
@@ -2402,50 +2414,51 @@ subroutine RichardsJacobianBoundaryConn(A,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-
+  
   ! Inline surface BCs
   if (option%inline_surface_flow) then
-     sum_connection = 0
-     boundary_condition => patch%boundary_condition_list%first
-     region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
-     do
-        if (.not.associated(boundary_condition)) exit
-        if ( boundary_condition%flow_condition%pressure%itype == SURFACE_DIRICHLET .or. &
-             boundary_condition%flow_condition%pressure%itype == SURFACE_ZERO_GRADHEIGHT .or. &
-             boundary_condition%flow_condition%pressure%itype == SURFACE_SPILLOVER ) then
-           do iconn = 1,boundary_condition%connection_set%num_connections
-              sum_connection = sum_connection + 1
-              
-              local_id   = boundary_condition%connection_set%id_dn(iconn)
-              ghosted_id = grid%nL2G(local_id)
+    sum_connection = 0
+    boundary_condition => patch%boundary_condition_list%first
+    region => RegionGetPtrFromList(option%inline_surface_region_name, &
+         realization%region_list)
+    do
+      if (.not.associated(boundary_condition)) exit
+      if ( boundary_condition%flow_condition%pressure%itype == SURFACE_DIRICHLET .or. &
+           boundary_condition%flow_condition%pressure%itype == SURFACE_ZERO_GRADHEIGHT .or. &
+           boundary_condition%flow_condition%pressure%itype == SURFACE_SPILLOVER ) then
+        do iconn = 1,boundary_condition%connection_set%num_connections
+          sum_connection = sum_connection + 1
 
-              region_id  = -1
-              do i = 1,region%num_cells
-                if (region%cell_ids(i) == local_id) then
-                  region_id = i
-                  exit
-                endif
-              enddo
-              
-              Jup = 0.0d0
-              Jdn = 0.0d0
-              call InlineSurfaceBCFluxJac(boundary_condition%flow_condition%itype, &
-                   patch%aux%InlineSurface%auxvars_bc(sum_connection),             &
-                   patch%aux%InlineSurface%auxvars   (region_id     ),             &
-                   boundary_condition%connection_set%area(  iconn),                &
-                   boundary_condition%connection_set%dist(:,iconn),                &
-                   option,Jdn)
-              Jdn = -Jdn
+          local_id   = boundary_condition%connection_set%id_dn(iconn)
+          ghosted_id = grid%nL2G(local_id)
 
-              istart = (ghosted_id-1)*option%nflowdof + 1
-              call MatSetValuesLocal(A,1,istart-1,1,istart-1,Jdn, &
-                   ADD_VALUES,ierr);CHKERRQ(ierr)
-              
-           enddo
-        endif
-        boundary_condition => boundary_condition%next
-     enddo
-     
+          region_id  = -1
+          do i = 1,region%num_cells
+            if (region%cell_ids(i) == local_id) then
+              region_id = i
+              exit
+            endif
+          enddo
+
+          Jup = 0.0d0
+          Jdn = 0.0d0
+          call InlineSurfaceBCFluxJac(boundary_condition%flow_condition%itype, &
+               patch%aux%InlineSurface%auxvars_bc(sum_connection),             &
+               patch%aux%InlineSurface%auxvars   (region_id     ),             &
+               boundary_condition%connection_set%area(  iconn),                &
+               boundary_condition%connection_set%dist(:,iconn),                &
+               option,Jdn)
+          Jdn = -Jdn
+
+          istart = (ghosted_id-1)*option%nflowdof + 1
+          call MatSetValuesLocal(A,1,istart-1,1,istart-1,Jdn, &
+               ADD_VALUES,ierr);CHKERRQ(ierr)
+
+        enddo
+      endif
+      boundary_condition => boundary_condition%next
+    enddo
+
   endif
 
   if (realization%debug%matview_Jacobian_detailed) then
@@ -2507,12 +2520,12 @@ subroutine RichardsJacobianAccumulation(A,realization,ierr)
   rich_auxvars => patch%aux%Richards%auxvars
   global_auxvars => patch%aux%Global%auxvars
   material_auxvars => patch%aux%Material%auxvars
-
+  
   if (option%inline_surface_flow) then
-     region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
-     inlinesurface_auxvars => patch%aux%InlineSurface%auxvars
-   endif
-   
+    region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
+    inlinesurface_auxvars => patch%aux%InlineSurface%auxvars
+  endif
+
   if (.not.option%steady_state) then
 
     ! Accumulation terms ------------------------------------
@@ -2521,41 +2534,41 @@ subroutine RichardsJacobianAccumulation(A,realization,ierr)
       !geh - Ignore inactive cells with inactive materials
       if (patch%imat(ghosted_id) <= 0) cycle
       call RichardsAccumDerivative(rich_auxvars(ghosted_id), &
-                                global_auxvars(ghosted_id), &
-                                material_auxvars(ghosted_id), &
-                                option, &
-                                patch%characteristic_curves_array( &
-                                patch%sat_func_id(ghosted_id))%ptr, &
-                                Jup)
+           global_auxvars(ghosted_id), &
+           material_auxvars(ghosted_id), &
+           option, &
+           patch%characteristic_curves_array( &
+           patch%sat_func_id(ghosted_id))%ptr, &
+           Jup)
 
 #ifdef BUFFER_MATRIX
       if (option%use_matrix_buffer) then
         call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
-                             ghosted_id,Jup(1,1))
+             ghosted_id,Jup(1,1))
       else
 #endif
         istart = (ghosted_id-1)*option%nflowdof + 1
 
         call MatSetValuesLocal(A,1,istart-1,1,istart-1,Jup, &
-                               ADD_VALUES,ierr);CHKERRQ(ierr)
+             ADD_VALUES,ierr);CHKERRQ(ierr)
 #ifdef BUFFER_MATRIX
       endif
 #endif
     enddo
 
-     if (option%inline_surface_flow) then
-        do region_id = 1, region%num_cells
-           local_id = region%cell_ids(region_id)
-           ghosted_id = grid%nL2G(local_id)         
-           if (patch%imat(ghosted_id) <= 0) cycle
-           call InlineSurfaceAccumulationJac(inlinesurface_auxvars(region_id), &
-                material_auxvars(ghosted_id),option,Jup)
-           istart = (ghosted_id-1)*option%nflowdof + 1
-           call MatSetValuesLocal(A,1,istart-1,1,istart-1,Jup, &
-                ADD_VALUES,ierr);CHKERRQ(ierr)
-        enddo
-      endif
-      
+    if (option%inline_surface_flow) then
+      do region_id = 1, region%num_cells
+        local_id = region%cell_ids(region_id)
+        ghosted_id = grid%nL2G(local_id)         
+        if (patch%imat(ghosted_id) <= 0) cycle
+        call InlineSurfaceAccumulationJac(inlinesurface_auxvars(region_id), &
+             material_auxvars(ghosted_id),option,Jup)
+        istart = (ghosted_id-1)*option%nflowdof + 1
+        call MatSetValuesLocal(A,1,istart-1,1,istart-1,Jup, &
+             ADD_VALUES,ierr);CHKERRQ(ierr)
+      enddo
+    endif
+
   endif
 
   if (realization%debug%matview_Jacobian_detailed) then
