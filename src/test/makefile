@@ -13,8 +13,12 @@ FFLAGS		 =
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
 
-include ${PETSC_DIR}/lib/petsc/conf/variables
-include ${PETSC_DIR}/lib/petsc/conf/rules
+#include ${PETSC_DIR}/lib/petsc/conf/variables
+#include ${PETSC_DIR}/lib/petsc/conf/rules
+#include ${PETSC_DIR}/lib/petsc-conf/variables
+#include ${PETSC_DIR}/lib/petsc-conf/rules
+include ${PETSC_DIR}/conf/variables
+include ${PETSC_DIR}/conf/rules
 
 vecgetarray_test : vecgetarrayf90_test.o
 	${FLINKER}   -o vecgetarrayf90_test vecgetarrayf90_test.o ${PETSC_LIB} ${LIBS} 
