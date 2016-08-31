@@ -426,6 +426,13 @@ subroutine PMUFDDecayInit(this)
   do
     if (.not.associated(element)) exit
     this%element_solubility(element%ielement) = element%solubility
+    if (.not.associated(element%Kd)) then
+      write(word,*) size(material_property_array)
+      option%io_buffer = trim(adjustl(word)) // ' Kds must be defined for &
+        &element "' // trim(element%name) // '", one for each &
+        &MATERIAL_PROPERTY in the format "<string> <double>".'
+      call printErrMsg(option)
+    endif
     if (size(element%Kd) /= size(material_property_array)) then
       write(word,*) size(element%Kd)
       option%io_buffer = 'Incorrect number of Kds (' // &
@@ -434,6 +441,7 @@ subroutine PMUFDDecayInit(this)
       option%io_buffer = trim(option%io_buffer) // &
         trim(adjustl(word)) // ') for UFD Decay element "' // &
         trim(element%name) // '".'
+      call printErrMsg(option)
     endif
     do icount = 1, size(element%Kd_material_name)
       material_property => &
@@ -893,12 +901,17 @@ subroutine PMUFDDecaySolve(this,time,ierr)
         iiso = this%element_isotopes(i,iele)
         ipri = this%isotope_to_primary_species(iiso)
         imnrl = this%isotope_to_mineral(iiso)
-        rt_auxvars(ghosted_id)%total(ipri,1) = conc_ele_aq1 * mol_fraction_iso(i)
-        rt_auxvars(ghosted_id)%pri_molal(ipri) = conc_ele_aq1 / den_w_kg * 1.d3 * mol_fraction_iso(i)
-        rt_auxvars(ghosted_id)%total_sorb_eq(ipri) = conc_ele_sorb1 * mol_fraction_iso(i)
-        rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) = conc_ele_ppt1 * mol_fraction_iso(i)
+        rt_auxvars(ghosted_id)%total(ipri,1) = &
+          conc_ele_aq1 * mol_fraction_iso(i)
+        rt_auxvars(ghosted_id)%pri_molal(ipri) = &
+          conc_ele_aq1 / den_w_kg * 1.d3 * mol_fraction_iso(i)
+        rt_auxvars(ghosted_id)%total_sorb_eq(ipri) = &
+          conc_ele_sorb1 * mol_fraction_iso(i)
+        rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl) = &
+          conc_ele_ppt1 * mol_fraction_iso(i)
         ! need to copy primary molalities back into transport solution Vec
-        xx_p((local_id-1)*reaction%ncomp+ipri) = rt_auxvars(ghosted_id)%pri_molal(ipri)
+        xx_p((local_id-1)*reaction%ncomp+ipri) = &
+          rt_auxvars(ghosted_id)%pri_molal(ipri)
       enddo
     enddo      
   enddo
