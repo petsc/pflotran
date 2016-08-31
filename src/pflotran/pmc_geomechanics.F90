@@ -16,6 +16,7 @@ module PMC_Geomechanics_class
     class(realization_geomech_type), pointer :: geomech_realization
   contains
     procedure, public :: Init => PMCGeomechanicsInit
+    procedure, public :: SetupSolvers => PMCGeomechanicsSetupSolvers
     procedure, public :: RunToTime => PMCGeomechanicsRunToTime
     procedure, public :: GetAuxData => PMCGeomechanicsGetAuxData
     procedure, public :: SetAuxData => PMCGeomechanicsSetAuxData
@@ -76,6 +77,124 @@ subroutine PMCGeomechanicsInit(this)
   nullify(this%geomech_realization)
 
 end subroutine PMCGeomechanicsInit
+
+! ************************************************************************** !
+
+subroutine PMCGeomechanicsSetupSolvers(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/18/13
+  ! 
+  use Convergence_module
+  use Geomechanics_Discretization_module
+  use Timestepper_Base_class
+  use Timestepper_Steady_class
+  use PM_Base_class
+  use PM_Base_Pointer_module
+  use Option_module
+  use Solver_module
+
+  implicit none
+
+#include "petsc/finclude/petscvec.h"
+#include "petsc/finclude/petscvec.h90"
+#include "petsc/finclude/petscmat.h"
+#include "petsc/finclude/petscmat.h90"
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscpc.h"
+
+  class(pmc_geomechanics_type) :: this
+
+  class(realization_geomech_type), pointer :: geomech_realization
+  class(geomech_discretization_type), pointer :: geomech_discretization
+  class(timestepper_steady_type), pointer :: ts_steady
+  type(solver_type), pointer :: solver
+  type(option_type), pointer :: option
+  SNESLineSearch :: linesearch
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscErrorCode :: ierr
+
+#ifdef DEBUG
+  call printMsg(this%option,'PMCGeomechanicsSetupSolvers')
+#endif
+
+  option => this%option
+  geomech_realization => this%geomech_realization
+  geomech_discretization => geomech_realization%geomech_discretization
+  select type(ts => this%timestepper)
+    class is (timestepper_steady_type)
+      ts_steady => ts
+      solver => ts%solver
+  end select 
+
+  call printMsg(option,"  Beginning setup of GEOMECH SNES ")
+
+  if (solver%J_mat_type == MATAIJ) then
+    option%io_buffer = 'AIJ matrix not supported for geomechanics.'
+    call printErrMsg(option)
+  endif
+
+  call SolverCreateSNES(solver,option%mycomm)
+  call SNESSetOptionsPrefix(solver%snes, "geomech_", &
+                            ierr);CHKERRQ(ierr)
+  call SolverCheckCommandLine(solver)
+
+  if (solver%Jpre_mat_type == '') then
+    solver%Jpre_mat_type = solver%J_mat_type
+  endif
+  call GeomechDiscretizationCreateJacobian(geomech_realization% &
+                                           geomech_discretization,NGEODOF, &
+                                           solver%Jpre_mat_type, &
+                                           solver%Jpre,option)
+
+  solver%J = solver%Jpre
+  call MatSetOptionsPrefix(solver%Jpre,"geomech_", &
+                            ierr);CHKERRQ(ierr)
+
+  ! by default turn off line search
+  call SNESGetLineSearch(solver%snes,linesearch, ierr);CHKERRQ(ierr)
+  call SNESLineSearchSetType(linesearch,SNESLINESEARCHBASIC, &
+                              ierr);CHKERRQ(ierr)
+
+
+  ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+  if (option%verbosity >= 1) then
+    string = '-geomech_snes_view'
+    call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
+                                   string, ierr);CHKERRQ(ierr)
+  endif
+
+  option%io_buffer = 'Solver: ' // trim(solver%ksp_type)
+  call printMsg(option)
+  option%io_buffer = 'Preconditioner: ' // trim(solver%pc_type)
+  call printMsg(option)
+
+  ! shell for custom convergence test.  The default SNES convergence test
+  ! is call within this function.
+  ts_steady%convergence_context => &
+             ConvergenceContextCreate(solver,option, &
+                                      this%subsurf_realization%patch%grid)
+  call SNESSetConvergenceTest(solver%snes,ConvergenceTest, &
+                              ts_steady%convergence_context, &
+                              PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)            
+  call SNESSetFunction(solver%snes, &
+                       this%pm_ptr%pm%residual_vec, &
+                       PMResidual, &
+                       this%pm_ptr, &
+                       ierr);CHKERRQ(ierr)
+  call SNESSetJacobian(solver%snes, &
+                       solver%J, &
+                       solver%Jpre, &
+                       PMJacobian, &
+                       this%pm_ptr, &
+                       ierr);CHKERRQ(ierr)
+
+  call SolverSetSNESOptions(solver,option)
+
+  call printMsg(option,"  Finished setting up GEOMECH SNES ")
+
+
+end subroutine PMCGeomechanicsSetupSolvers
 
 ! ************************************************************************** !
 

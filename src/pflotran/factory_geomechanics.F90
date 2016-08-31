@@ -175,34 +175,19 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
     ! initialize geomech realization
     call GeomechInitSetupRealization(simulation)
 
-    ! Solver set up
-    call GeomechInitSetupSolvers(geomech_realization,subsurf_realization, &
-                                 timestepper%convergence_context, &
-                                 timestepper%solver)
-
-
     call pm_geomech%PMGeomechForceSetRealization(geomech_realization)
     call pm_geomech%Setup()
+
+    call pmc_geomech%SetupSolvers()
+
     ! Here I first calculate the linear part of the jacobian and store it
     ! since the jacobian is always linear with geomech (even when coupled with
     ! flow since we are performing sequential coupling). Although
     ! SNESSetJacobian is called, nothing is done there and PETSc just 
     ! re-uses the linear Jacobian at all iterations and times
     call GeomechForceJacobianLinearPart(timestepper%solver%J,geomech_realization)
-    call SNESSetFunction(timestepper%solver%snes, &
-                         pm_geomech%residual_vec, &
-                         PMResidual, &
-                         pmc_geomech%pm_ptr, &
-                         ierr);CHKERRQ(ierr)
-    call SNESSetJacobian(timestepper%solver%snes, &
-                         timestepper%solver%J, &
-                         timestepper%solver%Jpre, &
-                         PMJacobian, &
-                         pmc_geomech%pm_ptr, &
-                         ierr);CHKERRQ(ierr)
-                                  
-     nullify(simulation%process_model_coupler_list)                             
-   endif
+    nullify(simulation%process_model_coupler_list)                             
+  endif
   ! sim_aux: Create PETSc Vectors and VectorScatters
   if (option%ngeomechdof > 0) then
 
@@ -1080,7 +1065,7 @@ subroutine GeomechInitSetupSolvers(geomech_realization,realization, &
   call MatSetOptionsPrefix(solver%Jpre,"geomech_", &
                             ierr);CHKERRQ(ierr)
     
-#if 0
+#if 1
   call SNESSetFunction(solver%snes,geomech_realization%geomech_field%disp_r, &
                        GeomechForceResidual, &
                        geomech_realization,ierr);CHKERRQ(ierr)
@@ -1103,7 +1088,7 @@ subroutine GeomechInitSetupSolvers(geomech_realization,realization, &
                                    string, ierr);CHKERRQ(ierr)
   endif
 
-  call SolverSetSNESOptions(solver)
+  call SolverSetSNESOptions(solver,option)
 
   option%io_buffer = 'Solver: ' // trim(solver%ksp_type)
   call printMsg(option)

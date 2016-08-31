@@ -808,23 +808,6 @@ subroutine SubsurfaceInitSimulation(simulation)
   call InitSubsurfaceSetupZeroArrays(realization)
   call OutputVariableAppendDefaults(realization%output_option% &
                                       output_snap_variable_list,option)
-!geh - remove
-#if 0                                      
-  if (option%nflowdof > 0) then
-    select type(ts => simulation%flow_process_model_coupler%timestepper)
-      class is (timestepper_BE_type)
-        call InitSubsurfFlowSetupSolvers(realization,ts%convergence_context, &
-                                         ts%solver)
-    end select
-  endif
-  if (option%ntrandof > 0) then
-    select type(ts => simulation%rt_process_model_coupler%timestepper)
-      class is (timestepper_BE_type)
-        call InitSubsurfTranSetupSolvers(realization,ts%convergence_context, &
-                                         ts%solver)
-    end select
-  endif
-#endif  
   
   call RegressionCreateMapping(simulation%regression,realization)
 ! end from old Init()
@@ -953,73 +936,6 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
     end select
     cur_pm%output_option => simulation%output_option
     call cur_pm%Setup()
-!geh - remove
-#if 0    
-    if (associated(pmc%timestepper)) then
-      select type(ts => pmc%timestepper)
-      !----------------------------------
-        class is(timestepper_BE_type)
-          call SNESGetLineSearch(ts%solver%snes,linesearch, &
-                                 ierr);CHKERRQ(ierr)
-          ! Post
-          select type(cur_pm)
-          !-----------------------------------
-            class is(pm_subsurface_flow_type)
-              if (cur_pm%check_post_convergence) then
-                call SNESLineSearchSetPostCheck(linesearch,PMCheckUpdatePost, &
-                     pmc%pm_ptr,ierr);CHKERRQ(ierr)
-                !geh: it is possible that the other side has not been set
-                cur_pm%check_post_convergence = PETSC_TRUE
-              endif
-          !------------------------------------
-            class is(pm_rt_type)
-              if (cur_pm%print_EKG .or. option%use_mc .or. &
-                  cur_pm%check_post_convergence) then
-                call SNESLineSearchSetPostCheck(linesearch,PMCheckUpdatePost, &
-                     pmc%pm_ptr,ierr);CHKERRQ(ierr)
-                if (cur_pm%print_EKG) then
-                  cur_pm%check_post_convergence = PETSC_TRUE
-                endif
-              endif
-          !-------------------------------------
-          end select
-          ! Pre
-          select type(cur_pm)
-          !-------------------------------------
-            class is(pm_richards_type)
-              if (Initialized(cur_pm%pressure_dampening_factor) .or. &
-                  Initialized(cur_pm%saturation_change_limit)) then
-                call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
-                     pmc%pm_ptr,ierr);CHKERRQ(ierr)
-              endif   
-          !-------------------------------------
-            class is(pm_general_type)
-              call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
-                   pmc%pm_ptr,ierr);CHKERRQ(ierr)
-          !-------------------------------------
-            class is(pm_toil_ims_type)
-              call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
-                   pmc%pm_ptr,ierr);CHKERRQ(ierr)
-          !-------------------------------------
-            class is(pm_th_type)
-              if (Initialized(cur_pm%pressure_dampening_factor) .or. &
-                  Initialized(cur_pm%pressure_change_limit) .or. &
-                  Initialized(cur_pm%temperature_change_limit)) then
-                call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
-                     pmc%pm_ptr,ierr);CHKERRQ(ierr)
-              endif 
-          !-------------------------------------
-            class is(pm_rt_type)
-              if (realization%reaction%check_update) then
-                call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
-                     pmc%pm_ptr,ierr);CHKERRQ(ierr)
-              endif
-          !-------------------------------------
-          end select
-      !----------------------------------
-      end select
-    endif ! associated(pmc%timestepper)   
-#endif    
     cur_pm => cur_pm%next
   enddo
   call pmc%SetupSolvers()

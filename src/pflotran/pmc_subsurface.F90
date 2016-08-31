@@ -137,18 +137,18 @@ subroutine PMCSubsurfaceSetupSolvers(this)
                                ierr);CHKERRQ(ierr)
       
         select type(pm => this%pm_ptr%pm)
-          ! subsurface flow
+  ! ----- subsurface flow
           class is(pm_subsurface_flow_type)
             call printMsg(option,"  Beginning setup of FLOW SNES ")
             if (solver%J_mat_type == MATAIJ .and. &
                 option%iflowmode /= RICHARDS_MODE) then
-              option%io_buffer = 'AIJ matrix not supported for current mode: '// &
-                                  option%flowmode
+              option%io_buffer = 'AIJ matrix not supported for current &
+                &mode: '// option%flowmode
               call printErrMsg(option)
             endif
             if (OptionPrintToScreen(option)) then
-              write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
-                option%nflowdof,option%nphase
+              write(*,'(" number of dofs = ",i3,", number of &
+                        &phases = ",i3,i2)') option%nflowdof,option%nphase
               select case(option%iflowmode)
                 case(FLASH2_MODE)
                   write(*,'(" mode = FLASH2: p, T, s/X")')
@@ -178,7 +178,8 @@ subroutine PMCSubsurfaceSetupSolvers(this)
               endif
             endif
 
-            call DiscretizationCreateJacobian(pm%realization%discretization,NFLOWDOF, &
+            call DiscretizationCreateJacobian(pm%realization%discretization, &
+                                              NFLOWDOF, &
                                               solver%Jpre_mat_type, &
                                               solver%Jpre, &
                                               option)
@@ -190,12 +191,13 @@ subroutine PMCSubsurfaceSetupSolvers(this)
             endif
 
             if (solver%use_galerkin_mg) then
-              call DiscretizationCreateInterpolation(pm%realization%discretization,NFLOWDOF, &
-                                                     solver%interpolation, &
-                                                     solver%galerkin_mg_levels_x, &
-                                                     solver%galerkin_mg_levels_y, &
-                                                     solver%galerkin_mg_levels_z, &
-                                                     option)
+              call DiscretizationCreateInterpolation( &
+                             pm%realization%discretization,NFLOWDOF, &
+                             solver%interpolation, &
+                             solver%galerkin_mg_levels_x, &
+                             solver%galerkin_mg_levels_y, &
+                             solver%galerkin_mg_levels_z, &
+                             option)
             endif
     
             if (solver%J_mat_type == MATMFFD) then
@@ -206,35 +208,34 @@ subroutine PMCSubsurfaceSetupSolvers(this)
             call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
             call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC,  &
                                         ierr);CHKERRQ(ierr)
-            ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+            ! Have PETSc do a SNES_View() at the end of each solve if 
+            ! verbosity > 0.
             if (option%verbosity >= 2) then
               string = '-flow_snes_view'
-              call PetscOptionsInsertString(PETSC_NULL_OBJECT,string, ierr);CHKERRQ(ierr)
+              call PetscOptionsInsertString(PETSC_NULL_OBJECT,string, &
+                                            ierr);CHKERRQ(ierr)
             endif
 
-            call SolverSetSNESOptions(solver)
+!            call SolverSetSNESOptions(solver,option)
 
-            ! If we are using a structured grid, set the corresponding flow DA 
-            ! as the DA for the PCEXOTIC preconditioner, in case we choose to use it.
-            ! The PCSetDA() call is ignored if the PCEXOTIC preconditioner is 
-            ! no used.  We need to put this call after SolverCreateSNES() so that 
-            ! KSPSetFromOptions() will already have been called.
-            ! I also note that this preconditioner is intended only for the flow 
+            ! If we are using a structured grid, set the corresponding flow 
+            ! DA as the DA for the PCEXOTIC preconditioner, in case we 
+            ! choose to use it. The PCSetDA() call is ignored if the 
+            ! PCEXOTIC preconditioner is no used.  We need to put this call 
+            ! after SolverCreateSNES() so that KSPSetFromOptions() will 
+            ! already have been called.  I also note that this 
+            ! preconditioner is intended only for the flow 
             ! solver.  --RTM
             if (pm%realization%discretization%itype == STRUCTURED_GRID) then
               call PCSetDM(solver%pc, &
-                           pm%realization%discretization%dm_nflowdof,ierr);CHKERRQ(ierr)
+                           pm%realization%discretization%dm_nflowdof, &
+                           ierr);CHKERRQ(ierr)
             endif
 
-            option%io_buffer = 'Solver: ' // trim(solver%ksp_type)
-            call printMsg(option)
-            option%io_buffer = 'Preconditioner: ' // trim(solver%pc_type)
-            call printMsg(option)
-
-            ! shell for custom convergence test.  The default SNES convergence test  
-            ! is call within this function.
+            ! shell for custom convergence test.  The default SNES convergence
+            ! test is call within this function.
             ts%convergence_context => ConvergenceContextCreate(solver,option, &
-                                                            pm%realization%patch%grid)
+                                                   pm%realization%patch%grid)
             call SNESSetConvergenceTest(solver%snes,ConvergenceTest, &
                                         ts%convergence_context, &
                                         PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
@@ -276,7 +277,8 @@ subroutine PMCSubsurfaceSetupSolvers(this)
             call SNESSetOptionsPrefix(solver%snes, "tran_",ierr);CHKERRQ(ierr)
             call SolverCheckCommandLine(solver)
     
-            if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+            if (option%transport%reactive_transport_coupling == &
+                GLOBAL_IMPLICIT) then
               if (solver%Jpre_mat_type == '') then
                 if (solver%J_mat_type /= MATMFFD) then
                   solver%Jpre_mat_type = solver%J_mat_type
@@ -284,14 +286,16 @@ subroutine PMCSubsurfaceSetupSolvers(this)
                   solver%Jpre_mat_type = MATBAIJ
                 endif
               endif
-              call DiscretizationCreateJacobian(pm%realization%discretization,NTRANDOF, &
+              call DiscretizationCreateJacobian(pm%realization%discretization, &
+                                                NTRANDOF, &
                                                 solver%Jpre_mat_type, &
                                                 solver%Jpre,option)
             else
               solver%J_mat_type = MATAIJ
               solver%Jpre_mat_type = MATAIJ
 
-              call DiscretizationCreateJacobian(pm%realization%discretization,ONEDOF, &
+              call DiscretizationCreateJacobian(pm%realization%discretization, &
+                                                ONEDOF, &
                                                 solver%Jpre_mat_type, &
                                                 solver%Jpre,option)
             endif
@@ -303,34 +307,39 @@ subroutine PMCSubsurfaceSetupSolvers(this)
             call MatSetOptionsPrefix(solver%Jpre,"tran_",ierr);CHKERRQ(ierr)
     
             if (solver%use_galerkin_mg) then
-              call DiscretizationCreateInterpolation(pm%realization%discretization,NTRANDOF, &
-                                                      solver%interpolation, &
-                                                      solver%galerkin_mg_levels_x, &
-                                                      solver%galerkin_mg_levels_y, &
-                                                      solver%galerkin_mg_levels_z, &
-                                                      option)
+              call DiscretizationCreateInterpolation( &
+                             pm%realization%discretization,NTRANDOF, &
+                             solver%interpolation, &
+                             solver%galerkin_mg_levels_x, &
+                             solver%galerkin_mg_levels_y, &
+                             solver%galerkin_mg_levels_z, &
+                             option)
             endif
 
-            if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+            if (option%transport%reactive_transport_coupling == &
+                GLOBAL_IMPLICIT) then
 
               if (solver%J_mat_type == MATMFFD) then
                 call MatCreateSNESMF(solver%snes,solver%J, &
                                       ierr);CHKERRQ(ierr)
               endif
       
-              ! this could be changed in the future if there is a way to ensure that 
-              ! the linesearch update does not perturb concentrations negative.
-              call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
+              ! this could be changed in the future if there is a way to 
+              ! ensure that the linesearch update does not perturb 
+              ! concentrations negative.
+              call SNESGetLineSearch(solver%snes, linesearch, &
+                                     ierr);CHKERRQ(ierr)
               call SNESLineSearchSetType(linesearch, SNESLINESEARCHBASIC,  &
                                           ierr);CHKERRQ(ierr)
       
               if (option%use_mc) then
                 call SNESLineSearchSetPostCheck(linesearch, &
-                                                SecondaryRTUpdateIterate, &
-                                                pm%realization,ierr);CHKERRQ(ierr)
+                                            SecondaryRTUpdateIterate, &
+                                            pm%realization,ierr);CHKERRQ(ierr)
               endif
       
-              ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+              ! Have PETSc do a SNES_View() at the end of each solve if 
+              ! verbosity > 0.
               if (option%verbosity >= 2) then
                 string = '-tran_snes_view'
                 call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
@@ -339,17 +348,16 @@ subroutine PMCSubsurfaceSetupSolvers(this)
 
             endif
 
-            if (option%transport%reactive_transport_coupling == GLOBAL_IMPLICIT) then
-
-              ! shell for custom convergence test.  The default SNES convergence test  
-              ! is call within this function. 
-              !TODO(geh): free this convergence context somewhere!
-              option%io_buffer = 'DEALLOCATE TRANSPORT CONVERGENCE CONTEXT somewhere!!!'
-              ts%convergence_context => ConvergenceContextCreate(solver,option, &
-                                                              pm%realization%patch%grid)
+            if (option%transport%reactive_transport_coupling == &
+                GLOBAL_IMPLICIT) then
+              ! shell for custom convergence test.  The default SNES 
+              ! convergence test is call within this function. 
+              ts%convergence_context => &
+                ConvergenceContextCreate(solver,option, &
+                                         pm%realization%patch%grid)
               call SNESSetConvergenceTest(solver%snes,ConvergenceTest, &
-                                          ts%convergence_context, &
-                                          PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
+                                        ts%convergence_context, &
+                                        PETSC_NULL_FUNCTION,ierr);CHKERRQ(ierr)
             endif
             if (pm%print_EKG .or. option%use_mc .or. &
                 pm%check_post_convergence) then
@@ -365,8 +373,6 @@ subroutine PMCSubsurfaceSetupSolvers(this)
             endif          
             call printMsg(option,"  Finished setting up TRAN SNES ")        
         end select
-      
-      
         call SNESSetFunction(ts%solver%snes, &
                              this%pm_ptr%pm%residual_vec, &
                              PMResidual, &
@@ -378,20 +384,12 @@ subroutine PMCSubsurfaceSetupSolvers(this)
                              PMJacobian, &
                              this%pm_ptr, &
                              ierr);CHKERRQ(ierr)
-      
-          
-        call SolverSetSNESOptions(solver)
-      
-      
-            option%io_buffer = 'Solver: ' // trim(solver%ksp_type)
-            call printMsg(option)
-            option%io_buffer = 'Preconditioner: ' // trim(solver%pc_type)
-            call printMsg(option)
-      
-      
-      
+        call SolverSetSNESOptions(solver,option)
+        option%io_buffer = 'Solver: ' // trim(solver%ksp_type)
+        call printMsg(option)
+        option%io_buffer = 'Preconditioner: ' // trim(solver%pc_type)
+        call printMsg(option)
     end select
-  
   endif ! associated(pmc%timestepper)        
   
 

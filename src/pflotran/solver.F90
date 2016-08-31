@@ -201,19 +201,25 @@ end subroutine SolverCreateSNES
 
 ! ************************************************************************** !
 
-subroutine SolverSetSNESOptions(solver)
+subroutine SolverSetSNESOptions(solver, option)
   ! 
   ! Sets options for SNES
   ! 
   ! Author: Glenn Hammond
   ! Date: 02/12/08
   ! 
+  use Option_module
 
   implicit none
   
   type(solver_type) :: solver
+  type(option_type) :: option
 
   SNESLineSearch :: linesearch
+  KSP, pointer :: sub_ksps(:)
+  PC :: pc
+  PetscInt :: nsub_ksp
+  PetscInt :: first_sub_ksp
   PetscErrorCode :: ierr
   PetscInt :: i
   
@@ -240,32 +246,6 @@ subroutine SolverSetSNESOptions(solver)
   ! get the ksp_type and pc_type incase of command line override.
   call KSPGetType(solver%ksp,solver%ksp_type,ierr);CHKERRQ(ierr)
   call PCGetType(solver%pc,solver%pc_type,ierr);CHKERRQ(ierr)
-
-!  call PCFactorSetShiftType(solver%pc,MAT_SHIFT_INBLOCKS,ierr);CHKERRQ(ierr)
-  
-  if (Initialized(solver%linear_zero_pivot_tol)) then
-    call PCFactorSetZeroPivot(solver%pc,solver%linear_zero_pivot_tol, &
-                              ierr);CHKERRQ(ierr)
-#if 0
-+    if (solver%pc_type == PCLU .or. &
-+        solver%pc_type == PCILU) then
-+      call PCFactorSetZeroPivot(solver%pc,solver%linear_zero_pivot_tol, &
-+                                ierr);CHKERRQ(ierr)
-+    else if (solver%pc_type == PCBJACOBI) then
-+      call PCSetup(solver%pc,ierr)
-+      call PCBJacobiGetSubKSP(solver%pc,nsub_ksp,first_sub_ksp,sub_ksps,ierr)
-+      do i = 1, nsub_ksp
-+        call KSPGetPC(sub_ksps(i),pc,ierr)
-+        call PCFactorSetZeroPivot(pc,solver%linear_zero_pivot_tol, &
-+                                  ierr);CHKERRQ(ierr)
-+      enddo
-+    else
-+      option%io_buffer = 'Setting of zero pivot tolerance for PC ' // &
-+        trim(solver%pc_type) // ' is not supported at this time.'
-+      call printErrMsg(option)
-+    endif
-#endif
-  endif
 
   ! Set the tolerances for the Newton solver.
   call SNESSetTolerances(solver%snes, solver%newton_atol, solver%newton_rtol, &
@@ -294,6 +274,53 @@ subroutine SolverSetSNESOptions(solver)
   ! allow override from command line; for some reason must come before
   ! LineSearchParams, or they crash
   call SNESSetFromOptions(solver%snes,ierr);CHKERRQ(ierr)
+
+  ! must come after SNESSetFromOptions
+  call PCFactorSetShiftType(solver%pc,MAT_SHIFT_INBLOCKS,ierr);CHKERRQ(ierr)
+  if (solver%pc_type == PCBJACOBI) then
+    call KSPSetup(solver%ksp,ierr)
+!    call PCSetup(solver%pc,ierr)
+    call PCBJacobiGetSubKSP(solver%pc,nsub_ksp,first_sub_ksp, &
+                            PETSC_NULL_OBJECT,ierr)
+    allocate(sub_ksps(nsub_ksp))
+    sub_ksps = 0
+    call PCBJacobiGetSubKSP(solver%pc,nsub_ksp,first_sub_ksp,sub_ksps,ierr)
+    do i = 1, nsub_ksp
+      call KSPGetPC(sub_ksps(i),pc,ierr)
+      call PCFactorSetShiftType(pc,MAT_SHIFT_INBLOCKS,ierr);CHKERRQ(ierr)
+    enddo
+    deallocate(sub_ksps)
+    nullify(sub_ksps)
+  elseif (.not.(solver%pc_type == PCLU .or. solver%pc_type == PCILU)) then
+    option%io_buffer = 'PCFactorShiftType for PC ' // &
+      trim(solver%pc_type) // ' is not supported at this time.'
+    call printErrMsg(option)
+  endif
+  
+  if (Initialized(solver%linear_zero_pivot_tol)) then
+    call PCFactorSetZeroPivot(solver%pc,solver%linear_zero_pivot_tol, &
+                              ierr);CHKERRQ(ierr)
+    if (solver%pc_type == PCBJACOBI) then
+      call KSPSetup(solver%ksp,ierr)
+!      call PCSetup(solver%pc,ierr)
+      call PCBJacobiGetSubKSP(solver%pc,nsub_ksp,first_sub_ksp, &
+                              PETSC_NULL_OBJECT,ierr)
+      allocate(sub_ksps(nsub_ksp))
+      sub_ksps = 0
+      call PCBJacobiGetSubKSP(solver%pc,nsub_ksp,first_sub_ksp,sub_ksps,ierr)
+      do i = 1, nsub_ksp
+        call KSPGetPC(sub_ksps(i),pc,ierr)
+        call PCFactorSetZeroPivot(pc,solver%linear_zero_pivot_tol, &
+                                  ierr);CHKERRQ(ierr)
+      enddo
+      deallocate(sub_ksps)
+      nullify(sub_ksps)
+    elseif (.not.(solver%pc_type == PCLU .or. solver%pc_type == PCILU)) then
+      option%io_buffer = 'PCFactorSetZeroPivot for PC ' // &
+        trim(solver%pc_type) // ' is not supported at this time.'
+      call printErrMsg(option)
+    endif
+  endif
 
   call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
   call SNESLineSearchSetTolerances(linesearch, solver%newton_stol,       &
