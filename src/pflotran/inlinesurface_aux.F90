@@ -8,20 +8,20 @@ module InlineSurface_Aux_module
 
   type, public :: inlinesurface_auxvar_type
 
-     PetscReal :: half_cell_height
-     PetscReal :: surface_water_depth
-     PetscReal :: density
-     PetscReal :: Mannings_coeff
+    PetscReal :: half_cell_height
+    PetscReal :: surface_water_depth
+    PetscReal :: density
+    PetscReal :: Mannings_coeff
 
   end type inlinesurface_auxvar_type
 
   type, public :: inlinesurface_type
 
-     PetscBool :: auxvars_up_to_date
-     PetscInt  :: num_aux, num_aux_bc, num_aux_ss
-     type(inlinesurface_auxvar_type), pointer :: auxvars(:)
-     type(inlinesurface_auxvar_type), pointer :: auxvars_bc(:)
-     type(inlinesurface_auxvar_type), pointer :: auxvars_ss(:)
+    PetscBool :: auxvars_up_to_date
+    PetscInt  :: num_aux, num_aux_bc, num_aux_ss
+    type(inlinesurface_auxvar_type), pointer :: auxvars(:)
+    type(inlinesurface_auxvar_type), pointer :: auxvars_bc(:)
+    type(inlinesurface_auxvar_type), pointer :: auxvars_ss(:)
 
   end type inlinesurface_type
 
@@ -34,7 +34,8 @@ module InlineSurface_Aux_module
 
 contains
 
-  
+  !************************************************************************** !
+
   subroutine InlineSurfaceAuxVarInit(auxvar,option)
     ! 
     ! Initialize auxiliary variable
@@ -57,7 +58,8 @@ contains
     auxvar%density             = NaN
   end subroutine InlineSurfaceAuxVarInit
 
-  
+  !************************************************************************** !
+
   subroutine InlineSurfaceAuxVarCopy(source,copy)
     ! 
     ! Copies an auxiliary variable
@@ -75,6 +77,7 @@ contains
 
   end subroutine InlineSurfaceAuxVarCopy
 
+  !************************************************************************** !
 
   subroutine InlineSurfaceAuxVarCompute(auxvar,global_auxvar,option)
     ! 
@@ -94,15 +97,16 @@ contains
 
     ! We need to ensure that surface density stays consistent with the subsurface
     auxvar%density = global_auxvar%den(1)
-    
+
     Pref = option%reference_pressure
     Pl   = global_auxvar%pres(1)
     rho  = global_auxvar%den_kg(1)
     g    = ABS(option%gravity(3))
     auxvar%surface_water_depth = MAX(0.0d0,(Pl-Pref)/(rho*g)-auxvar%half_cell_height)
-    
+
   end subroutine InlineSurfaceAuxVarCompute
 
+  !************************************************************************** !
 
   function InlineSurfaceAuxCreate() result(aux)
     ! 
@@ -125,6 +129,7 @@ contains
 
   end function InlineSurfaceAuxCreate
 
+  !************************************************************************** !
 
   subroutine InlineSurfaceAuxDestroy(aux)
     ! 
@@ -138,15 +143,15 @@ contains
 
     if (.not.associated(aux)) return
     if (associated(aux%auxvars)) then
-       deallocate(aux%auxvars)
+      deallocate(aux%auxvars)
     endif
     nullify(aux%auxvars)
     if (associated(aux%auxvars_bc)) then
-       deallocate(aux%auxvars_bc)
+      deallocate(aux%auxvars_bc)
     endif
     nullify(aux%auxvars_bc)
     if (associated(aux%auxvars_ss)) then
-       deallocate(aux%auxvars_ss)
+      deallocate(aux%auxvars_ss)
     endif
     nullify(aux%auxvars_ss)
     deallocate(aux)
