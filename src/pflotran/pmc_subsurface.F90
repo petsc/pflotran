@@ -216,8 +216,6 @@ subroutine PMCSubsurfaceSetupSolvers(this)
                                             ierr);CHKERRQ(ierr)
             endif
 
-!            call SolverSetSNESOptions(solver,option)
-
             ! If we are using a structured grid, set the corresponding flow 
             ! DA as the DA for the PCEXOTIC preconditioner, in case we 
             ! choose to use it. The PCSetDA() call is ignored if the 
@@ -391,7 +389,6 @@ subroutine PMCSubsurfaceSetupSolvers(this)
         call printMsg(option)
     end select
   endif ! associated(pmc%timestepper)        
-  
 
 end subroutine PMCSubsurfaceSetupSolvers
 
