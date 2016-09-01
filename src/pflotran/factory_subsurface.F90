@@ -1718,42 +1718,46 @@ subroutine SubsurfaceReadInput(simulation)
       case('REFERENCE_PRESSURE')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_pressure)
-        call InputDefaultMsg(input,option,'Reference Pressure') 
-
+        call InputErrorMsg(input,option,'Reference Pressure','value') 
+        call InputReadAndConvertUnits(input,option%reference_pressure, &
+                                      'Pa','Reference Pressure',option)
 !....................
 
       case('REFERENCE_DENSITY')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_water_density)
-        call InputDefaultMsg(input,option,'Reference Density') 
-
+        call InputErrorMsg(input,option,'Reference Density','value') 
+        call InputReadAndConvertUnits(input,option%reference_water_density, &
+                                      'kg/m^3','Reference Density',option)
 !....................
 
       case('MINIMUM_HYDROSTATIC_PRESSURE')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%minimum_hydrostatic_pressure)
-        call InputDefaultMsg(input,option,'Minimum Hydrostatic Pressure') 
-
+        call InputErrorMsg(input,option,'Minimum Hydrostatic Pressure','value') 
+        call InputReadAndConvertUnits(input, &
+                                      option%minimum_hydrostatic_pressure, &
+                                    'Pa','Minimum Hydrostatic Pressure',option)
 !......................
 
       case('REFERENCE_TEMPERATURE')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_temperature)
-        call InputDefaultMsg(input,option,'Reference Temperature') 
+        call InputErrorMsg(input,option,'Reference Temperature','value') 
 
 !......................
 
       case('REFERENCE_POROSITY')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_porosity)
-        call InputDefaultMsg(input,option,'Reference Porosity') 
+        call InputErrorMsg(input,option,'Reference Porosity','value') 
 
 !......................
 
       case('REFERENCE_SATURATION')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_saturation)
-        call InputDefaultMsg(input,option,'Reference Saturation') 
+        call InputErrorMsg(input,option,'Reference Saturation','value') 
 
 !......................
 

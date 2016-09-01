@@ -39,7 +39,7 @@ END
 #=========================== useful tranport parameters ==================
 UNIFORM_VELOCITY 1.d0 0.d0 0.d0 m/yr
 
-REFERENCE_DENSITY 1000.d0
+REFERENCE_DENSITY 1.d6 g/m^3 ! use non-SI units for testing
 
 #=========================== chemistry ========================================
 CHEMISTRY

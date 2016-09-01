@@ -56,6 +56,7 @@ function FluidPropertyCreate()
   fluid_property%phase_id = 0
   fluid_property%diffusion_coefficient = 1.d-9
   fluid_property%gas_diffusion_coefficient = 2.13D-5
+  ! for liquid, one can use 12.6 kJ/mol as an activation energy
   fluid_property%diffusion_activation_energy = 0.d0
   fluid_property%nacl_concentration = 0.d0
   nullify(fluid_property%next)
@@ -115,6 +116,9 @@ subroutine FluidPropertyRead(fluid_property,input,option)
                              fluid_property%diffusion_activation_energy)
         call InputErrorMsg(input,option,'diffusion activation energy', &
                            'FLUID_PROPERTY')
+        call InputReadAndConvertUnits(input, &
+                fluid_property%diffusion_activation_energy, &
+                'kJ/mol','FLUID_PROPERTY,diffusion activation energy',option)
       case('GAS_DIFFUSION_COEFFICIENT') 
         call InputReadDouble(input,option, &
                              fluid_property%gas_diffusion_coefficient)
