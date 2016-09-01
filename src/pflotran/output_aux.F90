@@ -867,13 +867,18 @@ subroutine OpenAndWriteInputRecord(option)
 
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: filename
+  ! according to specfication, 8 characters
+  character(len=8) :: date_word
   PetscInt :: id
 
   id = option%fid_inputrecord
   filename = trim(option%global_prefix) // trim(option%group_prefix) // &
              '-input-record.tec'
   open(unit=id,file=filename,action="write",status="replace")
-  call fdate(word)
+!geh: this call does not work with IBM
+!  call fdate(word)
+  call date_and_time(date_word)
+  word = trim(date_word)
   if (OptionPrintToFile(option)) then
     write(id,'(a)') '---------------------------------------------------------&
                     &-----------------------'
