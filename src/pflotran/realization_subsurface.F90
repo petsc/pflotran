@@ -95,7 +95,8 @@ private
             RealizUpdateAllCouplerAuxVars, &
             RealizUnInitializedVarsFlow, &
             RealizUnInitializedVarsTran, &
-            RealizSetSoilReferencePressure
+            RealizSetSoilReferencePressure, &
+            RealizationLimitDTByCFL
 
   !TODO(intel)
   ! public from Realization_Base_class
@@ -2501,6 +2502,49 @@ subroutine RealizSetSoilReferencePressure(realization)
                               ierr); CHKERRQ(ierr)
 
 end subroutine RealizSetSoilReferencePressure
+
+! ************************************************************************** !
+
+subroutine RealizationLimitDTByCFL(realization,cfl_governor,dt)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/09/16 
+  !
+  use Option_module
+  use Output_Aux_module
+
+  implicit none
+
+  class(realization_subsurface_type) :: realization
+  PetscReal :: cfl_governor
+  PetscReal :: dt
+
+  PetscReal :: max_dt_cfl_1
+  PetscReal :: prev_dt
+  type(output_option_type), pointer :: output_option
+
+  if (Initialized(cfl_governor)) then
+    call RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
+    if (dt/cfl_governor > max_dt_cfl_1) then
+      prev_dt = dt
+      dt = max_dt_cfl_1*cfl_governor
+      output_option => realization%output_option
+      if (OptionPrintToScreen(realization%option)) then
+        write(*, &
+          '(" CFL Limiting (",f4.1,"): ",1pe12.4," -> ",1pe12.4," [",a,"]")') &
+              cfl_governor,prev_dt/output_option%tconv, &
+              dt/output_option%tconv,trim(output_option%tunit)
+      endif
+      if (OptionPrintToFile(realization%option)) then
+        write(realization%option%fid_out, &
+          '(" CFL Limiting (",f4.1,"): ",1pe12.4," -> ",1pe12.4," [",a,"]")') &
+              cfl_governor,prev_dt/output_option%tconv, &
+              dt/output_option%tconv,trim(output_option%tunit)
+      endif
+    endif
+  endif
+
+end subroutine RealizationLimitDTByCFL
 
 ! ************************************************************************** !
 

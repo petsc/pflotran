@@ -186,6 +186,7 @@ subroutine PMRichardsUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
+  use Realization_Subsurface_class, only : RealizationLimitDTByCFL
 
   implicit none
   
@@ -232,7 +233,7 @@ subroutine PMRichardsUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   dtt = max(dtt,dt_min)
   dt = dtt
 
-  call PMSubsurfaceFlowLimitDTByCFL(this,dt)
+  call RealizationLimitDTByCFL(this%realization,this%cfl_governor,dt)
   
 end subroutine PMRichardsUpdateTimestep
 
