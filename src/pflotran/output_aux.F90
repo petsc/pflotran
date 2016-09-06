@@ -866,7 +866,7 @@ subroutine OpenAndWriteInputRecord(option)
   type(option_type), pointer :: option
 
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=8) :: date_word
   character(len=10) :: time_word
   character(len=5) :: zone_word
