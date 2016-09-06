@@ -5371,6 +5371,11 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
       enddo
     enddo
   endif  
+  
+  if (associated(rxn_sandbox_list)) then
+    call RSandboxUpdateKineticState(rt_auxvar,global_auxvar, &
+                                    material_auxvar,reaction,option)
+  endif  
 
 end subroutine RUpdateKineticState
 

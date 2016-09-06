@@ -1710,10 +1710,10 @@ subroutine TOilImsDerivativePassTest(toil_auxvar,option)
   !class(auxvar_flow_type) :: toil_auxvar(0:)
   type(option_type) :: option
 
-  write(*,"('acc sat01 derivTest = ',e10.4)"), toil_auxvar(0)%den(2)
-  write(*,"('acc sat11 derivTest = ',e10.4)"), toil_auxvar(1)%den(2) 
-  write(*,"('acc sat21 derivTest = ',e10.4)"), toil_auxvar(2)%den(2) 
-  write(*,"('acc sat31 derivTest = ',e10.4)"), toil_auxvar(3)%den(2) 
+  write(*,"('acc sat01 derivTest = ',e10.4)") toil_auxvar(0)%den(2)
+  write(*,"('acc sat11 derivTest = ',e10.4)") toil_auxvar(1)%den(2) 
+  write(*,"('acc sat21 derivTest = ',e10.4)") toil_auxvar(2)%den(2) 
+  write(*,"('acc sat31 derivTest = ',e10.4)") toil_auxvar(3)%den(2) 
      
 
 end subroutine TOilImsDerivativePassTest
