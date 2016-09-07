@@ -213,7 +213,8 @@ subroutine WellFlowEnergyExplJDerivative(this,iconn,ghosted_id,isothermal, &
   PetscBool :: isothermal
   PetscInt :: energy_equation_index
   type(option_type) :: option
-  PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  !PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  PetscReal :: Jac(:,:)
 
   !type(flow_toil_ims_condition_type), pointer :: src_sink_condition
   !type(toil_ims_auxvar_type) :: toil_auxvar(0:)

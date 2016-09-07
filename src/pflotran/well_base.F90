@@ -687,7 +687,8 @@ subroutine WellBaseExplJDerivative(this,iconn,ghosted_id,isothermal, &
   PetscBool :: isothermal
   PetscInt :: energy_equation_index
   type(option_type) :: option
-  PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  !PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  PetscReal :: Jac(:,:)
 
   print *, "WellFlowEnergyExplJDerivative must be extended"
   stop  
@@ -787,8 +788,11 @@ subroutine WellBaseExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
   PetscBool :: isothermal
   PetscInt :: ghosted_id, dof
   type(option_type) :: option
-  PetscReal :: Res(1:option%nflowdof)
-  PetscReal :: ss_flow_vol_flux(1:option%nphase)
+  !PetscReal :: Res(1:option%nflowdof)
+  !PetscReal :: ss_flow_vol_flux(1:option%nphase)
+  PetscReal :: Res(:)
+  PetscReal :: ss_flow_vol_flux(:)
+
 
   print *, "WellBaseExplRes must be extended"
   stop  
