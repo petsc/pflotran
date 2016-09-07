@@ -34,6 +34,7 @@ module Reaction_Sandbox_module
             RSandboxSkipInput, &
             RSandboxSetup, &
             RSandbox, &
+            RSandboxUpdateKineticState, &
             RSandboxDestroy
 
 contains
@@ -241,16 +242,50 @@ subroutine RSandbox(Residual,Jacobian,compute_derivative,rt_auxvar, &
   cur_reaction => rxn_sandbox_list
   do
     if (.not.associated(cur_reaction)) exit
-!    select type(cur_reaction)
-!      class is(reaction_sandbox_clm_cn_type)
-        call cur_reaction%Evaluate(Residual,Jacobian,compute_derivative, &
-                                   rt_auxvar,global_auxvar,material_auxvar, &
-                                   reaction,option)
-!    end select
+      call cur_reaction%Evaluate(Residual,Jacobian,compute_derivative, &
+                                 rt_auxvar,global_auxvar,material_auxvar, &
+                                 reaction,option)
     cur_reaction => cur_reaction%next
   enddo
 
 end subroutine RSandbox
+
+! ************************************************************************** !
+
+subroutine RSandboxUpdateKineticState(rt_auxvar,global_auxvar, &
+                                      material_auxvar,reaction,option)
+  ! 
+  ! Updates volume fractions, etc. at the end of a time step.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/06/16
+  ! 
+
+  use Option_module
+  use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use Global_Aux_module
+  use Material_Aux_class, only: material_auxvar_type
+  
+  implicit none
+
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
+  
+  class(reaction_sandbox_base_type), pointer :: cur_reaction
+  
+  cur_reaction => rxn_sandbox_list
+  do
+    if (.not.associated(cur_reaction)) exit
+      call cur_reaction%UpdateKineticState(rt_auxvar,global_auxvar, &
+                                           material_auxvar,reaction,option)
+    cur_reaction => cur_reaction%next
+  enddo
+
+end subroutine RSandboxUpdateKineticState
 
 ! ************************************************************************** !
 

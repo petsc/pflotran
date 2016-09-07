@@ -24,6 +24,8 @@ module Reaction_Sandbox_Cyber_class
     PetscInt :: doc_id
     PetscInt :: biomass_id
     PetscInt :: co2_id
+    PetscInt :: carbon_consumption_species_id
+    character(len=MAXWORDLENGTH) :: carbon_consumption_species
     PetscReal :: f1
     PetscReal :: f2
     PetscReal :: f3
@@ -96,6 +98,7 @@ function CyberCreate()
   CyberCreate%doc_id = UNINITIALIZED_INTEGER
   CyberCreate%biomass_id = UNINITIALIZED_INTEGER
   CyberCreate%co2_id = UNINITIALIZED_INTEGER
+  CyberCreate%carbon_consumption_species_id = UNINITIALIZED_INTEGER
   CyberCreate%f1 = UNINITIALIZED_DOUBLE  
   CyberCreate%f2 = UNINITIALIZED_DOUBLE  
   CyberCreate%f3 = UNINITIALIZED_DOUBLE  
@@ -129,6 +132,7 @@ function CyberCreate()
   CyberCreate%stoich_3_biomass = UNINITIALIZED_DOUBLE  
   CyberCreate%activation_energy = UNINITIALIZED_DOUBLE  
   CyberCreate%nrxn = UNINITIALIZED_INTEGER
+  CyberCreate%carbon_consumption_species = ''
   nullify(CyberCreate%nrow)
   nullify(CyberCreate%ncol)
   nullify(CyberCreate%irow)
@@ -240,6 +244,11 @@ subroutine CyberRead(this,input,option)
       case('ACTIVATION_ENERGY')
         call InputReadDouble(input,option,this%activation_energy)  
         call InputErrorMsg(input,option,'activation energy',error_string)         
+      case('CARBON_CONSUMPTION_SPECIES')
+        call InputReadWord(input,option, &
+                           this%carbon_consumption_species,PETSC_TRUE)
+        call InputErrorMsg(input,option,'carbon consumption species', &
+                           error_string)
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
@@ -298,6 +307,12 @@ subroutine CyberSetup(this,reaction,option)
   word = 'CO2(aq)'
   this%co2_id = &
     GetPrimarySpeciesIDFromName(word,reaction,option)
+  if (len_trim(this%carbon_consumption_species) > 0) then 
+    word = this%carbon_consumption_species
+    this%carbon_consumption_species_id = &
+      GetImmobileSpeciesIDFromName(word,reaction%immobile, &
+                                   PETSC_TRUE,option)
+  endif
   
   ! constants based on Hyun's writeup on 6/21/16 entitled "Mini-cybernetic 
   ! model of batch denitrification process"
@@ -589,6 +604,13 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   Residual(this%doc_id) = Residual(this%doc_id) - &
                           k_deg_scaled/this%f_act * X * L_water
                  
+  ! calculate carbon consumption
+  if (this%carbon_consumption_species_id > 0) then
+    ! Residual(this%co2_id) holds the production of co2(aq) in moles/sec
+    i = reaction%offset_immobile + this%carbon_consumption_species_id
+    Residual(i) = Residual(this%co2_id)
+  endif
+  
   if (compute_derivative) then
   
     dr1kin_ddoc = k1_scaled * &
