@@ -127,7 +127,7 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
     if (rt_parameter%temperature_dependent_diffusion) then
       select case(iphase)
         case(LIQUID_PHASE)
-          t_ref_inv = 1.d0/283.15d0 ! 1. / (25. + 273.15)
+          t_ref_inv = 1.d0/298.15d0 ! 1. / (25. + 273.15)
           molecular_diffusion_up = &
             rt_parameter%diffusion_coefficient(iphase) * &
             exp(rt_parameter%diffusion_activation_energy(iphase) / &
@@ -286,7 +286,7 @@ subroutine TDispersionBC(ibndtype, &
     if (rt_parameter%temperature_dependent_diffusion) then
       select case(iphase)
         case(LIQUID_PHASE)
-          t_ref_inv = 1.d0/283.15d0 ! 1. / (25. + 273.15)
+          t_ref_inv = 1.d0/298.15d0 ! 1. / (25. + 273.15)
           molecular_diffusion = &
             rt_parameter%diffusion_coefficient(iphase) * &
             exp(rt_parameter%diffusion_activation_energy(iphase) / &
