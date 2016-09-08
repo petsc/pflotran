@@ -727,6 +727,16 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
     Jacobian(this%doc_id,this%biomass_id) = &
       Jacobian(this%doc_id,this%biomass_id) - &
       k_deg_scaled/this%f_act * kg_water
+      
+    ! calculate carbon consumption
+    if (this%carbon_consumption_species_id > 0) then
+      ! copy all derivatives except diagonal into carbon consumption 
+      ! species row
+      i = reaction%offset_immobile + this%carbon_consumption_species_id
+      Jacobian(i,:) = Jacobian(this%co2_id,:)
+      Jacobian(i,i) = Jacobian(this%co2_id,this%co2_id)
+      Jacobian(i,this%co2_id) = 0.d0
+    endif
     
   endif
   
