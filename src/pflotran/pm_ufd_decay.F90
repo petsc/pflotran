@@ -15,18 +15,19 @@ module PM_UFD_Decay_class
   
   type, public, extends(pm_base_type) :: pm_ufd_decay_type
     class(realization_subsurface_type), pointer :: realization
-    PetscInt, pointer :: element(:)
     PetscInt, pointer :: element_isotopes(:,:)
     PetscInt, pointer :: isotope_to_primary_species(:)
     PetscInt, pointer :: isotope_to_mineral(:)
     PetscReal, pointer :: isotope_decay_rate(:)
     PetscInt, pointer :: isotope_daughters(:,:)
+    PetscReal, pointer :: isotope_daughter_stoich(:,:)
     PetscInt, pointer :: isotope_parents(:,:)
     PetscReal, pointer :: element_solubility(:)
     PetscReal, pointer :: element_Kd(:,:)
     PetscInt :: num_elements
     PetscInt :: num_isotopes
-    PetscInt, pointer :: num_isotopes_per_element(:)
+    character(len=MAXWORDLENGTH), pointer :: element_name(:)
+    character(len=MAXWORDLENGTH), pointer :: isotope_name(:)
     type(isotope_type), pointer :: isotope_list
     type(element_type), pointer :: element_list
   contains
@@ -107,16 +108,17 @@ function PMUFDDecayCreate()
   call PMBaseInit(PMUFDDecayCreate)
 
   nullify(PMUFDDecayCreate%realization)
-  nullify(PMUFDDecayCreate%element)
   nullify(PMUFDDecayCreate%element_isotopes)
   nullify(PMUFDDecayCreate%isotope_to_primary_species)
   nullify(PMUFDDecayCreate%isotope_to_mineral)
   nullify(PMUFDDecayCreate%isotope_decay_rate)
   nullify(PMUFDDecayCreate%isotope_daughters)
+  nullify(PMUFDDecayCreate%isotope_daughter_stoich)
   nullify(PMUFDDecayCreate%isotope_parents)
   nullify(PMUFDDecayCreate%element_solubility)
   nullify(PMUFDDecayCreate%element_Kd)
-  nullify(PMUFDDecayCreate%num_isotopes_per_element)
+  nullify(PMUFDDecayCreate%element_name)
+  nullify(PMUFDDecayCreate%isotope_name)
   nullify(PMUFDDecayCreate%isotope_list)
   nullify(PMUFDDecayCreate%element_list)
 
@@ -420,12 +422,15 @@ subroutine PMUFDDecayInit(this)
   num_isotopes_per_element = 0
   allocate(this%element_solubility(this%num_elements))
   this%element_solubility = 0.d0
+  allocate(this%element_name(this%num_elements))
+  this%element_name = ''
   allocate(this%element_Kd(this%num_elements,size(material_property_array)))
   this%element_Kd = UNINITIALIZED_DOUBLE
   element => this%element_list
   do
     if (.not.associated(element)) exit
     this%element_solubility(element%ielement) = element%solubility
+    this%element_name(element%ielement) = element%name
     if (.not.associated(element%Kd)) then
       write(word,*) size(material_property_array)
       option%io_buffer = trim(adjustl(word)) // ' Kds must be defined for &
@@ -497,6 +502,8 @@ subroutine PMUFDDecayInit(this)
     isotope => isotope%next
   enddo
   
+  allocate(this%isotope_name(this%num_isotopes))
+  this%isotope_name = ''
   allocate(this%isotope_to_primary_species(this%num_isotopes))
   this%isotope_to_primary_species = UNINITIALIZED_INTEGER
   allocate(this%isotope_to_mineral(this%num_isotopes))
@@ -507,14 +514,19 @@ subroutine PMUFDDecayInit(this)
   this%element_isotopes(0,:) = 0
   allocate(this%isotope_decay_rate(this%num_isotopes))
   this%isotope_decay_rate = UNINITIALIZED_DOUBLE
-  allocate(this%isotope_daughters(0:max_daughters_per_isotope,this%num_isotopes))
+  allocate(this%isotope_daughters(0:max_daughters_per_isotope, &
+                                  this%num_isotopes))
   this%isotope_daughters = UNINITIALIZED_INTEGER
   this%isotope_daughters(0,:) = 0
+  allocate(this%isotope_daughter_stoich(max_daughters_per_isotope, &
+                                        this%num_isotopes))
+  this%isotope_daughter_stoich(:,:) = UNINITIALIZED_DOUBLE
   
   isotope => this%isotope_list
   do
     if (.not.associated(isotope)) exit
     found = PETSC_FALSE
+    this%isotope_name(isotope%iisotope) = isotope%name
     this%isotope_to_primary_species(isotope%iisotope) = &
       GetPrimarySpeciesIDFromName(isotope%name,reaction,option)
     word = isotope%name
@@ -539,6 +551,8 @@ subroutine PMUFDDecayInit(this)
           found = PETSC_TRUE
           this%isotope_daughters(icount,isotope%iisotope) = isotope2%iisotope
           this%isotope_daughters(0,isotope%iisotope) = icount
+          this%isotope_daughter_stoich(icount,isotope%iisotope) = &
+            daughter%stoichiometry
           exit
         endif
         isotope2 => isotope2%next
@@ -662,6 +676,12 @@ recursive subroutine PMUFDDecayInitializeRun(this)
       enddo
     enddo      
   enddo
+
+  if (maxval(this%isotope_daughter_stoich) > 1.d0) then
+    this%option%io_buffer = 'Daughter stoichiometries have not been set up &
+      &in pm_ufd_decay.F90.'
+    call printErrMsg(this%option)
+  endif
 
 end subroutine PMUFDDecayInitializeRun
 
@@ -821,8 +841,8 @@ subroutine PMUFDDecaySolve(this,time,ierr)
         coeff(i) = coeff(i) - (this%isotope_decay_rate(ip) * mass_old(ip)) / &
           (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))
         ! loop through the isotope's parent's parents:
-        do g = 1,this%isotope_parents(0,p)
-          ig = this%isotope_parents(g,p)
+        do g = 1,this%isotope_parents(0,ip)
+          ig = this%isotope_parents(g,ip)
           coeff(i) = coeff(i) - &
             ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &        
             mass_old(ig)) / ((this%isotope_decay_rate(ip) - &
@@ -846,8 +866,8 @@ subroutine PMUFDDecaySolve(this,time,ierr)
               (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))) * &
                exp(-1.d0 * this%isotope_decay_rate(ip) * dt))
         ! loop through the isotope's parent's parents:
-        do g = 1,this%isotope_parents(0,p)
-          ig = this%isotope_parents(g,p)
+        do g = 1,this%isotope_parents(0,ip)
+          ig = this%isotope_parents(g,ip)
           mass_iso_tot1(i) = mass_iso_tot1(i) - &
             ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &
             mass_old(ig) * exp(-1.d0 * this%isotope_decay_rate(ip) * dt)) / &
@@ -1097,6 +1117,7 @@ subroutine PMUFDDecayInputRecord(this)
   ! Author: Jenn Frederick, SNL
   ! Date: 03/21/2016
   ! 
+  use Material_module
   
   implicit none
   
@@ -1104,11 +1125,60 @@ subroutine PMUFDDecayInputRecord(this)
 
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: id
+  PetscInt :: iele
+  PetscInt :: iiso
+  PetscInt :: i
+  PetscInt :: iparent, idaughter
+  type(material_property_ptr_type), pointer :: material_property_array(:)
 
   id = INPUT_RECORD_UNIT
 
   write(id,'(a29)',advance='no') 'pm: '
   write(id,'(a)') this%name
+
+  material_property_array => this%realization%patch%material_property_array
+
+  do iele = 1, this%num_elements
+    write(id,'(2x,"Element: ",a)') this%element_name(iele)
+    write(id,'(4x,"Solubility:",es13.5)') this%element_solubility(iele)
+    write(id,'(4x,"KDs")')
+    do i = 1, size(this%element_Kd,2)
+      write(id,'(6x,a32,es13.5)') material_property_array(i)%ptr%name, &
+        this%element_Kd(iele,i)
+    enddo 
+    write(id,'(4x,"Isotopes")')
+    do i = 1, this%element_isotopes(0,iele)
+      iiso = this%element_isotopes(i,iele)
+      write(id,'(6x,a)') this%isotope_name(iiso)
+    enddo
+  enddo
+
+  do iiso = 1, this%num_isotopes
+    write(id,'(2x,"Isotope: ",a)') this%isotope_name(iiso)
+    write(id,'(4x,"Primary Species: ",a)') &
+      this%realization%reaction%primary_species_names( &
+        this%isotope_to_primary_species(iiso))
+    write(id,'(4x,"Decay Rate:",es13.5)') this%isotope_decay_rate(iiso)
+    write(id,'(4x,"Parent(s)")')
+    if (this%isotope_parents(0,iiso) > 0) then
+      do i = 1, this%isotope_parents(0,iiso)
+        iparent = this%isotope_parents(i,iiso)
+        write(id,'(6x,a)') this%isotope_name(iparent)
+      enddo
+    else
+        write(id,'(6x,"None")')
+    endif
+    write(id,'(4x,"Daughter(s), stoichiometry")')
+    if (this%isotope_daughters(0,iiso) > 0) then
+      do i = 1, this%isotope_daughters(0,iiso)
+        idaughter = this%isotope_daughters(i,iiso)
+        write(id,'(6x,a32,es13.5)') this%isotope_name(idaughter), &
+          this%isotope_daughter_stoich(i,iiso)
+      enddo
+    else
+        write(id,'(6x,"None")')
+    endif
+  enddo
 
 end subroutine PMUFDDecayInputRecord
 
@@ -1131,16 +1201,17 @@ subroutine PMUFDDecayDestroy(this)
   type(isotope_type), pointer :: cur_isotope, prev_isotope
   type(daughter_type), pointer :: cur_daughter, prev_daughter
     
-  call DeallocateArray(this%element)
   call DeallocateArray(this%element_isotopes)
   call DeallocateArray(this%isotope_to_primary_species)
   call DeallocateArray(this%isotope_to_mineral)
   call DeallocateArray(this%isotope_decay_rate)
   call DeallocateArray(this%isotope_daughters)
+  call DeallocateArray(this%isotope_daughter_stoich)
   call DeallocateArray(this%isotope_parents)
+  call DeallocateArray(this%isotope_name)
   call DeallocateArray(this%element_solubility)
   call DeallocateArray(this%element_Kd)
-  call DeallocateArray(this%num_isotopes_per_element)
+  call DeallocateArray(this%element_name)
   
   cur_isotope => this%isotope_list
   do

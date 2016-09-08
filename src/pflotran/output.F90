@@ -1340,7 +1340,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,Format) output_option%periodic_snap_output_ts_imod
+    write(word,'(i9)') output_option%periodic_snap_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
@@ -1400,7 +1400,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,Format) output_option%periodic_obs_output_ts_imod
+    write(word,'(i9)') output_option%periodic_obs_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
@@ -1459,7 +1459,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,Format) output_option%periodic_msbl_output_ts_imod
+    write(word,'(i7)') output_option%periodic_msbl_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
