@@ -1589,6 +1589,15 @@ subroutine SubsurfaceReadInput(simulation)
                 case ('CELL_CENTERED')
                   grid%unstructured_grid%explicit_grid%output_mesh_type = &
                      CELL_CENTERED_OUTPUT_MESH
+                  if (grid%unstructured_grid%explicit_grid%num_elems /= &
+                      grid%unstructured_grid%explicit_grid%num_cells_global &
+                     ) then 
+                    option%io_buffer = 'EXPLICIT_GRID_PRIMAL_GRID_TYPE ' // &
+                      'if CELL_CENTERED is speccified the number of cells'// &
+                      ' of the grid to print and those' // &
+                      ' of the computational grid must be equal.'
+                    call printErrMsg(option)
+                  end if
                 case default
                  option%io_buffer = 'EXPLICIT_GRID_PRIMAL_GRID_TYPE ' // &
                                'only VERTEX_CENTERED and CELL_CENTERED '// &
