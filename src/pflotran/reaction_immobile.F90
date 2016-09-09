@@ -99,8 +99,11 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: word, internal_units
+  character(len=MAXSTRINGLENGTH) :: error_string
   type(immobile_decay_rxn_type), pointer :: immobile_decay_rxn
   type(immobile_decay_rxn_type), pointer :: cur_immobile_decay_rxn
+
+  error_string = 'CHEMISTRY,IMMOBILE_DECAY_REACTION'
   
   immobile%ndecay_rxn = immobile%ndecay_rxn + 1
         
@@ -111,52 +114,35 @@ subroutine ImmobileDecayRxnRead(immobile,input,option)
     if (InputCheckExit(input,option)) exit
 
     call InputReadWord(input,option,word,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword', &
-                       'CHEMISTRY,IMMOBILE_DECAY_REACTION')
+    call InputErrorMsg(input,option,'keyword',error_string)
     call StringToUpper(word)   
 
     select case(trim(word))
       case('SPECIES_NAME')
         call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'species name', &
-                           'CHEMISTRY,IMMOBILE_DECAY_REACTION')
+        call InputErrorMsg(input,option,'species name',error_string)
         immobile_decay_rxn%species_name = word
       case('RATE_CONSTANT')
-        internal_units = 'unitless/sec'
+        internal_units = '1/sec'
         call InputReadDouble(input,option,immobile_decay_rxn%rate_constant)  
         call InputErrorMsg(input,option,'rate cosntant', &
                              'CHEMISTRY,IMMOBILE_DECAY_REACTION') 
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (InputError(input)) then
-          call InputDefaultMsg(input,option, &
-                        'CHEMISTRY,IMMOBILE_DECAY_REACTION RATE_CONSTANT UNITS')
-        else
-          immobile_decay_rxn%rate_constant = &
-            UnitsConvertToInternal(word,internal_units,option) * &
-            immobile_decay_rxn%rate_constant
-        endif
+        call InputReadAndConvertUnits(input,immobile_decay_rxn%rate_constant, &
+                                      internal_units, &
+                                      trim(error_string)//',rate constant', &
+                                      option)
       case('HALF_LIFE')
         internal_units = 'sec'
-        call InputReadDouble(input,option, &
-                             immobile_decay_rxn%half_life)
-        call InputErrorMsg(input,option,'half life', &
-                         'CHEMISTRY,IMMOBILE_DECAY_REACTION,REACTION')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (InputError(input)) then
-          call InputDefaultMsg(input,option, &
-            'CHEMISTRY,IMMOBILE_DECAY_REACTION HALF_LIFE UNITS')
-        else
-          immobile_decay_rxn%half_life = &
-            UnitsConvertToInternal(word,internal_units,option) * &
-            immobile_decay_rxn%half_life
-        endif
+        call InputReadDouble(input,option,immobile_decay_rxn%half_life)
+        call InputErrorMsg(input,option,'half life',error_string)
+        call InputReadAndConvertUnits(input,immobile_decay_rxn%half_life, &
+                                      internal_units, &
+                                      trim(error_string)//',half life',option)
         ! convert half life to rate constant
         immobile_decay_rxn%rate_constant = &
           -1.d0*log(0.5d0)/immobile_decay_rxn%half_life
       case default
-        call InputKeywordUnrecognized(word, &
-                                      'CHEMISTRY,IMMOBILE_DECAY_REACTION', &
-                                      option)
+        call InputKeywordUnrecognized(word,error_string,option)
     end select
   enddo
   if (Uninitialized(immobile_decay_rxn%rate_constant)) then

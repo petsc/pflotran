@@ -26,6 +26,7 @@ module PM_UFD_Decay_class
     PetscReal, pointer :: element_Kd(:,:)
     PetscInt :: num_elements
     PetscInt :: num_isotopes
+    PetscBool :: implicit_solution
     character(len=MAXWORDLENGTH), pointer :: element_name(:)
     character(len=MAXWORDLENGTH), pointer :: isotope_name(:)
     type(isotope_type), pointer :: isotope_list
@@ -107,6 +108,9 @@ function PMUFDDecayCreate()
   allocate(PMUFDDecayCreate)
   call PMBaseInit(PMUFDDecayCreate)
 
+  PMUFDDecayCreate%num_isotopes = 0
+  PMUFDDecayCreate%num_elements = 0
+  PMUFDDecayCreate%implicit_solution = PETSC_FALSE
   nullify(PMUFDDecayCreate%realization)
   nullify(PMUFDDecayCreate%element_isotopes)
   nullify(PMUFDDecayCreate%isotope_to_primary_species)
@@ -154,6 +158,7 @@ subroutine PMUFDDecayRead(this,input)
   PetscInt :: i
   character(len=MAXWORDLENGTH) :: Kd_material_name(20)
   PetscReal :: Kd(20)
+  PetscReal :: tempreal
 
   option => this%option
   
@@ -253,6 +258,17 @@ subroutine PMUFDDecayRead(this,input)
             case('DECAY_RATE')
               call InputReadDouble(input,option,isotope%decay_rate)
               call InputErrorMsg(input,option,'decay rate',error_string)
+              call InputReadAndConvertUnits(input,isotope%decay_rate,'1/sec', &
+                                            trim(error_string)//',decay rate', &
+                                            option)
+            case('HALF_LIFE')
+              call InputReadDouble(input,option,tempreal)
+              call InputErrorMsg(input,option,'half life',error_string)
+              call InputReadAndConvertUnits(input,tempreal,'sec', &
+                                            trim(error_string)//',half life', &
+                                            option)
+              ! convert half life to rate constant
+              isotope%decay_rate = -1.d0*log(0.5d0)/tempreal
             case('DAUGHTER')
               daughter => IsotopeDaughterCreate()
               call InputReadWord(input,option,daughter%name,PETSC_TRUE)
@@ -278,6 +294,8 @@ subroutine PMUFDDecayRead(this,input)
         endif
         prev_isotope => isotope
         nullify(isotope)
+      case('IMPLICIT_SOLUTION')
+        this%implicit_solution = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
@@ -391,7 +409,8 @@ subroutine PMUFDDecayInit(this)
   PetscInt :: max_daughters_per_isotope
   PetscInt :: max_parents_per_isotope
   PetscBool :: found
-  PetscInt :: iisotope
+  PetscInt :: iisotope, ielement
+  PetscInt :: g, ig, p, ip, d, id
   
   option => this%realization%option
   grid => this%realization%patch%grid
@@ -429,7 +448,13 @@ subroutine PMUFDDecayInit(this)
   element => this%element_list
   do
     if (.not.associated(element)) exit
-    this%element_solubility(element%ielement) = element%solubility
+    if (element%solubility > 0.d0) then
+      this%element_solubility(element%ielement) = element%solubility
+    else
+      option%io_buffer = 'Element "' // trim(element%name) // '" in &
+        &UFD_DECAY block must have a solubility greater than zero.'
+      call printErrMsg(option)
+    endif
     this%element_name(element%ielement) = element%name
     if (.not.associated(element%Kd)) then
       write(word,*) size(material_property_array)
@@ -586,6 +611,48 @@ subroutine PMUFDDecayInit(this)
       this%isotope_parents(this%isotope_parents(0, &
                                     this%isotope_daughters(icount,iisotope)), &
                            this%isotope_daughters(icount,iisotope)) = iisotope
+    enddo
+  enddo
+  ! error checking
+  do ielement = 1, this%num_elements
+    ! nothing yet
+  enddo
+  do iisotope = 1, this%num_isotopes
+    ! ensure that a decay rate is defined
+    if (Uninitialized(this%isotope_decay_rate(iisotope))) then
+      option%io_buffer = 'A decay rate must be defined for isotope "' // &
+        trim(this%isotope_name(iisotope)) // '".'
+      call printErrMsg(option)
+    endif
+    ! ensure that a stoichiometry is defined for all daughters
+    do d = 1, this%isotope_daughters(0,iisotope)
+      id = this%isotope_daughters(d,iisotope)
+      if (Uninitialized(this%isotope_daughter_stoich(d,iisotope))) then
+        option%io_buffer = 'A stoichiomtry must be defined for isotope ' // &
+          trim(this%isotope_name(iisotope)) // "'s daughter " // '"' // &
+          trim(this%isotope_name(id)) // '".'
+        call printErrMsg(option)
+      endif
+    enddo
+    ! ensure that a daughter is not the same as a parent or grandparent. this 
+    ! will produce NaNs through a divide by zero.
+    do p = 1, this%isotope_parents(0,iisotope)
+      ip = this%isotope_parents(p,iisotope)
+      if (ip == iisotope) then
+        option%io_buffer = 'PM UFD_DECAY isotope "' // &
+          trim(this%isotope_name(iisotope)) // &
+          '" is the same as its parent.'
+        call printErrMsg(option)
+      endif
+      do g = 1, this%isotope_parents(0,ip)
+        ig = this%isotope_parents(g,ip)
+        if (ig == iisotope) then
+          option%io_buffer = 'PM UFD_DECAY isotope "' // &
+            trim(this%isotope_name(iisotope)) // &
+            '" is the same as its grandparent.'
+          call printErrMsg(option)
+        endif
+      enddo
     enddo
   enddo
   
@@ -746,6 +813,7 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use Material_Aux_class
+  use Utility_module
   
   implicit none
 
@@ -784,6 +852,15 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   PetscBool :: above_solubility
   PetscReal, pointer :: xx_p(:)
 
+  PetscReal :: residual(this%num_isotopes)
+  PetscReal :: solution(this%num_isotopes)
+  PetscReal :: update(this%num_isotopes)
+  PetscInt :: indices(this%num_isotopes)
+  PetscReal :: Jacobian(this%num_isotopes,this%num_isotopes)
+  PetscReal :: rate, rate_constant, stoich, one_over_dt
+  PetscReal, parameter :: tolerance = 1.d-12
+  PetscInt :: idaughter
+
   ierr = 0
   
   option => this%realization%option
@@ -796,6 +873,7 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   material_auxvars => patch%aux%Material%auxvars
   
   dt = option%tran_dt
+  one_over_dt = 1.d0 / dt
   call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
 
   do local_id = 1, grid%nlmax
@@ -831,56 +909,92 @@ subroutine PMUFDDecaySolve(this,time,ierr)
     ! save the mass from the previous time step:
     mass_old(:) = mass_iso_tot0(:)
 
-    ! FIRST PASS decay ==============================================
-    do i = 1,this%num_isotopes
-      ! update the initial value of the isotope coefficient:
-      coeff(i) = mass_old(i)
-      ! loop through the isotope's parents:
-      do p = 1,this%isotope_parents(0,i)
-        ip = this%isotope_parents(p,i)
-        coeff(i) = coeff(i) - (this%isotope_decay_rate(ip) * mass_old(ip)) / &
-          (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))
-        ! loop through the isotope's parent's parents:
-        do g = 1,this%isotope_parents(0,ip)
-          ig = this%isotope_parents(g,ip)
-          coeff(i) = coeff(i) - &
-            ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &        
-            mass_old(ig)) / ((this%isotope_decay_rate(ip) - &
-            this%isotope_decay_rate(ig)) * (this%isotope_decay_rate(i) - &
-            this%isotope_decay_rate(ig)))) + ((this%isotope_decay_rate(ip) * &
-            this%isotope_decay_rate(ig) * mass_old(ig)) / &
-            ((this%isotope_decay_rate(ip) - this%isotope_decay_rate(ig)) * &
-            (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))))
-        enddo ! grandparent loop
-      enddo ! parent loop
-    enddo ! isotope loop
-    ! SECOND PASS decay =============================================
-    do i = 1,this%num_isotopes
-      ! decay the isotope species:
-      mass_iso_tot1(i) = coeff(i)*exp(-1.d0*this%isotope_decay_rate(i)*dt)
-      ! loop through the isotope's parents:
-      do p = 1,this%isotope_parents(0,i)
-        ip = this%isotope_parents(p,i)
-        mass_iso_tot1(i) = mass_iso_tot1(i) + &
-              (((this%isotope_decay_rate(ip) * mass_old(ip)) / &
-              (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))) * &
-               exp(-1.d0 * this%isotope_decay_rate(ip) * dt))
-        ! loop through the isotope's parent's parents:
-        do g = 1,this%isotope_parents(0,ip)
-          ig = this%isotope_parents(g,ip)
-          mass_iso_tot1(i) = mass_iso_tot1(i) - &
-            ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &
-            mass_old(ig) * exp(-1.d0 * this%isotope_decay_rate(ip) * dt)) / &
-            ((this%isotope_decay_rate(ip) - this%isotope_decay_rate(ig)) * &
-            (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip)))) + &
-            ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &
-            mass_old(ig) * exp(-1.d0 * this%isotope_decay_rate(ig) * dt)) / &
+    if (.not.this%implicit_solution) then
+
+      ! FIRST PASS decay ==============================================
+      do i = 1,this%num_isotopes
+        ! update the initial value of the isotope coefficient:
+        coeff(i) = mass_old(i)
+        ! loop through the isotope's parents:
+        do p = 1,this%isotope_parents(0,i)
+          ip = this%isotope_parents(p,i)
+          coeff(i) = coeff(i) - (this%isotope_decay_rate(ip) * mass_old(ip)) / &
+            (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))
+          ! loop through the isotope's parent's parents:
+          do g = 1,this%isotope_parents(0,ip)
+            ig = this%isotope_parents(g,ip)
+            coeff(i) = coeff(i) - &
+              ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &        
+              mass_old(ig)) / ((this%isotope_decay_rate(ip) - &
+              this%isotope_decay_rate(ig)) * (this%isotope_decay_rate(i) - &
+              this%isotope_decay_rate(ig)))) + ((this%isotope_decay_rate(ip) * &
+              this%isotope_decay_rate(ig) * mass_old(ig)) / &
+              ((this%isotope_decay_rate(ip) - this%isotope_decay_rate(ig)) * &
+              (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))))
+          enddo ! grandparent loop
+        enddo ! parent loop
+      enddo ! isotope loop
+      ! SECOND PASS decay =============================================
+      do i = 1,this%num_isotopes
+        ! decay the isotope species:
+        mass_iso_tot1(i) = coeff(i)*exp(-1.d0*this%isotope_decay_rate(i)*dt)
+        ! loop through the isotope's parents:
+        do p = 1,this%isotope_parents(0,i)
+          ip = this%isotope_parents(p,i)
+          mass_iso_tot1(i) = mass_iso_tot1(i) + &
+                (((this%isotope_decay_rate(ip) * mass_old(ip)) / &
+                (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip))) * &
+                 exp(-1.d0 * this%isotope_decay_rate(ip) * dt))
+          ! loop through the isotope's parent's parents:
+          do g = 1,this%isotope_parents(0,ip)
+            ig = this%isotope_parents(g,ip)
+            mass_iso_tot1(i) = mass_iso_tot1(i) - &
+              ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &
+              mass_old(ig) * exp(-1.d0 * this%isotope_decay_rate(ip) * dt)) / &
+              ((this%isotope_decay_rate(ip) - this%isotope_decay_rate(ig)) * &
+              (this%isotope_decay_rate(i) - this%isotope_decay_rate(ip)))) + &
+              ((this%isotope_decay_rate(ip) * this%isotope_decay_rate(ig) * &
+              mass_old(ig) * exp(-1.d0 * this%isotope_decay_rate(ig) * dt)) / &
             ((this%isotope_decay_rate(ip) - this%isotope_decay_rate(ig)) * &
             (this%isotope_decay_rate(i) - this%isotope_decay_rate(ig))))
-        enddo ! grandparent loop
-      enddo ! parent loop
-    enddo ! isotope loop
-    
+          enddo ! grandparent loop
+        enddo ! parent loop
+      enddo ! isotope loop
+
+    else
+      ! implicit solution approach
+      residual = 1.d0
+      solution = mass_iso_tot0
+      do ! nonlinear loop
+        if (dot_product(residual,residual) < tolerance) exit
+        residual = 0.d0
+        Jacobian = 0.d0
+        do iiso = 1, this%num_isotopes
+          rate_constant = this%isotope_decay_rate(iiso)
+          ! accumulation term
+          residual(iiso) = residual(iiso) + &
+                           (solution(iiso) - mass_iso_tot0(iiso)) * one_over_dt
+          Jacobian(iiso,iiso) = Jacobian(iiso,iiso) + &
+                                one_over_dt
+          rate = rate_constant * solution(iiso)
+          residual(iiso) = residual(iiso) + rate
+          Jacobian(iiso,iiso) = Jacobian(iiso,iiso) + rate_constant
+          do i = 1, this%isotope_daughters(0,iiso)
+            idaughter = this%isotope_daughters(i,iiso)
+            stoich = this%isotope_daughter_stoich(i,iiso)
+            residual(idaughter) = residual(idaughter) - rate * stoich
+            Jacobian(idaughter,iiso) = Jacobian(idaughter,iiso) - &
+                                       rate_constant * stoich
+          enddo
+        enddo
+        update = residual
+        call ludcmp(Jacobian,this%num_isotopes,indices,i)
+        call lubksb(Jacobian,this%num_isotopes,indices,update)
+        solution = solution - update
+      enddo
+      mass_iso_tot1 = solution 
+    endif
+
     mass_iso_tot1 = max(mass_iso_tot1,1.d-90)
 
     do iele = 1, this%num_elements

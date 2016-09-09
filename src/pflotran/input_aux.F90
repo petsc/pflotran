@@ -2214,6 +2214,7 @@ subroutine InputReadAndConvertUnits(input,double_value,internal_units, &
 
   character(len=MAXWORDLENGTH) :: units
   character(len=MAXWORDLENGTH) :: internal_units_word
+  character(len=MAXSTRINGLENGTH) :: string
 
   call InputReadWord(input,option,units,PETSC_TRUE)
   if (input%ierr == 0) then
@@ -2226,7 +2227,8 @@ subroutine InputReadAndConvertUnits(input,double_value,internal_units, &
     double_value = double_value * &
                    UnitsConvertToInternal(units,internal_units_word,option)
   else
-    call InputDefaultMsg(input,option,keyword_string)
+    string = trim(keyword_string) // ' units'
+    call InputDefaultMsg(input,option,string)
   endif
   
 end subroutine InputReadAndConvertUnits

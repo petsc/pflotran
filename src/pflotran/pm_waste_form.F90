@@ -674,7 +674,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             call InputErrorMsg(input,option,'specific surface area', &
                                error_string)
             call InputReadAndConvertUnits(input,double,'m^2/kg', &
-                                  error_string//',specific surface area',option)
+                               trim(error_string)//',specific surface area', &
+                                          option)
             select type(new_mechanism)
               type is(wf_mechanism_dsnf_type)
                 option%io_buffer = 'SPECIFIC_SURFACE_AREA cannot be &
@@ -692,7 +693,9 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             call InputReadDouble(input,option,new_mechanism%matrix_density)
             call InputErrorMsg(input,option,'matrix density',error_string)
             call InputReadAndConvertUnits(input,new_mechanism%matrix_density, &
-                              'kg/m^3',error_string//',matrix density',option)
+                                          'kg/m^3', &
+                                       trim(error_string)//',matrix density', &
+                                          option)
         !--------------------------
           case('FRACTIONAL_DISSOLUTION_RATE')
             select type(new_mechanism)
@@ -703,7 +706,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                                    error_string)
                 call InputReadAndConvertUnits(input, &
                          new_mechanism%frac_dissolution_rate,'unitless/sec', &
-                         error_string//',fractional dissolution rate',option)
+                         trim(error_string)//',fractional dissolution rate', &
+                         option)
               class default
                 option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE cannot be &
                                    &specified for ' // trim(error_string)
@@ -718,7 +722,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                 call InputErrorMsg(input,option,'dissolution rate',error_string)
                 call InputReadAndConvertUnits(input, &
                        new_mechanism%dissolution_rate, &
-                       'kg/m^2-sec',error_string//',dissolution_rate',option)
+                       'kg/m^2-sec',trim(error_string)//',dissolution_rate', &
+                       option)
               class default
                 option%io_buffer = 'DISSOLUTION_RATE cannot be specified for ' &
                                    // trim(error_string)
@@ -733,7 +738,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
 #ifndef FMDM_MODEL
                 ! if fmdm model is not on, then burnup is dissolution rate
                 call InputReadAndConvertUnits(input,new_mechanism%burnup, &
-                                'kg/m^2-sec',error_string//',burnup',option)
+                                'kg/m^2-sec',trim(error_string)//',burnup', &
+                                option)
                 option%io_buffer = 'Warning: FMDM is not linked, but an &
                                    &FMDM mechanism was defined. BURNUP &
                                    &will be used for fuel dissolution rate.'
@@ -1014,7 +1020,8 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
             call InputReadDouble(input,option,new_waste_form%volume)
             call InputErrorMsg(input,option,'volume',error_string)
             call InputReadAndConvertUnits(input,new_waste_form%volume, &
-                                          'm^3',error_string//',volume',option)
+                                          'm^3',trim(error_string)//',volume', &
+                                          option)
         !-----------------------------
           case('COORDINATE')
             call GeometryReadCoordinate(input,option, &
@@ -1033,14 +1040,15 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
                                error_string)
             call InputReadAndConvertUnits(input, &
                         new_waste_form%canister_vitality_rate,'unitless/sec', &
-                        error_string//'canister vitality rate',option)
+                        trim(error_string)//'canister vitality rate',option)
         !-----------------------------
           case('CANISTER_BREACH_TIME')
             call InputReadDouble(input,option, &
                                  new_waste_form%breach_time)
             call InputErrorMsg(input,option,'CANISTER_BREACH_TIME',error_string)
             call InputReadAndConvertUnits(input,new_waste_form%breach_time, &
-                           'sec',error_string//',CANISTER_BREACH_TIME',option)
+                           'sec',trim(error_string)//',CANISTER_BREACH_TIME', &
+                           option)
         !-----------------------------    
           case default
             call InputKeywordUnrecognized(word,error_string,option)
