@@ -341,6 +341,7 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   ! 
 
   use Realization_Base_class, only : RealizationGetVariable
+  use Realization_Subsurface_class, only : RealizationLimitDTByCFL
   use Field_module
   use Global_module, only : GlobalSetAuxVarVecLoc
   use Variables_module, only : LIQUID_SATURATION, GAS_SATURATION
@@ -395,7 +396,7 @@ subroutine PMGeneralUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
     call this%realization%comm1%GlobalToLocal(field%work,field%work_loc)
     call GlobalSetAuxVarVecLoc(this%realization,field%work_loc, &
                                GAS_SATURATION,TIME_NULL)
-    call PMSubsurfaceFlowLimitDTByCFL(this,dt)
+    call RealizationLimitDTByCFL(this%realization,this%cfl_governor,dt)
   endif
 
 end subroutine PMGeneralUpdateTimestep

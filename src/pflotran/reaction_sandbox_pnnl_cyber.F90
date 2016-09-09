@@ -243,7 +243,9 @@ subroutine CyberRead(this,input,option)
         call InputErrorMsg(input,option,'f_act',error_string)
       case('ACTIVATION_ENERGY')
         call InputReadDouble(input,option,this%activation_energy)  
-        call InputErrorMsg(input,option,'activation energy',error_string)         
+        call InputErrorMsg(input,option,'activation energy',error_string)
+        call InputReadAndConvertUnits(input,this%activation_energy,'J/K-mol', &
+                                      error_string//',kdeg',option)
       case('CARBON_CONSUMPTION_SPECIES')
         call InputReadWord(input,option, &
                            this%carbon_consumption_species,PETSC_TRUE)
@@ -340,6 +342,8 @@ subroutine CyberSetup(this,reaction,option)
 !  this%f_act = 1.d40
 !  this%k_deg = 0.d0
 
+  ! NOTE: CO2 stiochiometries below factor in on carbon consumption.
+  ! Take care to ensure that changes do not adversely affect consumption.
   this%stoich_1_doc = -1.d0
   this%stoich_1_nh4 = -0.2d0*(1.d0-this%f1)
   this%stoich_1_no3 = -2.d0*this%f1
@@ -727,6 +731,16 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
     Jacobian(this%doc_id,this%biomass_id) = &
       Jacobian(this%doc_id,this%biomass_id) - &
       k_deg_scaled/this%f_act * kg_water
+      
+    ! calculate carbon consumption
+    if (this%carbon_consumption_species_id > 0) then
+      ! copy all derivatives except diagonal into carbon consumption 
+      ! species row
+      i = reaction%offset_immobile + this%carbon_consumption_species_id
+      Jacobian(i,:) = Jacobian(this%co2_id,:)
+      Jacobian(i,i) = Jacobian(this%co2_id,this%co2_id)
+      Jacobian(i,this%co2_id) = 0.d0
+    endif
     
   endif
   

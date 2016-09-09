@@ -183,6 +183,7 @@ subroutine PMFlash2UpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   ! Author: Gautam Bisht
   ! Date: 11/27/13
   ! 
+  use Realization_Subsurface_class, only : RealizationLimitDTByCFL
 
   implicit none
   
@@ -237,7 +238,7 @@ subroutine PMFlash2UpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
       
   dt = dtt
 
-  call PMSubsurfaceFlowLimitDTByCFL(this,dt)
+  call RealizationLimitDTByCFL(this%realization,this%cfl_governor,dt)
   
 end subroutine PMFlash2UpdateTimestep
 

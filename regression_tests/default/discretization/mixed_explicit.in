@@ -91,7 +91,7 @@ TIME
   MAXIMUM_TIMESTEP_SIZE 10.d0 d
 END
 
-REFERENCE_PRESSURE 101325.
+REFERENCE_PRESSURE 0.101325d0 MPa ! use MPa here for testing
 
 #=========================== regions ==========================================
 REGION all

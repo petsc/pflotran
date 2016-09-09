@@ -96,6 +96,7 @@ module Reactive_Transport_Aux_module
     PetscReal :: newton_inf_scaled_res_tol
     PetscBool :: check_post_converged
     PetscBool :: calculate_transverse_dispersion
+    PetscBool :: temperature_dependent_diffusion
   end type reactive_transport_param_type
 
   ! Colloids
@@ -188,6 +189,7 @@ function RTAuxCreate(option)
   nullify(aux%rt_parameter%pri_spec_to_coll_spec)
   nullify(aux%rt_parameter%coll_spec_to_pri_spec)
   aux%rt_parameter%calculate_transverse_dispersion = PETSC_FALSE
+  aux%rt_parameter%temperature_dependent_diffusion = PETSC_FALSE
 #ifdef OS_STATISTICS
   aux%rt_parameter%newton_call_count = 0
   aux%rt_parameter%sum_newton_call_count = 0.d0
