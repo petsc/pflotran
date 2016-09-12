@@ -1,0 +1,394 @@
+#Description: 0D microbial degradation problem with biomass
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+    UFD_DECAY ufd_decay
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS
+    1
+  /
+END
+
+#=========================== flow mode ========================================
+# Uniform velocity (see below). No flow mode specified.
+
+#=========================== useful tranport parameters ==================
+UNIFORM_VELOCITY 0.d0 0.d0 0.d0 m/yr
+
+#=========================== chemistry ========================================
+# Uncomment to debug reactions
+#NUMERICAL_JACOBIAN_RXN
+CHEMISTRY
+  PRIMARY_SPECIES
+    A1
+    B1
+    C1
+    D1
+    E1
+    F1
+    G1
+    M1
+    N1
+    O1
+    X1
+    Y1
+    Z1
+  /
+  MINERALS
+    A1(s)
+    B1(s)
+    C1(s)
+    D1(s)
+    E1(s)
+    F1(s)
+    G1(s)
+    M1(s)
+    N1(s)
+    O1(s)
+    X1(s)
+    Y1(s)
+    Z1(s)
+  /
+  MINERAL_KINETICS
+    A1(s)
+      RATE_CONSTANT 0.d0
+    /
+    B1(s)
+      RATE_CONSTANT 0.d0
+    /
+    C1(s)
+      RATE_CONSTANT 0.d0
+    /
+    D1(s)
+      RATE_CONSTANT 0.d0
+    /
+    E1(s)
+      RATE_CONSTANT 0.d0
+    /
+    F1(s)
+      RATE_CONSTANT 0.d0
+    /
+    G1(s)
+      RATE_CONSTANT 0.d0
+    /
+    M1(s)
+      RATE_CONSTANT 0.d0
+    /
+    N1(s)
+      RATE_CONSTANT 0.d0
+    /
+    O1(s)
+      RATE_CONSTANT 0.d0
+    /
+    X1(s)
+      RATE_CONSTANT 0.d0
+    /
+    Y1(s)
+      RATE_CONSTANT 0.d0
+    /
+    Z1(s)
+      RATE_CONSTANT 0.d0
+    /
+  /
+  DATABASE ./abc.dat
+  LOG_FORMULATION
+  ACTIVITY_COEFFICIENTS OFF
+  OUTPUT
+    all
+    TOTAL
+  /
+END
+
+#=========================== solver options ===================================
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 1 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+END
+
+#=========================== output options ===================================
+OUTPUT
+  OBSERVATION_FILE
+    PERIODIC TIMESTEP 1
+  END
+  SNAPSHOT_FILE
+#    PERIODIC TIMESTEP 1
+    FORMAT TECPLOT POINT
+  END
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 25.d0 y            ! A(aq) at 50m midpoint
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
+#  MAXIMUM_TIMESTEP_SIZE 1.d-3 y
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    -1.d20 -1.d20 -1.d20
+    1.d20 1.d20 1.d20
+  /
+END
+
+REGION pt
+  COORDINATE 0.5d0 0.5d0 0.5d0
+END
+
+#=========================== observation points ===============================
+OBSERVATION
+  REGION pt
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+#=========================== constraints ======================================
+CONSTRAINT initial
+  CONCENTRATIONS
+    A1   1.d-3  F
+    B1   1.d-4  F
+    C1   1.d-5  F
+    D1   1.d-6  F
+    E1   1.d-7  F
+    F1   1.d-8  F
+    G1   1.d-9  F
+    M1   1.d-12 F
+    N1   1.d-12 F
+    O1   1.d-12 F
+    X1   1.d-8  F
+    Y1   1.d-9  F
+    Z1   1.d-10 F
+  /
+  MINERALS
+    A1(s)   0.d0  1.d0
+    B1(s)   0.d0  1.d0
+    C1(s)   0.d0 1.d0
+    D1(s)   0.d0  1.d0
+    E1(s)   0.d0  1.d0
+    F1(s)   0.d0  1.d0
+    G1(s)   0.d0  1.d0
+    M1(s)   0.d0  1.d0
+    N1(s)   0.d0  1.d0
+    O1(s)   0.d0  1.d0
+    X1(s)   0.d0  1.d0
+    Y1(s)   0.d0  1.d0
+    Z1(s)   0.d0  1.d0
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+END_SUBSURFACE
+
+#=========================== ufd decay ========================================
+UFD_DECAY
+  IMPLICIT_SOLUTION
+  ELEMENT A
+    SOLUBILITY 1.d0
+    KD
+      soil1 0.d0
+    /
+  /
+  ELEMENT B
+    SOLUBILITY 1.d-4
+    KD
+      soil1 0.d0
+    /
+  /
+  ELEMENT C
+    SOLUBILITY 1.d0
+    KD
+      soil1 0.d0
+    /
+  /
+  ELEMENT D
+    SOLUBILITY 1.d0
+    KD
+      soil1 1000.d0
+    /
+  /
+  ELEMENT E
+    SOLUBILITY 1.d0
+    KD
+      soil1 0.d0
+    /
+  /
+  ELEMENT F
+    SOLUBILITY 1.d-8
+    KD
+      soil1 0.d0
+    /
+  /
+  ELEMENT G
+    SOLUBILITY 1.d0
+    KD
+      soil1 0.d0
+    /
+  /
+  ELEMENT M
+    SOLUBILITY 1.d0
+    KD
+      soil1 0.d0
+    /
+  /
+  ELEMENT N
+    SOLUBILITY 3.d-7
+    KD
+      soil1 10000.d0
+    /
+  /
+  ELEMENT O
+    SOLUBILITY 1.d0
+    KD
+      soil1 0.d0
+    /
+  /
+  ELEMENT X
+    SOLUBILITY 1.d0
+    KD
+      soil1 0.d0
+    /
+  /
+  ELEMENT Y
+    SOLUBILITY 1.d0
+    KD
+      soil1 0.d0
+    /
+  /
+  ELEMENT Z
+    SOLUBILITY 1.d0
+    KD
+      soil1 0.d0
+    /
+  /
+  ! half life vs rate constant
+  ! 0.01 : 2.1979553d-6
+  ! 0.1  : 2.1979553d-7
+  ! 0.25 : 8.7918212d-8
+  ! 0.5  : 4.3959106d-8
+  ! 0.75 : 3.2969329d-8
+  ! 1    : 2.1979553d-8
+  ! 2    : 1.0989776d-8
+  ! 4    : 5.4948882d-9
+  ! 5    : 4.3959106d-9
+  ! 8    : 2.7474444d-9
+  ! 10   : 2.1979553d-9
+  ! 50   : 4.3959106d-10
+  ! 100  : 2.1979553d-10
+  ISOTOPE A1
+    ELEMENT A
+    DECAY_RATE 2.1979553d-8 ! 1 yr
+    DAUGHTER B1 1.d0
+  /
+  ISOTOPE B1
+    ELEMENT B
+    DECAY_RATE 3.2969329d-8 ! 0.75 yr
+    DAUGHTER C1 1.d0
+  /
+  ISOTOPE C1
+    ELEMENT C
+    DECAY_RATE 5.4948882d-9 ! 4 yr
+    DAUGHTER D1 1.d0
+    DAUGHTER M1 1.d0
+  /
+  ISOTOPE D1
+    ELEMENT D
+    DECAY_RATE 2.1979553d-8 ! 1 yr
+    DAUGHTER E1 1.d0
+  /
+  ISOTOPE E1
+    ELEMENT E
+    DECAY_RATE 2.1979553d-7 ! 0.1 yr
+    DAUGHTER F1 1.d0
+    DAUGHTER Y1 1.d0
+  /
+  ISOTOPE F1
+    ELEMENT F
+    DECAY_RATE 2.1979553d-10 ! 100 yr
+    DAUGHTER G1 1.d0
+  /
+  ISOTOPE G1
+    ELEMENT G
+    DECAY_RATE 4.3959106d-9 ! 5 yr
+  /
+  ISOTOPE M1
+    ELEMENT M
+    DECAY_RATE 2.1979553d-10 ! 100 yr
+    DAUGHTER N1 1.d0
+  /
+  ISOTOPE N1
+    ELEMENT N
+    DECAY_RATE 4.3959106d-9 ! 5 yr
+    DAUGHTER F1 1.d0
+    DAUGHTER O1 1.d0
+  /
+  ISOTOPE O1
+    ELEMENT O
+    DECAY_RATE 2.1979553d-7 ! 0.1 yr
+    DAUGHTER Z1 1.d0
+  /
+  ISOTOPE X1
+    ELEMENT X
+    DECAY_RATE 2.1979553d-10 ! 100 yr
+    DAUGHTER Y1 1.d0
+  /
+  ISOTOPE Y1
+    ELEMENT Y
+    DECAY_RATE 4.3959106d-9 ! 5 yr
+    DAUGHTER Z1 1.d0
+  /
+  ISOTOPE Z1
+    ELEMENT Z
+    DECAY_RATE 0.d0
+  /
+END
