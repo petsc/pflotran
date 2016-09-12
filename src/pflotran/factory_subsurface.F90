@@ -1570,7 +1570,43 @@ subroutine SubsurfaceReadInput(simulation)
 !....................
       case ('PRINT_PRIMAL_GRID')
         option%print_explicit_primal_grid = PETSC_TRUE
-        
+
+!....................
+      !out_mesh_type defaults for primal_explicit grid is vetex_centered
+      !this should go uner the OUTPUT card, together with PRINT_PRIMAL_GRID & PRINT_DUAL_GRID
+      case ('EXPLICIT_GRID_PRIMAL_GRID_TYPE')         
+        if (associated(grid%unstructured_grid)) then
+          if (associated(grid%unstructured_grid%explicit_grid)) then
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,word, &
+                  'EXPLICIT_GRID_PRIMAL_GRID_TYPE')
+            call printMsg(option,word)
+            call StringToUpper(word)
+              select case (trim(word))
+                case ('VERTEX_CENTERED')
+                  grid%unstructured_grid%explicit_grid%output_mesh_type = &
+                     VERTEX_CENTERED_OUTPUT_MESH   
+                case ('CELL_CENTERED')
+                  grid%unstructured_grid%explicit_grid%output_mesh_type = &
+                     CELL_CENTERED_OUTPUT_MESH
+                  if (grid%unstructured_grid%explicit_grid%num_elems /= &
+                      grid%unstructured_grid%explicit_grid%num_cells_global &
+                     ) then 
+                    option%io_buffer = 'EXPLICIT_GRID_PRIMAL_GRID_TYPE ' // &
+                      'if CELL_CENTERED is speccified the number of cells'// &
+                      ' of the grid to print and those' // &
+                      ' of the computational grid must be equal.'
+                    call printErrMsg(option)
+                  end if
+                case default
+                 option%io_buffer = 'EXPLICIT_GRID_PRIMAL_GRID_TYPE ' // &
+                               'only VERTEX_CENTERED and CELL_CENTERED '// &
+                               'are supported.'
+                 call printErrMsg(option)    
+              end select 
+          endif
+        endif
+
 !....................
       case ('PRINT_DUAL_GRID')
         option%print_explicit_dual_grid = PETSC_TRUE

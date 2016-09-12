@@ -1010,7 +1010,7 @@ end subroutine OutputXMFAttribute
 
 ! ************************************************************************** !
 
-subroutine OutputXMFAttributeExplicit(fid,nmax,attname,att_datasetname)
+subroutine OutputXMFAttributeExplicit(fid,nmax,mesh_type,attname,att_datasetname)
   ! 
   ! Header for xdmf attribute with explicit grid
   ! 
@@ -1020,12 +1020,19 @@ subroutine OutputXMFAttributeExplicit(fid,nmax,attname,att_datasetname)
 
   implicit none
 
-  PetscInt :: fid,nmax
+  PetscInt :: fid,nmax,mesh_type
   
   character(len=MAXSTRINGLENGTH) :: attname, att_datasetname
   character(len=MAXSTRINGLENGTH) :: string,string2
-  string="      <Attribute Name=""" // trim(attname) // &
-    """ AttributeType=""Scalar""  Center=""Node"">"
+
+  if (mesh_type == VERTEX_CENTERED_OUTPUT_MESH) then
+    string="      <Attribute Name=""" // trim(attname) // &
+      """ AttributeType=""Scalar""  Center=""Node"">"
+  else if (mesh_type == CELL_CENTERED_OUTPUT_MESH) then
+    string="      <Attribute Name=""" // trim(attname) // &
+      """ AttributeType=""Scalar""  Center=""Cell"">"
+  end if
+
   write(fid,'(a)') trim(string)
 
 !  write(string2,*) grid%nmax
