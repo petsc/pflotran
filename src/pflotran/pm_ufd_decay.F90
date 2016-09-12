@@ -297,6 +297,7 @@ subroutine PMUFDDecayRead(this,input)
       case('IMPLICIT_SOLUTION')
         this%implicit_solution = PETSC_TRUE
       case default
+        error_string = 'UFD Decay'
         call InputKeywordUnrecognized(word,error_string,option)
     end select
   enddo
@@ -851,15 +852,17 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   PetscReal :: kd_kgw_m3b
   PetscBool :: above_solubility
   PetscReal, pointer :: xx_p(:)
+  PetscReal :: norm
 
   PetscReal :: residual(this%num_isotopes)
   PetscReal :: solution(this%num_isotopes)
-  PetscReal :: update(this%num_isotopes)
+  PetscReal :: rhs(this%num_isotopes)
   PetscInt :: indices(this%num_isotopes)
   PetscReal :: Jacobian(this%num_isotopes,this%num_isotopes)
   PetscReal :: rate, rate_constant, stoich, one_over_dt
   PetscReal, parameter :: tolerance = 1.d-12
   PetscInt :: idaughter
+  PetscInt :: it
 
   ierr = 0
   
@@ -965,8 +968,10 @@ subroutine PMUFDDecaySolve(this,time,ierr)
       ! implicit solution approach
       residual = 1.d0
       solution = mass_iso_tot0
+      it = 0
       do ! nonlinear loop
         if (dot_product(residual,residual) < tolerance) exit
+        it = it + 1
         residual = 0.d0
         Jacobian = 0.d0
         do iiso = 1, this%num_isotopes
@@ -987,10 +992,21 @@ subroutine PMUFDDecaySolve(this,time,ierr)
                                        rate_constant * stoich
           enddo
         enddo
-        update = residual
+        ! scale Jacobian
+        do iiso = 1, this%num_isotopes
+          norm = max(1.d0,maxval(abs(Jacobian(iiso,:))))
+          norm = 1.d0/norm
+          rhs(iiso) = residual(iiso)*norm
+          Jacobian(iiso,:) = Jacobian(iiso,:)*norm
+        enddo 
+        ! log formulation for derivatives
+        do iiso = 1, this%num_isotopes
+          Jacobian(:,iiso) = Jacobian(:,iiso)*solution(iiso)
+        enddo
         call ludcmp(Jacobian,this%num_isotopes,indices,i)
-        call lubksb(Jacobian,this%num_isotopes,indices,update)
-        solution = solution - update
+        call lubksb(Jacobian,this%num_isotopes,indices,rhs)
+        rhs = dsign(1.d0,rhs)*min(dabs(rhs),10.d0)
+        solution = solution*exp(-rhs)
       enddo
       mass_iso_tot1 = solution 
     endif
@@ -1009,6 +1025,7 @@ subroutine PMUFDDecaySolve(this,time,ierr)
         iiso = this%element_isotopes(i,iele)
         mol_fraction_iso(i) = mass_iso_tot1(iiso) / mass_ele_tot1
       enddo
+
       ! split mass between phases
       kd_kgw_m3b = this%element_Kd(iele,imat)
       conc_ele_aq1 = mass_ele_tot1 / (1.d0+kd_kgw_m3b/(den_w_kg*por*sat)) / &
