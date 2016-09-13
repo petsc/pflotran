@@ -1,8 +1,10 @@
 from h5py import *
 import numpy
 
-filename = 'mesh.h5'
+filename = 'mesh_ugi.h5'
 h5file = File(filename,mode='w')
+filename = 'mesh.ugi'
+f_ascii = open(filename,'w')
 
 nx = 5
 ny = 4
@@ -13,9 +15,9 @@ dx = [10.,11.,12.,13.,14.]
 dy = [13.,12.,11.,10.]
 dz = [15.,20.,25.]
 # for uniform grid spacing, specify one value in each direction
-dx = [10.]
-dy = [10.]
-dz = [1.]
+#dx = [1.]
+#dy = [1.]
+#dz = [1.]
 # note that you can mix and match irregular spacing along the different axes
 
 nxp1 = nx+1
@@ -79,5 +81,19 @@ for k in range(nzp1):
 
 h5dset = h5file.create_dataset('Domain/Vertices', data=vertex_array)
 
+f_ascii.write('%d %d\n' % (nx*ny*nz,nxp1*nyp1*nzp1))
+for k in range(nz):
+  for j in range(ny):
+    for i in range(nx):
+      cell_id = i + j*nx + k*nx*ny
+      f_ascii.write('H')
+      for iv in range(element_array[cell_id,0]):
+        f_ascii.write(' %d' % (element_array[cell_id,iv+1]+1))
+      f_ascii.write('\n')
+for i in range(nxp1*nyp1*nzp1):
+  f_ascii.write('%12.6e %12.6e %12.6e\n' % 
+                (vertex_array[i,0],vertex_array[i,1],vertex_array[i,2]))
+
 h5file.close()
+f_ascii.close()
 print('done')

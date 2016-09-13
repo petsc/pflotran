@@ -1,18 +1,18 @@
 from h5py import *
 import numpy
 
-nx = 16
-ny = 2
-nz = 2
+nx = 5
+ny = 4
+nz = 3
 
 # for irregular grid spacing, dx,dy,dz must be specified.
-#dx = [10.,11.,12.,13.,14.]
-#dy = [13.,12.,11.,10.]
-#dz = [15.,20.,25.]
+dx = [10.,11.,12.,13.,14.]
+dy = [13.,12.,11.,10.]
+dz = [15.,20.,25.]
 # for uniform grid spacing, specify one value in each direction
-dx = [1.]
-dy = [1.]
-dz = [1.]
+#dx = [1.]
+#dy = [1.]
+#dz = [1.]
 # note that you can mix and match irregular spacing along the different axes
 
 nxp1 = nx+1
@@ -23,7 +23,7 @@ x_origin = 0.
 y_origin = 0.
 z_origin = 0.
 
-f = open('16x2x2.uge','w')
+f = open('543.uge','w')
 
 f.write('CELLS %d\n' % (nx*ny*nz))
 z = z_origin + 0.5*dz[0]
