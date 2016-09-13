@@ -568,7 +568,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
               call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
             endif
           case(EXPLICIT_UNSTRUCTURED_GRID)
-            call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
+!geh            call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
 !         case(STRUCTURED_GRID)
 !           The region is localized in 
         end select

@@ -967,6 +967,14 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      SOIL_REFERENCE_PRESSURE)
+      case ('NATURAL_ID')
+        units = ''
+        name = 'Natural ID'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,NATURAL_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
       case ('PROCESS_ID')
         units = ''
         name = 'Process ID'
