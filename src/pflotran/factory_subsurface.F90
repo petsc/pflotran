@@ -540,7 +540,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
           case('TH')
             pm => PMTHCreate()
           case('TOIL_IMS')
-            pm => PMToilImsCreate() 
+            pm => PMTOilImsCreate() 
           case default
             error_string = trim(error_string) // ',MODE'
             call InputKeywordUnrecognized(word,error_string,option)
@@ -1574,7 +1574,7 @@ subroutine SubsurfaceReadInput(simulation)
 !....................
       !out_mesh_type defaults for primal_explicit grid is vetex_centered
       !this should go uner the OUTPUT card, together with PRINT_PRIMAL_GRID & PRINT_DUAL_GRID
-      case ('EXPLICIT_GRID_PRIMAL_GRID_TYPE')         
+      case ('EXPLICIT_GRID_PRIMAL_GRID_TYPE')
         if (associated(grid%unstructured_grid)) then
           if (associated(grid%unstructured_grid%explicit_grid)) then
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1589,14 +1589,16 @@ subroutine SubsurfaceReadInput(simulation)
                 case ('CELL_CENTERED')
                   grid%unstructured_grid%explicit_grid%output_mesh_type = &
                      CELL_CENTERED_OUTPUT_MESH
-                  if (grid%unstructured_grid%explicit_grid%num_elems /= &
-                      grid%unstructured_grid%explicit_grid%num_cells_global &
-                     ) then 
-                    option%io_buffer = 'EXPLICIT_GRID_PRIMAL_GRID_TYPE ' // &
-                      'if CELL_CENTERED is speccified the number of cells'// &
-                      ' of the grid to print and those' // &
-                      ' of the computational grid must be equal.'
-                    call printErrMsg(option)
+                  if ( option%myrank == option%io_rank ) then
+                    if (grid%unstructured_grid%explicit_grid%num_elems /= &
+                        grid%unstructured_grid%explicit_grid%num_cells_global &
+                       ) then 
+                      option%io_buffer = 'EXPLICIT_GRID_PRIMAL_GRID_TYPE' // &
+                        'if CELL_CENTERED option, the number of cells'// &
+                        ' of the grid to print and those' // &
+                        ' of the computational grid must be equal.'
+                      call printErrMsg(option)
+                    end if
                   end if
                 case default
                  option%io_buffer = 'EXPLICIT_GRID_PRIMAL_GRID_TYPE ' // &
@@ -1604,7 +1606,7 @@ subroutine SubsurfaceReadInput(simulation)
                                'are supported.'
                  call printErrMsg(option)    
               end select 
-          endif
+          endif 
         endif
 
 !....................

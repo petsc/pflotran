@@ -25,6 +25,7 @@ module TOilIms_module
 
 #define TOIL_CONVECTION
 #define TOIL_CONDUCTION
+#define TOIL_FLUX_DIPC
 
 ! Cutoff parameters - no public
   PetscReal, parameter :: eps       = 1.d-8
@@ -1187,6 +1188,245 @@ end subroutine TOilImsFlux
 
 ! ************************************************************************** !
 
+
+! ************************************************************************** !
+
+subroutine TOilImsFluxDipc(toil_auxvar_up,global_auxvar_up, &
+                           material_auxvar_up, &
+                           sir_up, &
+                           thermal_conductivity_up, &
+                           toil_auxvar_dn,global_auxvar_dn, &
+                           material_auxvar_dn, &
+                           sir_dn, &
+                           thermal_conductivity_dn, &
+                           area, dist, parameter, &
+                           option,v_darcy,Res)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! using a dip correction for distorted mesh
+  ! The function assumes that z is the vertical direction  
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 9/13/16
+  ! 
+  use Option_module
+  use Material_Aux_class
+  use Connection_module
+  
+  implicit none
+  
+  !type(toil_ims_auxvar_type) :: toil_auxvar_up, toil_auxvar_dn
+  class(auxvar_toil_ims_type) :: toil_auxvar_up, toil_auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
+  type(option_type) :: option
+  PetscReal :: sir_up(:), sir_dn(:)
+  PetscReal :: v_darcy(option%nphase)
+  PetscReal :: area
+  PetscReal :: dist(-1:3)
+  type(toil_ims_parameter_type) :: parameter
+  PetscReal :: thermal_conductivity_dn(2)
+  PetscReal :: thermal_conductivity_up(2)
+  PetscReal :: Res(option%nflowdof)
+  !PetscBool :: debug_connection
+
+  PetscReal :: dist_gravity  ! distance along gravity vector
+  PetscReal :: dist_up, dist_dn
+  PetscReal :: upweight
+
+  PetscInt :: energy_id
+  PetscInt :: iphase
+ 
+  PetscReal :: density_ave, density_kg_ave
+  PetscReal :: uH
+  PetscReal :: H_ave
+  PetscReal :: perm_ave_over_dist(option%nphase)
+  PetscReal :: perm_up, perm_dn           ! no mole fractions
+  PetscReal :: delta_pressure, delta_temp !, delta_xmol,
+
+  PetscReal :: pressure_ave
+  PetscReal :: gravity_term
+  PetscReal :: mobility, mole_flux, q
+  PetscReal :: stpd_up, stpd_dn
+  PetscReal :: sat_up, sat_dn, den_up, den_dn
+  PetscReal :: temp_ave, stpd_ave_over_dist, tempreal
+  PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
+
+  ! no diff fluxes - arrays used for debugging only
+  PetscReal :: adv_flux(3,2), diff_flux(2,2)
+  PetscReal :: debug_flux(3,3), debug_dphi(2)
+
+  PetscReal :: dummy_perm_up, dummy_perm_dn
+
+  PetscBool :: horizontal_conn !flag if the connection is horizontal or not
+  PetscReal :: dist_hrz_vec(2)
+  PetscReal :: dist_hrz_projection_sq, dist_hrz_projection 
+  PetscReal :: dist_hrz_up, dist_hrz_dn
+  PetscReal :: dist_vrt_projection_sq !vertical projection: cell centres dh 
+  PetscReal :: dip_corr
+
+  energy_id = option%energy_id  
+
+  call ConnectionCalculateDistances(dist,option%gravity,dist_up,dist_dn, &
+                                    dist_gravity,upweight)
+  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+
+  !determine if the connection is horixontal or not - 
+  !TODO - PO: should this method work move this operation to pre-processing
+  !           to be done only once  
+
+  horizontal_conn = PETSC_FALSE
+  if ( dabs(dist(3)) > dabs(dist(1)) .and. dabs(dist(3)) > dabs(dist(2)) ) then
+    horizontal_conn = PETSC_TRUE
+  end if 
+
+  dip_corr = 1.0d0
+
+  !if vertical connection, compute dip correction term and horizontal dists
+  if (.not.horizontal_conn) then
+    dist_hrz_vec(1:2) = dist(1:2) * dist(0) 
+    dist_hrz_projection_sq = dot_product(dist_hrz_vec,dist_hrz_vec) 
+    dist_vrt_projection_sq = ( dist(3) * dist(0) ) * (dist(3) * dist(0)) 
+
+    dip_corr =  dist_hrz_projection_sq /  &
+                (dist_hrz_projection_sq + dist_vrt_projection_sq)
+
+    dist_hrz_projection = dsqrt(dist_hrz_projection_sq)
+    dist_hrz_up = dist_hrz_projection * dist(-1)
+    dist_hrz_dn = dist_hrz_projection - dist_hrz_up
+    perm_ave_over_dist(:) = (perm_up * perm_dn) / &
+                            (dist_hrz_up*perm_dn + dist_hrz_dn*perm_up)
+    !perm_ave_over_dist(:) = (perm_up * perm_dn) / &
+    !                        (dist_up*perm_dn + dist_dn*perm_up)
+  else 
+    perm_ave_over_dist(:) = (perm_up * perm_dn) / &
+                            (dist_up*perm_dn + dist_dn*perm_up)
+  end if
+
+  !write(*,*) "dip_corr = ", dip_corr
+      
+  Res = 0.d0
+  
+  v_darcy = 0.d0
+
+#ifdef TOIL_CONVECTION
+  do iphase = 1, option%nphase
+ 
+    if (toil_auxvar_up%mobility(iphase) + &
+        toil_auxvar_dn%mobility(iphase) < eps) then
+      cycle
+    endif
+
+    ! an alternative could be to avergae using oil_sat
+    !density_kg_ave = 0.5d0* ( toil_auxvar_up%den_kg(iphase) + &
+    !                          toil_auxvar_dn%den_kg(iphase) )
+    density_kg_ave = TOilImsAverageDensity(toil_auxvar_up%sat(iphase), &
+                     toil_auxvar_dn%sat(iphase), &
+                     toil_auxvar_up%den_kg(iphase), &
+                     toil_auxvar_dn%den_kg(iphase))
+
+    gravity_term = density_kg_ave * dist_gravity
+    delta_pressure = toil_auxvar_up%pres(iphase) - &
+                     toil_auxvar_dn%pres(iphase) + &
+                     gravity_term
+
+    ! upwinding the mobilities and enthalpies
+    if (delta_pressure >= 0.D0) then
+      mobility = toil_auxvar_up%mobility(iphase)
+      H_ave = toil_auxvar_up%H(iphase)
+      uH = H_ave
+      !density_ave = toil_auxvar_up%den(iphase)
+    else
+      mobility = toil_auxvar_dn%mobility(iphase)
+      H_ave = toil_auxvar_dn%H(iphase)
+      uH = H_ave
+      !density_ave = toil_auxvar_dn%den(iphase)
+    endif      
+
+    if (mobility > floweps) then
+      ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
+      !                    dP[Pa]]
+      v_darcy(iphase) = perm_ave_over_dist(iphase) * mobility *  &
+                        delta_pressure * dip_corr 
+
+      ! if comments below, use upwinding value
+      !density_ave = 0.5d0*( toil_auxvar_up%den(iphase) + &
+      !                      toil_auxvar_dn%den(iphase))
+
+      density_ave = TOilImsAverageDensity(toil_auxvar_up%sat(iphase), &
+                           toil_auxvar_dn%sat(iphase), &
+                           toil_auxvar_up%den(iphase), &
+                           toil_auxvar_dn%den(iphase))       
+
+      !ovewrite area computed as for OLDTRAN  
+      !if (.not.horizontal_conn) then
+      !  area = (material_auxvar_up%volume + material_auxvar_dn%volume) / &
+      !          dist_hrz_projection
+      !else 
+      !  area = (material_auxvar_up%volume + material_auxvar_dn%volume) / &
+      !          (dist_up + dist_dn)  
+      !endif
+
+      ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
+      q = v_darcy(iphase) * area  
+      ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
+      !                             density_ave[kmol phase/m^3 phase]        
+      mole_flux = q*density_ave
+      ! Res[kmol total/sec]
+
+      ! Res[kmol phase/sec] = mole_flux[kmol phase/sec]  
+      Res(iphase) = Res(iphase) + mole_flux 
+
+      Res(energy_id) = Res(energy_id) + mole_flux * uH
+
+    endif  ! if mobility larger than given tolerance                 
+
+  enddo
+#endif 
+! TOIL_CONVECTION
+
+#ifdef TOIL_CONDUCTION
+  ! model for liquid + gas
+  ! add heat conduction flux
+  ! based on Somerton et al., 1974:
+  ! k_eff = k_dry + sqrt(s_l)*(k_sat-k_dry)
+  !k_eff_up = thermal_conductivity_up(1) + &
+  !           sqrt(gen_auxvar_up%sat(option%liquid_phase)) * &
+  !           (thermal_conductivity_up(2) - thermal_conductivity_up(1))
+  !k_eff_dn = thermal_conductivity_dn(1) + &
+  !           sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
+  !           (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
+  !if (k_eff_up > 0.d0 .or. k_eff_up > 0.d0) then
+  !  k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dist_dn+k_eff_dn*dist_up)
+  !else
+  !  k_eff_ave = 0.d0
+  !endif
+  ! considered the formation fully saturated in water for heat conduction 
+  k_eff_up = thermal_conductivity_up(1)
+  k_eff_dn = thermal_conductivity_dn(1)
+  if (k_eff_up > 0.d0 .or. k_eff_up > 0.d0) then
+    k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dist_dn+k_eff_dn*dist_up)
+  else
+    k_eff_ave = 0.d0
+  endif
+
+  ! units:
+  ! k_eff = W/K-m = J/s/K-m
+  ! delta_temp = K
+  ! area = m^2
+  ! heat_flux = k_eff * delta_temp * area = J/s
+  delta_temp = toil_auxvar_up%temp - toil_auxvar_dn%temp
+  heat_flux = k_eff_ave * delta_temp * area * 1.d-6 ! J/s -> MJ/s
+  ! MJ/s
+  Res(energy_id) = Res(energy_id) + heat_flux
+! CONDUCTION
+#endif
+
+end subroutine TOilImsFluxDipc
+
+! ************************************************************************** !
+
 subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
                          toil_auxvar_up,global_auxvar_up, &
                          toil_auxvar_dn,global_auxvar_dn, &
@@ -1841,7 +2081,11 @@ subroutine ToilImsFluxDerivative(toil_auxvar_up,global_auxvar_up, &
   
   !geh:print *, 'ToilImsFluxDerivative'
   option%iflag = -2
+#ifdef TOIL_FLUX_DIPC
+  call TOilImsFluxDipc(toil_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
+#else
   call ToilImsFlux(toil_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
+#endif
                    material_auxvar_up,sir_up, &
                    thermal_conductivity_up, &
                    toil_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
@@ -1852,7 +2096,11 @@ subroutine ToilImsFluxDerivative(toil_auxvar_up,global_auxvar_up, &
                            
   ! upgradient derivatives
   do idof = 1, option%nflowdof
+#ifdef TOIL_FLUX_DIPC
+    call TOilImsFluxDipc(toil_auxvar_up(idof),global_auxvar_up, &
+#else
     call ToilImsFlux(toil_auxvar_up(idof),global_auxvar_up, &
+#endif
                      material_auxvar_up,sir_up, &
                      thermal_conductivity_up, &
                      toil_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
@@ -1868,7 +2116,11 @@ subroutine ToilImsFluxDerivative(toil_auxvar_up,global_auxvar_up, &
 
   ! downgradient derivatives
   do idof = 1, option%nflowdof
+#ifdef TOIL_FLUX_DIPC
+    call TOilImsFluxDipc(toil_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
+#else
     call ToilImsFlux(toil_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
+#endif
                      material_auxvar_up,sir_up, &
                      thermal_conductivity_up, &
                      toil_auxvar_dn(idof),global_auxvar_dn, &
@@ -2228,7 +2480,11 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
 
+#ifdef TOIL_FLUX_DIPC
+      call TOilImsFluxDipc(patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id_up), &
+#else
       call TOilImsFlux(patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id_up), &
+#endif
                      global_auxvars(ghosted_id_up), &
                      material_auxvars(ghosted_id_up), &
                      material_parameter%soil_residual_saturation(:,icap_up), &
