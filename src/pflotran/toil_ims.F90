@@ -1190,7 +1190,7 @@ end subroutine TOilImsFlux
 
 
 ! ************************************************************************** !
-
+#ifdef TOIL_FLUX_DIPC
 subroutine TOilImsFluxDipc(toil_auxvar_up,global_auxvar_up, &
                            material_auxvar_up, &
                            sir_up, &
@@ -1359,14 +1359,16 @@ subroutine TOilImsFluxDipc(toil_auxvar_up,global_auxvar_up, &
                            toil_auxvar_up%den(iphase), &
                            toil_auxvar_dn%den(iphase))       
 
-      !ovewrite area computed as for OLDTRAN  
-      !if (.not.horizontal_conn) then
-      !  area = (material_auxvar_up%volume + material_auxvar_dn%volume) / &
-      !          dist_hrz_projection
-      !else 
-      !  area = (material_auxvar_up%volume + material_auxvar_dn%volume) / &
-      !          (dist_up + dist_dn)  
-      !endif
+      !ovewrite area computed as for OLDTRAN 
+      !0.5 below assumes uniform grid in x and y, i.e. 2*dist 
+      !should compute the half volumes of entire cell hrz extensions DXi & DXj
+      if (.not.horizontal_conn) then
+        area = 0.5*(material_auxvar_up%volume + material_auxvar_dn%volume) / &
+                dist_hrz_projection
+      else 
+        area = 0.5*(material_auxvar_up%volume + material_auxvar_dn%volume) / &
+                (dist_up + dist_dn)  
+      endif
 
       ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
       q = v_darcy(iphase) * area  
@@ -1384,7 +1386,7 @@ subroutine TOilImsFluxDipc(toil_auxvar_up,global_auxvar_up, &
 
   enddo
 #endif 
-! TOIL_CONVECTION
+ TOIL_CONVECTION
 
 #ifdef TOIL_CONDUCTION
   ! model for liquid + gas
@@ -1424,7 +1426,7 @@ subroutine TOilImsFluxDipc(toil_auxvar_up,global_auxvar_up, &
 #endif
 
 end subroutine TOilImsFluxDipc
-
+#endif
 ! ************************************************************************** !
 
 subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
