@@ -305,7 +305,7 @@ subroutine InitCommonReadRegionFiles(realization)
 
            if (cell_ids_exists .or. face_ids_exists) then
               call HDF5ReadRegionFromFile(realization%patch%grid,region, &
-                                          region%filename,option)
+                                             region%filename,option)
            else
               call HDF5ReadRegionDefinedByVertex(realization%option, &
                                                  region, region%filename)

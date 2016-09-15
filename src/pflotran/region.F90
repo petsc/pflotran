@@ -534,7 +534,8 @@ subroutine RegionRead(region,input,option)
           end select
         enddo
       case('FILE')
-        call InputReadNChars(input,option,region%filename,MAXSTRINGLENGTH,PETSC_TRUE)
+        call InputReadNChars(input,option,region%filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'filename','REGION')
         call InputReadWord(input,option,word,PETSC_TRUE)
         if (input%ierr == 0) then
