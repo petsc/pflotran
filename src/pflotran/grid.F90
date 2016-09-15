@@ -940,6 +940,8 @@ subroutine GridLocalizeRegionsFromCellIDs(grid, region, option)
   PetscInt :: local_id, natural_id
   PetscInt :: tempint
   PetscInt :: iface
+  PetscInt :: tempfacearray(20)
+  PetscInt :: facecount
   PetscInt :: cell_id_max_local
   PetscInt :: cell_id_max_global
   PetscReal :: tempreal, prevreal, facereal
@@ -1036,18 +1038,19 @@ subroutine GridLocalizeRegionsFromCellIDs(grid, region, option)
   count = 0
   setup_faces = PETSC_FALSE
   do local_id=1, grid%nlmax
-    if (v_loc_p(local_id) > 10.d0) then
+    if (v_loc_p(local_id) > 9.99d0) then
       setup_faces = PETSC_TRUE
-      facereal = v_loc_p(local_id) + offset
+      facereal = v_loc_p(local_id)
       tempint = int(log10(facereal))
-      prevreal = mod(facereal,10.d0**dble(tempint+1))
-      do ii = tempint, 1
-        tempreal = mod(facereal,10.d0**dble(ii+1)) + offset
+      prevreal = mod(facereal,10.d0**dble(tempint+1)) + offset
+      do ii = tempint+1, 1, -1
+        tempreal = mod(facereal,10.d0**dble(ii)) + offset
         if (.not.Equal(tempreal,prevreal)) then
           count = count + 1
         endif
+        prevreal = tempreal
       enddo
-    elseif (v_loc_p(local_id) > 0.d0) then
+    elseif (v_loc_p(local_id) > 0.0999d0) then
       count = count + 1
     endif
   enddo
@@ -1065,17 +1068,25 @@ subroutine GridLocalizeRegionsFromCellIDs(grid, region, option)
     count = 0
     do local_id=1, grid%nlmax
       if (v_loc_p(local_id) > 9.99d0) then
-        facereal = v_loc_p(local_id) + offset
+        facereal = v_loc_p(local_id)
         tempint = int(log10(facereal))
         prevreal = mod(facereal,10.d0**dble(tempint+1)) + offset
-        do ii = tempint, 1
-          tempreal = mod(facereal,10.d0**dble(ii+1))
+        ! use a temporary array tempfacearray so that faces can be sorted
+        facecount = 0
+        tempfacearray = UNINITIALIZED_INTEGER
+        do ii = tempint+1, 1, -1
+          tempreal = mod(facereal,10.d0**dble(ii)) + offset
           if (.not.Equal(tempreal,prevreal)) then
-            count = count + 1
-            region%cell_ids(count) = local_id
-            region%faces(count) = ii
+            facecount = facecount + 1
+            tempfacearray(facecount) = ii
           endif
+          prevreal = tempreal
         enddo
+        ! sort the faces
+        call PetscSortInt(facecount,tempfacearray,ierr);CHKERRQ(ierr)
+        region%cell_ids(count+1:count+facecount) = local_id
+        region%faces(count+1:count+facecount) = tempfacearray(1:facecount)
+        count = count + facecount
       elseif (v_loc_p(local_id) > 0.0999d0) then
         count = count + 1
         region%cell_ids(count) = local_id
