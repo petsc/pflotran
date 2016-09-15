@@ -57,6 +57,7 @@ STANDARD_CFG = \
 	default/scco2/mphase/mphase.cfg \
 	default/scco2/flash2/flash2.cfg \
 	default/regions/regions.cfg \
+	default/regions/cell_mapping/cell_mapping.cfg \
 	default/salinity/salinity.cfg \
 	default/timestepping/timestepping.cfg \
 	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\

@@ -1,0 +1,204 @@
+REGION 1
+  FILE ./1.txt
+END
+REGION 2
+  FILE ./2.txt
+END
+REGION 3
+  FILE ./3.txt
+END
+REGION 4
+  FILE ./4.txt
+END
+REGION 5
+  FILE ./5.txt
+END
+REGION 6
+  FILE ./6.txt
+END
+REGION 7
+  FILE ./7.txt
+END
+REGION 8
+  FILE ./8.txt
+END
+REGION 9
+  FILE ./9.txt
+END
+REGION 10
+  FILE ./10.txt
+END
+REGION 11
+  FILE ./11.txt
+END
+REGION 12
+  FILE ./12.txt
+END
+REGION 13
+  FILE ./13.txt
+END
+REGION 14
+  FILE ./14.txt
+END
+REGION 15
+  FILE ./15.txt
+END
+REGION 16
+  FILE ./16.txt
+END
+REGION 17
+  FILE ./17.txt
+END
+REGION 18
+  FILE ./18.txt
+END
+REGION 19
+  FILE ./19.txt
+END
+REGION 20
+  FILE ./20.txt
+END
+REGION 21
+  FILE ./21.txt
+END
+REGION 22
+  FILE ./22.txt
+END
+REGION 23
+  FILE ./23.txt
+END
+REGION 24
+  FILE ./24.txt
+END
+REGION 25
+  FILE ./25.txt
+END
+REGION 26
+  FILE ./26.txt
+END
+REGION 27
+  FILE ./27.txt
+END
+REGION 28
+  FILE ./28.txt
+END
+REGION 29
+  FILE ./29.txt
+END
+REGION 30
+  FILE ./30.txt
+END
+REGION 31
+  FILE ./31.txt
+END
+REGION 32
+  FILE ./32.txt
+END
+REGION 33
+  FILE ./33.txt
+END
+REGION 34
+  FILE ./34.txt
+END
+REGION 35
+  FILE ./35.txt
+END
+REGION 36
+  FILE ./36.txt
+END
+REGION 37
+  FILE ./37.txt
+END
+REGION 38
+  FILE ./38.txt
+END
+REGION 39
+  FILE ./39.txt
+END
+REGION 40
+  FILE ./40.txt
+END
+REGION 41
+  FILE ./41.txt
+END
+REGION 42
+  FILE ./42.txt
+END
+REGION 43
+  FILE ./43.txt
+END
+REGION 44
+  FILE ./44.txt
+END
+REGION 45
+  FILE ./45.txt
+END
+REGION 46
+  FILE ./46.txt
+END
+REGION 47
+  FILE ./47.txt
+END
+REGION 48
+  FILE ./48.txt
+END
+REGION 49
+  FILE ./49.txt
+END
+REGION 50
+  FILE ./50.txt
+END
+REGION 51
+  FILE ./51.txt
+END
+REGION 52
+  FILE ./52.txt
+END
+REGION 53
+  FILE ./53.txt
+END
+REGION 54
+  FILE ./54.txt
+END
+REGION 55
+  FILE ./55.txt
+END
+REGION 56
+  FILE ./56.txt
+END
+REGION 57
+  FILE ./57.txt
+END
+REGION 58
+  FILE ./58.txt
+END
+REGION 59
+  FILE ./59.txt
+END
+REGION 60
+  FILE ./60.txt
+END
+REGION bottom_south_west
+  FILE ./bottom_south_west.txt
+END
+REGION bottom_south_east
+  FILE ./bottom_south_east.txt
+END
+REGION bottom_north_west
+  FILE ./bottom_north_west.txt
+END
+REGION bottom_north_east
+  FILE ./bottom_north_east.txt
+END
+REGION top_south_west
+  FILE ./top_south_west.txt
+END
+REGION top_south_east
+  FILE ./top_south_east.txt
+END
+REGION top_north_west
+  FILE ./top_north_west.txt
+END
+REGION top_north_east
+  FILE ./top_north_east.txt
+END
