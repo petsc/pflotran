@@ -17,6 +17,7 @@ module Regression_module
     PetscInt, pointer :: natural_cell_ids(:)
     PetscInt :: num_cells_per_process
     PetscInt, pointer :: cells_per_process_natural_ids(:)
+    PetscBool :: all_cells
     Vec :: natural_cell_id_vec
     Vec :: cells_per_process_vec
     VecScatter :: scatter_natural_cell_id_gtos
@@ -56,6 +57,7 @@ function RegressionCreate()
   nullify(regression%variable_list)
   nullify(regression%natural_cell_ids)
   regression%num_cells_per_process = 0
+  regression%all_cells = PETSC_FALSE
   nullify(regression%cells_per_process_natural_ids)
   regression%natural_cell_id_vec = 0
   regression%cells_per_process_vec = 0
@@ -156,7 +158,6 @@ subroutine RegressionRead(regression,input,option)
         do 
           call InputReadPflotranString(input,option)
           if (InputCheckExit(input,option)) exit  
-
           count = count + 1
           if (count > max_cells) then
             call reallocateIntArray(int_array,max_cells)
@@ -172,6 +173,8 @@ subroutine RegressionRead(regression,input,option)
       case('CELLS_PER_PROCESS')
         call InputReadInt(input,option,regression%num_cells_per_process)
         call InputErrorMsg(input,option,'num cells per process','REGRESSION')
+      case('ALL_CELLS')
+         regression%all_cells = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(keyword,'REGRESSION',option)
     end select
@@ -195,6 +198,7 @@ subroutine RegressionCreateMapping(regression,realization)
   use Realization_Subsurface_class
   use Grid_module
   use Discretization_module
+  use Utility_module
   
   implicit none
   
@@ -210,6 +214,7 @@ subroutine RegressionCreateMapping(regression,realization)
   PetscInt :: i, upper_bound, lower_bound, count, temp_int
   PetscInt :: local_id
   PetscReal, pointer :: vec_ptr(:)
+  character(len=MAXWORDLENGTH) :: word
   Vec :: temp_vec
   VecScatter :: temp_scatter
   IS :: temp_is
@@ -223,6 +228,21 @@ subroutine RegressionCreateMapping(regression,realization)
   
   grid => realization%patch%grid
   option => realization%option
+
+  if (regression%all_cells) then
+    ! override regression%num_cells_per_process since cells will be duplicated
+    regression%num_cells_per_process = 0 
+    if (grid%nmax > 100) then
+      option%io_buffer = 'Printing regression info for ALL_CELLS not &
+        &supported for problem sizes greater than 100 cells.'
+      call printErrMsg(option)
+    endif
+    call DeallocateArray(regression%natural_cell_ids)
+    allocate(regression%natural_cell_ids(grid%nmax))
+    do i = 1, grid%nmax
+      regression%natural_cell_ids(i) = i
+    enddo
+  endif
   
   ! natural cell ids
   if (associated(regression%natural_cell_ids)) then
@@ -312,8 +332,10 @@ subroutine RegressionCreateMapping(regression,realization)
     call MPI_Allreduce(i,count,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MIN, &
                        option%mycomm,ierr)
     if (count < regression%num_cells_per_process) then
-      option%io_buffer = 'Number of cells per process for Regression ' // &
-        'exceeds minimum number of cells per process.  Truncating.'
+      write(word,*) count
+      option%io_buffer = 'Number of cells per process for regression file&
+        &exceeds minimum number of cells per process.  Truncating to ' // &
+        trim(adjustl(word)) // '.'
       call printMsg(option)
       regression%num_cells_per_process = count
     endif
