@@ -288,38 +288,23 @@ subroutine InitCommonReadRegionFiles(realization)
     if (.not.associated(region)) exit
     if (len_trim(region%filename) > 1) then
       if (index(region%filename,'.h5') > 0) then
-        if (.not.region%hdf5_ugrid_kludge) then
-
-           call HDF5QueryRegionDefinition(region, region%filename, &
-                                          realization%option, &
-                cell_ids_exists, face_ids_exists, vert_ids_exists)
-
-           if ( (.not. cell_ids_exists) .and. &
-                (.not. face_ids_exists) .and. &
-                (.not. vert_ids_exists)) then
-
-              option%io_buffer = '"Regions/' // trim(region%name) // &
+        call HDF5QueryRegionDefinition(region, region%filename, &
+                                       realization%option, cell_ids_exists, &
+                                       face_ids_exists, vert_ids_exists)
+        if ((.not. cell_ids_exists) .and. &
+            (.not. face_ids_exists) .and. &
+            (.not. vert_ids_exists)) then
+          option%io_buffer = '"Regions/' // trim(region%name) // &
                 ' is not defined by "Cell Ids" or "Face Ids" or "Vertex Ids".'
-              call printErrMsg(option)
-           end if
-
-           if (cell_ids_exists .or. face_ids_exists) then
-              call HDF5ReadRegionFromFile(realization%patch%grid,region, &
-                                             region%filename,option)
-           else
-              call HDF5ReadRegionDefinedByVertex(realization%option, &
-                                                 region, region%filename)
-           end if
+          call printErrMsg(option)
+        end if
+        if (cell_ids_exists .or. face_ids_exists) then
+          call HDF5ReadRegionFromFile(realization%patch%grid,region, &
+                                      region%filename,option)
         else
-          !geh: Do not skip this subroutine if PETSC_HAVE_HDF5 is not
-          !     defined.  The subroutine prints an error message if not defined
-          !     informing the user of the error.  If you skip the subroutine,
-          !     no error message is printed and the user is unaware of the
-          !     region not being read.
-          call HDF5ReadUnstructuredGridRegionFromFile(realization%option, &
-                                                      region, &
-                                                      region%filename)
-        endif
+          call HDF5ReadRegionDefinedByVertex(realization%option, &
+                                             region, region%filename)
+        end if
       else if (index(region%filename,'.ss') > 0) then
         region%def_type = DEFINED_BY_SIDESET_UGRID
         region%sideset => RegionCreateSideset()
