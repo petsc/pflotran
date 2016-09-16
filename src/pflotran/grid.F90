@@ -565,7 +565,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           case(IMPLICIT_UNSTRUCTURED_GRID)
             call GridLocalizeRegionsFromCellIDs(grid,region,option)
           case(EXPLICIT_UNSTRUCTURED_GRID)
-            call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
+            call GridLocalizeRegionsFromCellIDs(grid,region,option)
         end select
       case (DEFINED_BY_CELL_AND_FACE_IDS)
         select case(grid%itype)
