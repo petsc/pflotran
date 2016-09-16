@@ -40,11 +40,13 @@ TIMESTEPPER FLOW
 END
 
 LINEAR_SOLVER FLOW
-  SOLVER DIRECT
+  SOLVER ITERATIVE
+#  SOLVER DIRECT
 END
 
 LINEAR_SOLVER TRANSPORT
-  SOLVER DIRECT
+  SOLVER ITERATIVE
+#  SOLVER DIRECT
 END
 
 #=========================== discretization ===================================
