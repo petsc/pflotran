@@ -49,14 +49,7 @@ END
 
 #=========================== discretization ===================================
 GRID
-  TYPE structured
-  ORIGIN 0.d0 0.d0 0.d0
-  NXYZ 5 4 3
-  DXYZ
-    10. 11. 12. 13. 14.
-    13. 12. 11. 10.
-    15. 20. 25.
-  /
+  TYPE unstructured ./543_inactive.ugi
 END
 
 #=========================== fluid properties =================================
@@ -66,11 +59,11 @@ END
 
 #=========================== datasets =========================================
 DATASET Porosity
-  FILENAME ../543/parameters-543.h5
+  FILENAME ./543_inactive_ugi.h5
 END
 
 DATASET Permeability
-  FILENAME ../543/parameters-543.h5
+  FILENAME ./543_inactive_ugi.h5
 END
 
 #=========================== material properties ==============================
@@ -197,27 +190,27 @@ REGION all
 END
 
 REGION Top
-  FILE ./top_inactive.txt
+  FILE ./top_inactive_ugi.ss
 END
 
 REGION Bottom
-  FILE ./bottom_inactive.txt
+  FILE ./bottom_inactive_ugi.ss
 END
 
 REGION West
-  FILE ./west_inactive.txt
+  FILE ./west_inactive_ugi.ss
 END
 
 REGION East
-  FILE ./east_inactive.txt
+  FILE ./east_inactive_ugi.ss
 END
 
 REGION North
-  FILE ./north_inactive.txt
+  FILE ./north_inactive_ugi.ss
 END
 
 REGION South
-  FILE ./south_inactive.txt
+  FILE ./south_inactive_ugi.ss
 END
 
 #=========================== flow conditions ==================================
@@ -289,7 +282,7 @@ END
 
 #=========================== stratigraphy couplers ============================
 STRATA
-  MATERIAL ./543_inactive.h5
+  MATERIAL ./543_inactive_ugi.h5
 END
 
 END_SUBSURFACE
