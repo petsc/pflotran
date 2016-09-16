@@ -38,7 +38,7 @@ END
 
 #=========================== discretization ===================================
 GRID
-  TYPE unstructured ./543.ugi
+  TYPE unstructured_explicit ./543.uge
 END
 
 #=========================== fluid properties =================================
@@ -96,7 +96,7 @@ REGION all
   /
 END
 
-EXTERNAL_FILE 543_regions_ascii.txt
+EXTERNAL_FILE 543_regions_hdf5.txt
 
 #=========================== flow conditions ==================================
 #=========================== transport conditions =============================

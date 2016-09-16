@@ -84,8 +84,8 @@ END
 OUTPUT
 #  TIMES d 0.001 0.01 0.1 1. 10.
 #  PERIODIC TIME 1 d
-  FORMAT TECPLOT BLOCK
-  FORMAT HDF5
+#  FORMAT TECPLOT BLOCK
+#  FORMAT HDF5
 END
 
 #=========================== times ============================================
