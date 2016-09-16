@@ -35,6 +35,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Grid_Structured_module
   use Utility_module, only : DotProduct
   use Dataset_Gridded_HDF5_class
+  use Dataset_Common_HDF5_class
   use Dataset_Ascii_class
   
   use General_Aux_module
@@ -156,7 +157,15 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       coupler%flow_aux_mapping(TOIL_IMS_TEMPERATURE_INDEX) = 3 
     case default
       ! for now, just set it; in future need to account for a different temperature datum
+      !geh: this is a trick to determine if the dataset is hdf5 type.
       if (associated(condition%temperature)) then
+        if (associated(DatasetCommonHDF5Cast(condition%&
+                                             temperature%dataset))) then
+          option%io_buffer = 'HDF5-type datasets for temperature are not &
+            &supported for hydrostatic, seepage, or conductance boundary &
+            &conditions.'
+          call printErrMsg(option)
+        endif
         if (condition%temperature%itype == DIRICHLET_BC) then
 #ifndef THDIRICHLET_TEMP_BC_HACK
           temperature_at_datum = &
