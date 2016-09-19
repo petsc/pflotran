@@ -244,8 +244,8 @@ subroutine CyberRead(this,input,option)
       case('ACTIVATION_ENERGY')
         call InputReadDouble(input,option,this%activation_energy)  
         call InputErrorMsg(input,option,'activation energy',error_string)
-        call InputReadAndConvertUnits(input,this%activation_energy,'J/K-mol', &
-                                      trim(error_string)//',kdeg',option)
+        call InputReadAndConvertUnits(input,this%activation_energy,'J/mol', &
+                              trim(error_string)//',activation energy',option)
       case('CARBON_CONSUMPTION_SPECIES')
         call InputReadWord(input,option, &
                            this%carbon_consumption_species,PETSC_TRUE)

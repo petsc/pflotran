@@ -73,6 +73,9 @@ subroutine MicrobialRead(microbial,input,option)
         call InputReadDouble(input,option,microbial_rxn%activation_energy)  
         call InputErrorMsg(input,option,'activation energy', &
                            'CHEMISTRY,MICROBIAL_REACTION') 
+        call InputReadAndConvertUnits(input,microbial_rxn%activation_energy, &
+                     'J/mol', &
+                     'CHEMISTRY,MICROBIAL_REACTION,ACTIVATION_ENERGY',option)
       case('MONOD')
         monod => MicrobialMonodCreate()
         do 
