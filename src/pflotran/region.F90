@@ -86,10 +86,17 @@ module Region_module
     module procedure RegionReadExplicitFaceSet
   end interface RegionReadFromFile
   
-  public :: RegionCreate, RegionDestroy, RegionAddToList, RegionReadFromFile, &
-            RegionInitList, RegionDestroyList, RegionGetPtrFromList, & 
-            RegionRead, RegionReadSideSet, RegionCreateSideset, &
-            RegionInputRecord
+  public :: RegionCreate, &
+            RegionRead, &
+            RegionReadFromFile, &
+            RegionInitList, &
+            RegionAddToList, &
+            RegionGetPtrFromList, & 
+            RegionDestroyList, &
+            RegionReadSideSet, &
+            RegionCreateSideset, &
+            RegionInputRecord, &
+            RegionDestroy
   
 contains
 
