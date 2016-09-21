@@ -3222,7 +3222,8 @@ function GetSubConditionName(subcon_itype)
     case(SURFACE_ZERO_GRADHEIGHT)
       string = 'surface_zero_gradheight'
     case(SURFACE_SPILLOVER)
-      string = 'surface_spillover'  end select
+      string = 'surface_spillover'
+    end select
 
   GetSubConditionName = trim(string)
 

@@ -45,22 +45,22 @@ SUBSURFACE
   END
 
   REGION all
-    FILE ./simple.h5 old_format
+    FILE ./simple.h5
     GRID unstructured
   END
 
   REGION top 
-    FILE ./simple.h5 old_format
+    FILE ./simple.h5
     GRID unstructured
   END
 
   REGION bottom 
-    FILE ./simple.h5 old_format
+    FILE ./simple.h5
     GRID unstructured
   END
 
   REGION top_cells
-    FILE ./simple.h5 old_format
+    FILE ./simple.h5
     GRID unstructured
   END
 

@@ -477,9 +477,9 @@ endif
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
 auxiliary.o : flash2_aux.o general_aux.o global_aux.o immis_aux.o \
-              material_aux.o miscible_aux.o mphase_aux.o pflotran_constants.o \
-              pm_toil_ims_aux.o reactive_transport_aux.o richards_aux.o \
-              secondary_continuum_aux.o th_aux.o
+              inlinesurface_aux.o material_aux.o miscible_aux.o mphase_aux.o \
+              pflotran_constants.o pm_toil_ims_aux.o reactive_transport_aux.o \
+              richards_aux.o secondary_continuum_aux.o th_aux.o
 auxvars_base.o : option.o pflotran_constants.o
 auxvars_flow.o : auxvars_base.o option.o pflotran_constants.o utility.o
 auxvars_flow_energy.o : auxvars_base.o auxvars_flow.o pflotran_constants.o \
@@ -767,9 +767,9 @@ hdf5.o : discretization.o field.o grid.o grid_unstructured_cell.o hdf5_aux.o \
 hdf5_aux.o : input_aux.o logging.o option.o pflotran_constants.o region.o \
              string.o
 hydrostatic.o : condition.o connection.o coupler.o dataset_ascii.o \
-                dataset_gridded_hdf5.o eos_water.o general_aux.o grid.o \
-                grid_structured.o option.o pflotran_constants.o \
-                pm_toil_ims_aux.o region.o utility.o
+                dataset_common_hdf5.o dataset_gridded_hdf5.o eos_water.o \
+                general_aux.o grid.o grid_structured.o option.o \
+                pflotran_constants.o pm_toil_ims_aux.o region.o utility.o
 hydrostatic_common.o : connection.o eos_gas.o eos_oil.o eos_water.o grid.o \
                        option.o pflotran_constants.o utility.o
 hydrostatic_multi_phase.o : characteristic_curves.o condition.o connection.o \
@@ -933,8 +933,8 @@ pm_base_aux.o : auxvars_base.o grid.o option.o pflotran_constants.o utility.o
 pm_base_pointer.o : option.o pflotran_constants.o pm_base.o \
                     realization_subsurface.o
 pm_flash2.o : eos_water.o flash2.o flash2_aux.o input_aux.o option.o \
-              pflotran_constants.o pm_base.o pm_subsurface_flow.o string.o \
-              utility.o
+              pflotran_constants.o pm_base.o pm_subsurface_flow.o \
+              realization_subsurface.o string.o utility.o
 pm_general.o : checkpoint.o field.o general.o general_aux.o global.o \
                global_aux.o grid.o input_aux.o material.o material_aux.o \
                option.o output_ekg.o patch.o pflotran_constants.o pm_base.o \
@@ -948,15 +948,16 @@ pm_geomechanics_force.o : checkpoint.o communicator_base.o \
                           geomechanics_realization.o global.o grid.o option.o \
                           pflotran_constants.o pm_base.o
 pm_immis.o : eos_water.o immis.o immis_aux.o input_aux.o option.o \
-             pflotran_constants.o pm_base.o pm_subsurface_flow.o string.o \
-             utility.o
+             pflotran_constants.o pm_base.o pm_subsurface_flow.o \
+             realization_subsurface.o string.o utility.o
 pm_miscible.o : eos_water.o input_aux.o miscible.o miscible_aux.o mphase.o \
                 option.o pflotran_constants.o pm_base.o pm_subsurface_flow.o \
-                string.o utility.o
+                realization_subsurface.o string.o utility.o
 pm_mphase.o : connection.o coupler.o eos_water.o global_aux.o grid.o \
               input_aux.o mphase.o mphase_aux.o option.o patch.o \
               pflotran_constants.o pm_base.o pm_subsurface_flow.o \
-              reaction_aux.o reactive_transport_aux.o string.o utility.o
+              reaction_aux.o reactive_transport_aux.o realization_subsurface.o \
+              string.o utility.o
 pm_richards.o : characteristic_curves.o eos_water.o field.o global_aux.o \
                 grid.o input_aux.o material_aux.o option.o patch.o \
                 pflotran_constants.o pm_base.o pm_subsurface_flow.o \
@@ -974,9 +975,8 @@ pm_subsurface_flow.o : checkpoint.o communicator_base.o \
                        condition.o condition_control.o coupler.o \
                        discretization.o global.o grid.o input_aux.o \
                        integral_flux.o material.o material_aux.o option.o \
-                       output_aux.o pflotran_constants.o pm_base.o \
-                       realization_subsurface.o solver.o srcsink_sandbox.o \
-                       string.o variables.o
+                       pflotran_constants.o pm_base.o realization_subsurface.o \
+                       solver.o srcsink_sandbox.o string.o variables.o
 pm_surface.o : checkpoint_surface.o communicator_base.o \
                communicator_unstructured.o condition.o discretization.o \
                global.o grid.o input_aux.o option.o pflotran_constants.o \
@@ -1204,12 +1204,12 @@ regression.o : discretization.o grid.o input_aux.o option.o output.o \
                output_aux.o output_common.o pflotran_constants.o \
                realization_subsurface.o string.o timestepper_BE.o utility.o
 richards.o : connection.o coupler.o debug.o discretization.o eos_water.o \
-             field.o global_aux.o grid.o logging.o material.o material_aux.o \
-             matrix_buffer.o option.o output_aux.o patch.o \
-             pflotran_constants.o realization_base.o realization_subsurface.o \
-             richards_aux.o richards_common.o srcsink_sandbox.o \
-             srcsink_sandbox_base.o srcsink_sandbox_downreg.o string.o \
-             utility.o variables.o
+             field.o global_aux.o grid.o inlinesurface.o inlinesurface_aux.o \
+             logging.o material.o material_aux.o matrix_buffer.o option.o \
+             output_aux.o patch.o pflotran_constants.o realization_base.o \
+             realization_subsurface.o region.o richards_aux.o \
+             richards_common.o srcsink_sandbox.o srcsink_sandbox_base.o \
+             srcsink_sandbox_downreg.o string.o utility.o variables.o
 richards_aux.o : characteristic_curves.o eos_water.o global_aux.o \
                  material_aux.o matrix_buffer.o option.o pflotran_constants.o \
                  utility.o
