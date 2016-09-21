@@ -32,7 +32,9 @@ module Solver_module
     PetscReal :: linear_dtol       ! divergence tolerance
     PetscInt :: linear_max_iterations     ! maximum number of iterations
     PetscReal :: linear_zero_pivot_tol  ! zero pivot tolerance for LU
-    
+    PetscBool :: linear_stop_on_failure ! flag determines whether the code is
+                                        ! killed when the solver fails, as
+                                        ! opposed ot cutting the step.
     PetscReal :: newton_atol       ! absolute tolerance
     PetscReal :: newton_rtol       ! relative tolerance
     PetscReal :: newton_stol       ! relative tolerance (relative to previous iteration)
@@ -126,6 +128,7 @@ function SolverCreate()
   solver%linear_dtol = PETSC_DEFAULT_REAL
   solver%linear_max_iterations = PETSC_DEFAULT_INTEGER
   solver%linear_zero_pivot_tol = UNINITIALIZED_DOUBLE
+  solver%linear_stop_on_failure = PETSC_FALSE
   
   solver%newton_atol = PETSC_DEFAULT_REAL
   solver%newton_rtol = PETSC_DEFAULT_REAL
@@ -201,19 +204,25 @@ end subroutine SolverCreateSNES
 
 ! ************************************************************************** !
 
-subroutine SolverSetSNESOptions(solver)
+subroutine SolverSetSNESOptions(solver, option)
   ! 
   ! Sets options for SNES
   ! 
   ! Author: Glenn Hammond
   ! Date: 02/12/08
   ! 
+  use Option_module
 
   implicit none
   
   type(solver_type) :: solver
+  type(option_type) :: option
 
   SNESLineSearch :: linesearch
+  KSP, pointer :: sub_ksps(:)
+  PC :: pc
+  PetscInt :: nsub_ksp
+  PetscInt :: first_sub_ksp
   PetscErrorCode :: ierr
   PetscInt :: i
   
@@ -230,8 +239,10 @@ subroutine SolverSetSNESOptions(solver)
                         ierr);CHKERRQ(ierr)
   ! as of PETSc 3.7, we need to turn on error reporting due to zero pivots
   ! as PETSc no longer reports zero pivots for very small concentrations
-  !geh: this get overwritten by ksp->errorifnotconverted
-  call KSPSetErrorIfNotConverged(solver%ksp,PETSC_TRUE,ierr); CHKERRQ(ierr)
+  !geh: this gets overwritten by ksp->errorifnotconverted
+  if (solver%linear_stop_on_failure) then
+    call KSPSetErrorIfNotConverged(solver%ksp,PETSC_TRUE,ierr);CHKERRQ(ierr)
+  endif
 
   ! allow override from command line
   call KSPSetFromOptions(solver%ksp,ierr);CHKERRQ(ierr)
@@ -240,11 +251,6 @@ subroutine SolverSetSNESOptions(solver)
   ! get the ksp_type and pc_type incase of command line override.
   call KSPGetType(solver%ksp,solver%ksp_type,ierr);CHKERRQ(ierr)
   call PCGetType(solver%pc,solver%pc_type,ierr);CHKERRQ(ierr)
-  
-  if (Initialized(solver%linear_zero_pivot_tol)) then
-    call PCFactorSetZeroPivot(solver%pc,solver%linear_zero_pivot_tol, &
-                              ierr);CHKERRQ(ierr)
-  endif
 
   ! Set the tolerances for the Newton solver.
   call SNESSetTolerances(solver%snes, solver%newton_atol, solver%newton_rtol, &
@@ -273,6 +279,55 @@ subroutine SolverSetSNESOptions(solver)
   ! allow override from command line; for some reason must come before
   ! LineSearchParams, or they crash
   call SNESSetFromOptions(solver%snes,ierr);CHKERRQ(ierr)
+
+  ! the below must come after SNESSetFromOptions
+  ! PETSc no longer performs a shift on matrix diagonals by default.  We 
+  ! force the shift since it helps alleviate zero pivots.
+  call PCFactorSetShiftType(solver%pc,MAT_SHIFT_INBLOCKS,ierr);CHKERRQ(ierr)
+  if (solver%pc_type == PCBJACOBI) then
+    call KSPSetup(solver%ksp,ierr);CHKERRQ(ierr)
+    call PCBJacobiGetSubKSP(solver%pc,nsub_ksp,first_sub_ksp, &
+                            PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
+    allocate(sub_ksps(nsub_ksp))
+    sub_ksps = 0
+    call PCBJacobiGetSubKSP(solver%pc,nsub_ksp,first_sub_ksp, &
+                            sub_ksps,ierr);CHKERRQ(ierr)
+    do i = 1, nsub_ksp
+      call KSPGetPC(sub_ksps(i),pc,ierr);CHKERRQ(ierr)
+      call PCFactorSetShiftType(pc,MAT_SHIFT_INBLOCKS,ierr);CHKERRQ(ierr)
+    enddo
+    deallocate(sub_ksps)
+    nullify(sub_ksps)
+  elseif (.not.(solver%pc_type == PCLU .or. solver%pc_type == PCILU)) then
+    option%io_buffer = 'PCFactorShiftType for PC ' // &
+      trim(solver%pc_type) // ' is not supported at this time.'
+    call printErrMsg(option)
+  endif
+  
+  if (Initialized(solver%linear_zero_pivot_tol)) then
+    call PCFactorSetZeroPivot(solver%pc,solver%linear_zero_pivot_tol, &
+                              ierr);CHKERRQ(ierr)
+    if (solver%pc_type == PCBJACOBI) then
+      call KSPSetup(solver%ksp,ierr);CHKERRQ(ierr)
+      call PCBJacobiGetSubKSP(solver%pc,nsub_ksp,first_sub_ksp, &
+                              PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
+      allocate(sub_ksps(nsub_ksp))
+      sub_ksps = 0
+      call PCBJacobiGetSubKSP(solver%pc,nsub_ksp,first_sub_ksp, &
+                              sub_ksps,ierr);CHKERRQ(ierr)
+      do i = 1, nsub_ksp
+        call KSPGetPC(sub_ksps(i),pc,ierr);CHKERRQ(ierr)
+        call PCFactorSetZeroPivot(pc,solver%linear_zero_pivot_tol, &
+                                  ierr);CHKERRQ(ierr)
+      enddo
+      deallocate(sub_ksps)
+      nullify(sub_ksps)
+    elseif (.not.(solver%pc_type == PCLU .or. solver%pc_type == PCILU)) then
+      option%io_buffer = 'PCFactorSetZeroPivot for PC ' // &
+        trim(solver%pc_type) // ' is not supported at this time.'
+      call printErrMsg(option)
+    endif
+  endif
 
   call SNESGetLineSearch(solver%snes, linesearch, ierr);CHKERRQ(ierr)
   call SNESLineSearchSetTolerances(linesearch, solver%newton_stol,       &
@@ -705,6 +760,9 @@ subroutine SolverReadLinear(solver,input,option)
         call InputReadDouble(input,option,solver%linear_zero_pivot_tol)
         call InputErrorMsg(input,option,'linear_zero_pivot_tol', &
                            'LINEAR_SOLVER')
+
+      case('STOP_ON_FAILURE')
+        solver%linear_stop_on_failure = PETSC_TRUE
 
       case('MUMPS')
         string = trim(prefix) // 'pc_factor_mat_solver_package'
@@ -1162,7 +1220,19 @@ subroutine SolverLinearPrintFailedReason(solver,option)
   type(solver_type) :: solver
   type(option_type) :: option
 
+  KSP, pointer :: sub_ksps(:)
+  PC :: pc
+  Mat :: mat
+  PCType :: pc_type
+  PetscInt :: i
+  PetscInt :: nsub_ksp
+  PetscInt :: first_sub_ksp
   KSPConvergedReason :: ksp_reason
+  PCFailedReason :: pc_failed_reason, global_pc_failed_reason
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal :: zero_pivot_tol, zero_pivot
+  character(len=MAXWORDLENGTH) :: word, word2
+  PetscInt :: irow, temp_int
   PetscErrorCode :: ierr
 
   call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr);CHKERRQ(ierr)
@@ -1183,10 +1253,89 @@ subroutine SolverLinearPrintFailedReason(solver,option)
       option%io_buffer = ' -> KSPReason: Diverged due to NaN or Inf PC'
     case(KSP_DIVERGED_INDEFINITE_MAT)
       option%io_buffer = ' -> KSPReason: Diverged due to indefinite matix'
-!geh: this value is defined in the PETSc master, but not maint.
-!    case(KSP_DIVERGED_PCSETUP_FAILED)
-    case(-11)
+    case(KSP_DIVERGED_PCSETUP_FAILED)
       option%io_buffer = ' -> KSPReason: Diverged due to PC setup failed'
+      pc = solver%pc
+      call PCGetType(pc,pc_type,ierr);CHKERRQ(ierr)
+      call PCGetSetUpFailedReason(pc,pc_failed_reason, &
+                                  ierr);CHKERRQ(ierr)
+      ! have to perform global reduction on pc_failed_reason
+      temp_int = pc_failed_reason
+      call MPI_Allreduce(MPI_IN_PLACE,temp_int,ONE_INTEGER_MPI, &
+                         MPI_INTEGER,MPI_MAX,option%mycomm,ierr)
+      global_pc_failed_reason = temp_int
+      if (global_pc_failed_reason == PC_SUBPC_ERROR) then
+        if (pc_type == PCBJACOBI) then
+          call PCBJacobiGetSubKSP(pc,nsub_ksp,first_sub_ksp, &
+                                  PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
+          allocate(sub_ksps(nsub_ksp))
+          sub_ksps = 0
+          call PCBJacobiGetSubKSP(pc,nsub_ksp,first_sub_ksp, &
+                                  sub_ksps,ierr);CHKERRQ(ierr)
+          if (nsub_ksp > 1) then
+            option%io_buffer = 'NSUB_KSP > 1.  What to do?  Email pflotran&
+              &-dev@googlegroups.com.'
+            call printErrMsg(option)
+          endif
+          do i = 1, nsub_ksp
+            call KSPGetPC(sub_ksps(i),pc,ierr);CHKERRQ(ierr)
+            call PCGetSetUpFailedReason(pc,pc_failed_reason, &
+                                        ierr);CHKERRQ(ierr)
+          enddo
+          deallocate(sub_ksps)
+          nullify(sub_ksps)
+        else
+          option%io_buffer = 'Error in SUB PC of unknown type "' // &
+            trim(pc_type) // '".'
+          call printErrMsg(option)
+        endif
+      endif
+      ! have to perform global reduction (again) on pc_failed_reason
+      temp_int = pc_failed_reason
+      call MPI_Allreduce(MPI_IN_PLACE,temp_int,ONE_INTEGER_MPI, &
+                         MPI_INTEGER,MPI_MAX,option%mycomm,ierr)
+      global_pc_failed_reason = temp_int
+      select case(global_pc_failed_reason)
+        case(PC_FACTOR_STRUCT_ZEROPIVOT,PC_FACTOR_NUMERIC_ZEROPIVOT)
+          select case(solver%itype)
+            case(FLOW_CLASS)
+              string = 'Flow'
+            case(TRANSPORT_CLASS)
+              string = 'Transport'
+          end select
+          call PCFactorGetZeroPivot(pc,zero_pivot_tol, &
+                                    ierr);CHKERRQ(ierr)
+          write(word,*) zero_pivot_tol
+#if PETSC_VERSION_GT(3,7,3)
+          ! In parallel, some processes will not have a zero pivot and
+          ! will report zero as the error.  We must skip these processes.
+          zero_pivot = 1.d20
+          ! note that this is not the global pc reason
+          select case(pc_failed_reason)
+            case(PC_FACTOR_STRUCT_ZEROPIVOT,PC_FACTOR_NUMERIC_ZEROPIVOT)
+            call PCFactorGetMatrix(pc,mat,ierr);CHKERRQ(ierr)
+            call MatFactorGetErrorZeroPivot(mat,zero_pivot,irow, &
+                                            ierr);CHKERRQ(ierr)
+          end select
+          call MPI_Allreduce(MPI_IN_PLACE,zero_pivot,ONE_INTEGER_MPI, &
+                             MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+          write(word2,*) zero_pivot
+#endif
+          option%io_buffer = 'PC Setup failed for ' // trim(string) // &
+            '. The ' // trim(string) // ' preconditioner zero pivot &
+            &tolerance (' // trim(adjustl(word)) // &
+#if PETSC_VERSION_GT(3,7,3)
+            ') is too large due to a zero pivot of ' // &
+            trim(adjustl(word2)) // '. Please set a ZERO_PIVOT_TOL smaller &
+            &than that value or email pflotran-dev@googlegroups.com with &
+            &this information for guildance.'
+#else
+            ') is too large. Please run PFLOTRAN with STOP_ON_FAILURE &
+            &added to the respective SOLVER block to determine the &
+            &needed ZERO_PIVOT_TOL in that solver block.'
+#endif
+          call printErrMsg(option)
+      end select
     case default
       write(option%io_buffer,'('' -> KSPReason: Unknown: '',i2)') &
         ksp_reason

@@ -122,6 +122,10 @@ ifdef well_debug
   MYFLAGS += ${FC_DEFINE_FLAG}WELL_DEBUG
 endif
 
+ifdef well_class
+  MYFLAGS += ${FC_DEFINE_FLAG}WELL_CLASS
+endif
+
 CFLAGS   = 
 FFLAGS   =
 CPPFLAGS = ${MYFLAGS}
@@ -792,17 +796,15 @@ init_subsurface.o : dataset_base.o dataset_common_hdf5.o \
                     option.o patch.o pflotran_constants.o \
                     realization_subsurface.o region.o srcsink_sandbox.o \
                     strata.o utility.o variables.o wipp.o
-init_subsurface_flow.o : co2_sw.o condition_control.o convergence.o coupler.o \
+init_subsurface_flow.o : co2_sw.o condition_control.o coupler.o \
                          discretization.o field.o flash2.o general.o grid.o \
                          hdf5.o immis.o init_common.o material.o miscible.o \
                          mphase.o option.o patch.o pflotran_constants.o \
-                         realization_subsurface.o richards.o solver.o th.o \
-                         toil_ims.o well.o
-init_subsurface_transport.o : condition_control.o convergence.o \
-                              discretization.o global.o init_common.o option.o \
+                         realization_subsurface.o richards.o th.o toil_ims.o \
+                         well.o
+init_subsurface_transport.o : condition_control.o global.o option.o \
                               pflotran_constants.o reactive_transport.o \
-                              realization_subsurface.o secondary_continuum.o \
-                              solver.o variables.o
+                              realization_subsurface.o variables.o
 init_surface.o : condition.o condition_control.o convergence.o \
                  discretization.o eos_water.o field.o grid.o grid_structured.o \
                  grid_unstructured.o grid_unstructured_aux.o hdf5.o \
@@ -1018,19 +1020,24 @@ pmc_auxiliary.o : option.o pflotran_constants.o pm_auxiliary.o pmc_base.o \
 pmc_base.o : checkpoint.o logging.o option.o output.o output_aux.o \
              pflotran_constants.o pm_base.o pm_base_pointer.o simulation_aux.o \
              timestepper_base.o utility.o waypoint.o
-pmc_geomechanics.o : geomechanics_discretization.o geomechanics_force.o \
-                     geomechanics_realization.o grid.o option.o \
-                     output_geomechanics.o pflotran_constants.o pm_base.o \
-                     pmc_base.o realization_subsurface.o timestepper_base.o
+pmc_geomechanics.o : convergence.o geomechanics_discretization.o \
+                     geomechanics_force.o geomechanics_realization.o grid.o \
+                     option.o output_geomechanics.o pflotran_constants.o \
+                     pm_base.o pm_base_pointer.o pmc_base.o \
+                     realization_subsurface.o solver.o timestepper_base.o \
+                     timestepper_steady.o
 pmc_hydrogeophysics.o : option.o pflotran_constants.o pmc_base.o \
                         realization_base.o realization_subsurface.o string.o \
                         timestepper_base.o utility.o variables.o \
                         wrapper_hydrogeophysics.o
-pmc_subsurface.o : connection.o coupler.o discretization.o eos_water.o field.o \
-                   grid.o material.o material_aux.o option.o patch.o \
-                   pflotran_constants.o pm_base.o pm_base_pointer.o pmc_base.o \
-                   realization_base.o realization_subsurface.o string.o \
-                   timestepper_BE.o timestepper_base.o variables.o
+pmc_subsurface.o : connection.o convergence.o coupler.o discretization.o \
+                   eos_water.o field.o grid.o material.o material_aux.o \
+                   option.o patch.o pflotran_constants.o pm_base.o \
+                   pm_base_pointer.o pm_general.o pm_richards.o pm_rt.o \
+                   pm_subsurface_flow.o pm_th.o pm_toil_ims.o pm_ufd_decay.o \
+                   pm_waste_form.o pmc_base.o realization_base.o \
+                   realization_subsurface.o secondary_continuum.o solver.o \
+                   string.o timestepper_BE.o timestepper_base.o variables.o
 pmc_surface.o : checkpoint.o connection.o coupler.o eos_water.o grid.o \
                 option.o output.o output_aux.o output_surface.o patch.o \
                 pflotran_constants.o pm_base.o pm_surface_flow.o pmc_base.o \

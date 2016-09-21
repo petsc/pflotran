@@ -101,7 +101,6 @@ module Grid_module
             GridComputeVolumes, &
             GridComputeAreas, &
             GridLocalizeRegions, &
-            GridLocalizeRegionsFromCellIDsUGrid, &
             GridPopulateConnection, &
             GridCopyIntegerArrayToVec, &
             GridCopyRealArrayToVec, &
@@ -663,22 +662,17 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         call GridLocalizeRegionFromCoordinates(grid,region,option)
       case (DEFINED_BY_CELL_IDS)
         select case(grid%itype)
-!         case(STRUCTURED_GRID)
-!           The region is localized in InitCommonReadRegionFiles->
-!             HDF5ReadRegionFromFile->HDF5MapLocalToNaturalIndices      
+          case(STRUCTURED_GRID)
+            call GridLocalizeRegionsFromCellIDs(grid,region,option)
           case(IMPLICIT_UNSTRUCTURED_GRID)
-            if (region%hdf5_ugrid_kludge) then
-              call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
-            endif
+            call GridLocalizeRegionsFromCellIDs(grid,region,option)
           case(EXPLICIT_UNSTRUCTURED_GRID)
-            call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
-!         case(STRUCTURED_GRID)
-!           The region is localized in 
+            call GridLocalizeRegionsFromCellIDs(grid,region,option)
         end select
       case (DEFINED_BY_CELL_AND_FACE_IDS)
         select case(grid%itype)
           case (STRUCTURED_GRID)
-            ! Do nothing since the region was localized during the reading process
+            call GridLocalizeRegionsFromCellIDs(grid,region,option)
           case default
             option%io_buffer = 'GridLocalizeRegions() must tbe extended ' // &
             'for unstructured region DEFINED_BY_CELL_AND_FACE_IDS'
@@ -736,121 +730,21 @@ subroutine GridLocalizeRegions(grid,region_list,option)
 
   enddo
 
-#if 0
-  !
-  ! GB: Older formulation. Need to remove it.
-  !
-  iflag = 0
-  region => region_list%first
-  do
-  
-    if (.not.associated(region)) exit
-    
-    if (.not.(associated(region%cell_ids) .or. &
-              associated(region%sideset) .or. &
-              associated(region%polygonal_volume) .or. &
-              associated(region%vertex_ids))) then
-      ! i, j, k block
-      if (region%i1 > 0 .and. region%i2 > 0 .and. &
-          region%j1 > 0 .and. region%j2 > 0 .and. &
-          region%k1 > 0 .and. region%k2 > 0) then
-
-        call GridLocalizeRegionFromBlock(grid,region,option)
-
-      else if (associated(region%coordinates)) then
-        call GridLocalizeRegionFromCoordinates(grid,region,option)
-      endif
-    else if (associated(region%sideset)) then
-      call UGridMapSideSet(grid%unstructured_grid, & 
-                           region%sideset%face_vertices, & 
-                           region%sideset%nfaces,region%name, & 
-                           option,region%cell_ids,region%faces) 
-      region%num_cells = size(region%cell_ids)
-    else if (associated(region%polygonal_volume)) then
-      select case(region%def_type)
-        case(DEFINED_BY_POLY_BOUND_UGRID)
-          call UGridMapBoundFacesInPolVol(grid%unstructured_grid, &
-                                          region%polygonal_volume, &
-                                          region%name,option, &
-                                          region%cell_ids,region%faces)
-        case(DEFINED_BY_POLY_VOLUME)
-          call GridMapCellsInPolVol(grid,region%polygonal_volume, &
-                                    region%name,option,region%cell_ids)
-      end select
-      region%num_cells = size(region%cell_ids)
-    else if (associated(region%cell_ids)) then
-      select case(grid%itype) 
-        case(IMPLICIT_UNSTRUCTURED_GRID)
-          call GridLocalizeRegionsFromCellIDsUGrid(grid,region,option)
-
-        case(STRUCTURED_GRID)
-!sp following was commented out 
-!sp remove? 
-!geh: Not for now.  The below maps a list of natural ids to local.  This is now done
-!     in hdf5.F90 for lists of cells from hdf5 files.  If we elect to support ascii
-!     files, we will need this functionality here.
-#if 0
-          allocate(temp_int_array(region%num_cells))
-          do count=1,region%num_cells
-            i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
-                  grid%structured_grid%lxs
-            j = mod((region%cell_ids(count)-1)/grid%structured_grid%nx, &
-                    grid%structured_grid%ny)+1 - &
-                  grid%structured_grid%lys
-            k = ((region%cell_ids(count)-1)/grid%structured_grid%nxy)+1 - &
-                  grid%structured_grid%lzs
-            if (i > 0 .and. i <= grid%structured_grid%nlx .and. &
-                j > 0 .and. j <= grid%structured_grid%nly .and. &
-                k > 0 .and. k <= grid%structured_grid%nlz) then
-              temp_int_array(local_count) = &
-                  i + (j-1)*grid%structured_grid%nlx + &
-                  (k-1)*grid%structured_grid%nlxy
-              local_count = local_count + 1
-            endif
-          enddo
-#endif
-        case(EXPLICIT_UNSTRUCTURED_GRID)
-          call GridLocalizeExplicitFaceset(grid%unstructured_grid,region, &
-                                           option)
-        case default
-          option%io_buffer = 'GridLocalizeRegions: define region by list ' // &
-            'of cells not implemented: ' // trim(region%name)
-          call printErrMsg(option)
-      end select
-      !sp end 
-    endif
-    
-    if (region%num_cells == 0 .and. associated(region%cell_ids)) then
-      deallocate(region%cell_ids)
-      nullify(region%cell_ids)
-    endif
-    if (region%num_cells == 0 .and. associated(region%faces)) then
-      deallocate(region%faces)
-      nullify(region%faces)
-    endif
-    region => region%next
-    
-  enddo
-#endif
-
-  ! Assign 
-
 end subroutine GridLocalizeRegions
 
 ! ************************************************************************** !
 
-subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
+subroutine GridLocalizeRegionsFromCellIDs(grid, region, option)
   ! 
-  ! Resticts regions to cells local
-  ! to processor for unstrucutred mesh when the region is defined by a
-  ! list of cell ids (in natural order)
+  ! Redistributed cells ids in a grid based on natural numbering to their
+  ! respective global index (PETSc ordering). Sets face information too.
   ! 
-  ! Author: Gautam Bisht
-  ! Date: 5/30/2011
-  ! 
+  ! Author: Gautam Bisht, Glenn Hammond
+  ! Date: 5/30/2011, 09/14/16
 
   use Option_module
   use Region_module
+  use Utility_module
 
   implicit none
   
@@ -860,152 +754,181 @@ subroutine GridLocalizeRegionsFromCellIDsUGrid(grid, region, option)
 #include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petscis.h"
 #include "petsc/finclude/petscis.h90"
-#include "petsc/finclude/petscmat.h"
 
   type(grid_type) :: grid
   type(region_type) :: region
   type(option_type) :: option
 
-  ! local
-  type(grid_unstructured_type),pointer :: ugrid
-  Vec :: vec_cell_ids,vec_cell_ids_loc
-  Vec :: vec_face_ids,vec_face_ids_loc
-  IS :: is_from, is_to
-  Mat :: adj, adj_t,adj_d, adj_o
-  VecScatter :: vec_scat
-  PetscErrorCode :: ierr
-  PetscViewer :: viewer
-  PetscInt :: ii,jj,kk,count
-  PetscInt :: istart, iend
-  PetscInt :: ghosted_id,local_id,natural_id
-  PetscInt,pointer :: tmp_int_array(:),tmp_int_array2(:)
-  PetscScalar,pointer :: v_loc_p(:),v_loc2_p(:)
-  PetscScalar,pointer :: tmp_scl_array(:)
-
-
-  PetscInt, pointer :: ia_p(:), ja_p(:)
-  PetscInt :: n,rstart,rend,icol(1)
-  PetscInt :: index
-  PetscInt :: vertex_id
-  PetscOffset :: iia,jja,aaa,iicol
-  PetscBool :: done,found
-  PetscScalar :: aa(1)
+  character(len=MAXWORDLENGTH) :: word
+  Vec :: vec_cell_ids
+  Vec :: vec_cell_ids_loc
+  PetscInt, allocatable :: tmp_int_array(:)
+  PetscReal, allocatable :: tmp_scl_array(:)
+  PetscInt :: count
+  PetscInt :: ii
+  PetscInt :: local_id, natural_id
+  PetscInt :: tempint
+  PetscInt :: iface
+  PetscInt :: tempfacearray(20)
+  PetscInt :: facecount
   PetscInt :: cell_id_max_local
   PetscInt :: cell_id_max_global
-  ! PetscScalar, pointer :: aa(:)
-  ! Would like to use the above, but I have to fix MatGetArrayF90() first. --RTM
-  
-  ugrid => grid%unstructured_grid
-  
-  if (associated(region%cell_ids)) then
-    
-    call VecCreateMPI(option%mycomm, ugrid%nlmax, PETSC_DECIDE, &
-                      vec_cell_ids, ierr);CHKERRQ(ierr)
-    call VecCreateMPI(option%mycomm, ugrid%nlmax, PETSC_DECIDE, &
-                      vec_cell_ids_loc, ierr);CHKERRQ(ierr)
-    
-    call VecZeroEntries(vec_cell_ids, ierr);CHKERRQ(ierr)
-    
-    allocate(tmp_int_array(region%num_cells))
-    allocate(tmp_scl_array(region%num_cells))
+  PetscReal :: tempreal, prevreal, facereal
+  PetscReal, parameter :: offset = 0.1d0
+  PetscReal, pointer :: v_loc_p(:)
+  PetscBool :: setup_faces
+  IS :: is_from, is_to
+  VecScatter :: vec_scat
+  PetscInt :: istart, iend
+  PetscErrorCode :: ierr
 
-    count = 0
-    cell_id_max_local = -1
-    do ii = 1, region%num_cells
-      count = count + 1
-      tmp_int_array(count) = region%cell_ids(ii) - 1
-      tmp_scl_array(count) = 1.d0
-      cell_id_max_local = max(cell_id_max_local, region%cell_ids(ii))
-    enddo
-
-    call MPI_Allreduce(cell_id_max_local, cell_id_max_global, ONE_INTEGER_MPI, &
-                       MPI_INTEGER, MPI_MAX, option%mycomm,ierr)
-    if (cell_id_max_global > grid%nmax) then
-       option%io_buffer = 'The following region includes a cell-id that is greater than ' // &
-            'number of control volumes present in the grid: ' // trim(region%name)
-       call printErrMsg(option)
-    endif
-
-    call VecSetValues(vec_cell_ids, region%num_cells, tmp_int_array, &
-                      tmp_scl_array, ADD_VALUES, ierr);CHKERRQ(ierr)
+  call VecCreateMPI(option%mycomm, grid%nlmax, PETSC_DECIDE, &
+                    vec_cell_ids, ierr);CHKERRQ(ierr)
+  call VecCreateMPI(option%mycomm, grid%nlmax, PETSC_DECIDE, &
+                    vec_cell_ids_loc, ierr);CHKERRQ(ierr)
     
-    deallocate(tmp_int_array)
-    deallocate(tmp_scl_array)
-
-    call VecAssemblyBegin(vec_cell_ids, ierr);CHKERRQ(ierr)
-    call VecAssemblyEnd(vec_cell_ids, ierr);CHKERRQ(ierr)
-
-    allocate(tmp_int_array(ugrid%nlmax))
-    count = 0
-    do ghosted_id = 1, ugrid%ngmax
-      local_id = grid%nG2L(ghosted_id)
-      if (local_id < 1) cycle
-      count = count + 1
-      natural_id = grid%nG2A(ghosted_id)
-      tmp_int_array(count) = natural_id
-    enddo
+  call VecZeroEntries(vec_cell_ids, ierr);CHKERRQ(ierr)
     
-    tmp_int_array = tmp_int_array - 1
-    call ISCreateBlock(option%mycomm, 1, ugrid%nlmax, &
-                        tmp_int_array, PETSC_COPY_VALUES, is_from,  &
-                       ierr);CHKERRQ(ierr)
-    
-    call VecGetOwnershipRange(vec_cell_ids_loc,istart,iend,ierr);CHKERRQ(ierr)
-    do ii=1,ugrid%nlmax
-      tmp_int_array(ii) = ii + istart
-    enddo
+  allocate(tmp_int_array(region%num_cells))
+  allocate(tmp_scl_array(region%num_cells))
 
-    tmp_int_array = tmp_int_array - 1
-    call ISCreateBlock(option%mycomm, 1, ugrid%nlmax, &
-                        tmp_int_array, PETSC_COPY_VALUES, is_to,  &
-                       ierr);CHKERRQ(ierr)
-    deallocate(tmp_int_array)
-    
-    call VecScatterCreate(vec_cell_ids,is_from,vec_cell_ids_loc,is_to, &
-                          vec_scat, ierr);CHKERRQ(ierr)
-    call ISDestroy(is_from, ierr);CHKERRQ(ierr)
-    call ISDestroy(is_to, ierr);CHKERRQ(ierr)
-    
-    call VecScatterBegin(vec_scat, vec_cell_ids, vec_cell_ids_loc, &
-                          INSERT_VALUES, SCATTER_FORWARD, ierr);CHKERRQ(ierr)
-    call VecScatterEnd(vec_scat, vec_cell_ids, vec_cell_ids_loc, &
-                        INSERT_VALUES, SCATTER_FORWARD, ierr);CHKERRQ(ierr)
-    call VecScatterDestroy(vec_scat, ierr);CHKERRQ(ierr)
-
-    call VecGetArrayF90(vec_cell_ids_loc, v_loc_p, ierr);CHKERRQ(ierr)
-    count = 0
-    do ii=1, ugrid%nlmax
-      if (v_loc_p(ii) == 1) count = count + 1
-    enddo
-    
-    region%num_cells = count
-    if (count > 0) then
-      allocate(tmp_int_array(count))
-      count = 0
-      do ii =1, ugrid%nlmax
-        if (v_loc_p(ii) == 1) then
-          count = count + 1
-          tmp_int_array(count) = ii
-        endif
-      enddo
-
-      deallocate(region%cell_ids)
-      allocate(region%cell_ids(region%num_cells))
-      region%cell_ids = tmp_int_array
-      deallocate(tmp_int_array)
+  cell_id_max_local = -1
+  do ii = 1, region%num_cells
+    tmp_int_array(ii) = region%cell_ids(ii) - 1
+    if (associated(region%faces)) then
+      iface = region%faces(ii)
+      if (iface > 14) then
+        write(iface,*) iface
+        option%io_buffer = 'Face ID (' // trim(adjustl(word)) // ') greater &
+          &than 14 in GridLocalizeRegionsFromCellIDs()'
+        call printErrMsg(option)
+      endif
+      tmp_scl_array(ii) = 10.d0**dble(region%faces(ii))
     else
-      deallocate(region%cell_ids)
-      allocate(region%cell_ids(region%num_cells))
+      ! use 0.1 as it will take 100 connections to conflict with faces
+      tmp_scl_array(ii) = 0.1d0
     endif
-    
-    call VecRestoreArrayF90(vec_cell_ids_loc,v_loc_p,ierr);CHKERRQ(ierr)
-    
-    call VecDestroy(vec_cell_ids,ierr);CHKERRQ(ierr)
-    call VecDestroy(vec_cell_ids_loc,ierr);CHKERRQ(ierr)
+    cell_id_max_local = max(cell_id_max_local, region%cell_ids(ii))
+  enddo
 
+  call MPI_Allreduce(cell_id_max_local, cell_id_max_global, ONE_INTEGER_MPI, &
+                     MPI_INTEGER, MPI_MAX, option%mycomm,ierr)
+  if (cell_id_max_global > grid%nmax) then
+    option%io_buffer = 'The following region includes a cell-id that is &
+      &greater than number of control volumes present in the grid: ' // &
+    trim(region%name)
+    call printErrMsg(option)
   endif
 
-end subroutine GridLocalizeRegionsFromCellIDsUGrid
+  call VecSetValues(vec_cell_ids, region%num_cells, tmp_int_array, &
+                    tmp_scl_array, ADD_VALUES, ierr);CHKERRQ(ierr)
+  
+  deallocate(tmp_int_array)
+  deallocate(tmp_scl_array)
+
+  call VecAssemblyBegin(vec_cell_ids, ierr);CHKERRQ(ierr)
+  call VecAssemblyEnd(vec_cell_ids, ierr);CHKERRQ(ierr)
+
+  ! create list of natural ids for local, on-process cells
+  allocate(tmp_int_array(grid%nlmax))
+  do local_id = 1, grid%nlmax
+    natural_id = grid%nG2A(grid%nL2G(local_id))
+    tmp_int_array(local_id) = natural_id
+  enddo
+  
+  tmp_int_array = tmp_int_array - 1
+  call ISCreateBlock(option%mycomm, 1, grid%nlmax, &
+                     tmp_int_array, PETSC_COPY_VALUES, is_from,  &
+                     ierr);CHKERRQ(ierr)
+  
+  call VecGetOwnershipRange(vec_cell_ids_loc,istart,iend,ierr);CHKERRQ(ierr)
+  do ii=1,grid%nlmax
+    tmp_int_array(ii) = ii + istart
+  enddo
+
+  tmp_int_array = tmp_int_array - 1
+  call ISCreateBlock(option%mycomm, 1, grid%nlmax, &
+                      tmp_int_array, PETSC_COPY_VALUES, is_to,  &
+                     ierr);CHKERRQ(ierr)
+  deallocate(tmp_int_array)
+  
+  call VecScatterCreate(vec_cell_ids,is_from,vec_cell_ids_loc,is_to, &
+                        vec_scat, ierr);CHKERRQ(ierr)
+  call ISDestroy(is_from, ierr);CHKERRQ(ierr)
+  call ISDestroy(is_to, ierr);CHKERRQ(ierr)
+  
+  call VecScatterBegin(vec_scat, vec_cell_ids, vec_cell_ids_loc, &
+                       INSERT_VALUES, SCATTER_FORWARD, ierr);CHKERRQ(ierr)
+  call VecScatterEnd(vec_scat, vec_cell_ids, vec_cell_ids_loc, &
+                     INSERT_VALUES, SCATTER_FORWARD, ierr);CHKERRQ(ierr)
+  call VecScatterDestroy(vec_scat, ierr);CHKERRQ(ierr)
+
+  call VecGetArrayF90(vec_cell_ids_loc, v_loc_p, ierr);CHKERRQ(ierr)
+  count = 0
+  setup_faces = PETSC_FALSE
+  do local_id=1, grid%nlmax
+    if (v_loc_p(local_id) > 9.99d0) then
+      setup_faces = PETSC_TRUE
+      facereal = v_loc_p(local_id)
+      tempint = int(log10(facereal))
+      prevreal = mod(facereal,10.d0**dble(tempint+1)) + offset
+      do ii = tempint+1, 1, -1
+        tempreal = mod(facereal,10.d0**dble(ii)) + offset
+        if (.not.Equal(tempreal,prevreal)) then
+          count = count + 1
+        endif
+        prevreal = tempreal
+      enddo
+    elseif (v_loc_p(local_id) > 0.0999d0) then
+      count = count + 1
+    endif
+  enddo
+    
+  region%num_cells = count
+  call DeallocateArray(region%cell_ids)
+  call DeallocateArray(region%faces)
+  if (region%num_cells > 0) then
+    allocate(region%cell_ids(region%num_cells))
+    region%cell_ids = UNINITIALIZED_INTEGER
+    if (setup_faces) then
+      allocate(region%faces(region%num_cells))
+      region%faces = UNINITIALIZED_INTEGER
+    endif
+    count = 0
+    do local_id=1, grid%nlmax
+      if (v_loc_p(local_id) > 9.99d0) then
+        facereal = v_loc_p(local_id)
+        tempint = int(log10(facereal))
+        prevreal = mod(facereal,10.d0**dble(tempint+1)) + offset
+        ! use a temporary array tempfacearray so that faces can be sorted
+        facecount = 0
+        tempfacearray = UNINITIALIZED_INTEGER
+        do ii = tempint+1, 1, -1
+          tempreal = mod(facereal,10.d0**dble(ii)) + offset
+          if (.not.Equal(tempreal,prevreal)) then
+            facecount = facecount + 1
+            tempfacearray(facecount) = ii
+          endif
+          prevreal = tempreal
+        enddo
+        ! sort the faces
+        call PetscSortInt(facecount,tempfacearray,ierr);CHKERRQ(ierr)
+        region%cell_ids(count+1:count+facecount) = local_id
+        region%faces(count+1:count+facecount) = tempfacearray(1:facecount)
+        count = count + facecount
+      elseif (v_loc_p(local_id) > 0.0999d0) then
+        count = count + 1
+        region%cell_ids(count) = local_id
+      endif
+    enddo
+  endif
+  
+  call VecRestoreArrayF90(vec_cell_ids_loc,v_loc_p,ierr);CHKERRQ(ierr)
+  
+  call VecDestroy(vec_cell_ids,ierr);CHKERRQ(ierr)
+  call VecDestroy(vec_cell_ids_loc,ierr);CHKERRQ(ierr)
+
+end subroutine GridLocalizeRegionsFromCellIDs
 
 ! ************************************************************************** !
 

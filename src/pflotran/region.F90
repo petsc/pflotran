@@ -32,7 +32,6 @@ module Region_module
   type, public :: region_type
     PetscInt :: id
     PetscInt :: def_type
-    PetscBool :: hdf5_ugrid_kludge  !TODO(geh) tear this out!!!!!
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXSTRINGLENGTH) :: filename
     PetscInt :: i1,i2,j1,j2,k1,k2
@@ -113,7 +112,6 @@ function RegionCreateWithNothing()
   allocate(region)
   region%id = 0
   region%def_type = 0
-  region%hdf5_ugrid_kludge = PETSC_FALSE
   region%name = ""
   region%filename = ""
   region%i1 = 0
@@ -272,7 +270,6 @@ function RegionCreateWithRegion(region)
   
   new_region%id = region%id
   new_region%def_type = region%def_type
-  new_region%hdf5_ugrid_kludge = region%hdf5_ugrid_kludge
   new_region%name = region%name
   new_region%filename = region%filename
   new_region%i1 = region%i1
@@ -534,14 +531,9 @@ subroutine RegionRead(region,input,option)
           end select
         enddo
       case('FILE')
-        call InputReadNChars(input,option,region%filename,MAXSTRINGLENGTH,PETSC_TRUE)
+        call InputReadNChars(input,option,region%filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'filename','REGION')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        if (input%ierr == 0) then
-          if (StringCompareIgnoreCase(word,'OLD_FORMAT')) then
-            region%hdf5_ugrid_kludge = PETSC_TRUE
-          endif
-        endif
       case('LIST')
         option%io_buffer = 'REGION LIST currently not implemented'
         call printErrMsg(option)

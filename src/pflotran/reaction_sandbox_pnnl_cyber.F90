@@ -24,6 +24,8 @@ module Reaction_Sandbox_Cyber_class
     PetscInt :: doc_id
     PetscInt :: biomass_id
     PetscInt :: co2_id
+    PetscInt :: carbon_consumption_species_id
+    character(len=MAXWORDLENGTH) :: carbon_consumption_species
     PetscReal :: f1
     PetscReal :: f2
     PetscReal :: f3
@@ -96,6 +98,7 @@ function CyberCreate()
   CyberCreate%doc_id = UNINITIALIZED_INTEGER
   CyberCreate%biomass_id = UNINITIALIZED_INTEGER
   CyberCreate%co2_id = UNINITIALIZED_INTEGER
+  CyberCreate%carbon_consumption_species_id = UNINITIALIZED_INTEGER
   CyberCreate%f1 = UNINITIALIZED_DOUBLE  
   CyberCreate%f2 = UNINITIALIZED_DOUBLE  
   CyberCreate%f3 = UNINITIALIZED_DOUBLE  
@@ -129,6 +132,7 @@ function CyberCreate()
   CyberCreate%stoich_3_biomass = UNINITIALIZED_DOUBLE  
   CyberCreate%activation_energy = UNINITIALIZED_DOUBLE  
   CyberCreate%nrxn = UNINITIALIZED_INTEGER
+  CyberCreate%carbon_consumption_species = ''
   nullify(CyberCreate%nrow)
   nullify(CyberCreate%ncol)
   nullify(CyberCreate%irow)
@@ -188,58 +192,65 @@ subroutine CyberRead(this,input,option)
         call InputReadDouble(input,option,this%k1)  
         call InputErrorMsg(input,option,'k1',error_string)
         call InputReadAndConvertUnits(input,this%k1,'1/sec', &
-                                      error_string//',k1',option)
+                                      trim(error_string)//',k1',option)
       case('K2','K_NO2-')
         call InputReadDouble(input,option,this%k2)  
         call InputErrorMsg(input,option,'k2',error_string)
         call InputReadAndConvertUnits(input,this%k2,'1/sec', &
-                                      error_string//',k2',option)
+                                      trim(error_string)//',k2',option)
       case('K3','K_O2(aq)')
         call InputReadDouble(input,option,this%k3)  
         call InputErrorMsg(input,option,'k3',error_string)
         call InputReadAndConvertUnits(input,this%k3,'1/sec', &
-                                      error_string//',k3',option)
+                                      trim(error_string)//',k3',option)
       case('KA1','KA_NO3-')
         call InputReadDouble(input,option,this%Ka1)  
         call InputErrorMsg(input,option,'Ka1',error_string)
         call InputReadAndConvertUnits(input,this%Ka1,'M', &
-                                      error_string//',Ka1',option)
+                                      trim(error_string)//',Ka1',option)
       case('KA2','KA_NO2-')
         call InputReadDouble(input,option,this%Ka2)  
         call InputErrorMsg(input,option,'Ka2',error_string)
         call InputReadAndConvertUnits(input,this%Ka2,'M', &
-                                      error_string//',Ka2',option)
+                                      trim(error_string)//',Ka2',option)
       case('KA3','KA_O2(aq)')
         call InputReadDouble(input,option,this%Ka3)  
         call InputErrorMsg(input,option,'Ka3',error_string)
         call InputReadAndConvertUnits(input,this%Ka3,'M', &
-                                      error_string//',Ka3',option)
+                                      trim(error_string)//',Ka3',option)
       case('KD1','KD_NO3-')
         call InputReadDouble(input,option,this%Kd1)  
         call InputErrorMsg(input,option,'Kd1',error_string)
         call InputReadAndConvertUnits(input,this%Kd1,'M', &
-                                      error_string//',Kd1',option)
+                                      trim(error_string)//',Kd1',option)
       case('KD2','KD_NO2-')
         call InputReadDouble(input,option,this%Kd2)  
         call InputErrorMsg(input,option,'Kd2',error_string)
         call InputReadAndConvertUnits(input,this%Kd2,'M', &
-                                      error_string//',Kd2',option)
+                                      trim(error_string)//',Kd2',option)
       case('KD3','KD_O2(aq)')
         call InputReadDouble(input,option,this%Kd3)  
         call InputErrorMsg(input,option,'Kd3',error_string)
         call InputReadAndConvertUnits(input,this%Kd3,'M', &
-                                      error_string//',Kd3',option)
+                                      trim(error_string)//',Kd3',option)
       case('KDEG')
         call InputReadDouble(input,option,this%k_deg)  
         call InputErrorMsg(input,option,'kdeg',error_string)
         call InputReadAndConvertUnits(input,this%k_deg,'1/sec', &
-                                      error_string//',kdeg',option)
+                                      trim(error_string)//',kdeg',option)
       case('F_ACT')
         call InputReadDouble(input,option,this%f_act)  
         call InputErrorMsg(input,option,'f_act',error_string)
       case('ACTIVATION_ENERGY')
         call InputReadDouble(input,option,this%activation_energy)  
-        call InputErrorMsg(input,option,'activation energy',error_string)         
+        call InputErrorMsg(input,option,'activation energy',error_string)
+        call InputReadAndConvertUnits(input,this%activation_energy,'J/mol', &
+                              trim(error_string)//',activation energy',option)
+      case('CARBON_CONSUMPTION_SPECIES')
+        call InputReadWord(input,option, &
+                           this%carbon_consumption_species,PETSC_TRUE)
+        call InputErrorMsg(input,option,'carbon consumption species', &
+                           error_string)
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
@@ -298,6 +309,12 @@ subroutine CyberSetup(this,reaction,option)
   word = 'CO2(aq)'
   this%co2_id = &
     GetPrimarySpeciesIDFromName(word,reaction,option)
+  if (len_trim(this%carbon_consumption_species) > 0) then 
+    word = this%carbon_consumption_species
+    this%carbon_consumption_species_id = &
+      GetImmobileSpeciesIDFromName(word,reaction%immobile, &
+                                   PETSC_TRUE,option)
+  endif
   
   ! constants based on Hyun's writeup on 6/21/16 entitled "Mini-cybernetic 
   ! model of batch denitrification process"
@@ -325,6 +342,8 @@ subroutine CyberSetup(this,reaction,option)
 !  this%f_act = 1.d40
 !  this%k_deg = 0.d0
 
+  ! NOTE: CO2 stiochiometries below factor in on carbon consumption.
+  ! Take care to ensure that changes do not adversely affect consumption.
   this%stoich_1_doc = -1.d0
   this%stoich_1_nh4 = -0.2d0*(1.d0-this%f1)
   this%stoich_1_no3 = -2.d0*this%f1
@@ -589,6 +608,13 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   Residual(this%doc_id) = Residual(this%doc_id) - &
                           k_deg_scaled/this%f_act * X * L_water
                  
+  ! calculate carbon consumption
+  if (this%carbon_consumption_species_id > 0) then
+    ! Residual(this%co2_id) holds the production of co2(aq) in moles/sec
+    i = reaction%offset_immobile + this%carbon_consumption_species_id
+    Residual(i) = Residual(this%co2_id)
+  endif
+  
   if (compute_derivative) then
   
     dr1kin_ddoc = k1_scaled * &
@@ -705,6 +731,16 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
     Jacobian(this%doc_id,this%biomass_id) = &
       Jacobian(this%doc_id,this%biomass_id) - &
       k_deg_scaled/this%f_act * kg_water
+      
+    ! calculate carbon consumption
+    if (this%carbon_consumption_species_id > 0) then
+      ! copy all derivatives except diagonal into carbon consumption 
+      ! species row
+      i = reaction%offset_immobile + this%carbon_consumption_species_id
+      Jacobian(i,:) = Jacobian(this%co2_id,:)
+      Jacobian(i,i) = Jacobian(this%co2_id,this%co2_id)
+      Jacobian(i,this%co2_id) = 0.d0
+    endif
     
   endif
   

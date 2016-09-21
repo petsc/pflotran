@@ -324,9 +324,14 @@ subroutine PatchLocalizeRegions(patch,regions,option)
 end subroutine PatchLocalizeRegions
 
 ! ************************************************************************** !
-
+#ifdef WELL_CLASS
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                                 well_specs, option)
+#else
+subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
+                                option)
+#endif
+
   ! 
   ! Assigns conditions and regions to couplers
   ! 
@@ -339,15 +344,19 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   use Condition_module
   use Transport_Constraint_module
   use Connection_module
+#ifdef WELL_CLASS
   use Well_module
   use WellSpec_Base_class
+#endif
 
   implicit none
   
   type(patch_type) :: patch
   type(condition_list_type) :: flow_conditions
   type(tran_condition_list_type) :: transport_conditions
+#ifdef WELL_CLASS
   type(well_spec_list_type), pointer :: well_specs
+#endif
   type(option_type) :: option
   
   type(coupler_type), pointer :: coupler
@@ -355,7 +364,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(strata_type), pointer :: strata
   type(observation_type), pointer :: observation, next_observation
   type(integral_flux_type), pointer :: integral_flux
+#ifdef WELL_CLASS
   class(well_spec_base_type), pointer :: well_spec 
+#endif
 
   PetscInt :: temp_int, isub
   PetscErrorCode :: ierr
@@ -495,6 +506,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                  '" not found in region list'
       call printErrMsg(option)
     endif
+#ifdef WELL_CLASS
     !Create a well only if a well_spec is associated with the source_sink coupler 
     nullify(well_spec)
     well_spec => WellSpecGetPtrFromList(coupler%well_spec_name,well_specs) 
@@ -503,6 +515,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       option%nwells = option%nwells + 1
     end if  
     nullify(well_spec)
+#endif
    
     ! pointer to flow condition
     if (option%nflowdof > 0) then    
@@ -779,13 +792,15 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     endif
   endif
 
+#ifdef WELL_CLASS
   !create well communicators - if no wells exit without any operation 
   call PatchCreateWellComms(patch,option)
+#endif
 
 end subroutine PatchProcessCouplers
 
 ! ************************************************************************** !
-
+#ifdef WELL_CLASS
 subroutine PatchCreateWellComms(patch,option)
   ! 
   ! Create well groups and communicators 
@@ -1043,7 +1058,7 @@ subroutine PatchCreateWellComms(patch,option)
   nullify(coupler)
 
 end subroutine PatchCreateWellComms 
-
+#endif  
 ! ************************************************************************** !
 
 subroutine PatchInitAllCouplerAuxVars(patch,option)
@@ -1272,11 +1287,13 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
     endif
 
     !Well Setup
+#ifdef WELL_CLASS
     if (associated(coupler%well)) then
       call coupler%well%Setup(coupler%connection_set,patch%grid, &
                                         option)
     end if
-      
+#endif      
+
     coupler => coupler%next
   enddo
   
@@ -4738,6 +4755,10 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = option%myrank
       enddo
+    case(NATURAL_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = grid%nG2A(grid%nL2G(local_id))
+      enddo
     case(RESIDUAL)
       call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
       call VecStrideGather(field%flow_r,isubvar-1,vec,INSERT_VALUES,ierr)
@@ -5493,6 +5514,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
     case(MATERIAL_ID)
       value = patch%imat_internal_to_external(iabs(patch%imat(ghosted_id)))
     case(PROCESS_ID)
+      value = grid%nG2A(ghosted_id)
+    case(NATURAL_ID)
       value = option%myrank
     ! Need to fix the below two cases (they assume only one component) -- SK 02/06/13  
     case(SECONDARY_CONCENTRATION)
@@ -6397,6 +6420,9 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
     case(PROCESS_ID)
       call printErrMsg(option, &
                        'Cannot set PROCESS_ID through PatchSetVariable()')
+    case(NATURAL_ID)
+      call printErrMsg(option, &
+                       'Cannot set NATURAL_ID through PatchSetVariable()')
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchSetVariable'')') ivar
@@ -6584,6 +6610,8 @@ function PatchGetVarNameFromKeyword(keyword,option)
   select case(keyword)
     case('PROCESS_ID')
       var_name = 'Processor ID'
+    case('NATURAL_ID')
+      var_name = 'Natural ID'
     case default
       option%io_buffer = 'Keyword "' // trim(keyword) // '" not ' // &
                          'recognized in PatchGetIvarsFromKeyword()'
@@ -6619,6 +6647,10 @@ subroutine PatchGetIvarsFromKeyword(keyword,ivar,isubvar,var_type,option)
   select case(keyword)
     case('PROCESS_ID')
       ivar = PROCESS_ID
+      isubvar = ZERO_INTEGER
+      var_type = INT_VAR
+    case('NATURAL_ID')
+      ivar = NATURAL_ID
       isubvar = ZERO_INTEGER
       var_type = INT_VAR
     case default
@@ -6694,6 +6726,10 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
     case(PROCESS_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = option%myrank
+      enddo
+    case(NATURAL_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = grid%nG2A(grid%nL2G(local_id))
       enddo
     case default
       write(option%io_buffer, &

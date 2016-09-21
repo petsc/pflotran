@@ -1,4 +1,5 @@
 module Well_FlowEnergy_class
+#ifdef WELL_CLASS
 
   use PFLOTRAN_Constants_module
   use Well_Base_class
@@ -212,7 +213,8 @@ subroutine WellFlowEnergyExplJDerivative(this,iconn,ghosted_id,isothermal, &
   PetscBool :: isothermal
   PetscInt :: energy_equation_index
   type(option_type) :: option
-  PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  !PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  PetscReal :: Jac(:,:)
 
   !type(flow_toil_ims_condition_type), pointer :: src_sink_condition
   !type(toil_ims_auxvar_type) :: toil_auxvar(0:)
@@ -232,10 +234,10 @@ subroutine WellFlowEnergyExplJDerivative(this,iconn,ghosted_id,isothermal, &
   !                        global_auxvar,dummy_real,scale,Res)
 
 #ifdef WELL_DEBUG
-  write(*,"('ExplJDerivative p011 = ',e16.10)"), this%flow_energy_auxvars(0,1)%pres(1)
-  write(*,"('ExplJDerivative p111 = ',e16.10)"), this%flow_energy_auxvars(1,1)%pres(1)
-  write(*,"('ExplJDerivative p211 = ',e16.10)"), this%flow_energy_auxvars(2,1)%pres(1)
-  write(*,"('ExplJDerivative p311 = ',e16.10)"), this%flow_energy_auxvars(3,1)%pres(1) 
+  write(*,"('ExplJDerivative p011 = ',e16.10)") this%flow_energy_auxvars(0,1)%pres(1)
+  write(*,"('ExplJDerivative p111 = ',e16.10)") this%flow_energy_auxvars(1,1)%pres(1)
+  write(*,"('ExplJDerivative p211 = ',e16.10)") this%flow_energy_auxvars(2,1)%pres(1)
+  write(*,"('ExplJDerivative p311 = ',e16.10)") this%flow_energy_auxvars(3,1)%pres(1) 
 #endif
 
 
@@ -576,6 +578,7 @@ end subroutine FlowEnergyWellStrip
 
 !*****************************************************************************!
 
+#endif  
 end module Well_FlowEnergy_class
-
+!end of WELL_CLASS
 

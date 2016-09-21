@@ -1,4 +1,5 @@
 module Well_TOilIms_class
+#ifdef WELL_CLASS
 
   use PFLOTRAN_Constants_module
   use WellSpec_Base_class
@@ -298,8 +299,11 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
   PetscBool :: isothermal
   PetscInt :: ghosted_id, dof
   type(option_type) :: option
-  PetscReal :: Res(1:option%nflowdof)
-  PetscReal :: ss_flow_vol_flux(1:option%nphase)
+  !PetscReal :: Res(1:option%nflowdof)
+  !PetscReal :: ss_flow_vol_flux(1:option%nphase)
+  PetscReal :: Res(:)
+  PetscReal :: ss_flow_vol_flux(:)
+
 
   !why not using a pointer to avoid the copy?
   PetscReal :: dw_kg, dw_h2o_mol
@@ -394,8 +398,11 @@ subroutine TOilImsOilProdExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
   PetscBool :: isothermal
   PetscInt :: ghosted_id, dof
   type(option_type) :: option
-  PetscReal :: Res(1:option%nflowdof)
-  PetscReal :: ss_flow_vol_flux(1:option%nphase)
+  !PetscReal :: Res(1:option%nflowdof)
+  !PetscReal :: ss_flow_vol_flux(1:option%nphase)
+  PetscReal :: Res(:)
+  PetscReal :: ss_flow_vol_flux(:)
+
 
   call TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
                                ghosted_id, dof,option,res)
@@ -427,8 +434,11 @@ subroutine TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
   PetscBool :: isothermal
   PetscInt :: ghosted_id, dof, ierr
   type(option_type) :: option
-  PetscReal :: Res(1:option%nflowdof)
-  PetscReal :: ss_flow_vol_flux(1:option%nphase)
+  !PetscReal :: Res(1:option%nflowdof)
+  !PetscReal :: ss_flow_vol_flux(1:option%nphase)
+  PetscReal :: Res(:)
+  PetscReal :: ss_flow_vol_flux(:)
+
 
 
   PetscInt :: i_ph
@@ -546,9 +556,7 @@ end subroutine TOilImsProducerExplRes
 
 ! ************************************************************************** !
 
-
+#endif  
 end module Well_TOilIms_class
-
-
-
+!end of WELL_CLASS
 

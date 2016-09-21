@@ -1253,7 +1253,8 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
                        option%time/output_option%tconv, &
                        grid%unstructured_grid%explicit_grid%num_elems, &
                        realization_base%output_option%xmf_vert_len, &
-                       grid%unstructured_grid%explicit_grid%num_cells_global, &
+                       !grid%unstructured_grid%explicit_grid%num_cells_global, &
+                       grid%unstructured_grid%explicit_grid%num_vertices, &
                        new_filename)
   endif
 
@@ -1308,8 +1309,11 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
                           "/" // trim(string)
         if (option%myrank == option%io_rank .and. &
             option%print_explicit_primal_grid) then
-          call OutputXMFAttributeExplicit(OUTPUT_UNIT,grid%nmax,string, &
-                                          att_datasetname)
+          !call OutputXMFAttributeExplicit(OUTPUT_UNIT,grid%nmax,string, &
+          !                                att_datasetname)
+          call OutputXMFAttributeExplicit(OUTPUT_UNIT,grid%nmax,  &
+                     grid%unstructured_grid%explicit_grid%output_mesh_type, & 
+                                          string, att_datasetname)
         endif
         cur_variable => cur_variable%next
       enddo
@@ -1334,8 +1338,9 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
                             "/" // trim(string)
           if (option%myrank == option%io_rank .and. &
               option%print_explicit_primal_grid) then
-            call OutputXMFAttributeExplicit(OUTPUT_UNIT,grid%nmax,string, &
-                                            att_datasetname)
+            call OutputXMFAttributeExplicit(OUTPUT_UNIT,grid%nmax, &
+                  grid%unstructured_grid%explicit_grid%output_mesh_type, &
+                                            string,att_datasetname)
           endif
           cur_variable => cur_variable%next
         enddo
@@ -2706,11 +2711,11 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option, &
 
   grid => realization_base%patch%grid
 
-  allocate(vec_x_ptr(grid%unstructured_grid%explicit_grid%num_cells_global))
-  allocate(vec_y_ptr(grid%unstructured_grid%explicit_grid%num_cells_global))
-  allocate(vec_z_ptr(grid%unstructured_grid%explicit_grid%num_cells_global))
+  allocate(vec_x_ptr(grid%unstructured_grid%explicit_grid%num_vertices))
+  allocate(vec_y_ptr(grid%unstructured_grid%explicit_grid%num_vertices))
+  allocate(vec_z_ptr(grid%unstructured_grid%explicit_grid%num_vertices))
 
-  do i = 1, grid%unstructured_grid%explicit_grid%num_cells_global 
+  do i = 1, grid%unstructured_grid%explicit_grid%num_vertices 
     vec_x_ptr(i) = grid%unstructured_grid%explicit_grid%vertex_coordinates(i)%x
     vec_y_ptr(i) = grid%unstructured_grid%explicit_grid%vertex_coordinates(i)%y
     vec_z_ptr(i) = grid%unstructured_grid%explicit_grid%vertex_coordinates(i)%z
@@ -2727,7 +2732,8 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option, &
   !        not(SCORPIO_WRITE)
   !
   
-  local_size = grid%unstructured_grid%explicit_grid%num_cells_global
+  !local_size = grid%unstructured_grid%explicit_grid%num_cells_global
+  local_size = grid%unstructured_grid%explicit_grid%num_vertices
   ! memory space which is a 1D vector
   rank_mpi = 1
   dims = 0
@@ -2737,7 +2743,9 @@ subroutine WriteHDF5CoordinatesUGridXDMFExplicit(realization_base,option, &
   ! file space which is a 2D block
   rank_mpi = 2
   dims = 0
-  dims(2) = grid%unstructured_grid%explicit_grid%num_cells_global
+  !POc
+  !dims(2) = grid%unstructured_grid%explicit_grid%num_cells_global
+  dims(2) = grid%unstructured_grid%explicit_grid%num_vertices
   dims(1) = 3
   call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
 

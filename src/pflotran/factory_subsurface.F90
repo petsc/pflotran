@@ -808,21 +808,7 @@ subroutine SubsurfaceInitSimulation(simulation)
   call InitSubsurfaceSetupZeroArrays(realization)
   call OutputVariableAppendDefaults(realization%output_option% &
                                       output_snap_variable_list,option)
-
-  if (option%nflowdof > 0) then
-    select type(ts => simulation%flow_process_model_coupler%timestepper)
-      class is (timestepper_BE_type)
-        call InitSubsurfFlowSetupSolvers(realization,ts%convergence_context, &
-                                         ts%solver)
-    end select
-  endif
-  if (option%ntrandof > 0) then
-    select type(ts => simulation%rt_process_model_coupler%timestepper)
-      class is (timestepper_BE_type)
-        call InitSubsurfTranSetupSolvers(realization,ts%convergence_context, &
-                                         ts%solver)
-    end select
-  endif
+  
   call RegressionCreateMapping(simulation%regression,realization)
 ! end from old Init()
 
@@ -950,70 +936,6 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
     end select
     cur_pm%output_option => simulation%output_option
     call cur_pm%Setup()
-    if (associated(pmc%timestepper)) then
-      select type(ts => pmc%timestepper)
-      !----------------------------------
-        class is(timestepper_BE_type)
-          call SNESGetLineSearch(ts%solver%snes,linesearch, &
-                                 ierr);CHKERRQ(ierr)
-          ! Post
-          select type(cur_pm)
-          !-----------------------------------
-            class is(pm_subsurface_flow_type)
-              if (cur_pm%check_post_convergence) then
-                call SNESLineSearchSetPostCheck(linesearch,PMCheckUpdatePost, &
-                     pmc%pm_ptr,ierr);CHKERRQ(ierr)
-                !geh: it is possible that the other side has not been set
-                cur_pm%check_post_convergence = PETSC_TRUE
-              endif
-          !------------------------------------
-            class is(pm_rt_type)
-              if (cur_pm%print_EKG .or. option%use_mc .or. &
-                  cur_pm%check_post_convergence) then
-                call SNESLineSearchSetPostCheck(linesearch,PMCheckUpdatePost, &
-                     pmc%pm_ptr,ierr);CHKERRQ(ierr)
-                if (cur_pm%print_EKG) then
-                  cur_pm%check_post_convergence = PETSC_TRUE
-                endif
-              endif
-          !-------------------------------------
-          end select
-          ! Pre
-          select type(cur_pm)
-          !-------------------------------------
-            class is(pm_richards_type)
-              if (Initialized(cur_pm%pressure_dampening_factor) .or. &
-                  Initialized(cur_pm%saturation_change_limit)) then
-                call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
-                     pmc%pm_ptr,ierr);CHKERRQ(ierr)
-              endif   
-          !-------------------------------------
-            class is(pm_general_type)
-              call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
-                   pmc%pm_ptr,ierr);CHKERRQ(ierr)
-          !-------------------------------------
-            class is(pm_toil_ims_type)
-              call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
-                   pmc%pm_ptr,ierr);CHKERRQ(ierr)
-          !-------------------------------------
-            class is(pm_th_type)
-              if (Initialized(cur_pm%pressure_dampening_factor) .or. &
-                  Initialized(cur_pm%pressure_change_limit) .or. &
-                  Initialized(cur_pm%temperature_change_limit)) then
-                call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
-                     pmc%pm_ptr,ierr);CHKERRQ(ierr)
-              endif 
-          !-------------------------------------
-            class is(pm_rt_type)
-              if (realization%reaction%check_update) then
-                call SNESLineSearchSetPreCheck(linesearch,PMCheckUpdatePre, &
-                     pmc%pm_ptr,ierr);CHKERRQ(ierr)
-              endif
-          !-------------------------------------
-          end select
-      !----------------------------------
-      end select
-    endif ! associated(pmc%timestepper)    
     cur_pm => cur_pm%next
   enddo
   call pmc%SetupSolvers()
@@ -1484,7 +1406,9 @@ subroutine SubsurfaceReadInput(simulation)
   use PMC_Subsurface_class
   use Timestepper_BE_class
   use Timestepper_Steady_class
+#if WELL_CLASS
   use WellSpec_Base_class
+#endif
   
 #ifdef SOLID_SOLUTION
   use Reaction_Solid_Solution_module, only : SolidSolutionReadFromInputFile
@@ -1516,7 +1440,9 @@ subroutine SubsurfaceReadInput(simulation)
   
   type(region_type), pointer :: region
   type(flow_condition_type), pointer :: flow_condition
+#ifdef WELL_CLASS
   class(well_spec_base_type), pointer :: well_spec
+#endif
   type(tran_condition_type), pointer :: tran_condition
   type(tran_constraint_type), pointer :: tran_constraint
   type(tran_constraint_type), pointer :: sec_tran_constraint
@@ -1644,7 +1570,43 @@ subroutine SubsurfaceReadInput(simulation)
 !....................
       case ('PRINT_PRIMAL_GRID')
         option%print_explicit_primal_grid = PETSC_TRUE
-        
+
+!....................
+      !out_mesh_type defaults for primal_explicit grid is vetex_centered
+      !this should go uner the OUTPUT card, together with PRINT_PRIMAL_GRID & PRINT_DUAL_GRID
+      case ('EXPLICIT_GRID_PRIMAL_GRID_TYPE')         
+        if (associated(grid%unstructured_grid)) then
+          if (associated(grid%unstructured_grid%explicit_grid)) then
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,word, &
+                  'EXPLICIT_GRID_PRIMAL_GRID_TYPE')
+            call printMsg(option,word)
+            call StringToUpper(word)
+              select case (trim(word))
+                case ('VERTEX_CENTERED')
+                  grid%unstructured_grid%explicit_grid%output_mesh_type = &
+                     VERTEX_CENTERED_OUTPUT_MESH   
+                case ('CELL_CENTERED')
+                  grid%unstructured_grid%explicit_grid%output_mesh_type = &
+                     CELL_CENTERED_OUTPUT_MESH
+                  if (grid%unstructured_grid%explicit_grid%num_elems /= &
+                      grid%unstructured_grid%explicit_grid%num_cells_global &
+                     ) then 
+                    option%io_buffer = 'EXPLICIT_GRID_PRIMAL_GRID_TYPE ' // &
+                      'if CELL_CENTERED is speccified the number of cells'// &
+                      ' of the grid to print and those' // &
+                      ' of the computational grid must be equal.'
+                    call printErrMsg(option)
+                  end if
+                case default
+                 option%io_buffer = 'EXPLICIT_GRID_PRIMAL_GRID_TYPE ' // &
+                               'only VERTEX_CENTERED and CELL_CENTERED '// &
+                               'are supported.'
+                 call printErrMsg(option)    
+              end select 
+          endif
+        endif
+
 !....................
       case ('PRINT_DUAL_GRID')
         option%print_explicit_dual_grid = PETSC_TRUE
@@ -1681,6 +1643,7 @@ subroutine SubsurfaceReadInput(simulation)
         nullify(flow_condition)
 
 !....................
+#ifdef WELL_CLASS
       case ('WELL_SPEC')
         well_spec => WellSpecBaseCreate()
         call InputReadWord(input,option,well_spec%name,PETSC_TRUE)
@@ -1689,6 +1652,7 @@ subroutine SubsurfaceReadInput(simulation)
         call well_spec%Read(input,option)
         call WellSpecAddToList(well_spec,realization%well_specs)
         nullify(well_spec)
+#endif
 
 !....................
       case ('TRANSPORT_CONDITION')
@@ -1790,42 +1754,46 @@ subroutine SubsurfaceReadInput(simulation)
       case('REFERENCE_PRESSURE')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_pressure)
-        call InputDefaultMsg(input,option,'Reference Pressure') 
-
+        call InputErrorMsg(input,option,'Reference Pressure','value') 
+        call InputReadAndConvertUnits(input,option%reference_pressure, &
+                                      'Pa','Reference Pressure',option)
 !....................
 
       case('REFERENCE_DENSITY')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_water_density)
-        call InputDefaultMsg(input,option,'Reference Density') 
-
+        call InputErrorMsg(input,option,'Reference Density','value') 
+        call InputReadAndConvertUnits(input,option%reference_water_density, &
+                                      'kg/m^3','Reference Density',option)
 !....................
 
       case('MINIMUM_HYDROSTATIC_PRESSURE')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%minimum_hydrostatic_pressure)
-        call InputDefaultMsg(input,option,'Minimum Hydrostatic Pressure') 
-
+        call InputErrorMsg(input,option,'Minimum Hydrostatic Pressure','value') 
+        call InputReadAndConvertUnits(input, &
+                                      option%minimum_hydrostatic_pressure, &
+                                    'Pa','Minimum Hydrostatic Pressure',option)
 !......................
 
       case('REFERENCE_TEMPERATURE')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_temperature)
-        call InputDefaultMsg(input,option,'Reference Temperature') 
+        call InputErrorMsg(input,option,'Reference Temperature','value') 
 
 !......................
 
       case('REFERENCE_POROSITY')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_porosity)
-        call InputDefaultMsg(input,option,'Reference Porosity') 
+        call InputErrorMsg(input,option,'Reference Porosity','value') 
 
 !......................
 
       case('REFERENCE_SATURATION')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_saturation)
-        call InputDefaultMsg(input,option,'Reference Saturation') 
+        call InputErrorMsg(input,option,'Reference Saturation','value') 
 
 !......................
 

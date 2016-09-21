@@ -35,6 +35,8 @@ module PM_RT_class
     PetscReal :: max_concentration_change
     PetscReal :: max_volfrac_change
     PetscReal :: volfrac_change_governor
+    PetscReal :: cfl_governor
+    PetscBool :: temperature_dependent_diffusion
     ! for transport only
     PetscBool :: transient_porosity
   contains
@@ -110,6 +112,8 @@ function PMRTCreate()
   rt_pm%max_concentration_change = 0.d0
   rt_pm%max_volfrac_change = 0.d0
   rt_pm%volfrac_change_governor = 1.d0
+  rt_pm%cfl_governor = UNINITIALIZED_DOUBLE
+  rt_pm%temperature_dependent_diffusion = PETSC_FALSE
   ! these flags can only be true for transport only
   rt_pm%transient_porosity = PETSC_FALSE
 
@@ -170,6 +174,12 @@ subroutine PMRTRead(this,input)
         this%check_post_convergence = PETSC_TRUE
       case('NUMERICAL_JACOBIAN')
         option%transport%numerical_derivatives = PETSC_TRUE
+      case('TEMPERATURE_DEPENDENT_DIFFUSION')
+        this%temperature_dependent_diffusion = PETSC_TRUE
+    case('MAX_CFL')
+      call InputReadDouble(input,option,this%cfl_governor)
+      call InputErrorMsg(input,option,'MAX_CFL', &
+                         'SUBSURFACE_TRANSPORT OPTIONS')
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
@@ -193,15 +203,24 @@ subroutine PMRTSetup(this)
   use Communicator_Unstructured_class
   use Grid_module 
 #endif  
+  use Reactive_Transport_Aux_module, only : reactive_transport_param_type
   
   implicit none
   
   class(pm_rt_type) :: this
 
+  type(reactive_transport_param_type), pointer :: rt_parameter
+
 #ifdef PM_RT_DEBUG  
   call printMsg(this%option,'PMRT%Setup()')
 #endif
+
+  rt_parameter => this%realization%patch%aux%RT%rt_parameter
   
+  ! pass down flags from PMRT class
+  rt_parameter%temperature_dependent_diffusion = &
+    this%temperature_dependent_diffusion
+
 #ifndef SIMPLIFY  
   ! set up communicator
   select case(this%realization%discretization%itype)
@@ -639,6 +658,8 @@ subroutine PMRTUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
   ! geh: see comment above under flow stepper
   dtt = max(dtt,dt_min)
   dt = dtt
+
+  call RealizationLimitDTByCFL(this%realization,this%cfl_governor,dt)
   
 end subroutine PMRTUpdateTimestep
 

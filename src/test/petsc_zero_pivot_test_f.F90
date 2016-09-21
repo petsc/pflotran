@@ -2,6 +2,8 @@ program test
 
   implicit none
   
+!#define AFTER
+#if defined(AFTER)
 #include "petsc/finclude/petscsys.h"
 #include "petsc/finclude/petscmat.h"
 #include "petsc/finclude/petscmat.h90"
@@ -12,6 +14,32 @@ program test
 #include "petsc/finclude/petscviewer.h"
 #include "petsc/finclude/petscksp.h"
 #include "petsc/finclude/petscpc.h"
+#else
+!#define MIDDLE
+#if defined(MIDDLE)
+#include "petsc-finclude/petscsys.h"
+#include "petsc-finclude/petscmat.h"
+#include "petsc-finclude/petscmat.h90"
+#include "petsc-finclude/petscvec.h"
+#include "petsc-finclude/petscvec.h90"
+#include "petsc-finclude/petscis.h"
+#include "petsc-finclude/petscis.h90"
+#include "petsc-finclude/petscviewer.h"
+#include "petsc-finclude/petscksp.h"
+#include "petsc-finclude/petscpc.h"
+#else
+#include "finclude/petscsys.h"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscviewer.h"
+#include "finclude/petscksp.h"
+#include "finclude/petscpc.h"
+#endif
+#endif
 
   PetscMPIInt :: size
   PetscMPIInt :: rank
@@ -62,6 +90,7 @@ program test
   call PCSetFromOptions(pc,ierr)
 !  call KSPSetup(ksp,ierr)
 
+  call PCFactorSetShiftType(pc,MAT_SHIFT_INBLOCKS,ierr)
   tolerance = 1.d-20
   call PCFactorSetZeroPivot(pc,tolerance,ierr)
 

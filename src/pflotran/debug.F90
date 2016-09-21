@@ -108,7 +108,8 @@ subroutine DebugRead(debug,input,option)
       case('PRINT_COUPLERS','PRINT_COUPLER')
         debug%print_couplers = PETSC_TRUE
         debug%coupler_string = trim(adjustl(input%buf))
-      case('PRINT_JACOBIAN_DETAILED','MATVIEW_JACOBIAN_DETAILED','VIEW_JACOBIAN_DETAILED')
+      case('PRINT_JACOBIAN_DETAILED','MATVIEW_JACOBIAN_DETAILED', &
+           'VIEW_JACOBIAN_DETAILED')
         debug%matview_Jacobian_detailed = PETSC_TRUE
       case('PRINT_NUMERICAL_DERIVATIVES','VIEW_NUMERICAL_DERIVATIVES')
         debug%print_numerical_derivatives = PETSC_TRUE

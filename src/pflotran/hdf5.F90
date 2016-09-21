@@ -38,21 +38,15 @@ module HDF5_module
             HDF5WriteStructDataSetFromVec, &
             HDF5WriteDataSetFromVec, &
             HDF5ReadDataSetInVec, &
-            HDF5WriteStructuredDataSet, &
-            HDF5ReadRegionFromFile, &       
-            HDF5ReadUnstructuredGridRegionFromFile, &
-            HDF5ReadCellIndexedIntegerArray, & 
-            HDF5ReadCellIndexedRealArray, &
-            HDF5QueryRegionDefinition, &
-            HDF5ReadRegionDefinedByVertex
-#else
+            HDF5WriteStructuredDataSet
+#endif            
+
   public :: HDF5ReadRegionFromFile, &
             HDF5ReadUnstructuredGridRegionFromFile, &
             HDF5ReadCellIndexedIntegerArray, &
             HDF5ReadCellIndexedRealArray, &
             HDF5QueryRegionDefinition, &
             HDF5ReadRegionDefinedByVertex
-#endif            
 
 contains
 
@@ -976,6 +970,139 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 ! SCORPIO
 
 end subroutine HDF5ReadIntegerArray
+
+! ************************************************************************** !
+
+subroutine HDF5ReadIntegerArraySplit(option,file_id,dataset_name,local_size, &
+                                     integer_array)
+  ! 
+  ! Read in local integer values from hdf5 global file
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 09/21/07
+  ! 
+
+  use hdf5
+  
+  use Grid_module
+  use Option_module
+  use HDF5_Aux_module
+  use Utility_module, only : DeallocateArray
+  
+  implicit none
+
+#if defined(SCORPIO)
+  type(option_type) :: option
+  integer(HID_T) :: file_id
+  character(len=MAXWORDLENGTH) :: dataset_name
+  PetscInt :: local_size
+  PetscInt, pointer :: integer_array(:)
+  
+  option%io_buffer = 'HDF5ReadIntegerArraySplit() not yet setup for SCORPIO'
+  call printErrMsg(option)
+
+#else
+! SCORPIO is not defined
+
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: local_size
+  integer(HID_T) :: file_id
+  PetscInt, pointer :: integer_array(:)
+  
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: offset(3), length(3), stride(3)
+  PetscMPIInt :: rank_mpi
+  PetscInt :: istart, iend, remainder
+  PetscInt :: temp_int
+  integer(HSIZE_T) :: num_integers_in_file
+  integer(SIZE_T) :: string_size
+  
+  integer, allocatable :: integer_buffer_i4(:)
+  
+  PetscInt :: read_block_size
+
+! Default & Glenn's HDF5 Broadcast Mechanism (uses HDF5 Independent I/O mode)
+
+  call PetscLogEventBegin(logging%event_read_int_array_hdf5, &
+                          ierr);CHKERRQ(ierr)
+
+  call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
+  if (hdf5_err /= 0) then
+    string_size = MAXSTRINGLENGTH
+    call h5fget_name_f(file_id,string,string_size,hdf5_err)
+    option%io_buffer = 'HDF5 dataset "' // trim(dataset_name) // '" not found &
+      &in file "' // trim(string) // '".'
+    call printErrMsg(option)
+  endif
+  call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  ! should be a rank=1 data space
+  call h5sget_simple_extent_npoints_f(file_space_id,num_integers_in_file, &
+                                      hdf5_err)
+  ! divide across all processes
+  temp_int = int(num_integers_in_file)
+  read_block_size = temp_int / option%mycommsize
+  remainder = temp_int - read_block_size*option%mycommsize
+  if (option%myrank < temp_int - read_block_size*option%mycommsize) &
+    read_block_size = read_block_size + 1
+  if (local_size > 0 .and. local_size /= read_block_size) then
+    write(string,*) local_size, read_block_size
+    option%io_buffer = 'Array mismatch in HDF5ReadIntegerArraySplit(): ' // &
+      trim(adjustl(string))
+    call printErrMsgByRank(option)
+  endif
+  istart = 0
+  iend   = 0
+  call MPI_Exscan(read_block_size, istart, ONE_INTEGER_MPI, MPIU_INTEGER, &
+                  MPI_SUM, option%mycomm, ierr)
+  
+  rank_mpi = 1
+  offset = 0
+  length = 0
+  stride = 1
+  
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
+#endif
+  
+  if (read_block_size > 0) then
+    dims = 0
+    memory_space_id = -1
+    dims(1) = read_block_size
+    call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
+    ! offset is zero-based
+    offset(1) = istart
+    length(1) = dims(1)
+    allocate(integer_buffer_i4(read_block_size))
+    integer_buffer_i4 = UNINITIALIZED_INTEGER
+    call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
+                               length,hdf5_err,stride,stride) 
+    call PetscLogEventBegin(logging%event_h5dread_f,ierr);CHKERRQ(ierr)
+    call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
+                   hdf5_err,memory_space_id,file_space_id,prop_id)   
+    call PetscLogEventEnd(logging%event_h5dread_f,ierr);CHKERRQ(ierr)
+    allocate(integer_array(read_block_size))
+    integer_array = integer_buffer_i4
+    deallocate(integer_buffer_i4)
+    if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+  call h5dclose_f(data_set_id,hdf5_err)
+
+  call PetscLogEventEnd(logging%event_read_int_array_hdf5,ierr);CHKERRQ(ierr)
+
+#endif
+! SCORPIO
+
+end subroutine HDF5ReadIntegerArraySplit
 
 ! ************************************************************************** !
 
@@ -1903,10 +2030,7 @@ subroutine HDF5ReadRegionFromFile(grid,region,filename,option)
   integer(HID_T) :: prop_id
 #endif
 
-  PetscInt :: num_indices, i, local_id
-  PetscInt, pointer :: indices(:)
-  PetscInt, pointer :: integer_array(:)
-
+  PetscInt :: num_integers
   PetscBool :: grp_exists
 
 #if !defined(PETSC_HAVE_HDF5)
@@ -1918,81 +2042,6 @@ subroutine HDF5ReadRegionFromFile(grid,region,filename,option)
 
   call PetscLogEventBegin(logging%event_region_read_hdf5,ierr);CHKERRQ(ierr)
                           
-  ! create hash table for fast lookup
-  call GridCreateNaturalToGhostedHash(grid,option)
-
-#if defined(SCORPIO)
-  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
-      option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
-      call printMsg(option)
-  endif
-
-  filename = trim(filename) // CHAR(0)
-  call fscorpio_open_file(filename, option%ioread_group_id, &
-                         SCORPIO_FILE_READONLY, file_id, ierr)
-
-  allocate(indices(grid%nlmax))
-  ! Read Cell Ids  
-  string = 'Regions/' // trim(region%name) // "/Cell Ids" // CHAR(0)
-  ! num_indices <= 0 indicates that the array size is uncertain and
-  ! the size will be returned in num_indices
-  num_indices = -1
-  call HDF5MapLocalToNaturalIndices(grid,option,file_id,string,ZERO_INTEGER, &
-                                    indices,num_indices)
-  allocate(integer_array(num_indices))
-  integer_array = 0
-  string = '/Regions/' // trim(region%name) // '/Cell Ids' //CHAR(0)
-  option%io_buffer = 'Reading dataset: ' // trim(string)
-  call printMsg(option)   
-  call HDF5ReadIntegerArray(option,file_id,string, &
-                            ZERO_INTEGER,indices,num_indices, &
-                            integer_array)
-
-  ! convert cell ids from natural to local
-  call PetscLogEventBegin(logging%event_hash_map,ierr);CHKERRQ(ierr)
-  do i=1,num_indices
-    integer_array(i) = &
-      grid%nG2L(GridGetLocalGhostedIdFromHash(grid,integer_array(i))) 
-  enddo
-  call PetscLogEventEnd(logging%event_hash_map,ierr);CHKERRQ(ierr)
-  region%cell_ids => integer_array
-  region%def_type = DEFINED_BY_CELL_IDS
-                            
-  allocate(integer_array(num_indices))
-  integer_array = 0
-  string = '/Regions/' // trim(region%name) // '/Face Ids' //CHAR(0)
-  ! Check if the region dataset has "Face Ids" group
-!geh: h5lexists will not work here because the grp_id2 is not defined, and
-!     even if file_id were used, it is a SCORPIO file handle, not a an HDF5 file
-!     handle.  SCORPIO does provide a function 'fscorpio_group_exists', but this
-!     will fail when called with reference to the DATASET 'Face Ids'; it only
-!     works for groups.  Therefore, we need a function fscorpio_dataset_exists().!     Commenting out for now.
-!  call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
-  grp_exists = PETSC_TRUE !geh: remove when h5lexists_f is resolved.
-  if (grp_exists) then
-    option%io_buffer = 'Reading dataset: ' // trim(string)
-    call printMsg(option)
-    call HDF5ReadIntegerArray(option,file_id,string, &
-                              ZERO_INTEGER,indices,num_indices, &
-                              integer_array)
-                            
-    region%faces => integer_array
-    region%def_type = DEFINED_BY_CELL_AND_FACE_IDS
-  endif
-  region%num_cells = num_indices
-  call DeallocateArray(indices)
-
-   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
-       option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
-       call printMsg(option)   
-   endif
-   call fscorpio_close_file(file_id, option%ioread_group_id, ierr)
-
-  call GridDestroyHashTable(grid)
-
-! SCORPIO
-#else   
-
   ! initialize fortran hdf5 interface 
   call h5open_f(hdf5_err)
   option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
@@ -2020,57 +2069,35 @@ subroutine HDF5ReadRegionFromFile(grid,region,filename,option)
     call printErrMsg(option)
   endif
 
-  allocate(indices(grid%nlmax))
   ! Read Cell Ids
   string = "Cell Ids"
 
   ! Check if the region dataset has "Cell Ids" group
   call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
   if (.not.grp_exists) then
-    option%io_buffer = 'HDF5 group: "Regions/' // trim(region%name) // '/Cell Ids" not found.'
+    option%io_buffer = 'HDF5 group: "Regions/' // trim(region%name) // &
+      '/Cell Ids" not found.'
     call printErrMsg(option)
   endif
 
-  ! num_indices <= 0 indicates that the array size is uncertain and
-  ! the size will be returned in num_indices
-  num_indices = -1
-  call HDF5MapLocalToNaturalIndices(grid,option,grp_id2,string,ZERO_INTEGER, &
-                                    indices,num_indices)
-  allocate(integer_array(num_indices))
-  integer_array = 0
-  string = "Cell Ids"
-  option%io_buffer = 'Reading dataset: ' // trim(string)
-  call printMsg(option)   
-  call HDF5ReadIntegerArray(option,grp_id2,string, &
-                            ZERO_INTEGER,indices,num_indices, &
-                            integer_array)
-
-  ! convert cell ids from natural to local
-  call PetscLogEventBegin(logging%event_hash_map,ierr);CHKERRQ(ierr)
-  do i=1,num_indices
-    integer_array(i) = grid%nG2L(GridGetLocalGhostedIdFromHash(grid,integer_array(i))) 
-  enddo
-  call PetscLogEventEnd(logging%event_hash_map,ierr);CHKERRQ(ierr)
-  region%cell_ids => integer_array
+  call HDF5ReadIntegerArraySplit(option,grp_id2,string,ZERO_INTEGER, &
+                                 region%cell_ids)
   region%def_type = DEFINED_BY_CELL_IDS
                             
+  ! can't use size(region%cell_ids) alone as a null array returns a size of 1
+  if (associated(region%cell_ids)) then
+    region%num_cells = size(region%cell_ids)
+  endif
   string = "Face Ids"
   ! Check if the region dataset has "Face Ids" group
   call h5lexists_f(grp_id2,string,grp_exists,hdf5_err)
   if (grp_exists) then
     option%io_buffer = 'Reading dataset: ' // trim(string)
     call printMsg(option)
-    allocate(integer_array(num_indices))
-    integer_array = 0
-    call HDF5ReadIntegerArray(option,grp_id2,string, &
-                              ZERO_INTEGER,indices,num_indices, &
-                              integer_array)
-                            
-    region%faces => integer_array
+    call HDF5ReadIntegerArraySplit(option,grp_id2,string, &
+                                   region%num_cells,region%faces)
     region%def_type = DEFINED_BY_CELL_AND_FACE_IDS
   endif
-  region%num_cells = num_indices
-  call DeallocateArray(indices)
 
   option%io_buffer = 'Closing group: ' // trim(region%name)
   call printMsg(option)  
@@ -2082,10 +2109,6 @@ subroutine HDF5ReadRegionFromFile(grid,region,filename,option)
   call printMsg(option)   
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
-
-  call GridDestroyHashTable(grid)
-#endif  
-! if SCORPIO is not defined
 
 #endif
 !PETSC_HAVE_HDF5

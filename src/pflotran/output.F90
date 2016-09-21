@@ -967,6 +967,14 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      SOIL_REFERENCE_PRESSURE)
+      case ('NATURAL_ID')
+        units = ''
+        name = 'Natural ID'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,NATURAL_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
       case ('PROCESS_ID')
         units = ''
         name = 'Process ID'
@@ -1171,7 +1179,9 @@ subroutine Output(realization_base,snapshot_plot_flag,observation_plot_flag, &
   ! Output temporally average variables 
   call OutputAvegVars(realization_base)
 
+#ifdef WELL_CLASS
   call OutputWell(realization_base)
+#endif
 
   if (snapshot_plot_flag) then
     realization_base%output_option%plot_number = &
@@ -1338,7 +1348,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,Format) output_option%periodic_snap_output_ts_imod
+    write(word,'(i9)') output_option%periodic_snap_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
@@ -1398,7 +1408,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,Format) output_option%periodic_obs_output_ts_imod
+    write(word,'(i9)') output_option%periodic_obs_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
@@ -1457,7 +1467,7 @@ subroutine OutputInputRecord(output_option,waypoint_list)
   else
     write(id,'(a)') 'ON'
     write(id,'(a29)',advance='no') 'timestep increment: '
-    write(word,Format) output_option%periodic_msbl_output_ts_imod
+    write(word,'(i7)') output_option%periodic_msbl_output_ts_imod
     write(id,'(a)') adjustl(trim(word))
   endif
   write(id,'(a29)',advance='no') 'periodic time: '
@@ -2175,7 +2185,7 @@ subroutine OutputAvegVars(realization_base)
 end subroutine OutputAvegVars
 
 ! ************************************************************************** !
-
+#ifdef WELL_CLASS
 subroutine OutputWell(realization_base)
   ! 
   ! Prints out the well variables
@@ -2219,7 +2229,7 @@ subroutine OutputWell(realization_base)
   enddo
 
 end subroutine OutputWell
-
+#endif
 ! ************************************************************************** !
 
 end module Output_module

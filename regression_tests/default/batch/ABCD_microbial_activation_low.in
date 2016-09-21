@@ -40,7 +40,7 @@ CHEMISTRY
   MICROBIAL_REACTION
     REACTION A(aq) + 2 B(aq) <-> 1.5 C(aq)
     RATE_CONSTANT 1.d-6
-    ACTIVATION_ENERGY 0.65d0
+    ACTIVATION_ENERGY 0.65d-3 kJ/mol
     MONOD 
       SPECIES_NAME A(aq) 
       HALF_SATURATION_CONSTANT 1.d-5        ! A is the donor

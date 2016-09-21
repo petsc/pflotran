@@ -176,7 +176,7 @@ END
 
 #=========================== flow conditions ==================================
 
-MINIMUM_HYDROSTATIC_PRESSURE -1.d0
+MINIMUM_HYDROSTATIC_PRESSURE -1.d-6 MPa ! non-standard units for testing.
 
 FLOW_CONDITION initial
   TYPE

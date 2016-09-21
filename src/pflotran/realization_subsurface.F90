@@ -7,7 +7,9 @@ module Realization_Subsurface_class
   use Input_Aux_module
   use Region_module
   use Condition_module
+#ifdef WELL_CLASS
   use WellSpec_Base_class
+#endif
   use Transport_Constraint_module
   use Material_module
   use Saturation_Function_module
@@ -37,7 +39,9 @@ private
 
     type(region_list_type), pointer :: region_list
     type(condition_list_type), pointer :: flow_conditions
+#ifdef WELL_CLASS
     type(well_spec_list_type), pointer :: well_specs
+#endif
     type(tran_condition_list_type), pointer :: transport_conditions
     type(tran_constraint_list_type), pointer :: transport_constraints
     
@@ -91,7 +95,8 @@ private
             RealizUpdateAllCouplerAuxVars, &
             RealizUnInitializedVarsFlow, &
             RealizUnInitializedVarsTran, &
-            RealizSetSoilReferencePressure
+            RealizSetSoilReferencePressure, &
+            RealizationLimitDTByCFL
 
   !TODO(intel)
   ! public from Realization_Base_class
@@ -147,8 +152,10 @@ function RealizationCreate2(option)
 
   allocate(realization%flow_conditions)
   call FlowConditionInitList(realization%flow_conditions)
+#ifdef WELL_CLASS
   allocate(realization%well_specs)
   call WellSpecInitList(realization%well_specs)
+#endif
   allocate(realization%transport_conditions)
   call TranConditionInitList(realization%transport_conditions)
   allocate(realization%transport_constraints)
@@ -609,7 +616,9 @@ subroutine RealizationProcessCouplers(realization)
   
   call PatchProcessCouplers( realization%patch,realization%flow_conditions, &
                              realization%transport_conditions, &
+#ifdef WELL_CLASS
                              realization%well_specs, &
+#endif
                              realization%option)
   
 end subroutine RealizationProcessCouplers
@@ -2509,6 +2518,49 @@ end subroutine RealizSetSoilReferencePressure
 
 ! ************************************************************************** !
 
+subroutine RealizationLimitDTByCFL(realization,cfl_governor,dt)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 05/09/16 
+  !
+  use Option_module
+  use Output_Aux_module
+
+  implicit none
+
+  class(realization_subsurface_type) :: realization
+  PetscReal :: cfl_governor
+  PetscReal :: dt
+
+  PetscReal :: max_dt_cfl_1
+  PetscReal :: prev_dt
+  type(output_option_type), pointer :: output_option
+
+  if (Initialized(cfl_governor)) then
+    call RealizationCalculateCFL1Timestep(realization,max_dt_cfl_1)
+    if (dt/cfl_governor > max_dt_cfl_1) then
+      prev_dt = dt
+      dt = max_dt_cfl_1*cfl_governor
+      output_option => realization%output_option
+      if (OptionPrintToScreen(realization%option)) then
+        write(*, &
+          '(" CFL Limiting (",f4.1,"): ",1pe12.4," -> ",1pe12.4," [",a,"]")') &
+              cfl_governor,prev_dt/output_option%tconv, &
+              dt/output_option%tconv,trim(output_option%tunit)
+      endif
+      if (OptionPrintToFile(realization%option)) then
+        write(realization%option%fid_out, &
+          '(" CFL Limiting (",f4.1,"): ",1pe12.4," -> ",1pe12.4," [",a,"]")') &
+              cfl_governor,prev_dt/output_option%tconv, &
+              dt/output_option%tconv,trim(output_option%tunit)
+      endif
+    endif
+  endif
+
+end subroutine RealizationLimitDTByCFL
+
+! ************************************************************************** !
+
 subroutine RealizationDestroyLegacy(realization)
   ! 
   ! Deallocates a realization
@@ -2532,7 +2584,9 @@ subroutine RealizationDestroyLegacy(realization)
   call RegionDestroyList(realization%region_list)
   
   call FlowConditionDestroyList(realization%flow_conditions)
+#ifdef WELL_CLASS
   call WellSpecDestroyList(realization%well_specs)
+#endif
   call TranConditionDestroyList(realization%transport_conditions)
   call TranConstraintDestroyList(realization%transport_constraints)
 
@@ -2588,7 +2642,9 @@ subroutine RealizationStrip(this)
   call RegionDestroyList(this%region_list)
   
   call FlowConditionDestroyList(this%flow_conditions)
+#ifdef WELL_CLASS
   call WellSpecDestroyList(this%well_specs)
+#endif
   call TranConditionDestroyList(this%transport_conditions)
   call TranConstraintDestroyList(this%transport_constraints)
 

@@ -1167,7 +1167,8 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
       call printErrMsg(option)
     else
       constraint_type(jcomp) = aq_species_constraint%constraint_type(icomp)
-      constraint_aux_string(jcomp) = aq_species_constraint%constraint_aux_string(icomp)
+      constraint_aux_string(jcomp) = &
+        aq_species_constraint%constraint_aux_string(icomp)
       constraint_conc(jcomp) = aq_species_constraint%constraint_conc(icomp)
       external_dataset(jcomp) = aq_species_constraint%external_dataset(icomp)
       
@@ -1216,6 +1217,35 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
       end select
 
     endif
+  enddo
+
+  ! ensure that two aqueous species do not share the same mineral or gas
+  ! constraint
+  do icomp = 1, reaction%naqcomp
+    do jcomp = icomp + 1, reaction%naqcomp
+      if (constraint_type(icomp) == constraint_type(jcomp) .and. &
+          constraint_id(icomp) == constraint_id(jcomp) .and. &
+          constraint_id(icomp) > 0) then
+        option%io_buffer = 'Two aqueous species (' // &
+          trim(reaction%primary_species_names(icomp)) // ' and ' // &
+          trim(reaction%primary_species_names(jcomp)) // ') are &
+          &constrained by the same'
+        select case(constraint_type(icomp))
+          case(CONSTRAINT_MINERAL)
+            option%io_buffer = trim(option%io_buffer) // ' mineral (' // &
+              trim(reaction%mineral%mineral_names(constraint_id(icomp))) // &
+              ')'
+          case(CONSTRAINT_GAS, CONSTRAINT_SUPERCRIT_CO2)
+            option%io_buffer = trim(option%io_buffer) // ' gas (' // &
+              trim(reaction%gas%passive_names(constraint_id(icomp))) // &
+              ')'
+          case default
+        end select
+        option%io_buffer = trim(option%io_buffer) // ' in CONSTRAINT "' // &
+          trim(constraint_name) // '".'
+        call printErrMsg(option)
+      endif
+    enddo
   enddo
   
   ! place ordered constraint parameters back in original arrays
@@ -5370,6 +5400,11 @@ subroutine RUpdateKineticState(rt_auxvar,global_auxvar,material_auxvar, &
           rt_auxvar%kinsrfcplx_conc_kp1(icplx,ikinrxn)
       enddo
     enddo
+  endif  
+  
+  if (associated(rxn_sandbox_list)) then
+    call RSandboxUpdateKineticState(rt_auxvar,global_auxvar, &
+                                    material_auxvar,reaction,option)
   endif  
 
 end subroutine RUpdateKineticState

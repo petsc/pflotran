@@ -12,6 +12,10 @@ END
 
 SUBSURFACE
 
+DEBUG
+  PRINT_JACOBIAN
+/
+
 #=========================== regression =======================================
 REGRESSION
   CELLS
@@ -40,6 +44,9 @@ CHEMISTRY
     N2(aq)
     O2(aq)
   /
+  IMMOBILE_SPECIES
+    C_consumption
+  /
   REACTION_SANDBOX 
     CYBERNETIC
       F1    0.497d0
@@ -56,7 +63,8 @@ CHEMISTRY
       Kd3   0.25d0 mM
       Kdeg  0.532d0 1/d
       F_act 0.126d0
-      ACTIVATION_ENERGY 89.d0
+      ACTIVATION_ENERGY 89.d-3 kJ/mol  ! 89.d0 J/mol
+      CARBON_CONSUMPTION_SPECIES C_consumption
     /
   /
   DATABASE ./cybernetic.dat
@@ -153,6 +161,9 @@ CONSTRAINT initial
 #    NO2-        1.d-2   T
     NO3-        18.25d-3 T
     O2(aq)      1.d-3    T
+  /
+  IMMOBILE
+    C_consumption 1.d-10
   /
 END
 

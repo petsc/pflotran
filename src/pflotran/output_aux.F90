@@ -866,20 +866,28 @@ subroutine OpenAndWriteInputRecord(option)
   type(option_type), pointer :: option
 
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=8) :: date_word
+  character(len=10) :: time_word
+  character(len=5) :: zone_word
   PetscInt :: id
 
   id = option%fid_inputrecord
-  filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-             '-input-record.tec'
+  ! the input record file has a .rec extension:
+  filename = trim(option%global_prefix) // trim(option%group_prefix) // '.rec'
   open(unit=id,file=filename,action="write",status="replace")
-  call fdate(word)
+!geh: this call does not work with IBM
+!  call fdate(word)
+  call date_and_time(date_word,time_word,zone_word)
   if (OptionPrintToFile(option)) then
     write(id,'(a)') '---------------------------------------------------------&
                     &-----------------------'
     write(id,'(a)') '---------------------------------------------------------&
                     &-----------------------'
-    write(id,'(a)') ' PFLOTRAN INPUT RECORD    ' // trim(word)
+    write(id,'(a)') ' PFLOTRAN INPUT RECORD    ' // date_word(5:6) // '/' //  &
+                    date_word(7:8) // '/' // date_word(1:4) // ' ' //         &
+                    time_word(1:2) // ':' // time_word(3:4) // ' (' //        &
+                    zone_word(1:3) // ':' // zone_word(4:5) // ' UTC)'
     write(id,'(a)') '---------------------------------------------------------&
                     &-----------------------'
     write(id,'(a)') '---------------------------------------------------------&

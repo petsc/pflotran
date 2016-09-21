@@ -1,0 +1,32 @@
+INITIAL_CONDITION
+  TRANSPORT_CONDITION bottom_south_west
+  REGION bottom_south_west
+END
+INITIAL_CONDITION
+  TRANSPORT_CONDITION bottom_south_east
+  REGION bottom_south_east
+END
+INITIAL_CONDITION
+  TRANSPORT_CONDITION bottom_north_west
+  REGION bottom_north_west
+END
+INITIAL_CONDITION
+  TRANSPORT_CONDITION bottom_north_east
+  REGION bottom_north_east
+END
+INITIAL_CONDITION
+  TRANSPORT_CONDITION top_south_west
+  REGION top_south_west
+END
+INITIAL_CONDITION
+  TRANSPORT_CONDITION top_south_east
+  REGION top_south_east
+END
+INITIAL_CONDITION
+  TRANSPORT_CONDITION top_north_west
+  REGION top_north_west
+END
+INITIAL_CONDITION
+  TRANSPORT_CONDITION top_north_east
+  REGION top_north_east
+END
