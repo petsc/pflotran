@@ -218,7 +218,7 @@ subroutine RichardsSetupPatch(realization)
   if (option%inline_surface_flow) then
 
     ! point to the top cell region
-    region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
+    region => RegionGetPtrFromList(option%inline_surface_region_name,patch%region_list)
 
     ! create the auxvar structure
     patch%aux%InlineSurface => InlineSurfaceAuxCreate()
@@ -412,7 +412,7 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
   if (option%inline_surface_flow) then
     inlinesurface_auxvars => patch%aux%InlineSurface%auxvars
     region => RegionGetPtrFromList(option%inline_surface_region_name, &
-                                   realization%region_list)
+                                   patch%region_list)
     do region_id = 1, patch%aux%InlineSurface%num_aux
       ghosted_id = region%cell_ids(region_id)
       mass = inlinesurface_auxvars(region_id)%surface_water_depth
@@ -757,7 +757,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
 
   if (option%inline_surface_flow) then
     region => RegionGetPtrFromList(option%inline_surface_region_name, &
-                                   realization%region_list)
+                                   patch%region_list)
      do region_id = 1, patch%aux%InlineSurface%num_aux
         ghosted_id = region%cell_ids(region_id)
         call InlineSurfaceAuxVarCompute(patch%aux%InlineSurface%auxvars(region_id), &
@@ -1057,7 +1057,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   
   if (option%inline_surface_flow) then
     region => RegionGetPtrFromList(option%inline_surface_region_name, &
-                                   realization%region_list)
+                                   patch%region_list)
     do region_id = 1, patch%aux%InlineSurface%num_aux
       local_id = region%cell_ids(region_id)
       ghosted_id = grid%nL2G(local_id)
@@ -1470,7 +1470,7 @@ subroutine RichardsResidualInternalConn(r,realization,skip_conn_type,ierr)
     connection_set_list => grid%reg_internal_connection_set_list
     cur_connection_set => connection_set_list%first
     region => RegionGetPtrFromList(option%inline_surface_region_name, &
-                                   realization%region_list)
+                                   patch%region_list)
   else
     nullify(cur_connection_set)
   endif
@@ -1637,7 +1637,7 @@ subroutine RichardsResidualBoundaryConn(r,realization,ierr)
     sum_connection = 0
     boundary_condition => patch%boundary_condition_list%first
     region => RegionGetPtrFromList(option%inline_surface_region_name, &
-                                   realization%region_list)    
+                                   patch%region_list)    
     do
       if (.not.associated(boundary_condition)) exit
       if ( boundary_condition%flow_condition%pressure%itype == SURFACE_DIRICHLET       .or. &
@@ -1920,7 +1920,7 @@ subroutine RichardsResidualAccumulation(r,realization,ierr)
   
   if (option%inline_surface_flow) then
     region => RegionGetPtrFromList(option%inline_surface_region_name, &
-         realization%region_list)
+         patch%region_list)
     inlinesurface_auxvars => patch%aux%InlineSurface%auxvars
   endif
 
@@ -2231,7 +2231,7 @@ subroutine RichardsJacobianInternalConn(A,realization,ierr)
     connection_set_list => grid%reg_internal_connection_set_list
     cur_connection_set => connection_set_list%first
     region => RegionGetPtrFromList(option%inline_surface_region_name, &
-         realization%region_list)
+         patch%region_list)
   else
     nullify(cur_connection_set)
   endif
@@ -2420,7 +2420,7 @@ subroutine RichardsJacobianBoundaryConn(A,realization,ierr)
     sum_connection = 0
     boundary_condition => patch%boundary_condition_list%first
     region => RegionGetPtrFromList(option%inline_surface_region_name, &
-         realization%region_list)
+         patch%region_list)
     do
       if (.not.associated(boundary_condition)) exit
       if ( boundary_condition%flow_condition%pressure%itype == SURFACE_DIRICHLET .or. &
@@ -2522,7 +2522,7 @@ subroutine RichardsJacobianAccumulation(A,realization,ierr)
   material_auxvars => patch%aux%Material%auxvars
   
   if (option%inline_surface_flow) then
-    region => RegionGetPtrFromList(option%inline_surface_region_name,realization%region_list)
+    region => RegionGetPtrFromList(option%inline_surface_region_name,patch%region_list)
     inlinesurface_auxvars => patch%aux%InlineSurface%auxvars
   endif
 
