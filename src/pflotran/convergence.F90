@@ -136,21 +136,21 @@ subroutine ConvergenceTest(snes_,i_iteration,xnorm,unorm,fnorm,reason,context, &
   PetscInt :: sec_reason
 
 !typedef enum {/* converged */
-!              SNES_CONVERGED_FNORM_ABS         =  2, /* F < F_minabs */
-!              SNES_CONVERGED_FNORM_RELATIVE    =  3, /* F < F_mintol*F_initial */
-!              SNES_CONVERGED_SNORM_RELATIVE    =  4, /* step size small */
+!              SNES_CONVERGED_FNORM_ABS         =  2, /* ||F|| < atol */
+!              SNES_CONVERGED_FNORM_RELATIVE    =  3, /* ||F|| < rtol*||F_initial|| */
+!              SNES_CONVERGED_SNORM_RELATIVE    =  4, /* Newton computed step size small; || delta x || < stol || x ||*/
 !              SNES_CONVERGED_ITS               =  5, /* maximum iterations reached */
 !              SNES_CONVERGED_TR_DELTA          =  7,
 !              /* diverged */
-!              SNES_DIVERGED_FUNCTION_DOMAIN    = -1,  
-!              SNES_DIVERGED_FUNCTION_COUNT     = -2,  
-!              SNES_DIVERGED_LINEAR_SOLVE       = -3, 
-!              SNES_DIVERGED_FNORM_NAN          = -4, 
-!              SNES_DIVERGED_MAX_IT             = -5,
-!              SNES_DIVERGED_LS_FAILURE         = -6,
-!              SNES_DIVERGED_LOCAL_MIN          = -8,  /* || J^T b || is small,
-!                                        implies converged to local minimum of F() */
-!              SNES_CONVERGED_ITERATING         =  0} SNESConvergedReason;
+!              SNES_DIVERGED_FUNCTION_DOMAIN     = -1, /* the new x location passed the function is not in the domain of F */
+!              SNES_DIVERGED_FUNCTION_COUNT      = -2,
+!              SNES_DIVERGED_LINEAR_SOLVE        = -3, /* the linear solve failed */
+!              SNES_DIVERGED_FNORM_NAN           = -4,
+!              SNES_DIVERGED_MAX_IT              = -5,
+!              SNES_DIVERGED_LINE_SEARCH         = -6, /* the line search failed */
+!              SNES_DIVERGED_INNER               = -7, /* inner solve failed */
+!              SNES_DIVERGED_LOCAL_MIN           = -8, /* || J^T b || is small, implies converged to local minimum of F() */
+!              SNES_CONVERGED_ITERATING          =  0} SNESConvergedReason;
 
   solver => context%solver
   option => context%option
