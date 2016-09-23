@@ -1034,6 +1034,12 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = HET_SURF_SEEPAGE_BC
             case('spillover')
               sub_condition_ptr%itype = SPILLOVER_BC
+            case('surface_dirichlet')
+              sub_condition_ptr%itype = SURFACE_DIRICHLET
+            case('surface_zero_gradheight')
+              sub_condition_ptr%itype = SURFACE_ZERO_GRADHEIGHT
+            case('surface_spillover')
+              sub_condition_ptr%itype = SURFACE_SPILLOVER
             case default
               call InputKeywordUnrecognized(word,'condition bc type',option)
           end select
@@ -1188,7 +1194,7 @@ subroutine FlowConditionRead(condition,input,option)
   if (associated(rate)) then
     select case(rate%itype)
       case(DIRICHLET_BC,NEUMANN_BC,HYDROSTATIC_BC,UNIT_GRADIENT_BC, &
-           CONDUCTANCE_BC,ZERO_GRADIENT_BC,SEEPAGE_BC)
+           CONDUCTANCE_BC,ZERO_GRADIENT_BC,SEEPAGE_BC,SURFACE_DIRICHLET,SURFACE_SPILLOVER)
         option%io_buffer = 'RATE condition must not be of type: dirichlet, ' // &
           'neumann, zero_gradient, dirichlet_zero_gradient, hydrostatic, ' // &
           'seepage, or conductance".'
@@ -3211,7 +3217,13 @@ function GetSubConditionName(subcon_itype)
       string = 'well minimum bottom hole pressure'
     case(WELL_BHP_MAX)
       string = 'well maximum bottom hole pressure'
-  end select
+    case(SURFACE_DIRICHLET)
+      string = 'surface_dirichlet'
+    case(SURFACE_ZERO_GRADHEIGHT)
+      string = 'surface_zero_gradheight'
+    case(SURFACE_SPILLOVER)
+      string = 'surface_spillover'
+    end select
 
   GetSubConditionName = trim(string)
 

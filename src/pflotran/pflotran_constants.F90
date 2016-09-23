@@ -161,6 +161,10 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: WELL_BHP = 30
   PetscInt, parameter, public :: WELL_BHP_MIN = 31
   PetscInt, parameter, public :: WELL_BHP_MAX = 32
+  PetscInt, parameter, public :: SURFACE_DIRICHLET = 33
+  PetscInt, parameter, public :: SURFACE_ZERO_GRADHEIGHT = 34
+  PetscInt, parameter, public :: SURFACE_SPILLOVER = 35
+  
   PetscInt, parameter, public :: WELL_SS = 100
   
   ! source/sink scaling options
