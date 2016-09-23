@@ -31,7 +31,6 @@ module PM_Base_class
   contains
     procedure, public :: Setup => PMBaseSetup
     procedure, public :: Read => PMBaseRead
-    procedure, public :: SetupSolvers => PMBaseSetupSolvers
     procedure, public :: InitializeRun => PMBaseThisOnly
     procedure, public :: InputRecord => PMBaseInputRecord
     procedure, public :: FinalizeRun => PMBaseThisOnly
@@ -119,17 +118,6 @@ subroutine PMBaseInputRecord(this)
   print *, 'Must extend PMBaseInputRecord for: ' // trim(this%name)
   stop
 end subroutine PMBaseInputRecord
-
-! ************************************************************************** !
-
-subroutine PMBaseSetupSolvers(this,solver)
-  use Solver_module
-  implicit none
-  class(pm_base_type) :: this
-  type(solver_type) :: solver
-  print *, 'Must extend PMBaseSetupSolvers for: ' // trim(this%name)
-  stop
-end subroutine PMBaseSetupSolvers
 
 ! ************************************************************************** !
 
