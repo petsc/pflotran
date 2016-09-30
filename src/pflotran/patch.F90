@@ -123,6 +123,7 @@ module Patch_module
             PatchCalculateCFL1Timestep, &
             PatchGetCellCenteredVelocities, &
             PatchGetCompMassInRegion, &
+            PatchGetWaterMassInRegion, &
             PatchGetCompMassInRegionAssign
 
 contains
@@ -7251,6 +7252,61 @@ subroutine PatchGetCompMassInRegion(cell_ids,num_cells,patch,option, &
                      MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
 
 end subroutine PatchGetCompMassInRegion
+
+! **************************************************************************** !
+
+subroutine PatchGetWaterMassInRegion(cell_ids,num_cells,patch,option, &
+                                     global_water_mass)
+  ! 
+  ! Calculates the water mass in a region in kg
+  ! 
+  ! Author: Satish Karra
+  ! Date: 09/20/2016
+  ! 
+  use Global_Aux_module
+  use Material_Aux_class
+  use Grid_module
+  use Option_module
+
+  implicit none
+  
+  PetscInt, pointer :: cell_ids(:)
+  PetscInt :: num_cells
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  PetscReal :: global_water_mass  
+  
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  PetscReal :: m3_water, kg_water           
+  PetscInt :: k, j, m
+  PetscInt :: local_id, ghosted_id
+  PetscErrorCode :: ierr
+  PetscReal :: local_water_mass
+  
+  global_auxvars => patch%aux%Global%auxvars
+  material_auxvars => patch%aux%Material%auxvars
+  local_water_mass = 0.d0
+  global_water_mass = 0.d0
+  
+  ! Loop through all cells in the region:
+  do k = 1,num_cells
+    local_id = cell_ids(k)
+    ghosted_id = patch%grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    m3_water = material_auxvars(ghosted_id)%porosity * &         ! [-]
+               global_auxvars(ghosted_id)%sat(LIQUID_PHASE) * &  ! [water]
+               material_auxvars(ghosted_id)%volume               ! [m^3-bulk]
+    kg_water = m3_water*global_auxvars(ghosted_id)% &            ! [m^3-water]
+               den(LIQUID_PHASE)                                 ! [kg/m^3-water]
+    local_water_mass = local_water_mass + kg_water
+  enddo ! Cell loop
+  
+  ! Sum the local_water_mass across all processes that own the region: 
+  call MPI_Allreduce(local_water_mass,global_water_mass,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
+
+end subroutine PatchGetWaterMassInRegion
 
 ! **************************************************************************** !
 

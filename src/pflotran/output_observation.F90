@@ -1956,7 +1956,7 @@ subroutine OutputMassBalance(realization_base)
   PetscReal, allocatable :: sum_mol_mnrl(:)
   PetscReal, allocatable :: sum_mol_mnrl_global(:)
   
-  PetscReal :: global_total_mass
+  PetscReal :: global_total_mass, global_water_mass
 
   PetscReal :: sum_trapped(realization_base%option%nphase)
   PetscReal :: sum_trapped_global(realization_base%option%nphase)
@@ -2185,13 +2185,17 @@ subroutine OutputMassBalance(realization_base)
       
       enddo
       
-      ! Print the mass [mol] in the specified regions (header)
+      ! Print the water mass [kg] and species mass [mol] in the specified regions (header)
       if (associated(output_option%mass_balance_region_list)) then
         cur_mbr => output_option%mass_balance_region_list
         do
           if (.not.associated(cur_mbr)) exit
-          string = 'Region ' // trim(cur_mbr%region_name) // ' Total Mass'
-          call OutputWriteToHeader(fid,string,'mol','',icol)
+          string = 'Region ' // trim(cur_mbr%region_name) // ' Water Mass'
+          call OutputWriteToHeader(fid,string,'kg','',icol)
+          if (option%ntrandof > 0) then
+            string = 'Region ' // trim(cur_mbr%region_name) // ' Total Mass'
+            call OutputWriteToHeader(fid,string,'kg','',icol)
+          endif
           cur_mbr => cur_mbr%next
         enddo
       endif
@@ -2779,14 +2783,20 @@ subroutine OutputMassBalance(realization_base)
     coupler => coupler%next 
   enddo
   
-  ! Print the total mass in the specified regions (data)
+  ! Print the total water and component mass in the specified regions (data)
   if (associated(output_option%mass_balance_region_list)) then
     cur_mbr => output_option%mass_balance_region_list
     do
       if (.not.associated(cur_mbr)) exit
-      call PatchGetCompMassInRegion(cur_mbr%region_cell_ids, &
-           cur_mbr%num_cells,patch,option,global_total_mass)
-      write(fid,110,advance="no") global_total_mass
+      call PatchGetWaterMassInRegion(cur_mbr%region_cell_ids, &
+                                     cur_mbr%num_cells,patch,option, &
+                                     global_water_mass)
+      write(fid,110,advance="no") global_water_mass
+      if (option%ntrandof > 0) then
+        call PatchGetCompMassInRegion(cur_mbr%region_cell_ids, &
+             cur_mbr%num_cells,patch,option,global_total_mass)
+        write(fid,110,advance="no") global_total_mass
+      endif
       cur_mbr => cur_mbr%next
     enddo
   endif
