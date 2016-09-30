@@ -29,7 +29,6 @@ module PM_TOilIms_class
   contains
     ! all the routines below needs to be replaced, uncomment as I develop them
     procedure, public :: Read => PMTOilImsRead
-    !procedure, public :: SetupSolvers => PMGeneralSetupSolvers
     procedure, public :: InitializeRun => PMTOilImsInitializeRun
     procedure, public :: InitializeTimestep => PMTOilImsInitializeTimestep
     procedure, public :: Residual => PMTOilImsResidual

@@ -1,0 +1,8 @@
+#
+pipelines:
+  default:
+    - step:
+        script:
+          - ./.bitbucket-pipeline/install-linux.sh
+          - ./.bitbucket-pipeline/pflotran-build.sh
+          - ./.bitbucket-pipeline/pflotran-test.sh

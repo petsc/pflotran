@@ -2765,7 +2765,7 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   flow_condition => coupler%flow_condition
   if (associated(flow_condition%pressure)) then
     select case(flow_condition%pressure%itype)
-      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC,SURFACE_DIRICHLET,SURFACE_SPILLOVER)
         select type(dataset => &
                     flow_condition%pressure%dataset)
           class is(dataset_ascii_type)

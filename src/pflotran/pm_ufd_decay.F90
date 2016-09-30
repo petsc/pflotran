@@ -35,7 +35,6 @@ module PM_UFD_Decay_class
 !geh: commented out subroutines can only be called externally
     procedure, public :: Setup => PMUFDDecayInit
     procedure, public :: Read => PMUFDDecayRead
-!    procedure, public :: SetupSolvers => PMUFDDecaySetupSolvers
     procedure, public :: PMUFDDecaySetRealization
     procedure, public :: InitializeRun => PMUFDDecayInitializeRun
 !!    procedure, public :: FinalizeRun => PMUFDDecayFinalizeRun
@@ -81,7 +80,6 @@ module PM_UFD_Decay_class
   
   public :: PMUFDDecayCreate, &
             PMUFDDecayInit !, &
-!            PMUFDDecaySetupSolvers, &
 !            PMUFDDecayInitializeTimestepA, &
 !            PMUFDDecayInitializeTimestepB, &
 !            PMUFDDecayInitializeRun, &

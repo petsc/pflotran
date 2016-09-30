@@ -307,7 +307,7 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
   auxvar%dden_dp = dw_dp
   auxvar%kvr = kr/visl
   auxvar%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
-
+  
 end subroutine RichardsAuxVarCompute
 
 ! ************************************************************************** !

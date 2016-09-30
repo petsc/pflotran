@@ -1,0 +1,115 @@
+
+! Define simulation type and options --------------------------------
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+    PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+      OPTIONS
+        INLINE_SURFACE_REGION top_cells
+	INLINE_SURFACE_MANNINGS_COEFF 0.02d0
+      END
+    END
+  END
+END
+
+SUBSURFACE
+
+  ! Simulation details and output control ---------------------------
+
+  REGRESSION
+    CELLS
+      7
+      8
+      9
+      10
+    END
+  END
+
+  TIME
+    FINAL_TIME             1.0d0 s
+    INITIAL_TIMESTEP_SIZE  1.0d0 s
+    MAXIMUM_TIMESTEP_SIZE  1.0d0 s
+  END
+
+  !OUTPUT
+  !  PERIODIC TIMESTEP 1
+  !  FORMAT HDF5
+  !END
+
+  ! Domain and region information -----------------------------------
+
+  GRID
+    TYPE unstructured ./simple.h5
+  END
+
+  REGION all
+    FILE ./simple.h5 old_format
+    GRID unstructured
+  END
+
+  REGION top 
+    FILE ./simple.h5 old_format
+    GRID unstructured
+  END
+
+  REGION bottom 
+    FILE ./simple.h5 old_format
+    GRID unstructured
+  END
+
+  REGION top_cells
+    FILE ./simple.h5 old_format
+    GRID unstructured
+  END
+
+  ! Initial condition -----------------------------------------------
+
+  FLOW_CONDITION initial
+    UNITS Pa
+    TYPE
+      PRESSURE hydrostatic
+    END
+    PRESSURE 101325.d0
+    DATUM 0.0d0 0.0d0 0.1d0
+    GRADIENT
+      PRESSURE 1.0d-2 0.0d0 0.0d0
+    END
+  END
+
+  INITIAL_CONDITION initial_coupler
+    FLOW_CONDITION initial
+    REGION all
+  END
+
+  ! Materials and their mapping to cells ----------------------------
+  
+  STRATA
+    REGION all
+    MATERIAL s1
+  END
+
+  CHARACTERISTIC_CURVES sf
+    SATURATION_FUNCTION VAN_GENUCHTEN
+      ALPHA 2.d-4
+      M 0.25d0
+      LIQUID_RESIDUAL_SATURATION 0.05d0
+    END
+    PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+      M 0.25d0
+      LIQUID_RESIDUAL_SATURATION 0.05d0
+    END
+  END
+
+  MATERIAL_PROPERTY s1
+    ID 1
+    POROSITY 0.50d0
+    SATURATION_FUNCTION sf
+    PERMEABILITY
+      ISOTROPIC   
+        PERM_ISO 9.11314985d-12
+    END
+  END
+
+END_SUBSURFACE
