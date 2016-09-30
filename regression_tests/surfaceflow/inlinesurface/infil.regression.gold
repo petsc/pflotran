@@ -1,0 +1,32 @@
+-- PRESSURE: Liquid Pressure --
+      Max:   9.6198993909389E+04
+      Min:   9.4098244798869E+04
+     Mean:   9.5238667981012E+04
+        7:   9.4795595155474E+04
+        8:   9.4795595155472E+04
+        9:   9.4098244798871E+04
+       10:   9.4098244798869E+04
+-- SATURATION: Liquid Saturation --
+      Max:   8.4551732485350E-01
+      Min:   7.9569729858454E-01
+     Mean:   8.2208774830301E-01
+        7:   8.1109589760940E-01
+        8:   8.1109589760935E-01
+        9:   7.9569729858459E-01
+       10:   7.9569729858454E-01
+-- DISCRETE: Material ID --
+      Max:         1
+      Min:         1
+     Mean:   1.0000000000000E+00
+        7:         1
+        8:         1
+        9:         1
+       10:         1
+-- SOLUTION: Flow --
+   Time (seconds):   3.0854089709464E-03
+   Time Steps:           14
+   Newton Iterations:           50
+   Solver Iterations:           98
+   Time Step Cuts:            0
+   Solution 2-Norm:   3.0118011832636E+05
+   Residual 2-Norm:   2.7486954861050E-15

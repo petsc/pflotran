@@ -12,7 +12,8 @@ module Auxiliary_module
   !use TOilIms_Aux_module
   use Material_Aux_class
   use Secondary_Continuum_Aux_module
-
+  use InlineSurface_Aux_module
+  
   !use PM_Base_Aux_module  !new auxvar data structure
   use PM_TOilIms_Aux_module  !new auxvar data structure  
 
@@ -39,6 +40,7 @@ module Auxiliary_module
     type(sc_rt_type), pointer :: SC_RT
     !type(toil_ims_type), pointer :: TOil_ims replaced by new auxvar data structure
     class(pm_toil_ims_aux_type), pointer :: TOil_ims
+    type(inlinesurface_type), pointer :: InlineSurface
   end type auxiliary_type
   
   public :: AuxInit, &
@@ -74,7 +76,8 @@ subroutine AuxInit(aux)
   nullify(aux%Material)
   nullify(aux%SC_heat)
   nullify(aux%SC_RT)
- 
+  nullify(aux%InlineSurface)
+
 end subroutine AuxInit
 
 ! ************************************************************************** !
@@ -103,7 +106,8 @@ subroutine AuxDestroy(aux)
   call MaterialAuxDestroy(aux%Material)
   call SecondaryAuxHeatDestroy(aux%SC_heat)
   call SecondaryAuxRTDestroy(aux%SC_RT)
-
+  call InlineSurfaceAuxDestroy(aux%InlineSurface)
+  
   nullify(aux%Global)
   nullify(aux%RT)
   nullify(aux%Richards)
@@ -115,6 +119,7 @@ subroutine AuxDestroy(aux)
   nullify(aux%Material)
   nullify(aux%SC_Heat)
   nullify(aux%SC_RT)
+  nullify(aux%InlineSurface)
 
 end subroutine AuxDestroy
 
