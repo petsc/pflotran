@@ -20,6 +20,7 @@ module Debug_module
     PetscBool :: print_numerical_derivatives
 
     PetscBool :: print_couplers
+    PetscBool :: print_regions
     character(len=MAXSTRINGLENGTH) :: coupler_string
     PetscBool :: print_waypoints
   end type debug_type
@@ -57,6 +58,7 @@ function DebugCreate()
   debug%print_numerical_derivatives = PETSC_FALSE
   
   debug%print_couplers = PETSC_FALSE
+  debug%print_regions = PETSC_FALSE
   debug%coupler_string = ''
   debug%print_waypoints = PETSC_FALSE
 
@@ -105,6 +107,8 @@ subroutine DebugRead(debug,input,option)
         debug%matview_Jacobian = PETSC_TRUE
       case('PRINT_JACOBIAN_NORM','NORM_JACOBIAN')
         debug%norm_Jacobian = PETSC_TRUE
+      case('PRINT_REGIONS')
+        debug%print_regions = PETSC_TRUE
       case('PRINT_COUPLERS','PRINT_COUPLER')
         debug%print_couplers = PETSC_TRUE
         debug%coupler_string = trim(adjustl(input%buf))

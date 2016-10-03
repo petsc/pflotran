@@ -313,6 +313,10 @@ subroutine SubsurfaceSimulationJumpStart(this)
   if (associated(tran_timestepper)) &
     tran_timestepper%start_time_step = tran_timestepper%steps + 1
   
+  if (this%realization%debug%print_regions) then
+    call OutputPrintRegions(this%realization)
+  endif  
+
   if (this%realization%debug%print_couplers) then
     call OutputPrintCouplers(this%realization,ZERO_INTEGER)
   endif  
