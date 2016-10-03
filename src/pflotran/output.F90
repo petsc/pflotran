@@ -2103,7 +2103,7 @@ subroutine OutputPrintRegions(realization_base)
       vec_ptr(cur_region%cell_ids(i)) = vec_ptr(cur_region%cell_ids(i)) + 1.d0
     enddo
     call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
-    string = trim(cur_region%name) // '.tec'
+    string = 'region_' // trim(cur_region%name) // '.tec'
     word = 'region'
     call OutputVectorTecplot(string,word,realization_base,field%work)
     cur_region => cur_region%next
