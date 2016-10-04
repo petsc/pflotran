@@ -2222,7 +2222,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         enddo
 
         tk = global_auxvar%temp+273.15d0
-        ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/faraday
+        ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/FARADAY
         eh = ehfac*(-4.d0*ph+lnQKgas(ifo2)*LN_TO_LOG+logKeh(tk))/4.d0
         pe = eh/ehfac
 
@@ -2770,7 +2770,6 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
   PetscReal, parameter :: tk = 273.15d0
   PetscReal, parameter :: epsilon = 78.5d0
   PetscReal, parameter :: epsilon0 = 8.854187817d-12
-  PetscReal, parameter :: faraday = 96485.d0
   
   PetscReal :: fac, boltzmann, dbl_charge, surface_charge, ionic_strength, &
                charge_balance, potential, tempk, debye_length, &
@@ -2804,7 +2803,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
     tempk = tk + global_auxvar%temp
     
     potential = 0.1d0 ! initial guess
-    boltzmann = exp(-faraday*potential/(IDEAL_GAS_CONSTANT*tempk))
+    boltzmann = exp(-FARADAY*potential/(IDEAL_GAS_CONSTANT*tempk))
         
     fac = sqrt(epsilon*epsilon0*IDEAL_GAS_CONSTANT*tempk)
 
@@ -2837,7 +2836,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
       dbl_charge = fac*sqrt(2.d0*(-dbl_charge))
     endif
 
-    srfchrg_capacitance_model = faraday* &
+    srfchrg_capacitance_model = FARADAY* &
       sqrt(2.d0*epsilon*epsilon0*ionic_strength*1.d3/(IDEAL_GAS_CONSTANT*tempk))
 
     surface_charge = 0.d0
@@ -2849,11 +2848,11 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
                          rt_auxvar%eqsrfcplx_conc(icplx)
       enddo
     enddo
-    surface_charge = faraday*surface_charge
+    surface_charge = FARADAY*surface_charge
 
-    debye_length = sqrt(fac/(2.d0*ionic_strength*1.d3))/faraday
+    debye_length = sqrt(fac/(2.d0*ionic_strength*1.d3))/FARADAY
     capacitance = sqrt(2.d0*epsilon*epsilon0*ionic_strength*1.d3/ &
-                    (IDEAL_GAS_CONSTANT*tempk)) * faraday
+                    (IDEAL_GAS_CONSTANT*tempk)) * FARADAY
     
     print *,'========================='
     print *,'dbl: debye_length = ',debye_length
@@ -2901,7 +2900,7 @@ subroutine ReactionDoubleLayer(constraint_coupler,reaction,option)
           
           ! compute ion activity product
           lnQK = -reaction%eqsrfcplx_logK(icplx)*LOG_TO_LN &
-                 + reaction%eqsrfcplx_Z(icplx)*faraday*potential &
+                 + reaction%eqsrfcplx_Z(icplx)*FARADAY*potential &
                  /(IDEAL_GAS_CONSTANT*tempk)/LOG_TO_LN
 
           ! activity of water
@@ -2948,7 +2947,6 @@ subroutine srfcmplx(irxn,icplx,lnQK,logK,Z,potential,tempk, &
 implicit none
 
   PetscReal, parameter :: tk = 273.15d0
-  PetscReal, parameter :: faraday = 96485.d0
   
   PetscReal :: fac, boltzmann, dbl_charge, surface_charge, ionic_strength, &
                charge_balance, potential, tempk, debye_length, &
@@ -2968,7 +2966,7 @@ implicit none
           icplx = reaction%srfcplxrxn_to_complex(j,irxn)
           ! compute secondary species concentration
           lnQK = -logK(icplx)*LOG_TO_LN &
-                 + Z(icplx)*faraday*potential &
+                 + Z(icplx)*FARADAY*potential &
                  /(IDEAL_GAS_CONSTANT*tempk)/LOG_TO_LN
 
           ! activity of water
