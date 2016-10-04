@@ -39,7 +39,7 @@ for ivar in range(nvar-1):
   ax = fig.add_subplot(2,2,ivar+1,projection='3d')
   ax.set_title(column_headings[ivar+2].split(' [')[0])
   ax.set_xlabel('Temperature [C]')
-  ax.set_ylabel('Pressure [C]')
+  ax.set_ylabel('Pressure [Pa]')
   w0 = column_headings[ivar+2].split('(')[0]
   w1 = column_headings[ivar+2].split(')')[1]
   heading = w0+w1
