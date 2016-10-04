@@ -235,7 +235,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   
   gravity_magnitude = sqrt(DotProduct(option%gravity,option%gravity))
   
-  if (dabs(gravity_magnitude-9.8068d0) > 0.1d0) then
+  if (dabs(gravity_magnitude-EARTH_GRAVITY) > 0.1d0) then
     option%io_buffer = 'Magnitude of gravity vector is not near 9.81.'
     call printErrMsg(option)
   endif
@@ -555,7 +555,7 @@ subroutine HydrostaticTest()
       pressure0 = pressure
       num_iteration = 0
       do
-        pressure = pressure0 + rho_kg * 9.8068d0 * increment(i_increment)
+        pressure = pressure0 + rho_kg * EARTH_GRAVITY * increment(i_increment)
         call EOSWaterDensityExt(temperature,pressure,aux,rho_one,dummy,ierr)
         if (dabs(rho_kg-rho_one) < 1.d-10) exit
         rho_kg = rho_one

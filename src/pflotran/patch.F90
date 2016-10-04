@@ -3700,8 +3700,9 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
           case(LIQUID_HEAD)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = &
-                patch%aux%Global%auxvars(grid%nL2G(local_id))%pres(1)/9.81/ &
-                patch%aux%Global%auxvars(grid%nL2G(local_id))%den_kg(1)                
+                patch%aux%Global%auxvars(grid%nL2G(local_id))%pres(1)/ &
+                EARTH_GRAVITY/ &
+                patch%aux%Global%auxvars(grid%nL2G(local_id))%den_kg(1)
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
@@ -4921,7 +4922,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(LIQUID_PRESSURE)
             value = patch%aux%Global%auxvars(ghosted_id)%pres(1)
           case(LIQUID_HEAD)
-            value = patch%aux%Global%auxvars(ghosted_id)%pres(1)/9.81/ &
+            value = patch%aux%Global%auxvars(ghosted_id)%pres(1)/ &
+                    EARTH_GRAVITY/ &
                     patch%aux%Global%auxvars(ghosted_id)%den_kg(1)
           case(LIQUID_SATURATION)
             value = patch%aux%Global%auxvars(ghosted_id)%sat(1)

@@ -448,7 +448,7 @@ subroutine OptionInitRealization(option)
   option%geomech_time = 0.d0
   option%geomech_subsurf_coupling = 0 
   option%geomech_gravity(:) = 0.d0
-  option%geomech_gravity(3) = -9.8068d0    ! m/s^2
+  option%geomech_gravity(3) = -1.d0*EARTH_GRAVITY    ! m/s^2
 
   option%tranmode = ""
   option%itranmode = NULL_MODE
@@ -493,7 +493,7 @@ subroutine OptionInitRealization(option)
   option%ideriv = 1
 
   option%gravity(:) = 0.d0
-  option%gravity(3) = -9.8068d0    ! m/s^2
+  option%gravity(3) = -1.d0*EARTH_GRAVITY ! m/s^2
 
   !physical constants and defult variables
 !  option%difaq = 1.d-9 ! m^2/s read from input file

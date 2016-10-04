@@ -54,7 +54,7 @@ module PFLOTRAN_Constants_module
   PetscReal, parameter, public :: HEAT_OF_FUSION = 3.34d5  ! J/kg
   PetscReal, parameter, public :: PI = 3.14159265359d0
   PetscReal, parameter, public :: FARADAY = 96485.3365d0 ! C/mol
-  PetscReal, parameter, public :: GRAVITY = 9.8068d0 ! m/s^2
+  PetscReal, parameter, public :: EARTH_GRAVITY = 9.8068d0 ! m/s^2
   
   PetscInt, parameter, public :: ZERO_INTEGER = 0
   PetscInt, parameter, public :: ONE_INTEGER = 1
