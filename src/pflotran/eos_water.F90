@@ -1296,7 +1296,7 @@ subroutine EOSWaterDensityExponential(t,p,calculate_derivatives, &
   if (calculate_derivatives) then
     dwp = dwmol*exponent_water_compressibility !kmol/m^3/Pa
   else
-    dwp = 0.d0
+    dwp = UNINITIALIZED_DOUBLE
   endif
   dwt = 0.d0
 
@@ -2245,8 +2245,8 @@ subroutine EOSWaterDensityBatzleAndWang(tin, pin, calculate_derivatives, &
                  3.2d-2*t*p_MPa - 3.9d-5*t_sq*p_MPa - 2.d-3*p_MPa_sq) * &
           g_cm3_to_kg_m3/FMWH2O
   else
-    dwp = 0.d0
-    dwt = 0.d0
+    dwp = UNINITIALIZED_DOUBLE
+    dwt = UNINITIALIZED_DOUBLE
   endif
 
 end subroutine EOSWaterDensityBatzleAndWang
@@ -2313,8 +2313,8 @@ subroutine EOSWaterDensityBatzleAndWangExt(tin, pin, aux, &
                     47.d0*p_Mpa*s)) * &
           g_cm3_to_kg_m3/FMWH2O
   else
-    dwp = 0.d0
-    dwt = 0.d0
+    dwp = UNINITIALIZED_DOUBLE
+    dwt = UNINITIALIZED_DOUBLE
   endif
 
 end subroutine EOSWaterDensityBatzleAndWangExt
@@ -2362,8 +2362,8 @@ subroutine EOSWaterViscosityBatzleAndWang(T, P, PS, dPS_dT, &
     dVW_dP = 0.d0
     dVW_dT = 0.8d0*temperature_term*exponential_term/t_C*centipoise_to_Pa_s
   else
-    dVW_dP = 0.d0
-    dVW_dT = 0.d0
+    dVW_dP = UNINITIALIZED_DOUBLE
+    dVW_dT = UNINITIALIZED_DOUBLE
   endif
 
 end subroutine EOSWaterViscosityBatzleAndWang
@@ -2411,8 +2411,8 @@ subroutine EOSWaterViscosityBatzleAndWangExt(T, P, PS, dPS_dT, aux, &
     dVW_dP = 0.d0
     dVW_dT = 0.8d0*temperature_term*exponential_term/t_C*centipoise_to_Pa_s
   else
-    dVW_dP = 0.d0
-    dVW_dT = 0.d0
+    dVW_dP = UNINITIALIZED_DOUBLE
+    dVW_dT = UNINITIALIZED_DOUBLE
   endif
   
 end subroutine EOSWaterViscosityBatzleAndWangExt

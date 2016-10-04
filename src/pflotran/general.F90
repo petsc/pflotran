@@ -1073,14 +1073,14 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   PetscInt :: icomp, iphase
   
   PetscReal :: porosity
-  PetscReal :: v_over_t
+  PetscReal :: volume_over_dt
   
   wat_comp_id = option%water_id
   air_comp_id = option%air_id
   energy_id = option%energy_id
   
   ! v_over_t[m^3 bulk/sec] = vol[m^3 bulk] / dt[sec]
-  v_over_t = material_auxvar%volume / option%flow_dt
+  volume_over_dt = material_auxvar%volume / option%flow_dt
   ! must use gen_auxvar%effective porosity here as it enables numerical 
   ! derivatives to be employed 
   porosity = gen_auxvar%effective_porosity
@@ -1112,7 +1112,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   ! Res[kmol/sec] = Res[kmol/m^3 void] * por[m^3 void/m^3 bulk] * 
   !                 vol[m^3 bulk] / dt[sec]
   Res(1:option%nflowspec) = Res(1:option%nflowspec) * &
-                            porosity * v_over_t
+                            porosity * volume_over_dt
 
   do iphase = 1, option%nphase
     ! Res[MJ/m^3 void] = sat[m^3 phase/m^3 void] *
@@ -1138,7 +1138,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
   Res(energy_id) = (Res(energy_id) * porosity + &
                     (1.d0 - porosity) * &
                     material_auxvar%soil_particle_density * &
-                    soil_heat_capacity * gen_auxvar%temp) * v_over_t
+                    soil_heat_capacity * gen_auxvar%temp) * volume_over_dt
   
   if (analytical_derivatives) then
     Jac = 0.d0
@@ -1204,7 +1204,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
       case(TWO_PHASE_STATE)
 !        if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
     end select
-    Jac = Jac * v_over_t
+    Jac = Jac * volume_over_dt
   endif
   
 #ifdef DEBUG_GENERAL_FILEOUTPUT
@@ -1480,11 +1480,11 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                 gen_auxvar_up%effective_porosity*den_up
       stpd_dn = sat_dn*material_auxvar_dn%tortuosity* &
                 gen_auxvar_dn%effective_porosity*den_dn
-      if (general_diffuse_xmol) then
+      if (general_diffuse_xmol) then ! delta of mole fraction
         delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
                      gen_auxvar_dn%xmol(air_comp_id,iphase)
         delta_X_whatever = delta_xmol
-      else
+      else ! delta of mass fraction
         xmol_air_up = gen_auxvar_up%xmol(air_comp_id,iphase)
         xmol_air_dn = gen_auxvar_dn%xmol(air_comp_id,iphase)
         xmass_air_up = xmol_air_up*fmw_comp(2) / &
