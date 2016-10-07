@@ -362,7 +362,8 @@ subroutine PMRTInitializeTimestep(this)
   ! 
 
   use Reactive_Transport_module, only : RTInitializeTimestep, &
-                                        RTUpdateTransportCoefs
+                                        RTUpdateActivityCoefficients
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Global_module
   use Material_module
 
@@ -403,26 +404,10 @@ subroutine PMRTInitializeTimestep(this)
 
   call RTInitializeTimestep(this%realization)
 
-  !geh: this is a bug and should be moved to PreSolve()
-#if 0
-  ! set densities and saturations to t+dt
-  if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
-    if (this%option%flow%transient_porosity) then
-      ! weight material properties (e.g. porosity)
-      call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
-                                 this%tran_weight_t1, &
-                                 this%realization%field,this%comm1)
-    endif
-    call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
-  else if (this%transient_porosity) then
-    this%tran_weight_t1 = 1.d0
-    call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
-                               this%tran_weight_t1, &
-                               this%realization%field,this%comm1)
+  if (this%realization%reaction%act_coef_update_frequency /= &
+      ACT_COEF_FREQUENCY_OFF) then
+    call RTUpdateActivityCoefficients(this%realization,PETSC_TRUE,PETSC_TRUE)
   endif
-
-  call RTUpdateTransportCoefs(this%realization)
-#endif  
 
 end subroutine PMRTInitializeTimestep
 
@@ -434,9 +419,7 @@ subroutine PMRTPreSolve(this)
   ! Date: 03/14/13
   ! 
 
-  use Reactive_Transport_module, only : RTUpdateTransportCoefs, &
-                                        RTUpdateAuxVars
-  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
+  use Reactive_Transport_module, only : RTUpdateTransportCoefs
   use Global_module  
   use Material_module
   use Data_Mediator_module
@@ -451,8 +434,6 @@ subroutine PMRTPreSolve(this)
   call printMsg(this%option,'PMRT%UpdatePreSolve()')
 #endif
   
-#if 1
-  call RTUpdateTransportCoefs(this%realization)
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
     if (this%option%flow%transient_porosity) then
@@ -470,15 +451,19 @@ subroutine PMRTPreSolve(this)
   endif
 
   call RTUpdateTransportCoefs(this%realization)
-#endif  
   
+#if 0
+  ! the problem here is that activity coefficients will be updated every time
+  ! presolve is called, regardless of TS vs NI.  We need to split this out.
   if (this%realization%reaction%act_coef_update_frequency /= &
       ACT_COEF_FREQUENCY_OFF) then
-      call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
+    call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
 !       The below is set within RTUpdateAuxVarsPatch() when 
 !         PETSC_TRUE,PETSC_TRUE,* are passed
 !       patch%aux%RT%auxvars_up_to_date = PETSC_TRUE 
   endif
+#endif
+
   if (this%realization%reaction%use_log_formulation) then
     call VecCopy(this%realization%field%tran_xx, &
                  this%realization%field%tran_log_xx,ierr);CHKERRQ(ierr)
@@ -1081,8 +1066,8 @@ subroutine PMRTUpdateAuxVars(this)
   implicit none
   
   class(pm_rt_type) :: this
-                                      ! cells      bcs         act. coefs.
-  call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
+                                      ! cells      bcs
+  call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE)
 
 end subroutine PMRTUpdateAuxVars  
 
@@ -1447,7 +1432,7 @@ subroutine PMRTRestartBinary(this,viewer)
   
   if (realization%reaction%use_full_geochemistry) then
                                      ! cells     bcs        act coefs.
-    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE)
   endif
   ! do not update kinetics.
   call PMRTUpdateSolution2(this,PETSC_FALSE)
@@ -1832,7 +1817,7 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
 
   if (realization%reaction%use_full_geochemistry) then
                                      ! cells     bcs        act coefs.
-    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE)
   endif
   ! do not update kinetics.
   call PMRTUpdateSolution2(this,PETSC_FALSE)

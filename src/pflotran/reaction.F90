@@ -4539,13 +4539,13 @@ subroutine RAccumulationSorb(rt_auxvar,global_auxvar,material_auxvar, &
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
   
-  PetscReal :: v_t
+!  PetscReal :: v_t
   
   ! units = (mol solute/m^3 bulk)*(m^3 bulk)/(sec) = mol/sec
   ! all residual entries should be in mol/sec
-  v_t = material_auxvar%volume/option%tran_dt
+!  v_t = material_auxvar%volume/option%tran_dt
   Res(1:reaction%naqcomp) = Res(1:reaction%naqcomp) + &
-    rt_auxvar%total_sorb_eq(:)*v_t
+    rt_auxvar%total_sorb_eq(:)*material_auxvar%volume
 
 end subroutine RAccumulationSorb
 
@@ -5090,7 +5090,8 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
   psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
-          material_auxvar%volume / option%tran_dt  
+!          material_auxvar%volume / option%tran_dt  
+          material_auxvar%volume
   istart = 1
   iend = reaction%naqcomp
   Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase) 
@@ -5099,7 +5100,8 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
     do iimob = 1, reaction%immobile%nimmobile
       idof = reaction%offset_immobile + iimob
       Res(idof) = Res(idof) + rt_auxvar%immobile(iimob)* &
-                              material_auxvar%volume/option%tran_dt 
+!                              material_auxvar%volume/option%tran_dt 
+                              material_auxvar%volume
     enddo
   endif
   if (reaction%ncoll > 0) then
@@ -5118,7 +5120,8 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
   if (reaction%gas%nactive_gas > 0) then
     iphase = 2
     psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
-            material_auxvar%volume / option%tran_dt  
+!            material_auxvar%volume / option%tran_dt  
+            material_auxvar%volume
     istart = 1
     iend = reaction%naqcomp
     Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase)     
