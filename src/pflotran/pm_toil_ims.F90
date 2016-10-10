@@ -110,6 +110,7 @@ subroutine PMTOilImsRead(this,input)
   use Input_Aux_module
   use String_module
   use Option_module
+  use TOilIms_module, only : TOilImsFluxDipcSetup
 
   implicit none
 
@@ -204,6 +205,8 @@ subroutine PMTOilImsRead(this,input)
       !  general_harmonic_diff_density = PETSC_TRUE
       !case('ARITHMETIC_GAS_DIFFUSIVE_DENSITY')
       !  general_harmonic_diff_density = PETSC_FALSE
+      case('FLUX_DIPC')
+        call TOilImsFluxDipcSetup()
       case default
         call InputKeywordUnrecognized(keyword,'TOIL_IMS Mode',option)
     end select

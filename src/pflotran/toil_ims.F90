@@ -25,13 +25,49 @@ module TOilIms_module
 
 #define TOIL_CONVECTION
 #define TOIL_CONDUCTION
-#define TOIL_FLUX_DIPC
 
 ! Cutoff parameters - no public
   PetscReal, parameter :: eps       = 1.d-8
   PetscReal, parameter :: floweps   = 1.d-24
 
+  !pointing to default function
+  procedure(TOilImsFluxDummy), pointer :: TOilImsFlux => TOilImsFluxPFL
+
+  abstract interface
+    subroutine TOilImsFluxDummy(toil_auxvar_up,global_auxvar_up, &
+                     material_auxvar_up,sir_up, thermal_conductivity_up, &
+                     toil_auxvar_dn,global_auxvar_dn,material_auxvar_dn, &
+                     sir_dn, thermal_conductivity_dn, area, dist, parameter, &
+                     option,v_darcy,Res)
+      
+      use AuxVars_TOilIms_module
+      use PM_TOilIms_Aux_module
+      use Global_Aux_module
+      use Option_module
+      use Material_Aux_class
+      use Connection_module
+ 
+      implicit none
+  
+      class(auxvar_toil_ims_type) :: toil_auxvar_up, toil_auxvar_dn
+      type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+      class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
+      type(option_type) :: option
+      PetscReal :: sir_up(:), sir_dn(:)
+      PetscReal :: v_darcy(option%nphase)
+      PetscReal :: area
+      PetscReal :: dist(-1:3)
+      type(toil_ims_parameter_type) :: parameter
+      PetscReal :: thermal_conductivity_dn(2)
+      PetscReal :: thermal_conductivity_up(2)
+      PetscReal :: Res(option%nflowdof)
+                                     
+    end subroutine TOilImsFluxDummy
+
+  end interface
+
   public :: TOilImsSetup, &
+            TOilImsFluxDipcSetup, &
             TOilImsUpdateAuxVars, &
             TOilImsInitializeTimestep, &
             TOilImsComputeMassBalance, &
@@ -175,6 +211,20 @@ subroutine TOilImsSetup(realization)
   !endif
 
 end subroutine TOilImsSetup
+
+! ************************************************************************** !
+subroutine TOilImsFluxDipcSetup()
+  ! 
+  ! Setup Dipc Flux computation
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/10/16
+
+  implicit none
+  
+  TOilImsFlux => TOilImsFluxDipc
+
+end subroutine TOilImsFluxDipcSetup
 
 ! ************************************************************************** !
 
@@ -921,7 +971,7 @@ end subroutine TOilImsAccumulation
 
 ! ************************************************************************** !
 
-subroutine TOilImsFlux(toil_auxvar_up,global_auxvar_up, &
+subroutine TOilImsFluxPFL(toil_auxvar_up,global_auxvar_up, &
                        material_auxvar_up, &
                        sir_up, &
                        thermal_conductivity_up, &
@@ -1184,13 +1234,12 @@ subroutine TOilImsFlux(toil_auxvar_up,global_auxvar_up, &
 !  endif
 !#endif
 
-end subroutine TOilImsFlux
+end subroutine TOilImsFluxPFL
 
 ! ************************************************************************** !
 
 
 ! ************************************************************************** !
-#ifdef TOIL_FLUX_DIPC
 subroutine TOilImsFluxDipc(toil_auxvar_up,global_auxvar_up, &
                            material_auxvar_up, &
                            sir_up, &
@@ -1426,7 +1475,6 @@ subroutine TOilImsFluxDipc(toil_auxvar_up,global_auxvar_up, &
 #endif
 
 end subroutine TOilImsFluxDipc
-#endif
 ! ************************************************************************** !
 
 subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
@@ -2083,11 +2131,7 @@ subroutine ToilImsFluxDerivative(toil_auxvar_up,global_auxvar_up, &
   
   !geh:print *, 'ToilImsFluxDerivative'
   option%iflag = -2
-#ifdef TOIL_FLUX_DIPC
-  call TOilImsFluxDipc(toil_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
-#else
   call ToilImsFlux(toil_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
-#endif
                    material_auxvar_up,sir_up, &
                    thermal_conductivity_up, &
                    toil_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
@@ -2098,11 +2142,7 @@ subroutine ToilImsFluxDerivative(toil_auxvar_up,global_auxvar_up, &
                            
   ! upgradient derivatives
   do idof = 1, option%nflowdof
-#ifdef TOIL_FLUX_DIPC
-    call TOilImsFluxDipc(toil_auxvar_up(idof),global_auxvar_up, &
-#else
     call ToilImsFlux(toil_auxvar_up(idof),global_auxvar_up, &
-#endif
                      material_auxvar_up,sir_up, &
                      thermal_conductivity_up, &
                      toil_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
@@ -2118,11 +2158,7 @@ subroutine ToilImsFluxDerivative(toil_auxvar_up,global_auxvar_up, &
 
   ! downgradient derivatives
   do idof = 1, option%nflowdof
-#ifdef TOIL_FLUX_DIPC
-    call TOilImsFluxDipc(toil_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
-#else
     call ToilImsFlux(toil_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
-#endif
                      material_auxvar_up,sir_up, &
                      thermal_conductivity_up, &
                      toil_auxvar_dn(idof),global_auxvar_dn, &
@@ -2482,11 +2518,7 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
       icap_up = patch%sat_func_id(ghosted_id_up)
       icap_dn = patch%sat_func_id(ghosted_id_dn)
 
-#ifdef TOIL_FLUX_DIPC
-      call TOilImsFluxDipc(patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id_up), &
-#else
       call TOilImsFlux(patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id_up), &
-#endif
                      global_auxvars(ghosted_id_up), &
                      material_auxvars(ghosted_id_up), &
                      material_parameter%soil_residual_saturation(:,icap_up), &
