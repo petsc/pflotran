@@ -2588,6 +2588,18 @@ subroutine SubsurfaceReadInput(simulation)
             endif
           endif
         endif
+        if (associated(grid%unstructured_grid)) then
+          if (associated(grid%unstructured_grid%explicit_grid)) then
+            if ( (.not.output_option%print_hdf5) .and.  &
+                 (grid%unstructured_grid%explicit_grid%output_mesh_type == &
+                 CELL_CENTERED_OUTPUT_MESH) &
+               ) then 
+                option%io_buffer = 'unstructured explicit grid ' // &
+                  'output_mesh_type = CELL_CENTERED supported for hdf5 only'
+                call printErrMsg(option)
+            end if
+          end if
+        end if
 
 !.....................
       case ('REGRESSION')
