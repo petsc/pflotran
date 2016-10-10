@@ -472,6 +472,7 @@ subroutine RealizationLocalizeRegions(realization)
   
   type (region_type), pointer :: cur_region, cur_region2
   type(option_type), pointer :: option
+  type(region_type), pointer :: region
 
   option => realization%option
 
@@ -493,7 +494,24 @@ subroutine RealizationLocalizeRegions(realization)
 
   call PatchLocalizeRegions(realization%patch,realization%region_list, &
                             realization%option)
+  ! destroy realization's copy of region list as it can be confused with the
+  ! localized patch regions later in teh simulation.
+  call RegionDestroyList(realization%region_list)
 
+  ! compute regional connections for inline surface flow
+  if (option%inline_surface_flow) then
+     region => RegionGetPtrFromList(option%inline_surface_region_name, &
+          realization%patch%region_list)
+     if (.not.associated(region)) then
+        option%io_buffer = 'realization_subsurface.F90:RealizationLocalize&
+             &Regions() --> Could not find a required region named "' // &
+             trim(option%inline_surface_region_name) // &
+             '" from the list of regions.'
+        call printErrMsg(option)
+     endif
+     call GridRestrictRegionalConnect(realization%patch%grid,region)
+   endif
+   
 end subroutine RealizationLocalizeRegions
 
 ! ************************************************************************** !

@@ -1,0 +1,147 @@
+
+! Define simulation type and options --------------------------------
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+    PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+      OPTIONS 
+       INLINE_SURFACE_REGION top
+       INLINE_SURFACE_MANNINGS_COEFF 0.2
+      END 
+    END
+  END
+END
+
+SUBSURFACE
+
+  REGRESSION
+    CELLS
+      1
+      2
+      3
+      4
+      5
+    /
+  END
+  
+  ! Simulation details and output control ---------------------------
+
+  TIME
+    FINAL_TIME                 2.0d0 s 
+    INITIAL_TIMESTEP_SIZE      1.0d0 s
+    MAXIMUM_TIMESTEP_SIZE     60.0d0 s 
+  END
+
+  skip
+  OUTPUT
+    PERIODIC TIMESTEP 1
+    #FORMAT TECPLOT POINT
+    MASS_BALANCE
+  END
+  noskip
+  
+  ! Domain and region information -----------------------------------
+
+  GRID
+    TYPE unstructured_explicit ./mesh2.uge 
+  END
+
+  REGION all  
+   COORDINATES 
+    -500. -500. -500.  
+     500.  500.  500. 
+    / 
+  END
+
+  REGION top 
+   FILE ./top2.ex 
+  END 
+ 
+  REGION west_top 
+    FILE ./westtop2.ex 
+  END 
+
+  ! datasets --------------------------------------------------------
+
+  DATASET initial_pressure
+    FILENAME initial_pressure.h5 
+    HDF5_DATASET_NAME initial_pressure
+  END 
+
+  ! Initial condition -----------------------------------------------
+
+  FLOW_CONDITION initial
+    UNITS Pa
+    TYPE
+      PRESSURE dirichlet
+    END
+    PRESSURE DATASET initial_pressure
+  END
+
+  INITIAL_CONDITION initial_coupler
+    FLOW_CONDITION initial
+    REGION all
+  END
+
+  ! Boundary condition  ---------------------------------------------
+  
+   FLOW_CONDITION infiltrate 
+    TYPE 
+     FLUX neumann
+    END 
+    FLUX LIST
+      0.      5.5d-6 
+      12000.  5.5d-6 
+      12000.1 0.0d0
+    END
+   END 
+
+   BOUNDARY_CONDITION top_boundary
+    FLOW_CONDITION infiltrate 
+    REGION top 
+   END 
+
+   FLOW_CONDITION seepage 
+    TYPE 
+     PRESSURE surface_zero_gradheight
+    END 
+    PRESSURE 0.0
+   END 
+
+   BOUNDARY_CONDITION downstream 
+    FLOW_CONDITION seepage 
+    REGION west_top 
+   END 
+
+  ! Materials and their mapping to cells ----------------------------
+  
+  STRATA
+    REGION all
+    MATERIAL s1
+  END
+
+  CHARACTERISTIC_CURVES sf
+    SATURATION_FUNCTION VAN_GENUCHTEN
+      ALPHA 1.d-2
+      M 0.5d0
+      LIQUID_RESIDUAL_SATURATION 0.2d0
+    END
+    PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+      M 0.5d0
+      LIQUID_RESIDUAL_SATURATION 0.2d0
+    END
+  END
+
+  MATERIAL_PROPERTY s1
+    ID 1
+    POROSITY 0.40d0
+    SATURATION_FUNCTION sf
+    PERMEABILITY
+      ISOTROPIC   
+        PERM_ISO 1.181427115188583d-13 ! 6.94e-5 [m min-1] * 1/60 [min s-1] * 1.002e-3 [kg m-1 s-1] * 1/1000. [m3 kg-1] * 1/9.81 [s2 m-1] 
+    END
+  END
+
+END_SUBSURFACE

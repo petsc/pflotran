@@ -57,6 +57,7 @@ STANDARD_CFG = \
 	default/scco2/mphase/mphase.cfg \
 	default/scco2/flash2/flash2.cfg \
 	default/regions/regions.cfg \
+	default/regions/cell_mapping/cell_mapping.cfg \
 	default/salinity/salinity.cfg \
 	default/timestepping/timestepping.cfg \
 	geothermal_hpt/1D_Calcite/calcite_hpt.cfg\
@@ -78,7 +79,8 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 		geomech/uniaxial_strain/uniaxial_strain.cfg \
         geomech/uniaxial_loading/uniaxial_loading.cfg \
         surfaceflow/surface_flow_only/surface_only.cfg \
-		surfaceflow/surface_th/surface_th.cfg
+	surfaceflow/surface_th/surface_th.cfg \
+	surfaceflow/inlinesurface/inlinesurface.cfg
 endif
 
 #

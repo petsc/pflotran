@@ -215,7 +215,7 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
 
     gravity_magnitude = sqrt(DotProduct(option%gravity,option%gravity))
   
-    if (dabs(gravity_magnitude-9.8068d0) > 0.1d0) then
+    if (dabs(gravity_magnitude-EARTH_GRAVITY) > 0.1d0) then
       option%io_buffer = 'Magnitude of gravity vector is not near 9.81.'
       call printErrMsg(option)
     endif

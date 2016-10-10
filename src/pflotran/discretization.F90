@@ -1558,7 +1558,7 @@ subroutine DiscretizationPrintInfo(discretization,grid,option)
             grid%structured_grid%npx_final,grid%structured_grid%npy_final, &
             grid%structured_grid%npz_final
       endif
-      if (OptionPrintToScreen(option)) then
+      if (OptionPrintToFile(option)) then
         write(option%fid_out,'(/," Requested processors and decomposition = ", &
                              & i5,", npx,y,z= ",3i4)') &
             option%mycommsize,grid%structured_grid%npx,grid%structured_grid%npy, &
@@ -1566,6 +1566,14 @@ subroutine DiscretizationPrintInfo(discretization,grid,option)
         write(option%fid_out,'(" Actual decomposition: npx,y,z= ",3i4,/)') &
             grid%structured_grid%npx_final,grid%structured_grid%npy_final, &
             grid%structured_grid%npz_final
+      endif
+    case default
+      if (OptionPrintToScreen(option)) then
+        write(*,'(/," Requested processors = ",i5)') option%mycommsize
+      endif
+      if (OptionPrintToFile(option)) then
+        write(option%fid_out,'(/," Requested processors = ",i5)') &
+          option%mycommsize
       endif
   end select
   

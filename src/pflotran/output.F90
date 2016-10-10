@@ -43,6 +43,7 @@ module Output_module
   public :: OutputInit, &
             Output, &
             OutputPrintCouplers, &
+            OutputPrintRegions, &
             OutputVariableRead, &
             OutputFileRead, &
             OutputInputRecord
@@ -967,6 +968,14 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      SOIL_REFERENCE_PRESSURE)
+      case ('NATURAL_ID')
+        units = ''
+        name = 'Natural ID'
+        output_variable => OutputVariableCreate(name,OUTPUT_DISCRETE, &
+                                                units,NATURAL_ID)
+        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        output_variable%iformat = 1 ! integer
+        call OutputVariableAddToList(output_variable_list,output_variable)
       case ('PROCESS_ID')
         units = ''
         name = 'Process ID'
@@ -2050,6 +2059,57 @@ subroutine OutputPrintCouplers(realization_base,istep)
   deallocate(auxvar_names)
 
 end subroutine OutputPrintCouplers
+
+! ************************************************************************** !
+
+subroutine OutputPrintRegions(realization_base)
+  ! 
+  ! Prints out the number of connections to each cell in a region.
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/03/16
+  ! 
+
+  use Realization_Base_class, only : realization_base_type
+  use Option_module
+  use Debug_module
+  use Field_module
+  use Patch_module
+  use Region_module
+
+  class(realization_base_type) :: realization_base
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(debug_type), pointer :: flow_debug
+  type(region_type), pointer :: cur_region
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal, pointer :: vec_ptr(:)
+  PetscInt :: i
+  PetscErrorCode :: ierr
+  
+  
+  option => realization_base%option
+  flow_debug => realization_base%debug
+  field => realization_base%field
+
+  cur_region => realization_base%patch%region_list%first
+  do
+    if (.not.associated(cur_region)) exit
+    call VecZeroEntries(field%work,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
+    do i = 1, cur_region%num_cells
+      vec_ptr(cur_region%cell_ids(i)) = vec_ptr(cur_region%cell_ids(i)) + 1.d0
+    enddo
+    call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
+    string = 'region_' // trim(cur_region%name) // '.tec'
+    word = 'region'
+    call OutputVectorTecplot(string,word,realization_base,field%work)
+    cur_region => cur_region%next
+  enddo
+  
+end subroutine OutputPrintRegions
 
 ! ************************************************************************** !
 

@@ -1,0 +1,295 @@
+#Description: 3D test problem for testing chemical reactions
+#             based on chemistry from Hammond and Lichtner, WRR, 2010
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS_PER_PROCESS 10
+  CELLS
+    29
+  /
+END
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+  Tracer
+  /
+  OUTPUT
+    All
+    TOTAL
+  /
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  TS_ACCELERATION 8
+END
+
+LINEAR_SOLVER FLOW
+  SOLVER DIRECT
+END
+
+LINEAR_SOLVER TRANSPORT
+  SOLVER DIRECT
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 5 4 3
+  DXYZ
+    10. 11. 12. 13. 14.
+    13. 12. 11. 10.
+    15. 20. 25.
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-5
+END
+
+#=========================== datasets =========================================
+DATASET Porosity
+  FILENAME ../543/parameters-543.h5
+END
+
+DATASET Permeability
+  FILENAME ../543/parameters-543.h5
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY DATASET Porosity
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-13
+  /
+END
+
+MATERIAL_PROPERTY soil2
+  ID 2
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf2
+  PERMEABILITY
+    DATASET Permeability
+  /
+END
+
+MATERIAL_PROPERTY soil3
+  ID 3
+  POROSITY 0.2d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf3
+  PERMEABILITY
+    PERM_X 1.d-10
+    PERM_Y 1.d-10
+    PERM_Z 1.d-11
+  /
+END
+
+MATERIAL_PROPERTY soil4
+  ID 4
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf4
+  PERMEABILITY
+    PERM_X 1.d-9
+    PERM_Y 1.d-9
+    PERM_Z 1.d-10
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES sf1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.286
+    ALPHA  1.9401d-4
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.286
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+END
+
+CHARACTERISTIC_CURVES sf2
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.486
+    ALPHA  3.8801d-4
+    LIQUID_RESIDUAL_SATURATION 0.110
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.486
+    LIQUID_RESIDUAL_SATURATION 0.110
+  /
+END
+
+CHARACTERISTIC_CURVES sf3
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.541
+    ALPHA 1.0211d-4
+    LIQUID_RESIDUAL_SATURATION 0.118
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.541
+    LIQUID_RESIDUAL_SATURATION 0.118
+  /
+END
+
+CHARACTERISTIC_CURVES sf4
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.527
+    ALPHA 5.1054d-5
+    LIQUID_RESIDUAL_SATURATION 0.143
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.527
+    LIQUID_RESIDUAL_SATURATION 0.143
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+#  TIMES d 0.001 0.01 0.1 1. 10.
+#  PERIODIC TIME 1 d
+  TIME_UNITS y
+#  FORMAT TECPLOT BLOCK
+#  FORMAT HDF5
+  VARIABLES
+    LIQUID_SATURATION
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 1.d0 d
+  INITIAL_TIMESTEP_SIZE 1.d-3 d
+  MAXIMUM_TIMESTEP_SIZE 10.d0 d
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    -1.d20 -1.d20 -1.d20
+    1.d20 1.d20 1.d20
+  /
+END
+
+REGION Top
+  FILE ./543_inactive.h5
+END
+
+REGION Bottom
+  FILE ./543_inactive.h5
+END
+
+REGION West
+  FILE ./543_inactive.h5
+END
+
+REGION East
+  FILE ./543_inactive.h5
+END
+
+REGION North
+  FILE ./543_inactive.h5
+END
+
+REGION South
+  FILE ./543_inactive.h5
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 35.d0
+  GRADIENT
+    PRESSURE -1.6666667d-2 0.d0 0.d0
+  /
+  PRESSURE 101325 ! Pa
+END
+
+FLOW_CONDITION boundary
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 36.d0 
+  PRESSURE 101325 ! Pa
+END
+
+#=========================== transport conditions =============================
+EXTERNAL_FILE 543_transport_conditions.txt
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION west
+  FLOW_CONDITION boundary
+  TRANSPORT_CONDITION west
+  REGION West
+END
+
+BOUNDARY_CONDITION east
+  FLOW_CONDITION boundary
+  TRANSPORT_CONDITION east
+  REGION East
+END
+
+BOUNDARY_CONDITION south
+  FLOW_CONDITION boundary
+  TRANSPORT_CONDITION south
+  REGION South
+END
+
+BOUNDARY_CONDITION north
+  FLOW_CONDITION boundary
+  TRANSPORT_CONDITION north
+  REGION North
+END
+
+BOUNDARY_CONDITION bottom
+  FLOW_CONDITION boundary
+  TRANSPORT_CONDITION bottom
+  REGION Bottom
+END
+
+BOUNDARY_CONDITION top
+  FLOW_CONDITION boundary
+  TRANSPORT_CONDITION top
+  REGION Top
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL ./543_inactive.h5
+END
+
+END_SUBSURFACE

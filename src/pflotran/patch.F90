@@ -123,6 +123,7 @@ module Patch_module
             PatchCalculateCFL1Timestep, &
             PatchGetCellCenteredVelocities, &
             PatchGetCompMassInRegion, &
+            PatchGetWaterMassInRegion, &
             PatchGetCompMassInRegionAssign
 
 contains
@@ -2764,7 +2765,7 @@ subroutine PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
   flow_condition => coupler%flow_condition
   if (associated(flow_condition%pressure)) then
     select case(flow_condition%pressure%itype)
-      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
+      case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC,SURFACE_DIRICHLET,SURFACE_SPILLOVER)
         select type(dataset => &
                     flow_condition%pressure%dataset)
           class is(dataset_ascii_type)
@@ -3699,8 +3700,9 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
           case(LIQUID_HEAD)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = &
-                patch%aux%Global%auxvars(grid%nL2G(local_id))%pres(1)/9.81/ &
-                patch%aux%Global%auxvars(grid%nL2G(local_id))%den_kg(1)                
+                patch%aux%Global%auxvars(grid%nL2G(local_id))%pres(1)/ &
+                EARTH_GRAVITY/ &
+                patch%aux%Global%auxvars(grid%nL2G(local_id))%den_kg(1)
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
@@ -4384,7 +4386,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
               enddo
               tk = patch%aux%Global%auxvars(ghosted_id)%temp + &
                    273.15d0
-              ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/faraday
+              ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/FARADAY
               eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
               pe0 = eh0/ehfac
               vec_ptr(local_id) = eh0
@@ -4418,7 +4420,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
               enddo
               tk = patch%aux%Global%auxvars(ghosted_id)%temp + &
                    273.15d0
-              ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/faraday
+              ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/FARADAY
               eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
               pe0 = eh0/ehfac
               vec_ptr(local_id) = pe0
@@ -4755,6 +4757,10 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = option%myrank
       enddo
+    case(NATURAL_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = grid%nG2A(grid%nL2G(local_id))
+      enddo
     case(RESIDUAL)
       call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
       call VecStrideGather(field%flow_r,isubvar-1,vec,INSERT_VALUES,ierr)
@@ -4916,7 +4922,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           case(LIQUID_PRESSURE)
             value = patch%aux%Global%auxvars(ghosted_id)%pres(1)
           case(LIQUID_HEAD)
-            value = patch%aux%Global%auxvars(ghosted_id)%pres(1)/9.81/ &
+            value = patch%aux%Global%auxvars(ghosted_id)%pres(1)/ &
+                    EARTH_GRAVITY/ &
                     patch%aux%Global%auxvars(ghosted_id)%den_kg(1)
           case(LIQUID_SATURATION)
             value = patch%aux%Global%auxvars(ghosted_id)%sat(1)
@@ -5300,7 +5307,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           enddo
 
           tk = patch%aux%Global%auxvars(ghosted_id)%temp+273.15d0
-          ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/faraday
+          ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/FARADAY
           eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
 
           value = eh0
@@ -5328,7 +5335,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           enddo
 
           tk = patch%aux%Global%auxvars(ghosted_id)%temp+273.15d0
-          ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/faraday
+          ehfac = IDEAL_GAS_CONSTANT*tk*LOG_TO_LN/FARADAY
           eh0 = ehfac*(-4.d0*ph0+lnQKgas*LN_TO_LOG+logKeh(tk))/4.d0
           pe0 = eh0/ehfac
           value = pe0
@@ -5510,6 +5517,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
     case(MATERIAL_ID)
       value = patch%imat_internal_to_external(iabs(patch%imat(ghosted_id)))
     case(PROCESS_ID)
+      value = grid%nG2A(ghosted_id)
+    case(NATURAL_ID)
       value = option%myrank
     ! Need to fix the below two cases (they assume only one component) -- SK 02/06/13  
     case(SECONDARY_CONCENTRATION)
@@ -6414,6 +6423,9 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
     case(PROCESS_ID)
       call printErrMsg(option, &
                        'Cannot set PROCESS_ID through PatchSetVariable()')
+    case(NATURAL_ID)
+      call printErrMsg(option, &
+                       'Cannot set NATURAL_ID through PatchSetVariable()')
     case default
       write(option%io_buffer, &
             '(''IVAR ('',i3,'') not found in PatchSetVariable'')') ivar
@@ -6601,6 +6613,8 @@ function PatchGetVarNameFromKeyword(keyword,option)
   select case(keyword)
     case('PROCESS_ID')
       var_name = 'Processor ID'
+    case('NATURAL_ID')
+      var_name = 'Natural ID'
     case default
       option%io_buffer = 'Keyword "' // trim(keyword) // '" not ' // &
                          'recognized in PatchGetIvarsFromKeyword()'
@@ -6636,6 +6650,10 @@ subroutine PatchGetIvarsFromKeyword(keyword,ivar,isubvar,var_type,option)
   select case(keyword)
     case('PROCESS_ID')
       ivar = PROCESS_ID
+      isubvar = ZERO_INTEGER
+      var_type = INT_VAR
+    case('NATURAL_ID')
+      ivar = NATURAL_ID
       isubvar = ZERO_INTEGER
       var_type = INT_VAR
     case default
@@ -6711,6 +6729,10 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
     case(PROCESS_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = option%myrank
+      enddo
+    case(NATURAL_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = grid%nG2A(grid%nL2G(local_id))
       enddo
     case default
       write(option%io_buffer, &
@@ -7232,6 +7254,61 @@ subroutine PatchGetCompMassInRegion(cell_ids,num_cells,patch,option, &
                      MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
 
 end subroutine PatchGetCompMassInRegion
+
+! **************************************************************************** !
+
+subroutine PatchGetWaterMassInRegion(cell_ids,num_cells,patch,option, &
+                                     global_water_mass)
+  ! 
+  ! Calculates the water mass in a region in kg
+  ! 
+  ! Author: Satish Karra
+  ! Date: 09/20/2016
+  ! 
+  use Global_Aux_module
+  use Material_Aux_class
+  use Grid_module
+  use Option_module
+
+  implicit none
+  
+  PetscInt, pointer :: cell_ids(:)
+  PetscInt :: num_cells
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  PetscReal :: global_water_mass  
+  
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  PetscReal :: m3_water, kg_water           
+  PetscInt :: k, j, m
+  PetscInt :: local_id, ghosted_id
+  PetscErrorCode :: ierr
+  PetscReal :: local_water_mass
+  
+  global_auxvars => patch%aux%Global%auxvars
+  material_auxvars => patch%aux%Material%auxvars
+  local_water_mass = 0.d0
+  global_water_mass = 0.d0
+  
+  ! Loop through all cells in the region:
+  do k = 1,num_cells
+    local_id = cell_ids(k)
+    ghosted_id = patch%grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    m3_water = material_auxvars(ghosted_id)%porosity * &         ! [-]
+               global_auxvars(ghosted_id)%sat(LIQUID_PHASE) * &  ! [water]
+               material_auxvars(ghosted_id)%volume               ! [m^3-bulk]
+    kg_water = m3_water*global_auxvars(ghosted_id)% &            ! [m^3-water]
+               den(LIQUID_PHASE)                                 ! [kg/m^3-water]
+    local_water_mass = local_water_mass + kg_water
+  enddo ! Cell loop
+  
+  ! Sum the local_water_mass across all processes that own the region: 
+  call MPI_Allreduce(local_water_mass,global_water_mass,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
+
+end subroutine PatchGetWaterMassInRegion
 
 ! **************************************************************************** !
 

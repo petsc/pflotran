@@ -211,6 +211,11 @@ module Option_module
 
     PetscBool :: print_ekg
 
+    ! flag to use inline surface flow in Richards mode
+    PetscBool :: inline_surface_flow
+    PetscReal :: inline_surface_Mannings_coeff
+    character(len=MAXSTRINGLENGTH) :: inline_surface_region_name
+    
   end type option_type
   
   PetscInt, parameter, public :: SUBSURFACE_SIM_TYPE = 1
@@ -443,7 +448,7 @@ subroutine OptionInitRealization(option)
   option%geomech_time = 0.d0
   option%geomech_subsurf_coupling = 0 
   option%geomech_gravity(:) = 0.d0
-  option%geomech_gravity(3) = -9.8068d0    ! m/s^2
+  option%geomech_gravity(3) = -1.d0*EARTH_GRAVITY    ! m/s^2
 
   option%tranmode = ""
   option%itranmode = NULL_MODE
@@ -488,7 +493,7 @@ subroutine OptionInitRealization(option)
   option%ideriv = 1
 
   option%gravity(:) = 0.d0
-  option%gravity(3) = -9.8068d0    ! m/s^2
+  option%gravity(3) = -1.d0*EARTH_GRAVITY ! m/s^2
 
   !physical constants and defult variables
 !  option%difaq = 1.d-9 ! m^2/s read from input file
@@ -556,6 +561,10 @@ subroutine OptionInitRealization(option)
   option%min_allowable_scale = 1.0d-10
 
   option%print_ekg = PETSC_FALSE
+  
+  option%inline_surface_flow           = PETSC_FALSE
+  option%inline_surface_Mannings_coeff = 0.02d0
+  option%inline_surface_region_name    = ""
   
 end subroutine OptionInitRealization
 

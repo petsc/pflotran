@@ -118,7 +118,7 @@ subroutine FluidPropertyRead(fluid_property,input,option)
                            'FLUID_PROPERTY')
         call InputReadAndConvertUnits(input, &
                 fluid_property%diffusion_activation_energy, &
-                'kJ/mol','FLUID_PROPERTY,diffusion activation energy',option)
+                'J/mol','FLUID_PROPERTY,diffusion activation energy',option)
       case('GAS_DIFFUSION_COEFFICIENT') 
         call InputReadDouble(input,option, &
                              fluid_property%gas_diffusion_coefficient)

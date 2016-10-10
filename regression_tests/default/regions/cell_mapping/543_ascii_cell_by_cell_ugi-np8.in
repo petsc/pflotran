@@ -1,0 +1,132 @@
+#Description: Test mapping of regions for initial conditions through ASCII 
+#             txt files.
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  ALL_CELLS
+END
+
+#=========================== flow mode ========================================
+UNIFORM_VELOCITY 0.d0 0.d0 0.d0
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+  Tracer
+  /
+  OUTPUT
+    All
+    TOTAL
+  /
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  TS_ACCELERATION 8
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE unstructured ./543.ugi
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 0.d0 ! yes 0.d0, as we want no transport
+END
+
+#=========================== datasets =========================================
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+END
+
+MATERIAL_PROPERTY soil2
+  ID 2
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+END
+
+MATERIAL_PROPERTY soil3
+  ID 3
+  POROSITY 0.2d0
+  TORTUOSITY 1.d0
+END
+
+MATERIAL_PROPERTY soil4
+  ID 4
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+END
+
+#=========================== characteristic curves ============================
+#=========================== output options ===================================
+OUTPUT
+#  TIMES d 0.001 0.01 0.1 1. 10.
+#  PERIODIC TIME 1 d
+#  FORMAT TECPLOT BLOCK
+#  FORMAT HDF5
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 1.d-6 d
+  INITIAL_TIMESTEP_SIZE 1.d-6 d
+  MAXIMUM_TIMESTEP_SIZE 10.d0 d
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    -1.d20 -1.d20 -1.d20
+    1.d20 1.d20 1.d20
+  /
+END
+
+EXTERNAL_FILE 543_regions_ascii.txt
+
+#=========================== flow conditions ==================================
+#=========================== transport conditions =============================
+EXTERNAL_FILE 543_transport_block.txt
+
+TRANSPORT_CONDITION columbia_river
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT groundwater
+    CONCENTRATIONS
+      Tracer   1.e-7            F
+    /
+  /
+END
+
+TRANSPORT_CONDITION groundwater
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT river_water
+    CONCENTRATIONS
+      Tracer   1.e-3            F
+    /
+  /
+END
+
+#=========================== transport constraints ============================
+#=========================== condition couplers ===============================
+EXTERNAL_FILE 543_condition_cell_by_cell_block.txt
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL ../../543/543.h5
+END
+
+END_SUBSURFACE

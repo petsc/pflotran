@@ -169,6 +169,9 @@ subroutine MineralReadKinetics(mineral,input,option)
 !             read activation energy for Arrhenius law
               call InputReadDouble(input,option,tstrxn%activation_energy)
               call InputErrorMsg(input,option,'activation',error_string)
+              call InputReadAndConvertUnits(input,tstrxn%activation_energy, &
+                                            'J/mol', &
+                              trim(error_string)//',activation energy',option)
             case('AFFINITY_THRESHOLD')
 !             read affinity threshold for precipitation
               call InputReadDouble(input,option,tstrxn%affinity_threshold)
@@ -256,7 +259,12 @@ subroutine MineralReadKinetics(mineral,input,option)
                     ! read activation energy for Arrhenius law
                     call InputReadDouble(input,option, &
                                          prefactor%activation_energy)
-                    call InputErrorMsg(input,option,'activation',error_string)
+                    call InputErrorMsg(input,option,'activation energy', &
+                                       error_string)
+                    call InputReadAndConvertUnits(input, &
+                                                  prefactor%activation_energy, &
+                                                  'J/mol', &
+                              trim(error_string)//',activation energy',option)
                   case('PREFACTOR_SPECIES')
                     error_string = 'CHEMISTRY,MINERAL_KINETICS,PREFACTOR,&
                                    &SPECIES'
