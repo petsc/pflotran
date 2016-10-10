@@ -120,7 +120,6 @@ module Reactive_Transport_Aux_module
     PetscInt :: num_aux, num_aux_bc, num_aux_ss
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
     PetscInt :: n_zero_rows
-    PetscBool :: auxvars_up_to_date
     PetscBool :: inactive_cells_exist
     type(reactive_transport_param_type), pointer :: rt_parameter
     type(reactive_transport_auxvar_type), pointer :: auxvars(:)
@@ -168,7 +167,6 @@ function RTAuxCreate(option)
   aux%n_zero_rows = 0    ! number of zeroed rows in Jacobian for inactive cells
   nullify(aux%zero_rows_local)  ! ids of zero rows in local, non-ghosted numbering
   nullify(aux%zero_rows_local_ghosted) ! ids of zero rows in ghosted numbering
-  aux%auxvars_up_to_date = PETSC_FALSE
   aux%inactive_cells_exist = PETSC_FALSE
 
   allocate(aux%rt_parameter)

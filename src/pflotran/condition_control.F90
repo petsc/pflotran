@@ -932,20 +932,18 @@ subroutine CondControlAssignTranInitCond(realization)
     call CondControlReadTransportIC(realization, &
                                     option%initialize_transport_filename)
   endif
-  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
+  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
   ! at this point the auxvars have been computed with activity coef = 1.d0
   ! to use intitial condition with activity coefs /= 1.d0, must update
   ! activity coefs and recompute auxvars
   if (realization%reaction%act_coef_update_frequency /= &
       ACT_COEF_FREQUENCY_OFF) then
-    call RTUpdateActivityCoefficients(realization,PETSC_TRUE,PETSC_TRUE)
-    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_TRUE)
     !geh: you may ask, why call this twice....  We need to iterate at least
     !     once to ensure that the activity coefficients are more accurate.
     !     Otherwise, the total component concentrations can be quite
     !     different from what is defined in the input file.
-    call RTUpdateActivityCoefficients(realization,PETSC_TRUE,PETSC_TRUE)
-    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_TRUE)
   endif
 
 end subroutine CondControlAssignTranInitCond

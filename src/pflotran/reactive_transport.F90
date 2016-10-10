@@ -596,8 +596,8 @@ subroutine RTUpdateEquilibriumState(realization)
   rt_auxvars => patch%aux%RT%auxvars
   global_auxvars => patch%aux%Global%auxvars
 
-  ! update:                        cells      bcs   
-  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
+  ! update:                        cells      bcs         act coefs
+  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
 
 !geh: for debugging max/min concentrations
 #if 0
@@ -1213,7 +1213,7 @@ subroutine RTCalculateRHS_t1(realization)
 !geh - activity coef updates must always be off!!!
 !geh    ! update:                             cells      bcs        act. coefs.
 !  call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
-  if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
+  if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON) then
     call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_TRUE)
   else
     call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
@@ -1678,7 +1678,7 @@ subroutine RTReact(realization)
 
   ! need up update aux vars based on current density/saturation,
   ! but NOT activity coefficients
-  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
+  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
 
   ! Get vectors
   call VecGetArrayReadF90(field%tran_xx,tran_xx_p,ierr);CHKERRQ(ierr)
@@ -2230,25 +2230,13 @@ subroutine RTResidualFlux(snes,xx,r,realization,ierr)
     rt_sec_transport_vars => patch%aux%SC_RT%sec_transport_vars
   endif
 
-#if 0
-  if (.not.patch%aux%RT%auxvars_up_to_date) then
-    if (reaction%act_coef_update_frequency == &
-        ACT_COEF_FREQUENCY_NEWTON_ITER) then
-      ! update: cells      bcs        act. coefs.
-      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
-    else 
-      ! update: cells      bcs        act. coefs.
-      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE)
-    endif
-  endif
-  patch%aux%RT%auxvars_up_to_date = PETSC_FALSE 
-#endif
   if (reaction%act_coef_update_frequency == &
       ACT_COEF_FREQUENCY_NEWTON_ITER) then
-    call RTUpdateActivityCoefficients(realization,PETSC_TRUE,PETSC_TRUE)
+    ! update:                        cells      bcs        act. coefs.
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
+  else
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE)
   endif
-  ! update: cells      bcs        act. coefs.
-  call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
   
   if (option%compute_mass_balance_new) then
     call RTZeroMassBalanceDelta(realization)
@@ -3706,7 +3694,8 @@ end subroutine RTUpdateActivityCoefficients
 
 ! ************************************************************************** !
 
-subroutine RTUpdateAuxVars(realization,update_cells,update_bcs)
+subroutine RTUpdateAuxVars(realization,update_cells,update_bcs, &
+                           update_activity_coefs)
   ! 
   ! Updates the auxiliary variables associated with
   ! reactive transport
@@ -3735,6 +3724,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs)
   type(realization_subsurface_type) :: realization
   PetscBool :: update_bcs
   PetscBool :: update_cells
+  PetscBool :: update_activity_coefs
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -3818,19 +3808,17 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs)
                                        reaction,PETSC_FALSE, &
                                        option)
       endif
-!geh: removed on 10/6/16
-#if 0
       if (update_activity_coefs) then
         call RActivityCoefficients(patch%aux%RT%auxvars(ghosted_id), &
                                    patch%aux%Global%auxvars(ghosted_id), &
                                    reaction,option)
-        if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
+        if (option%iflowmode == MPH_MODE .or. &
+            option%iflowmode == FLASH2_MODE) then
           call CO2AqActCoeff(patch%aux%RT%auxvars(ghosted_id), &
                                    patch%aux%Global%auxvars(ghosted_id), &
                                    reaction,option)
         endif                           
       endif
-#endif
       call RTAuxVarCompute(patch%aux%RT%auxvars(ghosted_id), &
                            patch%aux%Global%auxvars(ghosted_id), &
                            patch%aux%Material%auxvars(ghosted_id), &
@@ -4008,19 +3996,18 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs)
                                            reaction,PETSC_FALSE, &
                                            option)
           endif          
-!geh: removed on 10/6/16
-#if 0
           if (update_activity_coefs) then
-            call RActivityCoefficients(patch%aux%RT%auxvars_bc(sum_connection), &
-                                        patch%aux%Global%auxvars_bc(sum_connection), &
-                                        reaction,option)
-            if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
+            call RActivityCoefficients( &
+                        patch%aux%RT%auxvars_bc(sum_connection), &
+                        patch%aux%Global%auxvars_bc(sum_connection), &
+                        reaction,option)
+            if (option%iflowmode == MPH_MODE .or. &
+                option%iflowmode == FLASH2_MODE) then
               call CO2AqActCoeff(patch%aux%RT%auxvars_bc(sum_connection), &
                                   patch%aux%Global%auxvars_bc(sum_connection), &
                                   reaction,option) 
               endif                           
           endif
-#endif
           call RTAuxVarCompute(patch%aux%RT%auxvars_bc(sum_connection), &
                                patch%aux%Global%auxvars_bc(sum_connection), &
                                patch%aux%Material%auxvars(ghosted_id), &
@@ -4034,21 +4021,24 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs)
               ! the concentrations, etc.
               
               !geh: terrible kludge, but should work for now.
-              !geh: the problem is that ...%pri_molal() on first call is zero and 
-              !     PETSC_TRUE is passed into ReactionEquilibrateConstraint() below
-              !     for use_prev_soln_as_guess.  If the previous solution is zero,
-              !     the code will crash.
-              if (patch%aux%RT%auxvars_bc(sum_connection)%pri_molal(1) < 1.d-200) then
+              !geh: the problem is that ...%pri_molal() on first call is 
+              !      zero and PETSC_TRUE is passed into 
+              !      ReactionEquilibrateConstraint() below for 
+              !      use_prev_soln_as_guess.  If the previous solution is 
+              !      zero, the code will crash.
+              if (patch%aux%RT%auxvars_bc(sum_connection)%pri_molal(1) < &
+                  1.d-200) then
 !               patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = 1.d-9
                 patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = &
                     xx_loc_p(istartaq:iendaq)
               endif
             case(DIRICHLET_ZERO_GRADIENT_BC)
               if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
-                  ! don't need to do anything as the constraint below provides all
-                  ! the concentrations, etc.
+                  ! don't need to do anything as the constraint below 
+                  ! provides all the concentrations, etc.
                   
-                if (patch%aux%RT%auxvars_bc(sum_connection)%pri_molal(1) < 1.d-200) then
+                if (patch%aux%RT%auxvars_bc(sum_connection)%pri_molal(1) < &
+                    1.d-200) then
 !                 patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = 1.d-9
                   patch%aux%RT%auxvars_bc(sum_connection)%pri_molal = &
                     xx_loc_p(istartaq:iendaq)
@@ -4061,7 +4051,7 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs)
                 if (reaction%ncoll > 0) then
                   patch%aux%RT%auxvars_bc(sum_connection)%colloid%conc_mob = &
                     xx_loc_p(istartcoll:iendcoll)* &
-                      patch%aux%Global%auxvars_bc(sum_connection)%den_kg(1)*1.d-3
+                    patch%aux%Global%auxvars_bc(sum_connection)%den_kg(1)*1.d-3
                 endif
               endif
             case(ZERO_GRADIENT_BC)
@@ -4077,17 +4067,26 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs)
           ! no need to update boundary fluid density since it is already set
           if (.not.skip_equilibrate_constraint) then
             ! print *,'RT redo constrain on BCs: 1: ', sum_connection
-            call ReactionEquilibrateConstraint(patch%aux%RT%auxvars_bc(sum_connection), &
+            call ReactionEquilibrateConstraint( &
+              patch%aux%RT%auxvars_bc(sum_connection), &
               patch%aux%Global%auxvars_bc(sum_connection), &
               patch%aux%Material%auxvars(ghosted_id),reaction, &
-              boundary_condition%tran_condition%cur_constraint_coupler%constraint_name, &
-              boundary_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
-              boundary_condition%tran_condition%cur_constraint_coupler%free_ion_guess, &
-              boundary_condition%tran_condition%cur_constraint_coupler%minerals, &
-              boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
-              boundary_condition%tran_condition%cur_constraint_coupler%colloids, &
-              boundary_condition%tran_condition%cur_constraint_coupler%immobile_species, &
-              boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
+              boundary_condition%tran_condition%cur_constraint_coupler% &
+                constraint_name, &
+              boundary_condition%tran_condition%cur_constraint_coupler% &
+                aqueous_species, &
+              boundary_condition%tran_condition%cur_constraint_coupler% &
+                free_ion_guess, &
+              boundary_condition%tran_condition%cur_constraint_coupler% &
+                minerals, &
+              boundary_condition%tran_condition%cur_constraint_coupler% &
+                surface_complexes, &
+              boundary_condition%tran_condition%cur_constraint_coupler% &
+                colloids, &
+              boundary_condition%tran_condition%cur_constraint_coupler% &
+                immobile_species, &
+              boundary_condition%tran_condition%cur_constraint_coupler% &
+                num_iterations, &
               PETSC_TRUE,option)
             ! print *,'RT redo constrain on BCs: 2: ', sum_connection  
           endif         
@@ -4121,8 +4120,6 @@ subroutine RTUpdateAuxVars(realization,update_cells,update_bcs)
 
   endif 
 
-  patch%aux%RT%auxvars_up_to_date = update_cells .and. update_bcs
-  
   call VecRestoreArrayReadF90(field%tran_xx_loc,xx_loc_p, ierr);CHKERRQ(ierr)
   icall = icall+ 1
   

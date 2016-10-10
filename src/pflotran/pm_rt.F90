@@ -332,6 +332,9 @@ recursive subroutine PMRTInitializeRun(this)
     call CondControlAssignTranInitCond(this%realization)  
   endif
   
+  ! update boundary concentrations so that activity coefficients can be 
+  ! calculated at first time step
+  call RTUpdateAuxVars(this%realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
   ! pass PETSC_FALSE to turn off update of kinetic state variables
   call PMRTUpdateSolution2(this,PETSC_FALSE)
   
@@ -363,7 +366,7 @@ subroutine PMRTInitializeTimestep(this)
 
   use Reactive_Transport_module, only : RTInitializeTimestep, &
                                         RTUpdateActivityCoefficients
-  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_TIMESTEP
   use Global_module
   use Material_module
 
@@ -404,8 +407,8 @@ subroutine PMRTInitializeTimestep(this)
 
   call RTInitializeTimestep(this%realization)
 
-  if (this%realization%reaction%act_coef_update_frequency /= &
-      ACT_COEF_FREQUENCY_OFF) then
+  if (this%realization%reaction%act_coef_update_frequency == &
+      ACT_COEF_FREQUENCY_TIMESTEP) then
     call RTUpdateActivityCoefficients(this%realization,PETSC_TRUE,PETSC_TRUE)
   endif
 
@@ -1066,8 +1069,8 @@ subroutine PMRTUpdateAuxVars(this)
   implicit none
   
   class(pm_rt_type) :: this
-                                      ! cells      bcs
-  call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE)
+                                      ! cells      bcs         act coefs
+  call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
 
 end subroutine PMRTUpdateAuxVars  
 
@@ -1432,7 +1435,7 @@ subroutine PMRTRestartBinary(this,viewer)
   
   if (realization%reaction%use_full_geochemistry) then
                                      ! cells     bcs        act coefs.
-    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE)
+    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
   endif
   ! do not update kinetics.
   call PMRTUpdateSolution2(this,PETSC_FALSE)
@@ -1817,7 +1820,7 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
 
   if (realization%reaction%use_full_geochemistry) then
                                      ! cells     bcs        act coefs.
-    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE)
+    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
   endif
   ! do not update kinetics.
   call PMRTUpdateSolution2(this,PETSC_FALSE)
