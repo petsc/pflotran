@@ -61,6 +61,9 @@ module Output_Aux_module
 
     PetscBool :: print_mad 
 
+    PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
+    PetscBool :: print_explicit_dual_grid      ! prints voronoi (dual) grid if true
+
     PetscInt :: screen_imod
     PetscInt :: output_file_imod
     
@@ -203,6 +206,8 @@ function OutputOptionCreate()
   output_option%print_observation = PETSC_FALSE
   output_option%print_column_ids = PETSC_FALSE
   output_option%print_mad = PETSC_FALSE
+  output_option%print_explicit_primal_grid = PETSC_FALSE
+  output_option%print_explicit_dual_grid = PETSC_FALSE
   output_option%print_initial_obs = PETSC_TRUE
   output_option%print_final_obs = PETSC_TRUE
   output_option%print_initial_snap = PETSC_TRUE

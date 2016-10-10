@@ -192,8 +192,8 @@ module Option_module
     PetscBool :: out_of_table
 
     ! Specify secondary continuum solver
-    PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
-    PetscBool :: print_explicit_dual_grid      ! prints voronoi (dual) grid if true
+    !PetscBool :: print_explicit_primal_grid    ! prints primal grid if true
+    !PetscBool :: print_explicit_dual_grid      ! prints voronoi (dual) grid if true
     PetscInt :: secondary_continuum_solver     ! Specify secondary continuum solver
     
     PetscInt :: subsurface_simulation_type
@@ -549,8 +549,8 @@ subroutine OptionInitRealization(option)
   option%use_matrix_buffer = PETSC_FALSE
   option%status = PROCEED 
   option%force_newton_iteration = PETSC_FALSE
-  option%print_explicit_primal_grid = PETSC_FALSE
-  option%print_explicit_dual_grid = PETSC_FALSE  
+  !option%print_explicit_primal_grid = PETSC_FALSE
+  !option%print_explicit_dual_grid = PETSC_FALSE  
   option%secondary_continuum_solver = 1
 
   ! initially set to a large value to effectively disable

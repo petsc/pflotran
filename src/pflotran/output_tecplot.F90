@@ -1443,6 +1443,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   type(patch_type), pointer :: patch 
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vertex_vec
@@ -1454,6 +1455,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
   patch => realization_base%patch
   grid => patch%grid
   option => realization_base%option
+  output_option => realization_base%output_option
 
 1000 format(es13.6,1x)
 
@@ -1490,7 +1492,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       call VecDestroy(global_vertex_vec, ierr);CHKERRQ(ierr)
     case (EXPLICIT_UNSTRUCTURED_GRID)
       if (option%myrank == option%io_rank) then
-        if (option%print_explicit_primal_grid) then
+        if (output_option%print_explicit_primal_grid) then
         num_cells = grid%unstructured_grid%explicit_grid%num_cells_global
         count = 0
         do icell = 1, num_cells
@@ -1525,7 +1527,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
           endif
         enddo
         if (count /= 0) write(fid,'(a)') ""
-        elseif (option%print_explicit_dual_grid) then
+        elseif (output_option%print_explicit_dual_grid) then
           write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')
         else 
           write(fid,'(">",/,"Add explicit mesh vertex information here",/,">")')

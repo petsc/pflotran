@@ -1227,7 +1227,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   new_filename = trim(option%global_prefix) // '-domain.h5'
   
   
-  if (first .and. option%print_explicit_primal_grid) then
+  if (first .and. output_option%print_explicit_primal_grid) then
     if (option%myrank == option%io_rank) then
       call h5pcreate_f(H5P_FILE_ACCESS_F,new_prop_id,hdf5_err)
       call h5fcreate_f(new_filename,H5F_ACC_TRUNC_F,new_file_id,hdf5_err, &
@@ -1245,7 +1245,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   endif   
   
   if (option%myrank == option%io_rank .and. &
-      option%print_explicit_primal_grid) then
+      output_option%print_explicit_primal_grid) then
     option%io_buffer = '--> write xmf output file: ' // trim(filename)
     call printMsg(option)
     open(unit=OUTPUT_UNIT,file=xmf_filename,action="write")
@@ -1308,7 +1308,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
         att_datasetname = trim(filename) // ":/" // trim(group_name) // &
                           "/" // trim(string)
         if (option%myrank == option%io_rank .and. &
-            option%print_explicit_primal_grid) then
+            output_option%print_explicit_primal_grid) then
           !call OutputXMFAttributeExplicit(OUTPUT_UNIT,grid%nmax,string, &
           !                                att_datasetname)
           call OutputXMFAttributeExplicit(OUTPUT_UNIT,grid%nmax,  &
@@ -1337,7 +1337,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
           att_datasetname = trim(filename) // ":/" // trim(group_name) // &
                             "/" // trim(string)
           if (option%myrank == option%io_rank .and. &
-              option%print_explicit_primal_grid) then
+              output_option%print_explicit_primal_grid) then
             call OutputXMFAttributeExplicit(OUTPUT_UNIT,grid%nmax, &
                   grid%unstructured_grid%explicit_grid%output_mesh_type, &
                                             string,att_datasetname)
