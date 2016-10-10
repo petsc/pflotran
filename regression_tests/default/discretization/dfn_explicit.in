@@ -35,8 +35,6 @@ GRID
   TYPE unstructured_explicit dfn.uge
 END
 
-PRINT_PRIMAL_GRID
-
 #=========================== fluid properties =================================
 FLUID_PROPERTY
   DIFFUSION_COEFFICIENT 1.d-9
@@ -71,6 +69,7 @@ END
 OUTPUT
   FORMAT TECPLOT BLOCK
   HDF5_WRITE_GROUP_SIZE 1
+  PRINT_PRIMAL_GRID
 END
 
 #=========================== times ============================================
