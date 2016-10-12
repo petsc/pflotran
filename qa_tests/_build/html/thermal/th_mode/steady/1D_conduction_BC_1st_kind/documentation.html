@@ -1,0 +1,544 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>TUTORIAL: 1D Thermal Conduction, BCs of 1st Kind (TH Mode) &mdash; QA Test Suite 1.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="QA Test Suite 1.1 documentation" href="../../../../index.html" />
+    <link rel="next" title="TUTORIAL: 1D Thermal Conduction, BCs of 1st Kind (GENERAL Mode)" href="../../../general_mode/steady/1D_conduction_BC_1st_kind/documentation.html" />
+    <link rel="prev" title="Flow QA Tests and Tutorials" href="../../../../flow/intro_flow.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../general_mode/steady/1D_conduction_BC_1st_kind/documentation.html" title="TUTORIAL: 1D Thermal Conduction, BCs of 1st Kind (GENERAL Mode)"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="../../../../flow/intro_flow.html" title="Flow QA Tests and Tutorials"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">QA Test Suite 1.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="tutorial-1d-thermal-conduction-bcs-of-1st-kind-th-mode">
+<span id="thermal-th-steady-1d-conduction-bc-1st-kind"></span><h1>TUTORIAL: 1D Thermal Conduction, BCs of 1st Kind (TH Mode)<a class="headerlink" href="#tutorial-1d-thermal-conduction-bcs-of-1st-kind-th-mode" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference internal" href="#thermal-th-steady-1d-conduction-bc-1st-kind-description"><span class="std std-ref">The Problem Description</span></a></p>
+<p><a class="reference internal" href="#thermal-th-steady-1d-conduction-bc-1st-kind-pflotran-input"><span class="std std-ref">The PFLOTRAN Input File</span></a></p>
+<p><a class="reference internal" href="#thermal-th-steady-1d-conduction-bc-1st-kind-python"><span class="std std-ref">The Python Script</span></a></p>
+<div class="section" id="the-problem-description">
+<span id="thermal-th-steady-1d-conduction-bc-1st-kind-description"></span><h2>The Problem Description<a class="headerlink" href="#the-problem-description" title="Permalink to this headline">¶</a></h2>
+<p>This problem is adapted from <em>Kolditz, et al. (2015),
+Thermo-Hydro-Mechanical-Chemical Processes in Fractured Porous Media:
+Modelling and Benchmarking, Closed Form Solutions, Springer International
+Publishing, Switzerland.</em> Section 2.1.1, pg.14, &#8220;A 1D Steady-State
+Temperature Distribution, Boundary Conditions of 1st Kind.&#8221;</p>
+<p>The domain is a 100x10x10 meter rectangular beam extending along the positive
+x-axis and is made up of 10x1x1 cubic grid cells with dimensions 10x10x10
+meters. The domain material is assigned the following properties: thermal
+conductivity <em>K</em> = 1.0 W/(m-C); specific heat capacity <em>Cp</em> = 0.001 J/(m-C);
+density <em>rho</em> = 2,800 kg/m^3.</p>
+<p>The temperature is initially uniform at <em>T(t=0)</em> = 1.5C.
+The boundary temperatures are <em>T(x=0)</em> = 1.0C and <em>T(x=L)</em> = 2.0C, where L = 100 m.
+The simulation is run until the steady-state temperature distribution
+develops.</p>
+<p>The LaPlace equation governs the steady-state temperature distribution,</p>
+<div class="math">
+\[{{\partial^{2} T} \over {\partial x^{2}}} = 0\]</div>
+<p>The solution is given by,</p>
+<div class="math">
+\[T(x) = ax + b\]</div>
+<p>When the boundary conditions <em>T(x=0)</em> = 1.0C and <em>T(x=L)</em> = 2.0C are applied,
+the solution becomes,</p>
+<div class="math">
+\[T(x) = T(x=0){x \over L}\]</div>
+<a class="reference internal image-reference" href="../../../../_images/visit_figure4.png"><img alt="../../../../_images/visit_figure4.png" src="../../../../_images/visit_figure4.png" style="width: 600px;" /></a>
+<a class="reference internal image-reference" href="../../../../_images/comparison_plot4.png"><img alt="../../../../_images/comparison_plot4.png" src="../../../../_images/comparison_plot4.png" style="width: 600px;" /></a>
+</div>
+<div class="section" id="the-pflotran-input-file">
+<span id="thermal-th-steady-1d-conduction-bc-1st-kind-pflotran-input"></span><h2>The PFLOTRAN Input File<a class="headerlink" href="#the-pflotran-input-file" title="Permalink to this headline">¶</a></h2>
+<p>The PFLOTRAN input file can be downloaded
+<a class="reference download internal" href="../../../../_downloads/1D_conduction_BC_1st_kind1.in" download=""><code class="xref download docutils literal"><span class="pre">here</span></code></a>.</p>
+<div class="section" id="the-simulation-block">
+<h3>The <code class="docutils literal"><span class="pre">SIMULATION</span></code> Block<a class="headerlink" href="#the-simulation-block" title="Permalink to this headline">¶</a></h3>
+<p>The <code class="docutils literal"><span class="pre">SIMULATION</span></code> block indicates the type of simulation we are running, the
+process models we are including, and whether we want an input record file
+printed:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">SIMULATION</span>
+  <span class="n">SIMULATION_TYPE</span> <span class="n">SUBSURFACE</span>
+  <span class="n">PROCESS_MODELS</span>
+    <span class="n">SUBSURFACE_FLOW</span> <span class="n">flow</span>
+      <span class="n">MODE</span> <span class="n">TH</span>
+    <span class="o">/</span>
+  <span class="o">/</span>
+  <span class="c1">#INPUT_RECORD_FILE</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+<p>In this test, we are running a flow subsurface simulation in TH (thermo-hydro)
+mode. We call the simulation <code class="docutils literal"><span class="pre">SUBSURFACE</span></code>.
+We call the subsurface flow process model <code class="docutils literal"><span class="pre">flow</span></code>.
+We have commented out the input record file option.</p>
+</div>
+<div class="section" id="the-subsurface-block">
+<h3>The <code class="docutils literal"><span class="pre">SUBSURFACE</span></code> Block<a class="headerlink" href="#the-subsurface-block" title="Permalink to this headline">¶</a></h3>
+<p>Next, the <code class="docutils literal"><span class="pre">SUBSURFACE</span></code> block begins with the block-opening statement, and
+closes with a block-ending statement:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">SUBSURFACE</span>
+  <span class="o">.</span> <span class="o">.</span> <span class="o">.</span>
+  <span class="o">.</span> <span class="o">.</span> <span class="o">.</span>
+<span class="n">END_SUBSURFACE</span>
+</pre></div>
+</div>
+<p>The block-opening statement begins immediately after the <code class="docutils literal"><span class="pre">SIMULATION</span></code>
+block ends, but you will not see the block-ending statement until the bottom
+of this input file because this block is very large.
+Within the <code class="docutils literal"><span class="pre">SUBSURFACE</span></code> block, several cards are required that describe the
+simulation we want to run.</p>
+<div class="section" id="the-grid-card">
+<h4>The <code class="docutils literal"><span class="pre">GRID</span></code> Card<a class="headerlink" href="#the-grid-card" title="Permalink to this headline">¶</a></h4>
+<p>The problem domain is a beam of conductive material that consists of
+10x1x1 grid cells. Each cell is a 10x10x10 m cube, making the dimensions
+of the domain 100x1x1 m. We can describe this domain via a structured grid:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">GRID</span>
+  <span class="n">TYPE</span> <span class="n">structured</span>
+  <span class="n">NXYZ</span> <span class="mi">10</span> <span class="mi">1</span> <span class="mi">1</span>
+  <span class="n">DXYZ</span>
+   <span class="mi">10</span>
+   <span class="mi">10</span>
+   <span class="mi">10</span>
+  <span class="n">END</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+<p>The keyword <code class="docutils literal"><span class="pre">NXYZ</span></code> indicates the number of grid cells in the x, y, and z
+directions. The keywork <code class="docutils literal"><span class="pre">DXYZ</span></code> indicates the dimensions of each grid cell
+in the x, y, and z directions. Note the <code class="docutils literal"><span class="pre">DXYZ</span></code> keyword is a sub-block within
+the <code class="docutils literal"><span class="pre">GRID</span></code> card, so it must be closed with an <code class="docutils literal"><span class="pre">END</span></code>.</p>
+</div>
+<div class="section" id="the-region-card">
+<h4>The <code class="docutils literal"><span class="pre">REGION</span></code> Card<a class="headerlink" href="#the-region-card" title="Permalink to this headline">¶</a></h4>
+<p>Next we describe regions and boundaries of the domain with <code class="docutils literal"><span class="pre">REGION</span></code> cards
+for each region or boundary. Since the entire domain consists of just one
+material, we first create a region called <code class="docutils literal"><span class="pre">all</span></code> and assign it with
+<code class="docutils literal"><span class="pre">COORDINATES</span></code>. The two sets of coordinates define a box-like region which we
+call <code class="docutils literal"><span class="pre">all</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">REGION</span> <span class="nb">all</span>
+  <span class="n">COORDINATES</span>
+    <span class="mf">0.</span><span class="n">d0</span>    <span class="mf">0.</span><span class="n">d0</span>   <span class="mf">0.</span><span class="n">d0</span>
+    <span class="mf">100.</span><span class="n">d0</span>  <span class="mf">10.</span><span class="n">d0</span>  <span class="mf">10.</span><span class="n">d0</span>
+  <span class="o">/</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+<p>We will apply boundary conditions to the left and right (or west and east) ends
+of the domain, so we also define these boundaries now with a <code class="docutils literal"><span class="pre">REGION</span></code> card.
+Because these are boundaries, the coordinates define a face. We call the regions
+<code class="docutils literal"><span class="pre">left_end</span></code> and <code class="docutils literal"><span class="pre">right_end</span></code> and indicate they are faces with the <code class="docutils literal"><span class="pre">FACE</span></code>
+keyword:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">REGION</span> <span class="n">left_end</span>
+  <span class="n">FACE</span> <span class="n">WEST</span>
+  <span class="n">COORDINATES</span>
+    <span class="mf">0.</span><span class="n">d0</span>  <span class="mf">0.</span><span class="n">d0</span>   <span class="mf">0.</span><span class="n">d0</span>
+    <span class="mf">0.</span><span class="n">d0</span>  <span class="mf">10.</span><span class="n">d0</span>  <span class="mf">10.</span><span class="n">d0</span>
+  <span class="o">/</span>
+<span class="n">END</span>
+
+<span class="n">REGION</span> <span class="n">right_end</span>
+  <span class="n">FACE</span> <span class="n">EAST</span>
+  <span class="n">COORDINATES</span>
+    <span class="mf">100.</span><span class="n">d0</span>  <span class="mf">0.</span><span class="n">d0</span>   <span class="mf">0.</span><span class="n">d0</span>
+    <span class="mf">100.</span><span class="n">d0</span>  <span class="mf">10.</span><span class="n">d0</span>  <span class="mf">10.</span><span class="n">d0</span>
+  <span class="o">/</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-material-property-card">
+<h4>The <code class="docutils literal"><span class="pre">MATERIAL_PROPERTY</span></code> Card<a class="headerlink" href="#the-material-property-card" title="Permalink to this headline">¶</a></h4>
+<p>Next, we describe the material properties within the domain with the
+<code class="docutils literal"><span class="pre">MATERIAL_PROPERTY</span></code> card. Because this is a conduction test, we intentionally
+limit fluid flow by setting the porosity to a very small value, as well as the
+permeability (assumed units m^2). The material density is 2,800 kg/m^3, the
+specific heat is 0.001 J/kg-C, and the thermal conductivity is set to 1.0 W/m-C:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">MATERIAL_PROPERTY</span> <span class="n">beam</span>
+  <span class="n">ID</span> <span class="mi">1</span>
+  <span class="n">POROSITY</span> <span class="mf">1.</span><span class="n">d</span><span class="o">-</span><span class="mi">5</span>
+  <span class="n">TORTUOSITY</span> <span class="mf">1.</span><span class="n">d0</span>
+  <span class="n">ROCK_DENSITY</span> <span class="mf">2.8E3</span> <span class="n">kg</span><span class="o">/</span><span class="n">m</span><span class="o">^</span><span class="mi">3</span>
+  <span class="n">SPECIFIC_HEAT</span> <span class="mf">1.</span><span class="n">d</span><span class="o">-</span><span class="mi">3</span> <span class="n">J</span><span class="o">/</span><span class="n">kg</span><span class="o">-</span><span class="n">C</span>
+  <span class="n">THERMAL_CONDUCTIVITY_DRY</span> <span class="mi">1</span> <span class="n">W</span><span class="o">/</span><span class="n">m</span><span class="o">-</span><span class="n">C</span>
+  <span class="n">THERMAL_CONDUCTIVITY_WET</span> <span class="mi">1</span> <span class="n">W</span><span class="o">/</span><span class="n">m</span><span class="o">-</span><span class="n">C</span>
+  <span class="n">SATURATION_FUNCTION</span> <span class="n">default</span>
+  <span class="n">PERMEABILITY</span>
+    <span class="n">PERM_X</span> <span class="mf">1.</span><span class="n">d</span><span class="o">-</span><span class="mi">20</span>
+    <span class="n">PERM_Y</span> <span class="mf">1.</span><span class="n">d</span><span class="o">-</span><span class="mi">20</span>
+    <span class="n">PERM_Z</span> <span class="mf">1.</span><span class="n">d</span><span class="o">-</span><span class="mi">20</span>
+  <span class="o">/</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+<p>We call this material <code class="docutils literal"><span class="pre">beam</span></code> and we assign it a material ID 1. We assign it
+a <code class="docutils literal"><span class="pre">SATURATION_FUNCTION</span></code> called <code class="docutils literal"><span class="pre">default</span></code>, which is later defined with the
+<code class="docutils literal"><span class="pre">SATURATION_FUNCTION</span></code> card.</p>
+</div>
+<div class="section" id="the-saturation-function-card">
+<h4>The <code class="docutils literal"><span class="pre">SATURATION_FUNCTION</span></code> Card<a class="headerlink" href="#the-saturation-function-card" title="Permalink to this headline">¶</a></h4>
+<p>Because this is a thermal conduction only test, the <code class="docutils literal"><span class="pre">SATURATION_FUNCTION</span></code>
+card should not matter, but it is required for the <code class="docutils literal"><span class="pre">SUBSURFACE_FLOW</span></code> process
+model. We call this card <code class="docutils literal"><span class="pre">default</span></code>, which is consistent with the name in
+the <code class="docutils literal"><span class="pre">MATERIAL_PROPERTY</span></code> card. We assign it to be of <code class="docutils literal"><span class="pre">VAN_GENUCHTEN</span></code> type,
+and set typical values for the residual saturation, and lambda and alpha
+parameters:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">SATURATION_FUNCTION</span> <span class="n">default</span>
+  <span class="n">SATURATION_FUNCTION_TYPE</span> <span class="n">VAN_GENUCHTEN</span>
+  <span class="n">RESIDUAL_SATURATION</span> <span class="mf">0.5</span><span class="n">d</span><span class="o">-</span><span class="mi">1</span>
+  <span class="n">LAMBDA</span> <span class="mf">0.75</span>
+  <span class="n">ALPHA</span> <span class="mf">1.</span><span class="n">d</span><span class="o">-</span><span class="mi">3</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-strata-card">
+<h4>The <code class="docutils literal"><span class="pre">STRATA</span></code> Card<a class="headerlink" href="#the-strata-card" title="Permalink to this headline">¶</a></h4>
+<p>The <code class="docutils literal"><span class="pre">STRATA</span></code> card links the material we have defined with the
+<code class="docutils literal"><span class="pre">MATERIAL_PROPERTY</span></code> card to the region we defined with the <code class="docutils literal"><span class="pre">REGION</span></code> card:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">STRATA</span>
+  <span class="n">REGION</span> <span class="nb">all</span>
+  <span class="n">MATERIAL</span> <span class="n">beam</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-output-card">
+<h4>The <code class="docutils literal"><span class="pre">OUTPUT</span></code> Card<a class="headerlink" href="#the-output-card" title="Permalink to this headline">¶</a></h4>
+<p>Here we define what kind of output we want to be generated. We want a
+<code class="docutils literal"><span class="pre">SNAPSHOT_FILE</span></code>, which is a snapshot of the domain at a specific time.
+Because we do not specify specific variables, the default list of variables
+for the snapshots will be generated:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">OUTPUT</span>
+  <span class="n">SNAPSHOT_FILE</span>
+    <span class="n">NO_PRINT_INITIAL</span>
+    <span class="c1">#NO_PRINT_FINAL</span>
+    <span class="n">FORMAT</span> <span class="n">VTK</span>
+  <span class="o">/</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+<p>Since this is a steady-state simulation, we do not need output of the initial
+state at t=0, so we&#8217;ve indicated <code class="docutils literal"><span class="pre">NO_PRINT_INITIAL</span></code>. However, we <em>do</em> want
+output at the end of the simulation, so we&#8217;ve commented out
+<code class="docutils literal"><span class="pre">NO_PRINT_FINAL</span></code>. The output format will be VTK.</p>
+</div>
+<div class="section" id="the-time-card">
+<h4>The <code class="docutils literal"><span class="pre">TIME</span></code> Card<a class="headerlink" href="#the-time-card" title="Permalink to this headline">¶</a></h4>
+<p>The <code class="docutils literal"><span class="pre">TIME</span></code> card controls the timestepping and the simulation time. This
+problem tests a steady state solution, so we run the simulation out to a
+time after which the solution no longer changes (it has become steady). For
+this problem, 100 years is long enough:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">TIME</span>
+  <span class="n">FINAL_TIME</span> <span class="mi">100</span> <span class="n">yr</span>
+  <span class="n">INITIAL_TIMESTEP_SIZE</span> <span class="mf">1.</span><span class="n">d</span><span class="o">-</span><span class="mi">4</span> <span class="n">day</span>
+  <span class="n">MAXIMUM_TIMESTEP_SIZE</span> <span class="mf">2.</span><span class="n">d0</span> <span class="n">yr</span> <span class="n">at</span> <span class="mf">0.</span><span class="n">d0</span> <span class="n">yr</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+<p>We chose a maximum timestep size of 2 years, applied at the beginning of the
+simulation, and also set a small initial timestep size. Because we commented
+out <code class="docutils literal"><span class="pre">NO_PRINT_FINAL</span></code> in the <code class="docutils literal"><span class="pre">OUTPUT</span></code> card, a snapshot file will be generated
+at the final time of 100 years.</p>
+</div>
+<div class="section" id="the-flow-condition-card">
+<h4>The <code class="docutils literal"><span class="pre">FLOW_CONDITION</span></code> Card<a class="headerlink" href="#the-flow-condition-card" title="Permalink to this headline">¶</a></h4>
+<p>Next, we want to indicate the specifics of the initial and boundary conditions
+for this problem. We need to specify an initial temperature and pressure. We
+do this with the <code class="docutils literal"><span class="pre">FLOW_CONDITION</span></code> card:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">FLOW_CONDITION</span> <span class="n">initial</span>
+  <span class="n">TYPE</span>
+    <span class="n">TEMPERATURE</span> <span class="n">dirichlet</span>
+    <span class="n">PRESSURE</span> <span class="n">dirichlet</span>
+  <span class="o">/</span>
+  <span class="n">TEMPERATURE</span> <span class="mf">1.5</span><span class="n">d0</span> <span class="n">C</span>
+  <span class="n">PRESSURE</span> <span class="mi">101325</span> <span class="n">Pa</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+<p>Here we&#8217;ve called the flow condition <code class="docutils literal"><span class="pre">initial</span></code> because it is the initial
+condition. In the <code class="docutils literal"><span class="pre">TYPE</span></code> sub-block, we specific the type of initial condition
+for each parameter. In this case, we want the domain to have an initial
+temperature of 1.5C, so the flow condition type for temperature is <code class="docutils literal"><span class="pre">dirichlet</span></code>.
+We set the pressure to atmospheric (101325 Pa), which is also a <code class="docutils literal"><span class="pre">dirichlet</span></code>
+type.</p>
+<p>For each boundary, we also use the <code class="docutils literal"><span class="pre">FLOW_CONDITION</span></code> card to specify boundary
+conditions:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">FLOW_CONDITION</span> <span class="n">left_end</span>
+  <span class="n">TYPE</span>
+    <span class="n">TEMPERATURE</span> <span class="n">dirichlet</span>
+    <span class="n">PRESSURE</span> <span class="n">dirichlet</span>
+  <span class="o">/</span>
+  <span class="n">TEMPERATURE</span> <span class="mf">1.</span><span class="n">d0</span> <span class="n">C</span>
+  <span class="n">PRESSURE</span> <span class="mi">101325</span> <span class="n">Pa</span>
+<span class="n">END</span>
+
+<span class="n">FLOW_CONDITION</span> <span class="n">right_end</span>
+  <span class="n">TYPE</span>
+    <span class="n">TEMPERATURE</span> <span class="n">dirichlet</span>
+    <span class="n">PRESSURE</span> <span class="n">dirichlet</span>
+  <span class="o">/</span>
+  <span class="n">TEMPERATURE</span> <span class="mf">2.</span><span class="n">d0</span> <span class="n">C</span>
+  <span class="n">PRESSURE</span> <span class="mi">101325</span> <span class="n">Pa</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+<p>At the <code class="docutils literal"><span class="pre">left_end</span></code> (or west face), we apply a <code class="docutils literal"><span class="pre">dirichlet</span></code> type temperature
+boundary condition of 1.0C. At the <code class="docutils literal"><span class="pre">right_end</span></code> (or east face), we apply a
+<code class="docutils literal"><span class="pre">dirichlet</span></code> type temperature boundary condition of 2.0C. Because we don&#8217;t
+want any fluid flow for this problem, we apply identical <code class="docutils literal"><span class="pre">dirichlet</span></code> type
+pressure boundary conditions so that no pressure gradient exists.</p>
+</div>
+<div class="section" id="the-initial-condition-card">
+<h4>The <code class="docutils literal"><span class="pre">INITIAL_CONDITION</span></code> Card<a class="headerlink" href="#the-initial-condition-card" title="Permalink to this headline">¶</a></h4>
+<p>Similarly to the <code class="docutils literal"><span class="pre">STRATA</span></code> card, we use the <code class="docutils literal"><span class="pre">INITIAL_CONDITION</span></code> card to
+link the initial condition we defined in the <code class="docutils literal"><span class="pre">FLOW_CONDITION</span></code> card to the
+region it is applied at:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">INITIAL_CONDITION</span> <span class="n">initial</span>
+  <span class="n">REGION</span> <span class="nb">all</span>
+  <span class="n">FLOW_CONDITION</span> <span class="n">initial</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+<p>Above, we&#8217;ve linked the <code class="docutils literal"><span class="pre">initial</span></code> flow condition to region <code class="docutils literal"><span class="pre">all</span></code>, because
+we want the initial condition to be applied over the whole domain. We call this
+<code class="docutils literal"><span class="pre">INITIAL_CONDITION</span></code> <code class="docutils literal"><span class="pre">initial</span></code> (since there may be more than one defined).</p>
+</div>
+<div class="section" id="the-boundary-condition-card">
+<h4>The <code class="docutils literal"><span class="pre">BOUNDARY_CONDITION</span></code> Card<a class="headerlink" href="#the-boundary-condition-card" title="Permalink to this headline">¶</a></h4>
+<p>Similarly to the <code class="docutils literal"><span class="pre">STRATA</span></code> card, we use the <code class="docutils literal"><span class="pre">BOUNDARY_CONDITION</span></code> card to
+link the boundary conditions we defined in the <code class="docutils literal"><span class="pre">FLOW_CONDITION</span></code> card to the
+regions they are applied at:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">BOUNDARY_CONDITION</span> <span class="n">left_end</span>
+  <span class="n">REGION</span> <span class="n">left_end</span>
+  <span class="n">FLOW_CONDITION</span> <span class="n">left_end</span>
+<span class="n">END</span>
+
+<span class="n">BOUNDARY_CONDITION</span> <span class="n">right_end</span>
+  <span class="n">FLOW_CONDITION</span> <span class="n">right_end</span>
+  <span class="n">REGION</span> <span class="n">right_end</span>
+<span class="n">END</span>
+</pre></div>
+</div>
+<p>Above, we&#8217;ve linked the <code class="docutils literal"><span class="pre">left_end</span></code> flow condition to region <code class="docutils literal"><span class="pre">left_end</span></code>,
+and the <code class="docutils literal"><span class="pre">right_end</span></code> flow condition to region <code class="docutils literal"><span class="pre">right_end</span></code>. We also give
+each of the <code class="docutils literal"><span class="pre">BOUNDARY_CONDITION</span></code> cards a descriptive name to differentiate
+them.</p>
+</div>
+</div>
+</div>
+<div class="section" id="the-python-script">
+<span id="thermal-th-steady-1d-conduction-bc-1st-kind-python"></span><h2>The Python Script<a class="headerlink" href="#the-python-script" title="Permalink to this headline">¶</a></h2>
+<p>First, we must import the required packages,</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+</pre></div>
+</div>
+<p>Next the default options are set. These are used if no option arguments are
+given when the python script is executed.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">plot_flag</span> <span class="o">=</span> <span class="bp">False</span>
+<span class="n">print_error</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="n">passing_crit</span> <span class="o">=</span> <span class="mf">2.</span>  <span class="c1"># [% error]</span>
+</pre></div>
+</div>
+<p>If option arguments are provided, they are read in next,</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">options</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+<span class="n">num_options</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">options</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">options</span><span class="p">:</span>
+  <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="s1">&#39;print_error=false&#39;</span><span class="p">:</span>
+    <span class="n">print_error</span> <span class="o">=</span> <span class="bp">False</span>
+  <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="s1">&#39;print_error=true&#39;</span><span class="p">:</span>
+    <span class="n">print_error</span> <span class="o">=</span> <span class="bp">True</span>
+  <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="s1">&#39;plot_flag=false&#39;</span><span class="p">:</span>
+    <span class="n">plot_flag</span> <span class="o">=</span> <span class="bp">False</span>
+  <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="s1">&#39;plot_flag=true&#39;</span><span class="p">:</span>
+    <span class="n">plot_flag</span> <span class="o">=</span> <span class="bp">True</span>
+</pre></div>
+</div>
+<p>We start by constructing the analytical solution. We want to calculate the
+temperature at the cell centers, because PFLOTRAN output is given at cell
+centers. We also include the boundaries.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">L</span> <span class="o">=</span> <span class="mf">100.</span>
+<span class="n">x_soln</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.</span><span class="p">,</span><span class="mf">5.</span><span class="p">,</span><span class="mf">15.</span><span class="p">,</span><span class="mf">25.</span><span class="p">,</span><span class="mf">35.</span><span class="p">,</span><span class="mf">45.</span><span class="p">,</span><span class="mf">55.</span><span class="p">,</span><span class="mf">65.</span><span class="p">,</span><span class="mf">75.</span><span class="p">,</span><span class="mf">85.</span><span class="p">,</span><span class="mf">95.</span><span class="p">,</span><span class="mf">100.</span><span class="p">])</span>
+<span class="n">T_soln</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">x_soln</span><span class="o">/</span><span class="n">L</span> <span class="o">+</span> <span class="mf">1.</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Next, we read the output file that was generated by PFLOTRAN. The temperature
+solution begins on the 77th line and ends on the 76th line.
+When we are done, we close the file.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;1D_conduction_BC_1st_kind-001.vtk&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+  <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">76</span><span class="p">:</span>
+    <span class="n">temperature</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+  <span class="k">elif</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">76</span><span class="p">:</span>
+    <span class="k">break</span>
+<span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Now that we have the temperature output stored in <code class="docutils literal"><span class="pre">temperature</span></code>, we can
+use it to construct the PFLOTRAN solution array with boundary values.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">T_pflotran</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">temperature</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+<span class="n">T_pflotran</span> <span class="o">=</span> <span class="n">T_pflotran</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+<span class="n">x_pflotran</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">5.</span><span class="p">,</span><span class="mf">15.</span><span class="p">,</span><span class="mf">25.</span><span class="p">,</span><span class="mf">35.</span><span class="p">,</span><span class="mf">45.</span><span class="p">,</span><span class="mf">55.</span><span class="p">,</span><span class="mf">65.</span><span class="p">,</span><span class="mf">75.</span><span class="p">,</span><span class="mf">85.</span><span class="p">,</span><span class="mf">95.</span><span class="p">])</span>
+
+<span class="n">x_pflotran</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(([</span><span class="mf">0.</span><span class="p">],</span><span class="n">x_pflotran</span><span class="p">),</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">T_pflotran</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(([</span><span class="mf">1.</span><span class="p">],</span><span class="n">T_pflotran</span><span class="p">),</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">x_pflotran</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">x_pflotran</span><span class="p">,[</span><span class="mf">100.</span><span class="p">]),</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">T_pflotran</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">T_pflotran</span><span class="p">,[</span><span class="mf">2.</span><span class="p">]),</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The next step is to plot the PFLOTRAN solution against the analytical solution so
+we can visually compare the two solutions. If the option to show the plot
+is chosen, the script will show the generated plot.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_pflotran</span><span class="p">,</span><span class="n">T_pflotran</span><span class="p">,</span><span class="s1">&#39;o&#39;</span><span class="p">,</span><span class="n">x_soln</span><span class="p">,</span><span class="n">T_soln</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Distance (m)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Temperature (C)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Analytical vs. PFLOTRAN Solution&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">((</span><span class="s1">&#39;PFLOTRAN&#39;</span><span class="p">,</span><span class="s1">&#39;analytical&#39;</span><span class="p">),</span><span class="s1">&#39;best&#39;</span><span class="p">,</span><span class="n">numpoints</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;comparison_plot.png&#39;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">plot_flag</span><span class="p">:</span>
+  <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Finally, we calculate the relative percent error between the analytical
+solution and the PFLOTRAN solution. If the option to print the error at
+each grid cell was chosen, the error prints to the screen. Based on the
+passing criteria, a PASS or FAIL is printed to the screen.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">percent_error</span> <span class="o">=</span> <span class="mf">100.0</span><span class="o">*</span><span class="p">(</span><span class="n">T_pflotran</span><span class="o">-</span><span class="n">T_soln</span><span class="p">)</span><span class="o">/</span><span class="n">T_soln</span>
+<span class="n">max_percent_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">percent_error</span><span class="p">))</span>
+<span class="k">if</span> <span class="n">print_error</span><span class="p">:</span>
+  <span class="k">print</span> <span class="s1">&#39;Percent Error (temperature):&#39;</span>
+  <span class="k">print</span> <span class="n">percent_error</span>
+<span class="k">print</span> <span class="s1">&#39;Maximum Error:&#39;</span>
+<span class="k">print</span> <span class="n">max_percent_error</span>
+
+<span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">max_percent_error</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">passing_crit</span><span class="p">:</span>
+  <span class="k">print</span> <span class="s1">&#39;-- Test FAIL --</span><span class="se">\n</span><span class="s1">&#39;</span>
+<span class="k">else</span><span class="p">:</span>
+  <span class="k">print</span> <span class="s1">&#39;-- Test PASS --</span><span class="se">\n</span><span class="s1">&#39;</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../index.html">
+              <img class="logo" src="../../../../_static/pflotran_logo.jpg" alt="Logo"/>
+            </a></p>
+  <h3><a href="../../../../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">TUTORIAL: 1D Thermal Conduction, BCs of 1st Kind (TH Mode)</a><ul>
+<li><a class="reference internal" href="#the-problem-description">The Problem Description</a></li>
+<li><a class="reference internal" href="#the-pflotran-input-file">The PFLOTRAN Input File</a><ul>
+<li><a class="reference internal" href="#the-simulation-block">The <code class="docutils literal"><span class="pre">SIMULATION</span></code> Block</a></li>
+<li><a class="reference internal" href="#the-subsurface-block">The <code class="docutils literal"><span class="pre">SUBSURFACE</span></code> Block</a><ul>
+<li><a class="reference internal" href="#the-grid-card">The <code class="docutils literal"><span class="pre">GRID</span></code> Card</a></li>
+<li><a class="reference internal" href="#the-region-card">The <code class="docutils literal"><span class="pre">REGION</span></code> Card</a></li>
+<li><a class="reference internal" href="#the-material-property-card">The <code class="docutils literal"><span class="pre">MATERIAL_PROPERTY</span></code> Card</a></li>
+<li><a class="reference internal" href="#the-saturation-function-card">The <code class="docutils literal"><span class="pre">SATURATION_FUNCTION</span></code> Card</a></li>
+<li><a class="reference internal" href="#the-strata-card">The <code class="docutils literal"><span class="pre">STRATA</span></code> Card</a></li>
+<li><a class="reference internal" href="#the-output-card">The <code class="docutils literal"><span class="pre">OUTPUT</span></code> Card</a></li>
+<li><a class="reference internal" href="#the-time-card">The <code class="docutils literal"><span class="pre">TIME</span></code> Card</a></li>
+<li><a class="reference internal" href="#the-flow-condition-card">The <code class="docutils literal"><span class="pre">FLOW_CONDITION</span></code> Card</a></li>
+<li><a class="reference internal" href="#the-initial-condition-card">The <code class="docutils literal"><span class="pre">INITIAL_CONDITION</span></code> Card</a></li>
+<li><a class="reference internal" href="#the-boundary-condition-card">The <code class="docutils literal"><span class="pre">BOUNDARY_CONDITION</span></code> Card</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#the-python-script">The Python Script</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="../../../../flow/intro_flow.html"
+                        title="previous chapter">Flow QA Tests and Tutorials</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="../../../general_mode/steady/1D_conduction_BC_1st_kind/documentation.html"
+                        title="next chapter">TUTORIAL: 1D Thermal Conduction, BCs of 1st Kind (GENERAL Mode)</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../../../_sources/thermal/th_mode/steady/1D_conduction_BC_1st_kind/documentation.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../general_mode/steady/1D_conduction_BC_1st_kind/documentation.html" title="TUTORIAL: 1D Thermal Conduction, BCs of 1st Kind (GENERAL Mode)"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="../../../../flow/intro_flow.html" title="Flow QA Tests and Tutorials"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">QA Test Suite 1.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, Jennifer M Frederick.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.5.
+    </div>
+  </body>
+</html>

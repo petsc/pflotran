@@ -93,21 +93,26 @@ Cp = 0.01      # [J/kg-C]
 rho = 2000.    # [kg/m^3]
 L = 100.0       # [m]
 chi = K/(Cp*rho)
-x_soln = np.linspace(0.5,99.5,100)          # [m]
-t_soln = np.array([0.0,0.05,0.10,0.50])     # [day]
-T_soln = np.zeros((4,100))
+x_soln = np.linspace(0.5,99.5,L)          # [m]
+t_soln = np.array([0.0,0.05,0.10,0.50])   # [day]
+T_soln = np.zeros((4,L))
 for time in range(4):
   t = t_soln[time]*24.0*3600.0  # [sec]
-  sum_term = np.zeros(100)
-  # truncate infinite sum to 500
-  for n in range(500):
+  sum_term_old = np.zeros(L)
+  sum_term = np.zeros(L)
+  n = 1
+  epsilon = 1.0
+  # infinite sum truncated once max(epsilon) < 1e-25:
+  while epsilon > 1e-25:
+    sum_term_old = sum_term
+    sum_term = sum_term_old + (np.cos(n*math.pi*x_soln/L)*np.exp(-chi*pow(n,2)*pow(math.pi,2)*t/pow(L,2))*(80./(3.*pow((n*math.pi),2)))*np.cos(n*math.pi/2.)*np.sin(n*math.pi/4.)*np.sin(3.*n*math.pi/20.))
+    epsilon = np.max(np.abs(sum_term_old-sum_term))
     n = n + 1
-    sum_term = sum_term + (np.cos(n*math.pi*x_soln/L)*np.exp(-chi*pow(n,2)*pow(math.pi,2)*t/pow(L,2))*(80./(3.*pow((n*math.pi),2)))*np.cos(n*math.pi/2.)*np.sin(n*math.pi/4.)*np.sin(3.*n*math.pi/20.))
   T_soln[time,:] = 0.50 + sum_term
      
 # Read PFLOTRAN output file containing the temperature solution
 # There are four output files
-T_pflotran = np.zeros((4,100))  # [C]
+T_pflotran = np.zeros((4,L))  # [C]
 
 # 1:=========================================================================
 f = open('1D_conduction_BC_1st_2nd_kind-000.vtk', 'r')
@@ -186,40 +191,43 @@ T_pflotran[3,:] = temperature
 f.close()
 
 # Plot the PFLOTRAN and analytical solutions
+t_max = 1.5
+plt.figure(figsize=(10,10))
+plt.subplot(221)
+plt.plot(x_soln,T_pflotran[0,:],'o',x_soln,T_soln[0,:])
+plt.xlabel('Distance (m)')
+plt.ylabel('Temperature (C)')
+plt.ylim([0,t_max])
+plt.xlim([0,100])
+plt.title('Solution, t=0day')
+plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
+plt.subplot(222)
+plt.plot(x_soln,T_pflotran[1,:],'o',x_soln,T_soln[1,:])
+plt.xlabel('Distance (m)')
+plt.ylabel('Temperature (C)')
+plt.ylim([0,t_max])
+plt.xlim([0,100])
+plt.title('Solution, t=0.05day')
+plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
+plt.subplot(223)
+plt.plot(x_soln,T_pflotran[2,:],'o',x_soln,T_soln[2,:])
+plt.xlabel('Distance (m)')
+plt.ylabel('Temperature (C)')
+plt.ylim([0,t_max])
+plt.xlim([0,100])
+plt.title('Solution, t=0.10day')
+plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
+plt.subplot(224)
+plt.plot(x_soln,T_pflotran[3,:],'o',x_soln,T_soln[3,:])
+plt.xlabel('Distance (m)')
+plt.ylabel('Temperature (C)')
+plt.ylim([0,t_max])
+plt.xlim([0,100])
+plt.title('Solution, t=0.50day')
+plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
+plt.savefig('comparison_plot.png')
+  
 if plot_flag:
-  t_max = 1.5
-  plt.subplot(221)
-  plt.plot(x_soln,T_pflotran[0,:],'o',x_soln,T_soln[0,:])
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Temperature (C)')
-  plt.ylim([0,t_max])
-  plt.xlim([0,100])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0day')
-  plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
-  plt.subplot(222)
-  plt.plot(x_soln,T_pflotran[1,:],'o',x_soln,T_soln[1,:])
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Temperature (C)')
-  plt.ylim([0,t_max])
-  plt.xlim([0,100])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0.05day')
-  plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
-  plt.subplot(223)
-  plt.plot(x_soln,T_pflotran[2,:],'o',x_soln,T_soln[2,:])
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Temperature (C)')
-  plt.ylim([0,t_max])
-  plt.xlim([0,100])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0.10day')
-  plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
-  plt.subplot(224)
-  plt.plot(x_soln,T_pflotran[3,:],'o',x_soln,T_soln[3,:])
-  plt.xlabel('Distance (m)')
-  plt.ylabel('Temperature (C)')
-  plt.ylim([0,t_max])
-  plt.xlim([0,100])
-  plt.title('Analytical vs. PFLOTRAN Solution, t=0.50day')
-  plt.legend(('PFLOTRAN','analytical'),'best',numpoints=1)
   plt.show()
 
 # Calculate error between analytical and PFLOTRAN solutions

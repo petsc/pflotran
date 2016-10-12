@@ -7,7 +7,6 @@ SIMULATION
       MODE GENERAL
     /
   /
-  #INPUT_RECORD_FILE
 END
 
 SUBSURFACE
@@ -111,9 +110,10 @@ END
 
 #=========================== output options ===================================
 OUTPUT
-  SNAPSHOT_FILE
-    TIMES day 0.02 0.04 
+  SNAPSHOT_FILE 
     #NO_PRINT_INITIAL
+    TIMES day 0.02 0.04
+    #NO_PRINT_FINAL
     FORMAT VTK
   /
 END
@@ -122,7 +122,7 @@ END
 TIME
   FINAL_TIME 0.10 day
   INITIAL_TIMESTEP_SIZE 1.d-4 day
-  MAXIMUM_TIMESTEP_SIZE 0.005 yr at 0.d0 yr
+  MAXIMUM_TIMESTEP_SIZE 0.005 day at 0.d0 day
 END
 
 #=========================== datasets =========================================

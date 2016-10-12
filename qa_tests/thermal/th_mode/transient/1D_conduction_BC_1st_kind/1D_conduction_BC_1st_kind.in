@@ -89,7 +89,7 @@ END
 
 #=========================== times ============================================
 TIME
-  FINAL_TIME 1.0 day
+  FINAL_TIME 0.75 day
   INITIAL_TIMESTEP_SIZE 1.d-4 day
   MAXIMUM_TIMESTEP_SIZE 0.01 day at 0.d0 day
 END

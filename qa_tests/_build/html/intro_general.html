@@ -1,0 +1,174 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>PFLOTRAN’s QA Test Suite Intro &mdash; QA Test Suite 1.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="QA Test Suite 1.1 documentation" href="index.html" />
+    <link rel="next" title="Thermal QA Tests and Tutorials" href="thermal/intro_thermal.html" />
+    <link rel="prev" title="PFLOTRAN’s QA Test Suite Documentation" href="index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="thermal/intro_thermal.html" title="Thermal QA Tests and Tutorials"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="PFLOTRAN’s QA Test Suite Documentation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">QA Test Suite 1.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="pflotran-s-qa-test-suite-intro">
+<h1>PFLOTRAN&#8217;s QA Test Suite Intro<a class="headerlink" href="#pflotran-s-qa-test-suite-intro" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="how-to-run-the-test-suite">
+<h2>How To Run The Test Suite<a class="headerlink" href="#how-to-run-the-test-suite" title="Permalink to this headline">¶</a></h2>
+<p>To run the test suite, open a terminal and navigate to the <code class="docutils literal"><span class="pre">qa_tests/</span></code>
+directory:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ <span class="nb">cd</span> <span class="nv">$PFLOTRAN_DIR</span>
+$ <span class="nb">cd</span> ../../qa_tests
+</pre></div>
+</div>
+<p>Run the script from within the <code class="docutils literal"><span class="pre">qa_tests/</span></code> directory:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>$ ./run_qa_tests.sh
+</pre></div>
+</div>
+</div>
+<div class="section" id="inside-the-run-qa-tests-sh-script">
+<h2>Inside The <code class="docutils literal"><span class="pre">run_qa_tests.sh</span></code> Script<a class="headerlink" href="#inside-the-run-qa-tests-sh-script" title="Permalink to this headline">¶</a></h2>
+<p>Each test is executed in two steps.</p>
+<p>The first step runs a PFLOTRAN simulation and prints screen output to a file
+called screen.txt:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>mpirun -np <span class="nv">$nproc</span> <span class="nv">$pf</span>/pflotran -input_prefix 1D_conduction_BC_1st_kind &gt; screen.txt
+</pre></div>
+</div>
+<p>The second step executes a python script which generates the analytical
+solution, reads the PFLOTRAN output, and compares the PFLOTRAN solution
+to the analytical solution:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>python run_1D_conduction_BC_1st_kind.py <span class="nv">print_error</span><span class="o">=</span><span class="nb">false</span> <span class="nv">plot_flag</span><span class="o">=</span><span class="nb">false</span>
+</pre></div>
+</div>
+<p>The python script can be run with two options, described in the following section
+<a class="reference internal" href="#test-suite-options"><span class="std std-ref">Test Suite Options</span></a>.</p>
+</div>
+<div class="section" id="test-suite-options">
+<span id="id1"></span><h2>Test Suite Options<a class="headerlink" href="#test-suite-options" title="Permalink to this headline">¶</a></h2>
+<p>Each test in the QA test suite can be run with two options:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">print_error</span><span class="o">=</span><span class="nb">true</span>
+</pre></div>
+</div>
+<p>If set to <code class="docutils literal"><span class="pre">true</span></code>, the <code class="docutils literal"><span class="pre">print_error</span></code> option will print the relative error
+at each grid cell. If set to <code class="docutils literal"><span class="pre">false</span></code>, only the maximum relative error will
+be printed.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">plot_flag</span><span class="o">=</span><span class="nb">true</span>
+</pre></div>
+</div>
+<p>If set to <code class="docutils literal"><span class="pre">true</span></code>, the <code class="docutils literal"><span class="pre">plot_flag</span></code> option will generate a graph that
+visually compares the PFLOTRAN solution against the analytical solution. If this
+option is chosen, then the script will pause after the figure is generated, and
+the figure must be closed before execution will continue.</p>
+<p>To set or change these options, open <code class="docutils literal"><span class="pre">qa_tests/run_qa_tests.sh</span></code> and edit the
+lines which execute the python scripts to reflect your desired options.</p>
+<p>If no options are indicated, the default options are <code class="docutils literal"><span class="pre">plot_flag=false</span></code> and
+<code class="docutils literal"><span class="pre">print_error=true</span></code>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/pflotran_logo.jpg" alt="Logo"/>
+            </a></p>
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">PFLOTRAN&#8217;s QA Test Suite Intro</a><ul>
+<li><a class="reference internal" href="#how-to-run-the-test-suite">How To Run The Test Suite</a></li>
+<li><a class="reference internal" href="#inside-the-run-qa-tests-sh-script">Inside The <code class="docutils literal"><span class="pre">run_qa_tests.sh</span></code> Script</a></li>
+<li><a class="reference internal" href="#test-suite-options">Test Suite Options</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">PFLOTRAN&#8217;s QA Test Suite Documentation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="thermal/intro_thermal.html"
+                        title="next chapter">Thermal QA Tests and Tutorials</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/intro_general.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="thermal/intro_thermal.html" title="Thermal QA Tests and Tutorials"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="PFLOTRAN’s QA Test Suite Documentation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">QA Test Suite 1.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2016, Jennifer M Frederick.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.5.
+    </div>
+  </body>
+</html>

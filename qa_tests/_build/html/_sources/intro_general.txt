@@ -1,0 +1,69 @@
+PFLOTRAN's QA Test Suite Intro
+==============================
+
+How To Run The Test Suite
+-------------------------
+To run the test suite, open a terminal and navigate to the ``qa_tests/`` 
+directory:
+
+.. code-block:: bash
+
+   $ cd $PFLOTRAN_DIR
+   $ cd ../../qa_tests
+
+Run the script from within the ``qa_tests/`` directory:
+
+.. code-block:: bash
+
+   $ ./run_qa_tests.sh
+   
+Inside The ``run_qa_tests.sh`` Script
+-------------------------------------
+Each test is executed in two steps. 
+
+The first step runs a PFLOTRAN simulation and prints screen output to a file
+called screen.txt:
+
+.. code-block:: bash
+
+   mpirun -np $nproc $pf/pflotran -input_prefix 1D_conduction_BC_1st_kind > screen.txt
+
+The second step executes a python script which generates the analytical 
+solution, reads the PFLOTRAN output, and compares the PFLOTRAN solution
+to the analytical solution:
+
+.. code-block:: bash
+
+   python run_1D_conduction_BC_1st_kind.py print_error=false plot_flag=false
+   
+The python script can be run with two options, described in the following section
+:ref:`test-suite-options`.
+
+.. _test-suite-options:
+
+Test Suite Options
+------------------
+Each test in the QA test suite can be run with two options:
+
+.. code-block:: bash
+
+   print_error=true 
+
+If set to ``true``, the ``print_error`` option will print the relative error 
+at each grid cell. If set to ``false``, only the maximum relative error will 
+be printed.
+
+.. code-block:: bash
+
+   plot_flag=true 
+
+If set to ``true``, the ``plot_flag`` option will generate a graph that 
+visually compares the PFLOTRAN solution against the analytical solution. If this 
+option is chosen, then the script will pause after the figure is generated, and 
+the figure must be closed before execution will continue.
+
+To set or change these options, open ``qa_tests/run_qa_tests.sh`` and edit the
+lines which execute the python scripts to reflect your desired options.
+
+If no options are indicated, the default options are ``plot_flag=false`` and 
+``print_error=true``.
