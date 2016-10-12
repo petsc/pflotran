@@ -477,55 +477,66 @@ subroutine CharacteristicCurvesRead(this,input,option)
         select case(word)
           case('MUALEM','MUALEM_VG_LIQ')
             rel_perm_function_ptr => RPF_Mualem_VG_Liq_Create()
+            phase_keyword = 'LIQUID'
           case('MUALEM_VG_GAS')
             rel_perm_function_ptr => RPF_Mualem_VG_Gas_Create()
             phase_keyword = 'GAS'
           case('BURDINE','BURDINE_BC_LIQ')
             rel_perm_function_ptr => RPF_Burdine_BC_Liq_Create()
+            phase_keyword = 'LIQUID'
           case('BURDINE_BC_GAS')
             rel_perm_function_ptr => RPF_Burdine_BC_Gas_Create()
             phase_keyword = 'GAS'
           case('TOUGH2_IRP7_LIQ')
             rel_perm_function_ptr => RPF_Mualem_VG_Liq_Create()
+            phase_keyword = 'LIQUID'
           case('TOUGH2_IRP7_GAS')
             rel_perm_function_ptr => RPF_TOUGH2_IRP7_Gas_Create()
             phase_keyword = 'GAS'
           case('MUALEM_BC_LIQ')
             rel_perm_function_ptr => RPF_Mualem_BC_Liq_Create()
+            phase_keyword = 'LIQUID'
           case('MUALEM_BC_GAS')
             rel_perm_function_ptr => RPF_Mualem_BC_Gas_Create()
             phase_keyword = 'GAS'
           case('BURDINE_VG_LIQ')
             rel_perm_function_ptr => RPF_Burdine_VG_Liq_Create()
+            phase_keyword = 'LIQUID'
           case('BURDINE_VG_GAS')
             rel_perm_function_ptr => RPF_Burdine_VG_Gas_Create()
             phase_keyword = 'GAS'
           case('MUALEM_LINEAR_LIQ')
             rel_perm_function_ptr => RPF_Mualem_Linear_Liq_Create()
+            phase_keyword = 'LIQUID'
           case('MUALEM_LINEAR_GAS')
             rel_perm_function_ptr => RPF_Mualem_Linear_Gas_Create()
             phase_keyword = 'GAS'
           case('BURDINE_LINEAR_LIQ')
             rel_perm_function_ptr => RPF_Burdine_Linear_Liq_Create()
+            phase_keyword = 'LIQUID'
           case('BURDINE_LINEAR_GAS')
             rel_perm_function_ptr => RPF_Burdine_Linear_Gas_Create()
             phase_keyword = 'GAS'
           case('BRAGFLO_KRP9_LIQ')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP9_Liq_Create()
+            phase_keyword = 'LIQUID'
           case('BRAGFLO_KRP9_GAS')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP9_Gas_Create()
           case('BRAGFLO_KRP4_LIQ')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP4_Liq_Create()
+            phase_keyword = 'LIQUID'
           case('BRAGFLO_KRP4_GAS')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP4_Gas_Create()
             phase_keyword = 'GAS'
           case('BRAGFLO_KRP11_LIQ')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP11_Liq_Create()
+            phase_keyword = 'LIQUID'
           case('BRAGFLO_KRP11_GAS')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP11_Gas_Create()
             phase_keyword = 'GAS'
           case('BRAGFLO_KRP12_LIQ')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP12_Liq_Create()
+            phase_keyword = 'LIQUID'
           case('BRAGFLO_KRP12_GAS')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP12_Gas_Create()
             phase_keyword = 'GAS'
@@ -534,12 +545,13 @@ subroutine CharacteristicCurvesRead(this,input,option)
             phase_keyword = 'OIL'
           case('MOD_BC_LIQ')
             rel_perm_function_ptr => RPF_Mod_BC_Liq_Create()
-            !phase_keyword = 'LIQUID'
+            phase_keyword = 'LIQUID'
           case('MOD_BC_OIL')
             rel_perm_function_ptr => RPF_Mod_BC_Oil_Create()
             phase_keyword = 'OIL'
           case('CONSTANT')
             rel_perm_function_ptr => RPF_Constant_Create()
+            ! phase_keyword = 'NONE'
           case default
             call InputKeywordUnrecognized(word,'PERMEABILITY_FUNCTION',option)
         end select
@@ -559,8 +571,9 @@ subroutine CharacteristicCurvesRead(this,input,option)
             ! We should change CharacteristicCurvesVerify instead
              this%gas_rel_perm_function => rel_perm_function_ptr
           case('NONE')
-            this%gas_rel_perm_function => rel_perm_function_ptr
-            this%liq_rel_perm_function => rel_perm_function_ptr
+            option%io_buffer = 'PHASE has not been set for &
+                               &CHARACTERISTIC_CURVES,PERMEABILITY_FUNCTION.' 
+            call printErrMsg(option)
           case default
             call InputKeywordUnrecognized(word, &
               'PERMEABILITY_FUNCTION,PHASE',option)
@@ -570,6 +583,7 @@ subroutine CharacteristicCurvesRead(this,input,option)
       case('DEFAULT')
         this%saturation_function => SF_Default_Create()
         this%liq_rel_perm_function => RPF_Default_Create()
+        ! jmf: fix this!!
         this%gas_rel_perm_function => this%liq_rel_perm_function
       case default
         call InputKeywordUnrecognized(keyword,'charateristic_curves',option)
@@ -851,10 +865,8 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
       case default
         found = PETSC_FALSE
     end select
-    
     if (found) cycle
-    
-    ! we assume liquid phase if PHASE keyword is not present.
+
     select type(rpf => permeability_function)
       class is(rpf_Mualem_VG_liq_type)
         select case(keyword)
@@ -1159,17 +1171,40 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
         call printErrMsg(option)
     end select
   enddo
+
   
-  ! check to ensure that the phase is correct if phase_keyword was set to 
-  ! something other than 'NONE' prior to the call of this subroutine
+  ! for functions that are not phase-specific, check if PHASE was given:
   if (StringCompare('NONE',phase_keyword)) then
     phase_keyword = new_phase_keyword
-  else if (.not.StringCompare('NONE',new_phase_keyword)) then
-    if (.not.StringCompare(phase_keyword,new_phase_keyword)) then
-      option%io_buffer = 'Relative permeability function has been set ' // &
-        'for the wrong phase (' // trim(phase_keyword) // ' vs ' // &
-        trim(new_phase_keyword) // ').'
+    ! a liq or gas phase should now be specified for the non-phase-specific
+    ! functions, so lets check if it was:
+    if (StringCompare('NONE',new_phase_keyword)) then
+      ! entering means the new phase keyword was also NONE (the default), so
+      ! throw an error and abort:
+      option%io_buffer = 'PHASE is not specified for ' // trim(error_string) 
       call printErrMsg(option)
+    endif
+  endif
+  
+  ! liquid phase relative permeability function check:
+  if (StringCompare('LIQUID',phase_keyword)) then
+    if (StringCompare('GAS',new_phase_keyword)) then
+      ! user is requesting a liquid relative perm func for a gas phase:
+      option%io_buffer = 'A liquid-phase relative permeability function &
+                         &is being requested for the gas phase under ' &
+                         // trim(error_string) // '.'
+      call printWrnMsg(option)
+    endif
+  endif
+  
+  ! gas phase relative permeability function check:
+  if (StringCompare('GAS',phase_keyword)) then
+    if (StringCompare('LIQUID',new_phase_keyword)) then
+      ! user is requesting a gas relative perm func for a liquid phase:
+      option%io_buffer = 'A gas-phase relative permeability function &
+                         &is being requested for the liquid phase under ' &
+                         // trim(error_string) // '.'
+      call printWrnMsg(option)
     endif
   endif
 
@@ -1423,7 +1458,7 @@ end subroutine CharacteristicCurvesTest
 
 subroutine CharacteristicCurvesVerify(characteristic_curves,option)
   ! 
-  ! Outputs values of characteristic curves over a range of values
+  ! Checks if required parameters have been set for each curve type.
   ! 
   ! Author: Glenn Hammond
   ! Date: 09/29/14
@@ -1441,10 +1476,29 @@ subroutine CharacteristicCurvesVerify(characteristic_curves,option)
            '),'
 
   call characteristic_curves%saturation_function%Verify(string,option)
-  call characteristic_curves%liq_rel_perm_function%Verify(string,option)
+  
+  if (associated(characteristic_curves%liq_rel_perm_function) ) then
+    call characteristic_curves%liq_rel_perm_function%Verify(string,option)
+  else
+    option%io_buffer = 'A liquid phase relative permeability curve has &
+                       &not been set under CHARACTERISTIC_CURVES "' // &
+                       trim(characteristic_curves%name) // '". A &
+                       &PERMEABILITY_FUNCTION block must be specified &
+                       &for the liquid phase.'
+    call printErrMsg(option)
+  end if
 
   if (associated(characteristic_curves%gas_rel_perm_function) ) then
     call characteristic_curves%gas_rel_perm_function%Verify(string,option)
+  else
+    if (option%iflowmode == G_MODE) then
+      option%io_buffer = 'A gas phase relative permeability curve has &
+                         &not been set under CHARACTERISTIC_CURVES "' // &
+                         trim(characteristic_curves%name) // '". Another &
+                         &PERMEABILITY_FUNCTION block must be specified &
+                         &for the gas phase.'
+      call printErrMsg(option)
+    end if
   end if
 
   if ( associated(characteristic_curves%oil_rel_perm_function) ) then  
