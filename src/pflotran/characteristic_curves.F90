@@ -572,7 +572,10 @@ subroutine CharacteristicCurvesRead(this,input,option)
              this%gas_rel_perm_function => rel_perm_function_ptr
           case('NONE')
             option%io_buffer = 'PHASE has not been set for &
-                               &CHARACTERISTIC_CURVES,PERMEABILITY_FUNCTION.' 
+                               &CHARACTERISTIC_CURVES,PERMEABILITY_FUNCTION. &
+                               &This is most likely a development issue, and &
+                               &not an input deck mistake. Please e-mail &
+                               &pflotran-dev [at] googlegroups [dot] com.' 
             call printErrMsg(option)
           case default
             call InputKeywordUnrecognized(word, &
