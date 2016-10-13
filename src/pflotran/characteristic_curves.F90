@@ -586,7 +586,6 @@ subroutine CharacteristicCurvesRead(this,input,option)
       case('DEFAULT')
         this%saturation_function => SF_Default_Create()
         this%liq_rel_perm_function => RPF_Default_Create()
-        ! jmf: fix this!!
         this%gas_rel_perm_function => this%liq_rel_perm_function
       case default
         call InputKeywordUnrecognized(keyword,'charateristic_curves',option)
@@ -1196,7 +1195,7 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
       option%io_buffer = 'A liquid-phase relative permeability function &
                          &is being requested for the gas phase under ' &
                          // trim(error_string) // '.'
-      call printWrnMsg(option)
+      call printErrMsg(option)
     endif
   endif
   
@@ -1207,7 +1206,7 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
       option%io_buffer = 'A gas-phase relative permeability function &
                          &is being requested for the liquid phase under ' &
                          // trim(error_string) // '.'
-      call printWrnMsg(option)
+      call printErrMsg(option)
     endif
   endif
 
