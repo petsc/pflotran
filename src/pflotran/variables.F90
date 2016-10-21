@@ -138,4 +138,8 @@ module Variables_module
 
   PetscInt, parameter, public :: NATURAL_ID              = 114
 
+  PetscInt, parameter, public :: OIL_MOLE_FRACTION       = 115
+  PetscInt, parameter, public :: SOLVENT_SATURATION      = 116
+
+
 end module Variables_module

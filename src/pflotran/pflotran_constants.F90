@@ -124,6 +124,7 @@ module PFLOTRAN_Constants_module
   PetscInt, parameter, public :: MIS_MODE = 6
   PetscInt, parameter, public :: TH_MODE = 7
   PetscInt, parameter, public :: TOIL_IMS_MODE = 8
+  PetscInt, parameter, public :: TOWG_MODE = 9
   
   ! transport modes
   PetscInt, parameter, public :: EXPLICIT_ADVECTION = 1

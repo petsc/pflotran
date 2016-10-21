@@ -545,6 +545,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
               temp_int = 1
             endif
           end if
+          if (associated(coupler%flow_condition%towg)) then          
+            if (associated(coupler%flow_condition%towg%rate)) then
+              temp_int = 1
+            endif
+          end if
           if (associated(coupler%flow_condition%flow_well)) then          
             if ( associated(coupler%flow_condition%flow_well%rate) .or. &
                  associated(coupler%flow_condition%flow_well%pressure) &
