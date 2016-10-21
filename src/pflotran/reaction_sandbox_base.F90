@@ -21,6 +21,7 @@ module Reaction_Sandbox_Base_class
     procedure, public :: Setup => Base_Setup
     procedure, public :: Evaluate => Base_React
     procedure, public :: UpdateKineticState => Base_UpdateKineticState
+    procedure, public :: AuxiliaryPlotVariables => Base_AuxiliaryPlotVariables
     procedure, public :: Destroy => Base_Destroy    
 #endif
   end type reaction_sandbox_base_type
@@ -164,6 +165,23 @@ contains
 
 ! ************************************************************************** !
 
+  subroutine Base_AuxiliaryPlotVariables(this,list,reaction,option)
+    
+    use Option_module
+    use Reaction_Aux_module
+    use Output_Aux_module
+  
+    implicit none
+  
+    class(reaction_sandbox_base_type) :: this
+    type(output_variable_list_type), pointer :: list
+    type(option_type) :: option
+    type(reaction_type) :: reaction
+  
+  end subroutine Base_AuxiliaryPlotVariables
+
+! ************************************************************************** !
+
   subroutine Base_React(this,Residual,Jacobian,compute_derivative,rt_auxvar, &
                         global_auxvar,material_auxvar,reaction,option)
     use Option_module
@@ -185,7 +203,7 @@ contains
     type(global_auxvar_type) :: global_auxvar
     class(material_auxvar_type) :: material_auxvar
       
-  end subroutine
+  end subroutine Base_React
 
 ! ************************************************************************** !
 
@@ -206,7 +224,7 @@ contains
     type(global_auxvar_type) :: global_auxvar
     class(material_auxvar_type) :: material_auxvar
       
-  end subroutine
+  end subroutine Base_UpdateKineticState
   
 ! ************************************************************************** !
 

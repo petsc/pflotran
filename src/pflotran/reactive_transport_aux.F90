@@ -65,6 +65,10 @@ module Reactive_Transport_Aux_module
     
     ! immobile species such as biomass
     PetscReal, pointer :: immobile(:) ! mol/m^3 bulk
+
+    ! auxiliary array to store miscellaneous data (e.g. reaction rates, 
+    ! cumulative mass, etc.
+    PetscReal, pointer :: auxiliary_data(:)
     
   end type reactive_transport_auxvar_type
 
@@ -79,6 +83,7 @@ module Reactive_Transport_Aux_module
     PetscInt :: offset_colloid
     PetscInt :: offset_collcomp
     PetscInt :: offset_immobile
+    PetscInt :: offset_auxiliary
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
     PetscReal, pointer :: diffusion_coefficient(:)
@@ -186,6 +191,7 @@ function RTAuxCreate(option)
   aux%rt_parameter%offset_colloid = 0
   aux%rt_parameter%offset_collcomp = 0
   aux%rt_parameter%offset_immobile = 0
+  aux%rt_parameter%offset_auxiliary = 0
   nullify(aux%rt_parameter%pri_spec_to_coll_spec)
   nullify(aux%rt_parameter%coll_spec_to_pri_spec)
   aux%rt_parameter%calculate_transverse_dispersion = PETSC_FALSE
@@ -384,7 +390,14 @@ subroutine RTAuxVarInit(auxvar,reaction,option)
   else
     nullify(auxvar%immobile)
   endif
-  
+
+  if (reaction%nauxiliary > 0) then
+    allocate(auxvar%auxiliary_data(reaction%nauxiliary))
+    auxvar%auxiliary_data = 0.d0
+  else
+    nullify(auxvar%auxiliary_data)
+  endif
+
 end subroutine RTAuxVarInit
 
 ! ************************************************************************** !
@@ -486,6 +499,10 @@ subroutine RTAuxVarCopy(auxvar,auxvar2,option)
 
   if (associated(auxvar%immobile)) then
     auxvar%immobile = auxvar2%immobile
+  endif
+  
+  if (associated(auxvar%auxiliary_data)) then
+    auxvar%auxiliary_data = auxvar2%auxiliary_data
   endif
   
 end subroutine RTAuxVarCopy
@@ -605,6 +622,7 @@ subroutine RTAuxVarStrip(auxvar)
   endif
   
   call DeallocateArray(auxvar%immobile)
+  call DeallocateArray(auxvar%auxiliary_data)
   
 end subroutine RTAuxVarStrip
 

@@ -47,6 +47,36 @@ CHEMISTRY
   IMMOBILE_SPECIES
     C_consumption
   /
+skip
+  MINERALS
+    NH4_consumed
+    O2_consumed
+    NO3_consumed
+    NO2_consumed
+    DOC_consumed
+    CO2_produced
+  /
+  MINERAL_KINETICS
+    NH4_consumed
+      RATE_CONSTANT 0.d0
+    /
+    O2_consumed
+      RATE_CONSTANT 0.d0
+    /
+    NO3_consumed
+      RATE_CONSTANT 0.d0
+    /
+    NO2_consumed
+      RATE_CONSTANT 0.d0
+    /
+    DOC_consumed
+      RATE_CONSTANT 0.d0
+    /
+    CO2_produced
+      RATE_CONSTANT 0.d0
+    /
+  /
+noskip
   REACTION_SANDBOX 
     CYBERNETIC
       F1    0.497d0
@@ -64,7 +94,16 @@ CHEMISTRY
       Kdeg  0.532d0 1/d
       F_act 0.126d0
       ACTIVATION_ENERGY 89.d-3 kJ/mol  ! 89.d0 J/mol
+      STORE_CONSUMPTION_PRODUCTION
       CARBON_CONSUMPTION_SPECIES C_consumption
+skip
+      NH4_CONSUMPTION_MINERAL NH4_consumed
+      O2_CONSUMPTION_MINERAL O2_consumed
+      NO3_CONSUMPTION_MINERAL NO3_consumed
+      NO2_CONSUMPTION_MINERAL NO2_consumed
+      DOC_CONSUMPTION_MINERAL DOC_consumed
+      CO2_PRODUCTION_MINERAL CO2_produced
+noskip
     /
   /
   DATABASE ./cybernetic.dat
@@ -74,6 +113,7 @@ CHEMISTRY
   OUTPUT
     all
     TOTAL
+    AUXILIARY
   /
 END
 
@@ -112,7 +152,7 @@ END
 OUTPUT
 #  TIMES y 5. 10. 15. 20.
 #  FORMAT TECPLOT POINT
-#  PERIODIC_OBSERVATION TIMESTEP 1
+  PERIODIC_OBSERVATION TIMESTEP 1
 END
 
 #=========================== times ============================================

@@ -137,5 +137,6 @@ module Variables_module
   PetscInt, parameter, public :: OIL_MOBILITY            = 113
 
   PetscInt, parameter, public :: NATURAL_ID              = 114
+  PetscInt, parameter, public :: REACTION_AUXILIARY      = 115
 
 end module Variables_module

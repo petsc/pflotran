@@ -13,6 +13,12 @@ module Reaction_Sandbox_Cyber_class
   
 #include "petsc/finclude/petscsys.h"
 
+  PetscInt, parameter :: DOC_MASS_STORAGE_INDEX = 1
+  PetscInt, parameter :: NH4_MASS_STORAGE_INDEX = 2
+  PetscInt, parameter :: O2_MASS_STORAGE_INDEX = 3
+  PetscInt, parameter :: NO3_MASS_STORAGE_INDEX = 4
+  PetscInt, parameter :: NO2_MASS_STORAGE_INDEX = 5
+  PetscInt, parameter :: CO2_MASS_STORAGE_INDEX = 6
 
   type, public, &
     extends(reaction_sandbox_base_type) :: reaction_sandbox_cyber_type
@@ -25,19 +31,7 @@ module Reaction_Sandbox_Cyber_class
     PetscInt :: biomass_id
     PetscInt :: co2_id
     PetscInt :: carbon_consumption_species_id
-    PetscInt :: nh4_mnrl_id
-    PetscInt :: o2_mnrl_id
-    PetscInt :: no3_mnrl_id
-    PetscInt :: no2_mnrl_id
-    PetscInt :: doc_mnrl_id
-    PetscInt :: co2_mnrl_id
     character(len=MAXWORDLENGTH) :: carbon_consumption_species
-    character(len=MAXWORDLENGTH) :: nh4_mnrl_name
-    character(len=MAXWORDLENGTH) :: o2_mnrl_name
-    character(len=MAXWORDLENGTH) :: no3_mnrl_name
-    character(len=MAXWORDLENGTH) :: no2_mnrl_name
-    character(len=MAXWORDLENGTH) :: doc_mnrl_name
-    character(len=MAXWORDLENGTH) :: co2_mnrl_name
     PetscReal :: f1
     PetscReal :: f2
     PetscReal :: f3
@@ -71,6 +65,8 @@ module Reaction_Sandbox_Cyber_class
     PetscReal :: stoich_3_biomass
     PetscReal :: activation_energy
     PetscInt :: nrxn
+    PetscInt :: offset_auxiliary
+    PetscBool :: store_cumulative_mass
     PetscInt, pointer :: nrow(:)
     PetscInt, pointer :: ncol(:)
     PetscInt, pointer :: irow(:,:)
@@ -80,6 +76,8 @@ module Reaction_Sandbox_Cyber_class
     procedure, public :: ReadInput => CyberRead
     procedure, public :: Setup => CyberSetup
     procedure, public :: Evaluate => CyberReact
+    procedure, public :: UpdateKineticState => CyberUpdateKineticState
+    procedure, public :: AuxiliaryPlotVariables => CyberAuxiliaryPlotVariables
     procedure, public :: Destroy => CyberDestroy
   end type reaction_sandbox_cyber_type
   
@@ -111,12 +109,6 @@ function CyberCreate()
   CyberCreate%biomass_id = UNINITIALIZED_INTEGER
   CyberCreate%co2_id = UNINITIALIZED_INTEGER
   CyberCreate%carbon_consumption_species_id = UNINITIALIZED_INTEGER
-  CyberCreate%nh4_mnrl_id = UNINITIALIZED_INTEGER
-  CyberCreate%o2_mnrl_id = UNINITIALIZED_INTEGER
-  CyberCreate%no3_mnrl_id = UNINITIALIZED_INTEGER
-  CyberCreate%no2_mnrl_id = UNINITIALIZED_INTEGER
-  CyberCreate%doc_mnrl_id = UNINITIALIZED_INTEGER
-  CyberCreate%co2_mnrl_id = UNINITIALIZED_INTEGER
   CyberCreate%f1 = UNINITIALIZED_DOUBLE  
   CyberCreate%f2 = UNINITIALIZED_DOUBLE  
   CyberCreate%f3 = UNINITIALIZED_DOUBLE  
@@ -150,13 +142,9 @@ function CyberCreate()
   CyberCreate%stoich_3_biomass = UNINITIALIZED_DOUBLE  
   CyberCreate%activation_energy = UNINITIALIZED_DOUBLE  
   CyberCreate%nrxn = UNINITIALIZED_INTEGER
+  CyberCreate%offset_auxiliary = UNINITIALIZED_INTEGER
   CyberCreate%carbon_consumption_species = ''
-  CyberCreate%nh4_mnrl_name = ''
-  CyberCreate%o2_mnrl_name = ''
-  CyberCreate%no3_mnrl_name = ''
-  CyberCreate%no2_mnrl_name = ''
-  CyberCreate%doc_mnrl_name = ''
-  CyberCreate%co2_mnrl_name = ''
+  CyberCreate%store_cumulative_mass = PETSC_FALSE
   nullify(CyberCreate%nrow)
   nullify(CyberCreate%ncol)
   nullify(CyberCreate%irow)
@@ -275,36 +263,8 @@ subroutine CyberRead(this,input,option)
                            this%carbon_consumption_species,PETSC_TRUE)
         call InputErrorMsg(input,option,'carbon consumption species', &
                            error_string)
-      case('NH4_CONSUMPTION_MINERAL')
-        call InputReadWord(input,option, &
-                           this%nh4_mnrl_name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'nh4 consumption mineral', &
-                           error_string)
-      case('O2_CONSUMPTION_MINERAL')
-        call InputReadWord(input,option, &
-                           this%o2_mnrl_name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'o2 consumption mineral', &
-                           error_string)
-      case('NO3_CONSUMPTION_MINERAL')
-        call InputReadWord(input,option, &
-                           this%no3_mnrl_name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'no3 consumption mineral', &
-                           error_string)
-      case('NO2_CONSUMPTION_MINERAL')
-        call InputReadWord(input,option, &
-                           this%no2_mnrl_name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'no2 consumption mineral', &
-                           error_string)
-      case('DOC_CONSUMPTION_MINERAL')
-        call InputReadWord(input,option, &
-                           this%doc_mnrl_name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'doc consumption mineral', &
-                           error_string)
-      case('CO2_CONSUMPTION_MINERAL')
-        call InputReadWord(input,option, &
-                           this%co2_mnrl_name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'co2 consumption mineral', &
-                           error_string)
+      case('STORE_CONSUMPTION_PRODUCTION')
+        this%store_cumulative_mass = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
@@ -369,35 +329,10 @@ subroutine CyberSetup(this,reaction,option)
     this%carbon_consumption_species_id = &
       GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
   endif
-  if (len_trim(this%nh4_mnrl_name) > 0) then 
-    word = this%nh4_mnrl_name
-    this%nh4_mnrl_id = &
-      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
-  endif
-  if (len_trim(this%o2_mnrl_name) > 0) then 
-    word = this%o2_mnrl_name
-    this%o2_mnrl_id = &
-      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
-  endif
-  if (len_trim(this%no3_mnrl_name) > 0) then 
-    word = this%no3_mnrl_name
-    this%no3_mnrl_id = &
-      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
-  endif
-  if (len_trim(this%no2_mnrl_name) > 0) then 
-    word = this%no2_mnrl_name
-    this%no2_mnrl_id = &
-      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
-  endif
-  if (len_trim(this%doc_mnrl_name) > 0) then 
-    word = this%doc_mnrl_name
-    this%doc_mnrl_id = &
-      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
-  endif
-  if (len_trim(this%co2_mnrl_name) > 0) then 
-    word = this%co2_mnrl_name
-    this%co2_mnrl_id = &
-      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
+  if (this%store_cumulative_mass) then
+    this%offset_auxiliary = reaction%nauxiliary
+    ! rate and cumulative mass for nh4, o2, no3, no2, doc, co2 (12 = 2*6)
+    reaction%nauxiliary = reaction%nauxiliary + 12
   endif
   
   ! constants based on Hyun's writeup on 6/21/16 entitled "Mini-cybernetic 
@@ -526,6 +461,64 @@ subroutine CyberSetup(this,reaction,option)
   endif
   
 end subroutine CyberSetup
+
+! ************************************************************************** !
+
+subroutine CyberAuxiliaryPlotVariables(this,list,reaction,option)
+  ! 
+  ! Adds plot variables to output list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/21/16
+  
+  use Option_module
+  use Reaction_Aux_module
+  use Output_Aux_module
+  use Variables_module, only : REACTION_AUXILIARY
+
+  implicit none
+
+  class(reaction_sandbox_cyber_type) :: this
+  type(output_variable_list_type), pointer :: list
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  
+  character(len=MAXWORDLENGTH) :: names(6)
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: units
+  PetscInt :: indices(6)
+  PetscInt :: i
+
+  names(1) = 'DOC'
+  names(2) = 'NH4'
+  names(3) = 'O2'
+  names(4) = 'NO3'
+  names(5) = 'NO2'
+  names(6) = 'CO2'
+  indices(1) = DOC_MASS_STORAGE_INDEX
+  indices(2) = NH4_MASS_STORAGE_INDEX
+  indices(3) = O2_MASS_STORAGE_INDEX
+  indices(4) = NO3_MASS_STORAGE_INDEX
+  indices(5) = NO2_MASS_STORAGE_INDEX
+  indices(6) = CO2_MASS_STORAGE_INDEX
+  if (this%store_cumulative_mass) then
+    do i = 1, 6
+      word = trim(names(i)) // ' Rate'
+      units = 'mol/sec'
+      call OutputVariableAddToList(list,word,OUTPUT_RATE,units, &
+                                   REACTION_AUXILIARY, &
+                                   this%offset_auxiliary+indices(i))
+    enddo
+    do i = 1, 6
+      word = trim(names(i)) // ' Cum. Mass'
+      units = 'moles'
+      call OutputVariableAddToList(list,word,OUTPUT_GENERIC,units, &
+                                   REACTION_AUXILIARY, &
+                                   this%offset_auxiliary+6+indices(i))
+    enddo
+  endif
+
+end subroutine CyberAuxiliaryPlotVariables
 
 ! ************************************************************************** !
 
@@ -699,42 +692,44 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
     Residual(i) = Residual(this%co2_id)
   endif
   
-  if (this%nh4_mnrl_id > 0) then
-    rt_auxvar%mnrl_rate(this%nh4_mnrl_id) = &
+  if (this%store_cumulative_mass) then
+    ! nh4
+    i = this%offset_auxiliary + NH4_MASS_STORAGE_INDEX
+    rt_auxvar%auxiliary_data(i) = &
       ! stoichiometries on left side of reaction are negative
       -1.d0 * rate(ONE_INTEGER) * this%stoich_1_nh4
-    rt_auxvar%mnrl_rate(this%nh4_mnrl_id) = rt_auxvar%mnrl_rate(this%nh4_mnrl_id) - &
+    rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) - &
       rate(TWO_INTEGER) * this%stoich_2_nh4
-    rt_auxvar%mnrl_rate(this%nh4_mnrl_id) = rt_auxvar%mnrl_rate(this%nh4_mnrl_id) - &
+    rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) - &
       rate(THREE_INTEGER) * this%stoich_3_nh4
-  endif
-  if (this%no3_mnrl_id > 0) then
-    rt_auxvar%mnrl_rate(this%no3_mnrl_id) = &
+    ! no3
+    i = this%offset_auxiliary + NO3_MASS_STORAGE_INDEX
+    rt_auxvar%auxiliary_data(i) = &
       -1.d0 * rate(ONE_INTEGER) * this%stoich_1_no3
-  endif
-  if (this%no2_mnrl_id > 0) then
-    rt_auxvar%mnrl_rate(this%no2_mnrl_id) = &
+    ! no2
+    i = this%offset_auxiliary + NO2_MASS_STORAGE_INDEX
+    rt_auxvar%auxiliary_data(i) = &
       -1.d0 * rate(TWO_INTEGER) * this%stoich_2_no2
-  endif
-  if (this%o2_mnrl_id > 0) then
-    rt_auxvar%mnrl_rate(this%o2_mnrl_id) = &
+    ! o2
+    i = this%offset_auxiliary + O2_MASS_STORAGE_INDEX
+    rt_auxvar%auxiliary_data(i) = &
       -1.d0 * rate(THREE_INTEGER) * this%stoich_3_o2
-  endif
-  if (this%doc_mnrl_id > 0) then
-    rt_auxvar%mnrl_rate(this%doc_mnrl_id) = &
+    ! doc
+    i = this%offset_auxiliary + DOC_MASS_STORAGE_INDEX
+    rt_auxvar%auxiliary_data(i) = &
       -1.d0 * rate(ONE_INTEGER) * this%stoich_1_doc
-    rt_auxvar%mnrl_rate(this%doc_mnrl_id) = rt_auxvar%mnrl_rate(this%doc_mnrl_id) - &
+    rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) - &
       rate(TWO_INTEGER) * this%stoich_2_doc
-    rt_auxvar%mnrl_rate(this%doc_mnrl_id) = rt_auxvar%mnrl_rate(this%doc_mnrl_id) - &
+    rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) - &
       rate(THREE_INTEGER) * this%stoich_3_doc
-  endif
-  if (this%co2_mnrl_id > 0) then
-    rt_auxvar%mnrl_rate(this%co2_mnrl_id) = &
+    ! co2
+    i = this%offset_auxiliary + CO2_MASS_STORAGE_INDEX
+    rt_auxvar%auxiliary_data(i) = &
       ! stoichiometries on right side of reaction are positive
       rate(ONE_INTEGER) * this%stoich_1_co2
-    rt_auxvar%mnrl_rate(this%co2_mnrl_id) = rt_auxvar%mnrl_rate(this%co2_mnrl_id) + &
+    rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) + &
       rate(TWO_INTEGER) * this%stoich_2_co2
-    rt_auxvar%mnrl_rate(this%co2_mnrl_id) = rt_auxvar%mnrl_rate(this%co2_mnrl_id) + &
+    rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) + &
       rate(THREE_INTEGER) * this%stoich_3_co2
   endif
   
@@ -868,6 +863,48 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   endif
   
 end subroutine CyberReact
+
+! ************************************************************************** !
+
+subroutine CyberUpdateKineticState(this,rt_auxvar,global_auxvar, &
+                                   material_auxvar,reaction,option)
+  ! 
+  ! Updates kinetic state (e.g. increments mass balance based on current rate
+  ! and time step size)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/21/16
+  ! 
+  use Option_module
+  use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use Global_Aux_module
+  use Material_Aux_class
+
+  implicit none
+
+  class(reaction_sandbox_cyber_type) :: this
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
+
+  PetscInt :: i, irate, icum 
+
+  if (this%store_cumulative_mass) then
+    irate = this%offset_auxiliary
+    icum = this%offset_auxiliary + 6
+    do i = 1, 6
+      ! rate is in mol/sec
+      icum = icum + 1
+      rt_auxvar%auxiliary_data(icum) = rt_auxvar%auxiliary_data(icum) + &
+        rt_auxvar%auxiliary_data(irate+i) * &
+        option%tran_dt
+    enddo
+  endif
+
+end subroutine CyberUpdateKineticState
 
 ! ************************************************************************** !
 

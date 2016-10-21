@@ -162,6 +162,7 @@ module Reaction_Aux_module
     PetscBool :: print_total_bulk ! total in aq and sorbed phases
     PetscBool :: initialize_with_molality
     PetscBool :: print_age
+    PetscBool :: print_auxiliary
     PetscBool :: use_geothermal_hpt
     PetscInt :: print_free_conc_type
     PetscInt :: print_tot_conc_type
@@ -329,6 +330,7 @@ module Reaction_Aux_module
     PetscInt :: update_armor_mineral_surface_flag
 
     PetscBool :: use_sandbox
+    PetscInt :: nauxiliary
     
   end type reaction_type
 
@@ -430,6 +432,7 @@ function ReactionCreate()
   reaction%calculate_tracer_age = PETSC_FALSE
   reaction%calculate_water_age = PETSC_FALSE
   reaction%print_age = PETSC_FALSE
+  reaction%print_auxiliary = PETSC_FALSE
   reaction%print_total_component = PETSC_FALSE
   reaction%print_free_ion = PETSC_FALSE
   reaction%print_total_bulk = PETSC_FALSE
@@ -572,6 +575,7 @@ function ReactionCreate()
   reaction%update_armor_mineral_surface_flag = 0
 
   reaction%use_sandbox = PETSC_FALSE
+  reaction%nauxiliary = 0
 
   ReactionCreate => reaction
   
