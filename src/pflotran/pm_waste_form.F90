@@ -999,7 +999,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
 
-  PetscBool :: added, matched
+  PetscBool :: added
   character(len=MAXWORDLENGTH) :: word, internal_units
   class(waste_form_base_type), pointer :: new_waste_form, cur_waste_form
   class(wf_mechanism_base_type), pointer :: cur_mechanism
@@ -1007,7 +1007,6 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   error_string = trim(error_string) // ',WASTE_FORM'
   found = PETSC_TRUE
   added = PETSC_FALSE
-  matched = PETSC_FALSE
 
   select case(trim(keyword))
   !-------------------------------------
