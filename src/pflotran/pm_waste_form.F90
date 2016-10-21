@@ -6,6 +6,7 @@ module PM_Waste_Form_class
   use Geometry_module
   use Data_Mediator_Vec_class
   use Dataset_Base_class
+  use Region_module
  
   use PFLOTRAN_Constants_module
 
@@ -99,6 +100,9 @@ module PM_Waste_Form_class
     PetscInt :: id
     PetscInt :: local_cell_id
     type(point3d_type) :: coordinate
+    character(len=MAXWORDLENGTH) :: region_name
+    type(region_type), pointer :: region
+    PetscReal, pointer :: scaling_factor(:)             ! [-]
     PetscReal :: init_volume                            ! m^3
     PetscReal :: volume                                 ! m^3
     PetscReal :: exposure_factor                        ! unitless 
@@ -341,6 +345,9 @@ function WasteFormCreate()
   WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
+  nullify(WasteFormCreate%region)
+  WasteFormCreate%region_name = ''
+  nullify(WasteFormCreate%scaling_factor) ! [-]
   WasteFormCreate%init_volume = UNINITIALIZED_DOUBLE
   WasteFormCreate%volume = UNINITIALIZED_DOUBLE
   WasteFormCreate%exposure_factor = 1.0d0
@@ -403,6 +410,7 @@ subroutine PMWFRead(this,input)
   use Input_Aux_module
   use Option_module
   use String_module
+  use Region_module
   
   implicit none
   
@@ -563,6 +571,7 @@ subroutine PMWFRead(this,input)
         call printErrMsg(option)
       endif
     endif
+    
     cur_waste_form => cur_waste_form%next
   enddo
     
@@ -979,6 +988,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   use Dataset_Ascii_class 
   use String_module
   use Units_module
+  use Region_module
   
   implicit none
   
@@ -989,7 +999,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
 
-  PetscBool :: added
+  PetscBool :: added, matched
   character(len=MAXWORDLENGTH) :: word, internal_units
   class(waste_form_base_type), pointer :: new_waste_form, cur_waste_form
   class(wf_mechanism_base_type), pointer :: cur_mechanism
@@ -997,6 +1007,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   error_string = trim(error_string) // ',WASTE_FORM'
   found = PETSC_TRUE
   added = PETSC_FALSE
+  matched = PETSC_FALSE
 
   select case(trim(keyword))
   !-------------------------------------
@@ -1026,6 +1037,11 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
           case('COORDINATE')
             call GeometryReadCoordinate(input,option, &
                                         new_waste_form%coordinate,error_string)
+        !-----------------------------
+          case('REGION')
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'region assignment',error_string)
+            new_waste_form%region_name = trim(word)
         !-----------------------------
           case('MECHANISM_NAME')
             call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1071,6 +1087,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
         call printErrMsg(option)
       endif
       !note: do not throw error if EXPOSURE_FACTOR isn't specified (default = 1)
+      !note: do not throw error if REGION isn't specified (its optional)
       
       if (.not.associated(this%waste_form_list)) then
         this%waste_form_list => new_waste_form
@@ -1100,6 +1117,101 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   endif
 
 end subroutine PMWFReadWasteForm
+
+! ************************************************************************** !
+
+subroutine PMWFAssociateRegion(this,region_list)
+  ! 
+  ! Associates the waste form to its assigned (optional) region.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 10/20/2016
+  !
+
+  use Region_module
+  use Option_module
+  use String_module
+
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  type(region_list_type), pointer :: region_list
+  
+  type(region_type), pointer :: cur_region
+  class(waste_form_base_type), pointer :: cur_waste_form
+  type(option_type), pointer :: option
+  PetscBool :: matched
+  
+  option => this%option
+  
+  cur_waste_form => this%waste_form_list
+  do
+    if (.not.associated(cur_waste_form)) exit
+    ! 
+    if (len(trim(cur_waste_form%region_name)) > 0) then
+      cur_region => region_list%first
+      do
+        if (.not.associated(cur_region)) exit
+        matched = PETSC_FALSE
+        if (StringCompare(trim(cur_region%name), &
+                          trim(cur_waste_form%region_name))) then
+          cur_waste_form%region => cur_region
+          matched = PETSC_TRUE
+          call PMWFSetRegionScaling(this,cur_waste_form)
+        endif
+        if (matched) exit
+        cur_region => cur_region%next
+      enddo
+      if (.not.associated(cur_waste_form%region)) then
+        option%io_buffer = 'WASTE_FORM REGION ' // &
+                           trim(cur_waste_form%region_name) // ' not found.'
+        call printErrMsg(option)
+      endif
+    endif
+    !
+    cur_waste_form => cur_waste_form%next
+  enddo
+  
+end subroutine PMWFAssociateRegion
+  
+! ************************************************************************** !
+
+subroutine PMWFSetRegionScaling(this,waste_form)
+  ! 
+  ! Calculates and sets the scaling factor vector for each of the waste forms
+  ! that have assigned regions. This function is called only if a region was
+  ! just associated with it. It assumes the volume of the cells that make up
+  ! the region do not change over the course of the simulation.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 10/21/2016
+  !
+
+  use Material_Aux_class
+
+  implicit none
+  
+  class(pm_waste_form_type) :: this
+  class(waste_form_base_type), pointer :: waste_form
+  
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  PetscInt :: k, cell_id
+  PetscReal :: total_volume
+  PetscErrorCode :: ierr
+  
+  material_auxvars => this%realization%patch%aux%Material%auxvars
+  allocate(waste_form%scaling_factor(waste_form%region%num_cells))
+  total_volume = 0.d0
+  
+  ! scale by cell volume
+  do k = 1,waste_form%region%num_cells
+    cell_id = waste_form%region%cell_ids(k)
+    waste_form%scaling_factor(k) = material_auxvars(cell_id)%volume ! [m^3]
+    total_volume = total_volume + material_auxvars(cell_id)%volume  ! [m^3]
+  enddo
+  waste_form%scaling_factor = waste_form%scaling_factor/total_volume  ! [-]
+  
+end subroutine PMWFSetRegionScaling
 
 ! ************************************************************************** !
 
@@ -1334,6 +1446,9 @@ end subroutine PMWFSetup
    !----------------------------------------------------------
     cur_waste_form => cur_waste_form%next
   enddo
+  
+  ! point the waste form region to the desired region (if applicable)
+  call PMWFAssociateRegion(this,this%realization%patch%region_list)
   
   ! restart
   if (this%option%restart_flag .and. &
@@ -1667,6 +1782,8 @@ end subroutine PMWFInitializeTimestep
 ! ************************************************************************** !
 
 subroutine PMWFSolve(this,time,ierr)
+  !
+  ! Updates the source term based on the dissolution model chosen
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
@@ -1685,7 +1802,7 @@ subroutine PMWFSolve(this,time,ierr)
   PetscErrorCode :: ierr
   
   class(waste_form_base_type), pointer :: cur_waste_form
-  PetscInt :: i, j
+  PetscInt :: i, j, k
   PetscInt :: num_species
   PetscInt :: cell_id
   PetscInt :: idof
@@ -1709,7 +1826,7 @@ subroutine PMWFSolve(this,time,ierr)
   i = 0
   do 
     if (.not.associated(cur_waste_form)) exit
-    num_species = cur_waste_form%mechanism%num_species    
+    num_species = cur_waste_form%mechanism%num_species  
     if ((cur_waste_form%volume > 0.d0) .and. &
         (cur_waste_form%canister_vitality <= 1.d-40)) then
       ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]:
@@ -1727,10 +1844,8 @@ subroutine PMWFSolve(this,time,ierr)
           ! solution vector instead (see note in WFMechDSNFDissolution):
           type is(wf_mechanism_dsnf_type)
             vec_p(i) = 0.d0                                  ! mol/sec
-            inst_diss_molality = 0.d0                        ! mol-rad/kg-water
+            inst_diss_molality = 0.d0                        ! mol-rad/kg-water            
             cell_id = cur_waste_form%local_cell_id
-            idof = cwfm%rad_species_list(j)%ispecies + &
-               ((cell_id - 1) * this%option%ntrandof)
             inst_diss_molality = &                           ! mol-rad/kg-water
               cur_waste_form%instantaneous_mass_rate(j) * &  ! mol-rad/sec
               this%realization%option%tran_dt / &            ! sec
@@ -1739,7 +1854,19 @@ subroutine PMWFSolve(this,time,ierr)
                global_auxvars(cell_id)%sat(LIQUID_PHASE) * & ! [-]
                material_auxvars(cell_id)%volume * &          ! [m^3]
                global_auxvars(cell_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
-            xx_p(idof) = xx_p(idof) + inst_diss_molality     ! mol-rad/kg-water
+            if (associated(cur_waste_form%region)) then
+              do k = 1,cur_waste_form%region%num_cells
+                cell_id = cur_waste_form%region%cell_ids(k)
+                idof = cwfm%rad_species_list(j)%ispecies + &
+                       ((cell_id - 1) * this%option%ntrandof)
+                xx_p(idof) = xx_p(idof) + &  ! mol-rad/kg-water
+                           (inst_diss_molality*cur_waste_form%scaling_factor(k))  
+              enddo
+            else
+              idof = cwfm%rad_species_list(j)%ispecies + &
+                     ((cell_id - 1) * this%option%ntrandof)
+              xx_p(idof) = xx_p(idof) + inst_diss_molality    ! mol-rad/kg-water
+            endif
             ! update the cumulative mass now, not at next timestep:
             cur_waste_form%cumulative_mass(j) = &
               cur_waste_form%cumulative_mass(j) + &          ! mol-rad
@@ -2423,7 +2550,9 @@ subroutine PMWFStrip(this)
     call DeallocateArray(prev_waste_form%inst_release_amount)
     call DeallocateArray(prev_waste_form%instantaneous_mass_rate)
     call DeallocateArray(prev_waste_form%cumulative_mass)
+    call DeallocateArray(prev_waste_form%scaling_factor)
     nullify(prev_waste_form%mechanism)
+    nullify(prev_waste_form%region)
     deallocate(prev_waste_form)
     nullify(prev_waste_form)
   enddo

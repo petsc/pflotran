@@ -928,7 +928,7 @@ pm_auxiliary.o : communicator_base.o global_aux.o init_subsurface.o \
                  reaction_aux.o reactive_transport_aux.o \
                  realization_subsurface.o string.o
 pm_base.o : input_aux.o option.o output_aux.o pflotran_constants.o \
-            realization_base.o solver.o
+            realization_base.o
 pm_base_aux.o : auxvars_base.o grid.o option.o pflotran_constants.o utility.o
 pm_base_pointer.o : option.o pflotran_constants.o pm_base.o \
                     realization_subsurface.o
@@ -976,7 +976,7 @@ pm_subsurface_flow.o : checkpoint.o communicator_base.o \
                        discretization.o global.o grid.o input_aux.o \
                        integral_flux.o material.o material_aux.o option.o \
                        pflotran_constants.o pm_base.o realization_subsurface.o \
-                       solver.o srcsink_sandbox.o string.o variables.o
+                       srcsink_sandbox.o string.o variables.o
 pm_surface.o : checkpoint_surface.o communicator_base.o \
                communicator_unstructured.o condition.o discretization.o \
                global.o grid.o input_aux.o option.o pflotran_constants.o \
@@ -1014,7 +1014,7 @@ pm_waste_form.o : condition.o data_mediator_vec.o dataset_ascii.o \
                   material_aux.o option.o output_aux.o patch.o \
                   pflotran_constants.o pm_base.o reaction_aux.o \
                   reactive_transport_aux.o realization_base.o \
-                  realization_subsurface.o string.o units.o utility.o
+                  realization_subsurface.o region.o string.o units.o utility.o
 pmc_auxiliary.o : option.o pflotran_constants.o pm_auxiliary.o pmc_base.o \
                   realization_subsurface.o timestepper_base.o
 pmc_base.o : checkpoint.o logging.o option.o output.o output_aux.o \
