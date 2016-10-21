@@ -25,7 +25,19 @@ module Reaction_Sandbox_Cyber_class
     PetscInt :: biomass_id
     PetscInt :: co2_id
     PetscInt :: carbon_consumption_species_id
+    PetscInt :: nh4_mnrl_id
+    PetscInt :: o2_mnrl_id
+    PetscInt :: no3_mnrl_id
+    PetscInt :: no2_mnrl_id
+    PetscInt :: doc_mnrl_id
+    PetscInt :: co2_mnrl_id
     character(len=MAXWORDLENGTH) :: carbon_consumption_species
+    character(len=MAXWORDLENGTH) :: nh4_mnrl_name
+    character(len=MAXWORDLENGTH) :: o2_mnrl_name
+    character(len=MAXWORDLENGTH) :: no3_mnrl_name
+    character(len=MAXWORDLENGTH) :: no2_mnrl_name
+    character(len=MAXWORDLENGTH) :: doc_mnrl_name
+    character(len=MAXWORDLENGTH) :: co2_mnrl_name
     PetscReal :: f1
     PetscReal :: f2
     PetscReal :: f3
@@ -99,6 +111,12 @@ function CyberCreate()
   CyberCreate%biomass_id = UNINITIALIZED_INTEGER
   CyberCreate%co2_id = UNINITIALIZED_INTEGER
   CyberCreate%carbon_consumption_species_id = UNINITIALIZED_INTEGER
+  CyberCreate%nh4_mnrl_id = UNINITIALIZED_INTEGER
+  CyberCreate%o2_mnrl_id = UNINITIALIZED_INTEGER
+  CyberCreate%no3_mnrl_id = UNINITIALIZED_INTEGER
+  CyberCreate%no2_mnrl_id = UNINITIALIZED_INTEGER
+  CyberCreate%doc_mnrl_id = UNINITIALIZED_INTEGER
+  CyberCreate%co2_mnrl_id = UNINITIALIZED_INTEGER
   CyberCreate%f1 = UNINITIALIZED_DOUBLE  
   CyberCreate%f2 = UNINITIALIZED_DOUBLE  
   CyberCreate%f3 = UNINITIALIZED_DOUBLE  
@@ -133,6 +151,12 @@ function CyberCreate()
   CyberCreate%activation_energy = UNINITIALIZED_DOUBLE  
   CyberCreate%nrxn = UNINITIALIZED_INTEGER
   CyberCreate%carbon_consumption_species = ''
+  CyberCreate%nh4_mnrl_name = ''
+  CyberCreate%o2_mnrl_name = ''
+  CyberCreate%no3_mnrl_name = ''
+  CyberCreate%no2_mnrl_name = ''
+  CyberCreate%doc_mnrl_name = ''
+  CyberCreate%co2_mnrl_name = ''
   nullify(CyberCreate%nrow)
   nullify(CyberCreate%ncol)
   nullify(CyberCreate%irow)
@@ -251,6 +275,36 @@ subroutine CyberRead(this,input,option)
                            this%carbon_consumption_species,PETSC_TRUE)
         call InputErrorMsg(input,option,'carbon consumption species', &
                            error_string)
+      case('NH4_CONSUMPTION_MINERAL')
+        call InputReadWord(input,option, &
+                           this%nh4_mnrl_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'nh4 consumption mineral', &
+                           error_string)
+      case('O2_CONSUMPTION_MINERAL')
+        call InputReadWord(input,option, &
+                           this%o2_mnrl_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'o2 consumption mineral', &
+                           error_string)
+      case('NO3_CONSUMPTION_MINERAL')
+        call InputReadWord(input,option, &
+                           this%no3_mnrl_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'no3 consumption mineral', &
+                           error_string)
+      case('NO2_CONSUMPTION_MINERAL')
+        call InputReadWord(input,option, &
+                           this%no2_mnrl_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'no2 consumption mineral', &
+                           error_string)
+      case('DOC_CONSUMPTION_MINERAL')
+        call InputReadWord(input,option, &
+                           this%doc_mnrl_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'doc consumption mineral', &
+                           error_string)
+      case('CO2_CONSUMPTION_MINERAL')
+        call InputReadWord(input,option, &
+                           this%co2_mnrl_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'co2 consumption mineral', &
+                           error_string)
       case default
         call InputKeywordUnrecognized(word,error_string,option)
     end select
@@ -271,6 +325,7 @@ subroutine CyberSetup(this,reaction,option)
 
   use Reaction_Aux_module, only : reaction_type, GetPrimarySpeciesIDFromName
   use Reaction_Immobile_Aux_module, only : GetImmobileSpeciesIDFromName
+  use Reaction_Mineral_Aux_module, only : GetKineticMineralIDFromName
   use Option_module
 
   implicit none
@@ -312,8 +367,37 @@ subroutine CyberSetup(this,reaction,option)
   if (len_trim(this%carbon_consumption_species) > 0) then 
     word = this%carbon_consumption_species
     this%carbon_consumption_species_id = &
-      GetImmobileSpeciesIDFromName(word,reaction%immobile, &
-                                   PETSC_TRUE,option)
+      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
+  endif
+  if (len_trim(this%nh4_mnrl_name) > 0) then 
+    word = this%nh4_mnrl_name
+    this%nh4_mnrl_id = &
+      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
+  endif
+  if (len_trim(this%o2_mnrl_name) > 0) then 
+    word = this%o2_mnrl_name
+    this%o2_mnrl_id = &
+      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
+  endif
+  if (len_trim(this%no3_mnrl_name) > 0) then 
+    word = this%no3_mnrl_name
+    this%no3_mnrl_id = &
+      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
+  endif
+  if (len_trim(this%no2_mnrl_name) > 0) then 
+    word = this%no2_mnrl_name
+    this%no2_mnrl_id = &
+      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
+  endif
+  if (len_trim(this%doc_mnrl_name) > 0) then 
+    word = this%doc_mnrl_name
+    this%doc_mnrl_id = &
+      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
+  endif
+  if (len_trim(this%co2_mnrl_name) > 0) then 
+    word = this%co2_mnrl_name
+    this%co2_mnrl_id = &
+      GetImmobileSpeciesIDFromName(word,reaction%immobile,option)
   endif
   
   ! constants based on Hyun's writeup on 6/21/16 entitled "Mini-cybernetic 
@@ -613,6 +697,45 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
     ! Residual(this%co2_id) holds the production of co2(aq) in moles/sec
     i = reaction%offset_immobile + this%carbon_consumption_species_id
     Residual(i) = Residual(this%co2_id)
+  endif
+  
+  if (this%nh4_mnrl_id > 0) then
+    rt_auxvar%mnrl_rate(this%nh4_mnrl_id) = &
+      ! stoichiometries on left side of reaction are negative
+      -1.d0 * rate(ONE_INTEGER) * this%stoich_1_nh4
+    rt_auxvar%mnrl_rate(this%nh4_mnrl_id) = rt_auxvar%mnrl_rate(this%nh4_mnrl_id) - &
+      rate(TWO_INTEGER) * this%stoich_2_nh4
+    rt_auxvar%mnrl_rate(this%nh4_mnrl_id) = rt_auxvar%mnrl_rate(this%nh4_mnrl_id) - &
+      rate(THREE_INTEGER) * this%stoich_3_nh4
+  endif
+  if (this%no3_mnrl_id > 0) then
+    rt_auxvar%mnrl_rate(this%no3_mnrl_id) = &
+      -1.d0 * rate(ONE_INTEGER) * this%stoich_1_no3
+  endif
+  if (this%no2_mnrl_id > 0) then
+    rt_auxvar%mnrl_rate(this%no2_mnrl_id) = &
+      -1.d0 * rate(TWO_INTEGER) * this%stoich_2_no2
+  endif
+  if (this%o2_mnrl_id > 0) then
+    rt_auxvar%mnrl_rate(this%o2_mnrl_id) = &
+      -1.d0 * rate(THREE_INTEGER) * this%stoich_3_o2
+  endif
+  if (this%doc_mnrl_id > 0) then
+    rt_auxvar%mnrl_rate(this%doc_mnrl_id) = &
+      -1.d0 * rate(ONE_INTEGER) * this%stoich_1_doc
+    rt_auxvar%mnrl_rate(this%doc_mnrl_id) = rt_auxvar%mnrl_rate(this%doc_mnrl_id) - &
+      rate(TWO_INTEGER) * this%stoich_2_doc
+    rt_auxvar%mnrl_rate(this%doc_mnrl_id) = rt_auxvar%mnrl_rate(this%doc_mnrl_id) - &
+      rate(THREE_INTEGER) * this%stoich_3_doc
+  endif
+  if (this%co2_mnrl_id > 0) then
+    rt_auxvar%mnrl_rate(this%co2_mnrl_id) = &
+      ! stoichiometries on right side of reaction are positive
+      rate(ONE_INTEGER) * this%stoich_1_co2
+    rt_auxvar%mnrl_rate(this%co2_mnrl_id) = rt_auxvar%mnrl_rate(this%co2_mnrl_id) + &
+      rate(TWO_INTEGER) * this%stoich_2_co2
+    rt_auxvar%mnrl_rate(this%co2_mnrl_id) = rt_auxvar%mnrl_rate(this%co2_mnrl_id) + &
+      rate(THREE_INTEGER) * this%stoich_3_co2
   endif
   
   if (compute_derivative) then
