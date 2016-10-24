@@ -12,10 +12,6 @@ END
 
 SUBSURFACE
 
-DEBUG
-  PRINT_JACOBIAN
-/
-
 #=========================== regression =======================================
 REGRESSION
   CELLS
@@ -47,41 +43,14 @@ CHEMISTRY
   IMMOBILE_SPECIES
     C_consumption
   /
-skip
-  MINERALS
-    NH4_consumed
-    O2_consumed
-    NO3_consumed
-    NO2_consumed
-    DOC_consumed
-    CO2_produced
-  /
-  MINERAL_KINETICS
-    NH4_consumed
-      RATE_CONSTANT 0.d0
-    /
-    O2_consumed
-      RATE_CONSTANT 0.d0
-    /
-    NO3_consumed
-      RATE_CONSTANT 0.d0
-    /
-    NO2_consumed
-      RATE_CONSTANT 0.d0
-    /
-    DOC_consumed
-      RATE_CONSTANT 0.d0
-    /
-    CO2_produced
-      RATE_CONSTANT 0.d0
-    /
-  /
-noskip
   REACTION_SANDBOX 
     CYBERNETIC
       F1    0.497d0
       F2    0.999d0
       F3    0.066d0
+#      F1    1.d0
+#      F2    1.d0
+#      F3    1.d0
       K1    25.04d0 1/d
       Ka1   0.001d0 mM
       Kd1   0.25d0 mM
@@ -92,18 +61,12 @@ noskip
       Ka3   0.001d0 mM
       Kd3   0.25d0 mM
       Kdeg  0.532d0 1/d
+#      Kdeg  0.d0
       F_act 0.126d0
+#      F_act 1.d0
       ACTIVATION_ENERGY 89.d-3 kJ/mol  ! 89.d0 J/mol
       STORE_CONSUMPTION_PRODUCTION
       CARBON_CONSUMPTION_SPECIES C_consumption
-skip
-      NH4_CONSUMPTION_MINERAL NH4_consumed
-      O2_CONSUMPTION_MINERAL O2_consumed
-      NO3_CONSUMPTION_MINERAL NO3_consumed
-      NO2_CONSUMPTION_MINERAL NO2_consumed
-      DOC_CONSUMPTION_MINERAL DOC_consumed
-      CO2_PRODUCTION_MINERAL CO2_produced
-noskip
     /
   /
   DATABASE ./cybernetic.dat
@@ -152,7 +115,7 @@ END
 OUTPUT
 #  TIMES y 5. 10. 15. 20.
 #  FORMAT TECPLOT POINT
-  PERIODIC_OBSERVATION TIMESTEP 1
+#  PERIODIC_OBSERVATION TIMESTEP 1
 END
 
 #=========================== times ============================================

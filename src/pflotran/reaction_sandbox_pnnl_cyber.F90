@@ -504,14 +504,14 @@ subroutine CyberAuxiliaryPlotVariables(this,list,reaction,option)
   if (this%store_cumulative_mass) then
     do i = 1, 6
       word = trim(names(i)) // ' Rate'
-      units = 'mol/sec'
+      units = 'mol/m^3-sec'
       call OutputVariableAddToList(list,word,OUTPUT_RATE,units, &
                                    REACTION_AUXILIARY, &
                                    this%offset_auxiliary+indices(i))
     enddo
     do i = 1, 6
       word = trim(names(i)) // ' Cum. Mass'
-      units = 'moles'
+      units = 'mol/m^3'
       call OutputVariableAddToList(list,word,OUTPUT_GENERIC,units, &
                                    REACTION_AUXILIARY, &
                                    this%offset_auxiliary+6+indices(i))
@@ -581,13 +581,15 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   PetscReal :: molality_to_molarity
   PetscReal :: temperature_scaling_factor
   PetscReal :: k1_scaled, k2_scaled, k3_scaled, k_deg_scaled
+  PetscReal :: volume, rate_scale
 
   PetscReal :: rate(3), derivative_col(6,3)
   
+  volume = material_auxvar%volume
   L_water = material_auxvar%porosity*global_auxvar%sat(iphase)* &
-            material_auxvar%volume*1.d3 ! m^3 -> L
+            volume*1.d3 ! m^3 -> L
   kg_water = material_auxvar%porosity*global_auxvar%sat(iphase)* &
-             global_auxvar%den_kg(iphase)*material_auxvar%volume
+             global_auxvar%den_kg(iphase)*volume
 
   molality_to_molarity = global_auxvar%den_kg(iphase)*1.d-3
     
@@ -668,14 +670,14 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
       Residual(this%irow(i,irxn)) = Residual(this%irow(i,irxn)) - &
         this%stoich_row(i,irxn) * rate(irxn) * X * &
         ! if biomass is aqueous multiply by L_water
-        ! if biomass is immobile multiply by material_auxvar%volume
+        ! if biomass is immobile multiply by volume
         L_water
     enddo
   enddo
   
   ! decay of biomass
   ! if biomass is aqueous multiply by L_water
-  ! if biomass is immobile multiply by material_auxvar%volume
+  ! if biomass is immobile multiply by volume
   Residual(this%biomass_id) = Residual(this%biomass_id) + &
                               k_deg_scaled * X * L_water
 
@@ -693,44 +695,50 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   endif
   
   if (this%store_cumulative_mass) then
+    ! rate units are mol/mol biomass/sec
+    ! if biomass is aqueous, multiply by L_water and divide by volume
+    rate_scale = X * L_water / volume
+    ! if biomass is immobile, do nothing unit units are per m^3 bulk
+    !rate_scale = X 
+    ! all "scaled" rates here are moles/m^3-sec
     ! nh4
     i = this%offset_auxiliary + NH4_MASS_STORAGE_INDEX
     rt_auxvar%auxiliary_data(i) = &
       ! stoichiometries on left side of reaction are negative
-      -1.d0 * rate(ONE_INTEGER) * this%stoich_1_nh4
+      -1.d0 * rate(ONE_INTEGER) * this%stoich_1_nh4 * rate_scale
     rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) - &
-      rate(TWO_INTEGER) * this%stoich_2_nh4
+      rate(TWO_INTEGER) * this%stoich_2_nh4 * rate_scale
     rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) - &
-      rate(THREE_INTEGER) * this%stoich_3_nh4
+      rate(THREE_INTEGER) * this%stoich_3_nh4 * rate_scale
     ! no3
     i = this%offset_auxiliary + NO3_MASS_STORAGE_INDEX
     rt_auxvar%auxiliary_data(i) = &
-      -1.d0 * rate(ONE_INTEGER) * this%stoich_1_no3
+      -1.d0 * rate(ONE_INTEGER) * this%stoich_1_no3 * rate_scale
     ! no2
     i = this%offset_auxiliary + NO2_MASS_STORAGE_INDEX
     rt_auxvar%auxiliary_data(i) = &
-      -1.d0 * rate(TWO_INTEGER) * this%stoich_2_no2
+      -1.d0 * rate(TWO_INTEGER) * this%stoich_2_no2 * rate_scale
     ! o2
     i = this%offset_auxiliary + O2_MASS_STORAGE_INDEX
     rt_auxvar%auxiliary_data(i) = &
-      -1.d0 * rate(THREE_INTEGER) * this%stoich_3_o2
+      -1.d0 * rate(THREE_INTEGER) * this%stoich_3_o2 * rate_scale
     ! doc
     i = this%offset_auxiliary + DOC_MASS_STORAGE_INDEX
     rt_auxvar%auxiliary_data(i) = &
-      -1.d0 * rate(ONE_INTEGER) * this%stoich_1_doc
+      -1.d0 * rate(ONE_INTEGER) * this%stoich_1_doc * rate_scale
     rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) - &
-      rate(TWO_INTEGER) * this%stoich_2_doc
+      rate(TWO_INTEGER) * this%stoich_2_doc * rate_scale
     rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) - &
-      rate(THREE_INTEGER) * this%stoich_3_doc
+      rate(THREE_INTEGER) * this%stoich_3_doc * rate_scale
     ! co2
     i = this%offset_auxiliary + CO2_MASS_STORAGE_INDEX
     rt_auxvar%auxiliary_data(i) = &
       ! stoichiometries on right side of reaction are positive
-      rate(ONE_INTEGER) * this%stoich_1_co2
+      rate(ONE_INTEGER) * this%stoich_1_co2 * rate_scale
     rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) + &
-      rate(TWO_INTEGER) * this%stoich_2_co2
+      rate(TWO_INTEGER) * this%stoich_2_co2 * rate_scale
     rt_auxvar%auxiliary_data(i) = rt_auxvar%auxiliary_data(i) + &
-      rate(THREE_INTEGER) * this%stoich_3_co2
+      rate(THREE_INTEGER) * this%stoich_3_co2 * rate_scale
   endif
   
   if (compute_derivative) then
@@ -827,8 +835,7 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
         enddo
       enddo
       ! if biomass is aqueous, units = kg water/sec. Multiply by kg_water
-      ! if biomass is immobile, units = m^3 bulk/sec. Multiply by 
-      !   material_auxvar%volume
+      ! if biomass is immobile, units = m^3 bulk/sec. Multiply by volume
       do i = 1, this%nrow(irxn)
         Jacobian(this%irow(i,irxn),this%biomass_id) = &
           Jacobian(this%irow(i,irxn),this%biomass_id) - &
@@ -838,8 +845,7 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
 
     ! decay of biomass
     ! if biomass is aqueous, units = kg water/sec. Multiply by kg_water
-    ! if biomass is immobile, units = m^3 bulk/sec. Multiply by 
-    !   material_auxvar%volume
+    ! if biomass is immobile, units = m^3 bulk/sec. Multiply by volume
     Jacobian(this%biomass_id,this%biomass_id) = &
       Jacobian(this%biomass_id,this%biomass_id) + &
       k_deg_scaled * kg_water
@@ -899,7 +905,7 @@ subroutine CyberUpdateKineticState(this,rt_auxvar,global_auxvar, &
       ! rate is in mol/sec
       icum = icum + 1
       rt_auxvar%auxiliary_data(icum) = rt_auxvar%auxiliary_data(icum) + &
-        rt_auxvar%auxiliary_data(irate+i) * &
+        rt_auxvar%auxiliary_data(irate+i) * &  ! mole/m^3-second
         option%tran_dt
     enddo
   endif
