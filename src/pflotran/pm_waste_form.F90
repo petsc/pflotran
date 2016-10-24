@@ -1192,8 +1192,8 @@ subroutine PMWFAssociateRegion(this,region_list)
         new_region => RegionCreate(local_id)
         write(word1,'(i6)') coordinate_counter
         write(word2,'(i6)') option%myrank
-        new_region%name = 'WF_COORDINATE_' // trim(word1) // '_p' //  &
-                          trim(word2)
+        new_region%name = 'WF_COORDINATE_' // trim(adjustl(word1)) // '_p' //  &
+                          trim(adjustl(word2))
         cur_waste_form%region => new_region
         call RegionAddToList(new_region,region_list)
         allocate(cur_waste_form%scaling_factor(1))
