@@ -98,7 +98,6 @@ module PM_Waste_Form_class
 ! --------------- waste form types --------------------------------------------
   type :: waste_form_base_type
     PetscInt :: id
-    PetscInt :: local_cell_id
     type(point3d_type) :: coordinate
     character(len=MAXWORDLENGTH) :: region_name
     type(region_type), pointer :: region
@@ -341,7 +340,6 @@ function WasteFormCreate()
 
   allocate(WasteFormCreate)
   WasteFormCreate%id = UNINITIALIZED_INTEGER
-  WasteFormCreate%local_cell_id = UNINITIALIZED_INTEGER
   WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
@@ -1076,8 +1074,16 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
         option%io_buffer = 'VOLUME must be specified for all waste forms.'
         call printErrMsg(option)
       endif
-      if (Uninitialized(new_waste_form%coordinate%z)) then
-        option%io_buffer = 'COORDINATE must be specified for all waste forms.'
+      if (Uninitialized(new_waste_form%coordinate%z) .and. &
+          (len(trim(new_waste_form%region_name)) == 0)) then
+        option%io_buffer = 'Either COORDINATE or REGION must be specified &
+                           &for all waste forms.'
+        call printErrMsg(option)
+      endif
+      if (Initialized(new_waste_form%coordinate%z) .and. &
+          (len(trim(new_waste_form%region_name)) > 0)) then
+        option%io_buffer = 'Either COORDINATE or REGION must be specified &
+                           &for all waste forms, but not both.'
         call printErrMsg(option)
       endif
       if (new_waste_form%mech_name == '') then
@@ -1086,7 +1092,6 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
         call printErrMsg(option)
       endif
       !note: do not throw error if EXPOSURE_FACTOR isn't specified (default = 1)
-      !note: do not throw error if REGION isn't specified (its optional)
       
       if (.not.associated(this%waste_form_list)) then
         this%waste_form_list => new_waste_form
@@ -1121,15 +1126,19 @@ end subroutine PMWFReadWasteForm
 
 subroutine PMWFAssociateRegion(this,region_list)
   ! 
-  ! Associates the waste form to its assigned (optional) region.
+  ! Associates the waste form to its assigned region via the REGION keyword
+  ! or the COORDINATE keyword.
   ! 
   ! Author: Jenn Frederick
-  ! Date: 10/20/2016
+  ! Date: 10/24/2016
   !
 
   use Region_module
   use Option_module
   use String_module
+  use Grid_module
+  use Grid_Structured_module
+  use Grid_Unstructured_module
 
   implicit none
   
@@ -1137,17 +1146,60 @@ subroutine PMWFAssociateRegion(this,region_list)
   type(region_list_type), pointer :: region_list
   
   type(region_type), pointer :: cur_region
+  type(region_type), pointer :: new_region
   class(waste_form_base_type), pointer :: cur_waste_form
   type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  character(len=MAXWORDLENGTH) :: word1, word2
   PetscBool :: matched
+  PetscReal :: x, y, z
+  PetscInt :: i, j, k
+  PetscInt :: local_id(1)
+  PetscInt :: coordinate_counter
   
   option => this%option
+  grid => this%realization%patch%grid
+  coordinate_counter = 0
   
   cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit
-    ! 
-    if (len(trim(cur_waste_form%region_name)) > 0) then
+    ! if COORDINATE was given, auto-create a region for it
+    if (Initialized(cur_waste_form%coordinate%z)) then
+      local_id(1) = -1
+      coordinate_counter = coordinate_counter + 1
+      x = cur_waste_form%coordinate%x
+      y = cur_waste_form%coordinate%y
+      z = cur_waste_form%coordinate%z
+      select case(grid%itype)
+        case(STRUCTURED_GRID)
+          call StructGridGetIJKFromCoordinate(grid%structured_grid,x,y,z, &
+                                              i,j,k)
+          if (i > 0 .and. j > 0 .and. k > 0) then
+            local_id(1) = i + (j-1)*grid%structured_grid%nlx + &
+                        (k-1)*grid%structured_grid%nlxy
+          endif
+        case(IMPLICIT_UNSTRUCTURED_GRID)
+          call UGridGetCellFromPoint(x,y,z, &
+                                     grid%unstructured_grid,option,local_id(1))
+        case default
+          option%io_buffer = 'Only STRUCTURED_GRID and &
+                    &IMPLICIT_UNSTRUCTURED_GRID types supported in PMWasteForm.'
+          call printErrMsg(option)
+      end select
+      ! create the region only if the current process owns the waste form
+      if (local_id(1) > 0) then
+        new_region => RegionCreate(local_id)
+        write(word1,'(i6)') coordinate_counter
+        write(word2,'(i6)') option%myrank
+        new_region%name = 'WF_COORDINATE_' // trim(word1) // '_p' //  &
+                          trim(word2)
+        cur_waste_form%region => new_region
+        call RegionAddToList(new_region,region_list)
+        allocate(cur_waste_form%scaling_factor(1))
+        cur_waste_form%scaling_factor(1) = 1.d0
+      endif
+    else
       cur_region => region_list%first
       do
         if (.not.associated(cur_region)) exit
@@ -1156,7 +1208,6 @@ subroutine PMWFAssociateRegion(this,region_list)
                           trim(cur_waste_form%region_name))) then
           cur_waste_form%region => cur_region
           matched = PETSC_TRUE
-          call PMWFSetRegionScaling(this,cur_waste_form)
         endif
         if (matched) exit
         cur_region => cur_region%next
@@ -1166,6 +1217,7 @@ subroutine PMWFAssociateRegion(this,region_list)
                            trim(cur_waste_form%region_name) // ' not found.'
         call printErrMsg(option)
       endif
+      call PMWFSetRegionScaling(this,cur_waste_form)
     endif
     !
     cur_waste_form => cur_waste_form%next
@@ -1195,20 +1247,24 @@ subroutine PMWFSetRegionScaling(this,waste_form)
   
   class(material_auxvar_type), pointer :: material_auxvars(:)
   PetscInt :: k, cell_id
-  PetscReal :: total_volume
+  PetscReal :: total_volume_local, total_volume_global
   PetscErrorCode :: ierr
   
   material_auxvars => this%realization%patch%aux%Material%auxvars
   allocate(waste_form%scaling_factor(waste_form%region%num_cells))
-  total_volume = 0.d0
+  total_volume_local = 0.d0
+  total_volume_global = 0.d0
   
   ! scale by cell volume
   do k = 1,waste_form%region%num_cells
     cell_id = waste_form%region%cell_ids(k)
     waste_form%scaling_factor(k) = material_auxvars(cell_id)%volume ! [m^3]
-    total_volume = total_volume + material_auxvars(cell_id)%volume  ! [m^3]
+    total_volume_local = total_volume_local &
+                         + material_auxvars(cell_id)%volume  ! [m^3]
   enddo
-  waste_form%scaling_factor = waste_form%scaling_factor/total_volume  ! [-]
+  call MPI_Allreduce(total_volume_local,total_volume_global,ONE_INTEGER_MPI, &
+              MPI_DOUBLE_PRECISION,MPI_SUM,this%realization%option%mycomm,ierr)
+  waste_form%scaling_factor = waste_form%scaling_factor/total_volume_global 
   
 end subroutine PMWFSetRegionScaling
 
@@ -1235,10 +1291,13 @@ end subroutine PMWFSetRealization
 
 subroutine PMWFSetup(this)
   ! 
-  ! Maps waste forms to grid cells
+  ! Associates the waste forms to their regions and sets the waste form id.
+  ! Throws out waste forms on processes that do not own the waste form region.
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/26/15
+  !
+  ! Notes: Updated/modified by Jennifer Frederick, 10/24/2016.
 
   use Grid_module
   use Grid_Structured_module
@@ -1250,23 +1309,20 @@ subroutine PMWFSetup(this)
   
   class(pm_waste_form_type) :: this
   
-  type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
+  character(len=MAXWORDLENGTH) :: species_name
   class(waste_form_base_type), pointer :: cur_waste_form, prev_waste_form
   class(waste_form_base_type), pointer :: next_waste_form
   class(wf_mechanism_base_type), pointer :: cur_mechanism
-  character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: species_name
-  PetscInt :: i, j, k, local_id
-  PetscReal :: x, y, z
   PetscInt :: waste_form_id
-  PetscInt :: temp_int_local, temp_int_global
-  PetscErrorCode :: ierr
+  PetscBool :: local
   
-  grid => this%realization%patch%grid
   option => this%realization%option
   reaction => this%realization%reaction
+  
+  ! point the waste form region to the desired region 
+  call PMWFAssociateRegion(this,this%realization%patch%region_list)
   
   waste_form_id = 0
   nullify(prev_waste_form)
@@ -1274,34 +1330,18 @@ subroutine PMWFSetup(this)
   do
     if (.not.associated(cur_waste_form)) exit
     waste_form_id = waste_form_id + 1
-    local_id = -1
-    x = cur_waste_form%coordinate%x
-    y = cur_waste_form%coordinate%y
-    z = cur_waste_form%coordinate%z
-    select case(grid%itype)
-      case(STRUCTURED_GRID)
-        call StructGridGetIJKFromCoordinate(grid%structured_grid,x,y,z, &
-                                            i,j,k)
-        if (i > 0 .and. j > 0 .and. k > 0) then
-          local_id = i + (j-1)*grid%structured_grid%nlx + &
-                      (k-1)*grid%structured_grid%nlxy
-        endif
-      case(IMPLICIT_UNSTRUCTURED_GRID)
-        call UGridGetCellFromPoint(x,y,z, &
-                                   grid%unstructured_grid,option,local_id)
-      case default
-          option%io_buffer = 'Only STRUCTURED_GRID and ' // &
-            'IMPLICIT_UNSTRUCTURED_GRID types supported in PMWasteForm.'
-          call printErrMsg(option)
-    end select
-    if (local_id > 0) then
+    local = PETSC_FALSE
+    if (associated(cur_waste_form%region)) then
+      if (cur_waste_form%region%num_cells > 0) then
+          local = PETSC_TRUE
+      endif
+    endif
+    if (local) then
       cur_waste_form%id = waste_form_id
-      cur_waste_form%local_cell_id = local_id
       prev_waste_form => cur_waste_form
       cur_waste_form => cur_waste_form%next
-      temp_int_local = 1
     else
-      ! remove waste form
+      ! remove waste form because it is not local
       next_waste_form => cur_waste_form%next
       if (associated(prev_waste_form)) then
         prev_waste_form%next => next_waste_form
@@ -1310,28 +1350,6 @@ subroutine PMWFSetup(this)
       endif
       deallocate(cur_waste_form)
       cur_waste_form => next_waste_form
-      temp_int_local = 0
-    endif
-    ! check to ensure that the waste form is defined within the domain, and
-    ! that its located only once within the domain.
-    call MPI_Allreduce(temp_int_local,temp_int_global,ONE_INTEGER_MPI, &
-                       MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
-    if (temp_int_global /= 1) then
-      write(word,*) x
-      option%io_buffer = word
-      write(word,*) y
-      option%io_buffer = trim(option%io_buffer) // ' ' // word
-      write(word,*) z
-      option%io_buffer = trim(option%io_buffer) // ' ' // word
-      if (temp_int_global == 0) then
-        option%io_buffer = 'Waste form coordinate (' // &
-          trim(option%io_buffer) // ') is outside domain.'
-      else
-        option%io_buffer = 'Waste form coordinate (' // &
-                           trim(option%io_buffer) // &
-                           ') is defined more than once within domain.'
-      endif
-      call printErrMsg(option)
     endif
   enddo
   
@@ -1386,7 +1404,7 @@ end subroutine PMWFSetup
   PetscInt :: num_waste_form_cells
   PetscInt :: num_species
   PetscInt :: size_of_vec
-  PetscInt :: i, j
+  PetscInt :: i, j, k
   PetscInt :: data_mediator_species_id
   PetscInt, allocatable :: species_indices_in_residual(:)
   PetscErrorCode :: ierr
@@ -1446,9 +1464,6 @@ end subroutine PMWFSetup
     cur_waste_form => cur_waste_form%next
   enddo
   
-  ! point the waste form region to the desired region (if applicable)
-  call PMWFAssociateRegion(this,this%realization%patch%region_list)
-  
   ! restart
   if (this%option%restart_flag .and. &
       this%option%overwrite_restart_transport) then
@@ -1463,15 +1478,16 @@ end subroutine PMWFSetup
   call RealizCreateTranMassTransferVec(this%realization)
   this%data_mediator => DataMediatorVecCreate()
   call this%data_mediator%AddToList(this%realization%tran_data_mediator_list)
-  ! create a Vec sized by # waste packages * # primary dofs influenced by 
-  ! waste package
+  ! create a Vec sized by # waste packages * # waste package cells in region *
+  ! # primary dofs influenced by waste package
   ! count of waste form cells
   cur_waste_form => this%waste_form_list
   num_waste_form_cells = 0
   size_of_vec = 0
   do
     if (.not.associated(cur_waste_form)) exit
-    size_of_vec = size_of_vec + cur_waste_form%mechanism%num_species
+    size_of_vec = size_of_vec + (cur_waste_form%mechanism%num_species * &
+                                 cur_waste_form%region%num_cells)
     num_waste_form_cells = num_waste_form_cells + 1
     cur_waste_form => cur_waste_form%next
   enddo
@@ -1486,11 +1502,13 @@ end subroutine PMWFSetup
     i = 0
     do
       if (.not.associated(cur_waste_form)) exit
-      do j = 1,cur_waste_form%mechanism%num_species
-        i = i + 1
-        species_indices_in_residual(i) = &
-          (cur_waste_form%local_cell_id-1)*this%option%ntrandof + &
-          cur_waste_form%mechanism%rad_species_list(j)%ispecies
+      do k = 1,cur_waste_form%region%num_cells
+        do j = 1,cur_waste_form%mechanism%num_species
+          i = i + 1
+          species_indices_in_residual(i) = &
+              (cur_waste_form%region%cell_ids(k)-1)*this%option%ntrandof + &
+              cur_waste_form%mechanism%rad_species_list(j)%ispecies
+        enddo
       enddo
       cur_waste_form => cur_waste_form%next
     enddo                             ! zero-based indexing
@@ -1545,7 +1563,8 @@ subroutine PMWFInitializeTimestep(this)
   PetscReal :: rate
   PetscReal :: dV
   PetscReal :: dt
-  PetscInt :: k, p, g, d
+  PetscReal :: avg_temp
+  PetscInt :: k, p, g, d, f
   PetscInt :: num_species
   PetscErrorCode :: ierr
   PetscInt :: cell_id, idof
@@ -1621,11 +1640,12 @@ subroutine PMWFInitializeTimestep(this)
         cur_waste_form%eff_canister_vit_rate = &
           cur_waste_form%eff_canister_vit_rate   
       else
+        avg_temp = (sum(global_auxvars(grid%nL2G(cur_waste_form%region% &
+                   cell_ids))%temp)/cur_waste_form%region%num_cells)+273.15d0
         cur_waste_form%eff_canister_vit_rate = &
           cur_waste_form%canister_vitality_rate * &
           exp( cwfm%canister_material_constant * ( (1.d0/333.15d0) - &
-          (1.d0/(global_auxvars(grid%nL2G(cur_waste_form%local_cell_id))% &
-           temp+273.15d0))) )
+          (1.d0/(avg_temp))) )
       endif
       cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
                                  - (cur_waste_form%eff_canister_vit_rate*dt)
@@ -1653,21 +1673,24 @@ subroutine PMWFInitializeTimestep(this)
            cwfm%rad_species_list(k)%formula_weight
         ! update transport solution vector with mass injection molality
         ! as an alternative to a source term (issue with tran_dt changing)
-        cell_id = cur_waste_form%local_cell_id
-        idof = cwfm%rad_species_list(k)%ispecies + &
-               ((cell_id - 1) * option%ntrandof) 
-        inst_release_molality = &                    ! [mol-rad/kg-water]
-           ! [mol-rad]
-          (cur_waste_form%inst_release_amount(k) * & ! [mol-rad/g-matrix]
-           cur_waste_form%volume * &                 ! [m^3-matrix]
-           cwfm%matrix_density * &                   ! [kg-matrix/m^3-matrix] 
-           1.d3) / &                                ! [kg-matrix] -> [g-matrix]
-           ! [kg-water]
-          (material_auxvars(cell_id)%porosity * &         ! [-]
-           global_auxvars(cell_id)%sat(LIQUID_PHASE) * &  ! [-]
-           material_auxvars(cell_id)%volume * &           ! [m^3]
-           global_auxvars(cell_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
-        xx_p(idof) = xx_p(idof) + inst_release_molality
+        do f = 1, cur_waste_form%region%num_cells
+          cell_id = cur_waste_form%region%cell_ids(f)
+          inst_release_molality = &                    ! [mol-rad/kg-water]
+            ! [mol-rad]
+            (cur_waste_form%inst_release_amount(k) * & ! [mol-rad/g-matrix]
+             cur_waste_form%volume * &                 ! [m^3-matrix]
+             cwfm%matrix_density * &                   ! [kg-matrix/m^3-matrix] 
+             1.d3) / &                               ! [kg-matrix] -> [g-matrix]
+             ! [kg-water]
+            (material_auxvars(cell_id)%porosity * &         ! [-]
+             global_auxvars(cell_id)%sat(LIQUID_PHASE) * &  ! [-]
+             material_auxvars(cell_id)%volume * &           ! [m^3]
+             global_auxvars(cell_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
+          idof = cwfm%rad_species_list(k)%ispecies + &
+                 ((cell_id - 1) * option%ntrandof) 
+          xx_p(idof) = xx_p(idof) + & 
+                       (inst_release_molality*cur_waste_form%scaling_factor(f))
+        enddo
       enddo
       cur_waste_form%breached = PETSC_TRUE 
       cur_waste_form%breach_time = option%time
@@ -1832,7 +1855,6 @@ subroutine PMWFSolve(this,time,ierr)
       call cur_waste_form%mechanism%Dissolution(cur_waste_form,this,ierr)
       ! calculate the instantaneous mass rate [mol/sec]:
       do j = 1,num_species
-        i = i + 1
         cur_waste_form%instantaneous_mass_rate(j) = &
           (cur_waste_form%eff_dissolution_rate / &            ! kg-matrix/sec
            cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kg-rad/kmol-rad
@@ -1842,30 +1864,22 @@ subroutine PMWFSolve(this,time,ierr)
           ! ignore source term if dsnf type, and directly update the
           ! solution vector instead (see note in WFMechDSNFDissolution):
           type is(wf_mechanism_dsnf_type)
-            vec_p(i) = 0.d0                                  ! mol/sec
-            inst_diss_molality = 0.d0                        ! mol-rad/kg-water            
-            cell_id = cur_waste_form%local_cell_id
-            inst_diss_molality = &                           ! mol-rad/kg-water
-              cur_waste_form%instantaneous_mass_rate(j) * &  ! mol-rad/sec
-              this%realization%option%tran_dt / &            ! sec
-              ! [kg-water]
-              (material_auxvars(cell_id)%porosity * &        ! [-]
-               global_auxvars(cell_id)%sat(LIQUID_PHASE) * & ! [-]
-               material_auxvars(cell_id)%volume * &          ! [m^3]
-               global_auxvars(cell_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
-            if (associated(cur_waste_form%region)) then
-              do k = 1,cur_waste_form%region%num_cells
-                cell_id = cur_waste_form%region%cell_ids(k)
-                idof = cwfm%rad_species_list(j)%ispecies + &
-                       ((cell_id - 1) * this%option%ntrandof)
-                xx_p(idof) = xx_p(idof) + &  ! mol-rad/kg-water
-                           (inst_diss_molality*cur_waste_form%scaling_factor(k))  
-              enddo
-            else
+            inst_diss_molality = 0.d0                        ! mol-rad/kg-water
+            do k = 1,cur_waste_form%region%num_cells
+              cell_id = cur_waste_form%region%cell_ids(k)
+              inst_diss_molality = &                          ! mol-rad/kg-water
+                cur_waste_form%instantaneous_mass_rate(j) * &  ! mol-rad/sec
+                this%realization%option%tran_dt / &            ! sec
+                ! [kg-water]
+                (material_auxvars(cell_id)%porosity * &        ! [-]
+                 global_auxvars(cell_id)%sat(LIQUID_PHASE) * & ! [-]
+                 material_auxvars(cell_id)%volume * &          ! [m^3]
+                 global_auxvars(cell_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
               idof = cwfm%rad_species_list(j)%ispecies + &
                      ((cell_id - 1) * this%option%ntrandof)
-              xx_p(idof) = xx_p(idof) + inst_diss_molality    ! mol-rad/kg-water
-            endif
+              xx_p(idof) = xx_p(idof) + &  ! mol-rad/kg-water
+                           (inst_diss_molality*cur_waste_form%scaling_factor(k))  
+            enddo
             ! update the cumulative mass now, not at next timestep:
             cur_waste_form%cumulative_mass(j) = &
               cur_waste_form%cumulative_mass(j) + &          ! mol-rad
@@ -1876,7 +1890,11 @@ subroutine PMWFSolve(this,time,ierr)
           ! for all other waste form types, load the source term, and update
           ! the cumulative mass and volume at next timestep:
           class default
-            vec_p(i) = cur_waste_form%instantaneous_mass_rate(j)  ! mol/sec
+            do k = 1,cur_waste_form%region%num_cells
+              i = i + 1
+              vec_p(i) = cur_waste_form%instantaneous_mass_rate(j) * &
+                         cur_waste_form%scaling_factor(k)  ! mol/sec * [-]
+            enddo
         end select
       enddo
       ! count the number of times FMDM was called:
@@ -1953,6 +1971,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_auxvars(:)                                                                    ! 1/day -> 1/sec
   PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
+  PetscReal :: avg_temp
 
   grid => pm%realization%patch%grid
   global_auxvars => pm%realization%patch%aux%Global%auxvars
@@ -1965,9 +1984,11 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   ! (CSD-C Waste). KIT Scientific Reports 7624. Karlsruhe Institute of
   ! Technology, Baden-Wurttemberg, Germany.
   
+  avg_temp = (sum(global_auxvars(grid%nL2G(waste_form%region%cell_ids))% &
+              temp)/waste_form%region%num_cells)+273.15d0
+  
   ! kg-glass/m^2/sec
-  this%dissolution_rate = time_conversion * 560.d0*exp(-7397.d0/ &
-    (global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp+273.15d0))
+  this%dissolution_rate = time_conversion * 560.d0*exp(-7397.d0/avg_temp)
 
   ! kg-glass/sec
   waste_form%eff_dissolution_rate = &
@@ -2062,7 +2083,7 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   
   type(grid_type), pointer :: grid
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
-  PetscInt :: i
+  PetscInt :: i, k
   PetscInt :: icomp_fmdm
   PetscInt :: icomp_pflotran
   PetscInt :: ghosted_id
@@ -2073,6 +2094,7 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   logical ( kind = 4) :: initialRun
   PetscReal :: time
   PetscReal :: Usource
+  PetscReal :: avg_temp
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(option_type), pointer :: option
  !========================================================
@@ -2084,13 +2106,16 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
 
   ierr = 0
   
-  ghosted_id = grid%nL2G(waste_form%local_cell_id)
-  ! overwrite the components in mapping_pflotran array
-  do i = 1, size(this%mapping_fmdm)
-    icomp_fmdm = this%mapping_fmdm(i)
-    icomp_pflotran = this%mapping_fmdm_to_pflotran(icomp_fmdm)
-    this%concentration(icomp_fmdm,1) = &
-      rt_auxvars(ghosted_id)%total(icomp_pflotran,LIQUID_PHASE)
+  do k = 1,waste_form%region%num_cells
+    ghosted_id = grid%nL2G(waste_form%region%cell_ids(k))
+    ! overwrite the components in mapping_pflotran array
+    do i = 1, size(this%mapping_fmdm)
+      icomp_fmdm = this%mapping_fmdm(i)
+      icomp_pflotran = this%mapping_fmdm_to_pflotran(icomp_fmdm)
+      this%concentration(icomp_fmdm,1) = &
+        rt_auxvars(ghosted_id)%total(icomp_pflotran,LIQUID_PHASE)
+        !jmf: ?? * waste_form%scaling_factor(k)
+    enddo
   enddo
   
   if (waste_form%volume /= waste_form%init_volume) then
@@ -2103,10 +2128,10 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
  ! FMDM model calculates this%dissolution_rate and Usource [g/m^2/yr]:
  !====================================================================
   time = option%time
-  call AMP_step(this%burnup, time, &
-       global_auxvars(grid%nL2G(waste_form%local_cell_id))%temp, &
-       this%concentration, initialRun, this%dissolution_rate, &
-       Usource, success) 
+  avg_temp = (sum(global_auxvars(grid%nL2G(cur_waste_form%region% &
+             cell_ids))%temp)/cur_waste_form%region%num_cells)
+  call AMP_step(this%burnup, time, avg_temp, this%concentration, &
+                initialRun, this%dissolution_rate, Usource, success) 
  !====================================================================
   
   ! convert this%dissolution_rate from fmdm to pflotran units:
@@ -2369,17 +2394,21 @@ subroutine PMWFOutputHeader(this)
   cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit
-    ! cell natural id
-    write(cell_string,*) grid%nG2A(grid%nL2G(cur_waste_form%local_cell_id))
-    cell_string = ' (' // trim(adjustl(cell_string)) // ')'
-    ! coordinate of waste form
-    x_string = BestFloat(cur_waste_form%coordinate%x,1.d4,1.d-2)
-    y_string = BestFloat(cur_waste_form%coordinate%y,1.d4,1.d-2)
-    z_string = BestFloat(cur_waste_form%coordinate%z,1.d4,1.d-2)
-    cell_string = trim(cell_string) // &
-             ' (' // trim(adjustl(x_string)) // &
-             ' ' // trim(adjustl(y_string)) // &
-             ' ' // trim(adjustl(z_string)) // ')'
+    if (initialized(cur_waste_form%coordinate%z)) then
+      ! cell natural id
+      write(cell_string,*) grid%nG2A(grid%nL2G(cur_waste_form%region%cell_ids(1)))
+      cell_string = ' (' // trim(adjustl(cell_string)) // ')'
+      ! coordinate of waste form
+      x_string = BestFloat(cur_waste_form%coordinate%x,1.d4,1.d-2)
+      y_string = BestFloat(cur_waste_form%coordinate%y,1.d4,1.d-2)
+      z_string = BestFloat(cur_waste_form%coordinate%z,1.d4,1.d-2)
+      cell_string = trim(cell_string) // &
+               ' (' // trim(adjustl(x_string)) // &
+               ' ' // trim(adjustl(y_string)) // &
+               ' ' // trim(adjustl(z_string)) // ')'
+    else
+      cell_string = trim(cur_waste_form%region_name)
+    endif
     do i = 1, cur_waste_form%mechanism%num_species
       variable_string = trim(cur_waste_form%mechanism%rad_species_list(i)%name) &
                         // ' Cum. Mass Flux'
