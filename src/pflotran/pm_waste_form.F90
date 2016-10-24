@@ -1195,7 +1195,6 @@ subroutine PMWFAssociateRegion(this,region_list)
         new_region%name = 'WF_COORDINATE_' // trim(adjustl(word1)) // '_p' //  &
                           trim(adjustl(word2))
         cur_waste_form%region => new_region
-        call RegionAddToList(new_region,region_list)
         allocate(cur_waste_form%scaling_factor(1))
         cur_waste_form%scaling_factor(1) = 1.d0
       endif
