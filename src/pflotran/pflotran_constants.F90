@@ -188,6 +188,7 @@ module PFLOTRAN_Constants_module
   
   PetscInt, parameter, public :: TH_PRESSURE_DOF = 1
   PetscInt, parameter, public :: TH_TEMPERATURE_DOF = 2
+  PetscInt, parameter, public :: TH_CONDUCTANCE_DOF = 3
 
   PetscInt, parameter, public :: MPH_PRESSURE_DOF = 1
   PetscInt, parameter, public :: MPH_TEMPERATURE_DOF = 2
