@@ -1809,6 +1809,9 @@ subroutine PMWFSolve(this,time,ierr)
   ! Author: Glenn Hammond
   ! Date: 08/26/15
   ! Updated/modified by Jenn Frederick 04/2016
+  !
+  ! Notes: The species loop must be the inner loop, while the grid cell loop
+  ! must be the outer loop, in order for the vec_p(i) indexing to work.
   
   use Global_Aux_module
   use Material_Aux_class
@@ -1848,27 +1851,29 @@ subroutine PMWFSolve(this,time,ierr)
   do 
     if (.not.associated(cur_waste_form)) exit
     num_species = cur_waste_form%mechanism%num_species  
+    !
     if ((cur_waste_form%volume > 0.d0) .and. &
         (cur_waste_form%canister_vitality <= 1.d-40)) then
+    !---------------------------------------------------------------------------
       ! calculate the mechanism-specific eff_dissolution_rate [kg-matrix/sec]:
       call cur_waste_form%mechanism%Dissolution(cur_waste_form,this,ierr)
-      ! calculate the instantaneous mass rate [mol/sec]:
-      do j = 1,num_species
-        cur_waste_form%instantaneous_mass_rate(j) = &
-          (cur_waste_form%eff_dissolution_rate / &            ! kg-matrix/sec
-           cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kg-rad/kmol-rad
-           cur_waste_form%rad_mass_fraction(j) * &            ! kg-rad/kg-matrix
-           1.d3)                                              ! kmol -> mol
-        select type(cwfm => cur_waste_form%mechanism)
-          ! ignore source term if dsnf type, and directly update the
-          ! solution vector instead (see note in WFMechDSNFDissolution):
-          type is(wf_mechanism_dsnf_type)
-            inst_diss_molality = 0.d0                        ! mol-rad/kg-water
-            do k = 1,cur_waste_form%region%num_cells
-              cell_id = cur_waste_form%region%cell_ids(k)
+      select type(cwfm => cur_waste_form%mechanism)
+      !-----------------------------------------------------------------------
+        ! ignore source term if dsnf type, and directly update the
+        ! solution vector instead (see note in WFMechDSNFDissolution):
+        type is(wf_mechanism_dsnf_type)
+          do k = 1,cur_waste_form%region%num_cells
+            cell_id = cur_waste_form%region%cell_ids(k)
+            do j = 1,num_species
+              i = i + 1
+              cur_waste_form%instantaneous_mass_rate(j) = &
+                (cur_waste_form%eff_dissolution_rate / &      ! kg-matrix/sec
+                 cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kg-rad/kmol-rad
+                 cur_waste_form%rad_mass_fraction(j) * &      ! kg-rad/kg-matrix
+                 1.d3) 
               inst_diss_molality = &                          ! mol-rad/kg-water
-                cur_waste_form%instantaneous_mass_rate(j) * &  ! mol-rad/sec
-                this%realization%option%tran_dt / &            ! sec
+                cur_waste_form%instantaneous_mass_rate(j) * & ! mol-rad/sec
+                this%realization%option%tran_dt / &           ! sec
                 ! [kg-water]
                 (material_auxvars(cell_id)%porosity * &        ! [-]
                  global_auxvars(cell_id)%sat(LIQUID_PHASE) * & ! [-]
@@ -1876,36 +1881,51 @@ subroutine PMWFSolve(this,time,ierr)
                  global_auxvars(cell_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
               idof = cwfm%rad_species_list(j)%ispecies + &
                      ((cell_id - 1) * this%option%ntrandof)
-              xx_p(idof) = xx_p(idof) + &  ! mol-rad/kg-water
+              xx_p(idof) = xx_p(idof) + &                     ! mol-rad/kg-water
                            (inst_diss_molality*cur_waste_form%scaling_factor(k))  
-            enddo
-            ! update the cumulative mass now, not at next timestep:
-            cur_waste_form%cumulative_mass(j) = &
-              cur_waste_form%cumulative_mass(j) + &          ! mol-rad
-              cur_waste_form%instantaneous_mass_rate(j) * &  ! mol-rad/sec
-              this%realization%option%tran_dt                ! sec
-            ! update the volume now, not at next timestep:
-            cur_waste_form%volume = 0.d0                     ! m^3
-          ! for all other waste form types, load the source term, and update
-          ! the cumulative mass and volume at next timestep:
-          class default
-            do k = 1,cur_waste_form%region%num_cells
+              vec_p(i) = 0.d0
+              if (k == 1) then
+                ! update the cumulative mass now, not at next timestep:
+                cur_waste_form%cumulative_mass(j) = &
+                  cur_waste_form%cumulative_mass(j) + &          ! mol-rad
+                  cur_waste_form%instantaneous_mass_rate(j) * &  ! mol-rad/sec
+                  this%realization%option%tran_dt                ! sec
+                ! update the volume now, not at next timestep:
+                cur_waste_form%volume = 0.d0 
+              endif              
+            enddo 
+          enddo
+      !-----------------------------------------------------------------------
+        ! for all other waste form types, load the source term, and update
+        ! the cumulative mass and volume at next timestep:
+        class default
+          do k = 1,cur_waste_form%region%num_cells
+            do j = 1,num_species
               i = i + 1
+              cur_waste_form%instantaneous_mass_rate(j) = &
+                (cur_waste_form%eff_dissolution_rate / &      ! kg-matrix/sec
+                 cur_waste_form%mechanism%rad_species_list(j)%formula_weight * &! kg-rad/kmol-rad
+                 cur_waste_form%rad_mass_fraction(j) * &      ! kg-rad/kg-matrix
+                 1.d3)
               vec_p(i) = cur_waste_form%instantaneous_mass_rate(j) * &
                          cur_waste_form%scaling_factor(k)  ! mol/sec * [-]
-            enddo
-        end select
-      enddo
+            enddo 
+          enddo
+      !-------------------------------------------------------------------------
+      end select
       ! count the number of times FMDM was called:
       select type(cwfm => cur_waste_form%mechanism)
         type is(wf_mechanism_fmdm_type)
           fmdm_count_local = fmdm_count_local + 1
       end select
+    !---------------------------------------------------------------------------
     else ! (canister not breached, or all waste form has dissolved already)
-      i = i + num_species
+      vec_p((i+1):(i+num_species*cur_waste_form%region%num_cells)) = 0.d0
+      i = i + num_species*cur_waste_form%region%num_cells
       cur_waste_form%eff_dissolution_rate = 0.d0
       cur_waste_form%instantaneous_mass_rate = 0.d0
     endif
+    !
     cur_waste_form => cur_waste_form%next
   enddo
  
