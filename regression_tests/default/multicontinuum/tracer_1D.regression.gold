@@ -1,8 +1,8 @@
 -- CONCENTRATION: Total A(aq) --
       Max:   1.0000000000081E-02
-      Min:   5.0328451303980E-04
+      Min:   5.0328451303979E-04
      Mean:   9.5455258046423E-03
-        1:   5.0328451303980E-04
+        1:   5.0328451303979E-04
        21:   9.9997814207902E-03
        41:   1.0000000000081E-02
        61:   1.0000000000081E-02
@@ -35,10 +35,10 @@
        61:         1
        81:         1
 -- SOLUTION: Transport --
-   Time (seconds):   6.1181712150574E-01
+   Time (seconds):   5.9216570854187E-01
    Time Steps:          123
    Newton Iterations:          123
    Solver Iterations:          123
    Time Step Cuts:            0
    Solution 2-Norm:   9.6850697370811E-02
-   Residual 2-Norm:   5.0250925296713E-19
+   Residual 2-Norm:   5.4887134776678E-19

@@ -39,7 +39,7 @@
       241:         1
       321:         1
 -- SOLUTION: Flow --
-   Time (seconds):   2.4793195724487E-01
+   Time (seconds):   2.2670364379883E-01
    Time Steps:           59
    Newton Iterations:           60
    Solver Iterations:           60
@@ -47,10 +47,10 @@
    Solution 2-Norm:   6.0444271355318E+06
    Residual 2-Norm:   4.3288999847838E-17
 -- SOLUTION: Transport --
-   Time (seconds):   1.9182920455933E-01
+   Time (seconds):   1.9286370277405E-01
    Time Steps:           59
    Newton Iterations:           59
    Solver Iterations:           59
    Time Step Cuts:            0
    Solution 2-Norm:   7.4992734902881E-01
-   Residual 2-Norm:   1.9170321903780E-20
+   Residual 2-Norm:   1.0451116210086E-20
