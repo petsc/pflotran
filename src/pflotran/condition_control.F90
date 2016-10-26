@@ -514,7 +514,8 @@ subroutine CondControlAssignTranInitCond(realization)
   use Grid_module
   use Dataset_Base_class
   use Patch_module
-  use Reactive_Transport_module, only : RTUpdateAuxVars
+  use Reactive_Transport_module, only : RTUpdateAuxVars, &
+                                        RTUpdateActivityCoefficients
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
@@ -931,7 +932,6 @@ subroutine CondControlAssignTranInitCond(realization)
     call CondControlReadTransportIC(realization, &
                                     option%initialize_transport_filename)
   endif
-  ! PETSC_FALSE = no activity coefficients
   call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
   ! at this point the auxvars have been computed with activity coef = 1.d0
   ! to use intitial condition with activity coefs /= 1.d0, must update
