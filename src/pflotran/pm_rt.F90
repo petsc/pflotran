@@ -1174,7 +1174,8 @@ subroutine PMRTCheckpointBinary(this,viewer)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
-                               MINERAL_VOLUME_FRACTION
+                               MINERAL_VOLUME_FRACTION, &
+                               REACTION_AUXILIARY
   
   implicit none
 
@@ -1284,6 +1285,14 @@ subroutine PMRTCheckpointBinary(this,viewer)
       ! PETSC_TRUE flag indicates write to file
       call RTCheckpointKineticSorptionBinary(realization,viewer,PETSC_TRUE)
     endif
+    ! auxiliary data for reactions (e.g. cumulative mass)
+    if (realization%reaction%nauxiliary> 0) then
+      do i = 1, realization%reaction%nauxiliary
+        call RealizationGetVariable(realization,global_vec, &
+                                    REACTION_AUXILIARY,i)
+        call VecView(global_vec,viewer,ierr);CHKERRQ(ierr)
+      enddo
+    endif
   endif
 
   if (global_vec /= 0) then
@@ -1313,7 +1322,8 @@ subroutine PMRTRestartBinary(this,viewer)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
-                               MINERAL_VOLUME_FRACTION
+                               MINERAL_VOLUME_FRACTION, &
+                               REACTION_AUXILIARY
   
   implicit none
 
@@ -1422,6 +1432,14 @@ subroutine PMRTRestartBinary(this,viewer)
     ! PETSC_FALSE flag indicates read from file
     call RTCheckpointKineticSorptionBinary(realization,viewer,PETSC_FALSE)
   endif
+  ! auxiliary data for reactions (e.g. cumulative mass)
+  if (realization%reaction%nauxiliary> 0) then
+    do i = 1, realization%reaction%nauxiliary
+      call VecLoad(global_vec,viewer,ierr);CHKERRQ(ierr)
+      call RealizationSetVariable(realization,global_vec,GLOBAL, &
+                                  REACTION_AUXILIARY,i)
+    enddo
+  endif
     
   ! We are finished, so clean up.
   if (global_vec /= 0) then
@@ -1472,7 +1490,8 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
-                               MINERAL_VOLUME_FRACTION
+                               MINERAL_VOLUME_FRACTION, &
+                               REACTION_AUXILIARY
   use hdf5
   use Checkpoint_module, only: CheckPointWriteIntDatasetHDF5
   use HDF5_module, only : HDF5WriteDataSetFromVec
@@ -1606,8 +1625,8 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
       do i = 1, realization%reaction%mineral%nkinmnrl
         call RealizationGetVariable(realization,global_vec, &
                                    MINERAL_VOLUME_FRACTION,i)
-        call DiscretizationGlobalToNatural(realization%discretization, global_vec, &
-                                        natural_vec, ONEDOF)
+        call DiscretizationGlobalToNatural(realization%discretization, &
+                                           global_vec,natural_vec,ONEDOF)
         write(dataset_name,*) i
         dataset_name = 'Kinetic_mineral_' // trim(adjustl(dataset_name))
         call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
@@ -1621,6 +1640,19 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
       call RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, PETSC_TRUE)
     endif
 
+    ! auxiliary data for reactions (e.g. cumulative mass)
+    if (realization%reaction%nauxiliary> 0) then
+      do i = 1, realization%reaction%nauxiliary
+        call RealizationGetVariable(realization,global_vec, &
+                                    REACTION_AUXILIARY,i)
+        call DiscretizationGlobalToNatural(realization%discretization, &
+                                           global_vec, natural_vec, ONEDOF)
+        write(dataset_name,*) i
+        dataset_name = 'Reaction_auxiliary_' // trim(adjustl(dataset_name))
+        call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
+           pm_grp_id, H5T_NATIVE_DOUBLE)
+      enddo
+    endif
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
     call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
 
@@ -1660,7 +1692,8 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
-                               MINERAL_VOLUME_FRACTION
+                               MINERAL_VOLUME_FRACTION, &
+                               REACTION_AUXILIARY
   use hdf5
   use Checkpoint_module, only: CheckPointReadIntDatasetHDF5
   use HDF5_module, only : HDF5ReadDataSetInVec
@@ -1811,6 +1844,23 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
         .not.option%transport%no_checkpoint_kinetic_sorption) then
       ! PETSC_TRUE flag indicates write to file
       call RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, PETSC_TRUE)
+    endif
+
+    ! auxiliary data for reactions (e.g. cumulative mass)
+    if (realization%reaction%nauxiliary> 0) then
+      do i = 1, realization%reaction%nauxiliary
+        write(dataset_name,*) i
+        dataset_name = 'Reaction_auxiliary_' // trim(adjustl(dataset_name))
+        call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+           pm_grp_id, H5T_NATIVE_DOUBLE)
+
+        call DiscretizationNaturalToGlobal(discretization, natural_vec, &
+                                           global_vec, ONEDOF)
+        call DiscretizationGlobalToLocal(discretization, global_vec, &
+                                         local_vec, ONEDOF)
+        call RealizationSetVariable(realization,local_vec,LOCAL, &
+                                    REACTION_AUXILIARY,i)
+      enddo
     endif
 
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)

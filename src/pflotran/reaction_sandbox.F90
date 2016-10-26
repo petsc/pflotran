@@ -35,6 +35,7 @@ module Reaction_Sandbox_module
             RSandboxSetup, &
             RSandbox, &
             RSandboxUpdateKineticState, &
+            RSandboxAuxiliaryPlotVariables, &
             RSandboxDestroy
 
 contains
@@ -180,6 +181,37 @@ subroutine RSandboxRead2(local_sandbox_list,input,option)
   enddo
   
 end subroutine RSandboxRead2
+
+! ************************************************************************** !
+
+subroutine RSandboxAuxiliaryPlotVariables(list,reaction,option)
+  ! 
+  ! Adds auxilairy plot variables to the list to be printed
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/21/16
+  ! 
+
+  use Option_module
+  use Reaction_Aux_module
+  use Output_Aux_module
+  
+  implicit none
+
+  type(output_variable_list_type), pointer :: list
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  
+  class(reaction_sandbox_base_type), pointer :: cur_reaction
+  
+  cur_reaction => rxn_sandbox_list
+  do
+    if (.not.associated(cur_reaction)) exit
+    call cur_reaction%AuxiliaryPlotVariables(list,reaction,option)
+    cur_reaction => cur_reaction%next
+  enddo
+
+end subroutine RSandboxAuxiliaryPlotVariables
 
 ! ************************************************************************** !
 
