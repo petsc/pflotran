@@ -1601,7 +1601,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         dxmol_up = 1.d0
         dxmol_dn = 0.d0
         dmobility_dpup = gen_auxvar_up%d%mobilityl_pl
-        dmobility_dsatup = gen_auxvar_up%d%mobilityl_sat
+        dmobility_dsatup = gen_auxvar_up%d%mobilityl_satg
         dmobility_dTup = gen_auxvar_up%d%mobilityl_T
         dmobility_dpdn = 0.d0
         dmobility_dsatdn = 0.d0
@@ -1621,7 +1621,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         dmobility_dsatup = 0.d0
         dmobility_dTup = 0.d0
         dmobility_dpdn = gen_auxvar_dn%d%mobilityl_pl
-        dmobility_dsatdn = gen_auxvar_dn%d%mobilityl_sat
+        dmobility_dsatdn = gen_auxvar_dn%d%mobilityl_satg
         dmobility_dTdn = gen_auxvar_dn%d%mobilityl_T
       endif      
 

@@ -1,13 +1,13 @@
 -- CONCENTRATION: Total A(aq) --
-      Max:   9.9990836055014E-05
-      Min:   9.9990836055014E-05
-     Mean:   9.9990836055014E-05
-        1:   9.9990836055014E-05
+      Max:   9.9990836055013E-05
+      Min:   9.9990836055013E-05
+     Mean:   9.9990836055013E-05
+        1:   9.9990836055013E-05
 -- CONCENTRATION: Total B(aq) --
-      Max:   9.9998167211003E-04
-      Min:   9.9998167211003E-04
-     Mean:   9.9998167211003E-04
-        1:   9.9998167211003E-04
+      Max:   9.9998167211002E-04
+      Min:   9.9998167211002E-04
+     Mean:   9.9998167211002E-04
+        1:   9.9998167211002E-04
 -- CONCENTRATION: Total C(aq) --
       Max:   1.1374591748347E-07
       Min:   1.1374591748347E-07
@@ -24,10 +24,10 @@
      Mean:   1.0000000000000E+00
         1:         1
 -- SOLUTION: Transport --
-   Time (seconds):   8.6611986160278E-02
+   Time (seconds):   8.5045576095581E-02
    Time Steps:          111
    Newton Iterations:          222
    Solver Iterations:          222
    Time Step Cuts:            0
    Solution 2-Norm:   1.0109087142105E-03
-   Residual 2-Norm:   2.2556028132654E-23
+   Residual 2-Norm:   2.0175323612514E-23

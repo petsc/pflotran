@@ -588,7 +588,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
   select case(pressure_bc_type)
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC,HET_SURF_SEEPAGE_BC, &
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC, &
+         HET_SURF_SEEPAGE_BC, &
          HET_DIRICHLET)
 
       ! dist(0) = scalar - magnitude of distance
@@ -602,7 +603,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
         Dq = perm_dn / dist(0)
       endif
       ! Flow term
-      if (global_auxvar_up%sat(1) > sir_dn .or. global_auxvar_dn%sat(1) > sir_dn) then
+      if (global_auxvar_up%sat(1) > sir_dn .or. &
+          global_auxvar_dn%sat(1) > sir_dn) then
         upweight=1.D0
         if (global_auxvar_up%sat(1) < eps) then 
           upweight=0.d0
@@ -610,7 +612,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
           upweight=1.d0
         endif
         
-        density_ave = upweight*global_auxvar_up%den(1) + (1.D0-upweight)*global_auxvar_dn%den(1)
+        density_ave = upweight*global_auxvar_up%den(1) + &
+                      (1.D0-upweight)*global_auxvar_dn%den(1)
         dden_ave_dp_dn = (1.D0-upweight)*rich_auxvar_dn%dden_dp
 
         gravity = (upweight*global_auxvar_up%den(1) + &
@@ -625,7 +628,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
             pressure_bc_type == CONDUCTANCE_BC .or. &
             pressure_bc_type == HET_SURF_SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
-          if (dphi > 0.d0 .and. global_auxvar_up%pres(1)-option%reference_pressure < eps) then
+          if (dphi > 0.d0 .and. global_auxvar_up%pres(1)- &
+                                option%reference_pressure < eps) then
             dphi = 0.d0
             dphi_dp_dn = 0.d0
           endif
@@ -670,11 +674,13 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
           ! not exceed depth of standing water.
           if (option%surf_flow_on) then
           if (rich_auxvar_dn%vars_for_sflow(11) == 0.d0) then
-            if (pressure_bc_type == HET_SURF_SEEPAGE_BC .and. option%surf_flow_on) then
+            if (pressure_bc_type == HET_SURF_SEEPAGE_BC .and. &
+                option%surf_flow_on) then
               call EOSWaterdensity(option%reference_temperature, &
                                    option%reference_pressure,rho,dum1,ierr)
 
-              if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%vars_for_sflow(1)) then
+              if (global_auxvar_dn%pres(1) <= &
+                  rich_auxvar_dn%vars_for_sflow(1)) then
 
                 ! Linear approximation
                 call Interpolate(rich_auxvar_dn%vars_for_sflow(8), &
@@ -693,12 +699,13 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
                 dq_dp_dn = dq_lin/dP_lin
 
               else
-                if (global_auxvar_dn%pres(1) <= rich_auxvar_dn%vars_for_sflow(2)) then
-
+                if (global_auxvar_dn%pres(1) <= &
+                    rich_auxvar_dn%vars_for_sflow(2)) then
                   ! Cubic approximation
-                  call CubicPolynomialEvaluate(rich_auxvar_dn%vars_for_sflow(3:6), &
-                                               global_auxvar_dn%pres(1) - option%reference_pressure, &
-                                               q_approx, dq_approx)
+                  call CubicPolynomialEvaluate( &
+                        rich_auxvar_dn%vars_for_sflow(3:6), &
+                        global_auxvar_dn%pres(1) - option%reference_pressure, &
+                        q_approx, dq_approx)
                   v_darcy = q_approx/area
                   q = q_approx
                   dq_dp_dn = dq_approx
@@ -728,10 +735,12 @@ subroutine RichardsBCFluxDerivative(ibndtype,auxvars, &
 
       if (global_auxvar_dn%sat(1) > sir_dn) then
 
-        dphi = dot_product(option%gravity,dist(1:3))*global_auxvar_dn%den(1)*FMWH2O      
+        dphi = dot_product(option%gravity,dist(1:3))* &
+                           global_auxvar_dn%den(1)*FMWH2O      
         density_ave = global_auxvar_dn%den(1)
 
-        dphi_dp_dn = dot_product(option%gravity,dist(1:3))*rich_auxvar_dn%dden_dp*FMWH2O
+        dphi_dp_dn = dot_product(option%gravity,dist(1:3))* &
+                                 rich_auxvar_dn%dden_dp*FMWH2O
         dden_ave_dp_dn = rich_auxvar_dn%dden_dp
 
         ! since boundary auxvar is meaningless (no pressure specified there), only use cell
