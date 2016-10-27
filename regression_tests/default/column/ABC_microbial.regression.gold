@@ -16,7 +16,7 @@
        70:   1.9338075604267E-15
        75:   2.0718556640376E-16
        80:   2.1956150455247E-17
-      100:   2.2466237276993E-15
+      100:   2.2466237276994E-15
 -- CONCENTRATION: Total B(aq) --
       Max:   9.8736129392156E-04
       Min:   4.0051679719650E-04
@@ -75,10 +75,10 @@
        80:         1
       100:         1
 -- SOLUTION: Transport --
-   Time (seconds):   2.2520828247070E-01
+   Time (seconds):   2.2656846046448E-01
    Time Steps:          111
    Newton Iterations:          232
    Solver Iterations:          232
    Time Step Cuts:            0
    Solution 2-Norm:   7.9447383292343E-03
-   Residual 2-Norm:   1.9708285656847E-22
+   Residual 2-Norm:   2.3244614009746E-22

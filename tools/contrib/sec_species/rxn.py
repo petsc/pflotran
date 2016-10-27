@@ -7,6 +7,10 @@ import sys
 import datetime
 import time
 
+# NB: first run "find_values_no_temp_data.py" to generate text input files
+# before setting this flag to true
+exclude_species_without_temp_data = False
+
 ts = time.time()
 st = datetime.datetime.fromtimestamp(ts).strftime('%Y.%m.%d %H:%M:%S')
 
@@ -46,9 +50,7 @@ reactions with both types of ordering then standard refers to form of the majori
 
 #Enter list of primary species
 
-#pri=['H+','SO4--','H2O','O2(aq)']
 #pri=['Al+++','Fe++','Mg++','Mn++','Na+','K+','Li+','H+','SiO2(aq)','Cl-','SO4--','O2(aq)','H2O']
-#pri=['Al+++','Fe++','Mg++','Mn++','Na+','K+','Li+','OH-','SiO2(aq)','Cl-','SO4--','O2(aq)','H2O']
 
 """
 pri=[  
@@ -163,6 +165,20 @@ faq_skip = open('aq_skip.dat','r')
 fgas_skip = open('gas_skip.dat','r')
 fmin_skip = open('min_skip.dat','r')
 
+if exclude_species_without_temp_data:
+  fh = open('sec_species_no_temp_data.txt','r')
+  sec_species_no_temp = sorted([x.strip() for x in fh.readlines()])
+  fh.close()
+
+  fh = open('gas_species_no_temp_data.txt','r')
+  gas_species_no_temp = sorted([x.strip() for x in fh.readlines()])
+  fh.close()
+
+  fh = open('minerals_no_temp_data.txt','r')
+  minerals_no_temp = sorted([x.strip() for x in fh.readlines()])
+  fh.close()
+ 
+
 #skip aqueous species listed in faq_skip
 list_aq = {}
 i=0
@@ -180,6 +196,9 @@ for record in faq:
 #     print 'line-found: ',name #line.rstrip('\n')
       skip = 1
       break
+  if exclude_species_without_temp_data:
+    if name in sec_species_no_temp:
+      skip = 1
   if skip == 0:
 #   print record
 # list.append(record)
@@ -211,7 +230,7 @@ else:
   exit("Run Stopped")
 
 print 'PRIMARY_SPECIES'
-fchem.write("%s\n" % 'PRIMARY_SPECIES')
+fchem.write('PRIMARY_SPECIES\n')
 npri=0
 iflgo2 = 0
 for pri_spec in pri:
@@ -221,12 +240,12 @@ for pri_spec in pri:
     iflgo2 = 1
 
   print pri_spec
-  fchem.write("%s\n" % pri_spec) 
-print '/'
-fchem.write("%s\n" % '/') 
+  fchem.write("  %s\n" % pri_spec) 
+print 'END'
+fchem.write("END\n") 
 
 print 'SECONDARY_SPECIES'
-fchem.write("%s\n" % 'SECONDARY_SPECIES')
+fchem.write('SECONDARY_SPECIES\n')
 
 #initialize dictionaries (probably could use numpy arrays instead)
 iflg   = {}
@@ -270,7 +289,7 @@ for rxn in list_aq: # loop over reactions in database
 #   print 'pass1: ',rxn
 #   print 'pass1: ',nsec,name.strip("'")
     print name.strip("'")
-    fchem.write("%s\n" % name.strip("'"))
+    fchem.write("  %s\n" % name.strip("'"))
 
 # check for additional secondary species: assume nonstandard ordering
   iflg   = {}
@@ -325,7 +344,7 @@ for rxn in list_aq: # loop over reactions in database
 
 #           print 'pass2: ',nsec,sec[nsec].strip("'")
             print sec[nsec].strip("'")
-            fchem.write("%s\n" % sec[nsec].strip("'"))
+            fchem.write("  %s\n" % sec[nsec].strip("'"))
 
 #read in reactions: second pass
 #faq.seek(0)
@@ -373,10 +392,10 @@ for rxn in list_aq:
 #     print 'pass3: ',rxn
 #     print 'pass3: ','nsec= ',nsec,name.strip("'")
       print name.strip("'")
-      fchem.write("%s\n" % name.strip("'"))
+      fchem.write("  %s\n" % name.strip("'"))
 
-print '/'
-fchem.write("%s\n" % '/') 
+print 'END'
+fchem.write("END\n") 
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -394,6 +413,9 @@ for record in fgas:
     if name == line:
       skip = 1
       break
+  if exclude_species_without_temp_data:
+    if name in gas_species_no_temp:
+      skip = 1
   if skip == 0:
     i = i + 1
     list_gas[i] = record.rstrip('\n')
@@ -402,7 +424,7 @@ for record in fgas:
 ngas=0
 iflg = {}
 
-fchem.write("%s\n" % 'GASES') 
+fchem.write('GASES\n') 
 print 'GASES'
 
 #read in reactions
@@ -442,10 +464,10 @@ for rxn in list_gas:
   if indx == 1:
     ngas=ngas+1
     print name.strip("'")
-    fchem.write("%s\n" % name.strip("'"))
+    fchem.write("  %s\n" % name.strip("'"))
 
-print '/'
-fchem.write("%s\n" % '/') 
+print 'END'
+fchem.write("END\n") 
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -463,6 +485,9 @@ for record in fmin:
     if name == line:
       skip = 1
       break
+  if exclude_species_without_temp_data:
+    if name in minerals_no_temp:
+      skip = 1
   if skip == 0:
     i = i + 1
     list_min[i] = record.rstrip('\n')
@@ -470,7 +495,7 @@ for record in fmin:
 nmin=0
 iflg = {}
 
-fchem.write("%s\n" % 'MINERALS') 
+fchem.write("MINERALS\n") 
 print 'MINERALS'
 
 #read in reactions
@@ -504,10 +529,10 @@ for rxn in list_min:
   if indx == 1:
     nmin=nmin+1
     print name.strip("'")
-    fchem.write("%s\n" % name.strip("'"))
+    fchem.write("  %s\n" % name.strip("'"))
 
-print '/'
-fchem.write("%s\n" % '/') 
+print 'END'
+fchem.write("END\n") 
 print('================================================')
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -102,17 +102,27 @@ module General_Aux_module
   end type general_auxvar_type
   
   type, public :: general_derivative_auxvar_type
+    PetscReal :: pc_satg
     PetscReal :: por_pl
     PetscReal :: denl_pl
     PetscReal :: denl_T
+    PetscReal :: deng_pg
+    PetscReal :: deng_T    
     PetscReal :: Ul_pl
     PetscReal :: Ul_T
     PetscReal :: Hl_pl
     PetscReal :: Hl_T
+    PetscReal :: Ug_pg
+    PetscReal :: Ug_T
+    PetscReal :: Hg_pg
+    PetscReal :: Hg_T    
     PetscReal :: psat_dT
     PetscReal :: mobilityl_pl
     PetscReal :: mobilityl_T
-    PetscReal :: mobilityl_sat
+    PetscReal :: mobilityl_satg
+    PetscReal :: mobilityg_pg
+    PetscReal :: mobilityg_T
+    PetscReal :: mobilityg_satg
   end type general_derivative_auxvar_type
   
   type, public :: general_parameter_type
@@ -258,17 +268,27 @@ subroutine GeneralAuxVarInit(auxvar,allocate_derivative,option)
   auxvar%mobility = 0.d0
   if (allocate_derivative) then
     allocate(auxvar%d)
+    auxvar%d%pc_satg = 0.d0
     auxvar%d%por_pl = 0.d0
     auxvar%d%denl_pl = 0.d0
     auxvar%d%denl_T = 0.d0
+    auxvar%d%deng_pg = 0.d0
+    auxvar%d%deng_T = 0.d0
     auxvar%d%Ul_pl = 0.d0
     auxvar%d%Ul_T = 0.d0
     auxvar%d%Hl_pl = 0.d0
     auxvar%d%Hl_T = 0.d0
+    auxvar%d%Ug_pg = 0.d0
+    auxvar%d%Ug_T = 0.d0
+    auxvar%d%Hg_pg = 0.d0
+    auxvar%d%Hg_T = 0.d0
     auxvar%d%psat_dT = 0.d0
     auxvar%d%mobilityl_pl = 0.d0
     auxvar%d%mobilityl_T = 0.d0
-    auxvar%d%mobilityl_sat = 0.d0
+    auxvar%d%mobilityl_satg = 0.d0
+    auxvar%d%mobilityg_pg = 0.d0
+    auxvar%d%mobilityg_T = 0.d0
+    auxvar%d%mobilityg_satg = 0.d0
   else
     nullify(auxvar%d)
   endif
@@ -373,7 +393,11 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: cell_pressure, water_vapor_pressure
   PetscReal :: den_water_vapor, den_kg_water_vapor
   PetscReal :: u_water_vapor, h_water_vapor
+  PetscReal :: u_water_vapor_pv, h_water_vapor_pv
+  PetscReal :: u_water_vapor_T, h_water_vapor_T
   PetscReal :: den_air, h_air, u_air
+  PetscReal :: h_air_pv, u_air_pv
+  PetscReal :: h_air_T, u_air_T
   PetscReal :: xmol_air_in_gas, xmol_water_in_gas
   PetscReal :: krl, visl, dkrl_dsat, dvis_dp, dvis_dT
   PetscReal :: krg, visg, dkrg_dsat
@@ -392,7 +416,13 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: hw, hw_dp, hw_dT
   PetscReal :: dpor_dp
   PetscReal :: one_over_dw
-  PetscReal :: tempreal
+  PetscReal :: tempreal, tempreal2, tempreal3
+  PetscReal :: dpair_dT, dpair_dpgas
+  PetscReal :: dden_air_dT, dden_air_dpa
+  PetscReal :: du_air_dT, dh_air_dT
+  PetscReal :: du_air_dpa, dh_air_dpa
+  PetscReal :: dden_water_vapor_dpv, dden_water_vapor_dT
+  PetscReal :: dh_water_vapor_dpv, dh_water_vapor_dT
   character(len=8) :: state_char
   PetscErrorCode :: ierr
 
@@ -551,11 +581,20 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%sat(gid) = x(GENERAL_GAS_SATURATION_DOF)
       if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
         gen_auxvar%temp = x(GENERAL_ENERGY_DOF)
-        call EOSWaterSaturationPressure(gen_auxvar%temp, &
-                                        gen_auxvar%pres(spid),ierr)
+        if (associated(gen_auxvar%d)) then
+          call EOSWaterSaturationPressure(gen_auxvar%temp, &
+                                          gen_auxvar%pres(spid), &
+                                          gen_auxvar%d%psat_dT,ierr)
+        else
+          call EOSWaterSaturationPressure(gen_auxvar%temp, &
+                                          gen_auxvar%pres(spid),ierr)
+        endif
         gen_auxvar%pres(vpid) = gen_auxvar%pres(spid)
         gen_auxvar%pres(apid) = gen_auxvar%pres(gid) - gen_auxvar%pres(vpid)
-      
+        if (associated(gen_auxvar%d)) then
+          dpair_dT = -1.d0*gen_auxvar%d%psat_dT
+          dpair_dpgas = 1.d0
+        endif
       else
         gen_auxvar%pres(apid) = x(GENERAL_ENERGY_DOF)
         gen_auxvar%pres(vpid) = gen_auxvar%pres(gid) - gen_auxvar%pres(apid)
@@ -572,6 +611,14 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       call characteristic_curves%saturation_function% &
              CapillaryPressure(gen_auxvar%sat(lid),gen_auxvar%pres(cpid), &
                                option)                             
+      if (associated(gen_auxvar%d)) then
+        ! for now, calculate derivative through finite differencing
+        tempreal = 1.d-6 * gen_auxvar%sat(lid)
+        tempreal2 = gen_auxvar%sat(lid) + tempreal
+        call characteristic_curves%saturation_function% &
+             CapillaryPressure(tempreal2,tempreal3,option)
+        gen_auxvar%d%pc_satg = -1.d0*(tempreal3-gen_auxvar%pres(cpid))/tempreal
+      endif
 !      gen_auxvar%pres(cpid) = 0.d0
  
       gen_auxvar%pres(lid) = gen_auxvar%pres(gid) - &
@@ -705,13 +752,38 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     else
       water_vapor_pressure = gen_auxvar%pres(spid)
     endif
-    call EOSGasDensityEnergy(gen_auxvar%temp,gen_auxvar%pres(apid),den_air, &
-                             h_air,u_air,ierr)
+    if (associated(gen_auxvar%d)) then
+      call EOSGasDensityEnergy(gen_auxvar%temp,gen_auxvar%pres(apid),den_air, &
+                               dden_air_dT,dden_air_dpa, &
+                               h_air,dh_air_dT,dh_air_dpa, &
+                               u_air,du_air_dT,du_air_dpa,ierr)
+      ! J/kmol -> MJ/kmol                         
+      dh_air_dT = dh_air_dT * 1.d-6
+      dh_air_dpa = dh_air_dpa * 1.d-6
+      du_air_dT = du_air_dT * 1.d-6
+      du_air_dpa = du_air_dpa * 1.d-6
+    else
+      call EOSGasDensityEnergy(gen_auxvar%temp,gen_auxvar%pres(apid),den_air, &
+                               h_air,u_air,ierr)
+    endif
     h_air = h_air * 1.d-6 ! J/kmol -> MJ/kmol
     u_air = u_air * 1.d-6 ! J/kmol -> MJ/kmol
-    call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,water_vapor_pressure, &
-                                      den_kg_water_vapor,den_water_vapor, &
-                                      h_water_vapor,ierr)
+    if (associated(gen_auxvar%d)) then
+      call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,water_vapor_pressure, &
+                                        den_kg_water_vapor,den_water_vapor, &
+                                        h_water_vapor, &
+                                        dden_water_vapor_dpv,dden_water_vapor_dT, &
+                                        dh_water_vapor_dpv,dh_water_vapor_dT,ierr)
+      ! J/kmol -> MJ/kmol                                     
+      dden_water_vapor_dpv = dden_water_vapor_dpv * 1.d-6
+      dden_water_vapor_dT = dden_water_vapor_dT * 1.d-6
+      dh_water_vapor_dpv = dh_water_vapor_dpv * 1.d-6
+      dh_water_vapor_dT = dh_water_vapor_dT * 1.d-6
+    else
+      call EOSWaterSteamDensityEnthalpy(gen_auxvar%temp,water_vapor_pressure, &
+                                        den_kg_water_vapor,den_water_vapor, &
+                                        h_water_vapor,ierr)
+    endif
     u_water_vapor = h_water_vapor - &
                     ! Pa / kmol/m^3 = J/kmol
                     water_vapor_pressure / den_water_vapor
@@ -751,6 +823,25 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     gen_auxvar%H(gid) = gen_auxvar%U(gid) + &
                         ! Pa / kmol/m^3 * 1.e-6 = MJ/kmol
                         gen_auxvar%pres(gid)/gen_auxvar%den(gid) * 1.d-6
+    if (associated(gen_auxvar%d)) then
+      gen_auxvar%d%deng_pg = dden_water_vapor_dpv + dden_air_dpa
+      gen_auxvar%d%deng_T = dden_water_vapor_dT + dden_air_dT
+      
+          u_water_vapor = h_water_vapor - &
+                    ! Pa / kmol/m^3 = J/kmol
+                    water_vapor_pressure / den_water_vapor
+      
+      
+      gen_auxvar%d%Hg_pg = xmol_water_in_gas * dh_water_vapor_dpv + &
+                           xmol_air_in_gas * dh_air_dpa
+      gen_auxvar%d%Hg_T = xmol_water_in_gas * dh_water_vapor_dT + &
+                          xmol_air_in_gas * dh_air_dT
+      tempreal = 1.d0/gen_auxvar%den(gid)
+      gen_auxvar%d%Ug_pg = gen_auxvar%d%Hg_pg + &
+        (tempreal-gen_auxvar%pres(gid)*tempreal*tempreal*gen_auxvar%d%deng_pg)
+      gen_auxvar%d%Hg_T = gen_auxvar%d%Ug_T + &
+        gen_auxvar%pres(gid)*tempreal*tempreal*gen_auxvar%d%deng_T
+    endif
   endif ! istate /= LIQUID_STATE
   
   if (global_auxvar%istate == LIQUID_STATE .or. &
@@ -790,7 +881,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       tempreal = -1.d0*krl/(visl*visl)
       gen_auxvar%d%mobilityl_pl = tempreal*dvis_dp
       gen_auxvar%d%mobilityl_T = tempreal*dvis_dT
-      gen_auxvar%d%mobilityl_sat = dkrl_dsat/visl
+      gen_auxvar%d%mobilityl_satg = -1.d0*dkrl_dsat/visl
     endif
   endif
 
@@ -806,8 +897,11 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     ! and air (WATGSV,AIRGSV) and then uses GASVIS to calculate mixture 
     ! viscosity.
     if (associated(gen_auxvar%d)) then
-      option%io_buffer = 'neet to set up gas viscosity derivative in general'
-      call printErrMsg(option)
+      call EOSGasViscosity(gen_auxvar%temp, gen_auxvar%pres(apid), &
+                           gen_auxvar%pres(gid), den_air, &
+                           dden_air_dT, gen_auxvar%d%deng_pg, &
+                           dpair_dT, dpair_dpgas, &
+                           visg,dvis_dT,dvis_dp,ierr)      
     else    
       call EOSGasViscosity(gen_auxvar%temp,gen_auxvar%pres(apid), &
                            gen_auxvar%pres(gid),den_air,visg,ierr)
@@ -815,8 +909,10 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     gen_auxvar%mobility(gid) = krg/visg
     if (associated(gen_auxvar%d)) then
       ! use chainrule for derivative
-!      gen_auxvar%d%mobilityg_pg = krg/(visg*visg)*dvisg_dp
-!      gen_auxvar%d%mobilityg_satg = dkrg_dsat/visg
+      tempreal = -1.d0*krg/(visg*visg)
+      gen_auxvar%d%mobilityg_pg = tempreal*dvis_dp
+      gen_auxvar%d%mobilityg_T = tempreal*dvis_dT
+      gen_auxvar%d%mobilityg_satg = dkrg_dsat/visg
     endif    
   endif
 

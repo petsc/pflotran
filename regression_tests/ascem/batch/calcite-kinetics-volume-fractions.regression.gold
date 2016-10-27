@@ -24,20 +24,20 @@
      Mean:   1.9991545834925E-01
         1:   1.9991545834925E-01
 -- RATE: Calcite Rate --
-      Max:  -3.9262702533627E-15
-      Min:  -3.9262702533627E-15
-     Mean:  -3.9262702533627E-15
-        1:  -3.9262702533627E-15
+      Max:  -3.9262701645448E-15
+      Min:  -3.9262701645448E-15
+     Mean:  -3.9262701645448E-15
+        1:  -3.9262701645448E-15
 -- DISCRETE: Material ID --
       Max:         1
       Min:         1
      Mean:   1.0000000000000E+00
         1:         1
 -- SOLUTION: Transport --
-   Time (seconds):   6.8930149078369E-02
+   Time (seconds):   7.2234869003296E-02
    Time Steps:           62
    Newton Iterations:          164
    Solver Iterations:          164
    Time Step Cuts:            0
    Solution 2-Norm:   9.8791552820797E-03
-   Residual 2-Norm:   2.5540972007769E-18
+   Residual 2-Norm:   2.5500865894626E-18

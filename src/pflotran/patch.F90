@@ -3472,53 +3472,6 @@ end subroutine PatchUpdateUniformVelocity
 
 ! ************************************************************************** !
 
-function PatchAuxVarsUpToDate(patch)
-  ! 
-  ! Checks to see if aux vars are up to date
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 09/12/08
-  ! 
-
-  use Grid_module
-  use Option_module
-  use Field_module
-  
-  use Mphase_Aux_module
-  use TH_Aux_module
-  use Richards_Aux_module
-  use Reactive_Transport_Aux_module  
-  
-  type(patch_type) :: patch
-  
-  PetscBool :: PatchAuxVarsUpToDate
-  PetscBool :: flow_up_to_date
-  PetscBool :: transport_up_to_date
-  PetscInt :: dummy
-  dummy = 1
-
-  if (associated(patch%aux%TH)) then
-    flow_up_to_date = patch%aux%TH%auxvars_up_to_date
-  else if (associated(patch%aux%Richards)) then
-    flow_up_to_date = patch%aux%Richards%auxvars_up_to_date
-  else if (associated(patch%aux%Mphase)) then
-    flow_up_to_date = patch%aux%Mphase%auxvars_up_to_date
-  else if (associated(patch%aux%Flash2)) then
-    flow_up_to_date = patch%aux%Flash2%auxvars_up_to_date
-  else if (associated(patch%aux%Immis)) then
-    flow_up_to_date = patch%aux%Immis%auxvars_up_to_date
-  endif
-
-  if (associated(patch%aux%RT)) then
-    transport_up_to_date = patch%aux%RT%auxvars_up_to_date
-  endif
-  
-  PatchAuxVarsUpToDate = flow_up_to_date .and. transport_up_to_date
-  
-end function PatchAuxVarsUpToDate
-
-! ************************************************************************** !
-
 subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
                              ivar,isubvar,isubvar1)
   ! 
