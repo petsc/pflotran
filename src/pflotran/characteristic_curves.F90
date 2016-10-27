@@ -627,6 +627,14 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
       error_string = trim(error_string) // 'BROOKS_COREY'
     class is(sat_func_Linear_type)
       error_string = trim(error_string) // 'LINEAR'
+    class is(sat_func_BF_KRP4_type)
+      error_string = trim(error_string) // 'BRAGFLO_KRP4'
+    class is(sat_func_BF_KRP9_type)
+      error_string = trim(error_string) // 'BRAGFLO_KRP9'
+    class is(sat_func_BF_KRP11_type)
+      error_string = trim(error_string) // 'BRAGFLO_KRP11'
+    class is(sat_func_BF_KRP12_type)
+      error_string = trim(error_string) // 'BRAGFLO_KRP12'
   end select
   do
     call InputReadPflotranString(input,option)
@@ -641,11 +649,11 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
     select case(keyword)
       case('LIQUID_RESIDUAL_SATURATION') 
         call InputReadDouble(input,option,saturation_function%Sr)
-        call InputErrorMsg(input,option,'liquid residual saturation', &
+        call InputErrorMsg(input,option,'LIQUID_RESIDUAL_SATURATION', &
                            error_string)
       case('MAX_CAPILLARY_PRESSURE') 
         call InputReadDouble(input,option,saturation_function%pcmax)
-        call InputErrorMsg(input,option,'maximum capillary pressure', &
+        call InputErrorMsg(input,option,'MAX_CAPILLARY_PRESSURE', &
                             error_string)
       case('SMOOTH')
         smooth = PETSC_TRUE
@@ -702,10 +710,22 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputErrorMsg(input,option,'Srg',error_string)
           case('KPC') 
             call InputReadInt(input,option,sf%pcmax_flag)
-            call InputErrorMsg(input,option,'pcmax_flag',error_string)
+            call InputErrorMsg(input,option,'pcmax_flag, KPC',error_string)
           case default
             call InputKeywordUnrecognized(keyword, &
-                   'Brooks-Corey saturation function',option)
+                   'BRAGFLO_KRP4 saturation function',option)
+        end select
+      class is(sat_func_BF_KRP9_type)
+        select case(keyword)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                   'BRAGFLO_KRP9 saturation function',option)
+        end select
+      class is(sat_func_BF_KRP11_type)
+        select case(keyword)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                   'BRAGFLO_KRP11 saturation function',option)
         end select
       class is(sat_func_BF_KRP12_type)
         select case(keyword)
@@ -726,11 +746,11 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputErrorMsg(input,option,'soceffmin',error_string)
           case default
             call InputKeywordUnrecognized(keyword, &
-                   'Brooks-Corey saturation function',option)
+                   'BRAGFLO_KRP12 saturation function',option)
         end select
       class default
-        option%io_buffer = 'Read routine not implemented for saturation ' // &
-                           'function class.'
+        option%io_buffer = 'Read routine not implemented for ' &
+                           // trim(error_string) // '.'
         call printErrMsg(option)
     end select
   enddo
@@ -2888,9 +2908,11 @@ subroutine SF_BF_KRP9_CapillaryPressure(this,liquid_saturation, &
   ! 
   ! Computes the capillary_pressure as a function of saturation
   ! based on experimental measurements and analyses done by Vauclin et al.
-  ! as discussed by Moridis and Pruess.  
-  ! 14.	Moridis, G. J., and K. Pruess.  1992.  TOUGH Simulations of 
-  ! Updegraff\92s Set of Fluid and Heat Flow Problems.  LBL-32611, ERMS# 138458. 
+  ! as discussed by Moridis and Pruess, and the BRAGFLO V6.02 Requirements
+  ! Document and Verification and Validation Plan, Sandia National Laboratories,
+  ! Carlsbad, NM. ERMS #558659.  
+  ! Moridis, G. J., and K. Pruess.  1992.  TOUGH Simulations of 
+  ! Updegraff's Set of Fluid and Heat Flow Problems.  LBL-32611, ERMS# 138458. 
   ! Berkeley, CA:  Lawrence Berkeley Laboratory.
   ! Author: Heeho Park
   ! Date: 03/26/15
@@ -3024,7 +3046,7 @@ end subroutine SF_BF_KRP4_Verify
 ! ************************************************************************** !
 
 subroutine SF_BF_KRP4_CapillaryPressure(this,liquid_saturation, &
-                                   capillary_pressure,option)
+                                        capillary_pressure,option)
   ! 
   ! Computes the capillary_pressure as a function of saturation using the
   ! Brooks-Corey formulation
@@ -3087,7 +3109,7 @@ end subroutine SF_BF_KRP4_CapillaryPressure
 ! ************************************************************************** !
 
 subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
-                            dsat_dpres,option)
+                                 dsat_dpres,option)
   ! 
   ! Computes the capillary_pressure as a function of saturation using the
   ! Brooks-Corey formulation
@@ -3202,7 +3224,7 @@ end subroutine SF_BF_KRP11_Verify
 ! ************************************************************************** !
 
 subroutine SF_BF_KRP11_CapillaryPressure(this,liquid_saturation, &
-                                   capillary_pressure,option)
+                                         capillary_pressure,option)
   ! 
   ! KRP=11 of BRAGFLO
   ! capillary pressure is 0 at all times
@@ -3225,7 +3247,7 @@ end subroutine SF_BF_KRP11_CapillaryPressure
 ! ************************************************************************** !
 
 subroutine SF_BF_KRP11_Saturation(this,capillary_pressure,liquid_saturation, &
-                            dsat_dpres,option)
+                                  dsat_dpres,option)
   ! 
   ! Computes the saturation (and associated derivatives) as a function of 
   ! capillary pressure
