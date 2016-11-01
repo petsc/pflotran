@@ -31,7 +31,7 @@ module TOilIms_module
   PetscReal, parameter :: floweps   = 1.d-24
 
   !pointing to default function
-  procedure(TOilImsFluxDummy), pointer :: TOilImsFlux => TOilImsFluxPFL
+  procedure(TOilImsFluxDummy), pointer :: TOilImsFlux => null()
 
   abstract interface
     subroutine TOilImsFluxDummy(toil_auxvar_up,global_auxvar_up, &
