@@ -64,6 +64,7 @@ function PMTOilImsCreate()
   ! 
   use Variables_module, only : LIQUID_PRESSURE, OIL_PRESSURE, OIL_SATURATION, &
                                TEMPERATURE
+  use TOilIms_module, only : TOilImsDefaultSetup
   implicit none
   
   class(pm_toil_ims_type), pointer :: PMToilImsCreate
@@ -90,6 +91,8 @@ function PMTOilImsCreate()
   
   call PMSubsurfaceFlowCreate(toil_ims_pm)
   toil_ims_pm%name = 'PMTOilIms'
+
+  call TOilImsDefaultSetup()
 
   PMTOilImsCreate => toil_ims_pm
   
