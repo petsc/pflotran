@@ -333,11 +333,14 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   
   PetscInt :: local_stop_flag
   PetscBool :: failure
-  PetscBool :: snapshot_plot_flag
-  PetscBool :: observation_plot_flag
-  PetscBool :: massbal_plot_flag
   PetscBool :: checkpoint_at_this_time_flag
+  PetscBool :: snapshot_plot_at_this_time_flag
+  PetscBool :: observation_plot_at_this_time_flag
+  PetscBool :: massbal_plot_at_this_time_flag
   PetscBool :: checkpoint_at_this_timestep_flag
+  PetscBool :: snapshot_plot_at_this_timestep_flag
+  PetscBool :: observation_plot_at_this_timestep_flag
+  PetscBool :: massbal_plot_at_this_timestep_flag
   class(pm_base_type), pointer :: cur_pm
   PetscErrorCode :: ierr
 
@@ -356,19 +359,31 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
     if (this%timestepper%target_time >= sync_time) exit
     
     call SetOutputFlags(this)
-    snapshot_plot_flag = PETSC_FALSE
-    observation_plot_flag = PETSC_FALSE
-    massbal_plot_flag = PETSC_FALSE
     checkpoint_at_this_time_flag = PETSC_FALSE
+    snapshot_plot_at_this_time_flag = PETSC_FALSE
+    observation_plot_at_this_time_flag = PETSC_FALSE
+    massbal_plot_at_this_time_flag = PETSC_FALSE
     checkpoint_at_this_timestep_flag = PETSC_FALSE
+    snapshot_plot_at_this_timestep_flag = PETSC_FALSE
+    observation_plot_at_this_timestep_flag = PETSC_FALSE
+    massbal_plot_at_this_timestep_flag = PETSC_FALSE
     
     call this%timestepper%SetTargetTime(sync_time,this%option, &
-                                        local_stop_flag,snapshot_plot_flag, &
-                                        observation_plot_flag, &
-                                        massbal_plot_flag, &
+                                        local_stop_flag, &
+                                        snapshot_plot_at_this_time_flag, &
+                                        observation_plot_at_this_time_flag, &
+                                        massbal_plot_at_this_time_flag, &
                                         checkpoint_at_this_time_flag)
     call this%timestepper%StepDT(this%pm_list,local_stop_flag)
-
+    if (this%timestepper%time_step_cut_flag) then
+      ! if timestep has been cut, all the I/O flags set above in 
+      ! %SetTargetTime, which are based on waypoints times, not time step,
+      ! should be turned off
+      snapshot_plot_at_this_time_flag = PETSC_FALSE
+      observation_plot_at_this_time_flag = PETSC_FALSE
+      massbal_plot_at_this_time_flag = PETSC_FALSE
+      checkpoint_at_this_time_flag = PETSC_FALSE
+    endif
     if (local_stop_flag == TS_STOP_FAILURE) exit ! failure
     ! Have to loop over all process models coupled in this object and update
     ! the time step size.  Still need code to force all process models to
@@ -394,18 +409,21 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
       ! Get data from other process-models
       call this%GetAuxData()
     endif
-    
-    ! if time step is cut, we will not print the checkpoint file prescribed at
-    ! the specified time since it will be met in a later time step.
-    if (this%timestepper%time_step_cut_flag) then
-      checkpoint_at_this_time_flag = PETSC_FALSE
-      snapshot_plot_flag = PETSC_FALSE
-    endif
 
     ! only print output for process models of depth 0
     if (associated(this%Output)) then
       ! however, if we are using the modulus of the output_option%imod, we may
       ! still print
+      snapshot_plot_at_this_timestep_flag = &
+        (mod(this%timestepper%steps,this%pm_list% &
+             output_option%periodic_snap_output_ts_imod) == 0)
+      observation_plot_at_this_timestep_flag = &
+        (mod(this%timestepper%steps,this%pm_list% &
+             output_option%periodic_obs_output_ts_imod) == 0)
+      massbal_plot_at_this_timestep_flag = &
+        (mod(this%timestepper%steps,this%pm_list% &
+             output_option%periodic_msbl_output_ts_imod) == 0)
+#if 0
       if (mod(this%timestepper%steps,this%pm_list% &
               output_option%periodic_snap_output_ts_imod) == 0) then
         snapshot_plot_flag = PETSC_TRUE
@@ -418,11 +436,18 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
               periodic_msbl_output_ts_imod) == 0) then
         massbal_plot_flag = PETSC_TRUE
       endif
+#endif      
       
-      if (this%option%steady_state) snapshot_plot_flag = PETSC_TRUE
+      if (this%option%steady_state) &
+        snapshot_plot_at_this_timestep_flag = PETSC_TRUE
       
-      call this%Output(this%pm_list%realization_base,snapshot_plot_flag, &
-                       observation_plot_flag,massbal_plot_flag)
+      call this%Output(this%pm_list%realization_base, &
+                       (snapshot_plot_at_this_time_flag .or. &
+                        snapshot_plot_at_this_timestep_flag), &
+                       (observation_plot_at_this_time_flag .or. &
+                        observation_plot_at_this_timestep_flag), &
+                       (massbal_plot_at_this_time_flag .or. &
+                        massbal_plot_at_this_timestep_flag))
     endif
     
     if (this%is_master .and. associated(this%checkpoint_option)) then
