@@ -423,20 +423,6 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
       massbal_plot_at_this_timestep_flag = &
         (mod(this%timestepper%steps,this%pm_list% &
              output_option%periodic_msbl_output_ts_imod) == 0)
-#if 0
-      if (mod(this%timestepper%steps,this%pm_list% &
-              output_option%periodic_snap_output_ts_imod) == 0) then
-        snapshot_plot_flag = PETSC_TRUE
-      endif
-      if (mod(this%timestepper%steps,this%pm_list%output_option% &
-              periodic_obs_output_ts_imod) == 0) then
-        observation_plot_flag = PETSC_TRUE
-      endif
-      if (mod(this%timestepper%steps,this%pm_list%output_option% &
-              periodic_msbl_output_ts_imod) == 0) then
-        massbal_plot_flag = PETSC_TRUE
-      endif
-#endif      
       
       if (this%option%steady_state) &
         snapshot_plot_at_this_timestep_flag = PETSC_TRUE
