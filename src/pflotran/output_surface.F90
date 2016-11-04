@@ -1806,7 +1806,7 @@ function OutputSurfaceHDF5FilenameID(output_option,option,var_list_type)
   else if (output_option%plot_number < 100000) then
     write(OutputSurfaceHDF5FilenameID,'(i5)') file_number
   else
-    option%io_buffer = 'Plot number exceeds current maxumum of 10^5. &
+    option%io_buffer = 'Plot number exceeds current maximum of 10^5. &
       &Email pflotran-dev@googlegroups.com and ask for a higher maximum.'
     call printErrMsg(option)
   endif 
