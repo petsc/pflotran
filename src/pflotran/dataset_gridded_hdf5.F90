@@ -35,7 +35,6 @@ module Dataset_Gridded_HDF5_class
             DatasetGriddedHDF5Cast, &
             DatasetGriddedHDF5Load, &
             DatasetGriddedHDF5InterpolateReal, &
-            DatasetGriddedHDF5VerifyFlux, &
             DatasetGriddedHDF5Print, &
             DatasetGriddedHDF5Strip, &
             DatasetGriddedHDF5Destroy
@@ -1073,57 +1072,6 @@ subroutine DatasetGriddedHDF5GetIndices(this,xx,yy,zz,i,j,k,x,y,z)
   endif  
   
 end subroutine DatasetGriddedHDF5GetIndices
-
-! ************************************************************************** !
-
-subroutine DatasetGriddedHDF5VerifyFlux(this,coupler,option)
-  ! 
-  ! Verifies that a dataset being used to define fluxes adheres to 
-  ! several rules that attempt to minimize mass balance error.
-  ! 
-  ! Author: Jennifer Frederick
-  ! Date: 11/04/2016
-  ! 
-
-  use Option_module
-  use Coupler_module
-
-  implicit none
-  
-  class(dataset_gridded_hdf5_type) :: this
-  type(coupler_type) :: coupler
-  type(option_type) :: option
-  
-  character(len=MAXSTRINGLENGTH) :: string, string2
-  
-  ! check if dataset is cell-centered:
-  if (.not.this%is_cell_centered) then
-    option%io_buffer = 'Dataset ' // trim(this%hdf5_dataset_name) // &
-      " must be cell-centered for fluxes. You must set attribute: &
-      &h5grp.attrs['Cell Centered'] = True."
-    call printErrMsg(option)
-  endif
-  ! check if the dimensions match:
-  if (coupler%connection_set%num_connections /= this%dims(1)) then
-    write(string2,*) this%dims
-    write(string,*) coupler%connection_set%num_connections
-    option%io_buffer = 'Dataset ' // trim(this%hdf5_dataset_name) // & 
-      " must have a value for each cell on the boundary defined by &
-      &REGION " // trim(coupler%region%name) // '. The dataset dimension &
-      &is ' // adjustl(trim(string2)) // ' but the number of boundary &
-      &connections is ' // adjustl(trim(string)) // '.'
-    call printErrMsg(option)
-  endif
-  ! check if the interpolation method is STEP:
-  if (.not.this%interpolation_method == INTERPOLATION_STEP) then
-    option%io_buffer = 'Dataset ' // trim(this%hdf5_dataset_name) // & 
-      " must be assigned the STEP interpolation method for fluxes. You &
-      &must set attribute: h5grp.attrs['Interpolation Method'] = &
-      &np.string_('STEP')."
-    call printErrMsg(option)
-  endif
-  
-end subroutine DatasetGriddedHDF5VerifyFlux
 
 ! ************************************************************************** !
 

@@ -1047,7 +1047,7 @@ pmc_surface.o : checkpoint.o connection.o coupler.o eos_water.o grid.o \
 pmc_third_party.o : option.o pflotran_constants.o pmc_base.o \
                     realization_subsurface.o timestepper_base.o utility.o
 ifdef PFLOTRAN_RXN_FLAG
-reaction.o : global_aux.o input_aux.o material_aux.o option.o \
+reaction.o : global_aux.o input_aux.o material_aux.o option.o output_aux.o \
              pflotran_constants.o reaction_aux.o reaction_clm.o reaction_gas.o \
              reaction_gas_aux.o reaction_immobile.o reaction_immobile_aux.o \
              reaction_microbial.o reaction_microbial_aux.o reaction_mineral.o \
@@ -1058,8 +1058,8 @@ reaction.o : global_aux.o input_aux.o material_aux.o option.o \
              utility.o variables.o
 else
 reaction.o : co2_span_wagner.o co2eos.o eos_water.o global_aux.o input_aux.o \
-             material_aux.o option.o pflotran_constants.o reaction_aux.o \
-             reaction_clm.o reaction_gas.o reaction_gas_aux.o \
+             material_aux.o option.o output_aux.o pflotran_constants.o \
+             reaction_aux.o reaction_clm.o reaction_gas.o reaction_gas_aux.o \
              reaction_immobile.o reaction_immobile_aux.o reaction_microbial.o \
              reaction_microbial_aux.o reaction_mineral.o \
              reaction_mineral_aux.o reaction_sandbox.o \
@@ -1116,13 +1116,13 @@ reaction_mineral.o : global_aux.o input_aux.o material_aux.o option.o \
 reaction_mineral_aux.o : option.o pflotran_constants.o reaction_database_aux.o \
                          string.o utility.o
 reaction_sandbox.o : global_aux.o input_aux.o material_aux.o option.o \
-                     pflotran_constants.o reaction_aux.o \
+                     output_aux.o pflotran_constants.o reaction_aux.o \
                      reaction_sandbox_base.o reaction_sandbox_clm_cn.o \
                      reaction_sandbox_example.o reaction_sandbox_pnnl_cyber.o \
                      reaction_sandbox_simple.o reaction_sandbox_ufd_wp.o \
                      reactive_transport_aux.o string.o utility.o
 reaction_sandbox_base.o : global_aux.o input_aux.o material_aux.o option.o \
-                          pflotran_constants.o reaction_aux.o \
+                          output_aux.o pflotran_constants.o reaction_aux.o \
                           reactive_transport_aux.o
 reaction_sandbox_clm_cn.o : global_aux.o input_aux.o material_aux.o option.o \
                             pflotran_constants.o reaction_aux.o \
@@ -1134,10 +1134,11 @@ reaction_sandbox_example.o : global_aux.o input_aux.o material_aux.o option.o \
                              reaction_sandbox_base.o reactive_transport_aux.o \
                              string.o units.o
 reaction_sandbox_pnnl_cyber.o : global_aux.o input_aux.o material_aux.o \
-                                option.o pflotran_constants.o reaction_aux.o \
-                                reaction_immobile_aux.o \
-                                reaction_sandbox_base.o \
-                                reactive_transport_aux.o string.o utility.o
+                                option.o output_aux.o pflotran_constants.o \
+                                reaction_aux.o reaction_immobile_aux.o \
+                                reaction_mineral_aux.o reaction_sandbox_base.o \
+                                reactive_transport_aux.o string.o utility.o \
+                                variables.o
 reaction_sandbox_simple.o : global_aux.o material_aux.o option.o \
                             pflotran_constants.o reaction_aux.o \
                             reaction_immobile_aux.o reaction_sandbox_base.o \
@@ -1166,7 +1167,7 @@ reactive_transport.o : co2_span_wagner.o co2eos.o condition.o connection.o \
                        reactive_transport_aux.o realization_subsurface.o \
                        region.o secondary_continuum.o \
                        secondary_continuum_aux.o transport.o \
-                       transport_constraint.o variables.o
+                       transport_constraint.o
 reactive_transport_aux.o : matrix_block_aux.o option.o pflotran_constants.o \
                            reaction_aux.o reaction_surf_complex_aux.o \
                            utility.o
