@@ -1813,10 +1813,10 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
                                            general%liquid_flux%dataset%rarray(1)
         dof1 = PETSC_TRUE
       class is(dataset_gridded_hdf5_type)
-        option%io_buffer = 'Gridded HDF5 DATASET not supported for &
-                           &general%liquid_flux. Contact pflotran-dev [at] &
-                           &googlegroups [dot] com.'
-        call printErrMsg(option)
+        call DatasetGriddedHDF5VerifyFlux(selector,coupler,option)
+        call PatchUpdateCouplerFromDataset(coupler,option,patch%grid,selector, &
+                                           real_count)
+        dof1 = PETSC_TRUE
       class default
         option%io_buffer = 'Unknown dataset class for general%liquid_flux.'
         call printErrMsg(option)
@@ -1832,26 +1832,10 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
                                               general%gas_flux%dataset%rarray(1)
         dof2 = PETSC_TRUE
       class is(dataset_gridded_hdf5_type)
-        if (.not.selector%is_cell_centered) then
-          option%io_buffer = 'Dataset ' // trim(selector%hdf5_dataset_name) // & 
-                             " must be cell-centered for fluxes. You must set &
-                             &attribute: h5grp.attrs['Cell Centered'] = True."
-          call printErrMsg(option)
-        endif
-        if (coupler%connection_set%num_connections .eq. selector%dims(1)) then
-          call PatchUpdateCouplerFromDataset(coupler,option,patch%grid,selector, &
+        call DatasetGriddedHDF5VerifyFlux(selector,coupler,option)
+        call PatchUpdateCouplerFromDataset(coupler,option,patch%grid,selector, &
                                            real_count)
-          dof2 = PETSC_TRUE
-        else
-          write(string2,*) selector%dims
-          write(string,*) coupler%connection_set%num_connections
-          option%io_buffer = 'Dataset ' // trim(selector%hdf5_dataset_name) // & 
-            " must have a value for each cell on the boundary defined by &
-            &REGION " // trim(coupler%region%name) // '. The dataset dimension &
-            &is ' // adjustl(trim(string2)) // ' but the number of boundary &
-            &connections is ' // adjustl(trim(string)) // '.'
-          call printErrMsg(option)
-        endif
+        dof2 = PETSC_TRUE
       class default
         option%io_buffer = 'Unknown dataset class for general%gas_flux.'
         call printErrMsg(option)
@@ -1867,10 +1851,10 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
           general%energy_flux%dataset%rarray(1)
         dof3 = PETSC_TRUE
       class is(dataset_gridded_hdf5_type)
-        option%io_buffer = 'Gridded HDF5 DATASET not supported for &
-                           &general%energy_flux. Contact pflotran-dev [at] &
-                           &googlegroups [dot] com.'
-        call printErrMsg(option)
+        call DatasetGriddedHDF5VerifyFlux(selector,coupler,option)
+        call PatchUpdateCouplerFromDataset(coupler,option,patch%grid,selector, &
+                                           real_count)
+        dof3 = PETSC_TRUE
       class default
         option%io_buffer = 'Unknown dataset class for general%energy_flux.'
         call printErrMsg(option)
