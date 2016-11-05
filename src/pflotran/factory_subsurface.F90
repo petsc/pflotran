@@ -359,6 +359,7 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
   use PM_TH_class
   use PM_TOilIms_class
   use PM_TOWG_class
+  use PM_TOWG_Aux_module
 
   implicit none 
 
@@ -429,9 +430,22 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%liquid_phase = 1           ! liquid_pressure
       option%oil_phase = 2              ! oil_pressure
       option%gas_phase = 3              ! gas_pressure
-
-      option%nflowdof = 4
-      option%nflowspec = 3 !H20, Oil, Gas
+      select case (towg_miscibility_model)
+        case(TOWG_IMMISCIBLE)
+          option%nflowdof = 4
+          option%nflowspec = 3 !H20, Oil, Gas
+        !case(TOWG_TODD_LONGSTAFF,TOWG_BLACK_OIL)
+        !  option%nflowdof = 4
+        !  option%nflowspec = 3 !H20, Oil, Gas 
+        !case(TOWG_SOLVENT_TL)
+        !  option%nflowdof = 5
+        !  option%nflowspec = 4 !H20, Oil, Gas, Solvent
+        case default
+          !option%io_buffer = 'SubsurfaceSetFlowMode: ' // 
+          !  'towg_miscibility_model must be intiialized'
+          option%io_buffer = 'only immiscible TOWG currently implemented'
+          call printErrMsg(option)
+      end select
       option%use_isothermal = PETSC_FALSE
     class is (pm_immis_type)
       option%iflowmode = IMS_MODE
@@ -553,8 +567,10 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             pm => PMTHCreate()
           case('TOIL_IMS')
             pm => PMTOilImsCreate() 
-          case('TOWG')
-            pm => PMTOWGCreate() 
+          !case('TOWG')
+          case('TOWG_IMMISCIBLE','TODD_LONGOSTAFF','TOWG_MISCIBLE', &
+               'BLACK_OIL','SOLVENT_TL')
+            pm => PMTOWGCreate(word,option) 
           case default
             error_string = trim(error_string) // ',MODE'
             call InputKeywordUnrecognized(word,error_string,option)

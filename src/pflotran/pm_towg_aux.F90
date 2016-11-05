@@ -40,37 +40,53 @@ module PM_TOWG_Aux_module
   PetscInt, parameter, public :: TOWG_ANY_STATE = 4
 
   ! Primary DOF indices - 
-  !PetscInt, parameter, public :: TOIL_IMS_PRESSURE_DOF = 1
-  !PetscInt, parameter, public :: TOIL_IMS_SATURATION_DOF = 2
-  !PetscInt, parameter, public :: TOIL_IMS_ENERGY_DOF = 3
+  PetscInt, parameter, public :: TOWG_OIL_PRESSURE_DOF = 1
+  PetscInt, parameter, public :: TOWG_OIL_SATURATION_DOF = 2
+  PetscInt, parameter, public :: TOWG_GAS_SATURATION_DOF = 2
+  PetscInt, parameter, public :: TOWG_X_GAS_IN_OIL_DOF = 3
+  PetscInt, parameter, public :: TOWG_X_OIL_IN_GAS_DOF = 3
+  PetscInt, parameter, public :: TOWG_SOLV_SATURATION = 4
+  PetscInt, parameter, public :: TOWG_3CMPS_ENERGY_DOF = 4
+  PetscInt, parameter, public :: TOWG_SOLV_TL_ENERGY_DOF = 5 
+  !towg_energy_dof assigned TOWG_3CMPS_ENERGY_DOF or TOWG_SOLV_TL_ENERGY_DOF
+  !in PMTOWGCreate 
+  PetscInt, public :: towg_energy_dof = UNINITIALIZED_INTEGER 
+  
 
   ! Equation indices -   
-  !PetscInt, parameter, public :: TOIL_IMS_LIQUID_EQUATION_INDEX = 1
-  !PetscInt, parameter, public :: TOIL_IMS_OIL_EQUATION_INDEX = 2
-  !PetscInt, parameter, public :: TOIL_IMS_ENERGY_EQUATION_INDEX = 3
+  PetscInt, parameter, public :: TOWG_LIQ_EQ_IDX = 1
+  PetscInt, parameter, public :: TOWG_OIL_EQ_IDX = 2
+  PetscInt, parameter, public :: TOWG_GAS_EQ_IDX = 3
+  PetscInt, parameter, public :: TOWG_SOLV_EQ_IDX = 4
+  PetscInt, parameter, public :: TOWG_3CMPS_ENERGY_EQ_IDX = 4
+  PetscInt, parameter, public :: TOWG_SOLV_TL_ENERGY_EQ_IDX = 5
+  PetscInt, public :: towg_energy_eq_idx = UNINITIALIZED_INTEGER
 
-  ! Indices used to map aux_real for condition values 
-  !PetscInt, parameter, public :: TOIL_IMS_PRESSURE_INDEX = 1
-  !PetscInt, parameter, public :: TOIL_IMS_OIL_SATURATION_INDEX = 2
-  !PetscInt, parameter, public :: TOIL_IMS_TEMPERATURE_INDEX = 3
-  !PetscInt, parameter, public :: TOIL_IMS_LIQUID_FLUX_INDEX = 4
-  !PetscInt, parameter, public :: TOIL_IMS_OIL_FLUX_INDEX = 5
-  !PetscInt, parameter, public :: TOIL_IMS_ENERGY_FLUX_INDEX = 6
-  !PetscInt, parameter, public :: TOIL_IMS_LIQ_CONDUCTANCE_INDEX = 7
-  !PetscInt, parameter, public :: TOIL_IMS_OIL_CONDUCTANCE_INDEX = 8
-  !PetscInt, parameter, public :: TOIL_IMS_MAX_INDEX = 9
+  !Indices used to map aux_real for condition values 
+  PetscInt, parameter, public :: TOWG_OIL_PRESSURE_INDEX = 1
+  PetscInt, parameter, public :: TOWG_OIL_SATURATION_INDEX = 2 
+  PetscInt, parameter, public :: TOWG_GAS_SATURATION_INDEX = 3  
+  PetscInt, parameter, public :: TOWG_SOLV_SATURATION_INDEX = 4
+  PetscInt, parameter, public :: TOWG_X_GAS_IN_OIL_INDEX = 5
+  PetscInt, parameter, public :: TOWG_X_OIL_IN_GAS_INDEX = 6
+  PetscInt, parameter, public :: TOWG_TEMPERATURE_INDEX = 7
+  PetscInt, parameter, public :: TOWG_LIQUID_FLUX_INDEX = 8
+  PetscInt, parameter, public :: TOWG_OIL_FLUX_INDEX = 9
+  PetscInt, parameter, public :: TOWG_GAS_FLUX_INDEX = 10
+  PetscInt, parameter, public :: TOWG_SOLV_FLUX_INDEX = 11
+  PetscInt, parameter, public :: TOWG_ENERGY_FLUX_INDEX = 12
+  PetscInt, parameter, public :: TOWG_LIQ_CONDUCTANCE_INDEX = 13
+  PetscInt, parameter, public :: TOWG_OIL_CONDUCTANCE_INDEX = 14
+  PetscInt, parameter, public :: TOWG_GAS_CONDUCTANCE_INDEX = 15
+  PetscInt, parameter, public :: TOWG_MAX_INDEX = 15
 
-  !PetscInt, parameter, public :: TOIL_IMS_UPDATE_FOR_DERIVATIVE = -1
-  !PetscInt, parameter, public :: TOIL_IMS_UPDATE_FOR_FIXED_ACCUM = 0
-  !PetscInt, parameter, public :: TOIL_IMS_UPDATE_FOR_ACCUM = 1
-  !PetscInt, parameter, public :: TOIL_IMS_UPDATE_FOR_BOUNDARY = 2
+  !Indices used to map aux_int_var for condition values
+  PetscInt, parameter, public :: TOWG_STATE_INDEX = 1
 
-  !phase mapping:
-  !While LIQUID_PHASE = 1 alway, OIL_PHASE can be:
-  ! 2 for brine/oil
-  ! 3 for brine/gas/oil (can be 2 again, but then GAS_PHASE requires
-  !                      a different index). Need mapping in any case
-  !PetscInt, parameter, public :: TOIL_IMS_OIL_PHASE = 2
+  !PetscInt, parameter, public :: TOWG_UPDATE_FOR_DERIVATIVE = -1
+  !PetscInt, parameter, public :: TOWG_UPDATE_FOR_FIXED_ACCUM = 0
+  !PetscInt, parameter, public :: TOWG_UPDATE_FOR_ACCUM = 1
+  !PetscInt, parameter, public :: TOWG_UPDATE_FOR_BOUNDARY = 2
 
   ! it might be required for thermal diffusion terms and tough conv criteria
   ! consider to pput here all 

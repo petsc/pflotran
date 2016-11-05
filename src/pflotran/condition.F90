@@ -93,6 +93,7 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: liquid_flux
     type(flow_sub_condition_type), pointer :: oil_flux
     type(flow_sub_condition_type), pointer :: gas_flux
+    type(flow_sub_condition_type), pointer :: solvent_flux
     type(flow_sub_condition_type), pointer :: energy_flux
     type(flow_sub_condition_type), pointer :: temperature
     type(flow_sub_condition_type), pointer :: enthalpy
@@ -360,6 +361,7 @@ function FlowTOWGConditionCreate(option)
   nullify(towg_condition%liquid_flux)
   nullify(towg_condition%oil_flux)
   nullify(towg_condition%gas_flux)
+  nullify(towg_condition%solvent_flux)
   nullify(towg_condition%energy_flux)
   nullify(towg_condition%temperature)
   nullify(towg_condition%enthalpy)
@@ -726,6 +728,13 @@ function FlowTOWGSubConditionPtr(sub_condition_name,towg, &
         sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
         towg%gas_flux => sub_condition_ptr
       endif
+    case('SOLVENT_FLUX')
+      if (associated(towg%solvent_flux)) then
+        sub_condition_ptr => towg%solvent_flux
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        towg%solvent_flux => sub_condition_ptr
+      endif
     case('ENERGY_FLUX')
       if (associated(towg%energy_flux)) then
         sub_condition_ptr => towg%energy_flux
@@ -737,7 +746,7 @@ function FlowTOWGSubConditionPtr(sub_condition_name,towg, &
       if (associated(towg%rate)) then
         sub_condition_ptr => towg%rate
       else
-        sub_condition_ptr => FlowSubConditionCreate(THREE_INTEGER)
+        sub_condition_ptr => FlowSubConditionCreate(option%nflowdof)
         towg%rate => sub_condition_ptr
       endif
     case default
@@ -3055,7 +3064,7 @@ subroutine FlowConditionTOWGRead(condition,input,option)
       case('OIL_PRESSURE','GAS_PRESSURE','OIL_SATURATION', 'GAS_SATURATION', &
            'SOLVENT_SATURATION','TEMPERATURE','GAS_IN_OIL_MOLE_FRACTION', &
            'GAS_IN_GAS_MOLE_FRACTION','RATE', 'LIQUID_FLUX', &
-           'OIL_FLUX','GAS_FLUX','ENERGY_FLUX','ENTHALPY')
+           'OIL_FLUX','GAS_FLUX','SOLVENT_FLUX','ENERGY_FLUX','ENTHALPY')
         sub_condition_ptr => FlowTOWGSubConditionPtr(word,towg,option)
         select case(trim(word))
           case('OIL_PRESSURE','GAS_PRESSURE')
@@ -3068,8 +3077,15 @@ subroutine FlowConditionTOWGRead(condition,input,option)
           case('RATE')
             input%force_units = PETSC_TRUE
             input%err_buf = word
-            internal_units = trim(rate_string) // ',' // trim(rate_string) //&
+            if (towg_miscibility_model == TOWG_SOLVENT_TL) then 
+              internal_units = trim(rate_string) // ',' // trim(rate_string) & 
+                 // ',' // trim(rate_string) // ',' // trim(rate_string) // &
                              ',MJ/sec|MW'
+            else
+              internal_units = trim(rate_string) // ',' // trim(rate_string) & 
+                 // ',' // trim(rate_string) // &
+                             ',MJ/sec|MW' 
+            end if
           case('LIQUID_FLUX','OIL_FLUX','GAS_FLUX')
             internal_units = 'meter/sec'
           case('ENERGY_FLUX')
@@ -3102,10 +3118,19 @@ subroutine FlowConditionTOWGRead(condition,input,option)
   !assign phase state
   if (associated(towg%rate)) then
     condition%iphase = TOWG_ANY_STATE
-  !neuman condition for all phases
+  !Neumann condition for all phases - IMMISCIBLE, LONGOSTAFF, BLACK_OIL
   else if (associated(towg%liquid_flux) .and. &
            associated(towg%oil_flux) .and. & 
            associated(towg%gas_flux) .and. &
+           (associated(towg%energy_flux) .or. &
+            associated(towg%temperature)) &
+          ) then
+    condition%iphase = TOWG_ANY_STATE
+  !Neumann condition for all phases - SOLVENT_TL
+  else if (associated(towg%liquid_flux) .and. &
+           associated(towg%oil_flux) .and. & 
+           associated(towg%gas_flux) .and. &
+           associated(towg%solvent_flux) .and. &
            (associated(towg%energy_flux) .or. &
             associated(towg%temperature)) &
           ) then
@@ -3222,6 +3247,10 @@ subroutine FlowConditionTOWGRead(condition,input,option)
   call FlowSubConditionVerify(option,condition,word,towg%gas_flux, &
                               default_time_storage, &
                               PETSC_TRUE)
+  word = 'solvent flux'
+  call FlowSubConditionVerify(option,condition,word,towg%solvent_flux, &
+                              default_time_storage, &
+                              PETSC_TRUE)
   word = 'energy flux'
   call FlowSubConditionVerify(option,condition,word,towg%energy_flux, &
                               default_time_storage, &
@@ -3256,6 +3285,8 @@ subroutine FlowConditionTOWGRead(condition,input,option)
   if (associated(towg%oil_flux)) &
     i = i + 1
   if (associated(towg%gas_flux)) &
+    i = i + 1
+  if (associated(towg%solvent_flux)) &
     i = i + 1
   if (associated(towg%energy_flux)) &
     i = i + 1
@@ -3315,6 +3346,10 @@ subroutine FlowConditionTOWGRead(condition,input,option)
   if (associated(towg%gas_flux)) then
     i = i + 1
     condition%sub_condition_ptr(i)%ptr => towg%gas_flux
+  endif  
+  if (associated(towg%solvent_flux)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => towg%solvent_flux
   endif  
   if (associated(towg%energy_flux)) then
     i = i + 1

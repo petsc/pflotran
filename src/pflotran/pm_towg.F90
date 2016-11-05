@@ -61,14 +61,16 @@ module PM_TOWG_class
 contains
 
 ! ************************************************************************** !
-function PMTOWGCreate()
+function PMTOWGCreate(miscibility_model,option)
   ! 
   ! Creates TOWG process models shell
   ! 
   ! Author: Paolo Orsini
   ! Date: 10/15/16
   ! 
-  !use PM_TOWG_Aux_module
+  use Option_module
+  use Input_Aux_module
+  use PM_TOWG_Aux_module
   use Variables_module, only : OIL_PRESSURE, GAS_PRESSURE, &
                                OIL_SATURATION, GAS_SATURATION, &
                                OIL_MOLE_FRACTION, GAS_MOLE_FRACTION, &  
@@ -76,6 +78,9 @@ function PMTOWGCreate()
   implicit none
   
   class(pm_towg_type), pointer :: PMTOWGCreate
+
+  character(len=MAXWORDLENGTH) :: miscibility_model
+  type(option_type), pointer :: option
 
   class(pm_towg_type), pointer :: towg_pm
   
@@ -103,7 +108,44 @@ function PMTOWGCreate()
   towg_pm%tgh2_itol_scld_res_e1(3,3) = 1.d-5
   towg_pm%tgh2_itol_scld_res_e2 = 1.d0
   towg_pm%tough2_conv_criteria = PETSC_FALSE
+
+  select case(trim(miscibility_model)) 
+    case('TOWG_IMMISCIBLE')
+      towg_miscibility_model = TOWG_IMMISCIBLE
+      towg_energy_dof = TOWG_3CMPS_ENERGY_DOF
+      towg_energy_eq_idx = TOWG_3CMPS_ENERGY_EQ_IDX
+    case('TODD_LONGOSTAFF','TOWG_MISCIBLE')
+      towg_miscibility_model = TOWG_TODD_LONGSTAFF
+      towg_energy_dof = TOWG_3CMPS_ENERGY_DOF
+      towg_energy_eq_idx = TOWG_3CMPS_ENERGY_EQ_IDX
+    case('BLACK_OIL')
+      towg_miscibility_model = TOWG_BLACK_OIL
+      towg_energy_dof = TOWG_3CMPS_ENERGY_DOF
+      towg_energy_eq_idx = TOWG_3CMPS_ENERGY_EQ_IDX
+    case('SOLVENT_TL')
+      towg_miscibility_model = TOWG_SOLVENT_TL
+      towg_energy_dof = TOWG_SOLV_TL_ENERGY_DOF
+      towg_energy_eq_idx = TOWG_SOLV_TL_ENERGY_EQ_IDX
+    case default
+      call InputKeywordUnrecognized(miscibility_model, &
+                         'TOWG MISCIBILITY_MODEL',option)
+      !option%io_buffer = 'TOWG - miscibility_model not recognised' 
+      !call printErrMsg(option)
+  end select 
+
+
   !towg_pm%miscibility_model = UNINITIALIZED_INTEGER
+
+  if (Uninitialized(towg_energy_dof)) then 
+    option%io_buffer = 'towg_energy_dof not set up'
+    call printErrMsg(option)
+  end if  
+
+  if (Uninitialized(towg_energy_eq_idx)) then 
+    option%io_buffer = 'towg_energy_eq_idx not set up'
+    call printErrMsg(option)
+  end if  
+
 
   call PMSubsurfaceFlowCreate(towg_pm)
   towg_pm%name = 'PMTOWG'
@@ -132,7 +174,7 @@ subroutine PMTOWGRead(this,input)
   
   type(input_type), pointer :: input
   
-  character(len=MAXWORDLENGTH) :: keyword, word
+  character(len=MAXWORDLENGTH) :: keyword 
   class(pm_towg_type) :: this
   type(option_type), pointer :: option
   PetscReal :: tempreal
@@ -161,23 +203,23 @@ subroutine PMTOWGRead(this,input)
     if (found) cycle
     
     select case(trim(keyword))
-      case('MISCIBILITY_MODEL')
-        ! read a word, add a new select case, and detect the case
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'MODEL type','MISCIBILITY_MODEL')  
-        call StringToUpper(word)
-        select case(trim(word)) 
-          case('IMMISICIBLE')
-            towg_miscibility_model = TOWG_IMMISCIBLE
-          case('TODD_LONGOSTAFF','MISCIBLE')
-            towg_miscibility_model = TOWG_TODD_LONGSTAFF
-          case('BLACK_OIL')
-            towg_miscibility_model = TOWG_BLACK_OIL
-          case('SOLVENT_TL')
-            towg_miscibility_model = TOWG_SOLVENT_TL
-          case default
-            call InputKeywordUnrecognized(keyword,'MISCIBILITY_MODEL',option)
-        end select 
+      !case('MISCIBILITY_MODEL')
+      !  ! read a word, add a new select case, and detect the case
+      !  call InputReadWord(input,option,word,PETSC_TRUE)
+      !  call InputErrorMsg(input,option,'MODEL type','MISCIBILITY_MODEL')  
+      !  call StringToUpper(word)
+      !  select case(trim(word)) 
+      !    case('IMMISICIBLE')
+      !      towg_miscibility_model = TOWG_IMMISCIBLE
+      !    case('TODD_LONGOSTAFF','MISCIBLE')
+      !      towg_miscibility_model = TOWG_TODD_LONGSTAFF
+      !    case('BLACK_OIL')
+      !      towg_miscibility_model = TOWG_BLACK_OIL
+      !    case('SOLVENT_TL')
+      !      towg_miscibility_model = TOWG_SOLVENT_TL
+      !    case default
+      !      call InputKeywordUnrecognized(keyword,'MISCIBILITY_MODEL',option)
+      !  end select 
       case('ITOL_SCALED_RESIDUAL')
         call InputReadDouble(input,option,this%itol_scaled_res)
         call InputDefaultMsg(input,option,'towg itol_scaled_res')
@@ -244,19 +286,19 @@ subroutine PMTOWGRead(this,input)
     
   enddo  
 
-  if (Uninitialized(towg_miscibility_model)) then 
-    option%io_buffer = 'TOWG MISCIBILITY_MODEL not set up'
-    call printErrMsg(option)
-  end if  
+  !if (Uninitialized(towg_miscibility_model)) then 
+  !  option%io_buffer = 'TOWG MISCIBILITY_MODEL not set up'
+  !  call printErrMsg(option)
+  !end if  
 
   !here set up functions in TOWG and pm_TOWG_aux based on miscibility model 
-  select case(towg_miscibility_model)
-    case(TOWG_IMMISCIBLE) 
-      !set up towg and pm_towg_aux functions   
-    case default
-      option%io_buffer = 'only immiscible TOWG currently implemented' 
-      call printErrMsg(option)
-  end select
+  !select case(towg_miscibility_model)
+  !  case(TOWG_IMMISCIBLE) 
+  !    !set up towg and pm_towg_aux functions   
+  !  case default
+  !    option%io_buffer = 'only immiscible TOWG currently implemented' 
+  !    call printErrMsg(option)
+  !end select
 
 end subroutine PMTOWGRead
 

@@ -631,17 +631,18 @@ factory_subsurface.o : characteristic_curves.o checkpoint.o condition.o \
                        pm_base_pointer.o pm_flash2.o pm_general.o pm_immis.o \
                        pm_miscible.o pm_mphase.o pm_richards.o pm_rt.o \
                        pm_subsurface_flow.o pm_th.o pm_toil_ims.o pm_towg.o \
-                       pm_ufd_decay.o pm_waste_form.o pmc_auxiliary.o \
-                       pmc_base.o pmc_subsurface.o pmc_third_party.o \
-                       reaction.o reaction_aux.o reaction_database.o \
-                       reaction_mineral.o reaction_solid_solution.o \
-                       reactive_transport.o realization_base.o \
-                       realization_subsurface.o region.o regression.o \
-                       saturation_function.o simulation_subsurface.o solver.o \
-                       srcsink_sandbox.o strata.o string.o timestepper_BE.o \
-                       timestepper_base.o timestepper_steady.o \
-                       transport_constraint.o uniform_velocity.o units.o \
-                       utility.o waypoint.o well_spec_base.o wipp.o
+                       pm_towg_aux.o pm_ufd_decay.o pm_waste_form.o \
+                       pmc_auxiliary.o pmc_base.o pmc_subsurface.o \
+                       pmc_third_party.o reaction.o reaction_aux.o \
+                       reaction_database.o reaction_mineral.o \
+                       reaction_solid_solution.o reactive_transport.o \
+                       realization_base.o realization_subsurface.o region.o \
+                       regression.o saturation_function.o \
+                       simulation_subsurface.o solver.o srcsink_sandbox.o \
+                       strata.o string.o timestepper_BE.o timestepper_base.o \
+                       timestepper_steady.o transport_constraint.o \
+                       uniform_velocity.o units.o utility.o waypoint.o \
+                       well_spec_base.o wipp.o
 factory_surface.o : checkpoint.o checkpoint_surface.o condition.o \
                     condition_control.o coupler.o dataset.o dataset_base.o \
                     dataset_common_hdf5.o debug.o discretization.o grid.o \
@@ -921,11 +922,12 @@ patch.o : auxiliary.o characteristic_curves.o condition.o connection.o \
           hydrostatic.o hydrostatic_multi_phase.o immis_aux.o integral_flux.o \
           material.o material_aux.o miscible_aux.o mphase_aux.o observation.o \
           option.o output_aux.o pflotran_constants.o pm_toil_ims_aux.o \
-          reaction.o reaction_aux.o reaction_mineral.o reaction_mineral_aux.o \
-          reaction_surf_complex_aux.o reactive_transport_aux.o region.o \
-          richards_aux.o saturation.o saturation_function.o strata.o string.o \
-          surface_auxiliary.o surface_field.o surface_material.o th_aux.o \
-          transport_constraint.o utility.o variables.o well.o well_spec_base.o
+          pm_towg_aux.o reaction.o reaction_aux.o reaction_mineral.o \
+          reaction_mineral_aux.o reaction_surf_complex_aux.o \
+          reactive_transport_aux.o region.o richards_aux.o saturation.o \
+          saturation_function.o strata.o string.o surface_auxiliary.o \
+          surface_field.o surface_material.o th_aux.o transport_constraint.o \
+          utility.o variables.o well.o well_spec_base.o
 pflotran.o : factory_geomechanics.o factory_hydrogeophysics.o \
              factory_pflotran.o factory_subsurface.o factory_surface.o \
              factory_surfsubsurface.o multisimulation.o option.o output_aux.o \
@@ -1392,6 +1394,7 @@ wipp.o : input_aux.o lookup_table.o material_aux.o option.o \
          pflotran_constants.o string.o units.o utility.o
 wrapper_hydrogeophysics.o : e4d_run.o e4d_setup.o e4d_vars.o option.o \
                             pflotran_constants.o
+
 
 # developer level regression testing
 test : utest rtest
