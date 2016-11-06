@@ -139,11 +139,11 @@ subroutine SimpleReact(this,Residual,Jacobian,compute_derivative, &
   
   PetscReal :: Aaq, Baq, Caq, Daq, Eaq, Faq  ! mol/L
   PetscReal :: Xim, Yim  ! mol/m^3
-  PetscReal :: Rate
+  PetscReal :: Rate,Rate1,Rate2
   PetscReal :: RateA, RateB, RateC, RateD, RateE, RateF, RateX, RateY  ! mol/sec
   PetscReal :: stoichA, stoichB, stoichC, stoichD, stoichE, stoichF
   PetscReal :: stoichX, stoichY
-  PetscReal :: k, kr  ! units are problem specific
+  PetscReal :: k, kr, k1, k2  ! units are problem specific
   PetscReal :: K_Aaq, K_Baq ! [mol/L]
   
   porosity = material_auxvar%porosity
@@ -192,6 +192,25 @@ subroutine SimpleReact(this,Residual,Jacobian,compute_derivative, &
   ! Monod half-saturation constants
   K_Aaq = 0.d0
   K_Baq = 0.d0
+
+! PCL: A -> B -> C
+! kinetic rate constants
+! non-stationary state
+! k1 = 1.d-1
+! k2 = 5.d-2
+
+! stationary state
+! k1 = 1.d-1
+! k2 = 1.d-0
+
+! Rate1 = k1 * Aaq * L_water
+! Rate2 = k2 * Baq * L_water
+
+! RateA = -Rate1
+! RateB =  Rate1 - Rate2
+! RateC =  Rate2
+
+! END PCL
 
   ! zero-order (A -> C)
   !k = 0.d0 ! WARNING: Too high a rate can result in negative concentrations
