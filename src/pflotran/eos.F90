@@ -97,7 +97,7 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,temparray(3))
                 call InputErrorMsg(input,option,'WATER_COMPRESSIBILITY', &
                                    'EOS,WATER,DENSITY,EXPONENTIAL')
-              case('IFC67','DEFAULT','BATZLE_AND_WANG','TGDPB01')
+              case('IFC67','DEFAULT','BATZLE_AND_WANG','TGDPB01','PLANAR')
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,DENSITY',option)
             end select
@@ -113,7 +113,7 @@ subroutine EOSRead(input,option)
                                    'EOS,WATER,ENTHALPY,CONSTANT')
                 call InputReadAndConvertUnits(input,temparray(1), &
                                'J/kmol','EOS,WATER,ENTHALPY,CONSTANT',option)
-               case('IFC67','PAINTER','DEFAULT')
+               case('IFC67','PAINTER','DEFAULT','PLANAR')
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,ENTHALPY',option)
             end select
@@ -146,6 +146,7 @@ subroutine EOSRead(input,option)
                                    'EOS,WATER,STEAM_DENSITY,CONSTANT')
                 call InputReadAndConvertUnits(input,temparray(1), &
                            'kg/m^3','EOS,WATER,STEAM_DENSITY,CONSTANT',option)
+              case('IFC67','DEFAULT','PLANAR')
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,STEAM_DENSITY', &
                                               option)
@@ -162,6 +163,7 @@ subroutine EOSRead(input,option)
                                    'EOS,WATER,STEAM_ENTHALPY,CONSTANT')
                 call InputReadAndConvertUnits(input,temparray(1), &
                         'J/kmol','EOS,WATER,STEAM_ENTHALPY,CONSTANT',option)
+              case('IFC67','DEFAULT','PLANAR')
               case default
                 call InputKeywordUnrecognized(word, &
                        'EOS,WATER,STEAM_ENTHALPY',option)

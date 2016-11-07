@@ -208,7 +208,8 @@ module EOS_Water_module
             
             
   public :: TestEOSWaterBatzleAndWang, &
-            EOSWaterTest
+            EOSWaterTest, &
+            EOSWaterSteamTest
  
   contains
 
@@ -331,6 +332,8 @@ subroutine EOSWaterSetDensity(keyword,aux)
       exponent_reference_pressure = aux(2)
       exponent_water_compressibility = aux(3)  
       EOSWaterDensityPtr => EOSWaterDensityExponential    
+    case('PLANAR')
+      EOSWaterDensityPtr => EOSWaterDensityTPPlanar
     case('TGDPB01')
       EOSWaterDensityPtr => EOSWaterDensityTGDPB01
     case('PAINTER')
@@ -361,6 +364,8 @@ subroutine EOSWaterSetEnthalpy(keyword,aux)
       EOSWaterEnthalpyPtr => EOSWaterEnthalpyConstant
     case('DEFAULT','IFC67')
       EOSWaterEnthalpyPtr => EOSWaterEnthalpyIFC67
+    case('PLANAR')
+      EOSWaterEnthalpyPtr => EOSWaterEnthalpyTPPlanar  
     case('PAINTER')
       EOSWaterEnthalpyPtr => EOSWaterEnthalpyPainter      
     case default
@@ -368,7 +373,6 @@ subroutine EOSWaterSetEnthalpy(keyword,aux)
         '" in EOSWaterSetEnthalpy().'
       stop
   end select
-  
   
 end subroutine EOSWaterSetEnthalpy
 
@@ -413,6 +417,8 @@ subroutine EOSWaterSetSteamDensity(keyword,aux)
     case('CONSTANT')
       constant_steam_density = aux(1)  
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDenEnthConstant
+    case('PLANAR')
+      EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDenEnthTPPlanar
     case('IFC67')
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDensityEnthalpyIFC67
     case default
@@ -436,6 +442,8 @@ subroutine EOSWaterSetSteamEnthalpy(keyword,aux)
     case('CONSTANT')
       constant_steam_enthalpy = aux(1)  
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDenEnthConstant
+    case('PLANAR')
+      EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDenEnthTPPlanar
     case('DEFAULT','IFC67')
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDensityEnthalpyIFC67
     case default
@@ -802,6 +810,54 @@ subroutine EOSWaterSaturationPressureIFC67(T, calculate_derivatives, &
   ierr = 0
 
 end subroutine EOSWaterSaturationPressureIFC67
+
+! ************************************************************************** !
+
+subroutine EOSWaterSatPresWagnerPruss(T, calculate_derivatives, &
+                                      PS, dPS_dT, ierr)
+  ! 
+  ! Calculates the saturation pressure of water as a function of temperature
+  ! based on Wagner W. and A. Pruss (1993) "International Equations for the 
+  ! Saturation Properties of Ordinary Water Substance. Revised According to 
+  ! the International Temperature Scale of 1990. Addendum to J. Phys. Chem. 
+  ! Ref. Data 16, 893 (1987)".
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/07/16
+  ! 
+  implicit none
+
+  PetscReal, intent(in) :: T ! temperature
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: PS, dPS_dT ! Saturation pres. and derivative
+  PetscErrorCode, intent(out) :: ierr
+  
+  PetscReal, parameter :: a(6) = [-7.85951783d0,1.84408259d0,-11.7866497d0, &
+                                  22.6807411d0,-15.9618719d0,1.80122502d0]
+  PetscReal, parameter :: Tc = 647.096d0 ! [K]
+  PetscReal, parameter :: Pc = 22.064d6  ! [Pa]
+  PetscReal :: tau
+  PetscReal :: T_over_Tc
+  PetscReal :: polynomial
+  PetscReal :: dpolynomial_dtau, dtau_dT
+  
+  T_over_Tc = (T+293.15d0)/Tc
+  tau = 1.d0 - T_over_Tc
+  polynomial = a(1)*tau+a(2)*tau**1.5d0+a(3)*tau**3.d0+ &
+               a(4)*tau**3.5d0+a(5)*tau**4.d0+a(6)*tau**7.5d0
+  PS = Pc*exp(polynomial/T_over_Tc)
+  if (calculate_derivatives) then
+    dtau_dT = -1.d0/Tc
+    dpolynomial_dtau = a(1)+1.5d0*a(2)*sqrt(tau)+3.d0*a(3)*tau*tau+ &
+                       3.5d0*a(4)*tau**2.5d0+4.d0*a(5)*tau**3.d0+ &
+                       7.5d0*a(6)*tau**6.5d0
+    dPS_dT = PS*(dpolynomial_dtau/T_over_Tc*dtau_dT+polynomial*Tc)
+  else
+    dPS_dT = UNINITIALIZED_DOUBLE
+  endif
+  ierr = 0
+
+end subroutine EOSWaterSatPresWagnerPruss
 
 ! ************************************************************************** !
 
@@ -1304,6 +1360,79 @@ end subroutine EOSWaterDensityExponential
 
 ! ************************************************************************** !
 
+subroutine EOSWaterDensityTPPlanar(t,p,calculate_derivatives, &
+                                   dw,dwmol,dwp,dwt,ierr)
+  ! 
+  ! Calculates the density of water as a function of temperature and pressure
+  ! using a simple plane equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/04/16
+  ! 
+  implicit none
+  
+  PetscReal, intent(in) :: t   ! Temperature in centigrade
+  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: dw,dwmol,dwp,dwt
+  PetscErrorCode, intent(out) :: ierr
+  
+  PetscReal, parameter :: drho_dp = 4.42d-7
+  PetscReal, parameter :: drho_dT = -0.312d0
+  PetscReal, parameter :: rho_reference = 996.d0
+  
+  ! kg/m^3
+  dw = (t-30.d0)*drho_dT + (p-1.d6)*drho_dp + rho_reference
+  dwmol = dw/FMWH2O ! kmol/m^3
+  
+  if (calculate_derivatives) then
+    dwp = drho_dp/FMWH2O
+    dwt = drho_dT/FMWH2O
+  else
+    dwp = UNINITIALIZED_DOUBLE
+    dwt = UNINITIALIZED_DOUBLE
+  endif
+
+end subroutine EOSWaterDensityTPPlanar
+
+! ************************************************************************** !
+
+subroutine EOSWaterEnthalpyTPPlanar(t,p,calculate_derivatives, &
+                                    hw,hwp,hwt,ierr)
+  ! 
+  ! Calculates the enthalpy of water as a function of temperature and pressure
+  ! using a simple plane equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/04/16
+  ! 
+  implicit none
+  
+  PetscReal, intent(in) :: t   ! Temperature in centigrade
+  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: hw,hwp,hwt
+  PetscErrorCode, intent(out) :: ierr
+  
+  PetscReal, parameter :: dh_dp = 1.65d-2
+  PetscReal, parameter :: dh_dT = 7.5d4 
+  PetscReal, parameter :: h_reference = 2.27d6 ! J/kmol
+    
+  ! kg/m^3
+  hw = (t-30.d0)*dh_dT + (p-1.d6)*dh_dp + h_reference
+  
+  if (calculate_derivatives) then
+    hwp = dh_dp
+    hwt = dh_dT
+  else
+    hwp = UNINITIALIZED_DOUBLE
+    hwt = UNINITIALIZED_DOUBLE
+  endif
+  
+end subroutine EOSWaterEnthalpyTPPlanar
+
+! ************************************************************************** !
+
 subroutine EOSWaterSteamDenEnthNoDerive(t,p,dg,dgmol,hg,ierr)
 
   implicit none
@@ -1677,6 +1806,60 @@ subroutine EOSWaterSteamDenEnthConstant(t,pv,calculate_derivatives, &
   endif
   
 end subroutine EOSWaterSteamDenEnthConstant
+
+! ************************************************************************** !
+
+subroutine EOSWaterSteamDenEnthTPPlanar(t,pv,calculate_derivatives, &
+                                        dv,dvmol,hv,dvp,dvt,hvp,hvt,ierr)
+! t/C  p/Pa dgmol/(mol/m^3)  h/J/kmol
+                                          ! 
+  ! Calculates the enthalpy of water as a function of temperature and pressure
+  ! using a simple plane equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/04/16
+  ! 
+  implicit none
+  
+  PetscReal, intent(in) :: t   ! Temperature in centigrade.
+  PetscReal, intent(in) :: pv  ! Vapor Pressure in Pascals.
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: dv,dvmol,dvp,dvt ! kmol/m^3
+  PetscReal, intent(out) :: hv,hvp,hvt       ! J/kmol
+  PetscErrorCode, intent(out) :: ierr
+  
+  PetscReal, parameter :: drho_dp = 7.8d-6
+  PetscReal, parameter :: drho_dT = -3.54d-3
+  PetscReal, parameter :: rho_reference = 0.846d0 ! kg/m^3
+  
+  PetscReal, parameter :: dh_dp = -5.2d0
+  PetscReal, parameter :: dh_dT = 4.d4
+  PetscReal, parameter :: h_reference = 4.54d7 ! J/kmol
+  
+  ! FMWAIR = 28.96d0
+
+  ierr = 0
+
+  ! kg/m^3
+  dv = (t-30.d0)*drho_dT + (pv-1.d5)*drho_dp + rho_reference
+  dvmol = dv/FMWH2O ! kmol/m^3
+  
+  ! J/kmol
+  hv = (t-30.d0)*dh_dT + (pv-1.d5)*dh_dp + h_reference
+  
+  if (calculate_derivatives) then
+    dvp = drho_dp/FMWH2O
+    dvt = drho_dT/FMWH2O
+    hvp = dh_dp
+    hvt = dh_dT    
+  else
+    dvp = UNINITIALIZED_DOUBLE
+    dvt = UNINITIALIZED_DOUBLE
+    hvp = UNINITIALIZED_DOUBLE
+    hvt = UNINITIALIZED_DOUBLE    
+  endif  
+  
+end subroutine EOSWaterSteamDenEnthTPPlanar
 
 ! ************************************************************************** !
 
@@ -2723,7 +2906,7 @@ subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
   character(len=MAXWORDLENGTH) :: eos_enthalpy_name
   character(len=MAXWORDLENGTH) :: eos_viscosity_name
   character(len=MAXWORDLENGTH) :: eos_saturation_pressure_name
-  character(len=MAXSTRINGLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: header, string
 
   PetscErrorCode :: ierr
 
@@ -2835,8 +3018,12 @@ subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
   enddo
 
 100 format(100es16.8)
-  if (len_trim(filename) == 0) filename = 'eos_water_test.txt'
-  open(unit=IUNIT_TEMP,file=filename)
+  if (len_trim(filename) == 0) then
+    string = 'eos_water_test.txt'
+  else
+    string = filename
+  endif
+  open(unit=IUNIT_TEMP,file=string)
   header = 'T[C], P[Pa], &
     &Density (' // trim(eos_density_name) // ') [kg/m^3], &
     &Enthalpy (' // trim(eos_enthalpy_name) // ') [J/kmol], &
@@ -2861,6 +3048,189 @@ subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
   deallocate(saturation_pressure_array)
 
 end subroutine EOSWaterTest
+
+! ************************************************************************** !
+
+subroutine EOSWaterSteamTest(temp_low,temp_high,pres_low,pres_high, &
+                             ntemp,npres,uniform_temp,uniform_pres,filename)
+
+  implicit none
+
+  PetscReal :: temp_low
+  PetscReal :: temp_high
+  PetscReal :: pres_low
+  PetscReal :: pres_high
+  PetscInt :: npres
+  PetscInt :: ntemp
+  PetscBool :: uniform_temp
+  PetscBool :: uniform_pres
+  character(len=MAXWORDLENGTH) :: filename
+
+  PetscReal, allocatable :: temp(:)
+  PetscReal, allocatable :: pres(:)
+  PetscReal, allocatable :: density_kg(:,:)
+  PetscReal, allocatable :: density_kg_psat(:)
+  PetscReal, allocatable :: enthalpy(:,:)
+  PetscReal, allocatable :: enthalpy_psat(:)
+  PetscReal, allocatable :: viscosity(:,:)
+  PetscReal, allocatable :: saturation_pressure_array(:)
+  PetscReal :: dum1, dum2, dum3, dum4, dum5
+  PetscInt :: itemp, ipres
+  PetscReal :: ln_low, ln_high
+  PetscReal :: saturation_pressure
+  PetscReal :: NaN
+  character(len=MAXWORDLENGTH) :: eos_density_name
+  character(len=MAXWORDLENGTH) :: eos_enthalpy_name
+  character(len=MAXWORDLENGTH) :: eos_saturation_pressure_name
+  character(len=MAXSTRINGLENGTH) :: header, string
+
+  PetscErrorCode :: ierr
+
+  NaN = 0.d0
+  NaN = 1.d0/NaN
+  NaN = 0.d0*NaN
+
+  allocate(temp(ntemp))
+  temp = UNINITIALIZED_DOUBLE
+  allocate(pres(ntemp))
+  pres = UNINITIALIZED_DOUBLE
+  allocate(density_kg(npres,ntemp))
+  density_kg = UNINITIALIZED_DOUBLE
+  allocate(density_kg_psat(ntemp))
+  density_kg_psat = UNINITIALIZED_DOUBLE
+  allocate(viscosity(npres,ntemp))
+  viscosity = UNINITIALIZED_DOUBLE
+  allocate(enthalpy(npres,ntemp))
+  enthalpy = UNINITIALIZED_DOUBLE
+  allocate(enthalpy_psat(ntemp))
+  enthalpy_psat = UNINITIALIZED_DOUBLE
+  allocate(saturation_pressure_array(ntemp))
+  saturation_pressure_array = UNINITIALIZED_DOUBLE
+
+  if (uniform_pres) then
+    do ipres = 1, npres
+      pres(ipres) = (pres_high-pres_low)/dble(npres-1) * (ipres-1) + pres_low
+    enddo
+  else
+    ln_high = log(pres_high)
+    ln_low = log(pres_low)
+    do ipres = 1, npres
+      pres(ipres) = exp((ln_high-ln_low)/dble(npres-1) * (ipres-1) + ln_low)
+    enddo
+  endif
+
+  if (uniform_temp) then
+    do itemp = 1, ntemp
+      temp(itemp) = (temp_high-temp_low)/dble(ntemp-1) * (itemp-1) + temp_low
+    enddo
+  else
+    ln_high = log(temp_high)
+    ln_low = log(temp_low)
+    do itemp = 1, ntemp
+      temp(itemp) = exp((ln_high-ln_low)/dble(ntemp-1) * (itemp-1) + ln_low)
+    enddo
+  endif
+
+  ! density
+  if (associated(EOSWaterSteamDensityEnthalpyPtr,EOSWaterSteamDenEnthConstant)) then
+    eos_density_name = 'Constant'
+  else if (associated(EOSWaterSteamDensityEnthalpyPtr, &
+                      EOSWaterSteamDensityEnthalpyIFC67)) then
+    eos_density_name = 'IFC67'
+  else 
+    eos_density_name = 'Unknown'
+  endif
+
+  ! enthalpy
+  if (associated(EOSWaterSteamDensityEnthalpyPtr,EOSWaterSteamDenEnthConstant)) then
+    eos_enthalpy_name = 'Constant'
+  else if (associated(EOSWaterSteamDensityEnthalpyPtr, &
+                      EOSWaterSteamDensityEnthalpyIFC67)) then
+    eos_enthalpy_name = 'IFC67'
+  else
+    eos_enthalpy_name = 'Unknown'
+  endif
+
+  ! saturation pressure
+  if (associated(EOSWaterSaturationPressurePtr, &
+                 EOSWaterSaturationPressureIFC67)) then
+    eos_saturation_pressure_name = 'IFC67'
+  else
+    eos_saturation_pressure_name = 'Unknown'
+  endif
+
+  do itemp = 1, ntemp
+    do ipres = 1, npres
+      ! EOSWaterSaturationPressurePtr() must come before call to 
+      ! EOSWaterViscosityPtr()
+      call EOSWaterSaturationPressurePtr(temp(itemp),PETSC_FALSE, &
+                                         saturation_pressure,dum1,ierr)
+      if (ipres == 1) then
+        saturation_pressure_array(itemp) = saturation_pressure
+        call EOSWaterSteamDensityEnthalpyPtr(temp(itemp),saturation_pressure, &
+                                             PETSC_FALSE, &
+                                             density_kg_psat(itemp),dum1, &
+                                             enthalpy_psat(itemp), &
+                                             dum2,dum3,dum4,dum5,ierr)
+      endif
+      call EOSWaterSteamDensityEnthalpyPtr(temp(itemp),pres(ipres),PETSC_FALSE, &
+                                           density_kg(ipres,itemp),dum1, &
+                                           enthalpy(ipres,itemp), &
+                                           dum2,dum3,dum4,dum5,ierr)
+    enddo
+  enddo
+
+100 format(100es16.8)
+  if (len_trim(filename) == 0) then
+    string = 'eos_water_steam_test.txt'
+  else
+    string = filename
+  endif
+  open(unit=IUNIT_TEMP,file=string)
+  header = 'T[C], P[Pa], &
+    &Steam Density (' // trim(eos_density_name) // ') [kg/m^3], &
+    &Steam Enthalpy (' // trim(eos_enthalpy_name) // ') [J/kmol]'
+  write(IUNIT_TEMP,'(a)') trim(header)
+  write(IUNIT_TEMP,'(100i9)') ntemp, npres
+  do itemp = 1, ntemp
+    do ipres = 1, npres
+      write(IUNIT_TEMP,100) temp(itemp), pres(ipres), &
+            density_kg(ipres,itemp), enthalpy(ipres,itemp)
+    enddo
+  enddo
+  close(IUNIT_TEMP)
+
+  if (len_trim(filename) == 0) then
+    string = 'eos_water_steam_psat_test.txt'
+  else
+    itemp = index(filename,'.')
+    string = filename
+    string(itemp:itemp+4) = '_psat'
+    string(itemp+5:) = filename(itemp:)
+  endif
+  open(unit=IUNIT_TEMP,file=string)
+  header = 'T[C], &
+    &Water Saturation Pressure (' // trim(eos_saturation_pressure_name) // ') [Pa], &
+    &Steam Density @ Saturation Pressure (' // trim(eos_density_name) // ') [kg/m^3], &
+    &Steam Enthalpy @ Saturation Pressure (' // trim(eos_enthalpy_name) // ') [J/kmol]'
+  write(IUNIT_TEMP,'(a)') trim(header)
+  write(IUNIT_TEMP,'(100i9)') ntemp
+  do itemp = 1, ntemp
+    write(IUNIT_TEMP,100) temp(itemp), &
+          saturation_pressure_array(itemp), &
+          density_kg_psat(itemp), enthalpy_psat(itemp)
+  enddo
+  close(IUNIT_TEMP)
+
+  deallocate(temp)
+  deallocate(pres)
+  deallocate(density_kg)
+  deallocate(enthalpy)
+  deallocate(density_kg_psat)
+  deallocate(enthalpy_psat)
+  deallocate(saturation_pressure_array)
+
+end subroutine EOSWaterSteamTest
 
 ! ************************************************************************** !
 
