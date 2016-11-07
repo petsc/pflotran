@@ -7388,6 +7388,8 @@ subroutine PatchVerifyDatasetGriddedForFlux(dataset,coupler,option)
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string, string2
+  PetscInt :: i
+  PetscReal :: dataset_size
   
   ! check if dataset is cell-centered:
   if (.not.dataset%is_cell_centered) then
@@ -7397,7 +7399,11 @@ subroutine PatchVerifyDatasetGriddedForFlux(dataset,coupler,option)
     call printErrMsg(option)
   endif
   ! check if the dimensions match:
-  if (coupler%connection_set%num_connections /= dataset%dims(1)) then
+  dataset_size = 1.0
+  do i=1,size(dataset%dims)
+    dataset_size = dataset%dims(i)*dataset_size
+  enddo
+  if (coupler%connection_set%num_connections /= dataset_size) then
     write(string2,*) dataset%dims
     write(string,*) coupler%connection_set%num_connections
     option%io_buffer = 'Dataset ' // trim(dataset%hdf5_dataset_name) // & 
