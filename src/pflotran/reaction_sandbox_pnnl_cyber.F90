@@ -35,7 +35,7 @@ module Reaction_Sandbox_Cyber_class
     PetscReal :: f1
     PetscReal :: f2
     PetscReal :: f3
-    PetscReal :: f_act   ! fraction of active biomass
+!    PetscReal :: f_act   ! fraction of active biomass
     PetscReal :: k_deg   ! biomass degradation rate
     PetscReal :: k1      ! nitrate rate constant
     PetscReal :: k2      ! nitrite rate constant
@@ -112,7 +112,7 @@ function CyberCreate()
   CyberCreate%f1 = UNINITIALIZED_DOUBLE  
   CyberCreate%f2 = UNINITIALIZED_DOUBLE  
   CyberCreate%f3 = UNINITIALIZED_DOUBLE  
-  CyberCreate%f_act = UNINITIALIZED_DOUBLE  
+!  CyberCreate%f_act = UNINITIALIZED_DOUBLE  
   CyberCreate%k_deg = UNINITIALIZED_DOUBLE  
   CyberCreate%k1 = UNINITIALIZED_DOUBLE  
   CyberCreate%k2 = UNINITIALIZED_DOUBLE  
@@ -250,9 +250,9 @@ subroutine CyberRead(this,input,option)
         call InputErrorMsg(input,option,'kdeg',error_string)
         call InputReadAndConvertUnits(input,this%k_deg,'1/sec', &
                                       trim(error_string)//',kdeg',option)
-      case('F_ACT')
-        call InputReadDouble(input,option,this%f_act)  
-        call InputErrorMsg(input,option,'f_act',error_string)
+!      case('F_ACT')
+!        call InputReadDouble(input,option,this%f_act)  
+!        call InputErrorMsg(input,option,'f_act',error_string)
       case('ACTIVATION_ENERGY')
         call InputReadDouble(input,option,this%activation_energy)  
         call InputErrorMsg(input,option,'activation energy',error_string)
@@ -335,22 +335,22 @@ subroutine CyberSetup(this,reaction,option)
     reaction%nauxiliary = reaction%nauxiliary + 12
   endif
   
-  ! constants based on Hyun's writeup on 6/21/16 entitled "Mini-cybernetic 
+  ! constants based on Hyun's writeup on 10/26/16 entitled "Mini-cybernetic 
   ! model of batch denitrification process"
-  if (Uninitialized(this%f1)) this%f1 = 0.497d0
-  if (Uninitialized(this%f2)) this%f2 = 0.999d0
-  if (Uninitialized(this%f3)) this%f3 = 0.066d0
-  if (Uninitialized(this%k1)) this%k1 = 25.04d0 * per_day_to_per_sec
-  if (Uninitialized(this%k2)) this%k2 = 17.82d0 * per_day_to_per_sec
-  if (Uninitialized(this%k3)) this%k3 = 75.12d0 * per_day_to_per_sec
+  if (Uninitialized(this%f1)) this%f1 = 0.65d0
+  if (Uninitialized(this%f2)) this%f2 = 0.99d0
+  if (Uninitialized(this%f3)) this%f3 = 0.2167d0
+  if (Uninitialized(this%k1)) this%k1 = 28.26d0 * per_day_to_per_sec
+  if (Uninitialized(this%k2)) this%k2 = 23.28d0 * per_day_to_per_sec
+  if (Uninitialized(this%k3)) this%k3 = 84.78d0 * per_day_to_per_sec
   if (Uninitialized(this%Kd1)) this%Kd1 = 0.25d-3
   if (Uninitialized(this%Kd2)) this%Kd2 = 0.25d-3
   if (Uninitialized(this%Kd3)) this%Kd3 = 0.25d-3
   if (Uninitialized(this%Ka1)) this%Ka1 = 0.001d-3
   if (Uninitialized(this%Ka2)) this%Ka2 = 0.004d-3
   if (Uninitialized(this%Ka3)) this%Ka3 = 0.001d-3
-  if (Uninitialized(this%f_act)) this%f_act = 0.126d0
-  if (Uninitialized(this%k_deg)) this%k_deg = 0.532d0 * per_day_to_per_sec
+!  if (Uninitialized(this%f_act)) this%f_act = 0.126d0
+  if (Uninitialized(this%k_deg)) this%k_deg = 0.242d0 * per_day_to_per_sec
 
 ! uncomment these to zero out reactions
 !  this%k1 = 0.d0
@@ -685,7 +685,8 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   ! note the addition
   ! mol/sec
   Residual(this%doc_id) = Residual(this%doc_id) - &
-                          k_deg_scaled/this%f_act * X * L_water
+!                          k_deg_scaled/this%f_act * X * L_water
+                          5.d0*k_deg_scaled * X * L_water
                  
   ! calculate carbon consumption
   if (this%carbon_consumption_species_id > 0) then
@@ -854,7 +855,8 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
     ! units = kg water/sec. Multiply by kg_water
     Jacobian(this%doc_id,this%biomass_id) = &
       Jacobian(this%doc_id,this%biomass_id) - &
-      k_deg_scaled/this%f_act * kg_water
+!      k_deg_scaled/this%f_act * kg_water
+      5.d0*k_deg_scaled * kg_water
       
     ! calculate carbon consumption
     if (this%carbon_consumption_species_id > 0) then

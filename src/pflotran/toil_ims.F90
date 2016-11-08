@@ -31,7 +31,7 @@ module TOilIms_module
   PetscReal, parameter :: floweps   = 1.d-24
 
   !pointing to default function
-  procedure(TOilImsFluxDummy), pointer :: TOilImsFlux => TOilImsFluxPFL
+  procedure(TOilImsFluxDummy), pointer :: TOilImsFlux => null()
 
   abstract interface
     subroutine TOilImsFluxDummy(toil_auxvar_up,global_auxvar_up, &
@@ -68,6 +68,7 @@ module TOilIms_module
 
   public :: TOilImsSetup, &
             TOilImsFluxDipcSetup, &
+            TOilImsDefaultSetup, & 
             TOilImsUpdateAuxVars, &
             TOilImsInitializeTimestep, &
             TOilImsComputeMassBalance, &
@@ -211,6 +212,20 @@ subroutine TOilImsSetup(realization)
   !endif
 
 end subroutine TOilImsSetup
+
+! ************************************************************************** !
+subroutine TOilImsDefaultSetup()
+  ! 
+  ! Setup Dipc Flux computation
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/10/16
+
+  implicit none
+  
+  TOilImsFlux => TOilImsFluxPFL
+
+end subroutine TOilImsDefaultSetup
 
 ! ************************************************************************** !
 subroutine TOilImsFluxDipcSetup()

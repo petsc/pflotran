@@ -1547,6 +1547,16 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   
   do
 
+    ! there are cases (e.g. in a linear update) where components constrained by
+    ! a free ion concentration can change a bit.  This reset hopefullly eliminates
+    ! this issue.
+    do icomp = 1, reaction%naqcomp
+      select case(constraint_type(icomp))
+        case(CONSTRAINT_FREE,CONSTRAINT_LOG)
+          rt_auxvar%pri_molal(icomp) = free_conc(icomp)
+      end select
+    enddo          
+  
     if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF .and. &
         compute_activity_coefs) then
       call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)

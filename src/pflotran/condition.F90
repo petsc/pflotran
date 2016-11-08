@@ -1194,7 +1194,8 @@ subroutine FlowConditionRead(condition,input,option)
   if (associated(rate)) then
     select case(rate%itype)
       case(DIRICHLET_BC,NEUMANN_BC,HYDROSTATIC_BC,UNIT_GRADIENT_BC, &
-           CONDUCTANCE_BC,ZERO_GRADIENT_BC,SEEPAGE_BC,SURFACE_DIRICHLET,SURFACE_SPILLOVER)
+           CONDUCTANCE_BC,ZERO_GRADIENT_BC,SEEPAGE_BC,SURFACE_DIRICHLET, &
+           SURFACE_SPILLOVER)
         option%io_buffer = 'RATE condition must not be of type: dirichlet, ' // &
           'neumann, zero_gradient, dirichlet_zero_gradient, hydrostatic, ' // &
           'seepage, or conductance".'
