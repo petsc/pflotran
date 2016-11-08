@@ -571,11 +571,22 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%sat(lid) = 1.d0
       gen_auxvar%sat(gid) = 0.d0
 
-      call EOSWaterSaturationPressure(gen_auxvar%temp, &
-                                      gen_auxvar%pres(spid),ierr)
+      if (associated(gen_auxvar%d)) then
+        call EOSWaterSaturationPressure(gen_auxvar%temp, &
+                                        gen_auxvar%pres(spid), &
+                                        gen_auxvar%d%psat_T,ierr)
+        gen_auxvar%d%psat_p = 0.d0
+        call EOSGasHenry(gen_auxvar%temp,gen_auxvar%pres(spid), &
+                          gen_auxvar%d%psat_p,gen_auxvar%d%psat_T, &
+                          K_H_tilde,gen_auxvar%d%Hc_p,gen_auxvar%d%Hc_T)
+        gen_auxvar%d%Hc = K_H_tilde
+      else
+        call EOSWaterSaturationPressure(gen_auxvar%temp, &
+                                        gen_auxvar%pres(spid),ierr)
       !geh: Henry_air_xxx returns K_H in units of Pa, but I am not confident
       !     that K_H is truly K_H_tilde (i.e. p_g * K_H).
-      call EOSGasHenry(gen_auxvar%temp,gen_auxvar%pres(spid),K_H_tilde)
+        call EOSGasHenry(gen_auxvar%temp,gen_auxvar%pres(spid),K_H_tilde)
+      endif
       gen_auxvar%pres(gid) = max(gen_auxvar%pres(lid),gen_auxvar%pres(spid))
       gen_auxvar%pres(apid) = K_H_tilde*gen_auxvar%xmol(acid,lid)
       ! need vpres for liq -> 2ph check
@@ -597,6 +608,11 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
         gen_auxvar%pres(vpid) = gen_auxvar%pres(lid) - gen_auxvar%pres(apid)
       endif
       gen_auxvar%pres(cpid) = 0.d0
+      
+      if (associated(gen_auxvar%d)) then
+        gen_auxvar%d%pv_p = 1.d0 - gen_auxvar%d%Hc_p*gen_auxvar%xmol(acid,lid)
+        gen_auxvar%d%pv_T = -gen_auxvar%d%Hc_T*gen_auxvar%xmol(acid,lid)
+      endif
       
     case(GAS_STATE)
       gen_auxvar%pres(gid) = x(GENERAL_GAS_PRESSURE_DOF)

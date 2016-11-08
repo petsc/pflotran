@@ -45,6 +45,7 @@ subroutine GeneralDerivative(option)
   PetscReal :: tlow, thigh, plow, phigh
   PetscInt :: ntemp, npres
   PetscInt :: i
+  PetscInt :: istate
   
   strings(1,1) = 'Liquid Pressure'
   strings(2,1) = 'Air Mole Fraction in Liquid'
@@ -60,6 +61,9 @@ subroutine GeneralDerivative(option)
   call EOSWaterSetDensity('PLANAR')
   call EOSWaterSetEnthalpy('PLANAR')
   call EOSWaterSetSteamDensity('PLANAR')
+  
+  istate = LIQUID_STATE
+!  istate = TWO_PHASE_STATE
   
 #if 0  
   tlow = 1.d-1
@@ -95,7 +99,7 @@ subroutine GeneralDerivative(option)
     call MaterialAuxVarInit(material_auxvar(i),option)
     material_auxvar(i)%porosity_base = 0.25d0
     material_auxvar(i)%volume = 1.d0
-    global_auxvar(i)%istate = TWO_PHASE_STATE
+    global_auxvar(i)%istate = istate
   enddo
   
   characteristic_curves => CharacteristicCurvesCreate()
@@ -114,10 +118,18 @@ subroutine GeneralDerivative(option)
   rpf_gas%Sr = 0.d0
   rpf_gas%Srg = 1.d-40
   characteristic_curves%gas_rel_perm_function => rpf_gas
+
+  select case(istate)
+    case(LIQUID_STATE)
+      xx(1) = 1.d6
+      xx(2) = 1.d-6
+      xx(3) = 30.d0
+    case(TWO_PHASE_STATE)
+      xx(1) = 1.d6
+      xx(2) = 0.5d0
+      xx(3) = 30.d0
+  end select
   
-  xx(1) = 1.d6
-  xx(2) = 0.5d0
-  xx(3) = 30.d0
   option%iflag = GENERAL_UPDATE_FOR_ACCUM
   call GeneralAuxVarCompute(xx,general_auxvar(0),global_auxvar(0), &
                             material_auxvar(0),characteristic_curves, &
@@ -230,6 +242,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
   PetscReal :: dsatg
   PetscReal :: ddenl  
   PetscReal :: ddeng  
+  PetscReal :: ddenlkg
   PetscReal :: ddengkg
   PetscReal :: dUl 
   PetscReal :: dHl  
@@ -262,6 +275,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
   dsatg = uninitialized_value
   ddenl = uninitialized_value
   ddeng = uninitialized_value
+  ddenlkg = uninitialized_value
   ddengkg = uninitialized_value
   dUl = uninitialized_value
   dHl = uninitialized_value
@@ -304,9 +318,38 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
     select case(global_auxvar%istate)
       case(LIQUID_STATE)
         select case(idof)
-          case(1)
-          case(2)
-          case(3)
+          case(1) ! liquid pressure pl
+            dpl = 1.d0
+            dpv = 0.d0
+            dpa = general_auxvar%d%Hc_p*general_auxvar%xmol(acid,lid)
+            dps = 0.d0
+            dpv = general_auxvar%d%pv_p
+            ddenl = general_auxvar%d%denl_pl
+            dUl = general_auxvar%d%Ul_pl
+            dHl = general_auxvar%d%Hl_pl
+            dmobilityl = general_auxvar%d%mobilityl_pl
+          case(2) ! xmole air in liquid
+            dxmolwl = -1.d0
+            dxmolal = 1.d0
+          case(3) ! temperature
+            dpl = 0.d0 ! pl = pg - pc
+            dpg = 0.d0 ! pg = pg
+            dpa = general_auxvar%d%Hc_T*general_auxvar%xmol(acid,lid)
+            dps = general_auxvar%d%psat_T
+            dHc = general_auxvar%d%Hc_T            
+            dsatl = 0.d0
+            dsatg = 0.d0            
+            ddenl = general_auxvar%d%denl_T
+            ddeng = general_auxvar%d%deng_T
+            ddenlkg = ddenl*fmw_comp(1)
+            ddengkg = general_auxvar%d%dengkg_T
+            dUl = general_auxvar%d%Ul_T
+            dHl = general_auxvar%d%Hl_T
+            
+            dpv = general_auxvar%d%pv_T
+            dmobilityl = general_auxvar%d%mobilityl_T
+            dxmolwl = general_auxvar%d%xmol_T(wid,lid)
+            dxmolal = general_auxvar%d%xmol_T(acid,lid)
         end select
       case(GAS_STATE)
         select case(idof)
@@ -316,7 +359,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
         end select
       case(TWO_PHASE_STATE)
         select case(idof)
-          case(1) ! pg
+          case(1) ! gas pressure pg
             dpl = 1.d0 ! pl = pg - pc
             dpg = 1.d0 ! pg = pg
             dpa = 1.d0 ! pa = pg - pv
@@ -327,6 +370,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             dHc = general_auxvar%d%Hc_p
             ddenl = general_auxvar%d%denl_pl*dpl
             ddeng = general_auxvar%d%deng_pg
+            ddenlkg = ddenl*fmw_comp(1)
             ddengkg = general_auxvar%d%dengkg_pg
             dUl = general_auxvar%d%Ul_pl
             dHl = general_auxvar%d%Hl_pl
@@ -344,7 +388,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             dxmolal = general_auxvar%d%xmol_p(acid,lid)
             dxmolwg = general_auxvar%d%xmol_p(wid,gid)
             dxmolag = general_auxvar%d%xmol_p(acid,gid)
-          case(2)
+          case(2) ! gas saturation
             dpl = -1.d0*general_auxvar%d%pc_satg ! pl = pg - pc
             dpg = 0.d0
             dpa = 0.d0
@@ -356,7 +400,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             ddenl = 0.d0
             dmobilityl = -1.d0*general_auxvar%d%mobilityl_satg
             dmobilityg = general_auxvar%d%mobilityg_satg
-          case(3)
+          case(3) ! temperature
             dpl = 0.d0 ! pl = pg - pc
             dpg = 0.d0 ! pg = pg
             dpa = -1.d0*general_auxvar%d%psat_T ! pa = pg - pv
@@ -367,6 +411,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             dsatg = 0.d0            
             ddenl = general_auxvar%d%denl_T
             ddeng = general_auxvar%d%deng_T
+            ddenlkg = ddenl*fmw_comp(1)
             ddengkg = general_auxvar%d%dengkg_T
             dUl = general_auxvar%d%Ul_T
             dHl = general_auxvar%d%Hl_T
@@ -428,8 +473,14 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
       liquid_density_pert = general_auxvar_pert%den(lid)
       liquid_energy_pert = general_auxvar_pert%U(lid)
       liquid_saturation_pert = general_auxvar_pert%sat(lid)
+      gas_density_pert = 0.d0
+      gas_energy_pert = 0.d0
+      gas_saturation_pert = 0.d0
     case(GAS_STATE)
       print *, '     Thermodynamic state (pert): Gas phase'
+      liquid_density_pert = 0.d0
+      liquid_energy_pert = 0.d0
+      liquid_saturation_pert = 0.d0
       gas_density_pert = general_auxvar_pert%den(gid)
       gas_energy_pert = general_auxvar_pert%U(gid)
       gas_saturation_pert = general_auxvar_pert%sat(gid)
@@ -496,9 +547,15 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
   call GeneralAuxVarPrintResult('   liquid density [kmol]', &
                                 (general_auxvar_pert%den(lid)-general_auxvar%den(lid))/pert, &
                                 ddenl,uninitialized_value,option)
-  call GeneralAuxVarPrintResult('        gas density [kg]', &
+  call GeneralAuxVarPrintResult('      gas density [kmol]', &
                                 (general_auxvar_pert%den(gid)-general_auxvar%den(gid))/pert, &
                                 ddeng,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('     liquid density [kg]', &
+                                (general_auxvar_pert%den_kg(lid)-general_auxvar%den_kg(lid))/pert, &
+                                ddenlkg,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('        gas density [kg]', &
+                                (general_auxvar_pert%den_kg(gid)-general_auxvar%den_kg(gid))/pert, &
+                                ddengkg,uninitialized_value,option)
   call GeneralAuxVarPrintResult('         temperature [C]', &
                                 (general_auxvar_pert%temp-general_auxvar%temp)/pert, &
                                 uninitialized_value,uninitialized_value,option)
@@ -618,13 +675,14 @@ subroutine GeneralAuxVarPrintResult(string,numerical,analytical, &
   type(option_type) :: option
   
   character(len=6) :: word
+  PetscReal, parameter :: tol = 1.d-5
           
 100 format(a24,': ',2(es13.5),'  ',a6,' ',es16.8)
 
   word = ''
   if (dabs(analytical-uninitialized_value) > 1.d-20) then
     if (dabs(analytical) > 0.d0) then
-      if (dabs((numerical-analytical)/analytical) < 1.d-4) then
+      if (dabs((numerical-analytical)/analytical) < tol) then
         word = 'PASS'
       else
         word = '-FAIL-'
