@@ -1807,25 +1807,58 @@ subroutine PatchUpdateCouplerAuxVarsG(patch,coupler,option)
     coupler%flow_bc_type(GENERAL_LIQUID_EQUATION_INDEX) = NEUMANN_BC
     real_count = real_count + 1
     coupler%flow_aux_mapping(GENERAL_LIQUID_FLUX_INDEX) = real_count
-    coupler%flow_aux_real_var(real_count,1:num_connections) = &
-      general%liquid_flux%dataset%rarray(1)
-    dof1 = PETSC_TRUE
+    select type(selector => general%liquid_flux%dataset)
+      class is(dataset_ascii_type)
+        coupler%flow_aux_real_var(real_count,1:num_connections) = &
+                                           general%liquid_flux%dataset%rarray(1)
+        dof1 = PETSC_TRUE
+      class is(dataset_gridded_hdf5_type)
+        call PatchVerifyDatasetGriddedForFlux(selector,coupler,option)
+        call PatchUpdateCouplerFromDataset(coupler,option,patch%grid,selector, &
+                                           real_count)
+        dof1 = PETSC_TRUE
+      class default
+        option%io_buffer = 'Unknown dataset class for general%liquid_flux.'
+        call printErrMsg(option)
+    end select
   endif
   if (associated(general%gas_flux)) then
     coupler%flow_bc_type(GENERAL_GAS_EQUATION_INDEX) = NEUMANN_BC
     real_count = real_count + 1
     coupler%flow_aux_mapping(GENERAL_GAS_FLUX_INDEX) = real_count
-    coupler%flow_aux_real_var(real_count,1:num_connections) = &
-      general%gas_flux%dataset%rarray(1)
-    dof2 = PETSC_TRUE
+    select type(selector => general%gas_flux%dataset)
+      class is(dataset_ascii_type)
+        coupler%flow_aux_real_var(real_count,1:num_connections) = &
+                                              general%gas_flux%dataset%rarray(1)
+        dof2 = PETSC_TRUE
+      class is(dataset_gridded_hdf5_type)
+        call PatchVerifyDatasetGriddedForFlux(selector,coupler,option)
+        call PatchUpdateCouplerFromDataset(coupler,option,patch%grid,selector, &
+                                           real_count)
+        dof2 = PETSC_TRUE
+      class default
+        option%io_buffer = 'Unknown dataset class for general%gas_flux.'
+        call printErrMsg(option)
+    end select
   endif
   if (associated(general%energy_flux)) then
     coupler%flow_bc_type(GENERAL_ENERGY_EQUATION_INDEX) = NEUMANN_BC
     real_count = real_count + 1
     coupler%flow_aux_mapping(GENERAL_ENERGY_FLUX_INDEX) = real_count
-    coupler%flow_aux_real_var(real_count,1:num_connections) = &
-      general%energy_flux%dataset%rarray(1)
-    dof3 = PETSC_TRUE
+    select type(selector => general%energy_flux%dataset)
+      class is(dataset_ascii_type)
+        coupler%flow_aux_real_var(real_count,1:num_connections) = &
+          general%energy_flux%dataset%rarray(1)
+        dof3 = PETSC_TRUE
+      class is(dataset_gridded_hdf5_type)
+        call PatchVerifyDatasetGriddedForFlux(selector,coupler,option)
+        call PatchUpdateCouplerFromDataset(coupler,option,patch%grid,selector, &
+                                           real_count)
+        dof3 = PETSC_TRUE
+      class default
+        option%io_buffer = 'Unknown dataset class for general%energy_flux.'
+        call printErrMsg(option)
+    end select
   endif
 
   if (associated(general%rate)) then
@@ -7332,6 +7365,64 @@ subroutine PatchGetCompMassInRegionAssign(region_list, &
   enddo
   
 end subroutine PatchGetCompMassInRegionAssign
+
+! ************************************************************************** !
+
+subroutine PatchVerifyDatasetGriddedForFlux(dataset,coupler,option)
+  ! 
+  ! Verifies that a dataset being used to define fluxes adheres to 
+  ! several rules that attempt to minimize mass balance error.
+  ! 
+  ! Author: Jennifer Frederick
+  ! Date: 11/04/2016
+  ! 
+
+  use Option_module
+  use Coupler_module
+  use Dataset_Gridded_HDF5_class
+
+  implicit none
+  
+  class(dataset_gridded_hdf5_type) :: dataset
+  type(coupler_type) :: coupler
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  PetscInt :: i
+  PetscReal :: dataset_size
+  
+  ! check if dataset is cell-centered:
+  if (.not.dataset%is_cell_centered) then
+    option%io_buffer = 'Dataset ' // trim(dataset%hdf5_dataset_name) // &
+      " must be cell-centered for fluxes. You must set attribute: &
+      &h5grp.attrs['Cell Centered'] = True."
+    call printErrMsg(option)
+  endif
+  ! check if the dimensions match:
+  dataset_size = 1.0
+  do i=1,size(dataset%dims)
+    dataset_size = dataset%dims(i)*dataset_size
+  enddo
+  if (coupler%connection_set%num_connections /= dataset_size) then
+    write(string2,*) dataset%dims
+    write(string,*) coupler%connection_set%num_connections
+    option%io_buffer = 'Dataset ' // trim(dataset%hdf5_dataset_name) // & 
+      " must have a value for each cell on the boundary defined by &
+      &REGION " // trim(coupler%region%name) // '. The dataset dimension &
+      &is ' // adjustl(trim(string2)) // ' but the number of boundary &
+      &connections is ' // adjustl(trim(string)) // '.'
+    call printErrMsg(option)
+  endif
+  ! check if the interpolation method is STEP:
+  if (.not.dataset%interpolation_method == INTERPOLATION_STEP) then
+    option%io_buffer = 'Dataset ' // trim(dataset%hdf5_dataset_name) // & 
+      " must be assigned the STEP interpolation method for fluxes. You &
+      &must set attribute: h5grp.attrs['Interpolation Method'] = &
+      &np.string_('STEP')."
+    call printErrMsg(option)
+  endif
+  
+end subroutine PatchVerifyDatasetGriddedForFlux
 
 ! ************************************************************************** !
 

@@ -95,6 +95,12 @@ function OutputFilenameID(output_option,option)
     write(OutputFilenameID,'(i3)') output_option%plot_number  
   else if (output_option%plot_number < 10000) then
     write(OutputFilenameID,'(i4)') output_option%plot_number  
+  else if (output_option%plot_number < 100000) then
+    write(OutputFilenameID,'(i5)') output_option%plot_number  
+  else
+    option%io_buffer = 'Plot number exceeds current maximum of 10^5. &
+      &Email pflotran-dev@googlegroups.com and ask for a higher maximum.'
+    call printErrMsg(option)
   endif 
   
   OutputFilenameID = adjustl(OutputFilenameID)

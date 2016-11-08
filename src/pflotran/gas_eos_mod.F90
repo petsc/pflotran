@@ -21,7 +21,7 @@ subroutine ideal_gaseos_noderiv(p,tc,d,h,u)
    
   PetscReal, parameter :: Rg=8.31415 
   ! Cpg units: J/mol-K
-  PetscReal, parameter :: Cv_air = 20.85 ! head capacity wiki
+  PetscReal, parameter :: Cv_air = 20.85 ! J/(K mol) heat capacity wiki
   PetscReal  tk
     
   tk = tc + 273.15
@@ -44,7 +44,7 @@ subroutine ideal_gaseos(p,tc,d,d_p,d_t,h,h_p,h_t,u,u_p,u_t)
 
   PetscReal, parameter :: Rg=8.31415 
   ! Cpg units: J/mol-K
-  PetscReal, parameter :: Cv_air = 20.85 ! head capacity wiki
+  PetscReal, parameter :: Cv_air = 20.85 ! J/(K mol) heat capacity wiki
   PetscReal  tk
 
   tk = tc + 273.15

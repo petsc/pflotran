@@ -1928,6 +1928,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 100   format('Constraint iteration count has exceeded: ',i5)
       write(option%io_buffer,100) num_iterations
       call printMsg(option)
+      option%io_buffer = 'species_name  prev_free_ion  residual'
+      call printMsg(option)
       do icomp=1,reaction%naqcomp
         write(option%io_buffer,200) reaction%primary_species_names(icomp), &
         prev_molal(icomp),Res(icomp)
