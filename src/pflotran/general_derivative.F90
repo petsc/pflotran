@@ -62,7 +62,8 @@ subroutine GeneralDerivative(option)
   call EOSWaterSetEnthalpy('PLANAR')
   call EOSWaterSetSteamDensity('PLANAR')
   
-  istate = LIQUID_STATE
+!  istate = LIQUID_STATE
+  istate = GAS_STATE
 !  istate = TWO_PHASE_STATE
   
 #if 0  
@@ -123,6 +124,10 @@ subroutine GeneralDerivative(option)
     case(LIQUID_STATE)
       xx(1) = 1.d6
       xx(2) = 1.d-6
+      xx(3) = 30.d0
+    case(GAS_STATE)
+      xx(1) = 1.d6
+      xx(2) = 0.98d6
       xx(3) = 30.d0
     case(TWO_PHASE_STATE)
       xx(1) = 1.d6
@@ -354,8 +359,58 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
       case(GAS_STATE)
         select case(idof)
           case(1)
+            dpg = 1.d0 ! pg = pg
+            dpv = general_auxvar%d%pv_p
+            dps = 0.d0
+            dHc = general_auxvar%d%Hc_p
+            ddeng = general_auxvar%d%deng_pg
+            ddengkg = general_auxvar%d%dengkg_pg
+            dUg = general_auxvar%d%Ug_pg
+            dHg = general_auxvar%d%Hg_pg
+            
+            dHv = general_auxvar%d%Hv_pg
+            dUv = general_auxvar%d%Uv_pg
+            dHa = general_auxvar%d%Ha_pg
+            dUa = general_auxvar%d%Ua_pg
+            
+            dmobilityg = general_auxvar%d%mobilityg_pg
+            dxmolwg = general_auxvar%d%xmol_p(wid,gid)
+            dxmolag = general_auxvar%d%xmol_p(acid,gid)          
           case(2)
+            dpg = 0.d0
+            dpa = 1.d0
+            ddeng = general_auxvar%d%deng_pa
+            dpv = general_auxvar%d%pv_pa
+            dUg = general_auxvar%d%Ug_pa
+            dHg = general_auxvar%d%Hg_pa
+            dHv = general_auxvar%d%Hv_pa
+            dUv = general_auxvar%d%Uv_pa
+            dHa = general_auxvar%d%Ha_pa
+            dUa = general_auxvar%d%Ua_pa
+            ! for gas state, derivative wrt air pressure is under lid
+            dxmolwg = general_auxvar%d%xmol_p(wid,lid)
+            dxmolag = general_auxvar%d%xmol_p(acid,lid)          
           case(3)
+            dpg = 0.d0
+            dpa = -1.d0*general_auxvar%d%psat_T ! pa = pg - pv
+            dpv = general_auxvar%d%psat_T
+            dps = general_auxvar%d%psat_T
+            dHc = general_auxvar%d%Hc_T            
+            ddeng = general_auxvar%d%deng_T
+            ddengkg = general_auxvar%d%dengkg_T
+            dUg = general_auxvar%d%Ug_T
+            dHg = general_auxvar%d%Hg_T
+            
+            dHv = general_auxvar%d%Hv_T
+            dUv = general_auxvar%d%Uv_T
+            dHa = general_auxvar%d%Ha_T
+            dUa = general_auxvar%d%Ua_T
+            denv = general_auxvar%d%denv_T
+            dena = general_auxvar%d%dena_T
+            
+            dmobilityg = general_auxvar%d%mobilityg_T
+            dxmolwg = general_auxvar%d%xmol_T(wid,gid)
+            dxmolag = general_auxvar%d%xmol_T(acid,gid)          
         end select
       case(TWO_PHASE_STATE)
         select case(idof)
