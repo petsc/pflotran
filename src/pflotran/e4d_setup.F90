@@ -11,16 +11,17 @@ contains
   subroutine setup_e4d
     implicit none
     integer :: sz
-    
-    log_file = 'e4d_'//trim(adjustl(pflotran_group_prefix))//'.log'   
-    open(13,file=trim(log_file),action='write',status='replace')
-    close(13)
+  
     
     if (my_rank>0) then
+       write(*,*) my_rank,"here1!!!!!!!!!!!!!!!!!!!!!!!!!!!1"
        call slave_setup
        return
     end if
- 
+
+    log_file = 'e4d_'//trim(adjustl(pflotran_group_prefix))//'.log'   
+    open(13,file=trim(log_file),action='write',status='replace')
+    close(13)
 !#if 0
     call read_input 
 
@@ -70,7 +71,17 @@ contains
        return
     end if
 
-    open(10,file='e4d.inp',status='old',action='read') 
+    
+
+    open(10,file='e4d.inp',status='old',action='read')
+    read(10,*,IOSTAT=ios) mode
+    call elog(40,ios,flg) 
+    if (flg .eq. -1) then
+       ios=-1
+       return
+    end if
+    if(mode == 33) tank_flag = .true.
+
     read(10,*,IOSTAT=ios) mshfile
     call elog(1,ios,flg); 
     if (flg .eq. -1) then
@@ -92,13 +103,12 @@ contains
        return
     end if
 
-    !read(10,*,IOSTAT=ios) mapfile
-    !call elog(4,ios,flg); 
-    !if (flg .eq. -1) then
-    !   ios=-1
-    !   return
-    !end if
-   
+    read(10,*,IOSTAT=ios) fmn_file
+    call elog(4,ios,flg); 
+    if (flg .eq. -1) then
+       ios=-1
+       return
+    end if
 
     read(10,*,IOSTAT=ios) list_file
     call elog(23,ios,flg)
@@ -217,9 +227,32 @@ contains
           return
        end if
 
+       !Read in the FMN file
+       open(10,file=trim(fmn_file),status='old',action='read')
+       read(10,*,IOSTAT=ios) j 
+       call elog(38,ios,j)
+       if (ios .ne. 0) then
+          ios=-1
+          close(10)
+          return
+       end if
+       if(allocated(FMN)) deallocate(FMN)
+       allocate(FMN(j,4))
+    
+       do i=1,j
+           read(10,*,IOSTAT=ios) FMN(i,1:4)
+           if (ios .ne. 0) then
+              call elog(39,ios,i)
+              ios=-1
+              close(10)
+              return
+          end if
+       end do
+       close(10)
+
        !!read the list file and all files listed and check for errors
        open(10,file=trim(list_file),status='old',action='read')
-       read(10,*,IOSTAT=ios) ntime,FF,sw_sig,gw_sig
+       read(10,*,IOSTAT=ios) ntime !,FF,sw_sig,gw_sig
        call elog(24,ios,flg)
        if (flg==-1) then
           ios=-1
@@ -367,8 +400,7 @@ contains
     nmap=0
     
     do i=1,n_rank-1
-       call MPI_RECV(tnmap(i),1,MPI_INTEGER,i,i,E4D_COMM,status,ierr)
-      
+       call MPI_RECV(tnmap(i),1,MPI_INTEGER,i,i,E4D_COMM,status,ierr)      
     end do
    
     nmap=sum(tnmap)
@@ -400,13 +432,7 @@ contains
        end if
     end do
   
-#if 0 
-!geh: this do loop produces an unwanted fort.20 file.  where should this
-!     data be written?
-    do i=1,nmap
-       write(20,*) map_inds(i,:),map(i)
-    end do
-#endif
+
   end subroutine get_mesh_interp
   !____________________________________________________________________
  !____________________________________________________________________
@@ -494,6 +520,7 @@ contains
     call MPI_BCAST(pfxcb,pfnx+1,MPI_REAL,0,E4D_COMM,ierr)
     call MPI_BCAST(pfycb,pfny+1,MPI_REAL,0,E4D_COMM,ierr)
     call MPI_BCAST(pfzcb,pfnz+1,MPI_REAL,0,E4D_COMM,ierr)
+    call MPI_BCAST(mode, 1, MPI_INTEGER , 0, E4D_COMM, ierr )
     deallocate(pfxcb)
     deallocate(pfycb)
     deallocate(pfzcb)
@@ -566,7 +593,8 @@ contains
 
 1001   format(" WARNING: ELECTRODE ",I5," HAS BEEN MOVED ",F10.4," TO THE NEAREST NODE")
     end do
-    
+    i_zpot(1) = e_nods(tne)
+
   end subroutine get_electrode_nodes
   !____________________________________________________________________
 
@@ -723,11 +751,12 @@ contains
     call MPI_BCAST(pfxcb,pfnx+1,MPI_REAL,0,E4D_COMM,ierr)
     call MPI_BCAST(pfycb,pfny+1,MPI_REAL,0,E4D_COMM,ierr)
     call MPI_BCAST(pfzcb,pfnz+1,MPI_REAL,0,E4D_COMM,ierr)
+    call MPI_BCAST(mode, 1, MPI_INTEGER , 0, E4D_COMM, ierr )
+    if(mode==33) tank_flag = .true.
     my_ne = eind(my_rank,2)-eind(my_rank,1)+1
    
   end subroutine receive_dists
   !__________________________________________________________________
-
   !____________________________________________________________________
   subroutine send_my_mesh_interp
     implicit none
@@ -976,6 +1005,262 @@ contains
     
   end subroutine send_my_mesh_interp
   !____________________________________________________________________
+!!$  !____________________________________________________________________
+!!$  subroutine send_my_mesh_interp
+!!$    implicit none
+!!$    integer :: i,j,my_nelem,cnt,n_tets,indx,indy,indz,k,cct,cpos
+!!$    real :: xmn,xmx,ymn,ymx,zmn,zmx,imn,imx
+!!$    logical, dimension(:), allocatable :: flags
+!!$    real, dimension(:), allocatable :: midx,midy,midz,w
+!!$    integer, dimension(:), allocatable :: rw,v
+!!$    real, dimension(9,3) :: pts
+!!$    real, dimension(4,3) :: mfaces
+!!$    real, dimension(3) :: vc
+!!$    real, dimension(8) :: wi,C
+!!$    integer, dimension(8) :: vi
+!!$    real, dimension(72) :: twi
+!!$    integer, dimension(72) :: tvi
+!!$
+!!$    
+!!$    !!get the pf mesh midpoints
+!!$    xmn=1e15
+!!$    ymn=xmn
+!!$    zmn=xmn
+!!$    xmx=-1e15
+!!$    ymx=xmx
+!!$    zmx=xmx
+!!$   
+!!$
+!!$    allocate(midx(pfnx),midy(pfny),midz(pfnz))
+!!$    do i=1,pfnx
+!!$       midx(i) = 0.5*(pfxcb(i+1)+pfxcb(i))
+!!$       if(midx(i)<xmn) xmn=midx(i)
+!!$       if(midx(i)>xmx) xmx=midx(i)
+!!$      
+!!$    end do
+!!$   
+!!$    do i=1,pfny
+!!$       midy(i) = 0.5*(pfycb(i+1)+pfycb(i))
+!!$       if(midy(i)<ymn) ymn=midy(i)
+!!$       if(midy(i)>ymx) ymx=midy(i)
+!!$    
+!!$    end do
+!!$
+!!$    do i=1,pfnz
+!!$       midz(i) = 0.5*(pfzcb(i+1)+pfzcb(i))
+!!$       if(midz(i)<zmn) zmn=midz(i)
+!!$       if(midz(i)>zmx) zmx=midz(i)
+!!$
+!!$    end do
+!!$
+!!$    nodes(:,1)=nodes(:,1)+xorig
+!!$    nodes(:,2)=nodes(:,2)+yorig
+!!$    nodes(:,3)=nodes(:,3)+zorig
+!!$    
+!!$    my_nelem = jind(my_rank,2)-jind(my_rank,1)+1
+!!$    allocate(flags(my_nelem))
+!!$
+!!$    flags=.true.
+!!$    cnt=0
+!!$    n_tets=0
+!!$   
+!!$
+!!$    !!find which elements we need to map
+!!$    do i=jind(my_rank,1),jind(my_rank,2)
+!!$       cnt=cnt+1
+!!$       imx=maxval(nodes(elements(i,1:4),1))
+!!$       imn=minval(nodes(elements(i,1:4),1))
+!!$       if((imx<pfxcb(1) .or. imn>pfxcb(pfnx+1)) .and. (pfnx > 1)) then
+!!$          flags(cnt)=.false.
+!!$
+!!$          goto 100
+!!$       end if
+!!$     
+!!$       imx=maxval(nodes(elements(i,1:4),2))
+!!$       imn=minval(nodes(elements(i,1:4),2))
+!!$       if((imx<pfycb(1) .or. imn>pfycb(pfny+1)) .and. (pfny > 1)) then
+!!$          flags(cnt)=.false.
+!!$          goto 100
+!!$       end if
+!!$  
+!!$
+!!$       imx=maxval(nodes(elements(i,1:4),3))
+!!$       imn=minval(nodes(elements(i,1:4),3))     
+!!$       if((imx<pfzcb(1) .or. imn>pfzcb(pfnz+1)) .and. (pfnz>1)) then
+!!$          flags(cnt)=.false.
+!!$          goto 100
+!!$       end if
+!!$
+!!$       n_tets=n_tets+1
+!!$100    continue
+!!$    end do
+!!$
+!!$    allocate(rw(72*n_tets),v(72*n_tets),w(72*n_tets))
+!!$    cnt=0
+!!$    cct=0
+!!$    cpos=0
+!!$    do i=jind(my_rank,1),jind(my_rank,2)
+!!$       cct=cct+1
+!!$       if(flags(cct)) then
+!!$          !get the nine points
+!!$          cnt=cnt+1
+!!$          do j=1,3
+!!$             pts(1,j)=.25*sum(nodes(elements(i,1:4),j)) !tet midpoint
+!!$          end do
+!!$        
+!!$          do j=1,3
+!!$             mfaces(1,j) = sum(nodes(elements(i,[1,2,3]),j))/3
+!!$             mfaces(2,j) = sum(nodes(elements(i,[1,2,4]),j))/3
+!!$             mfaces(3,j) = sum(nodes(elements(i,[1,3,4]),j))/3
+!!$             mfaces(4,j) = sum(nodes(elements(i,[2,3,4]),j))/3       
+!!$          end do
+!!$          do j=1,4
+!!$             vc=mfaces(j,:)-pts(1,:)
+!!$             pts(j+1,:) = pts(1,:) + 0.5*vc
+!!$             vc=nodes(elements(i,j),:)-pts(1,:)
+!!$             pts(j+5,:) = pts(1,:) + 0.5*vc
+!!$          end do
+!!$          
+!!$
+!!$          !get the weighting function for each point
+!!$          do j=1,9
+!!$             indx = pfnx-1
+!!$             if(pfnx .eq. 1) then
+!!$                indx = 1
+!!$             else
+!!$                do k=1,pfnx
+!!$                   if(midx(k)>pts(j,1)) then
+!!$                      indx=k-1
+!!$                      exit
+!!$                   end if
+!!$                end do
+!!$                if(indx .eq. 0) indx=1
+!!$                !if(indx .eq. -1) indx=pfnx
+!!$             end if
+!!$
+!!$             indy = pfny-1
+!!$             if(pfny.eq.1) then
+!!$                indy = 1
+!!$             else
+!!$                do k=1,pfny
+!!$                   if(midy(k)>pts(j,2)) then
+!!$                      indy=k-1
+!!$                      exit
+!!$                   end if
+!!$                end do
+!!$                if(indy .eq. 0)  indy=1
+!!$                !if(indy .eq. -1) indy=pfny
+!!$             end if
+!!$             
+!!$             indz=pfnz-1
+!!$             if(pfnz .eq.1) then
+!!$                indz = 1
+!!$             else
+!!$                do k=1,pfnz
+!!$                   if(midz(k)>pts(j,3)) then
+!!$                      indz=k-1
+!!$                      exit
+!!$                   end if
+!!$                end do
+!!$                if(indz .eq. 0) indz=1
+!!$                !if(indz .eq.-1) indz=pfnz 
+!!$             end if
+!!$
+!!$             
+!!$             if(pfny .eq.1) then
+!!$                !for 2D problem in x,z
+!!$                vi(5) = indx + (indy-1)*pfnx + (indz-1)*pfnx*pfny
+!!$                vi(6) = vi(5)
+!!$                vi(8) = vi(5)+1
+!!$                vi(7) = vi(8);
+!!$                vi(1) = vi(5)+pfnx
+!!$                vi(2) = vi(1);
+!!$                vi(3) = vi(1)+1;
+!!$                vi(4) = vi(3);
+!!$                
+!!$             else
+!!$                vi(5) = indx + (indy-1)*pfnx + (indz-1)*pfnx*pfny
+!!$                vi(8) = vi(5)+1
+!!$                vi(6) = vi(5)+pfnx
+!!$                vi(7) = vi(6)+1
+!!$                vi(1:4) = vi(5:8) + pfnx*pfny
+!!$             end if
+!!$
+!!$              if(pfnx .eq.1) then
+!!$                 C(1)=0
+!!$              else
+!!$                 C(1)=(pts(j,1)-midx(indx))/(midx(indx+1)-midx(indx));
+!!$              end if
+!!$              C(2)=C(1);
+!!$              C(3)=C(1);
+!!$              C(4)=C(1);
+!!$
+!!$              if(pfny .eq.1) then
+!!$                 C(5)=0
+!!$              else
+!!$                 C(5)=(pts(j,2)-midy(indy))/(midy(indy+1)-midy(indy));
+!!$              end if
+!!$              C(6)=C(5);
+!!$              
+!!$              if(pfnz .eq.1) then
+!!$                 C(7)=0
+!!$              else
+!!$                 C(7)=(pts(j,3)-midz(indz))/(midz(indz+1)-midz(indz));
+!!$              end if
+!!$
+!!$              wi(1)=(1-C(1))*(1-C(6))*C(7);
+!!$              wi(2)=(1-C(2))*C(6)*C(7);
+!!$              wi(3)=C(2)*C(6)*C(7);
+!!$              wi(4)=C(1)*C(7)*(1-C(6));
+!!$              wi(5)=(1-C(3))*(1-C(5))*(1-C(7));
+!!$              wi(6)=C(5)*(1-C(4))*(1-C(7));
+!!$              wi(7)=C(4)*C(5)*(1-C(7));
+!!$              wi(8)=C(3)*(1-C(5))*(1-C(7));
+!!$           
+!!$              !write(*,*) vi
+!!$              !write(*,*) wi
+!!$
+!!$              tvi(8*(j-1)+1:8*j)=vi
+!!$              twi(8*(j-1)+1:8*j)=wi
+!!$              
+!!$           end do
+!!$           
+!!$           !consolidate the weights
+!!$           do j=1,71
+!!$              do k=j+1,72
+!!$                 if(tvi(k)==tvi(j)) then
+!!$                    twi(j)=twi(j)+twi(k)
+!!$                    twi(k)=0
+!!$                    tvi(k)=0;
+!!$                 end if
+!!$              end do
+!!$           end do
+!!$           twi=twi/9
+!!$          
+!!$           do j=1,72
+!!$              if(tvi(j) .ne. 0) then
+!!$                 cpos=cpos+1;
+!!$                 rw(cpos)=i
+!!$                 v(cpos)=tvi(j)
+!!$                 w(cpos)=twi(j)
+!!$              end if
+!!$           end do
+!!$        end if
+!!$     
+!!$    end do
+!!$  
+!!$    call MPI_SEND(cpos,1,MPI_INTEGER,0,my_rank,E4D_COMM, ierr)
+!!$    call MPI_SEND(rw(1:cpos),cpos,MPI_INTEGER,0,my_rank,E4D_COMM,ierr)
+!!$    call MPI_SEND(v(1:cpos),cpos,MPI_INTEGER,0,my_rank,E4D_COMM,ierr)
+!!$    call MPI_SEND(w(1:cpos),cpos,MPI_REAL,0,my_rank,E4D_COMM,ierr)
+!!$    
+!!$    deallocate(flags,midx,midy,midz,rw,v,w)
+!!$    nodes(:,1)=nodes(:,1)-xorig
+!!$    nodes(:,2)=nodes(:,2)-yorig
+!!$    nodes(:,3)=nodes(:,3)-zorig
+!!$    
+!!$  end subroutine send_my_mesh_interp
+!!$  !____________________________________________________________________
   !____________________________________________________________________
   subroutine build_delA
 

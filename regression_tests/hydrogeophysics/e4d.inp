@@ -1,5 +1,7 @@
-e4d_mesh.1.node
-e4d.srv	
-e4d_mesh.sig   
-list_file.txt
+2                 #e4d run mode (2 for forward run)
+e4d_smesh.1.node   #e4d mesh node file (http://e4d.pnnl.gov/Pages/Documentation.aspx)
+e4d.srv	          #baseline e4d survey file (http://e4d.pnnl.gov/Pages/Documentation.aspx)
+e4d_smesh.sig      #baseline e4d conductivity file (http://e4d.pnnl.gov/Pages/Documentation.aspx)
+archies_tmp.txt   #archies law and temperature effect parameter file
+list_file.txt     #list of surveys to simulate and survey times
    
