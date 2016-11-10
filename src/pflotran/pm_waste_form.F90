@@ -1303,6 +1303,7 @@ subroutine PMWFSetup(this)
   use Grid_Unstructured_module
   use Option_module
   use Reaction_Aux_module
+  use Utility_module, only : GetRndNumFromNormalDist
 
   implicit none
   
@@ -1330,6 +1331,40 @@ subroutine PMWFSetup(this)
     if (.not.associated(cur_waste_form)) exit
     waste_form_id = waste_form_id + 1
     local = PETSC_FALSE
+   !--------- canister degradation model --------------------
+    if (cur_waste_form%mechanism%canister_degradation_model) then
+      cur_waste_form%canister_degradation_flag = PETSC_TRUE
+      cur_waste_form%canister_vitality = 1.d0
+      ! waste form breach time specified:
+      if (initialized(cur_waste_form%breach_time) .and. &
+          uninitialized(cur_waste_form%canister_vitality_rate)) then
+        cur_waste_form%eff_canister_vit_rate = &
+          (1.d0/cur_waste_form%breach_time)
+      ! distribution for canister degradation rate specified:
+      elseif (uninitialized(cur_waste_form%canister_vitality_rate) .and. &
+              uninitialized(cur_waste_form%breach_time)) then
+        ! call to random number generator must be done while each processor
+        ! knows about every other processor's waste forms, otherwise the
+        ! memory of the random number generator will not be global
+        call GetRndNumFromNormalDist( &
+             cur_waste_form%mechanism%vitality_rate_mean, &
+             cur_waste_form%mechanism%vitality_rate_stdev,&
+             cur_waste_form%canister_vitality_rate)
+        if (cur_waste_form%canister_vitality_rate > &
+            cur_waste_form%mechanism%vitality_rate_trunc) then
+          cur_waste_form%canister_vitality_rate = &
+            cur_waste_form%mechanism%vitality_rate_trunc
+        endif
+        ! Given rates are in units of log-10/yr, so convert to 1/yr:
+        cur_waste_form%canister_vitality_rate = &
+          10.0**(cur_waste_form%canister_vitality_rate)
+        ! Convert rates from 1/yr to internal units of 1/sec
+        cur_waste_form%canister_vitality_rate = &
+          cur_waste_form%canister_vitality_rate * &
+          (1.0/365.0/24.0/3600.0)
+      endif
+    endif
+   !----------------------------------------------------------       
     if (associated(cur_waste_form%region)) then
       if (cur_waste_form%region%num_cells > 0) then
           local = PETSC_TRUE
@@ -1429,37 +1464,6 @@ end subroutine PMWFSetup
         cur_waste_form%mechanism%rad_species_list(j)%name, &
         this%realization%reaction,this%option)
     enddo
-   !--------- canister degradation model --------------------
-    if (cur_waste_form%mechanism%canister_degradation_model) then
-      cur_waste_form%canister_degradation_flag = PETSC_TRUE
-      cur_waste_form%canister_vitality = 1.d0
-      ! waste form breach time specified:
-      if (initialized(cur_waste_form%breach_time) .and. &
-          uninitialized(cur_waste_form%canister_vitality_rate)) then
-        cur_waste_form%eff_canister_vit_rate = &
-          (1.d0/cur_waste_form%breach_time)
-      ! distribution for canister degradation rate specified:
-      elseif (uninitialized(cur_waste_form%canister_vitality_rate) .and. &
-              uninitialized(cur_waste_form%breach_time)) then
-        call GetRndNumFromNormalDist( &
-             cur_waste_form%mechanism%vitality_rate_mean, &
-             cur_waste_form%mechanism%vitality_rate_stdev,&
-             cur_waste_form%canister_vitality_rate)
-        if (cur_waste_form%canister_vitality_rate > &
-            cur_waste_form%mechanism%vitality_rate_trunc) then
-          cur_waste_form%canister_vitality_rate = &
-            cur_waste_form%mechanism%vitality_rate_trunc
-        endif
-        ! Given rates are in units of log-10/yr, so convert to 1/yr:
-        cur_waste_form%canister_vitality_rate = &
-          10.0**(cur_waste_form%canister_vitality_rate)
-        ! Convert rates from 1/yr to internal units of 1/sec
-        cur_waste_form%canister_vitality_rate = &
-          cur_waste_form%canister_vitality_rate * &
-          (1.0/365.0/24.0/3600.0)
-      endif
-    endif
-   !----------------------------------------------------------
     cur_waste_form => cur_waste_form%next
   enddo
   
