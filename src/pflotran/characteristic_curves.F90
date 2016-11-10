@@ -2929,10 +2929,8 @@ subroutine SF_BF_KRP9_CapillaryPressure(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
-  PetscReal, parameter :: a, b
-  
-  a = 3783.0145d0
-  b = 2.9d0
+  PetscReal, parameter :: a = 3783.0145d0
+  PetscReal, parameter :: b = 2.9d0
   
   if (liquid_saturation <= this%Sr) then
     capillary_pressure = 0.d0
@@ -2979,12 +2977,11 @@ subroutine SF_BF_KRP9_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: Se
   PetscReal :: dS_dSe
   PetscReal :: dSe_dpc
-  PetscReal, parameter :: a, b
+  PetscReal, parameter :: a = 3783.0145d0
+  PetscReal, parameter :: b = 2.9d0
   
   dsat_dpres = 0.d0
-  a = 3783.0145d0
-  b = 2.9d0
-
+  
   if (capillary_pressure <= 0.d0) then
     liquid_saturation = 1.d0
     return
