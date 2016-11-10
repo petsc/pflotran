@@ -7388,8 +7388,7 @@ subroutine PatchVerifyDatasetGriddedForFlux(dataset,coupler,option)
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string, string2
-  PetscInt :: i
-  PetscReal :: dataset_size
+  PetscInt :: i, dataset_size
   
   ! check if dataset is cell-centered:
   if (.not.dataset%is_cell_centered) then
@@ -7399,18 +7398,18 @@ subroutine PatchVerifyDatasetGriddedForFlux(dataset,coupler,option)
     call printErrMsg(option)
   endif
   ! check if the dimensions match:
-  dataset_size = 1.0
+  dataset_size = 1
   do i=1,size(dataset%dims)
     dataset_size = dataset%dims(i)*dataset_size
   enddo
   if (coupler%connection_set%num_connections /= dataset_size) then
-    write(string2,*) dataset%dims
-    write(string,*) coupler%connection_set%num_connections
+    write(string,*) dataset%dims
+    write(string2,*) coupler%connection_set%num_connections
     option%io_buffer = 'Dataset ' // trim(dataset%hdf5_dataset_name) // & 
       " must have a value for each cell on the boundary defined by &
       &REGION " // trim(coupler%region%name) // '. The dataset dimension &
-      &is ' // adjustl(trim(string2)) // ' but the number of boundary &
-      &connections is ' // adjustl(trim(string)) // '.'
+      &is ' // adjustl(trim(string)) // ' but the number of boundary &
+      &connections is ' // adjustl(trim(string2)) // '.'
     call printErrMsg(option)
   endif
   ! check if the interpolation method is STEP:

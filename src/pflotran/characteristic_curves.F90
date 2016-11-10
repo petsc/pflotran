@@ -1199,7 +1199,7 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
   if (StringCompare('NONE',phase_keyword)) then
     phase_keyword = new_phase_keyword
     ! a liq or gas phase should now be specified for the non-phase-specific
-    ! functions, so lets check if it was:
+    ! functions, so check if it was:
     if (StringCompare('NONE',new_phase_keyword)) then
       ! entering means the new phase keyword was also NONE (the default), so
       ! throw an error and abort:
@@ -2020,7 +2020,7 @@ subroutine SFBaseTest(this,cc_name,option)
   PetscReal :: pc, pc_increment
   PetscReal :: capillary_pressure(101)
   PetscReal :: liquid_saturation(101)
-  PetscReal :: dummy_real
+  PetscReal :: dsat_dpres(101)
   PetscInt :: count, i
 
   ! calculate saturation as a function of capillary pressure
@@ -2031,7 +2031,7 @@ subroutine SFBaseTest(this,cc_name,option)
   do
     if (pc > this%pcmax) exit
     count = count + 1
-    call this%Saturation(pc,liquid_saturation(count),dummy_real,option)
+    call this%Saturation(pc,liquid_saturation(count),dsat_dpres(count),option)
     capillary_pressure(count) = pc
     if (pc > 0.99d0*pc_increment*10.d0) pc_increment = pc_increment*10.d0
     pc = pc + pc_increment
@@ -2040,9 +2040,10 @@ subroutine SFBaseTest(this,cc_name,option)
   write(string,*) cc_name
   string = trim(cc_name) // '_pc_sat.dat'
   open(unit=86,file=string)
-  write(86,*) '"capillary pressure", "saturation"'
+  write(86,*) '"capillary pressure", "saturation", "dsat/dpres"'
   do i = 1, count
-    write(86,'(2es14.6)') capillary_pressure(i), liquid_saturation(i)
+    write(86,'(3es14.6)') capillary_pressure(i), liquid_saturation(i), &
+                          dsat_dpres(i)
   enddo
   close(86)
 
@@ -2098,22 +2099,24 @@ subroutine RPF_Base_Test(this,cc_name,phase,option)
   type(option_type), intent(inout) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
-  PetscReal :: dummy_real
   PetscInt :: i
-  PetscReal :: liquid_saturation(101), kr(101)
+  PetscReal :: liquid_saturation(101)
+  PetscReal :: kr(101)
+  PetscReal :: dkr_dsat(101)
 
   do i = 1, 101
     liquid_saturation(i) = dble(i-1)*0.01d0
-    call this%RelativePermeability(liquid_saturation(i),kr(i),dummy_real, &
+    call this%RelativePermeability(liquid_saturation(i),kr(i),dkr_dsat(i), &
                                    option)
   enddo
 
   write(string,*) cc_name
   string = trim(cc_name) // '_' // trim(phase) // '_rel_perm.dat'
   open(unit=86,file=string)
-  write(86,*) '"saturation", "' // trim(phase) // ' relative permeability"'
+  write(86,*) '"saturation", "' // trim(phase) // ' relative permeability", "' &
+              // trim(phase) // ' dkr/dsat"'
   do i = 1, size(liquid_saturation)
-    write(86,'(2es14.6)') liquid_saturation(i), kr(i)
+    write(86,'(3es14.6)') liquid_saturation(i), kr(i), dkr_dsat(i)
   enddo
   close(86)
 
@@ -2369,7 +2372,6 @@ subroutine SF_VG_CapillaryPressure(this,liquid_saturation, &
     capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
   endif
 #endif
-
 
   capillary_pressure = min(capillary_pressure,this%pcmax)
   
@@ -2927,6 +2929,10 @@ subroutine SF_BF_KRP9_CapillaryPressure(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
+  PetscReal :: a, b
+  
+  a = 3783.0145d0
+  b = 2.9d0
   
   if (liquid_saturation <= this%Sr) then
     capillary_pressure = 0.d0
@@ -2937,7 +2943,7 @@ subroutine SF_BF_KRP9_CapillaryPressure(this,liquid_saturation, &
   endif
   
   Se = (1.d0-liquid_saturation)/(liquid_saturation)
-  capillary_pressure = 3783.0145d0*Se**(1.d0/2.9d0)
+  capillary_pressure = a*Se**(1.d0/b)
 #if defined(MATCH_TOUGH2)
   if (liquid_saturation > 0.999d0) then
     capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
@@ -2955,8 +2961,7 @@ subroutine SF_BF_KRP9_Saturation(this,capillary_pressure,liquid_saturation, &
   ! 
   ! Computes the saturation (and associated derivatives) as a function of 
   ! capillary pressure
-  ! 
-  !   
+  !  
   ! Author: Heeho Park
   ! Date: 03/26/15
   !
@@ -2972,16 +2977,24 @@ subroutine SF_BF_KRP9_Saturation(this,capillary_pressure,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
+  PetscReal :: a, b
+  PetscReal :: dS_dSe
   PetscReal :: dSe_dpc
   
   dsat_dpres = 0.d0
+  a = 3783.0145d0
+  b = 2.9d0
 
   if (capillary_pressure <= 0.d0) then
     liquid_saturation = 1.d0
     return
   else
-    Se = (capillary_pressure/3783.0145d0)**(2.9d0)
-    liquid_saturation = 1.d0 / (Se-1.d0)
+    Se = (capillary_pressure/a)**(b)
+    liquid_saturation = 1.d0 / (Se+1.d0)
+    ! Python analytical derivative (Jenn Frederick)
+    dS_dSe = -1.d0/(Se + 1.d0)**2
+    dSe_dpc = b*(capillary_pressure/a)**b/capillary_pressure
+    dsat_dpres = dS_dSe*dSe_dpc
   endif 
 
 end subroutine SF_BF_KRP9_Saturation
@@ -3644,7 +3657,8 @@ subroutine RPF_Mualem_VG_Gas_RelPerm(this,liquid_saturation, &
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   
   relative_permeability = 0.d0
-  dkr_sat = UNINITIALIZED_DOUBLE
+  dkr_sat = 0.d0
+  
   if (Se >= 1.d0) then
     relative_permeability = 0.d0
     return
@@ -3655,7 +3669,7 @@ subroutine RPF_Mualem_VG_Gas_RelPerm(this,liquid_saturation, &
   
   Seg = 1.d0 - Se
   relative_permeability = sqrt(Seg)*(1.d0-Se**(1.d0/this%m))**(2.d0*this%m)
-  ! Mathematica Analytical solution (Heeho Park)
+  ! Mathematica analytical solution (Heeho Park)
   dkr_Se = -(1.d0-Se**(1.d0/this%m))**(2.d0*this%m)/(2.d0*sqrt(Seg)) &
           - 2.d0*sqrt(Seg)*Se**(1.d0/this%m-1.d0) &
           * (1.d0-Se**(1.d0/this%m))**(2.d0*this%m-1.d0)
@@ -3984,7 +3998,8 @@ subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   
   relative_permeability = 0.d0
-  dkr_sat = UNINITIALIZED_DOUBLE
+  dkr_sat = 0.d0
+  
   if (Se >= 1.d0) then
     relative_permeability = 0.d0
     return
@@ -3994,9 +4009,9 @@ subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
   endif
   
   Seg = 1.d0 - Se
-        ! reference #1
+  ! reference #1
   relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
-  ! Mathematica Analytical solution (Heeho Park)
+  ! Mathematica analytical solution (Heeho Park)
   dkr_Se = -(1.d0+2.d0/this%lambda)*Seg**2.d0*Se**(2.d0/this%lambda) &
            - 2.d0*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
   dSe_sat = 1.d0 / (1.d0 - this%Sr - this%Srg)
@@ -4212,7 +4227,8 @@ subroutine RPF_Mualem_BC_Gas_RelPerm(this,liquid_saturation, &
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   
   relative_permeability = 0.d0
-  dkr_sat = UNINITIALIZED_DOUBLE
+  dkr_sat = 0.d0
+  
   if (Se >= 1.d0) then
     relative_permeability = 0.d0
     return
@@ -4224,8 +4240,8 @@ subroutine RPF_Mualem_BC_Gas_RelPerm(this,liquid_saturation, &
   Seg = 1.d0 - Se
   ! reference Table 2
   relative_permeability = sqrt(Seg)* &
-                              (1.d0-Se**(1.d0+1.d0/this%lambda))**2.d0
-  ! Mathematica Analytical solution (Heeho Park)
+                             (1.d0-Se**(1.d0+1.d0/this%lambda))**2.d0
+  ! Mathematica analytical solution (Heeho Park)
   dkr_Se = -2.d0*(1.d0+1.d0/this%lambda)*sqrt(Seg)*Se**(1.d0/this%lambda) &
           * (1.d0-Se**(1.d0+1.d0/this%lambda)) &
           - (1.d0-Se**(1.d0+1.d0/this%lambda))**2.d0/(2.d0*sqrt(Seg))
@@ -4669,8 +4685,6 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   ! Computes the relative permeability (and associated derivatives) as a 
   ! function of saturation
   !
-  !
-  !
   ! Author: Bwalya Malama, Heeho Park
   ! Date: 11/14/14
 
@@ -4687,17 +4701,17 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   PetscReal :: Se
   PetscReal :: Seg
   PetscReal :: liquid_relative_permeability
-  PetscReal :: liquid_dkr_sat
+  PetscReal :: liquid_dkr_sat  
+  PetscReal :: dkr_dSe
+  PetscReal :: dSe_dsat
+  PetscReal :: a, pcm
   
   call RPF_Mualem_Linear_Liq_RelPerm(this,liquid_saturation, &
                         liquid_relative_permeability, &
                         liquid_dkr_sat,option)
   
   relative_permeability = 0.d0
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
 
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   if (Se >= 1.d0) then
@@ -4712,6 +4726,14 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   ! reference Table 2
   relative_permeability = Seg**0.5d0 * &
                  (1.d0-sqrt(liquid_relative_permeability*Se**(-0.5d0)))**2.d0
+  ! Python analytical derivative (Jenn Frederick)
+  dkr_dSe = 0.5*1./Se*(Se**(-0.5)*liquid_relative_permeability)**0.5 &
+            *(-1.0*Se + 1.0)**0.5*(-1.0*(Se**(-0.5) &
+            *liquid_relative_permeability)**0.5 + 1.0) &
+            - 0.5*(-1.0*Se + 1.0)**(-0.5)*(-1.0*(Se**(-0.5) &
+            *liquid_relative_permeability)**0.5 + 1.0)**2.0
+  dSe_dsat = 1.d0/(1.d0 - this%Sr - this%Srg)
+  dkr_sat = dkr_dSe*dSe_dsat
 
 end subroutine RPF_Mualem_Linear_Gas_RelPerm
 ! End RPF: Mualem, Linear (Gas)
@@ -4909,7 +4931,8 @@ subroutine RPF_Burdine_Linear_Gas_RelPerm(this,liquid_saturation, &
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   
   relative_permeability = 0.d0
-  dkr_sat = UNINITIALIZED_DOUBLE
+  dkr_sat = 0.d0
+  
   if (Se >= 1.d0) then
     relative_permeability = 0.d0
     return
@@ -5010,14 +5033,11 @@ subroutine RPF_BRAGFLO_KRP9_Liq_RelPerm(this,liquid_saturation, &
   PetscReal :: Se
   PetscReal :: one_over_m
   PetscReal :: Se_one_over_m
+  PetscReal :: dkr_dSe
+  PetscReal :: dSe_dsat
   
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP9_Liq_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
   
   Se = (1.d0-liquid_saturation)/(liquid_saturation)
   if (liquid_saturation <= this%Sr) then
@@ -5026,6 +5046,11 @@ subroutine RPF_BRAGFLO_KRP9_Liq_RelPerm(this,liquid_saturation, &
   endif
   
   relative_permeability = 1.d0/(1.d0+28.768353d0*Se**1.7241379d0)
+  ! Python analytical derivative (Jenn Frederick)
+  dkr_dSe = -49.6006077278787*Se**0.7241379/(28.768353*Se**1.7241379+1.0)**2.0
+  dSe_dsat = -1.0*(1.0/liquid_saturation) &
+             - (1.0-liquid_saturation)/liquid_saturation**2.0
+  dkr_sat = dkr_dSe * dSe_dsat
   
 end subroutine RPF_BRAGFLO_KRP9_Liq_RelPerm
 ! End RPF: BRAGFLO KRP9 (Liquid)
@@ -5116,13 +5141,8 @@ subroutine RPF_BRAGFLO_KRP9_Gas_RelPerm(this,liquid_saturation, &
   PetscReal :: liquid_dkr_sat
   PetscReal :: dkr_Se
 
-  print *, 'RPF_BRAGFLO_KRP9_Gas_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
+  relative_permeability = 0.d0
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
-  
 
   Se = (1.d0-liquid_saturation)/(liquid_saturation)
   if (liquid_saturation <= this%Sr) then
@@ -5252,22 +5272,16 @@ subroutine RPF_BRAGFLO_KRP4_Gas_RelPerm(this,liquid_saturation, &
   gas_saturation = 1.0d0 - liquid_saturation
   
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP4_Gas_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
-  dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
-  
+  dkr_sat = 0.d0  
 
   if (gas_saturation <= this%Srg) then
     relative_permeability = 0.0d0
   else if (liquid_saturation > this%Sr) then
     Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
     Seg = 1.d0 - Se
-        ! reference #1
+    ! reference #1
     relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
-    ! Mathematica Analytical solution (Heeho Park)
+    ! Mathematica analytical solution (Heeho Park)
     dkr_Se = -(1.d0+2.d0/this%lambda)*Seg**2.d0*Se**(2.d0/this%lambda) &
              - 2.d0*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
     dSe_sat = 1.d0 / (1.d0 - this%Sr - this%Srg)
@@ -5508,15 +5522,11 @@ subroutine RPF_BRAGFLO_KRP12_Liq_RelPerm(this,liquid_saturation, &
   
   PetscReal :: Se
   PetscReal :: power
-  PetscReal :: dkr_Se
+  PetscReal :: dkr_dSe
+  PetscReal :: dSe_dsat
 
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP12_Liq_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
   
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr)
   Se = max(min(Se,1.0d0),0.0d0)
@@ -5534,7 +5544,9 @@ subroutine RPF_BRAGFLO_KRP12_Liq_RelPerm(this,liquid_saturation, &
   ! reference #1
   power = 3.d0+2.d0/this%lambda
   relative_permeability = Se**power
-  dkr_Se = power*relative_permeability/Se          
+  dkr_dSe = power*relative_permeability/Se    
+  dSe_dsat = 1.d0 / (1.d0 - this%Sr)
+  dkr_sat = dkr_dSe * dSe_dsat
   
 end subroutine RPF_BRAGFLO_KRP12_Liq_RelPerm
 ! End RPF: Burdine, Brooks-Corey (Liquid)
@@ -5582,17 +5594,12 @@ subroutine RPF_BRAGFLO_KRP12_Gas_RelPerm(this,liquid_saturation, &
   PetscReal :: Se
   PetscReal :: Seg
   PetscReal :: gas_saturation
-  PetscReal :: dkr_Se
+  PetscReal :: dkr_dSe
+  PetscReal :: dSe_dsat
   
   gas_saturation = 1.0d0 - liquid_saturation
-  
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP12_Gas_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
 
   if (gas_saturation <= this%Srg) then
     relative_permeability = 0.0d0
@@ -5607,11 +5614,13 @@ subroutine RPF_BRAGFLO_KRP12_Gas_RelPerm(this,liquid_saturation, &
        Seg = this%Srg
        Se = 1.d0 - Seg
     endif
-        ! reference #1
+    ! reference #1
     relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
-    ! Mathematica Analytical solution (Heeho Park)
-    dkr_Se = -(1.d0+2.d0/this%lambda)*Seg**2.d0*Se**(2.d0/this%lambda) &
-             - 2.d0*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
+    ! Mathematica analytical solution (Heeho Park)
+    dkr_dSe = -(1.d0+2.d0/this%lambda)*Seg**2.d0*Se**(2.d0/this%lambda) &
+              - 2.d0*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
+    dSe_dsat = 1.d0/(1.d0 - this%Sr - this%Srg)  
+    dkr_sat = dkr_dSe * dSe_dsat
   else
     relative_permeability = 1.0d0
   endif
