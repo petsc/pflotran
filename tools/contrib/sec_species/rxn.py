@@ -154,6 +154,15 @@ pri=[
 #pri=['UO2++','H+','Ca++','SO4--','HCO3-','O2(aq)','H2O']
 #pri=['H+','Na+','Al+++','CO2(aq)','SiO2(aq)','Cl-','H2O']
 
+#rare earth elements
+"""
+pri=[
+'H2O','H+','HCO3-','HPO4--','SO4--','Cl-','F-','NO3-','O2(aq)',
+'La+++','Sc+++','Y+++','Ce+++','Pr+++','Nd+++','Pm+++','Sm+++',
+'Eu+++','Gd+++','Tb+++','Dy+++','Ho+++','Er+++','Tm+++','Yb+++','Lu+++'
+]
+"""
+
 #=============== end of examples ==================
 
 faq = open('aq_spec.dat','r')
@@ -271,10 +280,6 @@ for rxn in list_aq: # loop over reactions in database
         if iflgo2 == 1:
           iflg[k] = 1
 
-#skip special cases
-      if 'O2(aq)*' == w[0].strip("'"):
-        iflg[k] = 0
-
   indx = 1
   for k in range(n):
     if iflg[k] == 0:
@@ -385,8 +390,8 @@ for rxn in list_aq:
         break
     if (reject == 0):
 
-      if ('O2(aq)*' == name.strip("'")):
-        break
+#     if ('O2(aq)*' == name.strip("'")):
+#       break
       nsec = nsec + 1
       sec[nsec] = name.strip("'")
 #     print 'pass3: ',rxn
@@ -424,8 +429,8 @@ for record in fgas:
 ngas=0
 iflg = {}
 
-fchem.write('GASES\n') 
-print 'GASES'
+fchem.write('GAS_SPECIES\n') 
+print 'GAS_SPECIES'
 
 #read in reactions
 ngas = 0
@@ -449,12 +454,6 @@ for rxn in list_gas:
       if sec[i] == w[2*(k+1)+2].strip("'"):
         iflg[k] = 1
         break
-          
-#skip special entries
-    if 'O2(g)*' == w[0].strip("'"):
-      iflg[k] = 0
-    if 'CO2(g)*' == w[0].strip("'"):
-      iflg[k] = 0
 
   indx = 1
   for k in range(n):
