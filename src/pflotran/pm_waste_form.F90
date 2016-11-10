@@ -1422,7 +1422,6 @@ end subroutine PMWFSetup
   ! Date: 08/25/15
   use Reaction_Aux_module
   use Realization_Base_class
-  use Utility_module, only : GetRndNumFromNormalDist
   
   implicit none
 
