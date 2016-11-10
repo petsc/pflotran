@@ -418,9 +418,9 @@ end subroutine EOSGasViscosityNoDerive
 ! ************************************************************************** !
 
 subroutine EOSGasViscosityDerive(T, P_comp, P_gas, Rho_comp, &
-                                 dRho_dT, dRho_dPgas, &
+                                 dRho_dT, dRho_dPcomp, dRho_dPgas, &
                                  dPcomp_dT, dPcomp_dPgas, &
-                                 V_mix, dV_dT, dV_dPgas, ierr)
+                                 V_mix, dV_dT, dV_dPcomp,dV_dPgas, ierr)
   implicit none
 
   PetscReal, intent(in) :: T             ! temperature [C]
@@ -428,11 +428,13 @@ subroutine EOSGasViscosityDerive(T, P_comp, P_gas, Rho_comp, &
   PetscReal, intent(in) :: P_gas         ! gas pressure [Pa]
   PetscReal, intent(in) :: Rho_comp      ! air density [C]
   PetscReal, intent(in) :: dRho_dT       ! derivative of density wrt temperature
-  PetscReal, intent(in) :: dRho_dPgas    ! derivative of density wrt pressure
+  PetscReal, intent(in) :: dRho_dPcomp   ! derivative of density wrt gas comp pressure
+  PetscReal, intent(in) :: dRho_dPgas    ! derivative of density wrt gas pressure
   PetscReal, intent(in) :: dPcomp_dT     ! derivative of gas comp pressure wrt temperature
   PetscReal, intent(in) :: dPcomp_dPgas  ! derivative of gas comp pressure wrt gas pressure
   PetscReal, intent(out) :: V_mix        ! mixture viscosity
   PetscReal, intent(out) :: dV_dT        ! derivative gas viscosity wrt temperature
+  PetscReal, intent(out) :: dV_dPcomp    ! derivative gas viscosity wrt gas comp press
   PetscReal, intent(out) :: dV_dPgas     ! derivative gas viscosity wrt gas press
   PetscErrorCode, intent(out) :: ierr
   
@@ -448,6 +450,7 @@ subroutine EOSGasViscosityDerive(T, P_comp, P_gas, Rho_comp, &
   
   dV_dT = 0.d0
   dV_dPgas = 0.d0
+  dV_dPcomp = 0.d0
   ! We have to calcualte the derivative numerically
   call EOSGasViscosityPtr(T, P_comp, P_gas, Rho_comp, V_mix, ierr)
   ! temperature
@@ -461,6 +464,7 @@ subroutine EOSGasViscosityDerive(T, P_comp, P_gas, Rho_comp, &
   call EOSGasViscosityPtr(T, P_comp_pert, P_gas, Rho_comp, V_mix_pert, ierr)
   tempreal = (V_mix_pert - V_mix)/pert
   dV_dT = dV_dT + tempreal * dPcomp_dT
+  dV_dPcomp = dV_dPcomp + tempreal
   dV_dPgas = dV_dPgas + tempreal * dPcomp_dPgas
   ! gas pressure
   pert = pert_tol * P_gas
@@ -473,6 +477,7 @@ subroutine EOSGasViscosityDerive(T, P_comp, P_gas, Rho_comp, &
   call EOSGasViscosityPtr(T, P_comp, P_gas, Rho_comp_pert, V_mix_pert, ierr)
   tempreal = (V_mix_pert - V_mix)/pert
   dV_dT = dV_dT + tempreal * dRho_dT
+  dV_dPcomp = dV_dPcomp + tempreal * dRho_dPcomp
   dV_dPgas = dV_dPgas + tempreal * dRho_dPgas
  
 end subroutine EOSGasViscosityDerive
@@ -534,7 +539,7 @@ subroutine EOSGasViscosity1(T, P_comp, P_gas, Rho_comp, V_mix, ierr)
 !       if (iphas(k).eq.2 .or. iphas(k).eq.0) then
 
       d   = d_air *FMWAIR       
-      xga = p_air / p_gas ! for debug, set x constant
+      xga = p_air / P_gas ! for debug, set x constant
       xg1 = 1.D0 - xga
       tk  = t +273.15d0
 

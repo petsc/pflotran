@@ -62,8 +62,8 @@ subroutine GeneralDerivative(option)
   call EOSWaterSetEnthalpy('PLANAR')
   call EOSWaterSetSteamDensity('PLANAR')
   
-!  istate = LIQUID_STATE
-  istate = GAS_STATE
+  istate = LIQUID_STATE
+!  istate = GAS_STATE
 !  istate = TWO_PHASE_STATE
   
 #if 0  
@@ -126,9 +126,15 @@ subroutine GeneralDerivative(option)
       xx(2) = 1.d-6
       xx(3) = 30.d0
     case(GAS_STATE)
+!      xx(1) = 1.d4
+!      xx(2) = 0.98d4
+!      xx(3) = 15.d0
       xx(1) = 1.d6
       xx(2) = 0.98d6
       xx(3) = 30.d0
+!      xx(1) = 1.d7
+!      xx(2) = 0.98d7
+!      xx(3) = 85.d0
     case(TWO_PHASE_STATE)
       xx(1) = 1.d6
       xx(2) = 0.5d0
@@ -390,10 +396,11 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             ! for gas state, derivative wrt air pressure is under lid
             dxmolwg = general_auxvar%d%xmol_p(wid,lid)
             dxmolag = general_auxvar%d%xmol_p(acid,lid)          
+            dmobilityg = general_auxvar%d%mobilityg_pa
           case(3)
             dpg = 0.d0
-            dpa = -1.d0*general_auxvar%d%psat_T ! pa = pg - pv
-            dpv = general_auxvar%d%psat_T
+            dpa = 0.d0
+            dpv = 0.d0
             dps = general_auxvar%d%psat_T
             dHc = general_auxvar%d%Hc_T            
             ddeng = general_auxvar%d%deng_T
@@ -729,24 +736,27 @@ subroutine GeneralAuxVarPrintResult(string,numerical,analytical, &
   PetscReal :: uninitialized_value
   type(option_type) :: option
   
-  character(len=6) :: word
+  character(len=8) :: word
+  PetscReal :: tempreal
   PetscReal, parameter :: tol = 1.d-5
           
-100 format(a24,': ',2(es13.5),'  ',a6,' ',es16.8)
+100 format(a24,': ',2(es13.5),'  ',a8,' ',es16.8)
 
   word = ''
   if (dabs(analytical-uninitialized_value) > 1.d-20) then
     if (dabs(analytical) > 0.d0) then
-      if (dabs((numerical-analytical)/analytical) < tol) then
-        word = 'PASS'
+      tempreal = dabs((numerical-analytical)/analytical)
+      if (tempreal < tol) then
+        word = ' PASS'
       else
         word = '-FAIL-'
+        if (tempreal < 1.d1*tol) word = trim(word) // ' *'
       endif
     else
       if (dabs(numerical) > 1.d-20) then
         word = '-FAIL-'
       else
-        word = 'PASS'
+        word = ' PASS'
       endif
     endif
     write(*,100) trim(string), numerical, analytical, word
