@@ -59,7 +59,7 @@ TEST_LOG="${PFLOTRAN_DIR_LOC}/src/pflotran/test.log"
 if [ -e "$TEST_LOG" ]; then
   PASSED=$(grep -c "Failed" $TEST_LOG)
   echo $PASSED
-  if [ $PASSED > 0 ]; then
+  if [ $PASSED -gt "0" ]; then
     echo "PFLOTRAN test failed."
     exit 1 
   else
@@ -71,6 +71,7 @@ fi
 if [ -z "$PREFIX_LOC" ]; then
   echo "PREFIX not set. Skipping installation."
 else
+  echo "Installing PFLOTRAN at ${PREFIX_LOC}."
   mkdir -p ${PREFIX_LOC}/bin
   mkdir -p ${PREFIX_LOC}/lib
   mkdir -p ${PREFIX_LOC}/share/pflotran
