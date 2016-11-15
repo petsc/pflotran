@@ -1,0 +1,85 @@
+#!/bin/bash
+
+PFLOTRAN_DIR_LOC=${PWD}
+PETSC_DIR_LOC=${PETSC_DIR}
+PETSC_ARCH_LOC=${PETSC_ARCH}
+
+while [[ $# -gt 1 ]]
+do
+  key="$1"
+  case "$key" in
+    --prefix)
+      PREFIX_LOC="$2"
+    shift
+    ;;
+    --with-petsc-dir)
+      PETSC_DIR_LOC="$2"
+    shift
+    ;;
+    --with-petsc-arch)
+      PETSC_ARCH_LOC="$2"
+    shift
+    ;;
+  esac
+shift
+done
+
+# check to ensure that PETSC_DIR and PETSC_ARCH are set
+if [ -z "$PETSC_DIR_LOC" ]; then
+  echo "Need to set PETSC_DIR"
+  exit 1
+fi
+
+if [ -z "$PETSC_ARCH_LOC" ]; then
+  echo "Need to set PETSC_ARCH"
+  exit 1
+fi
+
+# build pflotran and libpflotran.a
+cd ${PFLOTRAN_DIR_LOC}/src/pflotran
+make pflotran PETSC_DIR=${PETSC_DIR_LOC} PETSC_ARCH=${PETSC_ARCH_LOC} \
+  |& tee make.log
+make libpflotran.a PETSC_DIR=${PETSC_DIR_LOC} PETSC_ARCH=${PETSC_ARCH_LOC} \
+  |& tee -a make.log
+
+# check to ensure that pflotran and libpflotran.a were successfully built.
+PFLOTRAN_EXE="${PFLOTRAN_DIR_LOC}/src/pflotran/pflotran"
+PFLOTRAN_LIB="${PFLOTRAN_DIR_LOC}/src/pflotran/libpflotran.a"
+if !([ -e "$PFLOTRAN_EXE" ] && [ -e "$PFLOTRAN_LIB" ]); then
+  echo "Failure building PFLOTRAN."
+  exit 1
+else
+  echo "pflotran and libpflotran.a successfully built."
+fi
+
+# run a quick test
+make check PETSC_DIR=${PETSC_DIR_LOC} PETSC_ARCH=${PETSC_ARCH_LOC} \
+  |& tee -a test.log
+TEST_LOG="${PFLOTRAN_DIR_LOC}/src/pflotran/test.log"
+if [ -e "$TEST_LOG" ]; then
+  PASSED=$(grep -c "Failed" $TEST_LOG)
+  echo $PASSED
+  if [ $PASSED > 0 ]; then
+    echo "PFLOTRAN test failed."
+    exit 1 
+  else
+    echo "PFLOTRAN test passed"
+  fi
+fi
+
+# if prefix is set, copy binaries and regression tests to installation prefix
+if [ -z "$PREFIX_LOC" ]; then
+  echo "PREFIX not set. Skipping installation."
+else
+  mkdir -p ${PREFIX_LOC}/bin
+  mkdir -p ${PREFIX_LOC}/lib
+  mkdir -p ${PREFIX_LOC}/share/pflotran
+  cp -f ${PFLOTRAN_EXE} ${PREFIX_LOC}/bin/.
+  cp -f ${PFLOTRAN_LIB} ${PREFIX_LOC}/lib/.
+  cp -Rf ${PFLOTRAN_DIR_LOC}/regression_tests ${PREFIX_LOC}/share/pflotran/.
+fi
+
+#echo PFLOTRAN_DIR = "${PFLOTRAN_DIR_LOC}"
+#echo     PREFIX   = "${PREFIX_LOC}"
+#echo  PETSC_DIR   = "${PETSC_DIR_LOC}"
+#echo PETSC_ARCH   = "${PETSC_ARCH_LOC}"
