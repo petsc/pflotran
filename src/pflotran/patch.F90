@@ -3189,12 +3189,13 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
   
   ! Step-1: Rearrange map dataset
   nloc = maxval(dataset_map_hdf5%mapping(2,:))
-  call MPI_Allreduce(nloc,nglo,ONE_INTEGER,MPIU_INTEGER,MPI_Max,option%mycomm,ierr)
+  call MPI_Allreduce(nloc,nglo,ONE_INTEGER,MPIU_INTEGER,MPI_Max, &
+                     option%mycomm,ierr)
   call VecCreateMPI(option%mycomm,dataset_map_hdf5%map_dims_local(2),&
                     PETSC_DETERMINE,map_ids_1,ierr);CHKERRQ(ierr)
   call VecCreateMPI(option%mycomm,PETSC_DECIDE,nglo,map_ids_2, &
                     ierr);CHKERRQ(ierr)
-  call VecSet(map_ids_2,0,ierr);CHKERRQ(ierr)
+  call VecSet(map_ids_2,0.d0,ierr);CHKERRQ(ierr)
 
   istart = 0
   call MPI_Exscan(dataset_map_hdf5%map_dims_local(2), istart, ONE_INTEGER_MPI, &

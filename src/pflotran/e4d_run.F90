@@ -498,7 +498,6 @@ contains
   !__________________________________________________________________
  !____________________________________________________________________
   subroutine forward_run
-!    use e4d_vars
     implicit none
     integer :: i,m,n,niter,j,enum
     integer :: eindx
