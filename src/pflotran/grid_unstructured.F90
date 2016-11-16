@@ -3265,7 +3265,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   PetscViewer :: viewer
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: int_array4(4)
-  PetscInt :: int_array4_0(4,1)
+  PetscInt :: int_array4_0(4)
   PetscReal :: real_array4(4)
   PetscInt, allocatable :: boundary_faces(:)
   PetscInt, allocatable :: temp_int(:,:)
@@ -3341,7 +3341,7 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
         do ivertex = 1, nvertices
           vertex_id_local = &
             unstructured_grid%cell_vertices(int_array4(ivertex),local_id)
-          int_array4_0(ivertex,1) = &
+          int_array4_0(ivertex) = &
             unstructured_grid%vertex_ids_natural(vertex_id_local)-1
         enddo
         call MatSetValues(Mat_vert_to_face,1,boundary_face_count-1+offset, &

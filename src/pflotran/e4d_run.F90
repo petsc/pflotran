@@ -421,6 +421,7 @@ contains
     integer :: rw   
     integer :: ncls 
     integer :: cls(50) 
+    PetscReal :: val(1)
     
     
     !zero A
@@ -497,6 +498,7 @@ contains
   !__________________________________________________________________
  !____________________________________________________________________
   subroutine forward_run
+    use vars
     implicit none
     integer :: i,m,n,niter,j,enum
     integer, dimension(1) :: eindx

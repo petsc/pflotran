@@ -1366,7 +1366,8 @@ subroutine RTCalculateRHS_t1(realization)
   if (field%tran_mass_transfer /= 0) then
     ! scale by -1.d0 for contribution to residual.  A negative contribution
     ! indicates mass being added to system.
-    call VecAXPY(field%tran_rhs,-1.d0,field%tran_mass_transfer)
+    call VecAXPY(field%tran_rhs,-1.d0,field%tran_mass_transfer, &
+                 ierr);CHKERRQ(ierr)
   endif
   
 end subroutine RTCalculateRHS_t1
