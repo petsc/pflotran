@@ -95,7 +95,6 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
   PetscReal :: harmonic_sat_por_D_over_dist(option%nphase)
   
   PetscInt :: iphase, max_phase
-  PetscReal :: spD_up, spD_dn
   PetscReal :: dist_up, dist_dn
   PetscReal :: sat_up, sat_dn
   PetscReal :: velocity_dn(3), velocity_up(3)
@@ -110,6 +109,7 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
   PetscReal :: mechanical_dispersion_dn
   PetscReal :: molecular_diffusion_up
   PetscReal :: molecular_diffusion_dn
+  PetscReal :: hydrodynamic_dispersion_up, hydrodynamic_dispersion_dn
   PetscReal :: t_ref_inv
 
   max_phase = 1
@@ -207,19 +207,22 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
       mechanical_dispersion_up = dispersivity_up(LONGITUDINAL)*dabs(q) 
       mechanical_dispersion_dn = dispersivity_dn(LONGITUDINAL)*dabs(q) 
     endif
-    ! saturation * porosity * hydrodynamic dispersion
-    spD_up = sat_up*material_auxvar_up%porosity * &
-      ! hydrodynamic dispersion
+    ! mechanical disperson + &
+    ! saturation * porosity * tortuosity * molecular diffusion
+    hydrodynamic_dispersion_up = &
       max(mechanical_dispersion_up + &
-          molecular_diffusion_up * material_auxvar_up%tortuosity,1.d-40)
-    spD_dn = sat_dn*material_auxvar_dn%porosity * &
-      ! hydrodynamic dispersion
+          sat_up * material_auxvar_up%porosity * &
+          material_auxvar_up%tortuosity * molecular_diffusion_up, &
+          1.d-40)
+    hydrodynamic_dispersion_dn = &
       max(mechanical_dispersion_dn + &
-          molecular_diffusion_dn * material_auxvar_dn%tortuosity,1.d-40)
-    ! harmonic average of saturation * porosity * hydrodynamic dispersion 
-    ! divided by distance
+          sat_dn * material_auxvar_dn%porosity * &
+          material_auxvar_dn%tortuosity * molecular_diffusion_dn, &
+          1.d-40)
+    ! harmonic average of hydrodynamic dispersion divided by distance
     harmonic_sat_por_D_over_dist(iphase) = &
-      (spD_up*spD_dn)/(spD_up*dist_dn+spD_dn*dist_up)
+      (hydrodynamic_dispersion_up*hydrodynamic_dispersion_dn)/ &
+      (hydrodynamic_dispersion_up*dist_dn+hydrodynamic_dispersion_dn*dist_up)
   enddo
 
 end subroutine TDispersion
