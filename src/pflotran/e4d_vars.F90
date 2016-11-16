@@ -1,4 +1,4 @@
-module vars
+module e4d_vars
 
   implicit none
 #include "petsc/finclude/petscsys.h"
@@ -654,4 +654,4 @@ subroutine elog(com,i1,i2)
 end subroutine elog
 !_________________________________________________________________	
  
-end module vars
+end module e4d_vars

@@ -1,6 +1,6 @@
 module e4d_setup
 
-  use vars
+  use e4d_vars
 
   implicit none
   integer :: ios

@@ -1,6 +1,6 @@
 module e4d_run
 
-  use vars
+  use e4d_vars
   integer :: pf_com
   logical :: first_sol = .true.
   logical :: sim_e4d = .false.
@@ -498,7 +498,6 @@ contains
   !__________________________________________________________________
  !____________________________________________________________________
   subroutine forward_run
-    use vars
     implicit none
     integer :: i,m,n,niter,j,enum
     integer :: eindx
