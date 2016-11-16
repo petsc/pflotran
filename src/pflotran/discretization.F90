@@ -920,15 +920,9 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
                                       ierr);CHKERRQ(ierr)
         call DMCoarsen(dm_fine_ptr%dm, option%mycomm, dmc_ptr(i)%dm,  &
                        ierr);CHKERRQ(ierr)
-#ifndef DMGET
         call DMCreateInterpolation(dmc_ptr(i)%dm, dm_fine_ptr%dm, &
                                    interpolation(i), PETSC_NULL_OBJECT,  &
                                    ierr);CHKERRQ(ierr)
-#else
-        call DMGetInterpolation(dmc_ptr(i)%dm, dm_fine_ptr%dm, &
-                                interpolation(i), PETSC_NULL_OBJECT,  &
-                                ierr);CHKERRQ(ierr)
-#endif
         dm_fine_ptr => dmc_ptr(i)
       enddo
     case(UNSTRUCTURED_GRID)
@@ -965,13 +959,9 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
     
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-#ifndef DMGET
+      call DMSetMatType(dm_ptr%dm,MATBAIJ,ierr);CHKERRQ(ierr)
       call DMCreateColoring(dm_ptr%dm,IS_COLORING_GLOBAL,MATBAIJ,coloring,&
                             ierr);CHKERRQ(ierr)
-#else
-      call DMGetColoring(dm_ptr%dm,IS_COLORING_GLOBAL,MATBAIJ,coloring, &
-                         ierr);CHKERRQ(ierr)
-#endif
       ! I have set the above to use matrix type MATBAIJ, as that is what we 
       ! usually want (note: for DAs with 1 degree of freedom per grid cell, 
       ! the MATAIJ and MATBAIJ colorings should be equivalent).  What we should 
