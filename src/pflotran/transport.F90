@@ -341,9 +341,10 @@ subroutine TDispersionBC(ibndtype, &
         ! if outflow, skip
         if (ibndtype == DIRICHLET_ZERO_GRADIENT_BC .and. q < 0.) cycle
         ! saturation * porosity * hydrodynamic dispersion
-        spD = sat_up*material_auxvar_dn%porosity * &
+        spD = &
           ! hydrodynamic dispersion
           max(mechanical_dispersion + &
+              sat_up*material_auxvar_dn%porosity * &
               molecular_diffusion * material_auxvar_dn%tortuosity,1.d-40)
         ! saturation * porosity * hydrodynamic dispersion divided by distance
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
