@@ -101,7 +101,7 @@ module e4d_vars
   Mat :: A,Ai
   PetscErrorCode :: perr
   MatType :: tp
-  PetscInt :: prn(1),pcn(1)
+  PetscInt :: prn,pcn
   PetscInt :: d_nz,o_nz
   Vec :: psol
   Vec :: X

@@ -421,7 +421,7 @@ contains
     integer :: rw   
     integer :: ncls 
     integer :: cls(50) 
-    PetscReal :: val(1)
+    PetscReal :: val
     
     
     !zero A
@@ -436,13 +436,13 @@ contains
        !lower triangle
        if (((rbv>=2 .and. rbv<=6) .or. (cbv>=2 .and. cbv<=6)) .and. .not. tank_flag ) then
           !one or both nodes are on a boundary so set to zero for bc's
-          val(1) = 1e-30
+          val = 1e-30
        else
-          val(1) = sigma(S_map(i))*delA(i)
+          val = sigma(S_map(i))*delA(i)
        end if
        
-       prn(1) = row-1
-       pcn(1) = col-1
+       prn = row-1
+       pcn = col-1
        
        call MatSetValues(A,1,prn,1,pcn,val,ADD_VALUES,perr);CHKERRQ(perr)
        !upper triangle
@@ -458,9 +458,9 @@ contains
        
        if((nbounds(i).eq.2) .and. .not. tank_flag) then
           !this node is on a boundary, set val to 1.0 for bc
-          prn(1)=i-1;
-          pcn(1)=i-1;
-          val(1)=1;
+          prn=i-1;
+          pcn=i-1;
+          val=1;
           call MatSetValues(A,1,prn,1,pcn,val,ADD_VALUES,perr)
           
        end if
