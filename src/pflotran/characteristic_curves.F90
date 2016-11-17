@@ -2411,6 +2411,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: one_plus_pc_alpha_n
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
   
@@ -2422,7 +2423,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_dpc)
       liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+      dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
       return
     endif
   endif
@@ -2448,7 +2449,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
     dSe_dpc = -this%m*n*this%alpha*pc_alpha_n/ &
             (pc_alpha*one_plus_pc_alpha_n**(this%m+1.d0))
     liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-    dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+    dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   endif
   
 end subroutine SF_VG_Saturation
@@ -2676,6 +2677,7 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: pc_alpha_neg_lambda
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
   
@@ -2688,7 +2690,7 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_dpc)
       liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+      dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
       return
     endif
   else
@@ -2703,7 +2705,7 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
   Se = pc_alpha_neg_lambda
   dSe_dpc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
   liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-  dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+  dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   
 end subroutine SF_BC_Saturation
 ! End SF: Brooks-Corey
@@ -2834,6 +2836,7 @@ subroutine SF_Linear_Saturation(this,capillary_pressure,liquid_saturation, &
   
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
 
@@ -2844,7 +2847,7 @@ subroutine SF_Linear_Saturation(this,capillary_pressure,liquid_saturation, &
     Se = (this%pcmax-capillary_pressure) / (this%pcmax-1.d0/this%alpha)
     dSe_dpc = -1.d0/(this%pcmax-1.d0/this%alpha)
     liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-    dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+    dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   endif 
 
 end subroutine SF_Linear_Saturation
@@ -2977,6 +2980,7 @@ subroutine SF_BF_KRP9_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: Se
   PetscReal :: dS_dSe
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   PetscReal, parameter :: a = 3783.0145d0
   PetscReal, parameter :: b = 2.9d0
   
@@ -2991,7 +2995,7 @@ subroutine SF_BF_KRP9_Saturation(this,capillary_pressure,liquid_saturation, &
     ! Python analytical derivative (Jenn Frederick)
     dS_dSe = -1.d0/(Se + 1.d0)**2
     dSe_dpc = b*(capillary_pressure/a)**b/capillary_pressure
-    dsat_dpres = dS_dSe*dSe_dpc
+    dsat_dpres = dS_dSe*dSe_dpc*dpc_dpres
   endif 
 
 end subroutine SF_BF_KRP9_Saturation
@@ -3146,6 +3150,7 @@ subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: pc_alpha_neg_lambda
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
   
@@ -3158,7 +3163,7 @@ subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_dpc)
       liquid_saturation = this%Sr + (1.d0-this%Sr-this%Srg)*Se
-      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+      dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
       return
     endif
   else
@@ -3173,7 +3178,7 @@ subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
   Se = pc_alpha_neg_lambda
   dSe_dpc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
   liquid_saturation = this%Sr + (1.d0-this%Sr-this%Srg)*Se
-  dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+  dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   
 end subroutine SF_BF_KRP4_Saturation
 
