@@ -46,7 +46,7 @@ module e4d_vars
   integer :: nmap
   integer :: ntime                                         !!number of e4d simulation times
   integer :: mode
-  integer, dimension(1) :: i_zpot                          !!ghost node index for tank sims 
+  integer :: i_zpot                          !!ghost node index for tank sims 
 
   integer :: pfnx                                          !!number of pf cells in x dim
   integer :: pfny                                          !!number of pf cells in y dim
