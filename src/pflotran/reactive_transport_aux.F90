@@ -86,7 +86,7 @@ module Reactive_Transport_Aux_module
     PetscInt :: offset_auxiliary
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
-    PetscReal, pointer :: diffusion_coefficient(:)
+    PetscReal, pointer :: diffusion_coefficient(:,:)
     PetscReal, pointer :: diffusion_activation_energy(:)
 #ifdef OS_STATISTICS
 ! use PetscReal for large counts
@@ -145,7 +145,7 @@ contains
 
 ! ************************************************************************** !
 
-function RTAuxCreate(option)
+function RTAuxCreate(option,naqcomp)
   ! 
   ! Allocate and initialize auxiliary object
   ! 
@@ -158,6 +158,7 @@ function RTAuxCreate(option)
   implicit none
   
   type(option_type) :: option
+  PetscInt :: naqcomp
   type(reactive_transport_type), pointer :: RTAuxCreate
   
   type(reactive_transport_type), pointer :: aux
@@ -175,8 +176,8 @@ function RTAuxCreate(option)
   aux%inactive_cells_exist = PETSC_FALSE
 
   allocate(aux%rt_parameter)
-  allocate(aux%rt_parameter%diffusion_coefficient(option%nphase))
-  allocate(aux%rt_parameter%diffusion_activation_energy(option%nphase))
+  allocate(aux%rt_parameter%diffusion_coefficient(naqcomp,option%nphase))
+  allocate(aux%rt_parameter%diffusion_activation_energy(naqcomp))
   aux%rt_parameter%diffusion_coefficient = 1.d-9
   aux%rt_parameter%diffusion_activation_energy = 0.d0
   aux%rt_parameter%ncomp = 0
