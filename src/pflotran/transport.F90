@@ -67,7 +67,7 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
                       global_auxvar_dn,material_auxvar_dn, &
                       cell_centered_velocity_dn,dispersivity_dn,dist, &
                       rt_parameter,option,qdarcy, &
-                      harmonic_sat_por_D_over_dist)
+                      harmonic_dispersion_over_dist)
   ! 
   ! Computes a single coefficient representing:
   !   (saturation * porosity * 
@@ -92,7 +92,8 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
   PetscReal :: dist(-1:3)
   PetscReal :: qdarcy(*)
   type(reactive_transport_param_type) :: rt_parameter
-  PetscReal :: harmonic_sat_por_D_over_dist(option%nphase)
+  PetscReal :: harmonic_dispersion_over_dist(rt_parameter%naqcomp, &
+                                             option%nphase)
   
   PetscInt :: iphase, max_phase
   PetscReal :: dist_up, dist_dn
@@ -107,15 +108,17 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
   PetscInt, parameter :: TRANSVERSE_VERTICAL = 3
   PetscReal :: mechanical_dispersion_up
   PetscReal :: mechanical_dispersion_dn
-  PetscReal :: molecular_diffusion_up
-  PetscReal :: molecular_diffusion_dn
-  PetscReal :: hydrodynamic_dispersion_up, hydrodynamic_dispersion_dn
+  PetscReal :: molecular_diffusion_up(rt_parameter%naqcomp)
+  PetscReal :: molecular_diffusion_dn(rt_parameter%naqcomp)
+  PetscReal :: hydrodynamic_dispersion_up(rt_parameter%naqcomp)
+  PetscReal :: hydrodynamic_dispersion_dn(rt_parameter%naqcomp)
   PetscReal :: t_ref_inv
 
   max_phase = 1
   if (rt_parameter%ngas > 0) max_phase = 2
   
-  harmonic_sat_por_D_over_dist(:) = 0.d0    
+  harmonic_dispersion_over_dist(:,:) = 0.d0    
+
   call ConnectionCalculateDistances(dist,option%gravity,dist_up, &
                                     dist_dn,distance_gravity, &
                                     upwind_weight)
@@ -128,33 +131,33 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
       select case(iphase)
         case(LIQUID_PHASE)
           t_ref_inv = 1.d0/298.15d0 ! 1. / (25. + 273.15)
-          molecular_diffusion_up = &
-            rt_parameter%diffusion_coefficient(iphase) * &
-            exp(rt_parameter%diffusion_activation_energy(iphase) / &
+          molecular_diffusion_up(:) = &
+            rt_parameter%diffusion_coefficient(:,iphase) * &
+            exp(rt_parameter%diffusion_activation_energy(:) / &
                 IDEAL_GAS_CONSTANT* &
                 (t_ref_inv - 1.d0/(global_auxvar_up%temp + 273.15d0)))
-          molecular_diffusion_dn = &
-            rt_parameter%diffusion_coefficient(iphase) * &
-            exp(rt_parameter%diffusion_activation_energy(iphase) / &
+          molecular_diffusion_dn(:) = &
+            rt_parameter%diffusion_coefficient(:,iphase) * &
+            exp(rt_parameter%diffusion_activation_energy(:) / &
                 IDEAL_GAS_CONSTANT* &
                 (t_ref_inv - 1.d0/(global_auxvar_dn%temp + 273.15d0)))
         case(GAS_PHASE)
           ! if gas phase exists, gas pressure %pres(GAS_PHASE) should be total
           ! pressure
-          molecular_diffusion_up = &
-            rt_parameter%diffusion_coefficient(iphase) * &
+          molecular_diffusion_up(:) = &
+            rt_parameter%diffusion_coefficient(:,iphase) * &
             ((((global_auxvar_up%temp+273.15d0)/273.15d0)**1.8d0) * &
              (101325.d0/global_auxvar_up%pres(GAS_PHASE)))
-          molecular_diffusion_dn = &
-            rt_parameter%diffusion_coefficient(iphase) * &
+          molecular_diffusion_dn(:) = &
+            rt_parameter%diffusion_coefficient(:,iphase) * &
             ((((global_auxvar_dn%temp+273.15d0)/273.15d0)**1.8d0) * &
              (101325.d0/global_auxvar_dn%pres(GAS_PHASE)))
       end select
     else
-      molecular_diffusion_up = &
-            rt_parameter%diffusion_coefficient(iphase)
-      molecular_diffusion_dn = &
-            rt_parameter%diffusion_coefficient(iphase)
+      molecular_diffusion_up(:) = &
+            rt_parameter%diffusion_coefficient(:,iphase)
+      molecular_diffusion_dn(:) = &
+            rt_parameter%diffusion_coefficient(:,iphase)
     endif
     q = qdarcy(iphase)
     if (rt_parameter%calculate_transverse_dispersion) then
@@ -207,22 +210,23 @@ subroutine TDispersion(global_auxvar_up,material_auxvar_up, &
       mechanical_dispersion_up = dispersivity_up(LONGITUDINAL)*dabs(q) 
       mechanical_dispersion_dn = dispersivity_dn(LONGITUDINAL)*dabs(q) 
     endif
-    ! mechanical disperson + &
-    ! saturation * porosity * tortuosity * molecular diffusion
-    hydrodynamic_dispersion_up = &
+    ! hydrodynamic dispersion = mechanical disperson + &
+    !   saturation * porosity * tortuosity * molecular diffusion
+    hydrodynamic_dispersion_up(:) = &
       max(mechanical_dispersion_up + &
           sat_up * material_auxvar_up%porosity * &
-          material_auxvar_up%tortuosity * molecular_diffusion_up, &
+          material_auxvar_up%tortuosity * molecular_diffusion_up(:), &
           1.d-40)
-    hydrodynamic_dispersion_dn = &
+    hydrodynamic_dispersion_dn(:) = &
       max(mechanical_dispersion_dn + &
           sat_dn * material_auxvar_dn%porosity * &
-          material_auxvar_dn%tortuosity * molecular_diffusion_dn, &
+          material_auxvar_dn%tortuosity * molecular_diffusion_dn(:), &
           1.d-40)
     ! harmonic average of hydrodynamic dispersion divided by distance
-    harmonic_sat_por_D_over_dist(iphase) = &
-      (hydrodynamic_dispersion_up*hydrodynamic_dispersion_dn)/ &
-      (hydrodynamic_dispersion_up*dist_dn+hydrodynamic_dispersion_dn*dist_up)
+    harmonic_dispersion_over_dist(:,iphase) = &
+      (hydrodynamic_dispersion_up(:)*hydrodynamic_dispersion_dn(:))/ &
+      (hydrodynamic_dispersion_up(:)*dist_dn + &
+       hydrodynamic_dispersion_dn(:)*dist_up)
   enddo
 
 end subroutine TDispersion
@@ -235,7 +239,7 @@ subroutine TDispersionBC(ibndtype, &
                           cell_centered_velocity_dn,dispersivity_dn, &
                           dist_dn, &
                           rt_parameter,option,qdarcy, &
-                          sat_por_D_over_dist)
+                          harmonic_dispersion_over_dist)
   ! 
   ! Computes a single coefficient representing:
   !   (saturation * porosity * 
@@ -260,7 +264,8 @@ subroutine TDispersionBC(ibndtype, &
   PetscReal :: dist_dn(-1:3)
   PetscReal :: qdarcy(*)
   type(reactive_transport_param_type) :: rt_parameter
-  PetscReal :: sat_por_D_over_dist(option%nphase)
+  PetscReal :: harmonic_dispersion_over_dist(rt_parameter%naqcomp, &
+                                             option%nphase)
   
   PetscInt :: iphase, max_phase
   PetscReal :: spD
@@ -273,13 +278,14 @@ subroutine TDispersionBC(ibndtype, &
   PetscInt, parameter :: TRANSVERSE_HORIZONTAL = 2
   PetscInt, parameter :: TRANSVERSE_VERTICAL = 3
   PetscReal :: mechanical_dispersion
-  PetscReal :: molecular_diffusion
+  PetscReal :: molecular_diffusion(rt_parameter%naqcomp)
+  PetscReal :: hydrodynamic_dispersion(rt_parameter%naqcomp)
   PetscReal :: t_ref_inv
 
   max_phase = 1
   if (rt_parameter%ngas > 0) max_phase = 2
   
-  sat_por_D_over_dist(:) = 0.d0    
+  harmonic_dispersion_over_dist(:,:) = 0.d0    
 
   do iphase = 1, max_phase
     ! we use upwind saturation as that is the saturation at the boundary face
@@ -290,22 +296,22 @@ subroutine TDispersionBC(ibndtype, &
       select case(iphase)
         case(LIQUID_PHASE)
           t_ref_inv = 1.d0/298.15d0 ! 1. / (25. + 273.15)
-          molecular_diffusion = &
-            rt_parameter%diffusion_coefficient(iphase) * &
-            exp(rt_parameter%diffusion_activation_energy(iphase) / &
+          molecular_diffusion(:) = &
+            rt_parameter%diffusion_coefficient(:,iphase) * &
+            exp(rt_parameter%diffusion_activation_energy(:) / &
                 IDEAL_GAS_CONSTANT* &
                 (t_ref_inv - 1.d0/(global_auxvar_up%temp + 273.15d0)))
         case(GAS_PHASE)
           ! if gas phase exists, gas pressure %pres(GAS_PHASE) should be total
           ! pressure
-          molecular_diffusion = &
-            rt_parameter%diffusion_coefficient(iphase) * &
+          molecular_diffusion(:) = &
+            rt_parameter%diffusion_coefficient(:,iphase) * &
             ((((global_auxvar_up%temp+273.15d0)/273.15d0)**1.8d0) * &
              (101325.d0/global_auxvar_up%pres(GAS_PHASE)))
       end select
     else
-      molecular_diffusion = &
-            rt_parameter%diffusion_coefficient(iphase)
+      molecular_diffusion(:) = &
+            rt_parameter%diffusion_coefficient(:,iphase)
     endif
     q = qdarcy(iphase)
     if (rt_parameter%calculate_transverse_dispersion) then
@@ -339,15 +345,18 @@ subroutine TDispersionBC(ibndtype, &
     select case(ibndtype)
       case(DIRICHLET_BC,DIRICHLET_ZERO_GRADIENT_BC)
         ! if outflow, skip
-        if (ibndtype == DIRICHLET_ZERO_GRADIENT_BC .and. q < 0.) cycle
-        ! saturation * porosity * hydrodynamic dispersion
-        spD = sat_up*material_auxvar_dn%porosity * &
-          ! hydrodynamic dispersion
+        if (ibndtype == DIRICHLET_ZERO_GRADIENT_BC .and. q < 0.d0) cycle
+        ! hydrodynamic dispersion = mechanical disperson + &
+        !   saturation * porosity * tortuosity * molecular diffusion
+        hydrodynamic_dispersion(:) = &
           max(mechanical_dispersion + &
-              molecular_diffusion * material_auxvar_dn%tortuosity,1.d-40)
-        ! saturation * porosity * hydrodynamic dispersion divided by distance
+              sat_up * material_auxvar_dn%porosity * &
+              material_auxvar_dn%tortuosity * molecular_diffusion(:), &
+              1.d-40)
+        ! hydrodynamic dispersion divided by distance
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-        sat_por_D_over_dist(iphase) = spD / dist_dn(0)
+        harmonic_dispersion_over_dist(:,iphase) =  &
+          hydrodynamic_dispersion(:)/dist_dn(0)
       case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
     end select
   enddo
@@ -374,8 +383,9 @@ subroutine TFlux(rt_parameter, &
   type(reactive_transport_param_type) :: rt_parameter
   type(reactive_transport_auxvar_type) :: rt_auxvar_up, rt_auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn 
-  PetscReal :: coef_up(*), coef_dn(*)
   type(option_type) :: option
+  PetscReal :: coef_up(rt_parameter%naqcomp,option%nphase) 
+  PetscReal :: coef_dn(rt_parameter%naqcomp,option%nphase) 
   PetscReal :: Res(rt_parameter%ncomp)
   
   PetscInt :: iphase
@@ -386,6 +396,7 @@ subroutine TFlux(rt_parameter, &
   PetscInt :: icollcomp
   PetscInt :: icoll
   PetscInt :: iaqcomp
+  PetscInt :: neg999
 
   iphase = 1
   ndof = rt_parameter%naqcomp
@@ -394,32 +405,35 @@ subroutine TFlux(rt_parameter, &
   
   ! units = (L water/sec)*(mol/L) = mol/s
   ! total = mol/L water
-  Res(1:ndof) = coef_up(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
-                coef_dn(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
+  Res(1:ndof) = coef_up(1:ndof,iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
+                coef_dn(1:ndof,iphase)*rt_auxvar_dn%total(1:ndof,iphase)
 
   if (rt_parameter%ncoll > 0) then
+    neg999 = -999
     do icoll = 1, rt_parameter%ncoll
       idof = rt_parameter%offset_colloid + icoll
       Res(idof) = &
        ! conc_mob = mol/L water
-        coef_up(iphase)*rt_auxvar_up%colloid%conc_mob(icoll)+ &
-        coef_dn(iphase)*rt_auxvar_dn%colloid%conc_mob(icoll)
+        !geh: neg999 set to catch use of colloids.
+        coef_up(neg999,iphase)*rt_auxvar_up%colloid%conc_mob(icoll)+ &
+        coef_dn(neg999,iphase)*rt_auxvar_dn%colloid%conc_mob(icoll)
     enddo
   endif
   if (rt_parameter%ncollcomp > 0) then
+    neg999 = -999
     do icollcomp = 1, rt_parameter%ncollcomp
       iaqcomp = rt_parameter%coll_spec_to_pri_spec(icollcomp)
       ! total_eq_mob = mol/L water
       Res(iaqcomp) = Res(iaqcomp) + &
-        coef_up(iphase)*rt_auxvar_up%colloid%total_eq_mob(icollcomp) + &
-        coef_dn(iphase)*rt_auxvar_dn%colloid%total_eq_mob(icollcomp)
+        coef_up(neg999,iphase)*rt_auxvar_up%colloid%total_eq_mob(icollcomp) + &
+        coef_dn(neg999,iphase)*rt_auxvar_dn%colloid%total_eq_mob(icollcomp)
     enddo
   endif
   if (rt_parameter%ngas > 0) then
     iphase = 2
     Res(1:ndof) = Res(1:ndof) + &
-                  coef_up(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
-                  coef_dn(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
+                  coef_up(1:ndof,iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
+                  coef_dn(1:ndof,iphase)*rt_auxvar_dn%total(1:ndof,iphase)
   endif
 
 end subroutine TFlux
@@ -444,8 +458,11 @@ subroutine TFlux_CD(rt_parameter, &
   type(reactive_transport_param_type) :: rt_parameter
   type(reactive_transport_auxvar_type) :: rt_auxvar_up, rt_auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn 
-  PetscReal :: coef_11(*), coef_12(*), coef_21(*), coef_22(*)
   type(option_type) :: option
+  PetscReal :: coef_11(rt_parameter%naqcomp,option%nphase) 
+  PetscReal :: coef_12(rt_parameter%naqcomp,option%nphase) 
+  PetscReal :: coef_21(rt_parameter%naqcomp,option%nphase) 
+  PetscReal :: coef_22(rt_parameter%naqcomp,option%nphase) 
   PetscReal :: Res_1(rt_parameter%ncomp)
   PetscReal :: Res_2(rt_parameter%ncomp)
   
@@ -457,6 +474,7 @@ subroutine TFlux_CD(rt_parameter, &
   PetscInt :: icollcomp
   PetscInt :: icoll
   PetscInt :: iaqcomp
+  PetscInt :: neg999
 
   iphase = 1
   ndof = rt_parameter%naqcomp
@@ -466,40 +484,42 @@ subroutine TFlux_CD(rt_parameter, &
   
   ! units = (L water/sec)*(mol/L) = mol/s
   ! total(:,1) = mol/L water
-  Res_1(1:ndof) = coef_11(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
-                  coef_12(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
-  Res_2(1:ndof) = coef_21(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
-                  coef_22(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
+  Res_1(1:ndof) = coef_11(1:ndof,iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
+                  coef_12(1:ndof,iphase)*rt_auxvar_dn%total(1:ndof,iphase)
+  Res_2(1:ndof) = coef_21(1:ndof,iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
+                  coef_22(1:ndof,iphase)*rt_auxvar_dn%total(1:ndof,iphase)
 
   if (rt_parameter%ncoll > 0) then
+    neg999 = -999
     do icoll = 1, rt_parameter%ncoll
       idof = rt_parameter%offset_colloid + icoll
        ! conc_mob = mol/L water
-      Res_1(idof) = coef_11(iphase)*rt_auxvar_up%colloid%conc_mob(icoll)+ &
-                    coef_12(iphase)*rt_auxvar_dn%colloid%conc_mob(icoll)
-      Res_2(idof) = coef_21(iphase)*rt_auxvar_up%colloid%conc_mob(icoll)+ &
-                    coef_22(iphase)*rt_auxvar_dn%colloid%conc_mob(icoll)
+      Res_1(idof) = coef_11(neg999,iphase)*rt_auxvar_up%colloid%conc_mob(icoll)+ &
+                    coef_12(neg999,iphase)*rt_auxvar_dn%colloid%conc_mob(icoll)
+      Res_2(idof) = coef_21(neg999,iphase)*rt_auxvar_up%colloid%conc_mob(icoll)+ &
+                    coef_22(neg999,iphase)*rt_auxvar_dn%colloid%conc_mob(icoll)
     enddo
   endif
   if (rt_parameter%ncollcomp > 0) then
+    neg999 = -999
     do icollcomp = 1, rt_parameter%ncollcomp
       iaqcomp = rt_parameter%coll_spec_to_pri_spec(icollcomp)
       ! total_eq_mob = mol/L water
       Res_1(iaqcomp) = Res_1(iaqcomp) + &
-        coef_11(iphase)*rt_auxvar_up%colloid%total_eq_mob(icollcomp) + &
-        coef_12(iphase)*rt_auxvar_dn%colloid%total_eq_mob(icollcomp)
+        coef_11(neg999,iphase)*rt_auxvar_up%colloid%total_eq_mob(icollcomp) + &
+        coef_12(neg999,iphase)*rt_auxvar_dn%colloid%total_eq_mob(icollcomp)
       Res_2(iaqcomp) = Res_2(iaqcomp) + &
-        coef_21(iphase)*rt_auxvar_up%colloid%total_eq_mob(icollcomp) + &
-        coef_22(iphase)*rt_auxvar_dn%colloid%total_eq_mob(icollcomp)
+        coef_21(neg999,iphase)*rt_auxvar_up%colloid%total_eq_mob(icollcomp) + &
+        coef_22(neg999,iphase)*rt_auxvar_dn%colloid%total_eq_mob(icollcomp)
     enddo
   endif
   if (rt_parameter%ngas > 0) then
     iphase = 2
   ! total(:,2) = mol/L gas
-    Res_1(1:ndof) = coef_11(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
-                    coef_12(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
-    Res_2(1:ndof) = coef_21(iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
-                    coef_22(iphase)*rt_auxvar_dn%total(1:ndof,iphase)
+    Res_1(1:ndof) = coef_11(1:ndof,iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
+                    coef_12(1:ndof,iphase)*rt_auxvar_dn%total(1:ndof,iphase)
+    Res_2(1:ndof) = coef_21(1:ndof,iphase)*rt_auxvar_up%total(1:ndof,iphase) + &
+                    coef_22(1:ndof,iphase)*rt_auxvar_dn%total(1:ndof,iphase)
   endif
   
 end subroutine TFlux_CD
@@ -522,10 +542,11 @@ subroutine TFluxDerivative(rt_parameter, &
   implicit none
   
   type(reactive_transport_param_type) :: rt_parameter
+  type(option_type) :: option
   type(reactive_transport_auxvar_type) :: rt_auxvar_up, rt_auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn 
-  PetscReal :: coef_up(*), coef_dn(*)
-  type(option_type) :: option
+  PetscReal :: coef_up(rt_parameter%naqcomp,option%nphase) 
+  PetscReal :: coef_dn(rt_parameter%naqcomp,option%nphase) 
   PetscReal :: J_up(rt_parameter%ncomp,rt_parameter%ncomp), &
                J_dn(rt_parameter%ncomp,rt_parameter%ncomp)
   
@@ -536,6 +557,8 @@ subroutine TFluxDerivative(rt_parameter, &
   PetscInt :: istart
   PetscInt :: iendaq
   PetscInt :: max_phase
+  PetscInt :: irow
+  PetscInt :: neg999
  
   max_phase = 1
   if (rt_parameter%ngas > 0) max_phase = 2
@@ -548,17 +571,21 @@ subroutine TFluxDerivative(rt_parameter, &
   J_dn = 0.d0
   do iphase = 1, max_phase
     if (associated(rt_auxvar_dn%aqueous%dtotal)) then
-      J_up(istart:iendaq,istart:iendaq) = &
-        J_up(istart:iendaq,istart:iendaq) + &
-        rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
-      J_dn(istart:iendaq,istart:iendaq) = &
-        J_dn(istart:iendaq,istart:iendaq) + &
-        rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
+      do irow = istart, iendaq
+        J_up(irow,istart:iendaq) = &
+          J_up(irow,istart:iendaq) + &
+          rt_auxvar_up%aqueous%dtotal(irow,:,iphase)* &
+          coef_up(irow,iphase)
+        J_dn(irow,istart:iendaq) = &
+          J_dn(irow,istart:iendaq) + &
+          rt_auxvar_dn%aqueous%dtotal(irow,:,iphase)* &
+          coef_dn(irow,iphase)
+      enddo
     else  
       do icomp = istart, iendaq
-        J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up(iphase)* &
+        J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up(icomp,iphase)* &
                             global_auxvar_up%den_kg(iphase)*1.d-3
-        J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn(iphase)* &
+        J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn(icomp,iphase)* &
                             global_auxvar_dn%den_kg(iphase)*1.d-3
       enddo
     endif
@@ -566,19 +593,26 @@ subroutine TFluxDerivative(rt_parameter, &
 
   iphase = 1
   if (rt_parameter%ncoll > 0) then
+    neg999 = -999
     do icoll = 1, rt_parameter%ncoll
       idof = rt_parameter%offset_colloid + icoll
-      J_up(idof,idof) = coef_up(iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
-      J_dn(idof,idof) = coef_dn(iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
+      J_up(idof,idof) = coef_up(neg999,iphase) * &
+        global_auxvar_up%den_kg(iphase)*1.d-3
+      J_dn(idof,idof) = coef_dn(neg999,iphase) * &
+        global_auxvar_dn%den_kg(iphase)*1.d-3
     enddo
   endif
   if (rt_parameter%ncollcomp > 0) then
     ! dRj_dCj - mobile
     ! istart & iend same as above
-    J_up(istart:iendaq,istart:iendaq) = J_up(istart:iendaq,istart:iendaq) + &
-      rt_auxvar_up%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_up(iphase)
-    J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iendaq,istart:iendaq) + &
-      rt_auxvar_dn%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_dn(iphase)
+    do irow = istart, iendaq
+      J_up(irow,istart:iendaq) = J_up(irow,istart:iendaq) + &
+        rt_auxvar_up%colloid%dRj_dCj%dtotal(irow,:,iphase)* &
+        coef_up(irow,iphase)
+      J_dn(irow,istart:iendaq) = J_dn(irow,istart:iendaq) + &
+        rt_auxvar_dn%colloid%dRj_dCj%dtotal(irow,:,iphase)* &
+        coef_dn(irow,iphase)
+    enddo
     ! need the below
     ! dRj_dSic
     ! dRic_dSic
@@ -606,22 +640,27 @@ subroutine TFluxDerivative_CD(rt_parameter, &
   implicit none
   
   type(reactive_transport_param_type) :: rt_parameter
+  type(option_type) :: option
   type(reactive_transport_auxvar_type) :: rt_auxvar_up, rt_auxvar_dn
   type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn 
-  PetscReal :: coef_11(*), coef_12(*), coef_21(*), coef_22(*)
-  type(option_type) :: option
+  PetscReal :: coef_11(rt_parameter%naqcomp,option%nphase) 
+  PetscReal :: coef_12(rt_parameter%naqcomp,option%nphase) 
+  PetscReal :: coef_21(rt_parameter%naqcomp,option%nphase) 
+  PetscReal :: coef_22(rt_parameter%naqcomp,option%nphase) 
   PetscReal :: J_11(rt_parameter%ncomp,rt_parameter%ncomp), &
                J_12(rt_parameter%ncomp,rt_parameter%ncomp), &
                J_21(rt_parameter%ncomp,rt_parameter%ncomp), &
                J_22(rt_parameter%ncomp,rt_parameter%ncomp)
   
   PetscInt :: iphase
-  PetscInt :: icomp
   PetscInt :: icoll
   PetscInt :: idof
   PetscInt :: istart
   PetscInt :: iendaq
   PetscInt :: max_phase
+  PetscInt :: irow
+  PetscInt :: icomp
+  PetscInt :: neg999
   
   max_phase = 1
   if (rt_parameter%ngas > 0) max_phase = 2
@@ -635,61 +674,79 @@ subroutine TFluxDerivative_CD(rt_parameter, &
   J_22 = 0.d0
   do iphase = 1, max_phase
     if (associated(rt_auxvar_dn%aqueous%dtotal)) then
-      J_11(istart:iendaq,istart:iendaq) = &
-        J_11(istart:iendaq,istart:iendaq) + &
-        rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_11(iphase)
-      J_12(istart:iendaq,istart:iendaq) = &
-        J_12(istart:iendaq,istart:iendaq) + &
-        rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_12(iphase)
-      J_21(istart:iendaq,istart:iendaq) = &
-        J_21(istart:iendaq,istart:iendaq) + &
-        rt_auxvar_up%aqueous%dtotal(:,:,iphase)*coef_21(iphase)
-      J_22(istart:iendaq,istart:iendaq) = &
-        J_22(istart:iendaq,istart:iendaq) + &
-        rt_auxvar_dn%aqueous%dtotal(:,:,iphase)*coef_22(iphase)
+      do irow = istart, iendaq
+        J_11(irow,istart:iendaq) = &
+          J_11(irow,istart:iendaq) + &
+          rt_auxvar_up%aqueous%dtotal(irow,:,iphase)* &
+          coef_11(irow,iphase)
+        J_12(irow,istart:iendaq) = &
+          J_12(irow,istart:iendaq) + &
+          rt_auxvar_dn%aqueous%dtotal(irow,:,iphase)* &
+          coef_12(irow,iphase)
+        J_21(irow,istart:iendaq) = &
+          J_21(irow,istart:iendaq) + &
+          rt_auxvar_up%aqueous%dtotal(irow,:,iphase)* &
+          coef_21(irow,iphase)
+        J_22(irow,istart:iendaq) = &
+          J_22(irow,istart:iendaq) + &
+          rt_auxvar_dn%aqueous%dtotal(irow,:,iphase)* &
+          coef_22(irow,iphase)
+      enddo
     else  
       do icomp = istart, iendaq
         J_11(icomp,icomp) = &
           J_11(icomp,icomp) + &
-          coef_11(iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
+          coef_11(icomp,iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
         J_12(icomp,icomp) = &
           J_12(icomp,icomp) + &
-          coef_12(iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
+          coef_12(icomp,iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
         J_21(icomp,icomp) = &
           J_21(icomp,icomp) + &
-          coef_21(iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
+          coef_21(icomp,iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
         J_22(icomp,icomp) = &
           J_22(icomp,icomp) + &
-          coef_22(iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
+          coef_22(icomp,iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
       enddo
     endif
   enddo
 
   iphase = 1
   if (rt_parameter%ncoll > 0) then
+    neg999 = -999
     do icoll = 1, rt_parameter%ncoll
       idof = rt_parameter%offset_colloid + icoll
-      J_11(idof,idof) = coef_11(iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
-      J_12(idof,idof) = coef_12(iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
-      J_21(idof,idof) = coef_21(iphase)*global_auxvar_up%den_kg(iphase)*1.d-3
-      J_22(idof,idof) = coef_22(iphase)*global_auxvar_dn%den_kg(iphase)*1.d-3
+      J_11(idof,idof) = coef_11(neg999,iphase)* &
+                        global_auxvar_up%den_kg(iphase)*1.d-3
+      J_12(idof,idof) = coef_12(neg999,iphase)* &
+                        global_auxvar_dn%den_kg(iphase)*1.d-3
+      J_21(idof,idof) = coef_21(neg999,iphase)* &
+                        global_auxvar_up%den_kg(iphase)*1.d-3
+      J_22(idof,idof) = coef_22(neg999,iphase)* &
+                        global_auxvar_dn%den_kg(iphase)*1.d-3
     enddo
   endif
   if (rt_parameter%ncollcomp > 0) then
+    neg999 = -999
     ! dRj_dCj - mobile
     ! istart & iend same as above
-    J_11(istart:iendaq,istart:iendaq) = J_11(istart:iendaq,istart:iendaq) + &
-      rt_auxvar_up%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_11(iphase)
-    J_12(istart:iendaq,istart:iendaq) = J_12(istart:iendaq,istart:iendaq) + &
-      rt_auxvar_dn%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_12(iphase)
-    J_21(istart:iendaq,istart:iendaq) = J_21(istart:iendaq,istart:iendaq) + &
-      rt_auxvar_up%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_21(iphase)
-    J_22(istart:iendaq,istart:iendaq) = J_22(istart:iendaq,istart:iendaq) + &
-      rt_auxvar_dn%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_22(iphase)
-    ! need the below
-    ! dRj_dSic
-    ! dRic_dSic
-    ! dRic_dCj
+    do irow = istart, iendaq
+      J_11(irow,istart:iendaq) = J_11(irow,istart:iendaq) + &
+        rt_auxvar_up%colloid%dRj_dCj%dtotal(irow,:,iphase)* &
+        coef_11(neg999,iphase)
+      J_12(irow,istart:iendaq) = J_12(irow,istart:iendaq) + &
+        rt_auxvar_dn%colloid%dRj_dCj%dtotal(irow,:,iphase)* &
+        coef_12(neg999,iphase)
+      J_21(irow,istart:iendaq) = J_21(irow,istart:iendaq) + &
+        rt_auxvar_up%colloid%dRj_dCj%dtotal(irow,:,iphase)* &
+        coef_21(neg999,iphase)
+      J_22(irow,istart:iendaq) = J_22(irow,istart:iendaq) + &
+        rt_auxvar_dn%colloid%dRj_dCj%dtotal(irow,:,iphase)* &
+        coef_22(neg999,iphase)
+      ! need the below
+      ! dRj_dSic
+      ! dRic_dSic
+      ! dRic_dCj
+    enddo
   endif
 
 end subroutine TFluxDerivative_CD
@@ -697,7 +754,7 @@ end subroutine TFluxDerivative_CD
 ! ************************************************************************** !
 
 subroutine TFluxCoef(rt_parameter,option,area,velocity, &
-                     harmonic_sat_por_D_over_dist, &
+                     harmonic_dispersion_over_dist, &
                      fraction_upwind,T_up,T_dn)
   ! 
   ! Computes flux coefficients for transport matrix
@@ -716,12 +773,15 @@ subroutine TFluxCoef(rt_parameter,option,area,velocity, &
   PetscReal :: velocity(*)
   ! this is the harmonic mean of saturation * porosity * (mechanical 
   !   dispersion + tortuosity * molecular_diffusion) / distance
-  PetscReal :: harmonic_sat_por_D_over_dist(*)
+  PetscReal :: harmonic_dispersion_over_dist(rt_parameter%naqcomp, &
+                                             option%nphase)
   PetscReal :: fraction_upwind
-  PetscReal :: T_up(*), T_dn(*)
+  PetscReal :: T_up(rt_parameter%naqcomp,option%nphase)
+  PetscReal :: T_dn(rt_parameter%naqcomp,option%nphase)
 
   PetscInt :: iphase, max_phase
-  PetscReal :: coef_up, coef_dn
+  PetscReal :: coef_up(rt_parameter%naqcomp)
+  PetscReal :: coef_dn(rt_parameter%naqcomp)
   PetscReal :: q
   
   max_phase = 1
@@ -734,32 +794,34 @@ subroutine TFluxCoef(rt_parameter,option,area,velocity, &
       ! upstream weighting
       ! units = (m^3 water/m^2 bulk/sec)
       if (q > 0.d0) then
-        coef_up =  harmonic_sat_por_D_over_dist(iphase)+q
-        coef_dn = -harmonic_sat_por_D_over_dist(iphase)
+        coef_up(:) =  harmonic_dispersion_over_dist(:,iphase)+q
+        coef_dn(:) = -harmonic_dispersion_over_dist(:,iphase)
       else
-        coef_up =  harmonic_sat_por_D_over_dist(iphase)
-        coef_dn = -harmonic_sat_por_D_over_dist(iphase)+q
+        coef_up(:) =  harmonic_dispersion_over_dist(:,iphase)
+        coef_dn(:) = -harmonic_dispersion_over_dist(:,iphase)+q
       endif
     else
       ! central difference, currently assuming uniform grid spacing
       ! units = (m^3 water/m^2 bulk/sec)
       ! 
-      coef_up =  harmonic_sat_por_D_over_dist(iphase) + &
-                 (1.d0-fraction_upwind)*q
-      coef_dn = -harmonic_sat_por_D_over_dist(iphase) + fraction_upwind*q
+      coef_up(:) =  harmonic_dispersion_over_dist(:,iphase) + &
+                    (1.d0-fraction_upwind)*q
+      coef_dn(:) = -harmonic_dispersion_over_dist(:,iphase) + &
+                    fraction_upwind*q
     endif  
   
     ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
     !       = L water/sec
-    T_up(iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-    T_dn(iphase) = coef_dn*area*1000.d0
+    T_up(:,iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+    T_dn(:,iphase) = coef_dn*area*1000.d0
   enddo
     
 end subroutine TFluxCoef
 
 ! ************************************************************************** !
 
-subroutine TFluxCoef_CD(option,area,velocity,harmonic_sat_por_D_over_dist, &
+subroutine TFluxCoef_CD(rt_parameter,option,area,velocity, &
+                        harmonic_dispersion_over_dist, &
                         fraction_upwind,T_11,T_12,T_21,T_22)
   ! 
   ! Computes flux coefficients for transport matrix
@@ -772,17 +834,21 @@ subroutine TFluxCoef_CD(option,area,velocity,harmonic_sat_por_D_over_dist, &
 
   implicit none
   
+  type(reactive_transport_param_type) :: rt_parameter  
   type(option_type) :: option
   PetscReal :: area
   PetscReal :: velocity(*)
   ! this is the harmonic mean of saturation * porosity * (mechanical 
   !   dispersion + tortuosity * molecular_diffusion) / distance
-  PetscReal :: harmonic_sat_por_D_over_dist(*)
+  PetscReal :: harmonic_dispersion_over_dist(rt_parameter%naqcomp,option%nphase)
   PetscReal :: fraction_upwind
-  PetscReal :: T_11(*), T_12(*), T_21(*), T_22(*)
+  PetscReal :: T_11(rt_parameter%naqcomp,option%nphase)
+  PetscReal :: T_12(rt_parameter%naqcomp,option%nphase)
+  PetscReal :: T_21(rt_parameter%naqcomp,option%nphase)
+  PetscReal :: T_22(rt_parameter%naqcomp,option%nphase)
 
   PetscInt :: iphase
-  PetscReal :: coef_up, coef_dn
+  PetscReal :: coef_up(rt_parameter%naqcomp), coef_dn(rt_parameter%naqcomp)
   PetscReal :: tempreal
   PetscReal :: advection_upwind(option%nphase)
   PetscReal :: advection_downwind(option%nphase)
@@ -816,16 +882,16 @@ subroutine TFluxCoef_CD(option,area,velocity,harmonic_sat_por_D_over_dist, &
     
   tempreal = area*1000.d0
   do iphase = 1, option%nphase
-    T_11(iphase) = (harmonic_sat_por_D_over_dist(iphase) + &
-                    advection_upwind(iphase))*tempreal
-    T_12(iphase) = (-harmonic_sat_por_D_over_dist(iphase) + &
-                    advection_downwind(iphase))*tempreal
-!    T_21(iphase) = -(harmonic_sat_por_D_over_dist(iphase) + &
-!                     advection_upwind(iphase))*tempreal
-!    T_22(iphase) = (harmonic_sat_por_D_over_dist(iphase) - &
-!                     advection_downwind(iphase))*tempreal
-    T_21(iphase) = -T_11(iphase)
-    T_22(iphase) = -T_12(iphase)
+    T_11(:,iphase) = (harmonic_dispersion_over_dist(:,iphase) + &
+                      advection_upwind(iphase))*tempreal
+    T_12(:,iphase) = (-harmonic_dispersion_over_dist(:,iphase) + &
+                      advection_downwind(iphase))*tempreal
+!    T_21(:,iphase) = -(harmonic_dispersion_over_dist(:,iphase) + &
+!                       advection_upwind(iphase))*tempreal
+!    T_22(:,iphase) = (harmonic_dispersion_over_dist(:,iphase) - &
+!                       advection_downwind(iphase))*tempreal
+    T_21(:,iphase) = -T_11(:,iphase)
+    T_22(:,iphase) = -T_12(:,iphase)
   enddo
 
 end subroutine TFluxCoef_CD
