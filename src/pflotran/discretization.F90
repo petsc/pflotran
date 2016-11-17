@@ -960,7 +960,7 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
   select case(discretization%itype)
     case(STRUCTURED_GRID)
       call DMSetMatType(dm_ptr%dm,MATBAIJ,ierr);CHKERRQ(ierr)
-      call DMCreateColoring(dm_ptr%dm,IS_COLORING_GLOBAL,MATBAIJ,coloring,&
+      call DMCreateColoring(dm_ptr%dm,IS_COLORING_GLOBAL,coloring,&
                             ierr);CHKERRQ(ierr)
       ! I have set the above to use matrix type MATBAIJ, as that is what we 
       ! usually want (note: for DAs with 1 degree of freedom per grid cell, 
