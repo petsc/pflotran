@@ -231,6 +231,8 @@ subroutine StructGridCreateDM(structured_grid,da,ndof,stencil_width, &
                     structured_grid%npz,ndof,stencil_width, &
                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                     da,ierr);CHKERRQ(ierr)
+  call DMSetFromOptions(da,ierr);CHKERRQ(ierr)
+  call DMSetup(da,ierr);CHKERRQ(ierr)
   call DMDAGetInfo(da,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                    structured_grid%npx_final,structured_grid%npy_final, &
