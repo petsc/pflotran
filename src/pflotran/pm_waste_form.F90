@@ -2313,6 +2313,7 @@ subroutine PMWFOutput(this)
   if (.not.associated(this%waste_form_list)) return
   
 100 format(100es18.8)
+101 format(1I6.1)
 
   option => this%realization%option
   output_option => this%realization%output_option
@@ -2329,7 +2330,8 @@ subroutine PMWFOutput(this)
   
   cur_waste_form => this%waste_form_list
   do
-    if (.not.associated(cur_waste_form)) exit
+    if (.not.associated(cur_waste_form)) exit  
+    write(fid,101,advance="no") cur_waste_form%id
     do i = 1, cur_waste_form%mechanism%num_species
       write(fid,100,advance="no") cur_waste_form%cumulative_mass(i), &
                                   cur_waste_form%instantaneous_mass_rate(i), &
@@ -2431,6 +2433,10 @@ subroutine PMWFOutputHeader(this)
     else
       cell_string = trim(cur_waste_form%region_name)
     endif
+    variable_string = 'WF ID#'
+    units_string = ''
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
     do i = 1, cur_waste_form%mechanism%num_species
       variable_string = trim(cur_waste_form%mechanism%rad_species_list(i)%name) &
                         // ' Cum. Mass Flux'
