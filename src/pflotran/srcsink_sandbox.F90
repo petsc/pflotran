@@ -105,6 +105,15 @@ subroutine SSSandboxRead2(local_sandbox_list,input,option)
   character(len=MAXWORDLENGTH) :: word
   class(srcsink_sandbox_base_type), pointer :: new_sandbox, cur_sandbox
   
+  ! Ensure that transport is not being simulated as we have no way for 
+  ! introducting solutes.
+  if (option%ntrandof > 0) then
+    option%io_buffer = 'Reactive transport may not be simulated when a &
+      &SOURCE_SINK_SANDBOX exists in the input file since no source/sink &
+      &capability exists in the source/sink sandbox for solute mass.'
+    call printErrMsg(option)
+  endif
+
   nullify(new_sandbox)
   do 
     call InputReadPflotranString(input,option)

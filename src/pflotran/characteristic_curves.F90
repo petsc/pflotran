@@ -2288,23 +2288,40 @@ subroutine RPF_Base_Test(this,cc_name,phase,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: i
-  PetscReal :: liquid_saturation(101)
-  PetscReal :: kr(101)
-  PetscReal :: dkr_dsat(101)
+  PetscInt, parameter :: num_values = 101
+  PetscReal :: perturbation
+  PetscReal :: liquid_saturation(num_values)
+  PetscReal :: liquid_saturation_pert(num_values)
+  PetscReal :: kr(num_values)
+  PetscReal :: kr_pert(num_values)
+  PetscReal :: dkr_dsat(num_values)
+  PetscReal :: dkr_dsat_numerical(num_values)
+  PetscReal :: dummy_real(num_values)
+  
+  perturbation = 1.d-6
 
-  do i = 1, 101
+  do i = 1, num_values
     liquid_saturation(i) = dble(i-1)*0.01d0
     call this%RelativePermeability(liquid_saturation(i),kr(i),dkr_dsat(i), &
                                    option)
+    ! calculate numerical derivative dkr_dsat_numerical
+    liquid_saturation_pert(i) = liquid_saturation(i) &
+                                + liquid_saturation(i)*perturbation
+    call this%RelativePermeability(liquid_saturation_pert(i),kr_pert(i), &
+                                   dummy_real(i),option)
+    dkr_dsat_numerical(i) = (kr_pert(i) - kr(i))/ &
+                            (liquid_saturation(i)*perturbation)
   enddo
 
   write(string,*) cc_name
   string = trim(cc_name) // '_' // trim(phase) // '_rel_perm.dat'
   open(unit=86,file=string)
   write(86,*) '"saturation", "' // trim(phase) // ' relative permeability", "' &
-              // trim(phase) // ' dkr/dsat"'
+              // trim(phase) // ' dkr/dsat", "' // trim(phase) // &
+              ' dkr/dsat_numerical"'
   do i = 1, size(liquid_saturation)
-    write(86,'(3es14.6)') liquid_saturation(i), kr(i), dkr_dsat(i)
+    write(86,'(4es14.6)') liquid_saturation(i), kr(i), dkr_dsat(i), &
+                          dkr_dsat_numerical(i)
   enddo
   close(86)
 
@@ -2599,6 +2616,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: one_plus_pc_alpha_n
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
   
@@ -2610,7 +2628,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_dpc)
       liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+      dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
       return
     endif
   endif
@@ -2636,7 +2654,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
     dSe_dpc = -this%m*n*this%alpha*pc_alpha_n/ &
             (pc_alpha*one_plus_pc_alpha_n**(this%m+1.d0))
     liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-    dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+    dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   endif
   
 end subroutine SF_VG_Saturation
@@ -2864,6 +2882,7 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: pc_alpha_neg_lambda
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
   
@@ -2876,7 +2895,7 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_dpc)
       liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+      dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
       return
     endif
   else
@@ -2891,7 +2910,7 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
   Se = pc_alpha_neg_lambda
   dSe_dpc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
   liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-  dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+  dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   
 end subroutine SF_BC_Saturation
 ! End SF: Brooks-Corey
@@ -3022,6 +3041,7 @@ subroutine SF_Linear_Saturation(this,capillary_pressure,liquid_saturation, &
   
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
 
@@ -3032,7 +3052,7 @@ subroutine SF_Linear_Saturation(this,capillary_pressure,liquid_saturation, &
     Se = (this%pcmax-capillary_pressure) / (this%pcmax-1.d0/this%alpha)
     dSe_dpc = -1.d0/(this%pcmax-1.d0/this%alpha)
     liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-    dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+    dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   endif 
 
 end subroutine SF_Linear_Saturation
@@ -3489,6 +3509,7 @@ subroutine SF_BF_KRP9_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: Se
   PetscReal :: dS_dSe
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   PetscReal, parameter :: a = 3783.0145d0
   PetscReal, parameter :: b = 2.9d0
   
@@ -3503,7 +3524,7 @@ subroutine SF_BF_KRP9_Saturation(this,capillary_pressure,liquid_saturation, &
     ! Python analytical derivative (Jenn Frederick)
     dS_dSe = -1.d0/(Se + 1.d0)**2
     dSe_dpc = b*(capillary_pressure/a)**b/capillary_pressure
-    dsat_dpres = dS_dSe*dSe_dpc
+    dsat_dpres = dS_dSe*dSe_dpc*dpc_dpres
   endif 
 
 end subroutine SF_BF_KRP9_Saturation
@@ -3658,6 +3679,7 @@ subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: pc_alpha_neg_lambda
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
   
@@ -3670,7 +3692,7 @@ subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_dpc)
       liquid_saturation = this%Sr + (1.d0-this%Sr-this%Srg)*Se
-      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+      dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
       return
     endif
   else
@@ -3685,7 +3707,7 @@ subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
   Se = pc_alpha_neg_lambda
   dSe_dpc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
   liquid_saturation = this%Sr + (1.d0-this%Sr-this%Srg)*Se
-  dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+  dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   
 end subroutine SF_BF_KRP4_Saturation
 
@@ -5213,11 +5235,11 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   PetscReal :: liquid_dkr_sat  
   PetscReal :: dkr_dSe
   PetscReal :: dSe_dsat
-  PetscReal :: a, pcm
+  PetscReal :: one_over_apcm
   
   call RPF_Mualem_Linear_Liq_RelPerm(this,liquid_saturation, &
-                        liquid_relative_permeability, &
-                        liquid_dkr_sat,option)
+                                     liquid_relative_permeability, &
+                                     liquid_dkr_sat,option)
   
   relative_permeability = 0.d0
   dkr_sat = 0.d0
@@ -5236,11 +5258,12 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   relative_permeability = Seg**0.5d0 * &
                  (1.d0-sqrt(liquid_relative_permeability*Se**(-0.5d0)))**2.d0
   ! Python analytical derivative (Jenn Frederick)
-  dkr_dSe = 0.5*1./Se*(Se**(-0.5)*liquid_relative_permeability)**0.5 &
-            *(-1.0*Se + 1.0)**0.5*(-1.0*(Se**(-0.5) &
-            *liquid_relative_permeability)**0.5 + 1.0) &
-            - 0.5*(-1.0*Se + 1.0)**(-0.5)*(-1.0*(Se**(-0.5) &
-            *liquid_relative_permeability)**0.5 + 1.0)**2.0
+  dkr_dSe = 0.5d0*1.d0/Se*sqrt(Se**(-0.5d0)*liquid_relative_permeability)* &
+    sqrt(1.d0-Se)*(1.d0-sqrt(Se**(-0.5d0)*liquid_relative_permeability))**1.0 &
+    - (1.d0-sqrt(Se**(-0.5d0)*liquid_relative_permeability))**2.d0 &
+    /(2.d0*sqrt(1.d0-Se))
+  !one_over_apcm = 1.d0/(1.d-7)/(1.d9)
+  !dkr_dSe = -2.0*Se**0.5*sqrt(Se**(-0.5)*log(-Se*(-one_over_apcm + 1.0) + 1.0)/log(one_over_apcm))*sqrt(-Se + 1.0)*(-0.25*Se**(-1.5)*log(-Se*(-one_over_apcm + 1.0) + 1.0)/log(one_over_apcm) + Se**(-0.5)*(one_over_apcm - 1.0)/(2*(-Se*(-one_over_apcm + 1.0) + 1.0)*log(one_over_apcm)))*(-sqrt(Se**(-0.5)*log(-Se*(-one_over_apcm + 1.0) + 1.0)/log(one_over_apcm)) + 1.0)**1.0*log(one_over_apcm)/log(-Se*(-one_over_apcm + 1.0) + 1.0) - (-sqrt(Se**(-0.5)*log(-Se*(-one_over_apcm + 1.0) + 1.0)/log(one_over_apcm)) + 1.0)**2.0/(2*sqrt(-Se + 1.0))
   dSe_dsat = 1.d0/(1.d0 - this%Sr - this%Srg)
   dkr_sat = dkr_dSe*dSe_dsat
 
@@ -5805,7 +5828,6 @@ subroutine RPF_BRAGFLO_KRP9_Gas_RelPerm(this,liquid_saturation, &
   PetscReal :: Seg
   PetscReal :: liquid_relative_permeability
   PetscReal :: liquid_dkr_sat
-  PetscReal :: dkr_Se
 
   relative_permeability = 0.d0
   dkr_sat = 0.d0
@@ -5821,7 +5843,7 @@ subroutine RPF_BRAGFLO_KRP9_Gas_RelPerm(this,liquid_saturation, &
                         liquid_dkr_sat,option)
   
   relative_permeability = 1.d0 - liquid_relative_permeability
-  dkr_Se = -1.d0 * liquid_dkr_sat
+  dkr_sat = -1.d0 * liquid_dkr_sat
   
 end subroutine RPF_BRAGFLO_KRP9_Gas_RelPerm
 ! End RPF: BRAGFLO KRP9 (Gas)

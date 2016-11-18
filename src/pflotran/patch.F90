@@ -39,8 +39,8 @@ module Patch_module
 
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
-    PetscReal, pointer :: internal_tran_coefs(:,:)
-    PetscReal, pointer :: boundary_tran_coefs(:,:)
+    PetscReal, pointer :: internal_tran_coefs(:,:,:)
+    PetscReal, pointer :: boundary_tran_coefs(:,:,:)
     PetscReal, pointer :: internal_flow_fluxes(:,:)    
     PetscReal, pointer :: boundary_flow_fluxes(:,:)  
     ! fluid fluxes in moles/sec
@@ -391,8 +391,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           (coupler%region%iface == 0 .and. &
            .not.associated(coupler%region%faces))) then
         option%io_buffer = 'Region "' // trim(coupler%region_name) // &
-                 '", which is tied to a boundary condition, has not ' // &
-                 'been assigned a face in the structured grid. '
+                 '", which is tied to a boundary condition, has not &
+                 &been assigned a face in the structured grid. '
         call printErrMsg(option)
       endif
     endif
@@ -400,7 +400,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     if (option%nflowdof > 0) then
       if (len_trim(coupler%flow_condition_name) > 0) then
         coupler%flow_condition => &
-          FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
+          FlowConditionGetPtrFromList(coupler%flow_condition_name, &
+                                      flow_conditions)
         if (.not.associated(coupler%flow_condition)) then
           option%io_buffer = 'Flow condition "' // &
                    trim(coupler%flow_condition_name) // &
@@ -410,8 +411,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           call printErrMsg(option)
         endif
       else
-        option%io_buffer = 'A FLOW_CONDITION must be specified in ' // &
-                           'BOUNDARY_CONDITION: ' // trim(coupler%name) // '.'
+        option%io_buffer = 'A FLOW_CONDITION must be specified in &
+                           &BOUNDARY_CONDITION: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
@@ -419,7 +420,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     if (option%ntrandof > 0) then
       if (len_trim(coupler%tran_condition_name) > 0) then
         coupler%tran_condition => &
-          TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
+          TranConditionGetPtrFromList(coupler%tran_condition_name, &
+                                      transport_conditions)
         if (.not.associated(coupler%tran_condition)) then
            option%io_buffer = 'Transport condition "' // &
                    trim(coupler%tran_condition_name) // &
@@ -429,8 +431,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           call printErrMsg(option)
         endif
       else
-        option%io_buffer = 'A TRANSPORT_CONDITION must be specified in ' // &
-                           'BOUNDARY_CONDITION: ' // trim(coupler%name) // '.'
+        option%io_buffer = 'A TRANSPORT_CONDITION must be specified in &
+                           &BOUNDARY_CONDITION: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
@@ -456,7 +458,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     if (option%nflowdof > 0) then
       if (len_trim(coupler%flow_condition_name) > 0) then
         coupler%flow_condition => &
-          FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
+          FlowConditionGetPtrFromList(coupler%flow_condition_name, &
+                                      flow_conditions)
         if (.not.associated(coupler%flow_condition)) then
           option%io_buffer = 'Flow condition "' // &
                    trim(coupler%flow_condition_name) // &
@@ -475,7 +478,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     if (option%ntrandof > 0) then
       if (len_trim(coupler%tran_condition_name) > 0) then
         coupler%tran_condition => &
-          TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
+          TranConditionGetPtrFromList(coupler%tran_condition_name, &
+                                      transport_conditions)
         if (.not.associated(coupler%tran_condition)) then
           option%io_buffer = 'Transport condition "' // &
                    trim(coupler%tran_condition_name) // &
@@ -485,8 +489,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           call printErrMsg(option)
         endif
       else
-        option%io_buffer = 'A TRANSPORT_CONDITION must be specified in ' // &
-                           'INITIAL_CONDITION: ' // trim(coupler%name) // '.'
+        option%io_buffer = 'A TRANSPORT_CONDITION must be specified in &
+                           &INITIAL_CONDITION: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
@@ -508,7 +512,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       call printErrMsg(option)
     endif
 #ifdef WELL_CLASS
-    !Create a well only if a well_spec is associated with the source_sink coupler 
+    ! Create a well only if a well_spec is associated with the 
+    ! source_sink coupler 
     nullify(well_spec)
     well_spec => WellSpecGetPtrFromList(coupler%well_spec_name,well_specs) 
     if ( associated(well_spec) ) then
@@ -522,7 +527,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     if (option%nflowdof > 0) then    
       if (len_trim(coupler%flow_condition_name) > 0) then
         coupler%flow_condition => &
-          FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
+          FlowConditionGetPtrFromList(coupler%flow_condition_name, &
+                                      flow_conditions)
         if (.not.associated(coupler%flow_condition)) then
           option%io_buffer = 'Flow condition "' // &
                    trim(coupler%flow_condition_name) // &
@@ -553,14 +559,14 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
             endif
           end if
           if (temp_int == 0) then
-            option%io_buffer = 'FLOW_CONDITIONs associated with ' // &
-              'SOURCE_SINKs must have a RATE or WELL expression within them.'
+            option%io_buffer = 'FLOW_CONDITIONs associated with &
+              &SOURCE_SINKs must have a RATE or WELL expression within them.'
             call printErrMsg(option)
           endif
         endif
       else
-        option%io_buffer = 'A FLOW_CONDITION must be specified in ' // &
-                           'SOURCE_SINK: ' // trim(coupler%name) // '.'
+        option%io_buffer = 'A FLOW_CONDITION must be specified in &
+                           &SOURCE_SINK: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
@@ -579,8 +585,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           call printErrMsg(option)
         endif
       else
-        option%io_buffer = 'A TRANSPORT_CONDITION must be specified in ' // &
-                           'SOURCE_SINK: ' // trim(coupler%name) // '.'
+        option%io_buffer = 'A TRANSPORT_CONDITION must be specified in &
+                           &SOURCE_SINK: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
@@ -640,7 +646,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     strata => strata%next
   enddo
 
-  ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
+  ! connectivity between initial conditions, boundary conditions, 
+  ! srcs/sinks, etc and grid
   call CouplerListComputeConnections(patch%grid,option, &
                                      patch%initial_condition_list)
   call CouplerListComputeConnections(patch%grid,option, &
@@ -673,8 +680,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                            option%mycomm,ierr)
         if (temp_int == 0) then
           option%io_buffer = 'Region "' // trim(observation%region%name) // &
-            '" is used in an observation point but lies outside the ' // &
-            'model domain.'
+            '" is used in an observation point but lies outside the &
+            &model domain.'
           call printErrMsg(option)
         endif
         if (observation%region%num_cells == 0) then
@@ -726,7 +733,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   
   ! flow
   if (option%nflowdof > 0) then
-    if (option%flow%store_fluxes .or. (patch%surf_or_subsurf_flag == SURFACE) ) then
+    if (option%flow%store_fluxes .or. &
+        (patch%surf_or_subsurf_flag == SURFACE)) then
       allocate(patch%internal_flow_fluxes(option%nflowdof,temp_int))
       patch%internal_flow_fluxes = 0.d0
     endif
@@ -734,7 +742,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   
   ! transport
   if (option%ntrandof > 0) then
-    allocate(patch%internal_tran_coefs(option%nphase,temp_int))
+    allocate(patch%internal_tran_coefs(option%ntrandof,option%nphase,temp_int))
     patch%internal_tran_coefs = 0.d0
     if (option%transport%store_fluxes) then
       allocate(patch%internal_tran_fluxes(option%ntrandof,temp_int))
@@ -750,7 +758,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     patch%boundary_velocities = 0.d0
     ! flow
     if (option%nflowdof > 0) then
-      if (option%flow%store_fluxes .or. (patch%surf_or_subsurf_flag == SURFACE)) then
+      if (option%flow%store_fluxes .or. &
+          (patch%surf_or_subsurf_flag == SURFACE)) then
         allocate(patch%boundary_flow_fluxes(option%nflowdof,temp_int))
         patch%boundary_flow_fluxes = 0.d0
       endif
@@ -762,7 +771,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     endif
     ! transport
     if (option%ntrandof > 0) then
-      allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
+      allocate(patch%boundary_tran_coefs(option%ntrandof,option%nphase, &
+                                         temp_int))
       patch%boundary_tran_coefs = 0.d0
       if (option%transport%store_fluxes) then
         allocate(patch%boundary_tran_fluxes(option%ntrandof,temp_int))
@@ -3189,12 +3199,13 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
   
   ! Step-1: Rearrange map dataset
   nloc = maxval(dataset_map_hdf5%mapping(2,:))
-  call MPI_Allreduce(nloc,nglo,ONE_INTEGER,MPIU_INTEGER,MPI_Max,option%mycomm,ierr)
+  call MPI_Allreduce(nloc,nglo,ONE_INTEGER,MPIU_INTEGER,MPI_Max, &
+                     option%mycomm,ierr)
   call VecCreateMPI(option%mycomm,dataset_map_hdf5%map_dims_local(2),&
                     PETSC_DETERMINE,map_ids_1,ierr);CHKERRQ(ierr)
   call VecCreateMPI(option%mycomm,PETSC_DECIDE,nglo,map_ids_2, &
                     ierr);CHKERRQ(ierr)
-  call VecSet(map_ids_2,0,ierr);CHKERRQ(ierr)
+  call VecSet(map_ids_2,0.d0,ierr);CHKERRQ(ierr)
 
   istart = 0
   call MPI_Exscan(dataset_map_hdf5%map_dims_local(2), istart, ONE_INTEGER_MPI, &

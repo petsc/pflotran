@@ -1,6 +1,6 @@
 module e4d_run
 
-  use vars
+  use e4d_vars
   integer :: pf_com
   logical :: first_sol = .true.
   logical :: sim_e4d = .false.
@@ -421,6 +421,7 @@ contains
     integer :: rw   
     integer :: ncls 
     integer :: cls(50) 
+    PetscReal :: val(1)
     
     
     !zero A
@@ -499,7 +500,7 @@ contains
   subroutine forward_run
     implicit none
     integer :: i,m,n,niter,j,enum
-    integer, dimension(1) :: eindx
+    integer :: eindx
     real, dimension(2) :: pck
     PetscScalar :: val
     real :: tstart, tend
@@ -519,7 +520,7 @@ contains
        !   call Add_Jpp(i)
        !end if
        
-       eindx(1)=e_nods(enum)
+       eindx=e_nods(enum)
        val=1.0
        call VecSetValues(B,1,eindx-1,val,ADD_VALUES,perr);CHKERRQ(perr)
 

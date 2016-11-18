@@ -1,4 +1,4 @@
-module vars
+module e4d_vars
 
   implicit none
 #include "petsc/finclude/petscsys.h"
@@ -15,7 +15,7 @@ module vars
   logical :: tank_flag = .false.
 
   integer, dimension(:), allocatable :: e4d_ranks,pf_e4d_ranks
-  integer :: mpi_comm_grp,mpi_e4d_grp,mpi_pfe4d_grp,i
+  integer :: mpi_comm_grp,mpi_e4d_grp,mpi_pfe4d_grp
   integer :: my_wrank,my_pfe4d_rank,n_pfe4drank             !!my mpi rank
   integer :: tn_rank                                        !!number of processes 
 
@@ -102,7 +102,6 @@ module vars
   PetscErrorCode :: perr
   MatType :: tp
   PetscInt :: prn(1),pcn(1)
-  PetscReal :: val(1)
   PetscInt :: d_nz,o_nz
   Vec :: psol
   Vec :: X
@@ -655,4 +654,4 @@ subroutine elog(com,i1,i2)
 end subroutine elog
 !_________________________________________________________________	
  
-end module vars
+end module e4d_vars
