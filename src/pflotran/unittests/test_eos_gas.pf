@@ -161,7 +161,8 @@ contains
     PetscReal :: dden_dt
     PetscReal :: dden_dp
 
-    call EOSGasSetDensityRKS(PETSC_TRUE,41.67d0,2.1029d6,0.0d0,0.42747d0,0.08664d0)
+    call EOSGasSetDensityRKS(PETSC_TRUE,41.67d0,2.1029d6,0.0d0,0.42747d0, &
+                             0.08664d0)
     call EOSGasVerify(ierr, error_string)
     @assertEqual(0, ierr)
 
@@ -185,6 +186,46 @@ contains
     @assertEqual(correct_density3, density3, 1.0d-9)
 
   end subroutine testEOSGas_DensityRKS
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testEOSGas_Viscosity1(this)
+    !
+    ! verify that EOSGasViscosity has not been broken
+    !
+
+    implicit none
+
+    class (Test_EOS_Gas), intent(inout) :: this
+
+    PetscReal :: temperature
+    PetscReal :: air_pressure
+    PetscReal :: gas_pressure
+    PetscReal :: air_density
+    PetscReal :: gas_viscosity
+    PetscReal :: correct_viscosity
+    PetscErrorCode :: ierr
+
+    temperature = 15.d0
+    air_pressure = 99625.388d0
+    gas_pressure = 101325.d0
+    air_density = 4.1583d-2
+    correct_viscosity = 1.7947104806578326d-005
+    call EOSGasViscosity(temperature, air_pressure, gas_pressure, &
+                         air_density, gas_viscosity, ierr)
+    @assertEqual(correct_viscosity, gas_viscosity, 1.d-9)
+
+    temperature = 75.d0
+    air_pressure = 9961548.635d0
+    gas_pressure = 1.d7
+    air_density = 3.441d0
+    correct_viscosity = 2.0383771097353054d-005
+    call EOSGasViscosity(temperature, air_pressure, gas_pressure, &
+                         air_density, gas_viscosity, ierr)
+    @assertEqual(correct_viscosity, gas_viscosity, 1.d-9)
+
+  end subroutine testEOSGas_Viscosity1
 
 end module Test_EOS_Gas_module
 
