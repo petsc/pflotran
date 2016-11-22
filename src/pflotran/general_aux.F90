@@ -142,6 +142,8 @@ module General_Aux_module
     PetscReal :: dena 
     PetscReal :: denv_T 
     PetscReal :: dena_T 
+    PetscReal :: denv_pg
+    PetscReal :: dena_pg
     PetscReal :: Hc 
     
     PetscReal :: psat_p
@@ -158,6 +160,9 @@ module General_Aux_module
     PetscReal :: mobilityg_T
     PetscReal :: mobilityg_satg
     PetscReal :: mobilityg_pa
+    PetscReal :: mug
+    PetscReal :: mug_T
+    PetscReal :: mug_pg
     PetscReal :: xmol_p(2,2)
     PetscReal :: xmol_T(2,2)    
   end type general_derivative_auxvar_type
@@ -345,6 +350,8 @@ subroutine GeneralAuxVarInit(auxvar,allocate_derivative,option)
     auxvar%d%dena = 0.d0
     auxvar%d%denv_T = 0.d0
     auxvar%d%dena_T = 0.d0
+    auxvar%d%denv_pg = 0.d0
+    auxvar%d%dena_pg = 0.d0
     auxvar%d%Hc = 0.d0
         
     auxvar%d%psat_p = 0.d0
@@ -354,6 +361,9 @@ subroutine GeneralAuxVarInit(auxvar,allocate_derivative,option)
     auxvar%d%pv_T = 0.d0
     auxvar%d%Hc_p = 0.d0
     auxvar%d%Hc_T = 0.d0
+    auxvar%d%mug = 0.d0
+    auxvar%d%mug_T = 0.d0
+    auxvar%d%mug_pg = 0.d0
     auxvar%d%mobilityl_pl = 0.d0
     auxvar%d%mobilityl_T = 0.d0
     auxvar%d%mobilityl_satg = 0.d0
@@ -992,6 +1002,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%d%dena = den_air
       gen_auxvar%d%denv_T = dden_water_vapor_dT
       gen_auxvar%d%dena_T = dden_air_dT
+      gen_auxvar%d%denv_pg = dden_water_vapor_dpv * gen_auxvar%d%pv_p 
+      gen_auxvar%d%dena_pg = dden_air_dpa * dpair_dpgas
       
       gen_auxvar%d%deng_pg = dden_water_vapor_dpv * gen_auxvar%d%pv_p + &
                              dden_air_dpa * dpair_dpgas
@@ -1105,6 +1117,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%d%mobilityg_T = tempreal*dvis_dT
       gen_auxvar%d%mobilityg_satg = dkrg_dsat/visg
       gen_auxvar%d%mobilityg_pa = tempreal*dvis_dpa
+      gen_auxvar%d%mug = visg
+      gen_auxvar%d%mug_T = dvis_dT
+      gen_auxvar%d%mug_pg = dvis_dp
     endif    
   endif
 

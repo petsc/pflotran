@@ -474,9 +474,10 @@ subroutine EOSGasViscosityDerive(T, P_comp, P_gas, Rho_comp, &
   call EOSGasViscosityPtr(T, P_comp, P_gas, Rho_comp, V_mix, PETSC_TRUE, &
                           dV_dT_, dV_dPcomp_, dV_dPgas_, dV_dRhocomp_, ierr)
 #if defined(PARTIALS)
-  dV_dPcomp_ = dV_dPcomp_ + dV_dRhocomp_*dRho_dPcomp
-  dV_dT_ = dV_dT_ + dV_dPcomp_*dPcomp_dT + dV_dRhocomp_*dRho_dT
+  dV_dT_ = dV_dT_ + dV_dRhocomp_*dRho_dT + dV_dPcomp_*dPcomp_dT
   dV_dPgas_ = dV_dPgas_ + dV_dPcomp_*dPcomp_dPgas + dV_dRhocomp_*dRho_dPgas
+  ! put dv_dPcomp last to avoid double counting for partials above
+  dV_dPcomp_ = dV_dPcomp_ + dV_dRhocomp_*dRho_dPcomp
 #endif
 
 #if defined(NUMERICAL_DERIVATIVE_VISCOSITY)                          
@@ -505,9 +506,9 @@ subroutine EOSGasViscosityDerive(T, P_comp, P_gas, Rho_comp, &
                           PETSC_FALSE,dum1,dum2,dum3,dum4,ierr)
   dV_dRhocomp = (V_mix_pert - V_mix)/pert
 #if defined(PARTIALS)
-  dV_dPcomp = dV_dPcomp + dV_dRhocomp * dRho_dPcomp
   dV_dT = dV_dT + dV_dRhocomp * dRho_dT + dV_dPcomp * dPcomp_dT
-  dV_dPgas = dV_dPgas + dV_dRhocomp * dRho_dPgas + dV_dPcomp * dPcomp_dPgas
+  dV_dPgas = dV_dPgas + dV_dPcomp * dPcomp_dPgas + dV_dRhocomp * dRho_dPgas
+  dV_dPcomp = dV_dPcomp + dV_dRhocomp * dRho_dPcomp
 #endif
 #else
   dV_dPcomp = dV_dPcomp_
@@ -673,7 +674,8 @@ subroutine EOSGasViscosity1(T, P_comp, P_gas, Rho_comp, V_mix, &
         vs = 1.d-7*(v1 + (0.353d0 + (676.5d-6 + 102.1d-9*d)*d)*d)
         
           dvs_dT = 1.d-7*(dv1_dT)
-          dvs_dRhocomp = 1.d-7*(0.353d0 + 2.d0*676.5d-6*d + 3.d0*102.1d-9*d**2.d0)*dd_dRhocomp
+          dvs_dd = 1.d-7*(0.353d0 + 2.d0*676.5d-6*d + 3.d0*102.1d-9*d**2.d0)
+          dvs_dRhocomp = dvs_dd*dd_dRhocomp
                    
       endif
 

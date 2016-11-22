@@ -62,9 +62,12 @@ subroutine GeneralDerivative(option)
   call EOSWaterSetEnthalpy('PLANAR')
   call EOSWaterSetSteamDensity('PLANAR')
   
-  istate = LIQUID_STATE
+  ! for ruling out gas density partial derivative
+!  call EOSGasSetDensityConstant(196.d0)
+  
+!  istate = LIQUID_STATE
 !  istate = GAS_STATE
-!  istate = TWO_PHASE_STATE
+  istate = TWO_PHASE_STATE
   
 #if 0  
   tlow = 1.d-1
@@ -273,6 +276,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
   PetscReal :: denv
   PetscReal :: dena
   PetscReal :: dHc
+  PetscReal :: dmug
   
   PetscReal, parameter :: uninitialized_value = -999.d0
   
@@ -306,6 +310,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
   denv = uninitialized_value
   dena = uninitialized_value
   dHc = uninitialized_value
+  dmug = uninitialized_value
 
   lid = option%liquid_phase
   gid = option%gas_phase
@@ -379,6 +384,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             dHa = general_auxvar%d%Ha_pg
             dUa = general_auxvar%d%Ua_pg
             
+            dmug = general_auxvar%d%mug_pg
             dmobilityg = general_auxvar%d%mobilityg_pg
             dxmolwg = general_auxvar%d%xmol_p(wid,gid)
             dxmolag = general_auxvar%d%xmol_p(acid,gid)          
@@ -415,6 +421,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             denv = general_auxvar%d%denv_T
             dena = general_auxvar%d%dena_T
             
+            dmug = general_auxvar%d%mug_T
             dmobilityg = general_auxvar%d%mobilityg_T
             dxmolwg = general_auxvar%d%xmol_T(wid,gid)
             dxmolag = general_auxvar%d%xmol_T(acid,gid)          
@@ -439,11 +446,14 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             dUg = general_auxvar%d%Ug_pg
             dHg = general_auxvar%d%Hg_pg
             
+            denv = general_auxvar%d%denv_pg
+            dena = general_auxvar%d%dena_pg
             dHv = general_auxvar%d%Hv_pg
             dUv = general_auxvar%d%Uv_pg
             dHa = general_auxvar%d%Ha_pg
             dUa = general_auxvar%d%Ua_pg
             
+            dmug = general_auxvar%d%mug_pg
             dmobilityl = general_auxvar%d%mobilityl_pl
             dmobilityg = general_auxvar%d%mobilityg_pg
             dxmolwl = general_auxvar%d%xmol_p(wid,lid)
@@ -487,6 +497,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             denv = general_auxvar%d%denv_T
             dena = general_auxvar%d%dena_T
             
+            dmug = general_auxvar%d%mug_T
             dmobilityl = general_auxvar%d%mobilityl_T
             dmobilityg = general_auxvar%d%mobilityg_T
             dxmolwl = general_auxvar%d%xmol_T(wid,lid)
@@ -671,6 +682,9 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
   call GeneralAuxVarPrintResult('            gas mobility', &
                                 (general_auxvar_pert%mobility(gid)-general_auxvar%mobility(gid))/pert, &
                                 dmobilityg,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('           gas viscosity', &
+                                (general_auxvar_pert%d%mug-general_auxvar%d%mug)/pert, &
+                                dmug,uninitialized_value,option)
   call GeneralAuxVarPrintResult('      effective porosity', &
                                 (general_auxvar_pert%effective_porosity-general_auxvar%effective_porosity)/pert, &
                                 uninitialized_value,uninitialized_value,option)
