@@ -219,7 +219,7 @@ contains
     PetscReal :: correct_dV_dPcomp
     PetscReal :: correct_dV_dPgas
     PetscErrorCode :: ierr
-    PetscReal, parameter :: tolerance = 1.d-9
+    PetscReal, parameter :: tolerance = 1.d-0
 
     temperature = 2.d0
     air_pressure = 29999296.328d0
@@ -231,9 +231,9 @@ contains
     dPcomp_dT = -50.277d0
     dPcomp_dPgas = 1.d0
     correct_viscosity = 1.7456616193894670d-005
-    correct_dV_dT = 4.0516006959941326d-008
+    correct_dV_dT = 4.0516006959937812d-008
     correct_dV_dPcomp = 6.7872587417791199d-014
-    correct_dV_dPgas = 1.5918615760034282d-018
+    correct_dV_dPgas = 1.5919314445176576d-018
     call EOSGasViscosity(temperature, air_pressure, gas_pressure, &
                          air_density, dair_density_dT, dair_density_dPcomp, &
                          dair_density_dPgas, dPcomp_dT, dPcomp_dPgas, &
@@ -253,9 +253,9 @@ contains
     dPcomp_dT = -109.436d0
     dPcomp_dPgas = 1.d0
     correct_viscosity = 1.7947104806578326d-005
-    correct_dV_dT = 3.8142894313260907d-008
+    correct_dV_dT = 3.8142688463437546d-008
     correct_dV_dPcomp = 2.2670206487329510d-011
-    correct_dV_dPgas = 3.7653655079821960d-013
+    correct_dV_dPgas = 3.7841755726193832d-013
     call EOSGasViscosity(temperature, air_pressure, gas_pressure, &
                          air_density, dair_density_dT, dair_density_dPcomp, &
                          dair_density_dPgas, dPcomp_dT, dPcomp_dPgas, &
@@ -275,9 +275,9 @@ contains
     dPcomp_dT = -1609.062d0
     dPcomp_dPgas = 1.d0
     correct_viscosity = 2.0383771097353054d-005
-    correct_dV_dT = 4.0048313123486590d-008
+    correct_dV_dT = 4.0047118836097288d-008
     correct_dV_dPcomp = 1.6401052586968451d-014
-    correct_dV_dPgas = -1.4185334278686771d-015
+    correct_dV_dPgas = -6.7630759113825132d-016
     call EOSGasViscosity(temperature, air_pressure, gas_pressure, &
                          air_density, dair_density_dT, dair_density_dPcomp, &
                          dair_density_dPgas, dPcomp_dT, dPcomp_dPgas, &
@@ -297,9 +297,9 @@ contains
     dPcomp_dT = -6247.72d0
     dPcomp_dPgas = 1.d0
     correct_viscosity = 2.2184119693802046d-005
-    correct_dV_dT = 4.0198411702051508d-008
+    correct_dV_dT = 4.0198054804996850d-008
     correct_dV_dPcomp = 8.6949319794896073d-016
-    correct_dV_dPgas = -1.0813181668619703d-016
+    correct_dV_dPgas = -5.1007448971251133d-017
     call EOSGasViscosity(temperature, air_pressure, gas_pressure, &
                          air_density, dair_density_dT, dair_density_dPcomp, &
                          dair_density_dPgas, dPcomp_dT, dPcomp_dPgas, &
@@ -319,9 +319,9 @@ contains
     dPcomp_dT = -224828.268d0
     dPcomp_dPgas = 1.d0
     correct_viscosity = 3.2964574505744611d-005
-    correct_dV_dT = 5.4887327266290154d-008
+    correct_dV_dT = 5.6451224034663605d-008
     correct_dV_dPcomp = -4.9050455367409281d-014
-    correct_dV_dPgas = 3.4791648938342121d-015
+    correct_dV_dPgas = -3.4767965708222201d-015
     call EOSGasViscosity(temperature, air_pressure, gas_pressure, &
                          air_density, dair_density_dT, dair_density_dPcomp, &
                          dair_density_dPgas, dPcomp_dT, dPcomp_dPgas, &
