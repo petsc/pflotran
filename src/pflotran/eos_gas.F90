@@ -467,7 +467,7 @@ subroutine EOSGasViscosityDerive(T, P_comp, P_gas, Rho_comp, &
   dV_dPcomp = 0.d0
   dV_dRhocomp = 0.d0
   
-#define NUMERICAL_DERIVATIVE_VISCOSITY
+!#define NUMERICAL_DERIVATIVE_VISCOSITY
 #define PARTIALS
     
   ! We have to calcualte the derivative numerically
