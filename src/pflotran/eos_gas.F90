@@ -606,179 +606,171 @@ subroutine EOSGasViscosity1(T, P_comp, P_gas, Rho_comp, V_mix, &
 !       if (iphas(k).eq.2 .or. iphas(k).eq.0) then
 
       d = d_air *FMWAIR   
-      
-        dd_dRhocomp = FMWAIR
-!keep separate for now        dd_dT = dRhocomp_dT * FMWAIR
-      
       xga = p_air / P_gas ! for debug, set x constant
-      
-        dxga_dPcomp = 1.d0 / P_gas
-        dxga_dPgas = -1.d0 * p_air / (P_gas*P_gas)
-      
       xg1 = 1.D0 - xga
-      
-        dxg1_dPcomp = -1.d0*dxga_dPcomp
-        dxg1_dPgas = -1.d0*dxga_dPgas
-      
       tk  = t + 273.15d0
-
       trd1 = tk/fair
-      
-        dtrd1_dT = 1.d0/fair
-      
       trd3 = tk/fmix
-      
-        dtrd3_dT = 1.d0/fmix
-
       ome1 = (1.188d0-0.051d0*trd1)/trd1
-      
-        dome1_dtrd1 = -0.051d0/trd1 + &
-                      -1.d0*(1.188d0-0.051d0*trd1)/(trd1*trd1)
-        dome1_dT = dome1_dtrd1*dtrd1_dT
-      
       ome3 = (1.480d0-0.412d0*log(trd3))/trd3
-      
-        dome3_dtrd3 = -0.412d0/trd3/trd3 + &  ! dlnx / dx = 1/x dx
-                      -1.d0*(1.480d0-0.412d0*log(trd3))/(trd3*trd3)
-        dome3_dT = dome3_dtrd3*dtrd3_dT
-        
       ard  = 1.095d0/trd3
-      
-        dard_dtrd3 = -1.095d0/(trd3*trd3)
-        dard_dT = dard_dtrd3*dtrd3_dT
-      
       fmw3 = 2.d0*FMWAIR*FMWH2O/(FMWAIR+FMWH2O)
- !     vis1 = 1.85d-4 
       vis1 = 266.93d-7*sqrt(FMWAIR*trd1*fair)/(cair*cair*ome1*trd1)
-      
-        dvis1_dtrd1 = 0.5d0*FMWAIR*fair*266.93d-7/sqrt(FMWAIR*trd1*fair)/(cair*cair*ome1*trd1) + &
-                      -266.93d-7*sqrt(FMWAIR*trd1*fair)/(cair*cair*ome1*trd1*trd1)
-        dvis1_dome1 = -266.93d-7*sqrt(FMWAIR*trd1*fair)/(cair*cair*ome1*ome1*trd1)
-        dvis1_dT = dvis1_dtrd1*dtrd1_dT + &
-                   dvis1_dome1*dome1_dT
- 
       v1 = .407d0*t +80.4d0
-      
-        dv1_dT = 0.407d0
-      
       if (t .le.350.d0) then
         vs = 1.d-7*(v1-d*(1858.d0-5.9d0*t )*1.d-3)
-        
-          dvs_dT = 1.d-7*(dv1_dT-d*(-5.9d0)*1.d-3)
-          dvs_dd = 1.d-7*(-1.d0*(1858.d0-5.9d0*t )*1.d-3)
-          dvs_dRhocomp = dvs_dd*dd_dRhocomp
-        
       else
 !             if (t .gt.350.d0) 
 !cpcl .      vs = 1.d-7*(v1 + 0.353d0*d + 676.5d-6*d**2 + 102.1d-9*d**3)
         vs = 1.d-7*(v1 + (0.353d0 + (676.5d-6 + 102.1d-9*d)*d)*d)
-        
-          dvs_dT = 1.d-7*(dv1_dT)
-          dvs_dd = 1.d-7*(0.353d0 + 2.d0*676.5d-6*d + 3.d0*102.1d-9*d**2.d0)
-          dvs_dRhocomp = dvs_dd*dd_dRhocomp
-                   
       endif
-
-!      vis2 = 7.34d-5
       vis2 = 10.d0*vs
-      
-        dvis2_dvs = 10.d0
-        dvis2_dT = dvis2_dvs*dvs_dT
-        dvis2_dRhocomp = dvis2_dvs*dvs_dRhocomp
-      
-!      vis3 = 1.74d-4 
       vis3 = 266.93d-7*sqrt(fmw3*trd3*fmix)/(cmix*cmix*ome3*trd3)
-      
-        dvis3_dtrd3 = 0.5d0*fmw3*fmix*266.93d-7/sqrt(fmw3*trd3*fmix)/(cmix*cmix*ome3*trd3) + &
-                      -266.93d-7*sqrt(fmw3*trd3*fmix)/(cmix*cmix*ome3*trd3*trd3)
-        dvis3_dome3 = -266.93d-7*sqrt(fmw3*trd3*fmix)/(cmix*cmix*ome3*ome3*trd3)
-        dvis3_dT = dvis3_dtrd3*dtrd3_dT + dvis3_dome3*dome3_dT
-      
-      !z1 = 5410.d0
       z1 = xga*xga/vis1+2.d0*xg1*xga/vis3+xg1*xg1/vis2
-      
-        dz1_dxga = 2.d0*xga/vis1 + 2.d0*xg1/vis3
-        dz1_dxg1 = 2.d0*xga/vis3 + 2.d0*xg1/vis2
-        dz1_dvis1 = -1.d0*xga*xga/(vis1*vis1) 
-        dz1_dvis2 = -1.d0*xg1*xg1/(vis2*vis2)
-        dz1_dvis3 = -2.d0*xg1*xga/(vis3*vis3)
-        dz1_dT = dz1_dvis1*dvis1_dT + dz1_dvis2*dvis2_dT + dz1_dvis3*dvis3_dT
-        dz1_dRhocomp = dz1_dvis2*dvis2_dRhocomp
-        dz1_dPcomp = dz1_dxga*dxga_dPcomp + dz1_dxg1*dxg1_dPcomp
-        dz1_dPgas = dz1_dxga*dxga_dPgas + dz1_dxg1*dxg1_dPgas
-      
-!      g = 1.58d0
       g = xga*xga*FMWAIR/FMWH2O
-        
-        dg_dxga = 2.d0*xga*FMWAIR/FMWH2O
-        dg_dPcomp = dg_dxga*dxga_dPcomp
-        dg_dPgas = dg_dxga*dxga_dPgas
-        
-!      h = 2.71d-5
       h = xg1*xg1*FMWH2O/FMWAIR
-      
-        dh_dxg1 = 2.d0*xg1*FMWH2O/FMWAIR
-        dh_dPcomp = dh_dxg1*dxg1_dPcomp
-        dh_dPgas = dh_dxg1*dxg1_dPgas
-      
-!      e = -773.d0
       e = (2.d0*xga*xg1*FMWAIR*FMWH2O/fmw3**2.d0)*vis3/(vis1*vis2)
-      
-        de_dxga = (2.d0*xg1*FMWAIR*FMWH2O/fmw3**2.d0)*vis3/(vis1*vis2)
-        de_dxg1 = (2.d0*xga*FMWAIR*FMWH2O/fmw3**2.d0)*vis3/(vis1*vis2)
-        de_dvis1 = -1.d0*(2.d0*xga*xg1*FMWAIR*FMWH2O/fmw3**2.d0)*vis3/(vis1*vis1*vis2)
-        de_dvis2 = -1.d0*(2.d0*xga*xg1*FMWAIR*FMWH2O/fmw3**2.d0)*vis3/(vis1*vis2*vis2)
-        de_dvis3 = (2.d0*xga*xg1*FMWAIR*FMWH2O/fmw3**2.d0)/(vis1*vis2)
-        de_dT = de_dvis1*dvis1_dT + de_dvis2*dvis2_dT + de_dvis3*dvis3_dT
-        de_dRhocomp = de_dvis2*dvis2_dRhocomp
-        de_dPcomp = de_dxga*dxga_dPcomp + de_dxg1*dxg1_dPcomp
-        de_dPgas = de_dxga*dxga_dPgas + de_dxg1*dxg1_dPgas
-      
-!      z2 = 3533.d0 ! 
       z2 = 0.6d0*ard*(g/vis1+e+h/vis2)
-      
-        dz2_dard = 0.6d0*(g/vis1+e+h/vis2)
-        dz2_dg = 0.6d0*ard*(1.d0/vis1)
-        dz2_dvis1 = -0.6d0*ard*(g/(vis1*vis1))
-        dz2_de = 0.6d0*ard
-        dz2_dh = 0.6d0*ard*(1.d0/vis2)
-        dz2_dvis2 = -0.6d0*ard*(h/(vis2*vis2))
-        dz2_dT = dz2_dard*dard_dT + dz2_dvis1*dvis1_dT + &
-                 dz2_de*de_dT + dz2_dvis2*dvis2_dT
-!        dz2_dT = 0.d0
-        dz2_dRhocomp = dz2_de*de_dRhocomp + dz2_dvis2*dvis2_dRhocomp
-        dz2_dPcomp = dz2_dg*dg_dPcomp + dz2_de*de_dPcomp + dz2_dh*dh_dPcomp
-        dz2_dPgas = dz2_dg*dg_dPgas + dz2_de*de_dPgas + dz2_dh*dh_dPgas
-      
-!      z3 = 0.65d0 !  
       z3 = 0.6d0*ard*(g+e*(vis1+vis2)-2.d0*xga*xg1+h)
-      
-        dz3_dard = 0.6d0*(g+e*(vis1+vis2)-2.d0*xga*xg1+h)
-        dz3_dg = 0.6d0*ard
-        dz3_de = 0.6d0*ard*((vis1+vis2))
-        dz3_dvis1 = 0.6d0*ard*(e)
-        dz3_dvis2 = 0.6d0*ard*(e)
-        dz3_dxga = 0.6d0*ard*(-2.d0*xg1)
-        dz3_dxg1 = 0.6d0*ard*(-2.d0*xga)
-        dz3_dh = 0.6d0*ard
-        
-        dz3_dT = dz3_dard*dard_dT + dz3_de*de_dT + dz3_dvis1*dvis1_dT + dz3_dvis2*dvis2_dT
-        dz3_dRhocomp = dz3_de*de_dRhocomp + dz3_dvis2*dvis2_dRhocomp
-        dz3_dPcomp = dz3_dxga*dxga_dPcomp + dz3_dxg1*dxg1_dPcomp + dz3_dg*dg_dPcomp + dz3_de*de_dPcomp + dz3_dh*dh_dPcomp
-        dz3_dPgas = dz3_dxga*dxga_dPgas + dz3_dxg1*dxg1_dPgas + dz3_dg*dg_dPgas + dz3_de*de_dPgas + dz3_dh*dh_dPgas
-      
       visg  = (1.d0+z3)/(z1+z2)*.1d0 
-      
-        dvisg_dz3 = 1.d0/(z1+z2)*.1d0 
-        dvisg_dz1 = -1.d0*(1.d0+z3)/((z1+z2)*(z1+z2))*.1d0 
-        dvisg_dz2 = -1.d0*(1.d0+z3)/((z1+z2)*(z1+z2))*.1d0 
       
   V_mix = visg
   
-  dV_dT = dvisg_dz1*dz1_dT + dvisg_dz2*dz2_dT + dvisg_dz3*dz3_dT
-  dV_dRhocomp = dvisg_dz1*dz1_dRhocomp + dvisg_dz2*dz2_dRhocomp + dvisg_dz3*dz3_dRhocomp
-  dV_dPcomp = dvisg_dz1*dz1_dPcomp + dvisg_dz2*dz2_dPcomp + dvisg_dz3*dz3_dPcomp
-  dV_dPgas = dvisg_dz1*dz1_dPgas + dvisg_dz2*dz2_dPgas + dvisg_dz3*dz3_dPgas
+  if (calculate_derivative) then
+  
+    ! air density
+    dd_dRhocomp = FMWAIR
+  
+    ! xga
+    dxga_dPcomp = 1.d0 / P_gas
+    dxga_dPgas = -1.d0 * p_air / (P_gas*P_gas)
+  
+    ! xg1
+    dxg1_dPcomp = -1.d0*dxga_dPcomp
+    dxg1_dPgas = -1.d0*dxga_dPgas
+  
+    ! trd3 wrt t
+    dtrd1_dT = 1.d0/fair
+
+    ! trd3 wrt t
+    dtrd3_dT = 1.d0/fmix
+  
+    ! ome1 wrt trd1
+    dome1_dtrd1 = -0.051d0/trd1 + &
+                  -1.d0*(1.188d0-0.051d0*trd1)/(trd1*trd1)
+    dome1_dT = dome1_dtrd1*dtrd1_dT
+  
+    ! ome3 wrt trd3
+    dome3_dtrd3 = -0.412d0/trd3/trd3 + &  ! dlnx / dx = 1/x dx
+                  -1.d0*(1.480d0-0.412d0*log(trd3))/(trd3*trd3)
+    dome3_dT = dome3_dtrd3*dtrd3_dT
+  
+    ! ard wrt trd3
+    dard_dtrd3 = -1.095d0/(trd3*trd3)
+    dard_dT = dard_dtrd3*dtrd3_dT
+  
+    ! vis1 wrt trd1, dome1
+    dvis1_dtrd1 = 0.5d0*FMWAIR*fair*266.93d-7/sqrt(FMWAIR*trd1*fair)/(cair*cair*ome1*trd1) + &
+                  -266.93d-7*sqrt(FMWAIR*trd1*fair)/(cair*cair*ome1*trd1*trd1)
+    dvis1_dome1 = -266.93d-7*sqrt(FMWAIR*trd1*fair)/(cair*cair*ome1*ome1*trd1)
+    dvis1_dT = dvis1_dtrd1*dtrd1_dT + &
+                dvis1_dome1*dome1_dT
+  
+    ! v1 wrt t
+    dv1_dT = 0.407d0
+  
+    ! vs wrt v1, d, t
+    if (t .le.350.d0) then
+      dvs_dT = 1.d-7*(dv1_dT-d*(-5.9d0)*1.d-3)
+      dvs_dd = 1.d-7*(-1.d0*(1858.d0-5.9d0*t )*1.d-3)
+      dvs_dRhocomp = dvs_dd*dd_dRhocomp
+    else
+      dvs_dT = 1.d-7*(dv1_dT)
+      dvs_dd = 1.d-7*(0.353d0 + 2.d0*676.5d-6*d + 3.d0*102.1d-9*d**2.d0)
+      dvs_dRhocomp = dvs_dd*dd_dRhocomp
+    endif  
+  
+    ! vis2 wrt vs
+    dvis2_dvs = 10.d0
+    dvis2_dT = dvis2_dvs*dvs_dT
+    dvis2_dRhocomp = dvis2_dvs*dvs_dRhocomp
+        
+    ! vis3 wrt trd3, dome3
+    dvis3_dtrd3 = 0.5d0*fmw3*fmix*266.93d-7/sqrt(fmw3*trd3*fmix)/(cmix*cmix*ome3*trd3) + &
+                  -266.93d-7*sqrt(fmw3*trd3*fmix)/(cmix*cmix*ome3*trd3*trd3)
+    dvis3_dome3 = -266.93d-7*sqrt(fmw3*trd3*fmix)/(cmix*cmix*ome3*ome3*trd3)
+    dvis3_dT = dvis3_dtrd3*dtrd3_dT + dvis3_dome3*dome3_dT
+        
+    ! z1 wrt vis#,xg#
+    dz1_dxga = 2.d0*xga/vis1 + 2.d0*xg1/vis3
+    dz1_dxg1 = 2.d0*xga/vis3 + 2.d0*xg1/vis2
+    dz1_dvis1 = -1.d0*xga*xga/(vis1*vis1) 
+    dz1_dvis2 = -1.d0*xg1*xg1/(vis2*vis2)
+    dz1_dvis3 = -2.d0*xg1*xga/(vis3*vis3)
+    dz1_dT = dz1_dvis1*dvis1_dT + dz1_dvis2*dvis2_dT + dz1_dvis3*dvis3_dT
+    dz1_dRhocomp = dz1_dvis2*dvis2_dRhocomp
+    dz1_dPcomp = dz1_dxga*dxga_dPcomp + dz1_dxg1*dxg1_dPcomp
+    dz1_dPgas = dz1_dxga*dxga_dPgas + dz1_dxg1*dxg1_dPgas
+  
+    ! g wrt xga
+    dg_dxga = 2.d0*xga*FMWAIR/FMWH2O
+    dg_dPcomp = dg_dxga*dxga_dPcomp
+    dg_dPgas = dg_dxga*dxga_dPgas
+
+    ! h wrt xg1
+    dh_dxg1 = 2.d0*xg1*FMWH2O/FMWAIR
+    dh_dPcomp = dh_dxg1*dxg1_dPcomp
+    dh_dPgas = dh_dxg1*dxg1_dPgas
+  
+    ! e wrt xg#, vis#
+    de_dxga = (2.d0*xg1*FMWAIR*FMWH2O/fmw3**2.d0)*vis3/(vis1*vis2)
+    de_dxg1 = (2.d0*xga*FMWAIR*FMWH2O/fmw3**2.d0)*vis3/(vis1*vis2)
+    de_dvis1 = -1.d0*(2.d0*xga*xg1*FMWAIR*FMWH2O/fmw3**2.d0)*vis3/(vis1*vis1*vis2)
+    de_dvis2 = -1.d0*(2.d0*xga*xg1*FMWAIR*FMWH2O/fmw3**2.d0)*vis3/(vis1*vis2*vis2)
+    de_dvis3 = (2.d0*xga*xg1*FMWAIR*FMWH2O/fmw3**2.d0)/(vis1*vis2)
+    de_dT = de_dvis1*dvis1_dT + de_dvis2*dvis2_dT + de_dvis3*dvis3_dT
+    de_dRhocomp = de_dvis2*dvis2_dRhocomp
+    de_dPcomp = de_dxga*dxga_dPcomp + de_dxg1*dxg1_dPcomp
+    de_dPgas = de_dxga*dxga_dPgas + de_dxg1*dxg1_dPgas
+
+    ! z2 wrt ard,e,g,h,vis#,xg#
+    dz2_dard = 0.6d0*(g/vis1+e+h/vis2)
+    dz2_dg = 0.6d0*ard*(1.d0/vis1)
+    dz2_dvis1 = -0.6d0*ard*(g/(vis1*vis1))
+    dz2_de = 0.6d0*ard
+    dz2_dh = 0.6d0*ard*(1.d0/vis2)
+    dz2_dvis2 = -0.6d0*ard*(h/(vis2*vis2))
+    dz2_dT = dz2_dard*dard_dT + dz2_dvis1*dvis1_dT + &
+              dz2_de*de_dT + dz2_dvis2*dvis2_dT
+    dz2_dRhocomp = dz2_de*de_dRhocomp + dz2_dvis2*dvis2_dRhocomp
+    dz2_dPcomp = dz2_dg*dg_dPcomp + dz2_de*de_dPcomp + dz2_dh*dh_dPcomp
+    dz2_dPgas = dz2_dg*dg_dPgas + dz2_de*de_dPgas + dz2_dh*dh_dPgas
+  
+    ! z3 wrt ard,e,g,h,vis#,xg#
+    dz3_dard = 0.6d0*(g+e*(vis1+vis2)-2.d0*xga*xg1+h)
+    dz3_dg = 0.6d0*ard
+    dz3_de = 0.6d0*ard*((vis1+vis2))
+    dz3_dvis1 = 0.6d0*ard*(e)
+    dz3_dvis2 = 0.6d0*ard*(e)
+    dz3_dxga = 0.6d0*ard*(-2.d0*xg1)
+    dz3_dxg1 = 0.6d0*ard*(-2.d0*xga)
+    dz3_dh = 0.6d0*ard
+        
+    dz3_dT = dz3_dard*dard_dT + dz3_de*de_dT + dz3_dvis1*dvis1_dT + dz3_dvis2*dvis2_dT
+    dz3_dRhocomp = dz3_de*de_dRhocomp + dz3_dvis2*dvis2_dRhocomp
+    dz3_dPcomp = dz3_dxga*dxga_dPcomp + dz3_dxg1*dxg1_dPcomp + dz3_dg*dg_dPcomp + dz3_de*de_dPcomp + dz3_dh*dh_dPcomp
+    dz3_dPgas = dz3_dxga*dxga_dPgas + dz3_dxg1*dxg1_dPgas + dz3_dg*dg_dPgas + dz3_de*de_dPgas + dz3_dh*dh_dPgas
+  
+    ! visg wrt z#
+    dvisg_dz3 = 1.d0/(z1+z2)*.1d0 
+    dvisg_dz1 = -1.d0*(1.d0+z3)/((z1+z2)*(z1+z2))*.1d0 
+    dvisg_dz2 = -1.d0*(1.d0+z3)/((z1+z2)*(z1+z2))*.1d0 
+    
+    dV_dT = dvisg_dz1*dz1_dT + dvisg_dz2*dz2_dT + dvisg_dz3*dz3_dT
+    dV_dRhocomp = dvisg_dz1*dz1_dRhocomp + dvisg_dz2*dz2_dRhocomp + dvisg_dz3*dz3_dRhocomp
+    dV_dPcomp = dvisg_dz1*dz1_dPcomp + dvisg_dz2*dz2_dPcomp + dvisg_dz3*dz3_dPcomp
+    dV_dPgas = dvisg_dz1*dz1_dPgas + dvisg_dz2*dz2_dPgas + dvisg_dz3*dz3_dPgas
+  endif
   
 end subroutine EOSGasViscosity1
 
