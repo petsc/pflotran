@@ -223,6 +223,7 @@ mode_obj = \
 	${common_src}flash2.o \
 	${common_src}general.o \
 	${common_src}toil_ims.o \
+	${common_src}towg.o \
 	${common_src}global.o \
 	${common_src}immis.o \
 	${common_src}miscible.o \
@@ -485,16 +486,17 @@ endif
 # These ensure that the module files are built in the correct order.
 auxiliary.o : flash2_aux.o general_aux.o global_aux.o immis_aux.o \
               inlinesurface_aux.o material_aux.o miscible_aux.o mphase_aux.o \
-              pflotran_constants.o pm_toil_ims_aux.o reactive_transport_aux.o \
-              richards_aux.o secondary_continuum_aux.o th_aux.o
+              pflotran_constants.o pm_toil_ims_aux.o pm_towg_aux.o \
+              reactive_transport_aux.o richards_aux.o \
+              secondary_continuum_aux.o th_aux.o
 auxvars_base.o : option.o pflotran_constants.o
 auxvars_flow.o : auxvars_base.o option.o pflotran_constants.o utility.o
-auxvars_flow_energy.o : auxvars_base.o auxvars_flow.o pflotran_constants.o \
-                        utility.o
+auxvars_flow_energy.o : auxvars_base.o auxvars_flow.o option.o \
+                        pflotran_constants.o utility.o
 auxvars_toil_ims.o : auxvars_base.o auxvars_flow.o auxvars_flow_energy.o \
                      option.o pflotran_constants.o utility.o
-auxvars_towg.o : auxvars_base.o auxvars_flow.o auxvars_flow_energy.o \
-                 pflotran_constants.o
+auxvars_towg.o : auxvars_base.o auxvars_flow.o auxvars_flow_energy.o option.o \
+                 pflotran_constants.o utility.o
 block_solve.o :
 block_tridiag.o : pflotran_constants.o
 characteristic_curves.o : input_aux.o option.o pflotran_constants.o string.o \
@@ -812,7 +814,7 @@ init_subsurface_flow.o : co2_sw.o condition_control.o coupler.o \
                          hdf5.o immis.o init_common.o material.o miscible.o \
                          mphase.o option.o patch.o pflotran_constants.o \
                          realization_subsurface.o richards.o th.o toil_ims.o \
-                         well.o
+                         towg.o well.o
 init_subsurface_transport.o : condition_control.o global.o option.o \
                               pflotran_constants.o reactive_transport.o \
                               realization_subsurface.o variables.o
@@ -1017,7 +1019,8 @@ pm_toil_ims_aux.o : auxvars_toil_ims.o characteristic_curves.o eos_oil.o \
                     pflotran_constants.o pm_base_aux.o utility.o
 pm_towg.o : input_aux.o option.o pflotran_constants.o pm_base.o \
             pm_subsurface_flow.o pm_towg_aux.o string.o variables.o
-pm_towg_aux.o : auxvars_towg.o pflotran_constants.o pm_base_aux.o
+pm_towg_aux.o : auxvars_towg.o eos_gas.o eos_oil.o grid.o option.o \
+                pflotran_constants.o pm_base_aux.o utility.o
 pm_ufd_decay.o : field.o global.o global_aux.o grid.o input_aux.o material.o \
                  material_aux.o option.o patch.o pflotran_constants.o \
                  pm_base.o reaction_aux.o reaction_mineral_aux.o \
@@ -1354,6 +1357,9 @@ toil_ims.o : auxvars_flow.o auxvars_toil_ims.o condition.o connection.o \
              output_aux.o output_tecplot.o patch.o pflotran_constants.o \
              pm_toil_ims_aux.o realization_subsurface.o saturation_function.o \
              variables.o
+towg.o : connection.o coupler.o global_aux.o grid.o material_aux.o option.o \
+         output_aux.o patch.o pflotran_constants.o pm_towg_aux.o \
+         realization_subsurface.o
 transport.o : connection.o global_aux.o material_aux.o matrix_block_aux.o \
               option.o pflotran_constants.o reactive_transport_aux.o
 transport_constraint.o : global_aux.o input_aux.o logging.o option.o \

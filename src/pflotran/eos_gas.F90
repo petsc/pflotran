@@ -9,6 +9,7 @@ module EOS_Gas_module
 #include "petsc/finclude/petscsys.h"
 
   ! module variables
+  PetscReal :: fmw_gas           !kg/Kmol
   PetscReal :: constant_density
   PetscReal :: constant_enthalpy
   PetscReal :: constant_viscosity
@@ -143,6 +144,8 @@ module EOS_Gas_module
             EOSGasSetDensityRKS, &
             EOSGasSetDensityPRMethane, &
             EOSGasSetEnergyIdealMethane, &
+            EOSGasSetFMWConstant, &
+            EOSGasGetFMW, & 
             EOSGasSetDensityConstant, &
             EOSGasSetEnergyConstant, &
             EOSGasSetViscosityConstant, &
@@ -156,7 +159,8 @@ module EOS_Gas_module
 subroutine EOSGasInit()
 
   implicit none
-  
+
+  fmw_gas = UNINITIALIZED_DOUBLE  
   constant_density = UNINITIALIZED_DOUBLE
   constant_viscosity = UNINITIALIZED_DOUBLE
   constant_enthalpy = UNINITIALIZED_DOUBLE
@@ -327,6 +331,30 @@ subroutine EOSGasSetEnergyIdealMethane()
   EOSGasEnergyPtr => EOSGasEnergyIdealMethane
   
 end subroutine EOSGasSetEnergyIdealMethane
+
+! ************************************************************************** !
+
+subroutine EOSGasSetFMWConstant(input_fmw_gas)
+
+  implicit none
+
+  PetscReal :: input_fmw_gas
+  
+  fmw_gas = input_fmw_gas
+
+end subroutine EOSGasSetFMWConstant
+
+! ************************************************************************** !
+
+function EOSGasGetFMW()
+
+  implicit none
+  
+  PetscReal :: EOSGasGetFMW
+  
+  EOSGasGetFMW = fmw_gas
+  
+end function EOSGasGetFMW
 
 ! ************************************************************************** !
 

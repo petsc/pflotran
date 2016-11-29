@@ -35,6 +35,7 @@ subroutine InitSubsurfFlowSetupRealization(realization)
   use TH_module
   use General_module
   use TOilIms_module
+  use TOWG_module
   use Condition_Control_module
   use co2_sw_module, only : init_span_wagner
   
@@ -84,6 +85,12 @@ subroutine InitSubsurfFlowSetupRealization(realization)
                            patch%characteristic_curves_array, &
                            realization%option)
         call TOilImsSetup(realization)
+      case(TOWG_MODE)
+        call MaterialSetup(realization%patch%aux%Material%material_parameter, &
+                           patch%material_property_array, &
+                           patch%characteristic_curves_array, &
+                           realization%option)
+        call TOWGSetup(realization)
     end select
   
     ! assign initial conditionsRealizAssignFlowInitCond

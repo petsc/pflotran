@@ -42,15 +42,13 @@ subroutine AuxVarTOilImsInit(this,option)
 
   this%effective_porosity = 0.d0
   this%pert = 0.d0
-  
-  !part of this initialization could be common to all modes
-  ! need to agree a standard filling for the pressure:
-  ! nphases and capillaty pressure afterwards? (can be 2 for three phases) 
 
-  !the indended part below should go on AuxvarsFlowInit, however we need a
-  !standard for the pressure array entry, e.g. 
-  !nphases and capillaty pressure afterwards? (pcs be 2 for three phases)
-  !otherwise define a pc array which is mode dependent
+
+  !PO to do: 
+  !allign TOIL_IMS AuxVarCompute to new pc array (see AuxVarFlowInit), 
+  !then remove the following iniitlisation block, and replace with a call to 
+  !AuxVarFlowInit  
+  !the indended part below is the block to replace with AuxVarFlowInit
     !two phases (water,oil) and capillary pressure
     allocate(this%pres(option%nphase+ONE_INTEGER))
     this%pres = 0.d0
@@ -62,15 +60,16 @@ subroutine AuxVarTOilImsInit(this,option)
     this%den_kg = 0.d0
     allocate(this%mobility(option%nphase))
     this%mobility = 0.d0
+  ! end block to replace with AuxVarFlowInit
 
-
-  !this could go on AuxvarsFlowEnergyInit
+  !PO to do:
+  !replace the indended block below with AuxVarFlowEnergyInit
     this%temp = 0.d0
     allocate(this%H(option%nphase))
     this%H = 0.d0
     allocate(this%U(option%nphase))
     this%U = 0.d0
-  !  
+  !end block to replace with AuxVarFlowEnergyInit 
 
 end subroutine AuxVarTOilImsInit
 

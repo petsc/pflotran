@@ -426,7 +426,7 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%use_isothermal = PETSC_FALSE
     class is (pm_towg_type)
       option%iflowmode = TOWG_MODE
-      option%nphase = 2
+      option%nphase = 3
       option%liquid_phase = 1           ! liquid_pressure
       option%oil_phase = 2              ! oil_pressure
       option%gas_phase = 3              ! gas_pressure
@@ -438,6 +438,7 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
         !  option%nflowdof = 4
         !  option%nflowspec = 3 !H20, Oil, Gas 
         !case(TOWG_SOLVENT_TL)
+        !  option%nphase = 4
         !  option%nflowdof = 5
         !  option%nflowspec = 4 !H20, Oil, Gas, Solvent
         case default

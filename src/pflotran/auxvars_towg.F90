@@ -15,16 +15,63 @@ module AuxVars_TOWG_module
   type, public, extends(auxvar_flow_energy_type) :: auxvar_towg_type
     ! no data at the moment
   contains
-    !procedure, public :: Init => AuxVarTOilImsInit
-    !procedure, public :: Strip => AuxVarTOilImsStrip
+    procedure, public :: Init => AuxVarTOWGInit
+    procedure, public :: Strip => AuxVarTOWGStrip
   end type auxvar_towg_type
 
-  !public :: AuxVarTOilImsStrip
+  public :: AuxVarTOWGStrip
 
 contains
 
 ! ************************************************************************** !
 
+! ************************************************************************** !
+
+subroutine AuxVarTOWGInit(this,option)
+  ! 
+  ! Initialize auxiliary object
+  ! 
+  ! Author: PAolo Orsini
+  ! Date: 11/07/16
+  ! 
+
+  use Option_module
+
+  implicit none
+  
+  class(auxvar_towg_type) :: this
+  type(option_type) :: option
+
+  this%effective_porosity = 0.d0
+  this%pert = 0.d0
+  
+  call AuxVarFlowInit(this,option)
+
+  call AuxVarFlowEnergyInit(this,option)
+
+end subroutine AuxVarTOWGInit
+
+! ************************************************************************** !
+
+subroutine AuxVarTOWGStrip(this)
+  ! 
+  ! TOilImsAuxVarDestroy: Deallocates a toil_ims auxiliary object
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/30/16
+  ! 
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+
+  class(auxvar_towg_type) :: this
+
+  call AuxVarFlowStrip(this)
+
+  call AuxVarFlowEnergyStrip(this)
+
+end subroutine AuxVarTOWGStrip
+! ************************************************************************** !
 
 end module AuxVars_TOWG_module
 
