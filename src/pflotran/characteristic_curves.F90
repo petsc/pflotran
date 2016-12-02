@@ -2590,7 +2590,7 @@ subroutine SF_VG_CapillaryPressure(this,liquid_saturation, &
   one_plus_pc_alpha_n = Se**(-1.d0/this%m)
   pc_alpha_n = one_plus_pc_alpha_n - 1.d0
   pc_alpha = pc_alpha_n**(1.d0/n)
-  capillary_pressure = pc_alpha/this%alpha  
+  capillary_pressure = pc_alpha/this%alpha
 #if defined(MATCH_TOUGH2)
   if (liquid_saturation > 0.999d0) then
     capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
@@ -6308,13 +6308,6 @@ subroutine RPF_BRAGFLO_KRP12_Gas_RelPerm(this,liquid_saturation, &
     Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
     Se = max(min(Se,1.0d0),0.0d0)
     Seg = 1.d0 - Se
-    if (Se < this%Sr) then
-       Se = this%Sr
-       Seg = 1.d0 - Se
-    else if (Seg < this%Srg) then
-       Seg = this%Srg
-       Se = 1.d0 - Seg
-    endif
     ! reference #1
     relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
     ! Mathematica analytical solution (Heeho Park)
