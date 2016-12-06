@@ -15,14 +15,14 @@ SUBSURFACE
 
 #=========================== discretization ===================================
 GRID
-TYPE structured
-ORIGIN 0.d0 0.d0 0.d0
-NXYZ 1 1 10
-DXYZ
-1.d0
-1.d0
-1.d0
-/
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 1 1 10
+  DXYZ
+    1.d0
+    1.d0
+    1.d0
+  /
 END
 
 #=========================== material properties ==============================
