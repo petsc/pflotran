@@ -140,6 +140,7 @@ module Variables_module
 
   PetscInt, parameter, public :: OIL_MOLE_FRACTION       = 115
   PetscInt, parameter, public :: SOLVENT_SATURATION      = 116
+  PetscInt, parameter, public :: CAPILLARY_PRESSURE_OGC  = 117
 
 
 end module Variables_module

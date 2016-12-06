@@ -260,6 +260,12 @@ subroutine EOSGasVerify(ierr,error_string)
     endif
   endif
 
+  if (Uninitialized(fmw_gas)) then
+    fmw_gas = FMWAIR
+    !ierr = 6
+    !error_string = trim(error_string) // " FMWAIR"
+  end if
+
       
 end subroutine EOSGasVerify
 

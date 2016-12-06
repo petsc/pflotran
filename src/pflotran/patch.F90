@@ -4620,6 +4620,168 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
                   grid%nL2G(local_id))%effective_porosity
             enddo
         end select 
+
+      else if (associated(patch%aux%TOWG)) then 
+
+        select case(ivar)
+          case(TEMPERATURE)
+            do local_id=1,grid%nlmax
+               vec_ptr(local_id) = patch%aux%TOWG% &
+                 auxvars(ZERO_INTEGER,grid%nL2G(local_id))%temp
+            enddo
+          case(MAXIMUM_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                  maxval(patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% & 
+                           pres(option%liquid_phase:option%gas_phase))
+            enddo
+          case(LIQUID_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                 patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% &
+                  pres(option%liquid_phase)
+            enddo
+          case(OIL_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% & 
+                  pres(option%oil_phase)
+            enddo
+          case(GAS_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% & 
+                  pres(option%gas_phase)
+            enddo
+          case(CAPILLARY_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% & 
+                  pc(option%liquid_phase)
+            enddo
+          case(CAPILLARY_PRESSURE_OGC)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% & 
+                  pc(option%oil_phase)
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%sat(option%liquid_phase)
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den_kg(option%liquid_phase)
+            enddo
+          case(LIQUID_DENSITY_MOL)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den(option%liquid_phase)
+            enddo
+          case(LIQUID_ENERGY)
+            if (isubvar == ZERO_INTEGER) then
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                    grid%nL2G(local_id))%U(option%liquid_phase)
+              enddo
+            else
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%U(option%liquid_phase) * &
+                    patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%den(option%liquid_phase)
+              enddo
+            endif
+          case(LIQUID_MOBILITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%mobility(option%liquid_phase)
+            enddo
+          case(OIL_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%sat(option%oil_phase)
+            enddo
+          case(OIL_ENERGY)
+            if (isubvar == ZERO_INTEGER) then
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                    grid%nL2G(local_id))%U(option%oil_phase)
+              enddo
+            else
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%U(option%oil_phase) * &
+                    patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%den(option%oil_phase)
+              enddo
+            endif
+          case(OIL_DENSITY) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den_kg(option%oil_phase)
+            enddo
+          case(OIL_DENSITY_MOL) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den(option%oil_phase)
+            enddo
+          case(OIL_MOBILITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%mobility(option%oil_phase)
+            enddo
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%sat(option%gas_phase)
+            enddo
+          case(GAS_ENERGY)
+            if (isubvar == ZERO_INTEGER) then
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                    grid%nL2G(local_id))%U(option%gas_phase)
+              enddo
+            else
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%U(option%gas_phase) * &
+                    patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%den(option%gas_phase)
+              enddo
+            endif
+          case(GAS_DENSITY) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den_kg(option%gas_phase)
+            enddo
+          case(GAS_DENSITY_MOL) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den(option%gas_phase)
+            enddo
+          case(GAS_MOBILITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%mobility(option%gas_phase)
+            enddo
+          case(EFFECTIVE_POROSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%effective_porosity
+            enddo
+          !need to add:
+          ! - gas and oil mole fraction for the black oil model
+          ! - solvent_saturation for SOLVENT model
+        end select 
         
       endif
       

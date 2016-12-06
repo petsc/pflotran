@@ -36,7 +36,7 @@ module PM_TOWG_class
     !PetscInt :: miscibility_model = UNINITIALIZED_INTEGER 
   contains
     procedure, public :: Read => PMTOWGRead
-    !procedure, public :: InitializeRun => PMGeneralInitializeRun
+    procedure, public :: InitializeRun => PMTOWGInitializeRun
     !procedure, public :: InitializeTimestep => PMGeneralInitializeTimestep
     !procedure, public :: Residual => PMGeneralResidual
     !procedure, public :: Jacobian => PMGeneralJacobian
@@ -46,7 +46,7 @@ module PM_TOWG_class
     !procedure, public :: CheckUpdatePre => PMGeneralCheckUpdatePre
     !procedure, public :: CheckUpdatePost => PMGeneralCheckUpdatePost
     !procedure, public :: TimeCut => PMGeneralTimeCut
-    !procedure, public :: UpdateSolution => PMGeneralUpdateSolution
+    procedure, public :: UpdateSolution => PMTOWGUpdateSolution
     !procedure, public :: UpdateAuxVars => PMGeneralUpdateAuxVars
     !procedure, public :: MaxChange => PMGeneralMaxChange
     !procedure, public :: ComputeMassBalance => PMGeneralComputeMassBalance
@@ -89,16 +89,38 @@ function PMTOWGCreate(miscibility_model,option)
 #endif  
 
   allocate(towg_pm)
-  allocate(towg_pm%max_change_ivar(8))
-  towg_pm%max_change_ivar = [OIL_PRESSURE, GAS_PRESSURE, &
-                             OIL_SATURATION, GAS_SATURATION, &
-                             OIL_MOLE_FRACTION, GAS_MOLE_FRACTION, & 
-                             TEMPERATURE, SOLVENT_SATURATION]
 
-  allocate(towg_pm%max_change_isubvar(8))
-                                       !2 = gas in xmol(gas_c,oil_phase)
-  towg_pm%max_change_isubvar = [0,0,0,0,2,1,0,0]
-                                         !1 = gas in xmol(gas_c,gas_phase)
+  select case(trim(miscibility_model))
+    case('TOWG_IMMISCIBLE','TODD_LONGOSTAFF','TOWG_MISCIBLE')
+      allocate(towg_pm%max_change_ivar(4))
+      towg_pm%max_change_ivar = [OIL_PRESSURE, OIL_SATURATION, &
+                                 GAS_SATURATION,TEMPERATURE]
+      allocate(towg_pm%max_change_isubvar(4))
+      towg_pm%max_change_isubvar = [0,0,0,0]
+    case('BLACK_OIL')
+      allocate(towg_pm%max_change_ivar(7))
+      towg_pm%max_change_ivar = [OIL_PRESSURE, GAS_PRESSURE, &
+                                 OIL_SATURATION, GAS_SATURATION, &
+                                 OIL_MOLE_FRACTION, GAS_MOLE_FRACTION, &
+                                 TEMPERATURE]
+      allocate(towg_pm%max_change_isubvar(8))
+                                           !2 = gas in xmol(gas_c,oil_phase)
+      towg_pm%max_change_isubvar = [0,0,0,0,2,1,0]
+                                             !1 = gas in xmol(gas_c,gas_phase)
+    case('SOLVENT_TL')
+      allocate(towg_pm%max_change_ivar(8))
+      towg_pm%max_change_ivar = [OIL_PRESSURE, GAS_PRESSURE, &
+                                 OIL_SATURATION, GAS_SATURATION, &
+                                 OIL_MOLE_FRACTION, GAS_MOLE_FRACTION, &
+                                 TEMPERATURE, SOLVENT_SATURATION]
+      allocate(towg_pm%max_change_isubvar(8))
+                                           !2 = gas in xmol(gas_c,oil_phase)
+      towg_pm%max_change_isubvar = [0,0,0,0,2,1,0,0]
+                                             !1 = gas in xmol(gas_c,gas_phase)
+    case default
+      call InputKeywordUnrecognized(miscibility_model, &
+                         'TOWG MISCIBILITY_MODEL',option)
+  end select
 
   towg_pm%trunc_max_pressure_change = 5.d4
   towg_pm%max_it_before_damping = UNINITIALIZED_INTEGER
@@ -129,8 +151,6 @@ function PMTOWGCreate(miscibility_model,option)
     case default
       call InputKeywordUnrecognized(miscibility_model, &
                          'TOWG MISCIBILITY_MODEL',option)
-      !option%io_buffer = 'TOWG - miscibility_model not recognised' 
-      !call printErrMsg(option)
   end select 
 
 
@@ -304,7 +324,63 @@ end subroutine PMTOWGRead
 
 ! ************************************************************************** !
 
+recursive subroutine PMTOWGInitializeRun(this)
+  ! 
+  ! Initializes the time stepping
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/06/16 
 
+  use Realization_Base_class
+  
+  implicit none
+  
+  class(pm_towg_type) :: this
+  
+  PetscInt :: num_var,i
+  PetscErrorCode :: ierr
+
+  num_var = size(this%max_change_ivar(:))
+
+  ! need to allocate vectors for max change
+  call VecDuplicateVecsF90(this%realization%field%work,num_var, &
+                           this%realization%field%max_change_vecs, &
+                           ierr);CHKERRQ(ierr)
+  ! set initial values
+  do i = 1, num_var
+    call RealizationGetVariable(this%realization, &
+                                this%realization%field%max_change_vecs(i), &
+                                this%max_change_ivar(i), &
+                                this%max_change_isubvar(i))
+  enddo
+
+  ! call parent implementation
+  call PMSubsurfaceFlowInitializeRun(this)
+
+end subroutine PMTOWGInitializeRun
+
+! ************************************************************************** !
+
+subroutine PMTOWGUpdateSolution(this)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/06/16 
+  ! 
+
+  use TOWG_module, only : TOWGUpdateSolution, &
+                          TOWGMapBCAuxVarsToGlobal
+
+  implicit none
+  
+  class(pm_towg_type) :: this
+  
+  call PMSubsurfaceFlowUpdateSolution(this)
+  call TOWGUpdateSolution(this%realization)
+  call TOWGMapBCAuxVarsToGlobal(this%realization)
+
+end subroutine PMTOWGUpdateSolution     
+
+! ************************************************************************** !
 
 end module PM_TOWG_class
 

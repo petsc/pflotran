@@ -531,10 +531,10 @@ condition_control.o : condition.o connection.o coupler.o dataset_base.o \
                       discretization.o eos_water.o field.o general_aux.o \
                       global.o global_aux.o grid.o hdf5.o material_aux.o \
                       option.o patch.o pflotran_constants.o pm_toil_ims_aux.o \
-                      reaction.o reaction_aux.o reactive_transport.o \
-                      reactive_transport_aux.o realization_subsurface.o \
-                      realization_surface.o region.o surface_field.o \
-                      surface_global_aux.o surface_th_aux.o \
+                      pm_towg_aux.o reaction.o reaction_aux.o \
+                      reactive_transport.o reactive_transport_aux.o \
+                      realization_subsurface.o realization_surface.o region.o \
+                      surface_field.o surface_global_aux.o surface_th_aux.o \
                       transport_constraint.o variables.o
 connection.o : pflotran_constants.o utility.o
 convergence.o : grid.o option.o pflotran_constants.o solver.o
@@ -1018,8 +1018,10 @@ pm_toil_ims_aux.o : auxvars_toil_ims.o characteristic_curves.o eos_oil.o \
                     eos_water.o global_aux.o grid.o material_aux.o option.o \
                     pflotran_constants.o pm_base_aux.o utility.o
 pm_towg.o : input_aux.o option.o pflotran_constants.o pm_base.o \
-            pm_subsurface_flow.o pm_towg_aux.o string.o variables.o
-pm_towg_aux.o : auxvars_towg.o eos_gas.o eos_oil.o grid.o option.o \
+            pm_subsurface_flow.o pm_towg_aux.o realization_base.o string.o \
+            towg.o variables.o
+pm_towg_aux.o : auxvars_towg.o characteristic_curves.o eos_gas.o eos_oil.o \
+                eos_water.o global_aux.o grid.o material_aux.o option.o \
                 pflotran_constants.o pm_base_aux.o utility.o
 pm_ufd_decay.o : field.o global.o global_aux.o grid.o input_aux.o material.o \
                  material_aux.o option.o patch.o pflotran_constants.o \
@@ -1357,9 +1359,10 @@ toil_ims.o : auxvars_flow.o auxvars_toil_ims.o condition.o connection.o \
              output_aux.o output_tecplot.o patch.o pflotran_constants.o \
              pm_toil_ims_aux.o realization_subsurface.o saturation_function.o \
              variables.o
-towg.o : connection.o coupler.o global_aux.o grid.o material_aux.o option.o \
-         output_aux.o patch.o pflotran_constants.o pm_towg_aux.o \
-         realization_subsurface.o
+towg.o : connection.o coupler.o discretization.o eos_water.o field.o \
+         global_aux.o grid.o material.o material_aux.o option.o output_aux.o \
+         patch.o pflotran_constants.o pm_towg_aux.o realization_subsurface.o \
+         saturation_function.o variables.o
 transport.o : connection.o global_aux.o material_aux.o matrix_block_aux.o \
               option.o pflotran_constants.o reactive_transport_aux.o
 transport_constraint.o : global_aux.o input_aux.o logging.o option.o \

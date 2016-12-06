@@ -122,6 +122,8 @@ subroutine InitSubsurfFlowSetupRealization(realization)
         call GeneralUpdateAuxVars(realization,PETSC_FALSE)
       case(TOIL_IMS_MODE)
         call TOilImsUpdateAuxVars(realization)
+      case(TOWG_MODE)
+        call TOWGUpdateAuxVars(realization,PETSC_FALSE)
     end select
   else ! no flow mode specified
     if (len_trim(realization%nonuniform_velocity_filename) > 0) then

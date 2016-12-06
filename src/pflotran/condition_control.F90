@@ -51,10 +51,8 @@ subroutine CondControlAssignFlowInitCond(realization)
   use Global_module
   use Global_Aux_module
   use General_Aux_module
-  !use TOilIms_Aux_module
   use PM_TOilIms_Aux_module 
-    ! to use constant paramters such as TOIL_IMS_PRESSURE_DOF
-    ! could work something out to eliminate this dependency here 
+  use PM_TOWG_Aux_module
 
   implicit none
 
@@ -79,6 +77,7 @@ subroutine CondControlAssignFlowInitCond(realization)
   type(patch_type), pointer :: cur_patch
   type(flow_general_condition_type), pointer :: general
   type(flow_toil_ims_condition_type), pointer :: toil_ims
+  type(flow_towg_condition_type), pointer :: towg
   class(dataset_base_type), pointer :: dataset
   type(global_auxvar_type) :: global_aux
   type(general_auxvar_type) :: general_aux
@@ -377,7 +376,135 @@ subroutine CondControlAssignFlowInitCond(realization)
         call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
         call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p, &
                                 ierr);CHKERRQ(ierr)
-              
+
+      case(TOWG_MODE)
+
+        call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+        call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr);CHKERRQ(ierr)
+      
+        xx_p = UNINITIALIZED_DOUBLE
+      
+        initial_condition => cur_patch%initial_condition_list%first
+
+        do
+
+          if (.not.associated(initial_condition)) exit
+
+          if (.not.associated(initial_condition%flow_aux_real_var)) then
+            if (.not.associated(initial_condition%flow_condition)) then
+              option%io_buffer = 'Flow condition is NULL in initial condition'
+              call printErrMsg(option)
+            endif
+
+            towg => initial_condition%flow_condition%towg
+
+            string = 'in flow condition "' // &
+              trim(initial_condition%flow_condition%name) // &
+              '" within initial condition "' // &
+              trim(initial_condition%flow_condition%name) // &
+              '" must be of type Dirichlet or Hydrostatic'
+
+            select case(initial_condition%flow_condition%iphase)
+              case(TOWG_THREE_PHASE_STATE)  
+                if (.not. &
+                    (towg%oil_pressure%itype == DIRICHLET_BC .or. &
+                      towg%oil_pressure%itype == HYDROSTATIC_BC)) then
+                  option%io_buffer = 'Oil pressure ' // trim(string)
+                  call printErrMsg(option)
+                endif
+                if (.not. &
+                    (towg%oil_saturation%itype == DIRICHLET_BC .or. &
+                      towg%oil_saturation%itype == HYDROSTATIC_BC)) then
+                  option%io_buffer = 'Oil saturation ' // trim(string)
+                  call printErrMsg(option)
+                endif
+                if (.not. &
+                    (towg%gas_saturation%itype == DIRICHLET_BC .or. &
+                      towg%gas_saturation%itype == HYDROSTATIC_BC)) then
+                  option%io_buffer = 'Gas saturation ' // trim(string)
+                  call printErrMsg(option)
+                endif
+              case(TOWG_LIQ_OIL_STATE)
+                !to be implemented 
+                option%io_buffer = 'CondControlAssignFlowInitCond in ' // &
+                   'TOWG_LIQ_OIL_STATE, only TOWG_THREE_PHASE_STATE supported'
+              case(TOWG_LIQ_GAS_STATE)
+                !to be implemented 
+                option%io_buffer = 'CondControlAssignFlowInitCond in ' // &
+                   'TOWG_LIQ_GAS_STATE, only TOWG_THREE_PHASE_STATE supported'
+            end select 
+
+            do icell=1,initial_condition%region%num_cells
+              local_id = initial_condition%region%cell_ids(icell)
+              ghosted_id = grid%nL2G(local_id)
+              iend = local_id*option%nflowdof
+              ibegin = iend-option%nflowdof+1
+              if (cur_patch%imat(ghosted_id) <= 0) then
+                xx_p(ibegin:iend) = 0.d0
+                iphase_loc_p(ghosted_id) = 0
+                cycle
+              endif
+              ! decrement ibegin to give a local offset of 0
+              ibegin = ibegin - 1
+              select case(initial_condition%flow_condition%iphase)
+                case(TOWG_THREE_PHASE_STATE)
+                  xx_p(ibegin+TOWG_OIL_PRESSURE_DOF) = &
+                    towg%oil_pressure%dataset%rarray(1)
+                  xx_p(ibegin+TOWG_OIL_SATURATION_DOF) = &
+                    towg%oil_saturation%dataset%rarray(1)
+                  xx_p(ibegin+TOWG_GAS_SATURATION_3PH_DOF) = &
+                    towg%gas_saturation%dataset%rarray(1)
+                case(TOWG_LIQ_OIL_STATE)
+                  !to be implemented
+                  option%io_buffer = 'CondControlAssignFlowInitCond-2 in ' // &
+                   'TOWG_LIQ_OIL_STATE, only TOWG_THREE_PHASE_STATE supported'
+                case(TOWG_LIQ_GAS_STATE)
+                  !to be implemented
+                  option%io_buffer = 'CondControlAssignFlowInitCond-2 in ' // &
+                   'TOWG_LIQ_GAS_STATE, only TOWG_THREE_PHASE_STATE supported'
+              end select
+              xx_p(ibegin+towg_energy_dof) = &
+                  towg%temperature%dataset%rarray(1)
+              if (towg_miscibility_model == TOWG_SOLVENT_TL) then
+                xx_p(ibegin+TOWG_SOLV_SATURATION) = &
+                   towg%solvent_saturation%dataset%rarray(1)
+              endif
+              iphase_loc_p(ghosted_id) = initial_condition%flow_condition%iphase
+              cur_patch%aux%Global%auxvars(ghosted_id)%istate = &
+                initial_condition%flow_condition%iphase
+            enddo
+          else
+            !implement loading from flow_aux_real_var
+            do iconn=1,initial_condition%connection_set%num_connections
+              local_id = initial_condition%connection_set%id_dn(iconn)
+              ghosted_id = grid%nL2G(local_id)
+              if (cur_patch%imat(ghosted_id) <= 0) then
+                iend = local_id*option%nflowdof
+                ibegin = iend-option%nflowdof+1
+                xx_p(ibegin:iend) = 0.d0
+                iphase_loc_p(ghosted_id) = 0
+                cycle
+              endif
+              offset = (local_id-1)*option%nflowdof
+              istate = initial_condition%flow_aux_int_var(1,iconn)
+              do idof = 1, option%nflowdof
+                xx_p(offset+idof) = &
+                  initial_condition%flow_aux_real_var( &
+                    initial_condition%flow_aux_mapping( &
+                      towg_dof_to_primary_variable(idof,istate)),iconn)
+              enddo
+              iphase_loc_p(ghosted_id) = istate
+              cur_patch%aux%Global%auxvars(ghosted_id)%istate = istate
+            enddo
+          endif
+          initial_condition => initial_condition%next
+
+        enddo
+     
+        call VecRestoreArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+        call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p, &
+                                ierr);CHKERRQ(ierr)
+
       case default
         ! assign initial conditions values to domain
         call VecGetArrayF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
