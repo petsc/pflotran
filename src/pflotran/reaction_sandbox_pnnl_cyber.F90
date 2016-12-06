@@ -64,6 +64,7 @@ module Reaction_Sandbox_Cyber_class
     PetscReal :: stoich_3_co2
     PetscReal :: stoich_3_biomass
     PetscReal :: activation_energy
+    PetscReal :: reference_temperature
     PetscInt :: nrxn
     PetscInt :: offset_auxiliary
     PetscBool :: store_cumulative_mass
@@ -140,7 +141,8 @@ function CyberCreate()
   CyberCreate%stoich_3_o2 = UNINITIALIZED_DOUBLE  
   CyberCreate%stoich_3_co2 = UNINITIALIZED_DOUBLE  
   CyberCreate%stoich_3_biomass = UNINITIALIZED_DOUBLE  
-  CyberCreate%activation_energy = UNINITIALIZED_DOUBLE  
+  CyberCreate%activation_energy = UNINITIALIZED_DOUBLE
+  CyberCreate%reference_temperature = 298.15d0 ! 25 C
   CyberCreate%nrxn = UNINITIALIZED_INTEGER
   CyberCreate%offset_auxiliary = UNINITIALIZED_INTEGER
   CyberCreate%carbon_consumption_species = ''
@@ -258,6 +260,11 @@ subroutine CyberRead(this,input,option)
         call InputErrorMsg(input,option,'activation energy',error_string)
         call InputReadAndConvertUnits(input,this%activation_energy,'J/mol', &
                               trim(error_string)//',activation energy',option)
+      case('REFERENCE_TEMPERATURE')
+        call InputReadDouble(input,option,this%reference_temperature)  
+        call InputErrorMsg(input,option,'reference temperature [C]', &
+                           error_string)
+        this%reference_temperature = this%reference_temperature + 293.15d0
       case('CARBON_CONSUMPTION_SPECIES')
         call InputReadWord(input,option, &
                            this%carbon_consumption_species,PETSC_TRUE)
@@ -603,7 +610,7 @@ subroutine CyberReact(this,Residual,Jacobian,compute_derivative, &
   if (Initialized(this%activation_energy)) then
     temperature_scaling_factor = &
       exp(this%activation_energy/IDEAL_GAS_CONSTANT* &
-          (1.d0/298.15d0-1.d0/(global_auxvar%temp+273.15d0)))
+          (1.d0/this%reference_temperature-1.d0/(global_auxvar%temp+273.15d0)))
   endif
   
   ! concentrations are molarities [M]
