@@ -27,15 +27,15 @@ END
 
 #=========================== material properties ==============================
 MATERIAL_PROPERTY soil
-ID 1
-POROSITY 0.33
-TORTUOSITY 0.5d0
-SATURATION_FUNCTION default
-PERMEABILITY
-PERM_X 1.d-10 ! ~100 m/d
-PERM_Y 1.d-10
-PERM_Z 1.d-10
-/
+  ID 1
+  POROSITY 0.33
+  TORTUOSITY 0.5d0
+  SATURATION_FUNCTION default
+  PERMEABILITY
+    PERM_X 1.d-10 ! ~100 m/d
+    PERM_Y 1.d-10
+    PERM_Z 1.d-10
+  /
 /
 
 #=========================== characteristic curves ============================
