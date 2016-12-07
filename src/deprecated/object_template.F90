@@ -1,12 +1,11 @@
 module Object_module
 
   ! add accessory modules here
-
+#include "finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
-
-#include "finclude/petscsys.h"
   
   private
 

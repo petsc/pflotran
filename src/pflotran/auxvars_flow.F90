@@ -1,5 +1,7 @@
 module AuxVars_Flow_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   use AuxVars_Base_module
@@ -7,8 +9,6 @@ module AuxVars_Flow_module
   implicit none
   
   private 
-
-#include "petsc/finclude/petscsys.h"
 
   type, public, extends(auxvar_base_type) :: auxvar_flow_type
     PetscReal, pointer :: pres(:)   ! (iphase)

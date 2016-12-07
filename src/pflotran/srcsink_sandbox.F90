@@ -44,6 +44,8 @@ subroutine SSSandboxInit(option)
   ! Author: Glenn Hammond
   ! Date: 04/11/14
   ! 
+#include <petsc/finclude/petscsys.h>
+  use petscsys
   use Option_module
   implicit none
   type(option_type) :: option
@@ -90,6 +92,8 @@ subroutine SSSandboxRead2(local_sandbox_list,input,option)
   ! Date: 04/11/14
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use String_module
   use Input_Aux_module
@@ -229,16 +233,13 @@ subroutine SSSandbox(residual,Jacobian,compute_derivative, &
   ! Date: 04/11/14
   ! 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Option_module
   use Grid_module
   use Material_Aux_class, only: material_auxvar_type
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   PetscBool :: compute_derivative
   Vec :: residual

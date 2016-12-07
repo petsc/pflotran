@@ -1,5 +1,6 @@
 module THC_module
-
+#include "finclude/petscmat.h"
+  use petscmat
   use THC_Aux_module
   use Global_Aux_module
   
@@ -8,17 +9,6 @@ module THC_module
   implicit none
   
   private 
-
-#include "finclude/petscsys.h"
-  
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petsclog.h"
-
 
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
@@ -1370,7 +1360,7 @@ subroutine THCNumericalJacobianTest(xx,realization)
   call MatSetType(A,MATAIJ,ierr);CHKERRQ(ierr)
   call MatSetFromOptions(A,ierr);CHKERRQ(ierr)
     
-  call THCResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
+  call THCResidual(PETSC_NULL_SNES,xx,res,realization,ierr)
   call VecGetArrayF90(res,vec2_p,ierr);CHKERRQ(ierr)
   do icell = 1,grid%nlmax
     if (associated(patch%imat)) then
@@ -1382,7 +1372,7 @@ subroutine THCNumericalJacobianTest(xx,realization)
       perturbation = vec_p(idof)*perturbation_tolerance
       vec_p(idof) = vec_p(idof)+perturbation
       call VecRestoreArrayF90(xx_pert,vec_p,ierr);CHKERRQ(ierr)
-      call THCResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
+      call THCResidual(PETSC_NULL_SNES,xx_pert,res_pert,realization,ierr)
       call VecGetArrayF90(res_pert,vec_p,ierr);CHKERRQ(ierr)
       do idof2 = 1, grid%nlmax*option%nflowdof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
@@ -4241,7 +4231,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,realization,ierr)
 #ifdef ISOTHERMAL_MODE_DOES_NOT_WORK
   zero = 0.d0
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_VEC,PETSC_NULL_VEC, &
                         ierr);CHKERRQ(ierr)
   do i=1, n_zero_rows
     ii = mod(zero_rows_local(i),option%nflowdof)
@@ -4264,7 +4254,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,realization,ierr)
     f_up = 1.d0
     call MatZeroRowsLocal(A,patch%aux%THC%n_zero_rows, &
                           patch%aux%THC%zero_rows_local_ghosted,f_up, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_VEC,PETSC_NULL_VEC, &
                           ierr);CHKERRQ(ierr)
   endif
 #endif
@@ -4738,14 +4728,14 @@ subroutine THCComputeGradient(grid, global_auxvars, ghosted_id, gradient, &
   ! Date: 2/20/12
   ! 
 
-
+#include "finclude/petscdmda.h"
+  use petscdmda
   use Grid_module
   use Global_Aux_module
   use Option_module
   use Utility_module
 
   implicit none
-#include "finclude/petscdmda.h"
 
   type(option_type) :: option
   type(grid_type), pointer :: grid

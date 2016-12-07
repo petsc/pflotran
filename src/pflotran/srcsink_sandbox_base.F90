@@ -55,6 +55,8 @@ end subroutine SSSandboxBaseInit
 
 subroutine SSSandboxBaseSetup(this,grid,option)
     
+#include <petsc/finclude/petscsys.h>
+  use petscsys
   use Option_module
   use Grid_module
   
@@ -121,6 +123,8 @@ end subroutine SSSandboxBaseRead
 
 subroutine SSSandboxBaseSelectCase(this,input,option,keyword,found)
     
+#include <petsc/finclude/petscsys.h>
+  use petscsys
   use Option_module
   use Input_Aux_module
   use Geometry_module

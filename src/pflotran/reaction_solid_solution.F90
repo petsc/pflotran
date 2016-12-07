@@ -27,7 +27,8 @@ subroutine SolidSolutionReadFromInputFile(solid_solution_list,input, &
   ! Author: Glenn Hammond
   ! Date: 08/16/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module
@@ -182,7 +183,8 @@ subroutine SolidSolutionReadFromDatabase(solid_solution_rxn,option)
   ! Author: Glenn Hammond
   ! Date: 08/20/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module

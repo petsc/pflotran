@@ -1,5 +1,8 @@
 module Condition_module
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
+      
 !  use Reaction_Aux_module
 !  use Reactive_Transport_Aux_module
   use Global_Aux_module
@@ -17,8 +20,6 @@ module Condition_module
 
   private
   
-#include "petsc/finclude/petscsys.h"
-
   type, public :: flow_condition_type
     PetscInt :: id                          ! id from which condition can be referenced
     PetscBool :: is_transient

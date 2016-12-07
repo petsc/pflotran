@@ -1,5 +1,7 @@
 module PMC_Hydrogeophysics_class
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use PMC_Base_class
   use Realization_Subsurface_class
   use Option_module
@@ -9,10 +11,6 @@ module PMC_Hydrogeophysics_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
   
   type, public, extends(pmc_base_type) :: pmc_hydrogeophysics_type
     class(realization_subsurface_type), pointer :: realization
@@ -79,13 +77,13 @@ subroutine PMCHydrogeophysicsInit(this)
   call PMCBaseInit(this)
   this%name = 'PMCHydrogeophysics'
   nullify(this%realization) 
-  this%tracer_mpi = 0
-  this%tracer_seq = 0
-  this%saturation_mpi = 0
-  this%saturation_seq = 0
-  this%temperature_mpi = 0
-  this%temperature_seq = 0
-  this%pf_to_e4d_scatter = 0
+  this%tracer_mpi = PETSC_NULL_VEC
+  this%tracer_seq = PETSC_NULL_VEC
+  this%saturation_mpi = PETSC_NULL_VEC
+  this%saturation_seq = PETSC_NULL_VEC
+  this%temperature_mpi = PETSC_NULL_VEC
+  this%temperature_seq = PETSC_NULL_VEC
+  this%pf_to_e4d_scatter = PETSC_NULL_VECSCATTER
   this%pf_to_e4d_master_comm = 0
   
 end subroutine PMCHydrogeophysicsInit
@@ -200,16 +198,14 @@ subroutine PMCHydrogeophysicsSynchronize(this)
   ! Date: 07/02/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Base_class, only : RealizationGetVariable
   use Variables_module, only : PRIMARY_MOLALITY, LIQUID_SATURATION, TEMPERATURE
   use String_module
 !  use Discretization_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscviewer.h"
 
   class(pmc_hydrogeophysics_type) :: this
 
@@ -261,7 +257,7 @@ subroutine PMCHydrogeophysicsSynchronize(this)
   call VecRestoreArrayF90(this%saturation_mpi,vec2_ptr,ierr);CHKERRQ(ierr)
   
   ! temperature
-  if (this%temperature_mpi /= 0) then
+  if (this%temperature_mpi /= PETSC_NULL_VEC) then
     call RealizationGetVariable(this%realization,this%realization%field%work, &
                                 TEMPERATURE,ZERO_INTEGER)
     call VecGetArrayF90(this%realization%field%work,vec1_ptr,ierr);CHKERRQ(ierr)
@@ -326,28 +322,28 @@ subroutine PMCHydrogeophysicsStrip(this)
   call PMCBaseStrip(this)
   nullify(this%realization)
   ! created in HydrogeophysicsInitialize()
-  if (this%tracer_seq /= 0) then
+  if (this%tracer_seq /= PETSC_NULL_VEC) then
     call VecDestroy(this%tracer_seq,ierr);CHKERRQ(ierr)
   endif
-  this%tracer_seq = 0
-  if (this%saturation_seq /= 0) then
+  this%tracer_seq = PETSC_NULL_VEC
+  if (this%saturation_seq /= PETSC_NULL_VEC) then
     call VecDestroy(this%saturation_seq,ierr);CHKERRQ(ierr)
   endif
-  this%saturation_seq = 0
-  if (this%temperature_seq /= 0) then
+  this%saturation_seq = PETSC_NULL_VEC
+  if (this%temperature_seq /= PETSC_NULL_VEC) then
     call VecDestroy(this%temperature_seq,ierr);CHKERRQ(ierr)
   endif
-  this%temperature_seq = 0
+  this%temperature_seq = PETSC_NULL_VEC
   ! created in HydrogeophysicsInitialize()
-  if (this%pf_to_e4d_scatter /= 0) then
+  if (this%pf_to_e4d_scatter /= PETSC_NULL_VECSCATTER) then
     call VecScatterDestroy(this%pf_to_e4d_scatter, ierr);CHKERRQ(ierr)
   endif
-  this%pf_to_e4d_scatter = 0
+  this%pf_to_e4d_scatter = PETSC_NULL_VECSCATTER
   ! these are solely pointers set in HydrogeophysicsInitialize()
   this%pf_to_e4d_master_comm = 0
-  this%tracer_mpi = 0
-  this%saturation_mpi = 0
-  this%temperature_mpi = 0
+  this%tracer_mpi = PETSC_NULL_VEC
+  this%saturation_mpi = PETSC_NULL_VEC
+  this%temperature_mpi = PETSC_NULL_VEC
   
 end subroutine PMCHydrogeophysicsStrip
 

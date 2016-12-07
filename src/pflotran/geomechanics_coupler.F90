@@ -1,5 +1,7 @@
 module Geomechanics_Coupler_module
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Geomechanics_Condition_module
   use Geomechanics_Region_module
   use PFLOTRAN_Constants_module
@@ -8,8 +10,6 @@ module Geomechanics_Coupler_module
 
   private
  
-#include "petsc/finclude/petscsys.h"
-
   ! coupler types
   ! SK: Note that there is no initial coupler since we solve 
   ! a quasi-static problem for geomechanics (when coupled to flow, otherwise

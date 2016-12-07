@@ -1,13 +1,13 @@
 module Time_Series_module
  
+#include "finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
 
-#include "finclude/petscsys.h"
-  
   type, public :: time_series_type
     character(len=MAXWORDLENGTH) :: name
     PetscInt :: rank

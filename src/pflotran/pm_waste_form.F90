@@ -1,5 +1,7 @@
 module PM_Waste_Form_class
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PM_Base_class
   use Realization_Subsurface_class
   use Option_module
@@ -13,8 +15,6 @@ module PM_Waste_Form_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   PetscBool, public :: bypass_warning_message = PETSC_FALSE
 
@@ -1420,15 +1420,12 @@ end subroutine PMWFSetup
   ! 
   ! Author: Glenn Hammond
   ! Date: 08/25/15
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Reaction_Aux_module
   use Realization_Base_class
   
   implicit none
-
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pm_waste_form_type) :: this
   
@@ -1524,7 +1521,7 @@ end subroutine PMWFSetup
                        PETSC_COPY_VALUES,is,ierr);CHKERRQ(ierr)
   if (allocated(species_indices_in_residual)) &
     deallocate(species_indices_in_residual)
-  call VecScatterCreate(this%data_mediator%vec,PETSC_NULL_OBJECT, &
+  call VecScatterCreate(this%data_mediator%vec,PETSC_NULL_IS, &
                         this%realization%field%tran_r,is, &
                         this%data_mediator%scatter_ctx,ierr);CHKERRQ(ierr)
   call ISDestroy(is,ierr);CHKERRQ(ierr)
@@ -1541,6 +1538,8 @@ subroutine PMWFInitializeTimestep(this)
   ! Date: 08/26/15
   ! Notes: Modified by Jenn Frederick 03/28/2016
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Global_Aux_module
   use Material_Aux_class
   use Field_module
@@ -1549,9 +1548,6 @@ subroutine PMWFInitializeTimestep(this)
   use Patch_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
   
   class(pm_waste_form_type) :: this
   
@@ -1816,13 +1812,12 @@ subroutine PMWFSolve(this,time,ierr)
   ! Notes: The species loop must be the inner loop, while the grid cell loop
   ! must be the outer loop, in order for the vec_p(i) indexing to work.
   
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Global_Aux_module
   use Material_Aux_class
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pm_waste_form_type) :: this
   PetscReal :: time
@@ -2483,10 +2478,11 @@ subroutine PMWFCheckpoint(this,viewer)
   ! Author: Glenn Hammond
   ! Date: 08/26/15
   !
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
 
   implicit none
-#include "petsc/finclude/petscviewer.h"      
 
   class(pm_waste_form_type) :: this
   PetscViewer :: viewer

@@ -1,5 +1,8 @@
 module Dataset_module
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
+
   use Dataset_Base_class
   use Dataset_Ascii_class
   use Dataset_Common_HDF5_class
@@ -13,8 +16,6 @@ module Dataset_module
 
   private
   
-#include "petsc/finclude/petscsys.h"
-
   public :: DatasetRead, &
             DatasetScreenForNonCellIndexed, &
             DatasetLoad, &

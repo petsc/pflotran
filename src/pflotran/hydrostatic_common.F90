@@ -1,12 +1,13 @@
 module Hydrostatic_Common_module
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
 
-#include "petsc/finclude/petscsys.h"
 
   ! commented out, use those defined in pflotran_constants
   !LIQ = water to be consistent with the remainder fo the code

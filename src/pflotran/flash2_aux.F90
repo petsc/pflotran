@@ -1,4 +1,6 @@
 module Flash2_Aux_module
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Mphase_pckr_module
   use PFLOTRAN_Constants_module
 
@@ -7,8 +9,6 @@ module Flash2_Aux_module
   private 
 !#define GARCIA 1
 #define DUANDEN 1
-
-#include "petsc/finclude/petscsys.h"
 
   type, public :: Flash2_auxvar_elem_type
     PetscReal :: pres

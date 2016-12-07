@@ -66,7 +66,8 @@ subroutine WIPPWellRead(this,input,option)
   ! Author: Glenn Hammond
   ! Date: 04/11/14
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module

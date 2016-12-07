@@ -1,5 +1,8 @@
 module General_Derivative_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
+
   
   use PFLOTRAN_Constants_module
   use Option_module
@@ -10,8 +13,6 @@ module General_Derivative_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   public :: GeneralDerivative
 

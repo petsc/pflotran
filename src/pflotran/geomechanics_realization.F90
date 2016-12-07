@@ -1,5 +1,7 @@
 module Geomechanics_Realization_class
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Realization_Base_class
   use Geomechanics_Discretization_module
   use Geomechanics_Patch_module
@@ -17,8 +19,6 @@ module Geomechanics_Realization_class
   implicit none
 
 private
-
-#include "petsc/finclude/petscsys.h"
 
   type, public, extends(realization_base_type) :: realization_geomech_type
 
@@ -214,13 +214,11 @@ subroutine GeomechRealizCreateDiscretization(geomech_realization)
   ! Author: Satish Karra, LANL
   ! Date: 05/23/13
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Geomechanics_Grid_Aux_module
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_geomech_type) :: geomech_realization
   type(geomech_discretization_type), pointer :: geomech_discretization
@@ -343,20 +341,14 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
   ! Date: 09/09/13
   ! 
 
+#include "petsc/finclude/petscdm.h"
+  use petscdm
   use Option_module
   use Geomechanics_Grid_Aux_module
   use Realization_Subsurface_class
   use Grid_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscdm.h"  
-#include "petsc/finclude/petscdm.h90"
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
-#include "petsc/finclude/petscviewer.h"
 
   class(realization_subsurface_type), pointer :: realization
   class(realization_geomech_type), pointer :: geomech_realization
@@ -597,13 +589,12 @@ subroutine GeomechGridElemSharedByNodes(geomech_realization,option)
   ! Date: 09/17/13
   ! 
   
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Geomechanics_Grid_Aux_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_geomech_type) :: geomech_realization
   type(geomech_grid_type), pointer :: grid
@@ -935,7 +926,8 @@ subroutine GeomechRealizGetDataset(geomech_realization,vec,ivar,isubvar, &
   ! Author: Satish Karra, LANL
   ! Date: 07/03/13
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   implicit none
 
   class(realization_geomech_type) :: geomech_realization

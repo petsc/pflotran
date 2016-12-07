@@ -1,5 +1,7 @@
 module Realization_Subsurface_class
   
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Base_class
 
   use Option_module
@@ -32,9 +34,6 @@ module Realization_Subsurface_class
 
 private
 
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
   type, public, extends(realization_base_type) :: realization_subsurface_type
 
     type(region_list_type), pointer :: region_list
@@ -185,6 +184,8 @@ subroutine RealizationCreateDiscretization(realization)
   ! Date: 02/22/08
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Grid_module
   use Grid_Unstructured_Aux_module
   use Grid_Unstructured_module, only : UGridEnsureRightHandRule
@@ -198,9 +199,6 @@ subroutine RealizationCreateDiscretization(realization)
   use Communicator_Unstructured_class, only : UnstructuredCommunicatorCreate
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_subsurface_type) :: realization
   

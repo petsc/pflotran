@@ -1,5 +1,7 @@
 module Timestepper_BE_class
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Solver_module
   use Convergence_module
   use Timestepper_Base_class
@@ -258,16 +260,14 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   ! Date: 07/22/13
   ! 
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use PM_Base_class
   use Option_module
   use Output_module, only : Output
   use Output_EKG_module, only : IUNIT_EKG
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscsnes.h"
 
   class(timestepper_BE_type) :: this
   class(pm_base_type) :: process_model
@@ -323,7 +323,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
     
     call PetscTime(log_start_time, ierr);CHKERRQ(ierr)
 
-    call SNESSolve(solver%snes,PETSC_NULL_OBJECT, &
+    call SNESSolve(solver%snes,PETSC_NULL_VEC, &
                    process_model%solution_vec,ierr);CHKERRQ(ierr)
 
     call PetscTime(log_end_time, ierr);CHKERRQ(ierr)
@@ -417,7 +417,7 @@ subroutine TimestepperBEStepDT(this,process_model,stop_flag)
   this%num_linear_iterations = num_linear_iterations  
   
   ! print screen output
-  call SNESGetFunction(solver%snes,residual_vec,PETSC_NULL_OBJECT, &
+  call SNESGetFunction(solver%snes,residual_vec,PETSC_NULL_FUNCTIOn, &
                        PETSC_NULL_INTEGER,ierr);CHKERRQ(ierr)
   call VecNorm(residual_vec,NORM_2,fnorm,ierr);CHKERRQ(ierr)
   call VecNorm(residual_vec,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)
@@ -485,7 +485,8 @@ subroutine TimestepperBECheckpointBinary(this,viewer,option)
   ! Author: Glenn Hammond
   ! Date: 07/25/13
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   implicit none

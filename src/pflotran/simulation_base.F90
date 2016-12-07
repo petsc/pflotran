@@ -1,5 +1,7 @@
 module Simulation_Base_class
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PMC_Base_class
   use PM_Base_class
   use Option_module
@@ -12,7 +14,6 @@ module Simulation_Base_class
 
   implicit none
 
-#include "petsc/finclude/petscsys.h"
   
   private
 
@@ -111,6 +112,8 @@ subroutine SimulationBaseInitializeRun(this)
   ! Date: 06/11/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Logging_module
   use Option_module
 #if defined(PETSC_HAVE_HDF5)
@@ -119,7 +122,6 @@ subroutine SimulationBaseInitializeRun(this)
 
   implicit none
   
-#include "petsc/finclude/petscviewer.h"  
 
   class(simulation_base_type) :: this
 
@@ -315,12 +317,12 @@ subroutine RunToTime(this,target_time)
   ! Date: 06/11/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use Simulation_Aux_module
 
   implicit none
-  
-#include "petsc/finclude/petscviewer.h" 
 
   class(simulation_base_type) :: this
   PetscReal :: target_time

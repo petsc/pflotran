@@ -1,5 +1,7 @@
 module Output_module
 
+#include "petsc/finclude/petscdm.h"
+  use petscdm
   use Logging_module 
   use Output_Aux_module
 
@@ -14,13 +16,6 @@ module Output_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscdm.h"
-#include "petsc/finclude/petscdm.h90"
-#include "petsc/finclude/petsclog.h"
 
 #if defined(SCORPIO_WRITE)
   include "scorpiof.h"

@@ -1,11 +1,9 @@
 subroutine pims_vecgetarrayf90(grid, patch, vec, f90ptr, ierr)
+#include "include/finclude/petscvec.h"
+ use petscvec
  use pflow_gridtype_module
  use cf90interface_module
  implicit none 
-
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
 
   type(pflowGrid), intent(inout) :: grid
   type(pflow_localpatch_info) :: patch

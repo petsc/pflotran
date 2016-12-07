@@ -1,5 +1,7 @@
 module Output_Surface_module
 
+#include "petsc/finclude/petscdm.h"
+  use petscdm
   use Logging_module 
   use Output_Aux_module
   use Output_Common_module
@@ -11,13 +13,6 @@ module Output_Surface_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscdm.h"
-#include "petsc/finclude/petscdm.h90"
-#include "petsc/finclude/petsclog.h"
 
 #if defined(SCORPIO_WRITE)
   include "scorpiof.h"
@@ -1542,6 +1537,8 @@ subroutine OutputSurfaceGetVarFromArray(surf_realization,vec,ivar,isubvar,isubva
   ! Date: 01/30/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Surface_class, only : realization_surface_type, &
                                         RealizSurfGetVariable
   use Grid_module
@@ -1549,10 +1546,6 @@ subroutine OutputSurfaceGetVarFromArray(surf_realization,vec,ivar,isubvar,isubva
   use Field_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petsclog.h"
 
   class(realization_surface_type) :: surf_realization
   Vec :: vec
@@ -1828,6 +1821,8 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
   ! Date: 03/25/2013
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use hdf5
   use HDF5_module
   use Realization_Surface_class, only : realization_surface_type
@@ -1844,11 +1839,6 @@ subroutine OutputSurfaceGetFlowrates(surf_realization)
   use Surface_Field_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petsclog.h"
-#include "petsc/finclude/petscsys.h"
 
   class(realization_surface_type) :: surf_realization
   type(option_type), pointer :: option
@@ -2040,6 +2030,8 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
   ! Date: 03/25/2013
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use hdf5
   use HDF5_module
   use Realization_Surface_class, only : realization_surface_type
@@ -2056,11 +2048,6 @@ subroutine WriteHDF5SurfaceFlowratesUGrid(surf_realization,file_id,var_list_type
   use Surface_Field_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petsclog.h"
-#include "petsc/finclude/petscsys.h"
 
   class(realization_surface_type) :: surf_realization
   type(option_type), pointer :: option

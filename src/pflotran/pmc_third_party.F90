@@ -1,5 +1,7 @@
 module PMC_Third_Party_class
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use PMC_Base_class
   use Realization_Subsurface_class
   use Option_module
@@ -9,10 +11,6 @@ module PMC_Third_Party_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
   
   type, public, extends(pmc_base_type) :: pmc_third_party_type
     class(realization_subsurface_type), pointer :: realization
@@ -130,12 +128,9 @@ subroutine PMCThirdPartyGetAuxData(this)
   ! Author: Glenn Hammond
   ! Date: 07/02/13
   ! 
-
-  implicit none
-  
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscviewer.h"
+  use petscvec
+  implicit none
 
   class(pmc_third_party_type) :: this
 

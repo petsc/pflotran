@@ -1,12 +1,13 @@
 module General_Aux_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
   
   private 
 
-#include "petsc/finclude/petscsys.h"
 
   PetscBool, public :: general_analytical_derivatives = PETSC_FALSE
   PetscReal, public :: window_epsilon = 1.d-4

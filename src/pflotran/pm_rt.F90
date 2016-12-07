@@ -1,5 +1,6 @@
 module PM_RT_class
-
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use PM_Base_class
 !geh: using Reactive_Transport_module here fails with gfortran (internal 
 !     compiler error)
@@ -13,14 +14,6 @@ module PM_RT_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_base_type) :: pm_rt_type
     class(realization_subsurface_type), pointer :: realization
@@ -1163,7 +1156,8 @@ subroutine PMRTCheckpointBinary(this,viewer)
   ! Author: Glenn Hammond
   ! Date: 07/29/13
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Realization_Subsurface_class
   use Realization_Base_class
@@ -1179,19 +1173,15 @@ subroutine PMRTCheckpointBinary(this,viewer)
   
   implicit none
 
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscbag.h"      
-
   interface PetscBagGetData
 
 ! ************************************************************************** !
 
     subroutine PetscBagGetData(bag,header,ierr)
+#include "petsc/finclude/petscsys.h"
+      use petscsys
       import :: pm_rt_header_type
       implicit none
-#include "petsc/finclude/petscbag.h"      
       PetscBag :: bag
       class(pm_rt_header_type), pointer :: header
       PetscErrorCode :: ierr
@@ -1222,7 +1212,7 @@ subroutine PMRTCheckpointBinary(this,viewer)
   discretization => realization%discretization
   grid => realization%patch%grid
   
-  global_vec = 0
+  global_vec = PETSC_NULL_VEC
 
   bagsize = size(transfer(dummy_header,dummy_char))
   
@@ -1252,7 +1242,7 @@ subroutine PMRTCheckpointBinary(this,viewer)
   if (option%ntrandof > 0) then
     call VecView(field%tran_xx, viewer, ierr);CHKERRQ(ierr)
     ! create a global vec for writing below 
-    if (global_vec == 0) then
+    if (global_vec == PETSC_NULL_VEC) then
       call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                       global_vec,GLOBAL,option)
     endif
@@ -1295,7 +1285,7 @@ subroutine PMRTCheckpointBinary(this,viewer)
     endif
   endif
 
-  if (global_vec /= 0) then
+  if (global_vec /= PETSC_NULL_VEC) then
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif
   
@@ -1310,7 +1300,8 @@ subroutine PMRTRestartBinary(this,viewer)
   ! Author: Glenn Hammond
   ! Date: 07/29/13
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Realization_Subsurface_class
   use Realization_Base_class
@@ -1327,19 +1318,15 @@ subroutine PMRTRestartBinary(this,viewer)
   
   implicit none
 
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscbag.h"      
-
   interface PetscBagGetData
 
 ! ************************************************************************** !
 
     subroutine PetscBagGetData(bag,header,ierr)
+#include "petsc/finclude/petscsys.h"
+      use petscsys
       import :: pm_rt_header_type
       implicit none
-#include "petsc/finclude/petscbag.h"      
       PetscBag :: bag
       class(pm_rt_header_type), pointer :: header
       PetscErrorCode :: ierr
@@ -1370,8 +1357,8 @@ subroutine PMRTRestartBinary(this,viewer)
   discretization => realization%discretization
   grid => realization%patch%grid
   
-  global_vec = 0
-  local_vec = 0
+  global_vec = PETSC_NULL_VEC
+  local_vec = PETSC_NULL_VEC
   
   bagsize = size(transfer(dummy_header,dummy_char))
 
@@ -1389,7 +1376,7 @@ subroutine PMRTRestartBinary(this,viewer)
                                     field%tran_xx_loc,NTRANDOF)
   call VecCopy(field%tran_xx,field%tran_yy,ierr);CHKERRQ(ierr)
 
-  if (global_vec == 0) then
+  if (global_vec == PETSC_NULL_VEC) then
     call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
   endif    
@@ -1442,10 +1429,10 @@ subroutine PMRTRestartBinary(this,viewer)
   endif
     
   ! We are finished, so clean up.
-  if (global_vec /= 0) then
+  if (global_vec /= PETSC_NULL_VEC) then
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
   endif
-  if (local_vec /= 0) then
+  if (local_vec /= PETSC_NULL_VEC) then
     call VecDestroy(local_vec,ierr);CHKERRQ(ierr)
   endif
   
@@ -1480,6 +1467,8 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
   stop
 #else
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Realization_Subsurface_class
   use Realization_Base_class
@@ -1497,9 +1486,6 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
   use HDF5_module, only : HDF5WriteDataSetFromVec
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pm_rt_type) :: this
 #if defined(SCORPIO_WRITE)
@@ -1681,6 +1667,8 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
   stop
 #else
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Realization_Subsurface_class
   use Realization_Base_class
@@ -1699,9 +1687,6 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
   use HDF5_module, only : HDF5ReadDataSetInVec
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pm_rt_type) :: this
 #if defined(SCORPIO_WRITE)

@@ -1,10 +1,10 @@
   module co2_span_wagner_spline_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
-
-#include "petsc/finclude/petscsys.h"
   
   save
 

@@ -1,5 +1,7 @@
 module PM_UFD_Decay_class
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PM_Base_class
   use Realization_Subsurface_class
   use Option_module
@@ -9,8 +11,6 @@ module PM_UFD_Decay_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   
   type, public, extends(pm_base_type) :: pm_ufd_decay_type
@@ -804,6 +804,8 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   ! Author: Glenn Hammond
   ! Date: 06/24/15
   !
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Reaction_Aux_module
   use Patch_module
@@ -815,9 +817,6 @@ subroutine PMUFDDecaySolve(this,time,ierr)
   use Utility_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pm_ufd_decay_type) :: this
   

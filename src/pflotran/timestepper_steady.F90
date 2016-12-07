@@ -190,6 +190,8 @@ subroutine TimestepperSteadyStepDT(this, process_model, stop_flag)
   ! Date: 01/01/14, 04/07/2015
   ! 
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use PM_Base_class
   use Option_module
   use PM_Geomechanics_Force_class
@@ -198,12 +200,6 @@ subroutine TimestepperSteadyStepDT(this, process_model, stop_flag)
   use Solver_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscsnes.h"
 
   class(timestepper_steady_type) :: this
   class(pm_base_type) :: process_model
@@ -238,7 +234,7 @@ subroutine TimestepperSteadyStepDT(this, process_model, stop_flag)
 
   call PetscTime(log_start_time, ierr);CHKERRQ(ierr)
 
-  call SNESSolve(solver%snes, PETSC_NULL_OBJECT, &
+  call SNESSolve(solver%snes, PETSC_NULL_VEC, &
                  process_model%solution_vec, ierr);CHKERRQ(ierr)
 
   call PetscTime(log_end_time, ierr);CHKERRQ(ierr)
@@ -278,7 +274,7 @@ subroutine TimestepperSteadyStepDT(this, process_model, stop_flag)
   this%num_linear_iterations = num_linear_iterations  
 
   ! print screen output
-  call SNESGetFunction(solver%snes,residual_vec,PETSC_NULL_OBJECT, &
+  call SNESGetFunction(solver%snes,residual_vec,PETSC_NULL_FUNCTION, &
                        PETSC_NULL_INTEGER,ierr);CHKERRQ(ierr)
   call VecNorm(residual_vec,NORM_2,fnorm,ierr);CHKERRQ(ierr)
   call VecNorm(residual_vec,NORM_INFINITY,inorm,ierr);CHKERRQ(ierr)

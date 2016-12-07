@@ -1,5 +1,7 @@
 module Geomechanics_Global_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Geomechanics_Global_Aux_module
   use PFLOTRAN_Constants_module
 
@@ -7,8 +9,6 @@ module Geomechanics_Global_module
 
   private
   
-#include "petsc/finclude/petscsys.h"
-
   public :: GeomechGlobalSetup, &
             GeomechGlobalSetAuxVarScalar, &
             GeomechGlobalSetAuxVarVecLoc, &
@@ -172,13 +172,12 @@ subroutine GeomechGlobalSetAuxVarVecLoc(geomech_realization,vec_loc,ivar, &
   ! Date: 06/17/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Geomechanics_Realization_class
   use Geomechanics_Patch_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"  
 
   class(realization_geomech_type) :: geomech_realization
   Vec :: vec_loc
@@ -203,6 +202,8 @@ subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,&
   ! Date: 06/17/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Geomechanics_Realization_class
   use Geomechanics_Patch_module
   use Geomechanics_Grid_Aux_module
@@ -213,9 +214,6 @@ subroutine GeomechGlobalSetAuxVarVecLocPatch(geomech_realization,vec_loc,ivar,&
                                GEOMECH_DISP_Z
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_geomech_type) :: geomech_realization
   Vec :: vec_loc

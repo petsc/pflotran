@@ -1,10 +1,10 @@
 module Test_String_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use pFUnit_mod
 
   implicit none
-
-#include "petsc/finclude/petscsys.h"
 
   public :: Test_String
 

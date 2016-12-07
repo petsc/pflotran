@@ -1,14 +1,14 @@
 
 module Factory_Geomechanics_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Simulation_Geomechanics_class
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   public :: GeomechanicsInitialize
 
@@ -42,7 +42,8 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
   ! Author: Gautam Bisht, LBNL and Satish Karra, LANL
   ! Date: 01/01/14, 02/10/15
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Simulation_Geomechanics_class
   use Simulation_Subsurface_class
   use Factory_Subsurface_module
@@ -66,8 +67,6 @@ subroutine GeomechanicsInitializePostPETSc(simulation)
   use Output_Aux_module
 
   implicit none
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(simulation_geomechanics_type) :: simulation
 
@@ -299,7 +298,7 @@ subroutine GeomechanicsJumpStart(simulation)
 
   option => geomch_realization%option
 
-  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+  call PetscOptionsHasName(PETSC_NULL_OPTIONS, &
                            PETSC_NULL_CHARACTER, "-vecload_block_size", &
                            failure, ierr);CHKERRQ(ierr)
                              
@@ -794,7 +793,8 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   ! Author: Satish Karra, LANL
   ! Date: 06/17/13
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Geomechanics_Realization_class
   use Geomechanics_Discretization_module
   use Geomechanics_Strata_module
@@ -807,8 +807,6 @@ subroutine GeomechInitMatPropToGeomechRegions(geomech_realization)
   use Option_module
 
   implicit none
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
   
   class(realization_geomech_type) :: geomech_realization
   
@@ -1010,6 +1008,8 @@ subroutine GeomechInitSetupSolvers(geomech_realization,realization, &
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Realization_Subsurface_class
   use Geomechanics_Realization_class
   use Option_module
@@ -1021,13 +1021,6 @@ subroutine GeomechInitSetupSolvers(geomech_realization,realization, &
   use Geomechanics_Discretization_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscpc.h"
   
   class(realization_geomech_type), pointer :: geomech_realization
   class(realization_subsurface_type), pointer :: realization
@@ -1084,7 +1077,7 @@ subroutine GeomechInitSetupSolvers(geomech_realization,realization, &
   ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
   if (option%verbosity >= 1) then
     string = '-geomech_snes_view'
-    call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
+    call PetscOptionsInsertString(PETSC_NULL_OPTIONS, &
                                    string, ierr);CHKERRQ(ierr)
   endif
 

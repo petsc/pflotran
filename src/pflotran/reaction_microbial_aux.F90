@@ -142,7 +142,8 @@ function MicrobialRxnCreate()
   ! Author: Glenn Hammond
   ! Date: 10/30/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   type(microbial_rxn_type), pointer :: MicrobialRxnCreate

@@ -1,5 +1,7 @@
 module Mphase_pckr_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Material_module
   use Option_module
   use PFLOTRAN_Constants_module
@@ -7,7 +9,6 @@ module Mphase_pckr_module
   implicit none
 
   private
-#include "petsc/finclude/petscsys.h"
   PetscReal, private, parameter :: pckr_sat_water_cut = 1.D0 - 5.D-7
   
   public ::  pckrNH_noderiv, pckrHY_noderiv     

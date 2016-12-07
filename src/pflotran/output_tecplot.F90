@@ -1,5 +1,7 @@
 module Output_Tecplot_module
 
+#include "petsc/finclude/petscdm.h"
+  use petscdm
   use Logging_module 
   use Output_Aux_module
   use Output_Common_module
@@ -10,17 +12,10 @@ module Output_Tecplot_module
 
   private
 
-#include "petsc/finclude/petscsys.h"
   PetscInt, parameter, public :: TECPLOT_POINT_FORMAT = 1
   PetscInt, parameter, public :: TECPLOT_BLOCK_FORMAT = 2
   PetscInt, parameter, public :: TECPLOT_FEBRICK_FORMAT = 3
   PetscInt, parameter, public :: TECPLOT_FEQUADRILATERAL_FORMAT = 4  
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscdm.h"
-#include "petsc/finclude/petscdm.h90"
-#include "petsc/finclude/petsclog.h"
 
   public :: OutputTecplotBlock, & 
             OutputTecplotPoint, &

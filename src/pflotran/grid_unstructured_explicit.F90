@@ -1,5 +1,7 @@
 module Grid_Unstructured_Explicit_module
   
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Geometry_module
   use Grid_Unstructured_Aux_module
   
@@ -8,12 +10,7 @@ module Grid_Unstructured_Explicit_module
   implicit none
 
   private 
-  
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
+
 #if defined(SCORPIO)
   include "scorpiof.h"
 #endif
@@ -440,22 +437,13 @@ subroutine UGridExplicitDecompose(ugrid,option)
   ! Author: Glenn Hammond
   ! Date: 05/17/12
   ! 
-
+#include "petsc/finclude/petscdm.h"
+  use petscdm
   use Option_module
   use Utility_module, only: reallocateIntArray, SearchOrderedArray
   
   implicit none
 
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscdm.h" 
-#include "petsc/finclude/petscdm.h90"
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
-#include "petsc/finclude/petscviewer.h"
-  
   type(grid_unstructured_type) :: ugrid
   type(option_type) :: option
 

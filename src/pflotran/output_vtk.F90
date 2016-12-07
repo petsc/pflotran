@@ -1,5 +1,7 @@
 module Output_VTK_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Logging_module 
   use Output_Aux_module
   use Output_Common_module
@@ -9,8 +11,6 @@ module Output_VTK_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter :: VTK_INTEGER = 0
   PetscInt, parameter :: VTK_REAL = 1
@@ -23,6 +23,8 @@ contains
 
 subroutine OutputVTK(realization_base)
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
   use Grid_module
@@ -36,9 +38,6 @@ subroutine OutputVTK(realization_base)
   use Variables_module
  
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_base_type) :: realization_base
   
@@ -168,7 +167,8 @@ subroutine OutputVelocitiesVTK(realization_base)
   ! 
   ! Print velocities to Tecplot file in BLOCK format
   ! 
- 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
   use Grid_module
@@ -178,9 +178,6 @@ subroutine OutputVelocitiesVTK(realization_base)
   use Variables_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_base_type) :: realization_base
   
@@ -297,6 +294,8 @@ subroutine WriteVTKGrid(fid,realization_base)
   ! Writes a grid in VTK format
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Base_class, only : realization_base_type
   use Discretization_module
   use Grid_module
@@ -304,9 +303,6 @@ subroutine WriteVTKGrid(fid,realization_base)
   use Patch_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   PetscInt :: fid
   class(realization_base_type) :: realization_base
@@ -408,10 +404,9 @@ subroutine WriteVTKDataSetFromVec(fid,realization_base,dataset_name,vec,datatype
   ! 
 
   use Realization_Base_class, only : realization_base_type
-  
-  implicit none
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+  use petscvec
+  implicit none
 
   PetscInt :: fid
   class(realization_base_type) :: realization_base

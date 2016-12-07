@@ -29,7 +29,8 @@ subroutine RGasRead(gas_species_list,gas_type,error_msg,input,option)
   ! Author: Glenn Hammond
   ! Date: 01/02/13/ 08/01/16
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module

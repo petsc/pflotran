@@ -1,5 +1,7 @@
 module Immis_Aux_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Mphase_pckr_module
   
   use PFLOTRAN_Constants_module
@@ -8,7 +10,6 @@ module Immis_Aux_module
   
   private 
 
-#include "petsc/finclude/petscsys.h"
 
 type, public :: Immis_auxvar_elem_type
   PetscReal :: pres

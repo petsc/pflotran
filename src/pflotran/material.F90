@@ -1,5 +1,7 @@
 module Material_module
  
+#include "petsc/finclude/petscsys.h"
+   use petscsys
   use Dataset_Base_class
 
   use PFLOTRAN_Constants_module
@@ -10,8 +12,7 @@ module Material_module
 
   private
 
-#include "petsc/finclude/petscsys.h"
- 
+
   type, public :: material_property_type
     PetscInt :: external_id
     PetscInt :: internal_id
@@ -1476,12 +1477,11 @@ subroutine MaterialSetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   ! Date: 01/09/14
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Variables_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   type(material_type) :: Material ! from realization%patch%aux%Material
   Vec :: vec_loc
@@ -1573,13 +1573,11 @@ subroutine MaterialGetAuxVarVecLoc(Material,vec_loc,ivar,isubvar)
   ! Author: Glenn Hammond
   ! Date: 01/09/14
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Variables_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   type(material_type) :: Material ! from realization%patch%aux%Material
   Vec :: vec_loc
@@ -1681,16 +1679,14 @@ subroutine MaterialWeightAuxVars(Material,weight,field,comm1)
   ! Author: Glenn Hammond
   ! Date: 04/17/14
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Field_module
   use Communicator_Base_module
   use Variables_module, only : POROSITY
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   type(material_type) :: Material
   type(field_type) :: field
@@ -1749,14 +1745,13 @@ subroutine MaterialUpdateAuxVars(Material,comm1,vec_loc,time_level,time)
   ! Date: 01/14/09
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Communicator_Base_module
   use Variables_module, only : POROSITY
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
   
   type(material_type) :: Material
   class(communicator_type) :: comm1
@@ -1792,12 +1787,11 @@ subroutine MaterialAuxVarCommunicate(comm,Material,vec_loc,ivar,isubvar)
   ! Date: 01/09/14
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Communicator_Base_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(communicator_type), pointer :: comm
   type(material_type) :: Material ! from realization%patch%aux%Material
@@ -1821,13 +1815,12 @@ subroutine MaterialUpdatePorosity(Material,global_auxvars,porosity_loc)
   ! Date: 01/09/14
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Variables_module
   use Global_Aux_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   type(material_type) :: Material ! from realization%patch%aux%Material
   type(global_auxvar_type) :: global_auxvars(:)

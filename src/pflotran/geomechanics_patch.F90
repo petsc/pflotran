@@ -1,5 +1,7 @@
 module Geomechanics_Patch_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use Geomechanics_Grid_module
   use Geomechanics_Material_module
@@ -16,8 +18,6 @@ module Geomechanics_Patch_module
   
   private
   
-#include "petsc/finclude/petscsys.h"
-
   type, public :: geomech_patch_type
     PetscInt :: id
     PetscInt, pointer :: imat(:)
@@ -558,6 +558,8 @@ subroutine GeomechPatchGetDataset(patch,geomech_field,option,output_option, &
   ! Date: 07/02/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
@@ -566,9 +568,6 @@ subroutine GeomechPatchGetDataset(patch,geomech_field,option,output_option, &
   use Variables_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   type(option_type), pointer :: option
   !type(reaction_type), pointer :: reaction

@@ -86,6 +86,8 @@ subroutine PMCSubsurfaceSetupSolvers(this)
   ! Author: Glenn Hammond
   ! Date: 03/18/13
   ! 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Convergence_module
   use Discretization_module
   use Option_module
@@ -106,13 +108,6 @@ subroutine PMCSubsurfaceSetupSolvers(this)
   use Timestepper_BE_class
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscpc.h" 
 
   class(pmc_subsurface_type) :: this
 
@@ -212,7 +207,7 @@ subroutine PMCSubsurfaceSetupSolvers(this)
             ! verbosity > 0.
             if (option%verbosity >= 2) then
               string = '-flow_snes_view'
-              call PetscOptionsInsertString(PETSC_NULL_OBJECT,string, &
+              call PetscOptionsInsertString(PETSC_NULL_OPTIONS,string, &
                                             ierr);CHKERRQ(ierr)
             endif
 
@@ -226,7 +221,7 @@ subroutine PMCSubsurfaceSetupSolvers(this)
             ! solver.  --RTM
             if (pm%realization%discretization%itype == STRUCTURED_GRID) then
               call PCSetDM(solver%pc, &
-                           pm%realization%discretization%dm_nflowdof, &
+                           pm%realization%discretization%dm_nflowdof%dm, &
                            ierr);CHKERRQ(ierr)
             endif
 
@@ -375,7 +370,7 @@ subroutine PMCSubsurfaceSetupSolvers(this)
               ! verbosity > 0.
               if (option%verbosity >= 2) then
                 string = '-tran_snes_view'
-                call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
+                call PetscOptionsInsertString(PETSC_NULL_OPTIONS, &
                                               string, ierr);CHKERRQ(ierr)
               endif
 
@@ -495,6 +490,8 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
   ! Date: 08/22/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Connection_module
   use Coupler_module
   use Field_module
@@ -507,9 +504,6 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
   use EOS_Water_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pmc_subsurface_type) :: this
   
@@ -544,7 +538,7 @@ subroutine PMCSubsurfaceGetAuxDataFromSurf(this)
     select type (pmc => this)
       class is (pmc_subsurface_type)
 
-      if (this%sim_aux%subsurf_mflux_exchange_with_surf /= 0) then
+      if (this%sim_aux%subsurf_mflux_exchange_with_surf /= PETSC_NULL_VEC) then
         ! PETSc Vector to store relevant mass-flux data between
         ! surface-subsurface model exists
 
@@ -753,6 +747,8 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
   ! Date: 08/21/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Grid_module
   use String_module
   use Realization_Subsurface_class
@@ -765,9 +761,6 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
   use EOS_Water_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pmc_subsurface_type) :: this
   
@@ -801,7 +794,7 @@ subroutine PMCSubsurfaceSetAuxDataForSurf(this)
     select type (pmc => this)
       class is (pmc_subsurface_type)
 
-        if (this%sim_aux%subsurf_pres_top_bc/=0) then
+        if (this%sim_aux%subsurf_pres_top_bc/= PETSC_NULL_VEC) then
           ! PETSc Vector to store relevant subsurface-flow data for
           ! surface-flow model exists
 
@@ -876,6 +869,8 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
   ! Author: Gautam Bisht, LBNL
   ! Date: 01/04/14
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Discretization_module, only : DiscretizationLocalToLocal
   use Field_module
   use Grid_module
@@ -887,10 +882,6 @@ subroutine PMCSubsurfaceGetAuxDataFromGeomech(this)
   use Variables_module, only : POROSITY
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscviewer.h"
 
   class (pmc_subsurface_type) :: this
 
@@ -968,6 +959,8 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
   ! Author: Gautam Bisht, LBNL
   ! Date: 01/04/14
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Realization_Subsurface_class
   use Grid_module
@@ -976,9 +969,6 @@ subroutine PMCSubsurfaceSetAuxDataForGeomech(this)
   use PFLOTRAN_Constants_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class (pmc_subsurface_type) :: this
 

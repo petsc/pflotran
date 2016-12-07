@@ -1,5 +1,6 @@
 module MFD_Aux_module
-
+#include "finclude/petscvec.h"
+  use petscvec
 
   use Connection_module
   use PFLOTRAN_Constants_module
@@ -7,13 +8,6 @@ module MFD_Aux_module
   implicit none
   
   private 
-
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-
 
   type, public :: mfd_auxvar_type
     PetscInt :: numfaces

@@ -22,6 +22,8 @@
 
   module pflow_grid_module
   
+#include "include/finclude/petscsnes.h"
+  use petscsnes
   use pflow_gridtype_module
   use pflow_read_module
   
@@ -42,32 +44,6 @@
   public pflow_setup_index   ! should make private later on
 
 #include "definitions.h"
-
-! Apparently the PETSc authors believe that Fortran 90 modules should ensure
-! that PETSC_AVOID_DECLARATIONS and PETSC_AVOID_MPIF_H are defined when the
-! PETSc header files are included.  I can get around this, though, by making
-! the definitions in these headers private.
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
-  ! Otherwise some very strange things will happen and PETSc will give no
-  ! indication of what the problem is.
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#ifdef USE_PETSC216
-#include "include/finclude/petscsles.h"
-#endif
-#include "include/finclude/petscsnes.h"
-#include "include/finclude/petscviewer.h"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petscpc.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
-#include "include/finclude/petsclog.h"
 
 !#include "pflow_gridtype.h"     
      
@@ -1654,7 +1630,7 @@ real*8 alapha, steptol
     ! Pernice thinks that perhaps the I need to provide a function which 
     ! simply calls MatAssemblyBegin/End.
     call SNESSetJacobian(pflowsolv%snes, grid%J, grid%J, &
-                         ComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
+                         ComputeMFJacobian, 0, ierr)
 
     ! Use "Walker-Pernice" differencing.
 #if ((PETSC_VERSION_RELEASE==1)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH<=10))
@@ -1674,10 +1650,10 @@ real*8 alapha, steptol
     if(grid%monitor_h == PETSC_TRUE) then
 #if ((PETSC_VERSION_RELEASE)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH<=10))
       call SNESSetMonitor(pflowsolv%snes, pflowgrid_MonitorH, grid, &
-                          PETSC_NULL_OBJECT, ierr)
+                          0, ierr)
 #else
       call SNESMonitorSet(pflowsolv%snes, pflowgrid_MonitorH, grid, &
-                          PETSC_NULL_OBJECT, ierr)
+                          0    , ierr)
 #endif
     endif
     

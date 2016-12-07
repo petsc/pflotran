@@ -34,7 +34,8 @@ subroutine MineralRead(mineral,input,option)
   ! Author: Glenn Hammond
   ! Date: 08/16/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module
@@ -82,7 +83,8 @@ subroutine MineralReadKinetics(mineral,input,option)
   ! Author: Glenn Hammond
   ! Date: 10/16/08
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Input_Aux_module
   use String_module  
   use Option_module
@@ -421,7 +423,8 @@ subroutine MineralReadFromDatabase(mineral,num_dbase_temperatures,input, &
   ! Author: Glenn Hammond
   ! Date: 10/16/08
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Input_Aux_module
   use String_module  
   use Option_module
@@ -487,6 +490,8 @@ subroutine MineralProcessConstraint(mineral,constraint_name,constraint,option)
   ! Date: 01/07/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use Input_Aux_module
   use String_module
@@ -1011,7 +1016,8 @@ subroutine RMineralRate(imnrl,ln_act,ln_sec_act,rt_auxvar,global_auxvar, &
   ! Author: Glenn Hammond
   ! Date: 08/29/11
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   implicit none
@@ -1181,7 +1187,8 @@ function RMineralSaturationIndex(imnrl,rt_auxvar,global_auxvar,reaction,option)
   ! Author: Glenn Hammond
   ! Date: 08/29/11
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   
   implicit none

@@ -1,5 +1,7 @@
 module Timestepper_Surface_class
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Timestepper_Base_class
   use Solver_module
   use Waypoint_module
@@ -7,8 +9,6 @@ module Timestepper_Surface_class
   use PFLOTRAN_Constants_module
 
   implicit none
-
-#include "petsc/finclude/petscsys.h"
 
   private
 
@@ -36,9 +36,10 @@ module Timestepper_Surface_class
 
   interface PetscBagGetData
     subroutine PetscBagGetData(bag,header,ierr)
+#include "petsc/finclude/petscsys.h"
+      use petscsys
       import :: timestepper_surface_header_type
       implicit none
-#include "petsc/finclude/petscbag.h"
       PetscBag :: bag
       class(timestepper_surface_header_type), pointer :: header
       PetscErrorCode :: ierr
@@ -209,6 +210,8 @@ subroutine TimestepperSurfaceStepDT(this,process_model,stop_flag)
   ! Date: 07/03/13
   ! 
 
+#include "petsc/finclude/petscts.h"
+  use petscts
   use PM_Base_class
   use PM_Surface_Flow_class
   use Option_module
@@ -216,11 +219,6 @@ subroutine TimestepperSurfaceStepDT(this,process_model,stop_flag)
   use Surface_Flow_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscts.h"  
 
   class(timestepper_surface_type) :: this
   class(pm_base_type) :: process_model
@@ -337,12 +335,11 @@ subroutine TimestepperSurfaceRegisterHeader(this,bag,header)
   ! Date: 09/19/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscbag.h"
 
   class(timestepper_surface_type) :: this
   class(timestepper_surface_header_type) :: header

@@ -1,5 +1,7 @@
 module Factory_Hydrogeophysics_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Simulation_Hydrogeophysics_class
   
   use PFLOTRAN_Constants_module
@@ -7,8 +9,6 @@ module Factory_Hydrogeophysics_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   public :: HydrogeophysicsInitialize
 
@@ -22,7 +22,8 @@ subroutine HydrogeophysicsInitialize(simulation)
   ! Author: Glenn Hammond
   ! Date: 06/17/13
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Wrapper_Hydrogeophysics_module
   use Input_Aux_module
@@ -32,11 +33,6 @@ subroutine HydrogeophysicsInitialize(simulation)
   use String_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscviewer.h"
   
   class(simulation_hydrogeophysics_type) :: simulation
 
@@ -45,7 +41,7 @@ subroutine HydrogeophysicsInitialize(simulation)
   PetscInt :: i, num_pflotran_processes, offset, num_slaves
   PetscInt :: local_size
   PetscBool :: option_found
-  PetscMPIInt :: mpi_int, process_range(3)
+  PetscMPIInt :: mpi_intt, process_range(3)
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   PetscInt, allocatable :: int_array(:)
@@ -66,12 +62,12 @@ subroutine HydrogeophysicsInitialize(simulation)
 
   option => simulation%option
   ! initialize PETSc Vecs to 0
-  pflotran_tracer_vec_mpi = 0
-  pflotran_tracer_vec_seq = 0
-  pflotran_saturation_vec_mpi = 0
-  pflotran_saturation_vec_seq = 0
-  pflotran_temperature_vec_mpi = 0
-  pflotran_temperature_vec_seq = 0
+  pflotran_tracer_vec_mpi = PETSC_NULL_VEC
+  pflotran_tracer_vec_seq = PETSC_NULL_VEC
+  pflotran_saturation_vec_mpi = PETSC_NULL_VEC
+  pflotran_saturation_vec_seq = PETSC_NULL_VEC
+  pflotran_temperature_vec_mpi = PETSC_NULL_VEC
+  pflotran_temperature_vec_seq = PETSC_NULL_VEC
 
   string = '-num_slaves'
   num_slaves = UNINITIALIZED_INTEGER
@@ -138,14 +134,14 @@ subroutine HydrogeophysicsInitialize(simulation)
   
   ! create group shared by both master processes
   call MPI_Comm_group(simulation%mycomm_save,simulation%mygroup_save,ierr)
-  call MPI_Group_size(option%mygroup,mpi_int,ierr)
+  call MPI_Group_size(option%mygroup,mpi_intt,ierr)
 !print *, 1, simulation%myrank_save, simulation%mygroup_save, simulation%mycomm_save
-!print *, 2, simulation%myrank_save, option%myrank, option%mygroup, option%mycomm, mpi_int
-  mpi_int = 1
+!print *, 2, simulation%myrank_save, option%myrank, option%mygroup, option%mycomm, mpi_intt
+  mpi_intt = 1
   process_range(1) = 0
   process_range(2) = num_pflotran_processes ! includes e4d master due to 
   process_range(3) = 1                        ! zero-based indexing
-  call MPI_Group_range_incl(simulation%mygroup_save,mpi_int,process_range, &
+  call MPI_Group_range_incl(simulation%mygroup_save,mpi_intt,process_range, &
                             simulation%pf_e4d_scatter_grp,ierr)
 !print *, 3, simulation%myrank_save, simulation%pf_e4d_scatter_grp
   call MPI_Comm_create(simulation%mycomm_save,simulation%pf_e4d_scatter_grp, &
@@ -159,13 +155,13 @@ subroutine HydrogeophysicsInitialize(simulation)
 !    PFE4D_COMM = simulation%pf_e4d_scatter_comm
 !print *, 5, simulation%myrank_save, simulation%pf_e4d_scatter_rank, simulation%pf_e4d_scatter_size
     ! remove processes between pf_master and e4d_master
-    mpi_int = 1
+    mpi_intt = 1
     process_range(1) = 1
     process_range(2) = num_pflotran_processes-1
     process_range(3) = 1
-    ! if there are no process ranks to remove, set mpi_int to zero
-    if (process_range(2) - process_range(1) < 0) mpi_int = 0
-    call MPI_Group_range_excl(simulation%pf_e4d_scatter_grp,mpi_int, &
+    ! if there are no process ranks to remove, set mpi_intt to zero
+    if (process_range(2) - process_range(1) < 0) mpi_intt = 0
+    call MPI_Group_range_excl(simulation%pf_e4d_scatter_grp,mpi_intt, &
                               process_range,simulation%pf_e4d_master_grp,ierr)
 !print *, 6, simulation%myrank_save, simulation%pf_e4d_master_grp, ierr
     call MPI_Comm_create(simulation%pf_e4d_scatter_comm, &
@@ -354,16 +350,14 @@ subroutine HydrogeophysicsInitPostPetsc(simulation)
   ! Author: Glenn Hammond
   ! Date: 06/17/13
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Factory_Subsurface_module
   use PMC_Hydrogeophysics_class
   use Option_module
   use Logging_module
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
   
   class(simulation_hydrogeophysics_type) :: simulation
   

@@ -1,5 +1,7 @@
 module Richards_module
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Richards_Aux_module
   use Richards_Common_module
   use Global_Aux_module
@@ -15,16 +17,6 @@ module Richards_module
   implicit none
   
   private 
-
-#include "petsc/finclude/petscsys.h"
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petsclog.h"
 
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
@@ -1133,7 +1125,7 @@ subroutine RichardsNumericalJacTest(xx,realization)
   call MatSetType(A,MATAIJ,ierr);CHKERRQ(ierr)
   call MatSetFromOptions(A,ierr);CHKERRQ(ierr)
     
-  call RichardsResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
+  call RichardsResidual(PETSC_NULL_SNES,xx,res,realization,ierr)
   call VecGetArrayF90(res,vec2_p,ierr);CHKERRQ(ierr)
   do icell = 1,grid%nlmax
     if (patch%imat(grid%nL2G(icell)) <= 0) cycle
@@ -1144,7 +1136,7 @@ subroutine RichardsNumericalJacTest(xx,realization)
       perturbation = vec_p(idof)*perturbation_tolerance
       vec_p(idof) = vec_p(idof)+perturbation
       call vecrestorearrayf90(xx_pert,vec_p,ierr);CHKERRQ(ierr)
-      call RichardsResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
+      call RichardsResidual(PETSC_NULL_SNES,xx_pert,res_pert,realization,ierr)
       call vecgetarrayf90(res_pert,vec_p,ierr);CHKERRQ(ierr)
       do idof2 = 1, grid%nlmax*option%nflowdof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
@@ -1737,7 +1729,7 @@ subroutine RichardsResidualSourceSink(r,realization,ierr)
   PetscReal :: well_inj_water
   PetscReal :: Dq, dphi, v_darcy, ukvr
 
-  Mat, parameter :: null_mat = 0
+  Mat, parameter :: null_mat = tMat(-1)
 
   PetscErrorCode :: ierr
 
@@ -1863,7 +1855,7 @@ subroutine RichardsResidualSourceSink(r,realization,ierr)
   call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
 
   ! Mass Transfer
-  if (field%flow_mass_transfer /= 0) then
+  if (field%flow_mass_transfer /= PETSC_NULL_VEC) then
     ! scale by -1.d0 for contribution to residual.  A negative contribution
     ! indicates mass being added to system.
     call VecAXPY(r,-1.d0,field%flow_mass_transfer,ierr);CHKERRQ(ierr)
@@ -2638,7 +2630,7 @@ subroutine RichardsJacobianSourceSink(A,realization,ierr)
   PetscReal :: pressure_max
   PetscReal :: pressure_min
   PetscReal :: ukvr, Dq, dphi, v_darcy
-  Vec, parameter :: null_vec = 0
+  Vec, parameter :: null_vec = tVec(-1)
   character(len=MAXSTRINGLENGTH) :: string
 
   patch => realization%patch
@@ -2766,7 +2758,7 @@ subroutine RichardsJacobianSourceSink(A,realization,ierr)
       qsrc = 1.d0 ! solely a temporary variable in this conditional
       call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
                             patch%aux%Richards%zero_rows_local_ghosted, &
-                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            qsrc,PETSC_NULL_VEC,PETSC_NULL_VEC, &
                             ierr);CHKERRQ(ierr)
     endif
 #ifdef BUFFER_MATRIX
@@ -3253,6 +3245,8 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
   ! 
   ! Modified by: Ayman Alzraiee on 04/05/2016 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Option_module
   use Grid_module
   use Material_Aux_class, only: material_auxvar_type
@@ -3260,11 +3254,6 @@ subroutine RichardsSSSandbox(residual,Jacobian,compute_derivative, &
   use SrcSink_Sandbox_Base_class
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   PetscBool :: compute_derivative
   Vec :: residual

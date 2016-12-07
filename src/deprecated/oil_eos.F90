@@ -1,9 +1,10 @@
 module oil_eos_module
+#include "finclude/petscsys.h"
+  use petscsys
 
   private 
 
-#include "finclude/petscsys.h"
-
+      
   PetscReal, parameter :: Rg=8.3145D3
   PetscReal, parameter :: den0= 863.983, p0= 17236893.25, vis0=3.0D-3, fmwoil= 142.D0
   

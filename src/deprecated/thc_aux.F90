@@ -1,12 +1,12 @@
 module THC_Aux_module
 
+#include "finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
   
   private 
-
-#include "finclude/petscsys.h"
 
   type, public :: thc_auxvar_type
     PetscReal :: avgmw

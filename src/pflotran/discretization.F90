@@ -1,5 +1,6 @@
 module Discretization_module
-
+#include "petsc/finclude/petscdmda.h"
+  use petscdmda
   use Grid_module
   use Grid_Structured_module
   use Grid_Unstructured_module
@@ -13,17 +14,6 @@ module Discretization_module
   implicit none
 
   private
- 
-#include "petsc/finclude/petscsys.h"
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscdm.h"
-#include "petsc/finclude/petscdm.h90"
-#include "petsc/finclude/petscdmda.h"
-#include "petsc/finclude/petscdmshell.h90"
 
   type, public :: discretization_type
     PetscInt :: itype  ! type of discretization (e.g. structured, unstructured, etc.)
@@ -109,10 +99,10 @@ function DiscretizationCreate()
   allocate(discretization%dm_nflowdof)
   allocate(discretization%dm_ntrandof)
   allocate(discretization%dm_n_stress_strain_dof)
-  discretization%dm_1dof%dm = 0
-  discretization%dm_nflowdof%dm = 0
-  discretization%dm_ntrandof%dm = 0
-  discretization%dm_n_stress_strain_dof%dm = 0
+  discretization%dm_1dof%dm = PETSC_NULL_DM
+  discretization%dm_nflowdof%dm = PETSC_NULL_DM
+  discretization%dm_ntrandof%dm = PETSC_NULL_DM
+  discretization%dm_n_stress_strain_dof%dm = PETSC_NULL_DM
   nullify(discretization%dm_1dof%ugdm)
   nullify(discretization%dm_nflowdof%ugdm)
   nullify(discretization%dm_ntrandof%ugdm)
@@ -123,7 +113,7 @@ function DiscretizationCreate()
   discretization%stencil_width = 1
   discretization%stencil_type = DMDA_STENCIL_STAR
 
-  discretization%tvd_ghost_scatter = 0
+  discretization%tvd_ghost_scatter = PETSC_NULL_VECSCATTER
   
   DiscretizationCreate => discretization
 
@@ -807,13 +797,11 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   ! Author: Glenn Hammond
   ! Date: 10/24/07
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   
   implicit none
-  
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
 
   type(discretization_type) :: discretization
   PetscInt :: dm_index
@@ -889,14 +877,14 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
     case(NFLOWDOF)
       allocate(discretization%dmc_nflowdof(mg_levels))
       do i=1, mg_levels
-        discretization%dmc_nflowdof(i)%dm = 0
+        discretization%dmc_nflowdof(i)%dm = PETSC_NULL_DM
         nullify(discretization%dmc_nflowdof(i)%ugdm)
       enddo
       dmc_ptr => discretization%dmc_nflowdof
     case(NTRANDOF)
       allocate(discretization%dmc_ntrandof(mg_levels))
       do i=1, mg_levels
-        discretization%dmc_ntrandof(i)%dm = 0
+        discretization%dmc_ntrandof(i)%dm = PETSC_NULL_DM
         nullify(discretization%dmc_ntrandof(i)%ugdm)
       enddo
       dmc_ptr => discretization%dmc_ntrandof
@@ -921,7 +909,7 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
         call DMCoarsen(dm_fine_ptr%dm, option%mycomm, dmc_ptr(i)%dm,  &
                        ierr);CHKERRQ(ierr)
         call DMCreateInterpolation(dmc_ptr(i)%dm, dm_fine_ptr%dm, &
-                                   interpolation(i), PETSC_NULL_OBJECT,  &
+                                   interpolation(i), PETSC_NULL_VEC,  &
                                    ierr);CHKERRQ(ierr)
         dm_fine_ptr => dmc_ptr(i)
       enddo
@@ -939,13 +927,11 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
   ! Author: Glenn Hammond
   ! Date: 10/24/07
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   
   implicit none
-
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
   
   type(discretization_type) :: discretization
   PetscInt :: dm_index
@@ -1414,10 +1400,11 @@ subroutine DiscretAOApplicationToPetsc(discretization,int_array)
   ! Author: Glenn Hammond
   ! Date: 10/12/12
   ! 
-
+#include "petsc/finclude/petscdmda.h"
+  use petscdmda
   implicit none
   
-#include "petsc/finclude/petscao.h"  
+
   
   type(discretization_type) :: discretization
   PetscInt :: int_array(:)
@@ -1427,7 +1414,7 @@ subroutine DiscretAOApplicationToPetsc(discretization,int_array)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DMDAGetAO(discretization%dm_1dof,ao,ierr);CHKERRQ(ierr)
+      call DMDAGetAO(discretization%dm_1dof%dm,ao,ierr);CHKERRQ(ierr)
     case(UNSTRUCTURED_GRID)
       ao = discretization%grid%unstructured_grid%ao_natural_to_petsc
   end select
@@ -1590,23 +1577,23 @@ subroutine DiscretizationDestroy(discretization)
       
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      if (discretization%dm_1dof%dm /= 0) then
+      if (discretization%dm_1dof%dm /= PETSC_NULL_DM) then
         call DMDestroy(discretization%dm_1dof%dm,ierr);CHKERRQ(ierr)
       endif
-      discretization%dm_1dof%dm = 0
-      if (discretization%dm_nflowdof%dm /= 0) then
+      discretization%dm_1dof%dm = PETSC_NULL_DM
+      if (discretization%dm_nflowdof%dm /= PETSC_NULL_DM) then
         call DMDestroy(discretization%dm_nflowdof%dm,ierr);CHKERRQ(ierr)
       endif
-      discretization%dm_nflowdof%dm = 0
-      if (discretization%dm_ntrandof%dm /= 0) then
+      discretization%dm_nflowdof%dm = PETSC_NULL_DM
+      if (discretization%dm_ntrandof%dm /= PETSC_NULL_DM) then
         call DMDestroy(discretization%dm_ntrandof%dm,ierr);CHKERRQ(ierr)
       endif
-      discretization%dm_n_stress_strain_dof%dm = 0
-      if (discretization%dm_nflowdof%dm /= 0) then
+      discretization%dm_n_stress_strain_dof%dm = PETSC_NULL_DM
+      if (discretization%dm_nflowdof%dm /= PETSC_NULL_DM) then
         call DMDestroy(discretization%dm_n_stress_strain_dof%dm, &
                        ierr);CHKERRQ(ierr)
       endif
-      discretization%dm_n_stress_strain_dof%dm = 0
+      discretization%dm_n_stress_strain_dof%dm = PETSC_NULL_DM
       if (associated(discretization%dmc_nflowdof)) then
         do i=1,size(discretization%dmc_nflowdof)
           call DMDestroy(discretization%dmc_nflowdof(i)%dm,ierr);CHKERRQ(ierr)
@@ -1646,7 +1633,7 @@ subroutine DiscretizationDestroy(discretization)
   nullify(discretization%dm_n_stress_strain_dof)
 
 
-  if (discretization%tvd_ghost_scatter /= 0) &
+  if (discretization%tvd_ghost_scatter /= PETSC_NULL_VECSCATTER) &
     call VecScatterDestroy(discretization%tvd_ghost_scatter)
   
   call GridDestroy(discretization%grid)

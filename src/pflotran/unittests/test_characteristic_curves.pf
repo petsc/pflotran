@@ -1,12 +1,13 @@
 module Test_Characteristic_Curves_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use pFUnit_mod
   use Characteristic_Curves_module
   use Option_module
 
   implicit none
 
-#include "petsc/finclude/petscsys.h"
 
   public :: Test_Characteristic_Curves
 

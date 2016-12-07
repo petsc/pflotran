@@ -1,5 +1,7 @@
 module Geomechanics_Grid_Aux_module
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Grid_Unstructured_Cell_module
   use Gauss_module
   use PFLOTRAN_Constants_module
@@ -7,12 +9,7 @@ module Geomechanics_Grid_Aux_module
   implicit none
 
   private 
-  
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
+
 #if defined(SCORPIO)
   include "scorpiof.h"
 #endif
@@ -126,25 +123,25 @@ function GMDMCreate()
   type(gmdm_type), pointer :: gmdm
 
   allocate(gmdm)
-  gmdm%is_ghosted_local = 0
-  gmdm%is_local_local = 0
-  gmdm%is_ghosted_petsc = 0
-  gmdm%is_local_petsc = 0
-  gmdm%is_ghosts_local = 0
-  gmdm%is_ghosts_petsc = 0
-  gmdm%is_local_natural = 0
-  gmdm%scatter_ltog = 0
-  gmdm%scatter_gtol = 0
-  gmdm%scatter_ltol  = 0
-  gmdm%scatter_gton = 0
-  gmdm%scatter_gton_elem = 0
+  gmdm%is_ghosted_local = PETSC_NULL_IS
+  gmdm%is_local_local = PETSC_NULL_IS
+  gmdm%is_ghosted_petsc = PETSC_NULL_IS
+  gmdm%is_local_petsc = PETSC_NULL_IS
+  gmdm%is_ghosts_local = PETSC_NULL_IS
+  gmdm%is_ghosts_petsc = PETSC_NULL_IS
+  gmdm%is_local_natural = PETSC_NULL_IS
+  gmdm%scatter_ltog = PETSC_NULL_VECSCATTER
+  gmdm%scatter_gtol = PETSC_NULL_VECSCATTER
+  gmdm%scatter_ltol  = PETSC_NULL_VECSCATTER
+  gmdm%scatter_gton = PETSC_NULL_VECSCATTER
+  gmdm%scatter_gton_elem = PETSC_NULL_VECSCATTER
   gmdm%mapping_ltog = 0
   gmdm%mapping_ltog_elem = 0
-  gmdm%global_vec = 0
-  gmdm%local_vec = 0
-  gmdm%global_vec_elem = 0
-  gmdm%scatter_subsurf_to_geomech_ndof = 0
-  gmdm%scatter_geomech_to_subsurf_ndof = 0
+  gmdm%global_vec = PETSC_NULL_VEC
+  gmdm%local_vec = PETSC_NULL_VEC
+  gmdm%global_vec_elem = PETSC_NULL_VEC
+  gmdm%scatter_subsurf_to_geomech_ndof = PETSC_NULL_VECSCATTER
+  gmdm%scatter_geomech_to_subsurf_ndof = PETSC_NULL_VECSCATTER
 
   GMDMCreate => gmdm
 
@@ -190,8 +187,8 @@ function GMGridCreate()
   nullify(geomech_grid%ghosted_node_ids_natural)
   nullify(geomech_grid%ghosted_node_ids_petsc)
   nullify(geomech_grid%gauss_node)
-  geomech_grid%no_elems_sharing_node_loc = 0
-  geomech_grid%no_elems_sharing_node = 0
+  geomech_grid%no_elems_sharing_node_loc = PETSC_NULL_VEC
+  geomech_grid%no_elems_sharing_node = PETSC_NULL_VEC
 
   GMGridCreate => geomech_grid
   
@@ -206,20 +203,12 @@ end function GMGridCreate
 ! ************************************************************************** !
 subroutine GMCreateGMDM(geomech_grid,gmdm,ndof,option)
 
+#include "petsc/finclude/petscdm.h"
+  use petscdm
   use Option_module
   use Utility_module, only: reallocateIntArray
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscdm.h"  
-#include "petsc/finclude/petscdm.h90"
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
-#include "petsc/finclude/petscviewer.h"
 
   type(geomech_grid_type) :: geomech_grid
   type(option_type) :: option
@@ -609,6 +598,8 @@ end subroutine GMCreateGMDM
 ! ************************************************************************** !
 subroutine GMGridDMCreateJacobian(geomech_grid,gmdm,mat_type,J,option)
 
+#include <petsc/finclude/petscmat.h>
+  use petscmat
   use Option_module
   
   implicit none
@@ -875,10 +866,10 @@ subroutine GMGridDestroy(geomech_grid)
   
   nullify(geomech_grid%gauss_node)
  
-  if (geomech_grid%no_elems_sharing_node_loc /= 0) then
+  if (geomech_grid%no_elems_sharing_node_loc /= PETSC_NULL_VEC) then
     call VecDestroy(geomech_grid%no_elems_sharing_node_loc,ierr);CHKERRQ(ierr)
   endif
-  if ( geomech_grid%no_elems_sharing_node /= 0) then
+  if ( geomech_grid%no_elems_sharing_node /= PETSC_NULL_VEC) then
     call VecDestroy(geomech_grid%no_elems_sharing_node,ierr);CHKERRQ(ierr)
   endif
  

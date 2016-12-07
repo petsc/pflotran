@@ -1,13 +1,13 @@
 module Water_EOS_module
 
+#include "finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
   
-#include "finclude/petscsys.h"
-
   interface VISW
     module procedure VISW1
     module procedure VISW2

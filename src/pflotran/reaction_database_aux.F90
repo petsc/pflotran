@@ -70,7 +70,8 @@ function DatabaseRxnCreateFromRxnString(reaction_string, &
   ! Author: Glenn Hammond
   ! Date: 10/30/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module
@@ -287,6 +288,8 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
   ! Date: 10/07/08
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   
@@ -362,6 +365,8 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2,scale)
   ! Date: 10/06/08
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use String_module
 
   implicit none
@@ -458,7 +463,8 @@ subroutine BasisSubSpeciesInMineralRxn(name,sec_dbaserxn,mnrl_dbaserxn,scale)
   ! Author: Glenn Hammond
   ! Date: 10/06/08
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use String_module
   
   implicit none
@@ -556,7 +562,8 @@ function DatabaseCheckLegitimateLogKs(dbaserxn,species_name,temperatures, &
   ! Author: Glenn Hammond
   ! Date: 01/07/13
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   
   implicit none

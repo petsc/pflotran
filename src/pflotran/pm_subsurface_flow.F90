@@ -1,6 +1,8 @@
 module PM_Subsurface_Flow_class
 
-  use PM_Base_class
+#include "petsc/finclude/petscsnes.h"
+   use petscsnes
+   use PM_Base_class
 !geh: using Init_Subsurface_module here fails with gfortran (internal compiler error)
 !  use Init_Subsurface_module
   use Realization_Subsurface_class
@@ -12,14 +14,6 @@ module PM_Subsurface_Flow_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_base_type) :: pm_subsurface_flow_type
     class(realization_subsurface_type), pointer :: realization
@@ -693,11 +687,11 @@ subroutine PMSubsurfaceFlowCheckpointBinary(this,viewer)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Checkpoint_module
 
   implicit none
-#include "petsc/finclude/petscviewer.h"      
 
   class(pm_subsurface_flow_type) :: this
   PetscViewer :: viewer
@@ -714,11 +708,11 @@ subroutine PMSubsurfaceFlowRestartBinary(this,viewer)
   ! 
   ! Author: Glenn Hammond
   ! Date: 04/21/14
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Checkpoint_module
 
   implicit none
-#include "petsc/finclude/petscviewer.h"      
 
   class(pm_subsurface_flow_type) :: this
   PetscViewer :: viewer

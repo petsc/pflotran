@@ -5,11 +5,13 @@ module co2_sw_module
   ! co2_sw_prop(p,t,rho,dddt,dddp,fg,dfgdp,dfgdt,
   !                 eng,ent,dhdt,dhdp,visc,dvdt,dvdp)
 
-  use PFLOTRAN_Constants_module
+#include "petsc/finclude/petscsys.h"
+      use petscsys
+      use PFLOTRAN_Constants_module
 
       implicit none
 
-#include "petsc/finclude/petscsys.h"
+
 
       private
       save
@@ -347,9 +349,11 @@ subroutine interp(x1,x2,y)
   ! 
 
       use co2_span_wagner_module, only: vappr, co2_span_wagner
-      implicit none 
-  
 #include "petsc/finclude/petscsys.h"
+     use petscsys
+     implicit none 
+  
+
   
       PetscReal :: x1,x2,y(15)   
       

@@ -1,5 +1,7 @@
 module Geomechanics_Strata_module
 
+#include "petsc/finclude/petscsys.h"
+   use petscsys
   use Geomechanics_Region_module
   use Geomechanics_Material_module
   use PFLOTRAN_Constants_module
@@ -7,8 +9,6 @@ module Geomechanics_Strata_module
   implicit none
 
   private
- 
-#include "petsc/finclude/petscsys.h"
  
   type, public :: geomech_strata_type
     PetscInt :: id                                                        ! id of strata

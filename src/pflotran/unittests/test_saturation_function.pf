@@ -1,12 +1,12 @@
 module Test_Saturation_Function_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use pFUnit_mod
   use Saturation_Function_module
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscsys.h"
 
   public :: Test_Saturation_Function
 

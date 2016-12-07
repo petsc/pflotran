@@ -1,5 +1,6 @@
 module Timestepper_Base_class
  
+#include "petsc/finclude/petscsys.h"
   use Waypoint_module 
  
   use PFLOTRAN_Constants_module
@@ -8,7 +9,6 @@ module Timestepper_Base_class
 
   private
   
-#include "petsc/finclude/petscsys.h"
  
   PetscInt, parameter, public :: TS_CONTINUE = 0
   PetscInt, parameter, public :: TS_STOP_END_SIMULATION = 1
@@ -132,6 +132,8 @@ subroutine TimestepperBaseInit(this)
   ! Date: 07/01/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   class(timestepper_base_type) :: this
@@ -236,6 +238,8 @@ subroutine TimestepperBaseProcessKeyword(this,input,option,keyword)
   ! Date: 03/20/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module
@@ -328,6 +332,8 @@ subroutine TimestepperBaseSetTargetTime(this,sync_time,option,stop_flag, &
   ! Date: 03/20/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   
   implicit none
@@ -632,11 +638,13 @@ subroutine TimestepperBaseCheckpointBinary(this,viewer,option)
   ! Date: 07/25/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   implicit none
 
-#include "petsc/finclude/petscviewer.h"
+
 
   class(timestepper_base_type) :: this
   PetscViewer :: viewer
@@ -702,12 +710,12 @@ subroutine TimestepperBaseRegisterHeader(this,bag,header)
   ! Author: Glenn Hammond
   ! Date: 07/30/13
   ! 
-
+#include "petsc/finclude/petscsys.h"  
+  use petscsys
   use Option_module
 
   implicit none
   
-#include "petsc/finclude/petscbag.h"  
 
   class(timestepper_base_type) :: this
   class(stepper_base_header_type) :: header
@@ -744,11 +752,12 @@ subroutine TimestepperBaseSetHeader(this,bag,header)
   ! Date: 07/25/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   implicit none
   
-#include "petsc/finclude/petscbag.h"  
 
   class(timestepper_base_type) :: this
   class(stepper_base_header_type) :: header
@@ -781,11 +790,11 @@ subroutine TimestepperBaseRestartBinary(this,viewer,option)
   ! Date: 07/25/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
 
   class(timestepper_base_type) :: this
   PetscViewer :: viewer
@@ -806,11 +815,12 @@ subroutine TimestepperBaseGetHeader(this,header)
   ! Date: 07/25/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   implicit none
   
-#include "petsc/finclude/petscbag.h"  
 
   class(timestepper_base_type) :: this
   class(stepper_base_header_type) :: header
@@ -836,6 +846,8 @@ subroutine TimestepperBaseReset(this)
   ! Date: 01/20/14
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
 
@@ -861,6 +873,8 @@ function TimestepperBaseWallClockStop(this,option)
   ! Author: Glenn Hammond
   ! Date: 08/08/14
   ! 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   implicit none
@@ -917,6 +931,8 @@ recursive subroutine TimestepperBaseFinalizeRun(this,option)
   ! Date: 07/22/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   
   implicit none

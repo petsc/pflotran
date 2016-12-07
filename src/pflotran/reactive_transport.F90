@@ -1,5 +1,7 @@
 module Reactive_Transport_module
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Transport_module
   use Reaction_module
 
@@ -13,16 +15,6 @@ module Reactive_Transport_module
   implicit none
   
   private 
-
-#include "petsc/finclude/petscsys.h"
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petsclog.h"
 
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   
@@ -1363,7 +1355,7 @@ subroutine RTCalculateRHS_t1(realization)
   call VecRestoreArrayF90(field%tran_rhs,rhs_p,ierr);CHKERRQ(ierr)
 
   ! Mass Transfer
-  if (field%tran_mass_transfer /= 0) then
+  if (field%tran_mass_transfer /= PETSC_NULL_VEC) then
     ! scale by -1.d0 for contribution to residual.  A negative contribution
     ! indicates mass being added to system.
     call VecAXPY(field%tran_rhs,-1.d0,field%tran_mass_transfer, &
@@ -1585,7 +1577,7 @@ subroutine RTCalculateTransportMatrix(realization,T)
     coef = 1.d0
     call MatZeroRowsLocal(T,patch%aux%RT%n_zero_rows, &
                           patch%aux%RT%zero_rows_local_ghosted,coef, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_VEC,PETSC_NULL_VEC, &
                           ierr);CHKERRQ(ierr)
   endif
 
@@ -2012,7 +2004,7 @@ subroutine RTNumericalJacobianTest(realization)
   call MatSetType(A,MATAIJ,ierr);CHKERRQ(ierr)
   call MatSetFromOptions(A,ierr);CHKERRQ(ierr)
     
-  call RTResidual(PETSC_NULL_OBJECT,field%tran_xx,res,realization,ierr)
+  call RTResidual(PETSC_NULL_SNES,field%tran_xx,res,realization,ierr)
   call VecGetArrayF90(res,vec2_p,ierr);CHKERRQ(ierr)
   do idof = 1,grid%nlmax*option%ntrandof
     icell = (idof-1)/option%ntrandof+1
@@ -2022,7 +2014,7 @@ subroutine RTNumericalJacobianTest(realization)
     perturbation = vec_p(idof)*perturbation_tolerance
     vec_p(idof) = vec_p(idof)+perturbation
     call vecrestorearrayf90(xx_pert,vec_p,ierr);CHKERRQ(ierr)
-    call RTResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
+    call RTResidual(PETSC_NULL_SNES,xx_pert,res_pert,realization,ierr)
     call vecgetarrayf90(res_pert,vec_p,ierr);CHKERRQ(ierr)
     do idof2 = 1, grid%nlmax*option%ntrandof
       derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
@@ -2769,7 +2761,7 @@ subroutine RTResidualNonFlux(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
  
   ! Mass Transfer
-  if (field%tran_mass_transfer /= 0) then
+  if (field%tran_mass_transfer /= PETSC_NULL_VEC) then
     ! scale by -1.d0 for contribution to residual.  A negative contribution
     ! indicates mass being added to system.
     call VecGetArrayF90(field%tran_mass_transfer,vec_p,ierr);CHKERRQ(ierr)
@@ -3515,7 +3507,7 @@ subroutine RTJacobianNonFlux(snes,xx,A,B,realization,ierr)
     rdum = 1.d0
     call MatZeroRowsLocal(A,patch%aux%RT%n_zero_rows, &
                           patch%aux%RT%zero_rows_local_ghosted,rdum, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_VEC,PETSC_NULL_VEC, &
                           ierr);CHKERRQ(ierr)
     call PetscLogEventEnd(logging%event_rt_jacobian_zero,ierr);CHKERRQ(ierr)
   endif
@@ -3591,7 +3583,7 @@ subroutine RTJacobianEquilibrateCO2(J,realization)
   enddo
 
   call MatZeroRowsLocal(J,zero_count,zero_rows(1:zero_count),jacobian_entry, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_VEC,PETSC_NULL_VEC, &
                         ierr);CHKERRQ(ierr)
 
   do i = 1, zero_count

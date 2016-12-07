@@ -1,11 +1,12 @@
 module Miscible_Aux_module
   use PFLOTRAN_Constants_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   private 
 
-#include "petsc/finclude/petscsys.h"
 
 type, public :: Miscible_auxvar_elem_type
    PetscReal :: pres

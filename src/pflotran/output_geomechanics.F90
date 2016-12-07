@@ -1,5 +1,7 @@
 module Output_Geomechanics_module
 
+#include "petsc/finclude/petscdm.h"
+  use petscdm
   use Output_Aux_module  
   use Output_Tecplot_module
   use Output_Common_module
@@ -10,13 +12,6 @@ module Output_Geomechanics_module
   
   private
   
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscdm.h"
-#include "petsc/finclude/petscdm.h90"
-#include "petsc/finclude/petsclog.h"
-
   PetscInt, save, public :: max_local_node_size_saved = -1
   PetscBool :: geomech_hdf5_first
 
@@ -590,15 +585,14 @@ subroutine GetVertexCoordinatesGeomech(grid,vec,direction,option)
   ! Date: 07/02/2013
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use Option_module
   use Variables_module, only : X_COORDINATE, Y_COORDINATE, Z_COORDINATE
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   type(geomech_grid_type) :: grid
   Vec :: vec
@@ -669,16 +663,14 @@ subroutine OutputGeomechGetVarFromArray(geomech_realization,vec,ivar,isubvar, &
   ! Date: 07/3/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Geomechanics_Realization_class
   use Geomechanics_Grid_Aux_module
   use Option_module
   use Geomechanics_Field_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petsclog.h"
 
   class(realization_geomech_type) :: geomech_realization
   Vec :: vec
@@ -1225,15 +1217,13 @@ subroutine OutputHDF5UGridXDMFGeomech(geomech_realization,var_list_type)
 #define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
 #endif
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use hdf5
   use HDF5_module, only : HDF5WriteDataSetFromVec
   use HDF5_Aux_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petsclog.h"
 
   type(realization_geomech_type) :: geomech_realization
   PetscInt :: var_list_type
@@ -1519,6 +1509,8 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   ! Date: 07/3/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use hdf5
   use HDF5_module, only : HDF5WriteDataSetFromVec
   use Geomechanics_Realization_class
@@ -1528,10 +1520,6 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   use Variables_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petsclog.h"
 
   type(realization_geomech_type) :: geomech_realization
   type(option_type), pointer :: option

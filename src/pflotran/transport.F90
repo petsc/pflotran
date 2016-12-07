@@ -1,5 +1,7 @@
 module Transport_module
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Reactive_Transport_Aux_module
   use Global_Aux_module
   use Material_Aux_class
@@ -10,16 +12,6 @@ module Transport_module
   implicit none
   
   private 
-
-#include "petsc/finclude/petscsys.h"
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petsclog.h"
 
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8

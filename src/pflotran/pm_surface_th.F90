@@ -1,5 +1,7 @@
 module PM_Surface_TH_class
 
+#include "petsc/finclude/petscts.h"
+  use petscts
   use PM_Base_class
   use PM_Surface_class
   use Realization_Surface_class
@@ -12,15 +14,6 @@ module PM_Surface_TH_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscts.h"
 
   type, public, extends(pm_surface_type) :: pm_surface_th_type
   contains
@@ -257,15 +250,14 @@ subroutine PMSurfaceTHPostSolve(this)
   ! Date: 07/23/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Grid_module
   use Discretization_module
   use Surface_Field_module
   use Surface_TH_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pm_surface_th_type) :: this
 

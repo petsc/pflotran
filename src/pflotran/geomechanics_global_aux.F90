@@ -1,12 +1,12 @@
 module Geomechanics_Global_Aux_module
   
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   type, public :: geomech_global_auxvar_type
     PetscReal, pointer :: disp_vector(:)       ! [m]

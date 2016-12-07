@@ -1,12 +1,13 @@
 module Material_Aux_class
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
 
-#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: perm_xx_index = 1
   PetscInt, parameter, public :: perm_yy_index = 2

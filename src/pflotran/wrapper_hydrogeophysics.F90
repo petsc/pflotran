@@ -1,12 +1,13 @@
 module Wrapper_Hydrogeophysics_module
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
 
-#include "petsc/finclude/petscsys.h"
 
   public :: HydrogeophysicsWrapperInit, &
             HydrogeophysicsWrapperStart, &
@@ -34,6 +35,8 @@ subroutine HydrogeophysicsWrapperInit(option, &
   ! Date: 07/02/13
   ! 
   
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
 
   use e4d_vars, only : E4D_COMM, my_rank, n_rank, PFE4D_MASTER_COMM, &
@@ -46,9 +49,6 @@ subroutine HydrogeophysicsWrapperInit(option, &
   use e4d_run, only: run_e4D
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   type(option_type) :: option
   Vec :: pflotran_tracer_vec_mpi_
@@ -77,7 +77,7 @@ subroutine HydrogeophysicsWrapperInit(option, &
   pflotran_scatter = pflotran_scatter_
   pflotran_group_prefix = option%group_prefix
   ! pflotran_tracer_vec_seq only defined on master E4D process
-  if (pflotran_tracer_vec_seq > 0) then
+  if (pflotran_tracer_vec_seq /= PETSC_NULL_VEC) then
     call VecGetSize(pflotran_tracer_vec_seq,pflotran_vec_size, &
                     ierr);CHKERRQ(ierr)
     ! don't need saturation size as it is identical   
@@ -126,12 +126,11 @@ subroutine HydrogeophysicsWrapperStep(time, &
   ! Author: Glenn Hammond
   ! Date: 07/02/13
   ! 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   PetscReal :: time
   Vec :: tracer_mpi
@@ -165,7 +164,7 @@ subroutine HydrogeophysicsWrapperStep(time, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(scatter,saturation_mpi,saturation_seq, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
-  if (temperature_mpi /= 0) then
+  if (temperature_mpi /= PETSC_NULL_VEC) then
     call VecScatterBegin(scatter,temperature_mpi,temperature_seq, &
                          INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
     call VecScatterEnd(scatter,temperature_mpi,temperature_seq, &

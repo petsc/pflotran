@@ -1,5 +1,7 @@
 module Init_Subsurface_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   !geh: there can be no dependencies on simulation object in this file
   use PFLOTRAN_Constants_module
 
@@ -7,7 +9,6 @@ module Init_Subsurface_module
 
   private
 
-#include "petsc/finclude/petscsys.h"
 
   public :: InitSubsurfAssignMatIDsToRegns, &
             InitSubsurfAssignMatProperties, &
@@ -229,6 +230,8 @@ subroutine InitSubsurfAssignMatProperties(realization)
   ! Author: Glenn Hammond
   ! Date: 10/07/14
   ! 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Subsurface_class
   use Grid_module
   use Discretization_module
@@ -246,9 +249,6 @@ subroutine InitSubsurfAssignMatProperties(realization)
   use HDF5_module
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_subsurface_type) :: realization
   
@@ -499,6 +499,8 @@ subroutine SubsurfReadMaterialIDsFromFile(realization,realization_dependent, &
   ! Date: 1/03/08
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Subsurface_class
   use Field_module
   use Grid_module
@@ -512,9 +514,6 @@ subroutine SubsurfReadMaterialIDsFromFile(realization,realization_dependent, &
   use HDF5_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
   
   class(realization_subsurface_type) :: realization
   PetscBool :: realization_dependent
@@ -597,6 +596,8 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   ! Date: 01/19/09
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Subsurface_class
   use Field_module
   use Grid_module
@@ -610,9 +611,6 @@ subroutine SubsurfReadPermsFromFile(realization,material_property)
   use Dataset_Common_HDF5_class
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_subsurface_type) :: realization
   type(material_property_type) :: material_property
@@ -748,6 +746,8 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset, &
   ! Author: Glenn Hammond
   ! Date: 01/19/2016
   ! 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
 
   use Realization_Subsurface_class
   use Field_module
@@ -763,9 +763,6 @@ subroutine SubsurfReadDatasetToVecWithMask(realization,dataset, &
   use Dataset_Gridded_HDF5_class
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_subsurface_type) :: realization
   class(dataset_base_type) :: dataset

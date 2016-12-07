@@ -98,7 +98,8 @@ function RealizSurfCreate(option)
   ! Author: Gautam Bisht, ORNL
   ! Date: 02/16/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
 
   type(option_type), pointer :: option
@@ -347,7 +348,8 @@ subroutine RealizSurfCreateDiscretization(surf_realization)
   ! Author: Gautam Bisht, ORNL
   ! Date: 02/17/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Grid_module
   use Grid_Unstructured_Aux_module, only : UGridMapIndices
   use Grid_Unstructured_module, only     : UGridEnsureRightHandRule
@@ -686,6 +688,8 @@ subroutine RealizSurfMapSurfSubsurfGrids(realization,surf_realization)
   ! Date: 01/17/12
   ! 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Grid_module
   use String_module
   use Grid_Unstructured_module
@@ -697,11 +701,6 @@ subroutine RealizSurfMapSurfSubsurfGrids(realization,surf_realization)
   use Region_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   class(realization_subsurface_type), pointer :: realization
   class(realization_surface_type), pointer :: surf_realization
@@ -1012,6 +1011,8 @@ subroutine RealizSurfMapSurfSubsurfGrid( &
   ! Date: 01/18/12
   ! 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Grid_module
   use String_module
   use Grid_Unstructured_module
@@ -1026,11 +1027,6 @@ subroutine RealizSurfMapSurfSubsurfGrid( &
   use DM_Kludge_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   class(realization_subsurface_type), pointer :: realization
   class(realization_surface_type), pointer :: surf_realization
@@ -1338,7 +1334,8 @@ subroutine RealizSurfUpdate(surf_realization)
   ! Author: Gautam Bisht, ORNL
   ! Date: 05/22/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   class(realization_surface_type) :: surf_realization
@@ -1365,6 +1362,8 @@ subroutine RealizSurfGetVariable(surf_realization,vec,ivar,isubvar,isubvar1)
   ! Date: 05/22/12
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Surface_Field_module
 
@@ -1395,7 +1394,8 @@ subroutine RealizSurfAddWaypointsToList(surf_realization,waypoint_list)
   ! Author: Gautam Bisht, LBNL
   ! Date: 03/15/13
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use Waypoint_module
   use Time_Storage_module  

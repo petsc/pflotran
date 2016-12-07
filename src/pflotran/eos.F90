@@ -1,5 +1,7 @@
 module EOS_module
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
   use EOS_Water_module
   use EOS_Gas_module
@@ -9,8 +11,7 @@ module EOS_module
 
   private
 
-#include "petsc/finclude/petscsys.h"
- 
+
   public :: EOSInit, &
             EOSRead, &
             EOSInputRecord, &

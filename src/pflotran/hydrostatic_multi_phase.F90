@@ -1,5 +1,7 @@
 module HydrostaticMultiPhase_module
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
   use Hydrostatic_Common_module
 
@@ -7,7 +9,6 @@ module HydrostaticMultiPhase_module
 
   private
 
-#include "petsc/finclude/petscsys.h"
 
 #if 0
   !LIQ = water to be consistent with the remainder fo the code

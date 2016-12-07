@@ -1,5 +1,7 @@
 module PM_General_class
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use PM_Base_class
   use PM_Subsurface_Flow_class
   
@@ -8,14 +10,6 @@ module PM_General_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_subsurface_flow_type) :: pm_general_type
     PetscInt, pointer :: max_change_ivar(:)

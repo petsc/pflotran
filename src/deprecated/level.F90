@@ -1,5 +1,7 @@
 module Level_module
 
+#include "finclude/petscsys.h"
+  use petscsys
   use Patch_module
  
   use PFLOTRAN_Constants_module
@@ -7,8 +9,6 @@ module Level_module
   implicit none
 
   private
-
-#include "finclude/petscsys.h"
 
   type, public :: level_type 
     

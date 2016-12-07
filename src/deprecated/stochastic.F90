@@ -1,5 +1,8 @@
 module Stochastic_module
 
+
+#include "finclude/petscsys.h"
+  use petscsys
   use Stochastic_Aux_module
 
   use PFLOTRAN_Constants_module
@@ -8,7 +11,7 @@ module Stochastic_module
   
   private
   
-#include "finclude/petscsys.h"
+
   
   public :: StochasticInit, &
             StochasticRun
@@ -179,7 +182,8 @@ subroutine StochasticRun(stochastic,option)
   ! Author: Glenn Hammond
   ! Date: 02/04/09
   ! 
-
+#include "finclude/petsclog.h"
+  use petscsys
   use Simulation_module
   use Realization_class
   use Timestepper_module
@@ -191,7 +195,6 @@ subroutine StochasticRun(stochastic,option)
 
   implicit none
 
-#include "finclude/petsclog.h"
   
   type(stochastic_type), pointer :: stochastic
   type(option_type), pointer :: option

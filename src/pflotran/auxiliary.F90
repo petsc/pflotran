@@ -1,5 +1,7 @@
 module Auxiliary_module
   
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Global_Aux_module
   use TH_Aux_module
   use Richards_Aux_module
@@ -22,8 +24,6 @@ module Auxiliary_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   type, public :: auxiliary_type 
     type(global_type), pointer :: Global

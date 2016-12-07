@@ -94,7 +94,8 @@ function CyberCreate()
   ! Author: Glenn Hammond
   ! Date: 10/01/15
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   class(reaction_sandbox_cyber_type), pointer :: CyberCreate
@@ -164,7 +165,8 @@ subroutine CyberRead(this,input,option)
   ! Author: Glenn Hammond
   ! Date: 10/01/15
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module

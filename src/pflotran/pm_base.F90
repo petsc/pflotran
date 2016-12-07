@@ -1,5 +1,7 @@
 module PM_Base_class
 
+#include "petsc/finclude/petscts.h"
+  use petscts
   use Option_module
   use Output_Aux_module
   use Realization_Base_class
@@ -9,15 +11,6 @@ module PM_Base_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscts.h"
 
   type, public :: pm_base_type
     character(len=MAXWORDLENGTH) :: name
@@ -83,8 +76,8 @@ subroutine PMBaseInit(this)
   nullify(this%option)
   nullify(this%output_option)
   nullify(this%realization_base)
-  this%solution_vec = 0
-  this%residual_vec = 0
+  this%solution_vec = PETSC_NULL_VEC
+  this%residual_vec = PETSC_NULL_VEC
   this%print_ekg = PETSC_FALSE
   nullify(this%next)
   

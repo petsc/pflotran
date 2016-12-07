@@ -30,6 +30,8 @@ subroutine DatabaseRead(reaction,option)
   ! Date: 09/01/08
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use Input_Aux_module
   use String_module
@@ -777,6 +779,8 @@ subroutine BasisInit(reaction,option)
   ! Date: 09/01/08
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Utility_module
@@ -3981,6 +3985,8 @@ subroutine ReactionDatabaseSetupGases(reaction,num_logKs,option,h2o_id, &
   ! Author: Glenn Hammond
   ! Date: 08/10/16
   ! 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use Reaction_Gas_Aux_module
   use Utility_module

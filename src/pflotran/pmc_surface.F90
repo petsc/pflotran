@@ -87,6 +87,8 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   ! Date: 06/27/13
   ! 
 
+#include "petsc/finclude/petscviewer.h"
+  use petscsys
   use Timestepper_Base_class
   use Output_Aux_module
   use Output_module, only : Output
@@ -100,7 +102,6 @@ recursive subroutine PMCSurfaceRunToTime(this,sync_time,stop_flag)
   use Checkpoint_module
   
   implicit none
-#include "petsc/finclude/petscviewer.h"
   
   class(pmc_surface_type), target :: this
   PetscReal :: sync_time
@@ -285,15 +286,14 @@ subroutine PMCSurfaceGetAuxData(this)
   ! Date: 08/21/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Surface_Flow_module
   use Surface_TH_module
   use Surface_TH_module
   use Option_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pmc_surface_type) :: this
 
@@ -358,6 +358,8 @@ subroutine PMCSurfaceSetAuxData(this)
   ! Date: 08/21/13
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Connection_module
   use Coupler_module
   use Grid_module
@@ -371,9 +373,6 @@ subroutine PMCSurfaceSetAuxData(this)
   use String_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pmc_surface_type) :: this
 
@@ -519,7 +518,8 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
   ! Author: Gautam Bisht, LBNL
   ! Date: 09/23/13
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Surface_Flow_module
   use Surface_TH_Aux_module
   use Surface_TH_module
@@ -527,9 +527,6 @@ subroutine PMCSurfaceGetAuxDataAfterRestart(this)
   use EOS_Water_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pmc_surface_type) :: this
 

@@ -2,6 +2,8 @@ module TOilIms_module
 ! Brief description for the module
 ! Pimary variables for ToilIms: oil_pressure, oil_saturation, temperature
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   !use TOilIms_Aux_module
   use PM_TOilIms_Aux_module
   use AuxVars_TOilIms_module 
@@ -13,15 +15,6 @@ module TOilIms_module
   implicit none
   
   private 
-
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petsclog.h"
 
 #define TOIL_CONVECTION
 #define TOIL_CONDUCTION
@@ -2384,7 +2377,7 @@ subroutine TOilImsResidual(snes,xx,r,realization,ierr)
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
-  Mat, parameter :: null_mat = 0
+  Mat, parameter :: null_mat = PETSC_NULL_MAT
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
@@ -2818,7 +2811,7 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
   PetscInt :: irow
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
-  Vec, parameter :: null_vec = 0
+  Vec, parameter :: null_vec = PETSC_NULL_VEC
   
   PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
                Jdn(realization%option%nflowdof,realization%option%nflowdof)
@@ -3135,7 +3128,7 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
     qsrc = 1.d0 ! solely a temporary variable in this conditional
     call MatZeroRowsLocal(A,patch%aux%TOil_ims%n_inactive_rows, &
                           patch%aux%TOil_ims%inactive_rows_local_ghosted, &
-                          qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          qsrc,PETSC_NULL_VEC,PETSC_NULL_VEC, &
                           ierr);CHKERRQ(ierr)
   endif
 
@@ -3148,8 +3141,8 @@ subroutine TOilImsJacobian(snes,xx,A,B,realization,ierr)
       zeros(local_id) = (ghosted_id-1)*option%nflowdof+ &
                         TOIL_IMS_ENERGY_EQUATION_INDEX - 1 ! zero-based
     enddo
-    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
+    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_VEC, &
+                          PETSC_NULL_VEC,ierr);CHKERRQ(ierr)
   endif
 
   if (realization%debug%matview_Jacobian) then

@@ -27,7 +27,7 @@ contains
     if (.not. allocated(pf_saturation_0)) &
       allocate(pf_saturation_0(pflotran_vec_size))
     ! if energy is being modeled, pflotran_temperature_vec_mpi will be non-zero
-    if (pflotran_temperature_vec_mpi /= 0 .and. &
+    if (pflotran_temperature_vec_mpi /= PETSC_NULL_VEC .and. &
         .not. allocated(pf_temperature)) &
       allocate(pf_temperature(pflotran_vec_size))
     if (.not. allocated(sigma)) allocate(sigma(nelem))
@@ -150,9 +150,9 @@ contains
 
   !____________________________________________________________________
   subroutine get_pf_porosity
-    implicit none
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+    use petscvec
+    implicit none
     integer ::  status(MPI_STATUS_SIZE)
     PetscReal, pointer :: vec_ptr(:)
 
@@ -176,9 +176,10 @@ contains
 
   !____________________________________________________________________
   subroutine get_pf_sol
-    implicit none
 #include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
+    use petscvec
+    implicit none
+
     integer ::  status(MPI_STATUS_SIZE)
     PetscReal, pointer :: vec_ptr(:)
 
@@ -209,7 +210,7 @@ contains
                             perr);CHKERRQ(perr)
 
     ! temperature  (only modeled when energy is simulated)
-    if (pflotran_temperature_vec_mpi /= 0) then
+    if (pflotran_temperature_vec_mpi /= PETSC_NULL_VEC) then
       call VecScatterBegin(pflotran_scatter,pflotran_temperature_vec_mpi, &
                            pflotran_temperature_vec_seq, &
                            INSERT_VALUES,SCATTER_FORWARD,perr);CHKERRQ(perr)
@@ -239,7 +240,7 @@ contains
     sigma(map_inds(:,1)) = 0
     
     !set the temperature correction flag
-    if(pflotran_temperature_vec_mpi .ne. 0) tcorr_flag = .true.
+    if(pflotran_temperature_vec_mpi .ne. PETSC_NULL_VEC) tcorr_flag = .true.
 
     do i=1,nmap 
        ei=map_inds(i,1)
@@ -474,9 +475,10 @@ contains
 
   !__________________________________________________________________
   subroutine build_ksp
-    implicit none
 #include "petsc/finclude/petscksp.h"
-#include "petsc/finclude/petscksp.h90"
+    use petscksp
+    implicit none
+
     real*8 :: rtol = 1e-6
     real*8 :: atol = 1e-35
     real*8 :: dtol = 500

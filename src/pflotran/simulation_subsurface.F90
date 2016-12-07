@@ -1,5 +1,7 @@
 module Simulation_Subsurface_class
   
+#include "petsc/finclude/petscsys.h"
+  use petscsys  
   use Simulation_Base_class
   use Regression_module
   use Option_module
@@ -12,8 +14,6 @@ module Simulation_Subsurface_class
 
   implicit none
 
-#include "petsc/finclude/petscsys.h"
-  
   private
 
   type, public, extends(simulation_base_type) :: simulation_subsurface_type

@@ -67,7 +67,8 @@ function WaypointCreate1()
   ! Author: Glenn Hammond
   ! Date: 11/07/07
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   type(waypoint_type), pointer :: WaypointCreate1
@@ -501,7 +502,8 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
   ! Author: Glenn Hammond
   ! Date: 10/28/03
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
 
   type(waypoint_type), pointer :: old_waypoint, new_waypoint
@@ -739,7 +741,8 @@ function WaypointForceMatchToTime(waypoint)
   ! Author: Glenn Hammond
   ! Date: 03/19/13
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   type(waypoint_type) :: waypoint

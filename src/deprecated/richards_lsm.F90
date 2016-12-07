@@ -1,5 +1,6 @@
 module Richards_LSM_module
-
+#include "finclude/petscmat.h"
+  use petscmat
   use Richards_Aux_module
   use Richards_Common_module
   use Global_Aux_module
@@ -9,16 +10,6 @@ module Richards_LSM_module
   implicit none
   
   private 
-
-#include "finclude/petscsys.h"
-  
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petsclog.h"
 
   ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.d-8

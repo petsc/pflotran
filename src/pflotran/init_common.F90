@@ -1,20 +1,11 @@
 module Init_Common_module
-
+#include "petsc/finclude/petscts.h"
+  use petscts
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscpc.h"
-#include "petsc/finclude/petscts.h"
 
   public :: &
 !            Init, &

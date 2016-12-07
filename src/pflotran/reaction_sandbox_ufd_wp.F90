@@ -69,7 +69,8 @@ subroutine WastePackageRead(this,input,option)
   ! Author: Glenn Hammond
   ! Date: 02/27/14
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module

@@ -1,5 +1,7 @@
 module EOS_Oil_module
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
   use EOSDatabase_module
 
@@ -7,8 +9,7 @@ module EOS_Oil_module
 
   private
   
-#include "petsc/finclude/petscsys.h"
-
+      
   ! module variables
   PetscReal :: fmw_oil           !kg/Kmol
   PetscReal :: constant_density  !kg/m3

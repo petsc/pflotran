@@ -124,6 +124,8 @@ function THAuxCreate(option)
   ! Author: ???
   ! Date: 02/14/08
   ! 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   use Option_module
 
@@ -177,6 +179,8 @@ subroutine THAuxVarInit(auxvar,option)
   ! Author: ???
   ! Date: 02/14/08
   ! 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   use Option_module
   use PFLOTRAN_Constants_module, only : UNINITIALIZED_DOUBLE
@@ -533,6 +537,8 @@ subroutine THAuxVarComputeFreezing(x, auxvar, global_auxvar, &
   ! 
 
 !sk: Not sure if we need por, perm
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   use Option_module
   use Global_Aux_module

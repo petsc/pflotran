@@ -7,7 +7,6 @@ module PFLOTRAN_Constants_module
   private
 
 #include "petsc/finclude/petscsys.h"
-
   ! MUST INCREMENT THIS NUMBER EVERYTIME A CHECKPOINT FILE IS MODIFIED TO PREVENT
   ! COMPATIBILITY ISSUES - geh.
   PetscInt, parameter, public :: CHECKPOINT_REVISION_NUMBER = 1

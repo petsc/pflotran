@@ -1,5 +1,7 @@
 module PMC_Geomechanics_class
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PMC_Base_class
   use Realization_Subsurface_class
   use Geomechanics_Realization_class
@@ -7,7 +9,6 @@ module PMC_Geomechanics_class
 
   implicit none
 
-#include "petsc/finclude/petscsys.h"
 
   private
 
@@ -85,6 +86,8 @@ subroutine PMCGeomechanicsSetupSolvers(this)
   ! Author: Glenn Hammond
   ! Date: 03/18/13
   ! 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Convergence_module
   use Geomechanics_Discretization_module
   use Timestepper_Base_class
@@ -95,13 +98,6 @@ subroutine PMCGeomechanicsSetupSolvers(this)
   use Solver_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscpc.h"
 
   class(pmc_geomechanics_type) :: this
 
@@ -160,7 +156,7 @@ subroutine PMCGeomechanicsSetupSolvers(this)
   ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
   if (option%verbosity >= 1) then
     string = '-geomech_snes_view'
-    call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
+    call PetscOptionsInsertString(PETSC_NULL_OPTIONS, &
                                    string, ierr);CHKERRQ(ierr)
   endif
 
@@ -322,13 +318,12 @@ subroutine PMCGeomechanicsSetAuxData(this)
   ! Date: 01/01/14
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Grid_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pmc_geomechanics_type) :: this
 
@@ -411,14 +406,13 @@ subroutine PMCGeomechanicsGetAuxData(this)
   ! Date: 01/01/14
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Geomechanics_Discretization_module
   use Geomechanics_Force_module
 
   implicit none
-
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
 
   class(pmc_geomechanics_type) :: this
 

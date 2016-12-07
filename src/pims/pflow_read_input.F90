@@ -6,6 +6,8 @@ contains
   subroutine pflow_read_gridsize(inputfile, igeom, nx, ny, nz, npx, npy, npz, &
   nphase, ierr)
   
+#include "include/finclude/petscsys.h"
+  use petscsys
   use fileio_module
   
   implicit none
@@ -13,9 +15,6 @@ contains
   character(len=*), intent(in) :: inputfile
   integer, intent(out) :: igeom, nx, ny, nz, npx, npy, npz, nphase
   integer, intent(out) :: ierr
-
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscdef.h"
 
 #include "definitions.h"
   integer :: myrank, gridread_flag, commsize

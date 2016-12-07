@@ -1,4 +1,6 @@
 module Reaction_Sandbox_CLM_CN_class
+#include "finclude/petscsys.h"
+  use petscsys
 
   use Reaction_Sandbox_Base_class
   
@@ -11,8 +13,6 @@ module Reaction_Sandbox_CLM_CN_class
   
   private
   
-#include "finclude/petscsys.h"
-
   type, public, &
     extends(reaction_sandbox_base_type) :: reaction_sandbox_clm_cn_type
     PetscInt :: nlitter

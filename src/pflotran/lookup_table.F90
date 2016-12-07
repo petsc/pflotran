@@ -1,13 +1,14 @@
 module Lookup_Table_module
   
+#include "petsc/finclude/petscsys.h"
+  use petscsys
+
   use PFLOTRAN_Constants_module
 
   implicit none
   
   private
   
-#include "petsc/finclude/petscsys.h"
-
   type, abstract, public :: lookup_table_base_type
     PetscInt :: dim
     PetscInt :: dims(3)

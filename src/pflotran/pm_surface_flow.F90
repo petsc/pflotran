@@ -1,5 +1,6 @@
 module PM_Surface_Flow_class
-
+#include "petsc/finclude/petscts.h"
+  use petscts
   use PM_Base_class
   use PM_Surface_class
   use PFLOTRAN_Constants_module
@@ -7,15 +8,6 @@ module PM_Surface_Flow_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscts.h"
 
   type, public, extends(pm_surface_type) :: pm_surface_flow_type
   contains
@@ -248,16 +240,14 @@ subroutine PMSurfaceFlowPostSolve(this)
   ! 
   ! Author: Gautam Bisht, LBNL
   ! Date: 04/11/13
-  ! 
-
+  !
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Discretization_module
   use Surface_Field_module
   use Surface_Flow_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(pm_surface_flow_type) :: this
 

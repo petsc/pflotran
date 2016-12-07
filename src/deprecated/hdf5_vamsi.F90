@@ -1,12 +1,12 @@
 module HDF5_Vamsi_module
 
+#include "finclude/petscsys.h"
+  use petscsys
   use Logging_module
 
   use PFLOTRAN_Constants_module
 
   implicit none
-
-#include "finclude/petscsys.h"
 
   private
   
@@ -843,7 +843,8 @@ subroutine HDF5ReadArrayVamsi(discretization,grid,option,file_id,dataset_name, &
   ! Author: Vamsi Sripathi
   ! Date: ??/??/09
   ! 
-                         
+#include "finclude/petscvec.h"
+ use petscvec
   use hdf5
   
   use Option_module
@@ -851,9 +852,6 @@ subroutine HDF5ReadArrayVamsi(discretization,grid,option,file_id,dataset_name, &
   use Discretization_module
   
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
 
 ! Vamsi's HDF5 Mechanism 
   type(discretization_type) :: discretization
@@ -1047,7 +1045,8 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
   ! Author: Vamsi Sripathi
   ! Date: ??/??/09
   ! 
-
+#include "finclude/petscvec.h"
+  use petscvec
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
@@ -1059,9 +1058,6 @@ subroutine HDF5ReadRegionFromFileVamsi(realization,region,filename)
   use Patch_module
   
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
 
   type(realization_type) :: realization
   type(region_type) :: region
@@ -1261,6 +1257,8 @@ subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
   ! Date: ??/??/09
   ! 
 
+#include "finclude/petscvec.h"
+  use petscvec
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
@@ -1273,9 +1271,6 @@ subroutine HDF5ReadCellIndxIntArrayVamsi(realization,global_vec,filename, &
   use Patch_module
   
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
 
   type(realization_type) :: realization
   Vec :: global_vec
@@ -1418,6 +1413,8 @@ subroutine HDF5ReadCellIndxRealArrayVamsi(realization,global_vec,filename, &
   ! Date: 01/16/09, 02/18/09
   ! 
 
+#include "finclude/petscvec.h"
+  use petscvec
 #if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
@@ -1430,9 +1427,6 @@ subroutine HDF5ReadCellIndxRealArrayVamsi(realization,global_vec,filename, &
   use Patch_module
   
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
 
   type(realization_type) :: realization
   Vec :: global_vec

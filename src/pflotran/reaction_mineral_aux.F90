@@ -158,7 +158,8 @@ function MineralCreate()
   ! Author: Glenn Hammond
   ! Date: 08/16/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   type(mineral_type), pointer :: MineralCreate
@@ -231,7 +232,8 @@ function MineralRxnCreate()
   ! Author: Glenn Hammond
   ! Date: 05/02/08
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   type(mineral_rxn_type), pointer :: MineralRxnCreate
@@ -355,7 +357,8 @@ function MineralConstraintCreate(mineral,option)
   ! Author: Glenn Hammond
   ! Date: 10/14/08
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   
   implicit none
@@ -457,6 +460,8 @@ function GetMineralIDFromName1(name,mineral,option)
   ! Author: Glenn Hammond
   ! Date: 09/04/08
   ! 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   
@@ -537,6 +542,8 @@ function GetKineticMineralIDFromName(name,mineral,option)
   ! Author: Glenn Hammond
   ! Date: 03/11/13
   ! 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   

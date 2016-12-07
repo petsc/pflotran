@@ -1,5 +1,7 @@
 module Mphase_module
   
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Mphase_Aux_module
   use Global_Aux_module
   
@@ -8,29 +10,6 @@ module Mphase_module
   implicit none
   
   private 
-
-#include "petsc/finclude/petscsys.h"
-  
-!#include "include/petscf90.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
-  ! Otherwise some very strange things will happen and PETSc will give no
-  ! indication of what the problem is.
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscdm.h"
-#include "petsc/finclude/petscdm.h90"
-!#ifdef USE_PETSC216
-!#include "petsc/finclude/petscsles.h"
-!#endiff
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscsysdef.h"
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
-#include "petsc/finclude/petsclog.h"
-#include "petsc/finclude/petscerror.h"
 
 ! Cutoff parameters
   PetscReal, parameter :: formeps = 1.D-4
@@ -3782,7 +3761,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
 #ifdef ISOTHERMAL
   zero = 0.d0
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_VEC,PETSC_NULL_VEC, &
                         ierr);CHKERRQ(ierr)
   do i=1, n_zero_rows
     ii = mod(zero_rows_local(i),option%nflowdof)
@@ -3808,7 +3787,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,realization,ierr)
     f_up = 1.d0
     call MatZeroRowsLocal(A,mphase%n_zero_rows, &
                           mphase%zero_rows_local_ghosted,f_up, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_VEC,PETSC_NULL_VEC, &
                           ierr);CHKERRQ(ierr)
   endif
 

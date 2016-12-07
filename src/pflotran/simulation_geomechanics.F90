@@ -1,5 +1,7 @@
 module Simulation_Geomechanics_class
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Simulation_Subsurface_class
   use Geomechanics_Regression_module
@@ -16,10 +18,6 @@ module Simulation_Geomechanics_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
   
   type, public, extends(simulation_subsurface_type) :: &
     simulation_geomechanics_type

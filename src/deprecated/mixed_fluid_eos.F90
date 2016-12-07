@@ -8,12 +8,11 @@
    
 
 module mixture_module
-   
+#include "finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
  implicit none
-
-#include "finclude/petscsys.h"
 
  public
   

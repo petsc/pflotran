@@ -1,5 +1,6 @@
 module pflotran_model_module
-
+#include "finclude/petsclog.h"
+  use petscsys
   use Simulation_module
   use Realization_module
   use Timestepper_module
@@ -15,7 +16,6 @@ module pflotran_model_module
   implicit none
 
 #include "definitions.h"
-#include "finclude/petsclog.h"
 
   PetscLogDouble :: timex(4), timex_wall(4)
 

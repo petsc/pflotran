@@ -1,10 +1,10 @@
 program pflotran_interface_main
+#include "finclude/petscsys.h"
 
 use pflotran_model_module
 
 implicit none
 
-#include "finclude/petscsysdef.h"
   
   type(pflotran_model_type),pointer :: pflotran_m
 

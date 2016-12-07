@@ -14,7 +14,8 @@ module PFLOTRAN_Provenance_module
 ! file instead of pflotran_provenance.F90
 !
 
-#include "petsc/finclude/petscsysdef.h"
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   implicit none
 

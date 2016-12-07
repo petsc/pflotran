@@ -1,5 +1,7 @@
 module PM_Base_Pointer_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PM_Base_class
   
   use PFLOTRAN_Constants_module
@@ -7,8 +9,6 @@ module PM_Base_Pointer_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   ! Since the context (ctx) for procedures passed to PETSc must be declared 
   ! as a "type" instead of a "class", object is a workaround for passing the 
@@ -46,14 +46,12 @@ subroutine PMResidual(snes,xx,r,this,ierr)
   ! Date: 03/14/13
   ! 
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Option_module
   use Realization_Subsurface_class
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscsnes.h"
 
   SNES :: snes
   Vec :: xx
@@ -77,14 +75,12 @@ subroutine PMResidualPtr(snes,xx,r,this,ierr)
   ! Date: 03/14/13
   ! 
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Option_module
   use Realization_Subsurface_class
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscsnes.h"
 
   SNES :: snes
   Vec :: xx
@@ -108,14 +104,11 @@ subroutine PMJacobian(snes,xx,A,B,this,ierr)
   ! Date: 03/14/13
   ! 
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Option_module
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscsnes.h"
 
   SNES :: snes
   Vec :: xx
@@ -138,15 +131,11 @@ subroutine PMJacobianPtr(snes,xx,A,B,this,ierr)
   ! Author: Glenn Hammond
   ! Date: 03/14/13
   ! 
-
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Option_module
   
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscsnes.h"
 
   SNES :: snes
   Vec :: xx
@@ -170,11 +159,9 @@ subroutine PMRHSFunction(ts,time,xx,ff,this,ierr)
   ! Date: 04/12/13
   ! 
 
-  implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petscts.h"
+  use petscts
+  implicit none
 
   TS :: ts
   PetscReal :: time
@@ -199,11 +186,9 @@ subroutine PMRHSFunctionPtr(ts,time,xx,ff,this,ierr)
   ! Date: 04/12/13
   ! 
 
-  implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petscts.h"
+  use petscts
+  implicit none
 
   TS :: ts
   PetscReal :: time
@@ -229,12 +214,9 @@ subroutine PMCheckUpdatePre(line_search,X,dX,changed,this,ierr)
   ! Author: Glenn Hammond
   ! Date: 12/02/14
   ! 
-  
-  implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petscsnes.h"
+  use petscsnes
+  implicit none
 
   SNESLineSearch :: line_search
   Vec :: X
@@ -261,11 +243,9 @@ subroutine PMCheckUpdatePrePtr(line_search,X,dX,changed,this,ierr)
   ! Date: 12/02/14
   ! 
   
-  implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petscsnes.h"
+   use petscsnes
+   implicit none
 
   SNESLineSearch :: line_search
   Vec :: X
@@ -292,12 +272,9 @@ subroutine PMCheckUpdatePost(line_search,X0,dX,X1,dX_changed,X1_changed,this, &
   ! Author: Glenn Hammond
   ! Date: 12/02/14
   ! 
-  
-  implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petscsnes.h"
+  use petscsnes
+  implicit none
 
   SNESLineSearch :: line_search
   Vec :: X0
@@ -326,12 +303,9 @@ subroutine PMCheckUpdatePostPtr(line_search,X0,dX,X1,dX_changed,X1_changed, &
   ! Author: Glenn Hammond
   ! Date: 12/02/14
   ! 
-  
-  implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 #include "petsc/finclude/petscsnes.h"
+  use petscsnes
+  implicit none
 
   SNESLineSearch :: line_search
   Vec :: X0

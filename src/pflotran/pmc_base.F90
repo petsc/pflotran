@@ -1,6 +1,8 @@
 ! Process Model Coupler Base class
 module PMC_Base_class
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys  
   use PM_Base_class
   use Timestepper_Base_class
   use Option_module
@@ -14,10 +16,7 @@ module PMC_Base_class
 
   implicit none
 
-#include "petsc/finclude/petscsys.h"
-  
   private
-  
   ! process model coupler type
   type, public :: pmc_base_type
     character(len=MAXWORDLENGTH) :: name
@@ -74,9 +73,10 @@ module PMC_Base_class
 
   interface PetscBagGetData
     subroutine PetscBagGetData(bag,header,ierr)
+#include "petsc/finclude/petscsys.h"
+      use petscsys
       import :: pmc_base_header_type
       implicit none
-#include "petsc/finclude/petscbag.h"      
       PetscBag :: bag
       class(pmc_base_header_type), pointer :: header
       PetscErrorCode :: ierr
@@ -318,13 +318,12 @@ recursive subroutine PMCBaseRunToTime(this,sync_time,stop_flag)
   ! Author: Glenn Hammond
   ! Date: 03/18/13
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Timestepper_Base_class
   use Checkpoint_module
 
   implicit none
-  
-#include "petsc/finclude/petscsys.h"  
   
   class(pmc_base_type), target :: this
   character(len=MAXSTRINGLENGTH) :: filename_append
@@ -638,11 +637,11 @@ recursive subroutine PMCBaseCheckpoint(this,filename_append)
   ! Author: Glenn Hammond
   ! Date: 2/2/16
   ! 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
 
   class(pmc_base_type) :: this
   character(len=MAXSTRINGLENGTH) :: filename_append
@@ -677,13 +676,13 @@ recursive subroutine PMCBaseCheckpointBinary(this,viewer,append_name)
   ! Date: 07/26/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Logging_module
   use Checkpoint_module, only : CheckpointOpenFileForWriteBinary, &
                                 CheckPointWriteCompatibilityBinary
 
   implicit none
-  
-#include "petsc/finclude/petscviewer.h"
 
   class(pmc_base_type) :: this
   PetscViewer :: viewer
@@ -737,7 +736,7 @@ recursive subroutine PMCBaseCheckpointBinary(this,viewer,append_name)
   
   if (this%is_master) then
     call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
-    viewer = 0
+    viewer = PETSC_NULL_VIEWER
     call PetscTime(tend,ierr);CHKERRQ(ierr)
     write(this%option%io_buffer, &
           '("      Seconds to write to checkpoint file: ", f10.2)') &
@@ -759,12 +758,11 @@ subroutine PMCBaseRegisterHeader(this,bag,header)
   ! Date: 12/02/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscbag.h"
 
   class(pmc_base_type) :: this
   class(pmc_base_header_type) :: header
@@ -790,12 +788,11 @@ subroutine PMCBaseSetHeader(this,bag,header)
   ! Date: 12/02/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscbag.h"
 
   class(pmc_base_type) :: this
   class(pmc_base_header_type) :: header
@@ -820,13 +817,13 @@ recursive subroutine PMCBaseRestartBinary(this,viewer)
   ! Author: Glenn Hammond
   ! Date: 07/26/13
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Logging_module
   use Checkpoint_module, only : CheckPointReadCompatibilityBinary
 
   implicit none
   
-#include "petsc/finclude/petscviewer.h"
 
   class(pmc_base_type) :: this
   PetscViewer :: viewer
@@ -925,12 +922,11 @@ subroutine PMCBaseGetHeader(this,header)
   ! Date: 12/02/13
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscbag.h"
 
   class(pmc_base_type) :: this
   class(pmc_base_header_type) :: header

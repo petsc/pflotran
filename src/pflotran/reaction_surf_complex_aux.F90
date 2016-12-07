@@ -227,6 +227,8 @@ function SurfaceComplexationRxnCreate()
   ! Date: 10/21/08
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
     
   type(surface_complexation_rxn_type), pointer :: SurfaceComplexationRxnCreate
@@ -264,7 +266,8 @@ function SurfaceComplexCreate()
   ! Author: Peter Lichtner
   ! Date: 10/21/08
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
     
   type(surface_complex_type), pointer :: SurfaceComplexCreate

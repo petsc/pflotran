@@ -1,5 +1,7 @@
 module PM_TOilIms_Aux_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   use PM_Base_Aux_module
@@ -8,8 +10,6 @@ module PM_TOilIms_Aux_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   !BEGINNING-Paramters to move into toil_ims_paramters 
   PetscReal, public :: toil_ims_window_epsilon = 1.d-4

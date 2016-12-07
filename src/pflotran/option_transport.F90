@@ -2,14 +2,13 @@ module Option_Transport_module
 
 ! IMPORTANT NOTE: This module can have no dependencies on other modules!!!
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-
 
   type, public :: transport_option_type 
   

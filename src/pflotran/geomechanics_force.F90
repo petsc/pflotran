@@ -1,22 +1,13 @@
 module Geomechanics_Force_module
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Geomechanics_Global_Aux_module
   use PFLOTRAN_Constants_module
   
   implicit none
   
   private
-  
-#include "petsc/finclude/petscsys.h"
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-!#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petsclog.h"
-#include "petsc/finclude/petscts.h"
 
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.d-12
@@ -430,6 +421,8 @@ subroutine GeomechForceResidual(snes,xx,r,geomech_realization,ierr)
   ! Date: 06/21/13
   ! 
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Geomechanics_Realization_class
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
@@ -487,6 +480,8 @@ subroutine GeomechForceResidualPatch(snes,xx,r,geomech_realization,ierr)
   ! Date: 06/24/13
   ! 
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Geomechanics_Realization_class
   use Geomechanics_Field_module
   use Geomechanics_Discretization_module
@@ -1301,7 +1296,8 @@ subroutine GeomechForceJacobian(snes,xx,A,B,geomech_realization,ierr)
   ! Author: Satish Karra
   ! Date: 06/21/13
   ! 
-
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Geomechanics_Realization_class
   use Geomechanics_Patch_module
   use Geomechanics_Grid_module
@@ -1369,6 +1365,8 @@ subroutine GeomechForceJacobianPatch(snes,xx,A,B,geomech_realization,ierr)
   ! Date: 06/21/13
   ! Modified: 07/12/16
        
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Geomechanics_Realization_class
       
   implicit none
@@ -1597,7 +1595,7 @@ subroutine GeomechForceJacobianLinearPart(A,geomech_realization)
   enddo
     
   call MatZeroRowsLocal(A,count,rows,1.d0, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_VEC,PETSC_NULL_VEC, &
                         ierr);CHKERRQ(ierr)
   call MatSetOption(A,MAT_NEW_NONZERO_LOCATIONS,PETSC_FALSE, &
                     ierr);CHKERRQ(ierr)
@@ -1806,6 +1804,8 @@ subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
   ! Date: 09/10/13
   ! 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Grid_module
   use Geomechanics_Discretization_module
   use Geomechanics_Realization_class
@@ -1817,11 +1817,6 @@ subroutine GeomechCreateGeomechSubsurfVec(realization,geomech_realization)
   use Option_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   class(realization_subsurface_type) :: realization
   class(realization_geomech_type) :: geomech_realization
@@ -1856,6 +1851,8 @@ subroutine GeomechCreateSubsurfStressStrainVec(realization,geomech_realization)
   ! Date: 10/10/13
   ! 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Grid_module
   use Geomechanics_Discretization_module
   use Geomechanics_Realization_class
@@ -1867,11 +1864,6 @@ subroutine GeomechCreateSubsurfStressStrainVec(realization,geomech_realization)
   use Option_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   class(realization_subsurface_type) :: realization
   class(realization_geomech_type) :: geomech_realization

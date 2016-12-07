@@ -1,13 +1,14 @@
 module EOSDatabase_module
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
+
   use PFLOTRAN_Constants_module
   use Lookup_Table_module
 
   implicit none
   
   private
- 
-#include "petsc/finclude/petscsys.h"
  
   PetscInt, parameter, public :: EOS_DENSITY = 1
   PetscInt, parameter, public :: EOS_ENTHALPY = 2

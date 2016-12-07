@@ -658,9 +658,10 @@ contains
   
   !__________________________________________________________________
   subroutine setup_frun
-    implicit none
-
 #include "petsc/finclude/petscsys.h"
+   use petscsys
+   implicit none
+
     
     integer :: status(MPI_STATUS_SIZE)
     integer :: neven, nextra, ce, i,itmp

@@ -1,5 +1,8 @@
 module Dataset_Gridded_HDF5_class
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
+
   use Dataset_Common_HDF5_class
   
   use PFLOTRAN_Constants_module
@@ -7,8 +10,6 @@ module Dataset_Gridded_HDF5_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   type, public, extends(dataset_common_hdf5_type) :: dataset_gridded_hdf5_type
     PetscBool :: is_cell_centered

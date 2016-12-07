@@ -1,11 +1,11 @@
 module Test_EOS_Gas_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use pFUnit_mod
   use EOS_Gas_module
 
   implicit none
-
-#include "petsc/finclude/petscsys.h"
 
   public :: Test_EOS_Gas
 

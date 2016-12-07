@@ -1,5 +1,7 @@
 module Surface_Flow_module
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Global_Aux_module
   
   use PFLOTRAN_Constants_module
@@ -7,17 +9,6 @@ module Surface_Flow_module
   implicit none
   
   private
-  
-#include "petsc/finclude/petscsys.h"
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-!#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petsclog.h"
-#include "petsc/finclude/petscts.h"
 
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-12
@@ -255,7 +246,8 @@ subroutine SurfaceFlowRHSFunction(ts,t,xx,ff,surf_realization,ierr)
   ! Author: Gautam Bisht, LBNL
   ! Date: 03/07/13
   ! 
-
+#include <petsc/finclude/petscts.h>
+  use petscts
   use Realization_Surface_class
   use Surface_Field_module
   use Patch_module
@@ -948,6 +940,8 @@ subroutine SurfaceFlowUpdateSurfState(surf_realization)
   ! Date: 07/30/13
   ! 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Connection_module
   use Coupler_module
   use Discretization_module
@@ -963,11 +957,6 @@ subroutine SurfaceFlowUpdateSurfState(surf_realization)
   use EOS_Water_module
 
   implicit none
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   class(realization_surface_type) :: surf_realization
 

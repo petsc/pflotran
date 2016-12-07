@@ -10,26 +10,9 @@ module pflow_output_module
   subroutine porperm_out(t, dt, tconv, kplt, nx, ny, nz, nmax, &
                          x, y, z, flowsteps, scat_1dof, da_1_dof, &
                          porosity, por_nat, perm, perm_nat, myrank)
-  
-  implicit none
-
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscdef.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscpc.h"
-!#include "include/finclude/petscsles.h"
-#include "include/finclude/petscksp.h"
 #include "include/finclude/petscsnes.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscviewer.h"
+  use petscsnes
+  implicit none
 
 #include "definitions.h"
   
@@ -196,23 +179,13 @@ print *, 'Scatter:: por'
 
  subroutine pflow_var_output(grid,timestep,kplt,iplot)
   
+#include "include/finclude/petscda.h"
+  use petscda
   use pflow_gridtype_module
   implicit none
 
    type(time_stepping_context), intent(inout) :: timestep
-  
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscdef.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscviewer.h"
-!#include "include/mpiuni/mpif.h"
+
 #include "definitions.h"
 
   type(pflowGrid), intent(inout) :: grid

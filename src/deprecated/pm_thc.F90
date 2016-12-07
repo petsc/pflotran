@@ -1,5 +1,6 @@
 module PM_THC_class
-
+#include "finclude/petscmat.h"
+  use petscmat
   use PM_Base_class
 !geh: using TH_module here fails with gfortran (internal compiler error)
 !  use TH_module
@@ -12,14 +13,6 @@ module PM_THC_class
   implicit none
 
   private
-
-#include "finclude/petscsys.h"
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
 
   type, public, extends(pm_base_type) :: pm_thc_type
     class(realization_type), pointer :: realization

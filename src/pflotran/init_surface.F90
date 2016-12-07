@@ -1,10 +1,11 @@
 module Init_Surface_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
 
-#include "petsc/finclude/petscsys.h"
 
   public :: SurfaceInitReadRequiredCards, &
             InitSurfaceSetupRealization, &
@@ -285,6 +286,8 @@ subroutine InitSurfaceSetupSolvers(surf_realization,solver,final_time)
   ! Author: Glenn Hammond
   ! Date: 12/04/14
   ! 
+#include "petsc/finclude/petscts.h"
+  use petscts
   use Realization_Surface_class
   use Option_module
   
@@ -295,14 +298,6 @@ subroutine InitSurfaceSetupSolvers(surf_realization,solver,final_time)
   use Surface_TH_module
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscpc.h"
-#include "petsc/finclude/petscts.h"
   
   class(realization_surface_type) :: surf_realization
   type(solver_type), pointer :: solver
@@ -339,6 +334,8 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
   ! Date: 02/13/12
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Surface_class
   use Discretization_module
   use Strata_module
@@ -354,9 +351,6 @@ subroutine SurfaceInitMatPropToRegions(surf_realization)
   use HDF5_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_surface_type) :: surf_realization
   

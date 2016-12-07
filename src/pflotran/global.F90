@@ -1,5 +1,7 @@
 module Global_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys  
   use Global_Aux_module
   
   use PFLOTRAN_Constants_module
@@ -8,8 +10,6 @@ module Global_module
   
   private 
 
-#include "petsc/finclude/petscsys.h"
-  
   public GlobalSetup, &
          GlobalSetAuxVarScalar, &
          GlobalSetAuxVarVecLoc, &
@@ -197,6 +197,8 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
   ! Date: 11/19/08
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Subsurface_class
   use Patch_module
   use Grid_module
@@ -209,9 +211,6 @@ subroutine GlobalSetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
                                OIL_DENSITY, OIL_DENSITY_MOL
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_subsurface_type) :: realization
   Vec :: vec_loc
@@ -483,6 +482,8 @@ subroutine GlobalGetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
   ! Date: 11/19/08
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Realization_Subsurface_class
   use Patch_module
   use Grid_module
@@ -490,9 +491,6 @@ subroutine GlobalGetAuxVarVecLoc(realization,vec_loc,ivar,isubvar)
   use Variables_module, only : STATE
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   class(realization_subsurface_type) :: realization
   Vec :: vec_loc

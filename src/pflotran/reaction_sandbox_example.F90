@@ -72,7 +72,8 @@ subroutine ExampleRead(this,input,option)
   ! Author: John Doe
   ! Date: 00/00/00
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module

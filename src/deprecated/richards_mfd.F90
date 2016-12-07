@@ -1,5 +1,6 @@
 module Richards_MFD_module
-
+#include "finclude/petscmat.h"
+  use petscmat
   use Richards_Aux_module
   use Richards_Common_module
   use Global_Aux_module
@@ -12,17 +13,6 @@ module Richards_MFD_module
   implicit none
   
   private 
-
-#include "finclude/petscsys.h"
-  
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscsnes.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petsclog.h"
-
 
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
@@ -38,7 +28,8 @@ contains
 ! ************************************************************************** !
 
 subroutine RichardsCheckMassBalancePatch(realization)
-
+#include "finclude/petscvec.h"
+  use petscvec
   use Connection_module
   use Realization_class
   use Patch_module
@@ -51,10 +42,6 @@ subroutine RichardsCheckMassBalancePatch(realization)
   use Material_Aux_class
   
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"     
-
   PetscInt :: local_id, ghosted_cell_id
 
   PetscReal, pointer :: accum_p(:), xx_faces_loc_p(:)
@@ -559,6 +546,8 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   ! Date: 05/26/10
   ! 
 
+#include "finclude/petscsnes.h"
+  use petscssnes
   use Logging_module
   use Realization_class
   use Field_module
@@ -571,8 +560,6 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
                                PERMEABILITY_XY, PERMEABILITY_XZ, PERMEABILITY_YZ
 
   implicit none
-
-#include "finclude/petscsysdef.h"
 
   SNES :: snes
   Vec :: xx
@@ -698,7 +685,9 @@ end subroutine RichardsResidualMFD
 
 subroutine RichardsResidualMFDLP(snes,xx,r,realization,ierr)
 
-use Logging_module
+#include "finclude/petscsnes.h"
+  use petscsnes
+  use Logging_module
   use Realization_class
   use Field_module
   use Patch_module
@@ -709,8 +698,6 @@ use Logging_module
   use Mass_Transfer_module, only : mass_transfer_type  
 
   implicit none
-
-#include "finclude/petscsysdef.h"
 
   SNES :: snes
   Vec :: xx
@@ -826,7 +813,8 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   ! Author: Glenn Hammond
   ! Date: 12/10/07
   ! 
-
+#include "finclude/petscvec.h"
+  use petscvec
   
   use Logging_module
   use Connection_module
@@ -843,10 +831,6 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   use Material_Aux_class
   
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"     
-     
 
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
@@ -1006,7 +990,8 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   ! Date: 12/10/07
   ! 
 
-  
+#include "finclude/petscvec.h"
+  use petscvec
   use Logging_module
   use Connection_module
   use Realization_class
@@ -1021,9 +1006,6 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   use Material_Aux_class
   
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
 
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
@@ -1245,7 +1227,8 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   ! Author: Glenn Hammond
   ! Date: 12/10/07
   ! 
-
+#include "finclude/petscvec.h"
+  use petscvec
   
   use Logging_module
   use Connection_module
@@ -1262,10 +1245,6 @@ subroutine RichardsResidualPatchMFDLP1(snes,xx,r,realization,ierr)
   use Material_Aux_class
   
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"     
-     
 
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
@@ -1473,7 +1452,8 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   ! Author: Glenn Hammond
   ! Date: 12/10/07
   ! 
-
+#include "finclude/petscvec.h"
+  use petscvec
   
   use Logging_module
   use Connection_module
@@ -1489,9 +1469,6 @@ subroutine RichardsResidualPatchMFDLP2(snes,xx,r,realization,ierr)
   use Material_Aux_class
   
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
 
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx

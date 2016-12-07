@@ -1,5 +1,7 @@
 module Stochastic_Aux_module
 
+#include "finclude/petscsys.h"
+  use petscsys
   use Simulation_module
 
   use PFLOTRAN_Constants_module
@@ -8,8 +10,6 @@ module Stochastic_Aux_module
   
   private
   
-#include "finclude/petscsys.h"
-
   type, public :: stochastic_type
     PetscInt :: num_groups
     PetscInt :: num_realizations

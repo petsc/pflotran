@@ -77,6 +77,8 @@ function GasCreate()
   ! Date: 08/01/16
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   type(gas_type), pointer :: GasCreate
@@ -122,7 +124,8 @@ function GasSpeciesCreate()
   ! Author: Glenn Hammond
   ! Date: 05/02/08
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   type(gas_species_type), pointer :: GasSpeciesCreate

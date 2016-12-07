@@ -1,16 +1,7 @@
 module e4d_vars
-
-  implicit none
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petscviewer.h90"  
 #include "petsc/finclude/petscksp.h"
-#include "petsc/finclude/petscksp.h90"
-
+  use petscksp
+  implicit none
 
   logical :: tank_flag = .false.
 

@@ -74,6 +74,8 @@ function RichardsAuxCreate()
   ! Author: Glenn Hammond
   ! Date: 02/14/08
   ! 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   use Option_module
 
@@ -198,6 +200,8 @@ subroutine RichardsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
   ! Date: 02/22/08
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use Global_Aux_module
   

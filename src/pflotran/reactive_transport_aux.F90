@@ -152,6 +152,8 @@ function RTAuxCreate(option,naqcomp)
   ! Author: Glenn Hammond
   ! Date: 02/14/08
   ! 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   use Option_module
 

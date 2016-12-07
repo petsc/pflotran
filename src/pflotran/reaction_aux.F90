@@ -395,7 +395,8 @@ function ReactionCreate()
   ! Author: Glenn Hammond
   ! Date: 05/02/08
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   type(reaction_type), pointer :: ReactionCreate
@@ -623,7 +624,8 @@ function AqueousSpeciesCreate()
   ! Author: Glenn Hammond
   ! Date: 05/02/08
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   type(aq_species_type), pointer :: AqueousSpeciesCreate
@@ -654,7 +656,8 @@ function ColloidCreate()
   ! Author: Glenn Hammond
   ! Date: 02/24/10
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
   
   type(colloid_type), pointer :: ColloidCreate
@@ -740,7 +743,8 @@ function RadioactiveDecayRxnCreate()
   ! Author: Glenn Hammond
   ! Date: 01/07/14
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
     
   type(radioactive_decay_rxn_type), pointer :: RadioactiveDecayRxnCreate
@@ -769,7 +773,8 @@ function GeneralRxnCreate()
   ! Author: Glenn Hammond
   ! Date: 09/03/10
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   implicit none
     
   type(general_rxn_type), pointer :: GeneralRxnCreate
@@ -829,7 +834,8 @@ function AqueousSpeciesConstraintCreate(reaction,option)
   ! Author: Glenn Hammond
   ! Date: 10/14/08
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   
   implicit none
@@ -998,7 +1004,8 @@ function GetPrimarySpeciesIDFromName1(name,reaction,option)
   ! Author: Glenn Hammond
   ! Date: 10/30/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   

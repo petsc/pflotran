@@ -2,13 +2,13 @@ module String_module
 
 ! IMPORTANT NOTE: This module can have no dependencies on other modules!!!
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   PetscInt, parameter, public :: STRING_IS_INTEGER = 1
   PetscInt, parameter, public :: STRING_IS_DOUBLE = 2

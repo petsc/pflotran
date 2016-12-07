@@ -1,5 +1,7 @@
 module PMC_Auxiliary_class
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PMC_Base_class
   use PM_Auxiliary_class
   use Realization_Subsurface_class
@@ -8,10 +10,8 @@ module PMC_Auxiliary_class
 
   implicit none
 
-#include "petsc/finclude/petscsys.h"
   
   private
-
   type, public, extends(pmc_base_type) :: pmc_auxiliary_type
     class(pm_auxiliary_type), pointer :: pm_aux
   contains

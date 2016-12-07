@@ -1,5 +1,7 @@
 module Geomechanics_Region_module
  
+#include "petsc/finclude/petscsys.h"
+   use petscsys
   use Geometry_module
   use PFLOTRAN_Constants_module
   
@@ -7,8 +9,6 @@ module Geomechanics_Region_module
 
   private
 
-#include "petsc/finclude/petscsys.h"
- 
   type, public :: gm_region_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name

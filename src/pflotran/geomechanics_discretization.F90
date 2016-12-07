@@ -1,5 +1,7 @@
 module Geomechanics_Discretization_module
 
+#include "petsc/finclude/petscdmda.h"
+  use petscdmda
   use Geomechanics_Grid_module
   use Geomechanics_Grid_Aux_module
   use PFLOTRAN_Constants_module
@@ -7,17 +9,6 @@ module Geomechanics_Discretization_module
   implicit none
 
   private
- 
-#include "petsc/finclude/petscsys.h"
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscdm.h"
-#include "petsc/finclude/petscdm.h90"
-#include "petsc/finclude/petscdmda.h"
-#include "petsc/finclude/petscdmshell.h90"
 
   type, public :: gmdm_ptr_type
     DM :: dm  ! PETSc DM
@@ -86,9 +77,9 @@ function GeomechDiscretizationCreate()
   allocate(geomech_discretization%dm_1dof)
   allocate(geomech_discretization%dm_ngeodof)
   allocate(geomech_discretization%dm_n_stress_strain_dof)
-  geomech_discretization%dm_1dof%dm = 0
-  geomech_discretization%dm_ngeodof%dm = 0
-  geomech_discretization%dm_n_stress_strain_dof%dm = 0
+  geomech_discretization%dm_1dof%dm = PETSC_NULL_DM
+  geomech_discretization%dm_ngeodof%dm = PETSC_NULL_DM
+  geomech_discretization%dm_n_stress_strain_dof%dm = PETSC_NULL_DM
   nullify(geomech_discretization%dm_1dof%gmdm)
   nullify(geomech_discretization%dm_ngeodof%gmdm)
   nullify(geomech_discretization%dm_n_stress_strain_dof%gmdm)
@@ -750,11 +741,10 @@ subroutine GeomechDiscretAOApplicationToPetsc(geomech_discretization,int_array)
   ! Author: Satish Karra, LANL
   ! Date: 06/02/13
   ! 
-
-  implicit none
-  
 #include "petsc/finclude/petscao.h"  
-  
+  use petscvec
+  implicit none
+
   type(geomech_discretization_type) :: geomech_discretization
   PetscInt :: int_array(:)
   PetscErrorCode :: ierr

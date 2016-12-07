@@ -1,5 +1,7 @@
 module PM_Auxiliary_class
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PM_Base_class
   use Realization_Subsurface_class
   use Communicator_Base_module
@@ -9,8 +11,6 @@ module PM_Auxiliary_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   type, public, extends(pm_base_type) :: pm_auxiliary_type
     class(realization_subsurface_type), pointer :: realization

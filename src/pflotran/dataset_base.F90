@@ -1,5 +1,8 @@
 module Dataset_Base_class
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
+
   use Time_Storage_module
   
   use PFLOTRAN_Constants_module
@@ -7,8 +10,6 @@ module Dataset_Base_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   type, public :: dataset_base_type
     character(len=MAXWORDLENGTH) :: name

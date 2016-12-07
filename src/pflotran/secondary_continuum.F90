@@ -2,6 +2,8 @@
 
 module Secondary_Continuum_module
   
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use Secondary_Continuum_Aux_module
 
   use PFLOTRAN_Constants_module
@@ -9,16 +11,6 @@ module Secondary_Continuum_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-  
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petsclog.h"
 
   ! secondary continuum cell type
   PetscInt, parameter, public :: SLAB = 0

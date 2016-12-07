@@ -1,14 +1,14 @@
 module Gauss_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
+  
   use Grid_Unstructured_Cell_module
   use PFLOTRAN_Constants_module
 
   implicit none
 
-#include "petsc/finclude/petscsys.h"
-
   private
-  
   PetscInt, parameter, public :: LINE_TYPE          = 7
   
   type, public :: gauss_type

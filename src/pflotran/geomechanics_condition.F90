@@ -1,6 +1,8 @@
 module Geomechanics_Condition_module
  
 !  use Global_Aux_module
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Dataset_Base_class
   use Dataset_Ascii_class
   use Time_Storage_module
@@ -11,8 +13,6 @@ module Geomechanics_Condition_module
 
   private
   
-#include "petsc/finclude/petscsys.h"
-
 #if 0
 !geh: no longer needed
   PetscInt, parameter :: NULL = 0

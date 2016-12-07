@@ -1,5 +1,6 @@
 module MFD_module
-
+#include "finclude/petscmat.h"
+  use petscmat
 
   use Connection_module
   use Grid_module
@@ -9,17 +10,6 @@ module MFD_module
   implicit none
   
   private 
-
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscviewer.h"
-#include "finclude/petsclog.h"
-
 
   public :: MFDCreateJacobian, &
             MFDInitializeMassMatrices, MFDAuxGenerateStiffMatrix,&
@@ -38,22 +28,13 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
   ! Author: Daniil Svyatskiy
   ! Date: 05/14/10
   ! 
-
+#include "finclude/petscmat.h"
+ use petscmat
  use Option_module
  use Grid_module
  use MFD_Aux_module
 
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
 
   type(grid_type) :: grid
   type(mfd_type) :: mfd_aux
@@ -149,7 +130,8 @@ end subroutine MFDCreateJacobian
 ! ************************************************************************** !
 
 subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
-
+#include "finclude/petscmat.h"
+  use petscmat
   use Option_module
   use Grid_module
   use MFD_Aux_module
@@ -158,16 +140,6 @@ subroutine MFDCreateJacobianLP(grid, mfd_aux, mat_type, J, option)
   use Unstructured_Cell_module
 
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
 
   type(grid_type) :: grid
   type(mfd_type) :: mfd_aux
@@ -388,7 +360,8 @@ end subroutine MFDCreateJacobianLP
 
 subroutine MFDInitializeMassMatrices(grid, field, &
                                      mfd_aux, material_auxvars, option)
-
+#include "finclude/petscmat.h"
+ use petscmat
  use Option_module
  use Grid_module
  use MFD_Aux_module
@@ -396,16 +369,6 @@ subroutine MFDInitializeMassMatrices(grid, field, &
  use Field_module
 
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
 
   type(grid_type) :: grid
   type(field_type) :: field
@@ -1236,23 +1199,13 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  auxvar, volume, P
   ! Author: Daniil Svyatskiy
   ! Date: 05/25/10
   ! 
-
+#include "finclude/petscmat.h"
+ use petscmat
  use Grid_module
  use Option_module
  use Connection_module
 
   implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
-
 
   type(grid_type) :: grid
   type(mfd_auxvar_type), pointer :: auxvar

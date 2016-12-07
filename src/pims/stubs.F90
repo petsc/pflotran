@@ -15,11 +15,9 @@ end function samr_patch_at_bc
 
 
 subroutine create_samrai_vec(p_hierarchy, dof, use_ghost, vec)
-implicit none
-
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+use petscvec
+implicit none
 
 PetscFortranAddr :: p_hierarchy
 integer :: dof
@@ -63,13 +61,11 @@ subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
 end subroutine allocate_patch_info
 
 subroutine pims_vecgetarrayf90(grid, patch, vec, f90ptr, ierr)
+#include "include/finclude/petscvec.h"
+  use petscvec
   use pflow_gridtype_module
  
   implicit none
-
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
 
   type(pflowGrid), intent(inout) :: grid
   type(pflow_localpatch_info) :: patch

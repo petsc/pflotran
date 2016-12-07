@@ -1,5 +1,7 @@
 module Input_Aux_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
 
   use PFLOTRAN_Constants_module
@@ -8,7 +10,6 @@ module Input_Aux_module
 
   private
 
-#include "petsc/finclude/petscsys.h"
 
   type, public :: input_type 
     PetscInt :: fid

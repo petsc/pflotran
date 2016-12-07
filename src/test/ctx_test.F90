@@ -1,10 +1,9 @@
 module Base_module
+#include "finclude/petscsnes.h"
+  use petscsnes
   implicit none
   private
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
+
   type, public :: base_type
     PetscInt :: A  ! junk
     PetscReal :: I ! junk
@@ -22,13 +21,12 @@ end subroutine BasePrint
 end module Base_module
 
 module Extended_module
+#include "finclude/petscsnes.h"
+  use petscsnes
   use Base_module
   implicit none
   private
-#include "finclude/petscsys.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscsnes.h"
+
   type, public, extends(base_type) :: extended_type
     PetscInt :: B  ! junk
     PetscReal :: J ! junk
@@ -63,21 +61,13 @@ end module Function_module
 
 program test
 
+#include "finclude/petscsnes.h"
+  use petscsnes
   use Base_module
   use Extended_module
   use Function_module
 
   implicit none
-  
-#include "finclude/petscsys.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
-#include "finclude/petscsnes.h"
 
 #if 1
 interface

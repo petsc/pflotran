@@ -1,12 +1,13 @@
 module Init_Subsurface_Tran_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
 
-#include "petsc/finclude/petscsys.h"
 
   public :: InitSubsurfTranSetupRealization
   

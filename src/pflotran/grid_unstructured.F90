@@ -1,5 +1,7 @@
 module Grid_Unstructured_module
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Connection_module
   use Grid_Unstructured_Aux_module
   use Grid_Unstructured_Cell_module
@@ -9,12 +11,7 @@ module Grid_Unstructured_module
   implicit none
 
   private 
-  
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
+
 #if defined(SCORPIO)
   include "scorpiof.h"
 #endif
@@ -1264,20 +1261,12 @@ subroutine UGridDecompose(unstructured_grid,option)
   ! Date: 09/30/09
   ! 
   
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Option_module
   use Utility_module, only: reallocateIntArray, SearchOrderedArray
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscdm.h" 
-#include "petsc/finclude/petscdm.h90"
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
-#include "petsc/finclude/petscviewer.h"
   
   type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
@@ -3243,14 +3232,11 @@ subroutine UGridMapSideSet(unstructured_grid,face_vertices,n_ss_faces, &
   ! Date: 12/16/11
   ! 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   type(grid_unstructured_type) :: unstructured_grid
   PetscInt :: face_vertices(:,:)
@@ -3658,14 +3644,11 @@ subroutine UGridGetBoundaryFaces(unstructured_grid,option,boundary_faces)
   ! Date: 01/12/12
   ! 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   type(grid_unstructured_type) :: unstructured_grid
   PetscInt, pointer :: boundary_faces(:)
@@ -3729,14 +3712,11 @@ subroutine UGridGrowStencilSupport(unstructured_grid,stencil_width, &
   ! Date: 09/17/12
   ! 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option
@@ -3988,14 +3968,11 @@ subroutine UGridFindCellIDsAfterGrowingStencilWidthByOne(Mat_vert_to_cell, &
   ! Date: 09/17/12
   ! 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   type(option_type) :: option
   Mat :: Mat_vert_to_cell
@@ -4152,15 +4129,11 @@ subroutine UGridFindNewGhostCellIDsAfterGrowingStencilWidth(unstructured_grid, &
   ! Author: Gautam Bisht, LBNL
   ! Date: 09/17/12
   ! 
-              
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   type(grid_unstructured_type) :: unstructured_grid
   PetscInt :: cids_new(:)
@@ -4401,14 +4374,11 @@ subroutine UGridUpdateMeshAfterGrowingStencilWidth(unstructured_grid, &
   ! 
 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   type(grid_unstructured_type) :: unstructured_grid
   type(option_type) :: option

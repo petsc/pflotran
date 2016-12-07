@@ -1,5 +1,7 @@
 module Patch_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use Grid_module
   use Coupler_module
@@ -24,8 +26,6 @@ module Patch_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   type, public :: patch_type 
     
@@ -2908,6 +2908,8 @@ subroutine PatchScaleSourceSink(patch,source_sink,iscale_type,option)
   ! Date: 01/12/11
   ! 
 
+#include "petsc/finclude/petscdmda.h"
+  use petscdmda
   use Option_module
   use Field_module
   use Coupler_module
@@ -2918,10 +2920,6 @@ subroutine PatchScaleSourceSink(patch,source_sink,iscale_type,option)
   use Variables_module, only : PERMEABILITY_X
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscdmda.h"
   
   type(patch_type) :: patch
   type(coupler_type) :: source_sink
@@ -3061,6 +3059,8 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
   ! Date: 10/03/2012
   ! 
 
+#include "petsc/finclude/petscdmda.h"
+  use petscdmda
   use Option_module
   use Field_module
   use Coupler_module
@@ -3073,10 +3073,6 @@ subroutine PatchUpdateHetroCouplerAuxVars(patch,coupler,dataset_base, &
   use Dataset_Ascii_class
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscdmda.h"
 
   type(patch_type) :: patch
   type(coupler_type) :: coupler
@@ -3166,17 +3162,13 @@ subroutine PatchCreateFlowConditionDatasetMap(grid,dataset_map_hdf5,cell_ids,nce
   ! Author: Gautam Bisht, LBL
   ! Date: 10/26/12
   ! 
-
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Grid_module
   use Dataset_Map_HDF5_class
   use Option_module
   
   implicit none
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
-#include "petsc/finclude/petscviewer.h"
 
   type(grid_type) :: grid
   class(dataset_map_hdf5_type) :: dataset_map_hdf5
@@ -3525,6 +3517,8 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
   ! Date: 09/12/08
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Grid_module
   use Option_module
   use Field_module
@@ -3544,9 +3538,6 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
   use Material_Aux_class
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
@@ -4790,6 +4781,8 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   ! Date: 02/11/08
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Grid_module
   use Option_module
   use Field_module
@@ -4809,9 +4802,6 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   use Material_Aux_class
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   PetscReal :: PatchGetVariableValueAtCell
   type(option_type), pointer :: option
@@ -5572,6 +5562,8 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
   ! Date: 09/12/08
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Grid_module
   use Option_module
   use Field_module
@@ -5580,9 +5572,6 @@ subroutine PatchSetVariable(patch,field,option,vec,vec_format,ivar,isubvar)
   use Material_Aux_class
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -6496,6 +6485,8 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   ! Date: 10/06/11
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Connection_module
   use Coupler_module
@@ -6504,9 +6495,6 @@ subroutine PatchCalculateCFL1Timestep(patch,option,max_dt_cfl_1)
   use Material_Aux_class
   
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
   
   type(patch_type) :: patch
   type(option_type) :: option
@@ -6691,6 +6679,8 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
   ! Date: 09/12/08
   ! 
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Grid_module
   use Option_module
   use Output_Aux_module
@@ -6698,9 +6688,6 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
   use Variables_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
 
   type(option_type), pointer :: option
   !type(reaction_type), pointer :: reaction

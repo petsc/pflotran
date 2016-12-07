@@ -433,6 +433,8 @@ contains
 
 function CLMDec_Create()
   ! Allocates CLMDec reaction sandbox object.
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   implicit none
   
@@ -514,6 +516,8 @@ subroutine CLMDec_Read(this,input,option)
   ! 
   ! Reads input deck for reaction sandbox parameters
   ! 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   use Option_module
   use String_module
@@ -790,6 +794,8 @@ subroutine CLMDec_Setup(this,reaction,option)
   ! Sets up CLMDec reaction after it has been read from input
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Reaction_Aux_module
   use Option_module
   use String_module
@@ -3172,6 +3178,8 @@ contains
 !
 ! **************************************************************************** !
 function PlantNCreate()
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   implicit none
   
@@ -3218,6 +3226,8 @@ end function PlantNCreate
 !
 ! **************************************************************************** !
 subroutine PlantNRead(this,input,option)
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   use Option_module
   use String_module
@@ -3330,6 +3340,8 @@ end subroutine PlantNRead
 !
 ! **************************************************************************** !
 subroutine PlantNSetup(this,reaction,option)
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   use Reaction_Aux_module
   use Option_module
@@ -3775,6 +3787,8 @@ contains
 !
 ! ************************************************************************** !
 function NitrCreate()
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   implicit none
   
@@ -3813,6 +3827,8 @@ end function NitrCreate
 !
 ! ************************************************************************** !
 subroutine NitrRead(this,input,option)
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   use Option_module
   use String_module
@@ -3928,6 +3944,8 @@ end subroutine NitrRead
 ! ************************************************************************** !
 subroutine NitrSetup(this,reaction,option)
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Reaction_Aux_module, only : reaction_type, GetPrimarySpeciesIDFromName
   use Option_module
   use Reaction_Immobile_Aux_module, only : GetImmobileSpeciesIDFromName 
@@ -4481,6 +4499,8 @@ contains
 !
 ! ************************************************************************** !
 function DeniCreate()
+#include "petsc/finclude/petscsys.h"
+  use petscsys
 
   implicit none
   
@@ -4513,6 +4533,8 @@ end function DeniCreate
 ! ************************************************************************** !
 subroutine DeniRead(this,input,option)
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module
@@ -4611,6 +4633,8 @@ end subroutine DeniRead
 ! ************************************************************************** !
 subroutine DeniSetup(this,reaction,option)
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Reaction_Aux_module, only : reaction_type, GetPrimarySpeciesIDFromName
   use Option_module
   use Reaction_Immobile_Aux_module, only : GetImmobileSpeciesIDFromName 
@@ -4898,6 +4922,8 @@ subroutine RCLMRxnInit(option)
   ! 
   ! Initializes the clmrxn list
   ! 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   implicit none
   type(option_type) :: option
@@ -4978,7 +5004,8 @@ subroutine RCLMRxnRead2(local_clmrxn_list,input,option)
   ! 
   ! RCLMRxnRead: Reads input deck for reaction clmrxn parameters
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module
@@ -5103,7 +5130,8 @@ subroutine RCLMRxn(Residual,Jacobian,compute_derivative,rt_auxvar, &
   ! 
   ! Evaluates reaction storing residual and/or Jacobian
   ! 
-
+#include <petsc/finclude/petscsys.h>
+  use petscsys
   use Option_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module

@@ -1,5 +1,7 @@
 module Factory_Surface_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Simulation_Surface_class
 
   use PFLOTRAN_Constants_module
@@ -7,8 +9,6 @@ module Factory_Surface_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   public :: SurfaceInitialize, &
             SurfaceInitializePostPETSc, &
@@ -118,7 +118,7 @@ subroutine SurfaceJumpStart(simulation)
   
   option => surf_realization%option
 
-  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+  call PetscOptionsHasName(PETSC_NULL_OPTIONS, &
                            PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr);CHKERRQ(ierr)
                              

@@ -24,7 +24,8 @@ subroutine MicrobialRead(microbial,input,option)
   ! Author: Glenn Hammond
   ! Date: 08/16/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use String_module
   use Input_Aux_module

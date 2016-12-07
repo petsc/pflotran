@@ -1,5 +1,7 @@
 module AuxVars_TOilIms_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   use AuxVars_Base_module
@@ -9,8 +11,6 @@ module AuxVars_TOilIms_module
   implicit none
   
   private 
-
-#include "petsc/finclude/petscsys.h"
 
   type, public, extends(auxvar_flow_energy_type) :: auxvar_toil_ims_type
     ! no data at the moment

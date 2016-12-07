@@ -1,5 +1,7 @@
 module Factory_Subsurface_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Simulation_Subsurface_class
   
   use PFLOTRAN_Constants_module
@@ -7,8 +9,6 @@ module Factory_Subsurface_module
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   public :: SubsurfaceInitialize, &
             SubsurfaceInitializePostPETSc, &
@@ -714,7 +714,8 @@ subroutine SubsurfaceInitSimulation(simulation)
   ! Author: Glenn Hammond
   ! Date: 06/11/13
   ! 
-
+#include "petsc/finclude/petscsnes.h" 
+  use petscsnes
   use Realization_Subsurface_class
   use Realization_Base_class
   use Discretization_module
@@ -752,7 +753,6 @@ subroutine SubsurfaceInitSimulation(simulation)
   
   implicit none
   
-#include "petsc/finclude/petscsnes.h" 
 
   class(simulation_subsurface_type) :: simulation
   
@@ -862,6 +862,8 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
 ! Author: Jenn Frederick, SNL
 ! Date: 04/04/2016
 !
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use PMC_Base_class
   use PMC_Subsurface_class
   use PM_Base_Pointer_module
@@ -881,7 +883,6 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
   
   implicit none
   
-#include "petsc/finclude/petscsnes.h" 
   
   class(pmc_base_type), pointer :: pmc
   class(simulation_subsurface_type) :: simulation
@@ -1133,7 +1134,7 @@ subroutine SubsurfaceJumpStart(simulation)
   
   option => realization%option
 
-  call PetscOptionsHasName(PETSC_NULL_OBJECT, &
+  call PetscOptionsHasName(PETSC_NULL_OPTIONS, &
                            PETSC_NULL_CHARACTER, "-vecload_block_size", & 
                            failure, ierr);CHKERRQ(ierr)
 
@@ -2040,7 +2041,7 @@ subroutine SubsurfaceReadInput(simulation)
         option%use_touch_options = PETSC_TRUE
 
       case ('MPI_IO')
-!        call PetscOptionsInsertString(PETSC_NULL_OBJECT, &
+!        call PetscOptionsInsertString(PETSC_NULL_OPTIONS, &
 !                                       '-viewer_binary_mpiio')
 
       case ('HANDSHAKE_IO')

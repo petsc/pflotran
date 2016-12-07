@@ -33,8 +33,9 @@ subroutine SurfaceComplexationRead(reaction,input,option)
   ! 
   ! Author: Glenn Hammond
   ! Date: 05/02/08
-  ! 
-
+  !
+#include "petsc/finclude/petscsys.h"
+  use petscsys 
   use Option_module
   use String_module
   use Input_Aux_module
@@ -377,8 +378,9 @@ subroutine SrfCplxProcessConstraint(surface_complexation,constraint_name, &
   ! 
   ! Author: Glenn Hammond
   ! Date: 01/07/13
-  ! 
-
+  !
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use Input_Aux_module
   use String_module
@@ -671,7 +673,8 @@ subroutine RTotalSorbEqSurfCplx1(rt_auxvar,global_auxvar,material_auxvar, &
   ! Author: Glenn Hammond
   ! Date: 10/22/08; 05/26/09; 03/16/12
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use Matrix_Block_Aux_module
   

@@ -1,7 +1,7 @@
 module Block_Tridiag_module
 
 #include "petsc/finclude/petscsys.h"
-
+  use petscsys
   private
 
   public :: decbt, &

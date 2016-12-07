@@ -1,5 +1,8 @@
 module Dataset_Ascii_class
  
+#include "petsc/finclude/petscsys.h"
+  use petscsys
+
   use Dataset_Base_class
   
   use PFLOTRAN_Constants_module
@@ -7,8 +10,6 @@ module Dataset_Ascii_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   type, public, extends(dataset_base_type) :: dataset_ascii_type
     PetscInt :: array_width

@@ -1,5 +1,7 @@
 module Simulation_Hydrogeophysics_class
   
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use Option_module
   use Simulation_Subsurface_class
   use PMC_Hydrogeophysics_class
@@ -9,10 +11,6 @@ module Simulation_Hydrogeophysics_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
   
   type, public, extends(simulation_subsurface_type) :: &
     simulation_hydrogeophysics_type
@@ -97,9 +95,9 @@ subroutine HydrogeophysicsInit(this,option)
   
   call SubsurfaceSimulationInit(this,option)
   nullify(this%hydrogeophysics_coupler)
-  this%tracer_mpi = 0
-  this%saturation_mpi = 0
-  this%temperature_mpi = 0
+  this%tracer_mpi = PETSC_NULL_VEC
+  this%saturation_mpi = PETSC_NULL_VEC
+  this%temperature_mpi = PETSC_NULL_VEC
   ! UNINITIALIZED_INTEGER denotes uninitialized
   this%pf_e4d_scatter_comm = MPI_COMM_NULL
   this%pf_e4d_scatter_grp = UNINITIALIZED_INTEGER
@@ -233,20 +231,20 @@ subroutine HydrogeophysicsStrip(this)
   endif
   ! created in HydrogeophysicsInitialize()
   ! tracer
-  if (this%tracer_mpi /= 0) then
+  if (this%tracer_mpi /= PETSC_NULL_VEC) then
     call VecDestroy(this%tracer_mpi ,ierr);CHKERRQ(ierr)
   endif
-  this%tracer_mpi = 0
+  this%tracer_mpi = PETSC_NULL_VEC
   ! saturation
-  if (this%saturation_mpi /= 0) then
+  if (this%saturation_mpi /= PETSC_NULL_VEC) then
     call VecDestroy(this%saturation_mpi ,ierr);CHKERRQ(ierr)
   endif
-  this%saturation_mpi = 0
+  this%saturation_mpi = PETSC_NULL_VEC
   ! temperature
-  if (this%temperature_mpi /= 0) then
+  if (this%temperature_mpi /= PETSC_NULL_VEC) then
     call VecDestroy(this%temperature_mpi ,ierr);CHKERRQ(ierr)
   endif
-  this%temperature_mpi = 0
+  this%temperature_mpi = PETSC_NULL_VEC
 
   if (this%pf_e4d_scatter_comm /= MPI_COMM_NULL)  then
     call MPI_Comm_free(this%pf_e4d_scatter_comm,ierr)

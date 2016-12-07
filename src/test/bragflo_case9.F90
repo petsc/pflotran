@@ -1,17 +1,7 @@
 program test
-
-  implicit none
-  
-#include "finclude/petscsys.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
 #include "finclude/petscksp.h"
-#include "finclude/petscpc.h"
-#include "finclude/petscviewer.h"
+  use petscksp
+  implicit none
 
   PetscMPIInt :: size
   PetscMPIInt :: rank

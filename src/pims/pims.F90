@@ -1,4 +1,6 @@
   program pflow
+#include "include/finclude/petscsnes.h"
+  use petscsnes
   use pflow_gridtype_module
   use pflow_grid_module
   use pflow_read_module
@@ -6,24 +8,6 @@
   use pflow_step
   
   implicit none
-
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscdef.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscpc.h"
-!#include "include/finclude/petscsles.h"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petscsnes.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscviewer.h"
 
 #include "definitions.h"
 

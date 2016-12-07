@@ -41,13 +41,13 @@
 
 module BatchChem
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
 
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   public :: BatchChemInitializeReactions, &
             BatchChemProcessConstraints
@@ -58,6 +58,9 @@ contains
 
 subroutine BatchChemInitializeReactions(option, input, reaction)
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
+
   use Reaction_module
   use Reaction_Aux_module
   use Reaction_Database_module
@@ -66,9 +69,6 @@ subroutine BatchChemInitializeReactions(option, input, reaction)
   use String_module
 
   implicit none
-
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petsclog.h"
 
   type(option_type), pointer :: option
   type(input_type), pointer :: input
@@ -114,6 +114,8 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
      global_auxvars, rt_auxvars, material_auxvars, transport_constraints, &
      constraint_coupler)
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Reaction_module
   use Reaction_Aux_module
   use Reaction_Database_module
@@ -127,8 +129,6 @@ subroutine BatchChemProcessConstraints(option, input, reaction, &
 
   implicit none
 
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petsclog.h"
 
   type(option_type), pointer :: option
   type(input_type), pointer :: input
@@ -245,6 +245,8 @@ end module BatchChem
 ! ************************************************************************** !
 program pflotran_rxn
   
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Reaction_module
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
@@ -262,8 +264,6 @@ program pflotran_rxn
 
   implicit none
 
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petsclog.h"
 
   PetscErrorCode :: ierr
   PetscBool :: option_found  

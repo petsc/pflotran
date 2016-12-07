@@ -91,7 +91,8 @@ function TranConstraintCreate(option)
   ! Author: Glenn Hammond
   ! Date: 10/14/08
   ! 
-
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   
   implicit none
@@ -168,6 +169,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   ! Date: 10/14/08
   ! 
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Option_module
   use Input_Aux_module
   use Units_module

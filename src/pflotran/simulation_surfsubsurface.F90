@@ -1,5 +1,7 @@
 module Simulation_Surf_Subsurf_class
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use Simulation_Surface_class
   use Simulation_Subsurface_class
   use Regression_module
@@ -16,8 +18,6 @@ module Simulation_Surf_Subsurf_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   type, public, extends(simulation_subsurface_type) :: &
     simulation_surfsubsurface_type
@@ -99,15 +99,14 @@ subroutine SurfSubsurfaceInitializeRun(this)
   ! Author: Gautam Bisht, LBNL
   ! Date: 06/28/13
   ! 
-
+#include "petsc/finclude/petscviewer.h"
+  use petscsys
   use Logging_module
   use Output_module
   use PMC_Surface_class
 
   implicit none
   
-#include "petsc/finclude/petscviewer.h"
-
   class(simulation_surfsubsurface_type) :: this
 
   class(pmc_base_type), pointer :: cur_process_model_coupler
@@ -293,12 +292,12 @@ subroutine SurfSubsurfaceSimulationRunToTime(this,target_time)
   ! Date: 06/27/13
   ! 
 
+#include "petsc/finclude/petscviewer.h"
+  use petscsys
   use Option_module
   use Simulation_Aux_module
 
   implicit none
-
-#include "petsc/finclude/petscviewer.h"
 
   class(simulation_surfsubsurface_type) :: this
   PetscReal :: target_time
