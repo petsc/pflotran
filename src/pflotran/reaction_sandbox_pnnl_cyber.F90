@@ -264,7 +264,7 @@ subroutine CyberRead(this,input,option)
         call InputReadDouble(input,option,this%reference_temperature)  
         call InputErrorMsg(input,option,'reference temperature [C]', &
                            error_string)
-        this%reference_temperature = this%reference_temperature + 293.15d0
+        this%reference_temperature = this%reference_temperature + 273.15d0
       case('CARBON_CONSUMPTION_SPECIES')
         call InputReadWord(input,option, &
                            this%carbon_consumption_species,PETSC_TRUE)

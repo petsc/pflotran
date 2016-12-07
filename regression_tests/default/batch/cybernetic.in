@@ -64,6 +64,7 @@ CHEMISTRY
 #      Kdeg  0.d0
 #      F_act 0.126d0
 #      F_act 1.d0
+      REFERENCE_TEMPERATURE 25.d0 ! degrees C
       ACTIVATION_ENERGY 89.d-3 kJ/mol  ! 89.d0 J/mol
       STORE_CONSUMPTION_PRODUCTION
       CARBON_CONSUMPTION_SPECIES C_consumption
