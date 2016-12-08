@@ -56,7 +56,7 @@ module PM_Subsurface_Flow_class
     procedure, public :: AcceptSolution => PMSubsurfaceFlowAcceptSolution
 !    procedure, public :: TimeCut => PMSubsurfaceFlowTimeCut
 !    procedure, public :: UpdateSolution => PMSubsurfaceFlowUpdateSolution
-    procedure, public :: UpdateAuxvars => PMSubsurfaceFlowUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMSubsurfaceFlowUpdateAuxVars
     procedure, public :: CheckpointBinary => PMSubsurfaceFlowCheckpointBinary
     procedure, public :: RestartBinary => PMSubsurfaceFlowRestartBinary
 #if defined(PETSC_HAVE_HDF5)

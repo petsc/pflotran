@@ -313,7 +313,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
     if (material_id > 0) then
       material_property => &
         patch%material_property_array(material_id)%ptr
-      call FractureAuxvarInit(material_property%fracture, &
+      call FractureAuxVarInit(material_property%fracture, &
         patch%aux%Material%auxvars(ghosted_id))
     endif
   enddo

@@ -33,7 +33,7 @@ module Fracture_module
   public :: FractureInit, &
             FractureCreate, &
             FractureSetInitialPressure, &
-            FractureAuxvarInit, &
+            FractureAuxVarInit, &
             FracturePropertytoAux, &
             FractureDestroy, &
             FracturePoroEvaluate, &
@@ -85,7 +85,7 @@ end subroutine FractureInit
 
 ! ************************************************************************** !
 
-subroutine FractureAuxvarInit(fracture_material,auxvar)
+subroutine FractureAuxVarInit(fracture_material,auxvar)
   !
   ! Author: Heeho Park
   ! Date: 7/8/2015
@@ -106,7 +106,7 @@ subroutine FractureAuxvarInit(fracture_material,auxvar)
     auxvar%fracture%vector = 0.d0
   endif
 
-end subroutine FractureAuxvarInit
+end subroutine FractureAuxVarInit
 
 ! ************************************************************************** !
 

@@ -15,7 +15,7 @@ program pflotran_derivative
   call OptionInitPetsc(option)  
   call EOSInit()
   
-  call GeneralDerivative(option)
+  call GeneralAuxVarDerivative(option)
   
   call OptionFinalize(option)
   

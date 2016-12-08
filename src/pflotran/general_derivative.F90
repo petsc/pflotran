@@ -13,13 +13,13 @@ module General_Derivative_module
 
 #include "petsc/finclude/petscsys.h"
 
-  public :: GeneralDerivative
+  public :: GeneralAuxVarDerivative
 
 contains
   
 ! ************************************************************************** !
 
-subroutine GeneralDerivative(option)
+subroutine GeneralAuxVarDerivative(option)
 
   use Characteristic_Curves_module
   use Option_module
@@ -177,7 +177,7 @@ subroutine GeneralDerivative(option)
   deallocate(material_auxvar)
   call CharacteristicCurvesDestroy(characteristic_curves)
   
-end subroutine GeneralDerivative
+end subroutine GeneralAuxVarDerivative
 
 ! ************************************************************************** !
 

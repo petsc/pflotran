@@ -46,7 +46,7 @@ module PM_UFD_Decay_class
 !    procedure, public :: AcceptSolution => PMUFDDecayAcceptSolution
 !    procedure, public :: TimeCut => PMUFDDecayTimeCut
 !    procedure, public :: UpdateSolution => PMUFDDecayUpdateSolution
-!    procedure, public :: UpdateAuxvars => PMUFDDecayUpdateAuxvars
+!    procedure, public :: UpdateAuxVars => PMUFDDecayUpdateAuxVars
 !    procedure, public :: Checkpoint => PMUFDDecayCheckpoint    
 !    procedure, public :: Restart => PMUFDDecayRestart  
     procedure, public :: InputRecord => PMUFDDecayInputRecord
@@ -1168,7 +1168,7 @@ end subroutine PMUFDDecayUpdateSolution
 
 ! ************************************************************************** !
 
-subroutine PMUFDDecayUpdateAuxvars(this)
+subroutine PMUFDDecayUpdateAuxVars(this)
   ! 
   ! Author: Glenn Hammond
   ! Date: 06/24/15
@@ -1177,10 +1177,10 @@ subroutine PMUFDDecayUpdateAuxvars(this)
   
   class(pm_ufd_decay_type) :: this
 
-  this%option%io_buffer = 'PMUFDDecayUpdateAuxvars() must be extended.'
+  this%option%io_buffer = 'PMUFDDecayUpdateAuxVars() must be extended.'
   call printErrMsg(this%option)
 
-end subroutine PMUFDDecayUpdateAuxvars   
+end subroutine PMUFDDecayUpdateAuxVars   
 
 ! ************************************************************************** !
 
