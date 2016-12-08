@@ -1723,24 +1723,56 @@ subroutine UGridDMDestroy(ugdm)
   PetscErrorCode :: ierr
     
   if (.not.associated(ugdm)) return
-  
-  call ISDestroy(ugdm%is_ghosted_local,ierr);CHKERRQ(ierr)
-  call ISDestroy(ugdm%is_local_local,ierr);CHKERRQ(ierr)
-  call ISDestroy(ugdm%is_ghosted_petsc,ierr);CHKERRQ(ierr)
-  call ISDestroy(ugdm%is_local_petsc,ierr);CHKERRQ(ierr)
-  call ISDestroy(ugdm%is_ghosts_local,ierr);CHKERRQ(ierr)
-  call ISDestroy(ugdm%is_ghosts_petsc,ierr);CHKERRQ(ierr)
-  call ISDestroy(ugdm%is_local_natural,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(ugdm%scatter_ltog,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(ugdm%scatter_gtol,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(ugdm%scatter_ltol,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(ugdm%scatter_gton,ierr);CHKERRQ(ierr)
-  call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltog,ierr);CHKERRQ(ierr)
-  call VecDestroy(ugdm%global_vec,ierr);CHKERRQ(ierr)
-  call VecDestroy(ugdm%local_vec,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(ugdm%scatter_bet_grids,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(ugdm%scatter_bet_grids_1dof,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(ugdm%scatter_bet_grids_ndof,ierr);CHKERRQ(ierr)
+
+  if (ugdm%is_ghosted_local /= PETSC_NULL_IS) then
+    call ISDestroy(ugdm%is_ghosted_local,ierr);CHKERRQ(ierr)
+  endif
+  if (ugdm%is_local_local /= PETSC_NULL_IS) then
+    call ISDestroy(ugdm%is_local_local,ierr);CHKERRQ(ierr)
+  endif
+  if (ugdm%is_ghosted_petsc /= PETSC_NULL_IS) then
+    call ISDestroy(ugdm%is_ghosted_petsc,ierr);CHKERRQ(ierr)
+  endif
+      if (ugdm%is_local_petsc /= PETSC_NULL_IS) then
+         call ISDestroy(ugdm%is_local_petsc,ierr);CHKERRQ(ierr)
+      endif
+      if (ugdm%is_ghosts_local /= PETSC_NULL_IS) then
+         call ISDestroy(ugdm%is_ghosts_local,ierr);CHKERRQ(ierr)
+      endif
+      if (ugdm%is_ghosts_petsc /= PETSC_NULL_IS) then
+            call ISDestroy(ugdm%is_ghosts_petsc,ierr);CHKERRQ(ierr)
+      endif
+      if (ugdm%is_local_natural /= PETSC_NULL_IS) then
+         call ISDestroy(ugdm%is_local_natural,ierr);CHKERRQ(ierr)
+      endif
+      if (ugdm%scatter_ltog /= PETSC_NULL_VECSCATTER) then
+         call VecScatterDestroy(ugdm%scatter_ltog,ierr);CHKERRQ(ierr)
+      endif
+      if (ugdm%scatter_gtol /= PETSC_NULL_VECSCATTER) then
+         call VecScatterDestroy(ugdm%scatter_gtol,ierr);CHKERRQ(ierr)
+      endif
+      if (ugdm%scatter_ltol /= PETSC_NULL_VECSCATTER) then
+         call VecScatterDestroy(ugdm%scatter_ltol,ierr);CHKERRQ(ierr)
+      endif
+      if (ugdm%scatter_gton /= PETSC_NULL_VECSCATTER) then
+         call VecScatterDestroy(ugdm%scatter_gton,ierr);CHKERRQ(ierr)
+      endif
+      call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltog,ierr);CHKERRQ(ierr)
+      if (ugdm%global_vec /= PETSC_NULL_VEC) then
+         call VecDestroy(ugdm%global_vec,ierr);CHKERRQ(ierr)
+      endif
+      if (ugdm%local_vec /= PETSC_NULL_VEC) then
+         call VecDestroy(ugdm%local_vec,ierr);CHKERRQ(ierr)
+      endif
+      if (ugdm%scatter_bet_grids /= PETSC_NULL_VECSCATTER) then
+         call VecScatterDestroy(ugdm%scatter_bet_grids,ierr);CHKERRQ(ierr)
+      endif
+      if (ugdm%scatter_bet_grids_1dof /= PETSC_NULL_VECSCATTER) then
+         call VecScatterDestroy(ugdm%scatter_bet_grids_1dof,ierr);CHKERRQ(ierr)
+      endif
+      if (ugdm%scatter_bet_grids_ndof /= PETSC_NULL_VECSCATTER) then
+         call VecScatterDestroy(ugdm%scatter_bet_grids_ndof,ierr);CHKERRQ(ierr)
+      endif
   ! ugdm%ao_natural_to_petsc is a pointer to ugrid%ao_natural_to_petsc.  Do
   ! not destroy here.
   ugdm%ao_natural_to_petsc = 0 
