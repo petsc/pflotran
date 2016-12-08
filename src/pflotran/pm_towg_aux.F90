@@ -142,8 +142,11 @@ module PM_TOWG_Aux_module
     end subroutine TOWGAuxVarComputeDummy
   end interface
  
-  public :: TOWGAuxCreate, TOWGAuxDestroy, TOWGAuxVarStrip, &
-            TOWGAuxVarCompute, TOWGImsAuxVarComputeSetup
+  public :: TOWGAuxCreate, &
+            TOWGAuxDestroy, &
+            TOWGAuxVarStrip, &
+            TOWGAuxVarCompute, &
+            TOWGImsAuxVarComputeSetup
   !          TOilImsAuxVarPerturb, TOilImsAuxDestroy, &
   !          TOilImsAuxVarStrip
 

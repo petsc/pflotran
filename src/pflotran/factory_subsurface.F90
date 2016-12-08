@@ -430,6 +430,8 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%liquid_phase = 1           ! liquid_pressure
       option%oil_phase = 2              ! oil_pressure
       option%gas_phase = 3              ! gas_pressure
+      !option%solvent_phase = 4         ! solvent saturation
+      option%energy_id = towg_energy_eq_idx
       select case (towg_miscibility_model)
         case(TOWG_IMMISCIBLE)
           option%nflowdof = 4

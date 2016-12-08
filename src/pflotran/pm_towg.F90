@@ -37,17 +37,17 @@ module PM_TOWG_class
   contains
     procedure, public :: Read => PMTOWGRead
     procedure, public :: InitializeRun => PMTOWGInitializeRun
-    !procedure, public :: InitializeTimestep => PMGeneralInitializeTimestep
+    procedure, public :: InitializeTimestep => PMTOWGInitializeTimestep
     !procedure, public :: Residual => PMGeneralResidual
     !procedure, public :: Jacobian => PMGeneralJacobian
     !procedure, public :: UpdateTimestep => PMGeneralUpdateTimestep
-    !procedure, public :: PreSolve => PMGeneralPreSolve
+    procedure, public :: PreSolve => PMTOWGPreSolve
     !procedure, public :: PostSolve => PMGeneralPostSolve
     !procedure, public :: CheckUpdatePre => PMGeneralCheckUpdatePre
     !procedure, public :: CheckUpdatePost => PMGeneralCheckUpdatePost
     !procedure, public :: TimeCut => PMGeneralTimeCut
     procedure, public :: UpdateSolution => PMTOWGUpdateSolution
-    !procedure, public :: UpdateAuxVars => PMGeneralUpdateAuxVars
+    procedure, public :: UpdateAuxVars => PMTOWGUpdateAuxVars
     !procedure, public :: MaxChange => PMGeneralMaxChange
     !procedure, public :: ComputeMassBalance => PMGeneralComputeMassBalance
     !procedure, public :: InputRecord => PMGeneralInputRecord
@@ -358,6 +358,75 @@ recursive subroutine PMTOWGInitializeRun(this)
   call PMSubsurfaceFlowInitializeRun(this)
 
 end subroutine PMTOWGInitializeRun
+
+! ************************************************************************** !
+
+! ************************************************************************** !
+
+subroutine PMTOWGInitializeTimestep(this)
+  ! 
+  ! To be replaced by PreSolve? Which is currently empty...
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/07/16 
+  ! 
+
+  use TOWG_module, only : TOWGInitializeTimestep
+  use Global_module
+  use Variables_module, only : TORTUOSITY
+  use Material_module, only : MaterialAuxVarCommunicate
+  
+  implicit none
+  
+  class(pm_towg_type) :: this
+
+  call PMSubsurfaceFlowInitializeTimestepA(this)                                 
+
+  !PO: To be removed? And common to all flow modes?
+!geh:remove   everywhere                                
+  call MaterialAuxVarCommunicate(this%comm1, &
+                                 this%realization%patch%aux%Material, &
+                                 this%realization%field%work_loc,TORTUOSITY, &
+                                 ZERO_INTEGER)
+                                 
+  if (this%option%print_screen_flag) then
+    write(*,'(/,2("=")," TOWG FLOW ",64("="))')
+  endif
+  
+  call TOWGInitializeTimestep(this%realization)
+  call PMSubsurfaceFlowInitializeTimestepB(this)                                 
+  
+end subroutine PMTOWGInitializeTimestep
+
+! ************************************************************************** !
+
+subroutine PMTOWGUpdateAuxVars(this)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/06/16 
+
+  use TOWG_module, only : TOWGUpdateAuxVars
+
+  implicit none
+  
+  class(pm_towg_type) :: this
+
+  call TOWGUpdateAuxVars(this%realization,PETSC_FALSE)
+
+end subroutine PMTOWGUpdateAuxVars   
+
+! ************************************************************************** !
+
+subroutine PMTOWGPreSolve(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+
+  implicit none
+
+  class(pm_towg_type) :: this
+
+end subroutine PMTOWGPreSolve
 
 ! ************************************************************************** !
 

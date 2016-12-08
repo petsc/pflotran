@@ -1,6 +1,7 @@
 module TOWG_module
 
   use PM_TOWG_Aux_module
+  use AuxVars_TOWG_module
   use Global_Aux_module
 
   use PFLOTRAN_Constants_module
@@ -29,6 +30,7 @@ module TOWG_module
 
   !pointing to null() function
   procedure(TOWGUpdateAuxVarsDummy), pointer :: TOWGUpdateAuxVars => null()
+  procedure(TOWGAccumulationDummy), pointer :: TOWGAccumulation => null()
 
   abstract interface
     subroutine TOWGUpdateAuxVarsDummy(realization,update_state)
@@ -39,10 +41,42 @@ module TOWG_module
       PetscBool :: update_state
 
     end subroutine TOWGUpdateAuxVarsDummy
+
+    subroutine TOWGAccumulationDummy(auxvar,global_auxvar,material_auxvar, &
+                                     soil_heat_capacity,option,Res,debug_cell)
+      use AuxVars_TOWG_module
+      use Global_Aux_module
+      use Option_module
+      use Material_module
+      use Material_Aux_class
+      implicit none
+
+      class(auxvar_towg_type) :: auxvar
+      type(global_auxvar_type) :: global_auxvar
+      class(material_auxvar_type) :: material_auxvar
+      PetscReal :: soil_heat_capacity
+      type(option_type) :: option
+      PetscReal :: Res(option%nflowdof) 
+      PetscBool :: debug_cell
+    end subroutine TOWGAccumulationDummy
   end interface
 
-  public :: TOWGSetup, TOWGUpdateAuxVars, TOWGUpdateSolution, &
-            TOWGMapBCAuxVarsToGlobal
+#ifdef TOWG_DEBUG
+  PetscInt, parameter :: debug_unit = 87
+  PetscInt, parameter :: debug_info_unit = 86
+  character(len=MAXWORDLENGTH) :: debug_filename
+  PetscInt :: debug_flag = 0
+  PetscInt :: debug_iteration_count
+  PetscInt :: debug_timestep_cut_count
+  PetscInt :: debug_timestep_count
+#endif
+
+
+  public :: TOWGSetup,&
+            TOWGUpdateAuxVars, &
+            TOWGUpdateSolution, &
+            TOWGMapBCAuxVarsToGlobal, &
+            TOWGInitializeTimestep
 
 contains
 
@@ -196,6 +230,7 @@ subroutine TOWGSetup(realization)
   select case(towg_miscibility_model)
     case(TOWG_IMMISCIBLE)
       TOWGUpdateAuxVars => TOWGImsUpdateAuxVars
+      TOWGAccumulation => TOWGImsTLAccumulation
       call TOWGImsAuxVarComputeSetup()
     case default
       option%io_buffer = 'TOWGSetup: only TOWG_IMMISCIBLE is supported.'
@@ -237,9 +272,7 @@ subroutine TOWGImsUpdateAuxVars(realization,update_state)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
-
   class(pm_towg_aux_type), pointer :: towg
-  !type(general_auxvar_type), pointer :: gen_auxvars(:,:), gen_auxvars_bc(:)  
   type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:)  
 
   class(material_auxvar_type), pointer :: material_auxvars(:)
@@ -429,6 +462,35 @@ end subroutine TOWGImsUpdateAuxVars
 
 ! ************************************************************************** !
 
+subroutine TOWGInitializeTimestep(realization)
+  ! 
+  ! Update data in module prior to time step
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/07/16 
+  ! 
+
+  use Realization_Subsurface_class
+  
+  implicit none
+  
+  type(realization_subsurface_type) :: realization
+
+  call TOWGUpdateFixedAccum(realization)
+  
+#ifdef TOWG_DEBUG
+  debug_flag = 0
+  if (.true.) then
+    debug_iteration_count = 0
+    debug_flag = 1
+  endif
+  debug_iteration_count = 0
+#endif
+
+end subroutine TOWGInitializeTimestep
+
+! ************************************************************************** !
+
 subroutine TOWGUpdateSolution(realization)
   ! 
   ! Updates data in module after a successful time
@@ -477,6 +539,49 @@ subroutine TOWGUpdateSolution(realization)
   !enddo
     
 end subroutine TOWGUpdateSolution
+
+! ************************************************************************** !
+
+subroutine TOWGZeroMassBalanceDelta(realization)
+  ! 
+  ! Zeros mass balance delta array  
+  ! PO: identical for many flow modes (Genral, Toil_Ims, TOWG), where can it 
+  !     be located to be shared?? flow_mode_common.F90 ?
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/06/16 
+  ! 
+ 
+  use Realization_Subsurface_class
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_subsurface_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
+
+  do iconn = 1, patch%aux%TOWG%num_aux_bc
+    global_auxvars_bc(iconn)%mass_balance_delta = 0.d0
+  enddo
+  do iconn = 1, patch%aux%TOWG%num_aux_ss
+    global_auxvars_ss(iconn)%mass_balance_delta = 0.d0
+  enddo
+
+end subroutine TOWGZeroMassBalanceDelta
 
 ! ************************************************************************** !
 
@@ -706,5 +811,188 @@ subroutine TOWGSetPlotVariables(list)
 end subroutine TOWGSetPlotVariables
 
 ! ************************************************************************** !
+
+subroutine TOWGUpdateFixedAccum(realization)
+  ! 
+  ! Updates the fixed portion of the
+  ! accumulation term
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/07/16 
+  ! 
+
+  use Realization_Subsurface_class
+  use Patch_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Material_Aux_class
+
+  implicit none
+  
+  type(realization_subsurface_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  class(pm_towg_aux_type), pointer :: towg
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(material_parameter_type), pointer :: material_parameter
+
+  PetscInt :: ghosted_id, local_id, local_start, local_end, natural_id
+  PetscInt :: imat
+  PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
+  PetscReal, pointer :: accum_p(:), accum_p2(:)
+                          
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+
+  towg => patch%aux%TOWG
+  global_auxvars => patch%aux%Global%auxvars
+  material_auxvars => patch%aux%Material%auxvars
+  material_parameter => patch%aux%Material%material_parameter
+    
+  call VecGetArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+
+  !IF towg convergence criteria required: 
+  !   initialize dynamic accumulation term for every p iteration step
+  !if (towg_tough2_conv_criteria) then
+  !  call VecGetArrayF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  !endif
+  
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    imat = patch%imat(ghosted_id)
+    if (imat <= 0) cycle
+    natural_id = grid%nG2A(ghosted_id)
+    local_end = local_id*option%nflowdof
+    local_start = local_end - option%nflowdof + 1
+    ! TOWG_UPDATE_FOR_FIXED_ACCUM indicates call from non-perturbation
+    option%iflag = TOWG_UPDATE_FOR_FIXED_ACCUM
+    call TOWGAuxVarCompute(xx_p(local_start:local_end), &
+                           towg%auxvars(ZERO_INTEGER,ghosted_id), &
+                           global_auxvars(ghosted_id), &
+                           material_auxvars(ghosted_id), &
+                           patch%characteristic_curves_array( &
+                           patch%sat_func_id(ghosted_id))%ptr, &
+                           natural_id, &
+                           option)
+    call TOWGAccumulation(towg%auxvars(ZERO_INTEGER,ghosted_id), &
+                          global_auxvars(ghosted_id), &
+                          material_auxvars(ghosted_id), &
+                          material_parameter%soil_heat_capacity(imat), &
+                          option,accum_p(local_start:local_end), &
+                          local_id == towg_debug_cell_id) 
+  enddo
+  
+  !for tough2 convergence criteria
+  !if (towg_tough2_conv_criteria) then
+  !  accum_p2 = accum_p
+  !endif
+  
+  call VecRestoreArrayReadF90(field%flow_xx,xx_p, ierr);CHKERRQ(ierr)
+
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  
+  !tough2 convergence criteria:
+  ! initialize dynamic accumulation term for every p iteration step
+  !if (towg_tough2_conv_criteria) then
+  !  call VecRestoreArrayF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  !endif
+  
+end subroutine TOWGUpdateFixedAccum
+
+! ************************************************************************** !
+
+subroutine TOWGImsTLAccumulation(auxvar,global_auxvar,material_auxvar, &
+                                 soil_heat_capacity,option,Res,debug_cell)
+  ! 
+  ! Computes the non-fixed portion of the accumulation
+  ! term for the residual - TOWG_IMS and TOWG_TL models
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/07/16 
+  ! 
+
+  use Option_module
+  use Material_module
+  use Material_Aux_class
+  
+  implicit none
+
+  class(auxvar_towg_type) :: auxvar
+  type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
+  PetscReal :: soil_heat_capacity
+  type(option_type) :: option
+  PetscReal :: Res(option%nflowdof) 
+  PetscBool :: debug_cell
+  
+  PetscInt :: iphase, energy_id
+  
+  PetscReal :: porosity
+  PetscReal :: volume_over_dt
+ 
+  energy_id = option%energy_id
+  
+  ! v_over_t[m^3 bulk/sec] = vol[m^3 bulk] / dt[sec]
+  volume_over_dt = material_auxvar%volume / option%flow_dt
+  ! must use gen_auxvar%effective porosity here as it enables numerical 
+  ! derivatives to be employed 
+  porosity = auxvar%effective_porosity
+  
+  ! accumulation term units = kmol/s 
+  ! not for TOWG IMS and TL (kmol phase) = (kmol comp)
+  ! and nphase = nflowspec
+  Res = 0.d0
+  do iphase = 1, option%nphase
+    ! Res[kmol phase/m^3 void] = sat[m^3 phase/m^3 void] * 
+    !                           den[kmol phase/m^3 phase] * 
+    Res(iphase) = Res(iphase) + auxvar%sat(iphase) * &
+                                auxvar%den(iphase) 
+  enddo
+
+  ! scale by porosity * volume / dt
+  ! Res[kmol/sec] = Res[kmol/m^3 void] * por[m^3 void/m^3 bulk] * 
+  !                 vol[m^3 bulk] / dt[sec]
+  Res(1:option%nflowspec) = Res(1:option%nflowspec) * &
+                            porosity * volume_over_dt
+
+  do iphase = 1, option%nphase
+    ! Res[MJ/m^3 void] = sat[m^3 phase/m^3 void] *
+    !                    den[kmol phase/m^3 phase] * U[MJ/kmol phase]
+    Res(energy_id) = Res(energy_id) + auxvar%sat(iphase) * &
+                                      auxvar%den(iphase) * &
+                                      auxvar%U(iphase)
+  enddo
+  ! Res[MJ/sec] = (Res[MJ/m^3 void] * por[m^3 void/m^3 bulk] + 
+  !                (1-por)[m^3 rock/m^3 bulk] * 
+  !                  dencpr[kg rock/m^3 rock * MJ/kg rock-K] * T[C]) &
+  !               vol[m^3 bulk] / dt[sec]
+  Res(energy_id) = (Res(energy_id) * porosity + &
+                    (1.d0 - porosity) * &
+                    material_auxvar%soil_particle_density * &
+                    soil_heat_capacity * auxvar%temp) * volume_over_dt
+  
+#ifdef TOWG_DEBUG
+  if (debug_flag > 0) then
+    write(debug_unit,'(a,7es24.15)') 'accum:', Res
+  endif
+#endif                    
+
+end subroutine TOWGImsTLAccumulation
+
+! ************************************************************************** !
+
+
 
 end module TOWG_module
