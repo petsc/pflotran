@@ -72,10 +72,10 @@ subroutine GeneralDerivativeDriver(option)
   call GeneralDerivativeSetupAuxVar(istate,xx,pert,general_auxvar, &
                                     global_auxvar,material_auxvar,option)  
   
-  call GeneralDerivativeAuxVar(pert,general_auxvar,global_auxvar, &
-                               material_auxvar,option)
-!  call GeneralDerivativeAccum(pert,general_auxvar,global_auxvar, &
-!                              material_auxvar,option)
+!  call GeneralDerivativeAuxVar(pert,general_auxvar,global_auxvar, &
+!                               material_auxvar,option)
+  call GeneralDerivativeAccum(pert,general_auxvar,global_auxvar, &
+                              material_auxvar,option)
   
   call GeneralDerivativeDestroyAuxVar(general_auxvar,global_auxvar, &
                                       material_auxvar,option)  
@@ -110,6 +110,7 @@ subroutine GeneralDerivativeSetupAuxVar(istate,xx,pert,general_auxvar, &
   PetscReal :: xx_pert(3)
   PetscInt :: natural_id = 1
   PetscBool :: analytical_derivative = PETSC_TRUE
+  PetscReal, parameter :: perturbation_tolerance = 1.d-6
   PetscInt :: i
   
   allocate(general_auxvar(0:3))
@@ -157,7 +158,7 @@ subroutine GeneralDerivativeSetupAuxVar(istate,xx,pert,general_auxvar, &
   do i = 1, 3
     option%iflag = GENERAL_UPDATE_FOR_DERIVATIVE
     xx_pert = xx
-    pert(i) = 1.d-6 * xx(i)
+    pert(i) = perturbation_tolerance * xx(i)
     xx_pert(i) = xx(i) + pert(i)
     call GeneralAuxVarCompute(xx_pert,general_auxvar(i),global_auxvar(i), &
                               material_auxvar(i),characteristic_curves, &
