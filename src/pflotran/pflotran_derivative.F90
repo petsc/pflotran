@@ -14,9 +14,7 @@ program pflotran_derivative
   call OptionInitMPI(option)  
   call OptionInitPetsc(option)  
   call EOSInit()
-  
-  call GeneralAuxVarDerivative(option)
-  
+  call GeneralDerivativeDriver(option)
   call OptionFinalize(option)
   
 end program pflotran_derivative
