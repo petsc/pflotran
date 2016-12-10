@@ -11,11 +11,11 @@ PFLOTRANCHEM_LIB="${PFLOTRAN_DIR_LOC}/src/pflotran/libpflotranchem.a"
 
 # build pflotran and libpflotran.a
 all:
-	-@cd ${PFLOTRAN_DIR_LOC}/src/pflotran ;\
+	@cd ${PFLOTRAN_DIR_LOC}/src/pflotran ;\
            make pflotran PETSC_DIR=${PETSC_DIR_LOC} PETSC_ARCH=${PETSC_ARCH_LOC} 2>&1 | tee make.log ; \
 	   make libpflotran.a PETSC_DIR=${PETSC_DIR_LOC} PETSC_ARCH=${PETSC_ARCH_LOC} 2>&1 | tee -a make.log ; \
 	   make libpflotranchem.a PETSC_DIR=${PETSC_DIR_LOC} PETSC_ARCH=${PETSC_ARCH_LOC} 2>&1 | tee -a make.log
-	-@if [ -e "${PFLOTRAN_EXE}" -a -e "${PFLOTRAN_LIB}" -a -e "${PFLOTRANCHEM_LIB}" ] ; then \
+	@if [ -e "${PFLOTRAN_EXE}" -a -e "${PFLOTRAN_LIB}" -a -e "${PFLOTRANCHEM_LIB}" ] ; then \
           echo "pflotran, libpflotran.a, and libpflotranchem.a successfully built." ;\
         else \
           echo "failed building pflotran, libpflotran.a, and/or libpflotranchem.a" ;\
@@ -24,7 +24,7 @@ all:
 
 check:
 	-@cd ${PFLOTRAN_DIR_LOC}/src/pflotran; make check PETSC_DIR=${PETSC_DIR_LOC} PETSC_ARCH=${PETSC_ARCH_LOC} 2>&1 | tee -a test.log
-	-@if [ -e "$TEST_LOG" ]; then \
+	@if [ -e "$TEST_LOG" ]; then \
           PASSED=$(grep -c "Failed" $TEST_LOG) ;\
           echo $PASSED ;\
           if [ $PASSED -gt "0" ]; then \
@@ -36,7 +36,7 @@ check:
 
 
 install: all
-	-@if [ "${PREFIX_LOC}"  = "" ]; then \
+	@if [ "${PREFIX_LOC}"  = "" ]; then \
            echo "PREFIX not set. Skipping installation." ; \
         else \
           echo "Installing PFLOTRAN at ${PREFIX_LOC}." ;\
