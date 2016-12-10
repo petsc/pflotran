@@ -41,7 +41,7 @@ subroutine HydrogeophysicsInitialize(simulation)
   PetscInt :: i, num_pflotran_processes, offset, num_slaves
   PetscInt :: local_size
   PetscBool :: option_found
-  PetscMPIInt :: mpi_intt, process_range(3)
+  PetscMPIInt :: mpi_intt, process_range(3,1)
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   PetscInt, allocatable :: int_array(:)
@@ -138,9 +138,9 @@ subroutine HydrogeophysicsInitialize(simulation)
 !print *, 1, simulation%myrank_save, simulation%mygroup_save, simulation%mycomm_save
 !print *, 2, simulation%myrank_save, option%myrank, option%mygroup, option%mycomm, mpi_intt
   mpi_intt = 1
-  process_range(1) = 0
-  process_range(2) = num_pflotran_processes ! includes e4d master due to 
-  process_range(3) = 1                        ! zero-based indexing
+  process_range(1,1) = 0
+  process_range(2,1) = num_pflotran_processes ! includes e4d master due to 
+  process_range(3,1) = 1                        ! zero-based indexing
   call MPI_Group_range_incl(simulation%mygroup_save,mpi_intt,process_range, &
                             simulation%pf_e4d_scatter_grp,ierr)
 !print *, 3, simulation%myrank_save, simulation%pf_e4d_scatter_grp
@@ -156,11 +156,11 @@ subroutine HydrogeophysicsInitialize(simulation)
 !print *, 5, simulation%myrank_save, simulation%pf_e4d_scatter_rank, simulation%pf_e4d_scatter_size
     ! remove processes between pf_master and e4d_master
     mpi_intt = 1
-    process_range(1) = 1
-    process_range(2) = num_pflotran_processes-1
-    process_range(3) = 1
+    process_range(1,1) = 1
+    process_range(2,1) = num_pflotran_processes-1
+    process_range(3,1) = 1
     ! if there are no process ranks to remove, set mpi_intt to zero
-    if (process_range(2) - process_range(1) < 0) mpi_intt = 0
+    if (process_range(2,1) - process_range(1,1) < 0) mpi_intt = 0
     call MPI_Group_range_excl(simulation%pf_e4d_scatter_grp,mpi_intt, &
                               process_range,simulation%pf_e4d_master_grp,ierr)
 !print *, 6, simulation%myrank_save, simulation%pf_e4d_master_grp, ierr
