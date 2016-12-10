@@ -901,28 +901,56 @@ subroutine GMDMDestroy(gmdm)
   
   if (.not.associated(gmdm)) return
 
-  call ISDestroy(gmdm%is_ghosted_local,ierr);CHKERRQ(ierr)
-  call ISDestroy(gmdm%is_local_local,ierr);CHKERRQ(ierr)
-  call ISDestroy(gmdm%is_ghosted_petsc,ierr);CHKERRQ(ierr)
-  call ISDestroy(gmdm%is_local_petsc,ierr);CHKERRQ(ierr)
-  call ISDestroy(gmdm%is_ghosts_local,ierr);CHKERRQ(ierr)
-  call ISDestroy(gmdm%is_ghosts_petsc,ierr);CHKERRQ(ierr)
-  call ISDestroy(gmdm%is_local_natural,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(gmdm%scatter_ltog,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(gmdm%scatter_gtol,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(gmdm%scatter_ltol,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(gmdm%scatter_gton,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(gmdm%scatter_gton_elem,ierr);CHKERRQ(ierr)
+  if (gmdm%is_ghosted_local /= PETSC_NULL_IS) then
+    call ISDestroy(gmdm%is_ghosted_local,ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%is_local_local /= PETSC_NULL_IS) then
+    call ISDestroy(gmdm%is_local_local,ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%is_ghosted_petsc /= PETSC_NULL_IS) then
+    call ISDestroy(gmdm%is_ghosted_petsc,ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%is_local_petsc /= PETSC_NULL_IS) then
+    call ISDestroy(gmdm%is_local_petsc,ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%is_ghosts_local /= PETSC_NULL_IS) then
+    call ISDestroy(gmdm%is_ghosts_local,ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%is_ghosts_petsc /= PETSC_NULL_IS) then
+    call ISDestroy(gmdm%is_ghosts_petsc,ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%is_local_natural /= PETSC_NULL_IS) then
+    call ISDestroy(gmdm%is_local_natural,ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%scatter_ltog /= PETSC_NULL_VECSCATTER) then
+    call VecScatterDestroy(gmdm%scatter_ltog,ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%scatter_gtol /= PETSC_NULL_VECSCATTER) then
+    call VecScatterDestroy(gmdm%scatter_gtol,ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%scatter_ltol /= PETSC_NULL_VECSCATTER) then
+    call VecScatterDestroy(gmdm%scatter_ltol,ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%scatter_gton /= PETSC_NULL_VECSCATTER) then
+    call VecScatterDestroy(gmdm%scatter_gton,ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%scatter_gton_elem /= PETSC_NULL_VECSCATTER) then
+    call VecScatterDestroy(gmdm%scatter_gton_elem,ierr);CHKERRQ(ierr)
+  endif
   call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltog,ierr);CHKERRQ(ierr)
   call ISLocalToGlobalMappingDestroy(gmdm%mapping_ltog_elem, &
                                      ierr);CHKERRQ(ierr)
   call VecDestroy(gmdm%global_vec,ierr);CHKERRQ(ierr)
   call VecDestroy(gmdm%local_vec,ierr);CHKERRQ(ierr)
   call VecDestroy(gmdm%global_vec_elem,ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(gmdm%scatter_subsurf_to_geomech_ndof, &
-                         ierr);CHKERRQ(ierr)
-  call VecScatterDestroy(gmdm%scatter_geomech_to_subsurf_ndof, &
-                         ierr);CHKERRQ(ierr)
+  if (gmdm%scatter_subsurf_to_geomech_ndof /= PETSC_NULL_VECSCATTER) then
+    call VecScatterDestroy(gmdm%scatter_subsurf_to_geomech_ndof, &
+                           ierr);CHKERRQ(ierr)
+  endif
+  if (gmdm%scatter_geomech_to_subsurf_ndof /= PETSC_NULL_VECSCATTER) then
+    call VecScatterDestroy(gmdm%scatter_geomech_to_subsurf_ndof, &
+                           ierr);CHKERRQ(ierr)
+  endif
   deallocate(gmdm)
   nullify(gmdm)
 

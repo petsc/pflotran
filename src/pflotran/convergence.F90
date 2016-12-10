@@ -187,7 +187,7 @@ subroutine ConvergenceTest(snes_,i_iteration,xnorm,unorm,fnorm,reason,context, &
 !        inorm_residual > solver%max_norm) then
   
   if (option%out_of_table) then
-    reason = -9
+    reason = -19
   endif
    
   if (option%converged) then
@@ -223,7 +223,7 @@ subroutine ConvergenceTest(snes_,i_iteration,xnorm,unorm,fnorm,reason,context, &
     endif
     
     if (inorm_residual > solver%max_norm) then
-      reason = -10
+      reason = -20
     endif
  
     ! This is to check if the secondary continuum residual convergences
@@ -245,9 +245,9 @@ subroutine ConvergenceTest(snes_,i_iteration,xnorm,unorm,fnorm,reason,context, &
     if (option%print_screen_flag .and. solver%print_convergence) then
       i = int(reason)
       select case(i)
-        case(-10)
+        case(-20)
           string = 'max_norm'
-        case(-9)
+        case(-19)
           string = 'out_of_EOS_table'
         case(2)
           string = 'atol'
@@ -315,7 +315,7 @@ subroutine ConvergenceTest(snes_,i_iteration,xnorm,unorm,fnorm,reason,context, &
     if (option%print_screen_flag .and. solver%print_convergence) then
       i = int(reason)
       select case(i)
-        case(-9)
+        case(-19)
           string = 'out_of_EOS_table'
         case(2)
           string = 'atol'
