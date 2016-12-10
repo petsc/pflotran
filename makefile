@@ -46,6 +46,7 @@ install: all
           mkdir -p ${PREFIX_LOC}/share/pflotran ;\
           cp -f ${PFLOTRAN_EXE} ${PREFIX_LOC}/bin/. ;\
           cp -f ${PFLOTRAN_LIB} ${PREFIX_LOC}/lib/. ;\
+          cp -f ${PFLOTRANCHEM_LIB} ${PREFIX_LOC}/lib/. ;\
           cp -Rf ${PFLOTRAN_DIR_LOC}/regression_tests ${PREFIX_LOC}/share/pflotran/. ;\
         fi
 
