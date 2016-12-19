@@ -15,6 +15,8 @@ module General_Derivative_module
 #include "petsc/finclude/petscsys.h"
 
   public :: GeneralDerivativeDriver
+  
+  PetscReal, parameter :: perturbation_tolerance = 1.d-5
 
 contains
   
@@ -53,6 +55,7 @@ subroutine GeneralDerivativeDriver(option)
       xx(1) = 1.d6
       xx(2) = 1.d-6
       xx(3) = 30.d0
+!      xx(3) = 100.d0
     case(GAS_STATE)
 !      xx(1) = 1.d4
 !      xx(2) = 0.98d4
@@ -110,7 +113,6 @@ subroutine GeneralDerivativeSetupAuxVar(istate,xx,pert,general_auxvar, &
   PetscReal :: xx_pert(3)
   PetscInt :: natural_id = 1
   PetscBool :: analytical_derivative = PETSC_TRUE
-  PetscReal, parameter :: perturbation_tolerance = 1.d-6
   PetscInt :: i
   
   allocate(general_auxvar(0:3))
@@ -936,6 +938,7 @@ subroutine GeneralDiffJacobian(string,numerical_jacobian,analytical_jacobian, &
   
 100 format(2i2,2es13.5,es16.8)
 
+  write(*,'(" Perturbation tolerance: ",es12.4)') perturbation_tolerance
   write(*,'(" r c    numerical   analytical")')
   do icol = 1, 3
     do irow = 1, 3
@@ -945,12 +948,12 @@ subroutine GeneralDiffJacobian(string,numerical_jacobian,analytical_jacobian, &
   enddo
 
 200 format(2es20.12)
-300 format(a24,2es20.12)
+300 format(a24,10es20.12)
 
   do icol = 1, 3
     write(*,'(/," dof = ",i1,"  perturbation = ",es13.5)') icol, perturbation(icol)
-    write(*,300) 'density', general_auxvar(icol)%den(1), general_auxvar(0)%den(1)
-    write(*,300) 'energy', general_auxvar(icol)%U(1), general_auxvar(0)%U(1)
+!    write(*,300) 'density', general_auxvar(icol)%den(:), general_auxvar(0)%den(:)
+!    write(*,300) 'energy', general_auxvar(icol)%U(:), general_auxvar(0)%U(:)
     write(*,'("  residual_pert     residual")')
     do irow = 1, 3
       write(*,200) residual_pert(irow,icol), residual(irow)

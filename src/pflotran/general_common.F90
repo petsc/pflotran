@@ -153,10 +153,10 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
         ! por * satl * denl * Xwl
         ! ---
         ! w/respect to liquid pressure
-        ! dpor_dpl * denl * Xwl + 
+        ! dpor_dp * denl * Xwl + 
         ! por * ddenl_dpl * Xwl
         Jac(1,1) = &
-          gen_auxvar%d%por_pl * gen_auxvar%den(1) * gen_auxvar%xmol(1,1) + &
+          gen_auxvar%d%por_p * gen_auxvar%den(1) * gen_auxvar%xmol(1,1) + &
           porosity * gen_auxvar%d%denl_pl * gen_auxvar%xmol(1,1)
         ! w/respect to air mole fraction
         ! liquid phase density is indepenent of air mole fraction
@@ -174,7 +174,7 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
         ! dpor_dpl * denl * Xal + 
         ! por * ddenl_dpl * Xal
         Jac(2,1) = &
-          gen_auxvar%d%por_pl * gen_auxvar%den(1) * gen_auxvar%xmol(2,1) + &
+          gen_auxvar%d%por_p * gen_auxvar%den(1) * gen_auxvar%xmol(2,1) + &
           porosity * gen_auxvar%d%denl_pl * gen_auxvar%xmol(2,1)
         ! w/respect to air mole fraction
         Jac(2,2) = porosity * gen_auxvar%den(1)
@@ -183,29 +183,215 @@ subroutine GeneralAccumulation(gen_auxvar,global_auxvar,material_auxvar, &
         Jac(2,3) = porosity * gen_auxvar%d%denl_T * gen_auxvar%xmol(2,1)
         ! ----------
         ! Energy Equation
-        ! por * satl * denl * Ul + (1-por) * dens * Cp * T
+        ! por * satl * denl * Ul + (1-por) * denr * Cp * T
         ! w/respect to liquid pressure
         ! dpor_dpl * denl * Ul + 
         ! por * ddenl_dpl * Ul + 
         ! por * denl * dUl_dpl + 
         ! -dpor_dpl * dens * Cp * T
         Jac(3,1) = &
-          gen_auxvar%d%por_pl * gen_auxvar%den(1) * gen_auxvar%U(1) + &
+          gen_auxvar%d%por_p * gen_auxvar%den(1) * gen_auxvar%U(1) + &
           porosity * gen_auxvar%d%denl_pl * gen_auxvar%U(1) + &
           porosity * gen_auxvar%den(1) * gen_auxvar%d%Ul_pl + &
-          (-1.d0) * gen_auxvar%d%por_pl * &
+          (-1.d0) * gen_auxvar%d%por_p * &
             material_auxvar%soil_particle_density * &
             soil_heat_capacity * gen_auxvar%temp
         ! w/respect to air mole fraction
         Jac(3,2) = 0.d0
         ! w/respect to temperature
+        ! por * ddenl_dT * Ul + 
+        ! por * denl * dUl_dT + 
+        ! (1-por) * dens * Cp
         Jac(3,3) = &
+          porosity * gen_auxvar%d%denl_T * gen_auxvar%U(1) + &
           porosity * gen_auxvar%den(1) * gen_auxvar%d%Ul_T + &
           (1.d0 - porosity) * material_auxvar%soil_particle_density * &
             soil_heat_capacity
       case(GAS_STATE)
+        ! satg = 1
+        ! ----------
+        ! Water Equation
+        ! por * satg * deng * Xwg
+        ! ---
+        ! w/respect to gas pressure
+        ! dpor_dp * deng * Xwg + 
+        ! por * ddeng_dpg * Xwg
+        Jac(1,1) = &
+          gen_auxvar%d%por_p * gen_auxvar%den(2) * gen_auxvar%xmol(1,2) + &
+          porosity * gen_auxvar%d%deng_pg * gen_auxvar%xmol(1,2) + &
+          ! xmol_p(1,2) = dXwg_dpg
+          porosity * gen_auxvar%den(2) * gen_auxvar%d%xmol_p(1,2)
+        ! w/respect to air pressure
+        ! por * deng_pa * Xwg + 
+        ! por * deng * Xwg_pa
+        Jac(1,2) = porosity * gen_auxvar%d%deng_pa * gen_auxvar%xmol(1,2) + &
+          ! liquid phase index hijacked for air pressure derivative
+          ! xmol_p(1,1) = dXwg_dpa
+          porosity * gen_auxvar%den(2) * gen_auxvar%d%xmol_p(1,1)
+        ! w/repect to temperature
+        ! por * ddenl_dT * Xwl
+        Jac(1,3) = porosity * gen_auxvar%d%deng_T * gen_auxvar%xmol(1,2)
+        ! ----------
+        ! Air Equation
+        ! por * satg * deng * Xag
+        ! w/respect to gas pressure
+        ! dpor_dpl * denl * Xal + 
+        ! por * ddenl_dpl * Xal
+        Jac(2,1) = &
+          gen_auxvar%d%por_p * gen_auxvar%den(2) * gen_auxvar%xmol(2,2) + &
+          porosity * gen_auxvar%d%deng_pg * gen_auxvar%xmol(2,2) + &
+          ! por * ddeng_dpg * Xag
+          ! xmol_p(2,2) = dXag_dpg
+          porosity *  gen_auxvar%den(2) * gen_auxvar%d%xmol_p(2,2) 
+        ! w/respect to air pressure
+        Jac(2,2) = porosity * gen_auxvar%d%deng_pa * gen_auxvar%xmol(2,2) + &
+          ! liquid phase index hijacked for air pressure derivative
+          ! por * ddeng_dpa * Xag
+          ! xmol_p(2,1) = dXag_dpa
+          porosity * gen_auxvar%den(2) * gen_auxvar%d%xmol_p(2,1)
+        ! w/repect to temperature
+        ! por * ddeng_dT * Xag
+        Jac(2,3) = porosity * gen_auxvar%d%deng_T * gen_auxvar%xmol(2,2)
+        ! ----------
+        ! Energy Equation
+        ! por * satg * deng * Ug + (1-por) * denr * Cp * T
+        ! w/respect to gas pressure
+        ! dpor_dpg * deng * Ug + 
+        ! por * ddeng_dpg * Ug + 
+        ! por * deng * dUg_dpg + 
+        ! -dpor_dpg * denr * Cp * T
+        Jac(3,1) = &
+          gen_auxvar%d%por_p * gen_auxvar%den(2) * gen_auxvar%U(2) + &
+          porosity * gen_auxvar%d%deng_pg * gen_auxvar%U(2) + &
+          porosity * gen_auxvar%den(2) * gen_auxvar%d%Ug_pg + &
+          (-1.d0) * gen_auxvar%d%por_p * &
+            material_auxvar%soil_particle_density * &
+            soil_heat_capacity * gen_auxvar%temp
+        ! w/respect to air pressure
+        ! por * ddeng_dpa * Ug + 
+        ! por * deng * dUg_dpa
+        Jac(3,2) = porosity * gen_auxvar%d%deng_pa * gen_auxvar%U(2) + &
+          porosity * gen_auxvar%den(2) * gen_auxvar%d%Ug_pa
+        ! w/respect to temperature
+        ! por * ddeng_dT * Ug + 
+        ! por * deng * dUg_dT + 
+        ! (1-por) * dens * Cp
+        Jac(3,3) = &
+          porosity * gen_auxvar%d%denl_T * gen_auxvar%U(2) + &
+          porosity * gen_auxvar%den(2) * gen_auxvar%d%Ug_T + &
+          (1.d0 - porosity) * material_auxvar%soil_particle_density * &
+            soil_heat_capacity
       case(TWO_PHASE_STATE)
-!        if (general_2ph_energy_dof == GENERAL_TEMPERATURE_INDEX) then
+        ! ----------
+        ! Water Equation
+        ! por * (satl * denl * Xwl + satg * deng * Xwg)
+        ! ---
+        ! w/respect to gas pressure
+        ! dpor_dp * (satl * denl * Xwl + satg * deng * Xwg) +
+        ! por * (satl * ddenl_dpg * Xwl + satg * ddeng_dpg * Xwg) + 
+        ! por * (satl * denl * dXwl_dpg + satg * deng * dXwg_dpg)
+        Jac(1,1) = &
+          gen_auxvar%d%por_p * &
+            (gen_auxvar%sat(1) * gen_auxvar%den(1) * gen_auxvar%xmol(1,1) + &
+             gen_auxvar%sat(2) * gen_auxvar%den(2) * gen_auxvar%xmol(1,2)) + &
+          porosity * &
+            (gen_auxvar%sat(1) * gen_auxvar%d%denl_pl * gen_auxvar%xmol(1,1) + &
+             gen_auxvar%sat(2) * gen_auxvar%d%deng_pg * gen_auxvar%xmol(1,2)) + &
+          porosity * &
+            (gen_auxvar%sat(1) * gen_auxvar%den(1) * gen_auxvar%d%xmol_p(1,1) + &
+             gen_auxvar%sat(2) * gen_auxvar%den(2) * gen_auxvar%d%xmol_p(1,2))
+        ! w/respect to gas saturation
+        ! porosity, density, mole fraction are independent of gas saturation
+        ! por * (dsatl_dsatg * denl * Xwl + dsatg_dsatg * deng * Xwg)
+        ! dsatl_dsatg = -1.
+        ! dsatg_dsatg = 1.
+        Jac(1,2) = porosity * &
+          (-1.d0 * gen_auxvar%den(1) * gen_auxvar%xmol(1,1) + &
+            1.d0 * gen_auxvar%den(2) * gen_auxvar%xmol(1,2))
+        ! w/repect to temperature
+        ! porosity, saturation, mole fraction are independent of temperature
+        ! por * (satl * ddenl_T * Xwl + satg * ddeng_T * Xwg) +
+        ! por * (satl * denl * dXwl_dpg + satg * deng * dXwg_dpg)
+        Jac(1,3) = porosity * &
+          (gen_auxvar%sat(1) * gen_auxvar%d%denl_T * gen_auxvar%xmol(1,1) + &
+           gen_auxvar%sat(2) * gen_auxvar%d%deng_T * gen_auxvar%xmol(1,2)) + &
+          porosity * &
+            (gen_auxvar%sat(1) * gen_auxvar%den(1) * gen_auxvar%d%xmol_T(1,1) + &
+             gen_auxvar%sat(2) * gen_auxvar%den(2) * gen_auxvar%d%xmol_T(1,2))
+        ! ----------
+        ! Gas Equation
+        ! por * (satl * denl * Xal + satg * deng * Xag)
+        ! ---
+        ! w/respect to gas pressure
+        ! dpor_dp * (satl * denl * Xal + satg * deng * Xag) +
+        ! por * (satl * ddenl_dpg * Xal + satg * ddeng_dpg * Xag) + 
+        ! por * (satl * denl * dXal_dpg + satg * deng * dXag_dpg)
+        Jac(2,1) = &
+          gen_auxvar%d%por_p * &
+            (gen_auxvar%sat(1) * gen_auxvar%den(1) * gen_auxvar%xmol(2,1) + &
+             gen_auxvar%sat(2) * gen_auxvar%den(2) * gen_auxvar%xmol(2,2)) + &
+          porosity * &
+            (gen_auxvar%sat(1) * gen_auxvar%d%denl_pl * gen_auxvar%xmol(2,1) + &
+             gen_auxvar%sat(2) * gen_auxvar%d%deng_pg * gen_auxvar%xmol(2,2)) + &
+          porosity * &
+            (gen_auxvar%sat(1) * gen_auxvar%den(1) * gen_auxvar%d%xmol_p(2,1) + &
+             gen_auxvar%sat(2) * gen_auxvar%den(2) * gen_auxvar%d%xmol_p(2,2))
+        ! w/respect to gas saturation
+        ! porosity, density, mole fraction are independent of gas saturation
+        ! por * (dsatl_dsatg * denl * Xal + dsatg_dsatg * deng * Xag)
+        ! dsatl_dsatg = -1.
+        ! dsatg_dsatg = 1.
+        Jac(2,2) = porosity * &
+          (-1.d0 * gen_auxvar%den(1) * gen_auxvar%xmol(2,1) + &
+            1.d0 * gen_auxvar%den(2) * gen_auxvar%xmol(2,2))
+        ! w/repect to temperature
+        ! porosity, saturation, mole fraction are independent of temperature
+        ! por * (satl * ddenl_T * Xal + satg * ddeng_T * Xag)
+        Jac(2,3) = porosity * &
+          (gen_auxvar%sat(1) * gen_auxvar%d%denl_T * gen_auxvar%xmol(2,1) + &
+           gen_auxvar%sat(2) * gen_auxvar%d%deng_T * gen_auxvar%xmol(2,2)) + &
+          porosity * &
+            (gen_auxvar%sat(1) * gen_auxvar%den(1) * gen_auxvar%d%xmol_T(2,1) + &
+             gen_auxvar%sat(2) * gen_auxvar%den(2) * gen_auxvar%d%xmol_T(2,2))           
+        ! ----------
+        ! Energy Equation
+        ! por * (satl * denl * Ul + satg * deng * Ug) + 
+        ! (1-por) * denr * Cpr * T
+        ! ---
+        ! w/respect to gas pressure
+        ! dpor_dp * (satl * denl * Ul + satg * deng * Ug) + 
+        ! por * (satl * denl_dp * Ul + satg * deng_dp * Ug) + 
+        ! por * (satl * denl * dUl_dp + satg * deng * dUg_dp) +
+        ! -dpor_dp * denr * Cpr * T
+        Jac(3,1) = &
+          gen_auxvar%d%por_p * &
+            (gen_auxvar%sat(1) * gen_auxvar%den(1) * gen_auxvar%U(1) + &
+             gen_auxvar%sat(2) * gen_auxvar%den(2) * gen_auxvar%U(2)) + &
+          porosity * &
+            (gen_auxvar%sat(1) * gen_auxvar%d%denl_pl * gen_auxvar%U(1) + &
+             gen_auxvar%sat(2) * gen_auxvar%d%deng_pg * gen_auxvar%U(2)) + &
+          porosity * &
+            (gen_auxvar%sat(1) * gen_auxvar%den(1) * gen_auxvar%d%Ul_pl + &
+             gen_auxvar%sat(2) * gen_auxvar%den(2) * gen_auxvar%d%Ug_pg) + &
+          (-1.d0) * gen_auxvar%d%por_p * &
+            material_auxvar%soil_particle_density * &
+            soil_heat_capacity * gen_auxvar%temp
+        ! w/respect to gas saturation
+        ! por * (dsatl_dsatg * denl * Ul + dsatg_dsatg * deng * Ug)
+        Jac(3,2) = porosity * &
+          (-1.d0 * gen_auxvar%den(1) * gen_auxvar%U(1) + &
+            1.d0 * gen_auxvar%den(2) * gen_auxvar%U(2))
+        ! w/respect to temperature
+        Jac(3,3) = &
+          porosity * &
+            (gen_auxvar%sat(1) * gen_auxvar%d%denl_T * gen_auxvar%U(1) + &
+             gen_auxvar%sat(2) * gen_auxvar%d%deng_T * gen_auxvar%U(2)) + &
+          porosity * &
+            (gen_auxvar%sat(1) * gen_auxvar%den(1) * gen_auxvar%d%Ul_T + &
+             gen_auxvar%sat(2) * gen_auxvar%den(2) * gen_auxvar%d%Ug_T) + &
+          (1.d0 - porosity) * &
+            material_auxvar%soil_particle_density * &
+            soil_heat_capacity             
     end select
     Jac = Jac * volume_over_dt
   endif

@@ -103,7 +103,7 @@ module General_Aux_module
   
   type, public :: general_derivative_auxvar_type
     PetscReal :: pc_satg
-    PetscReal :: por_pl
+    PetscReal :: por_p
     PetscReal :: denl_pl
     PetscReal :: denl_T
     PetscReal :: deng_pg
@@ -311,7 +311,7 @@ subroutine GeneralAuxVarInit(auxvar,allocate_derivative,option)
   if (allocate_derivative) then
     allocate(auxvar%d)
     auxvar%d%pc_satg = 0.d0
-    auxvar%d%por_pl = 0.d0
+    auxvar%d%por_p = 0.d0
     auxvar%d%denl_pl = 0.d0
     auxvar%d%denl_T = 0.d0
     auxvar%d%deng_pg = 0.d0
@@ -836,7 +836,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     endif
   endif
   if (associated(gen_auxvar%d)) then
-    gen_auxvar%d%por_pl = dpor_dp
+    gen_auxvar%d%por_p = dpor_dp
   endif
 
   ! ALWAYS UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!
