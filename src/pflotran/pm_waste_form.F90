@@ -2084,7 +2084,6 @@ subroutine WFMechDSNFDissolution(this,waste_form,pm,ierr)
   ! current timestep size, when the dissolution rate would have been
   ! calculated. This potential error is greatly reduced in magnitude for
   ! the other dissolution models, so we only do the direct update for DSNF.
-  write(*,*) 'WFMechDSNFDissolution() entered'
   
   ! the entire waste form dissolves in the current timestep:
   this%frac_dissolution_rate = 1.d0 / pm%realization%option%tran_dt
@@ -2114,26 +2113,10 @@ subroutine WFMechWIPPDissolution(this,waste_form,pm,ierr)
   class(pm_waste_form_type) :: pm  
   PetscErrorCode :: ierr
   
-  ierr = 0
-  
-  ! Because the WIPP dissolution rate is instantaneous, the amount of
-  ! released isotopes gets updated directly in the solution vector after
-  ! this routine is called, within PMWFSolve.
-  ! Doing the direct update to the solution vector resolves the potential
-  ! error that may occur if the next timestep size is different from the
-  ! current timestep size, when the dissolution rate would have been
-  ! calculated. This potential error is greatly reduced in magnitude for
-  ! the other dissolution models, so we only do the direct update for DSNF.
-  
-  ! the entire waste form dissolves in the current timestep:
-  this%frac_dissolution_rate = 1.d0 / pm%realization%option%tran_dt
-
-  ! kg-matrix/sec
-  waste_form%eff_dissolution_rate = &
-    this%frac_dissolution_rate * &           ! 1/sec
-    this%matrix_density * &                  ! kg matrix/m^3 matrix
-    waste_form%volume * &                    ! m^3 matrix
-    waste_form%exposure_factor               ! [-]
+  ! This subroutine is only a placeholder.
+  ! The WIPP waste form mechanism is an extension of the DSNF waste form
+  ! mechanism and does not have its own dissolution routine, however, this
+  ! placeholder exists in case a different one should be implemented.
 
 end subroutine WFMechWIPPDissolution
 
