@@ -539,7 +539,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   k_eff_dn = thermal_conductivity_dn(1) + &
              sqrt(gen_auxvar_dn%sat(option%liquid_phase)) * &
              (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
-  if (k_eff_up > 0.d0 .or. k_eff_up > 0.d0) then
+  if (k_eff_up > 0.d0 .or. k_eff_dn > 0.d0) then
     k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dist_dn+k_eff_dn*dist_up)
   else
     k_eff_ave = 0.d0
