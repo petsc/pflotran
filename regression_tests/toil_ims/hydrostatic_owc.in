@@ -154,7 +154,7 @@ EOS OIL
   ! den = den0 + C(p-p1) - E(t-t1)
   DENSITY LINEAR
     REFERENCE_VALUE 734.29d0        !den0 [kg/m3]  
-    PRES_REF_VAULE 1.d5             !p1 [Pa]
+    PRES_REF_VALUE 1.d5             !p1 [Pa]
     TEMP_REF_VALUE 15.0             !t1 [°C]
     COMPRESS_COEFF 0.7345d-6        !C [kg/m3/Pa]
     THERMAL_EXPANSION_COEFF 0.774d0 !E [kg/m3/°C]
