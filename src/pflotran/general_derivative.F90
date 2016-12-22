@@ -59,9 +59,9 @@ subroutine GeneralDerivativeDriver(option)
                               material_parameter,option)  
   option%flow_dt = 1.d0
   
-  istate = LIQUID_STATE
+!  istate = LIQUID_STATE
 !  istate = GAS_STATE
-!  istate = TWO_PHASE_STATE
+  istate = TWO_PHASE_STATE
   select case(istate)
     case(LIQUID_STATE)
       xx(1) = 1.d6
@@ -82,9 +82,12 @@ subroutine GeneralDerivativeDriver(option)
 !      xx(2) = 0.98d7
 !      xx(3) = 85.d0
     case(TWO_PHASE_STATE)
-      xx(1) = 1.d6
-      xx(2) = 0.5d0
-      xx(3) = 30.d0
+!      xx(1) = 1.d6
+!      xx(2) = 0.5d0
+!      xx(3) = 30.d0
+      xx(1) = 1.001d6
+      xx(2) = 0.5001d0
+      xx(3) = 30.01d0
   end select
 
   call GeneralDerivativeSetupAuxVar(istate,xx,pert,general_auxvar, &
@@ -119,6 +122,9 @@ subroutine GeneralDerivativeDriver(option)
       xx2(1) = 1.d6
       xx2(2) = 0.5d0
       xx2(3) = 30.d0
+!      xx2(1) = 1.001d6
+!      xx2(2) = 0.5001d0
+!      xx2(3) = 30.01d0
   end select    
   
   call GeneralDerivativeSetupAuxVar(istate2,xx2,pert2,general_auxvar2, &

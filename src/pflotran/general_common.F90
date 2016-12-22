@@ -12,9 +12,9 @@ module General_Common_module
 #include "petsc/finclude/petscsys.h"
 
 #define CONVECTION
-#define DIFFUSION
-#define LIQUID_DIFFUSION
-#define CONDUCTION
+!#define DIFFUSION
+!#define LIQUID_DIFFUSION
+!#define CONDUCTION
   
 !#define DEBUG_GENERAL_FILEOUTPUT
 !#define DEBUG_FLUXES  
@@ -507,6 +507,8 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: dmole_flux_dstpd_ave_over_dist
   PetscReal :: dmole_flux_dtempreal
   PetscReal :: dmole_flux_ddelta
+  PetscReal :: dv_darcy_dsatup, dv_darcy_dsatdn
+  PetscReal :: dmole_flux_dsatup, dmole_flux_dsatdn
   PetscReal :: dX
    
   wat_comp_id = option%water_id
@@ -769,6 +771,39 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
           gen_auxvar_dn%mobility(iphase) < eps) then
         cycle
       endif
+      
+      select case(iphase)
+        case(LIQUID_PHASE)
+          dden_up_dp_up = gen_auxvar_up%d%denl_pl
+          dden_dn_dp_dn = gen_auxvar_dn%d%denl_pl
+          dden_up_dT_up = gen_auxvar_up%d%denl_T
+          dden_dn_dT_dn = gen_auxvar_dn%d%denl_T
+          dmobility_dpup = gen_auxvar_up%d%mobilityl_pl
+          dmobility_dsatup = gen_auxvar_up%d%mobilityl_satg
+          dmobility_dTup = gen_auxvar_up%d%mobilityl_T
+          dmobility_dpdn = gen_auxvar_dn%d%mobilityl_pl
+          dmobility_dsatdn = gen_auxvar_dn%d%mobilityl_satg
+          dmobility_dTdn = gen_auxvar_dn%d%mobilityl_T          
+          duH_dpup = gen_auxvar_up%d%Hl_pl
+          duH_dTup = gen_auxvar_up%d%Hl_T
+          duH_dpdn = gen_auxvar_dn%d%Hl_pl
+          duH_dTdn = gen_auxvar_dn%d%Hl_T
+        case(GAS_PHASE)
+          dden_up_dp_up = gen_auxvar_up%d%deng_pg
+          dden_dn_dp_dn = gen_auxvar_dn%d%deng_pg
+          dden_up_dT_up = gen_auxvar_up%d%deng_T
+          dden_dn_dT_dn = gen_auxvar_dn%d%deng_T
+          dmobility_dpup = gen_auxvar_up%d%mobilityg_pg
+          dmobility_dsatup = gen_auxvar_up%d%mobilityg_satg
+          dmobility_dTup = gen_auxvar_up%d%mobilityg_T
+          dmobility_dpdn = gen_auxvar_dn%d%mobilityg_pg
+          dmobility_dsatdn = gen_auxvar_dn%d%mobilityg_satg
+          dmobility_dTdn = gen_auxvar_dn%d%mobilityg_T          
+          duH_dpup = gen_auxvar_up%d%Hg_pg
+          duH_dTup = gen_auxvar_up%d%Hg_T
+          duH_dpdn = gen_auxvar_dn%d%Hg_pg
+          duH_dTdn = gen_auxvar_dn%d%Hg_T
+      end select
 
       density_kg_ave = GeneralAverageDensity(iphase, &
                                              global_auxvar_up%istate, &
@@ -782,29 +817,24 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                        gravity_term
                        
       ddelta_pressure_dpup = 1.d0 + dist_gravity * &
-              dden_dden_kg_up * gen_auxvar_up%d%denl_pl*FMWH2O
+              dden_dden_kg_up * gen_auxvar_up%d%denl_pl*fmw_comp(iphase)
       ddelta_pressure_dpdn = -1.d0 + dist_gravity * &
-              dden_dden_kg_dn * gen_auxvar_dn%d%denl_pl*FMWH2O
+              dden_dden_kg_dn * gen_auxvar_dn%d%denl_pl*fmw_comp(iphase)
       ddelta_pressure_dTup = dist_gravity * &
-              dden_dden_kg_up * gen_auxvar_up%d%denl_T*FMWH2O
+              dden_dden_kg_up * gen_auxvar_up%d%denl_T*fmw_comp(iphase)
       ddelta_pressure_dTdn = dist_gravity * &
-              dden_dden_kg_dn * gen_auxvar_dn%d%denl_T*FMWH2O
+              dden_dden_kg_dn * gen_auxvar_dn%d%denl_T*fmw_comp(iphase)
 
       if (delta_pressure >= 0.D0) then
         mobility = gen_auxvar_up%mobility(iphase)
         xmol(:) = gen_auxvar_up%xmol(:,iphase)
         H_ave = gen_auxvar_up%H(iphase)
         uH = H_ave
-        
-        duH_dpup = gen_auxvar_up%d%Hl_pl
+
         duH_dpdn = 0.d0
-        duH_dTup = gen_auxvar_up%d%Hl_T
         duH_dTdn = 0.d0
         dxmol_up = [-1.d0,1.d0]
         dxmol_dn = 0.d0
-        dmobility_dpup = gen_auxvar_up%d%mobilityl_pl
-        dmobility_dsatup = gen_auxvar_up%d%mobilityl_satg
-        dmobility_dTup = gen_auxvar_up%d%mobilityl_T
         dmobility_dpdn = 0.d0
         dmobility_dsatdn = 0.d0
         dmobility_dTdn = 0.d0        
@@ -815,17 +845,12 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         uH = H_ave
 
         duH_dpup = 0.d0
-        duH_dpdn = gen_auxvar_dn%d%Hl_pl
         duH_dTup = 0.d0
-        duH_dTdn = gen_auxvar_dn%d%Hl_T
         dxmol_up = 0.d0
         dxmol_dn = [-1.d0,1.d0]
         dmobility_dpup = 0.d0
         dmobility_dsatup = 0.d0
         dmobility_dTup = 0.d0
-        dmobility_dpdn = gen_auxvar_dn%d%mobilityl_pl
-        dmobility_dsatdn = gen_auxvar_dn%d%mobilityl_satg
-        dmobility_dTdn = gen_auxvar_dn%d%mobilityl_T
       endif      
 
       if (mobility > floweps) then
@@ -838,11 +863,13 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
           (dmobility_dpup * delta_pressure + mobility * ddelta_pressure_dpup)
         dv_darcy_dTup = tempreal * &
           (dmobility_dTup * delta_pressure + mobility * ddelta_pressure_dTup)
+        dv_darcy_dsatup = v_darcy(iphase) / mobility * dmobility_dsatup
         dv_darcy_dpdn = tempreal * &
           (dmobility_dpdn * delta_pressure + mobility * ddelta_pressure_dpdn)
         dv_darcy_dTdn = tempreal * &
           (dmobility_dTdn * delta_pressure + mobility * ddelta_pressure_dTdn)
-        
+        dv_darcy_dsatdn = v_darcy(iphase) / mobility * dmobility_dsatdn
+          
         density_ave = GeneralAverageDensity(iphase, &
                                             global_auxvar_up%istate, &
                                             global_auxvar_dn%istate, &
@@ -866,10 +893,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
           case(LIQUID_STATE)
             dmole_flux_dpup = &
               dv_darcy_dpup * density_ave + &
-              v_darcy(iphase) * dden_up * gen_auxvar_up%d%denl_pl
+              v_darcy(iphase) * dden_up * dden_up_dp_up
             dmole_flux_dTup = &
               dv_darcy_dTup * density_ave + &
-              v_darcy(iphase) * dden_up * gen_auxvar_up%d%denl_T
+              v_darcy(iphase) * dden_up * dden_up_dT_up
             do icomp = 1, option%nflowspec
               Jup(icomp,1) = Jup(icomp,1) + dmole_flux_dpup * xmol(icomp)
               Jup(icomp,2) = Jup(icomp,2) + mole_flux * dxmol_up(icomp)
@@ -884,16 +911,35 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 #endif
           case(GAS_STATE)
           case(TWO_PHASE_STATE)
+            dmole_flux_dpup = &
+              dv_darcy_dpup * density_ave + &
+              v_darcy(iphase) * dden_up * dden_up_dp_up
+            dmole_flux_dTup = &
+              dv_darcy_dTup * density_ave + &
+              v_darcy(iphase) * dden_up * dden_up_dT_up
+            dmole_flux_dsatup = dv_darcy_dsatup * density_ave 
+            do icomp = 1, option%nflowspec
+              Jup(icomp,1) = Jup(icomp,1) + dmole_flux_dpup * xmol(icomp)
+              Jup(icomp,2) = Jup(icomp,2) + dmole_flux_dsatup * xmol(icomp)
+              Jup(icomp,3) = Jup(icomp,3) + dmole_flux_dTup * xmol(icomp)
+            enddo
+#if 1
+            ! energy
+            Jup(energy_id,1) = Jup(energy_id,1) + &
+              (dmole_flux_dpup * uH + mole_flux * duH_dpup)
+            Jup(energy_id,3) = Jup(energy_id,3) + &
+              (dmole_flux_dTup * uH + mole_flux * duH_dTup)
+#endif
         end select
         ! downwind cell
         select case(global_auxvar_dn%istate)
           case(LIQUID_STATE)
             dmole_flux_dpdn = &
               dv_darcy_dpdn * density_ave + &
-              v_darcy(iphase) * dden_dn * gen_auxvar_dn%d%denl_pl
+              v_darcy(iphase) * dden_dn * dden_dn_dp_dn
             dmole_flux_dTdn = &
               dv_darcy_dTdn * density_ave + &
-              v_darcy(iphase) * dden_dn * gen_auxvar_dn%d%denl_T
+              v_darcy(iphase) * dden_dn * dden_dn_dT_dn
             do icomp = 1, option%nflowspec
               Jdn(icomp,1) = Jdn(icomp,1) + dmole_flux_dpdn * xmol(icomp)
               Jdn(icomp,2) = Jdn(icomp,2) + mole_flux * dxmol_dn(icomp)
@@ -908,6 +954,25 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
 #endif
           case(GAS_STATE)
           case(TWO_PHASE_STATE)
+            dmole_flux_dpdn = &
+              dv_darcy_dpdn * density_ave + &
+              v_darcy(iphase) * dden_dn * dden_dn_dp_dn
+            dmole_flux_dTdn = &
+              dv_darcy_dTdn * density_ave + &
+              v_darcy(iphase) * dden_dn * dden_dn_dT_dn
+            dmole_flux_dsatdn = dv_darcy_dsatdn * density_ave 
+            do icomp = 1, option%nflowspec
+              Jdn(icomp,1) = Jdn(icomp,1) + dmole_flux_dpdn * xmol(icomp)
+              Jdn(icomp,2) = Jdn(icomp,2) + dmole_flux_dsatdn * xmol(icomp)
+              Jdn(icomp,3) = Jdn(icomp,3) + dmole_flux_dTdn * xmol(icomp)
+            enddo
+#if 1
+            ! energy
+            Jdn(energy_id,1) = Jdn(energy_id,1) + &
+              (dmole_flux_dpdn * uH + mole_flux * duH_dpdn)
+            Jdn(energy_id,3) = Jdn(energy_id,3) + &
+              (dmole_flux_dTdn * uH + mole_flux * duH_dTdn)
+#endif
         end select        
       endif                   
     enddo  
@@ -990,6 +1055,10 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                           gen_auxvar_up%effective_porosity*den_up
         dstpd_dn_dsat_dn = material_auxvar_dn%tortuosity* &
                           gen_auxvar_dn%effective_porosity*den_dn
+        if (iphase == LIQUID_PHASE) then ! convert wrt liquid saturation to wrt gas
+          dstpd_up_dsat_up = -1.d0 * dstpd_up_dsat_up
+          dstpd_dn_dsat_dn = -1.d0 * dstpd_dn_dsat_dn
+        endif
         dstpd_up_dpor_up = sat_up*material_auxvar_up%tortuosity*den_up
         dstpd_dn_dpor_dn = sat_dn*material_auxvar_dn%tortuosity*den_dn
         if (general_diffuse_xmol) then
@@ -1010,7 +1079,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
           ddelta_dxmol_up = xmass_air_up / xmol_air_up - &
                            xmass_air_up * fmw_comp(2) / &
                            (xmol_air_up*fmw_comp(2) + (1.d0-xmol_air_up)*fmw_comp(1))
-          ddelta_dxmol_up = -1.d0 * &
+          ddelta_dxmol_dn = -1.d0 * &
                            (xmass_air_dn / xmol_air_dn - &
                             xmass_air_dn * fmw_comp(2) / &
                             (xmol_air_dn*fmw_comp(2) + (1.d0-xmol_air_dn)*fmw_comp(1)))
@@ -1031,7 +1100,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                                 gen_auxvar_dn%pres(iphase))
           tempreal = ((temp_ave+273.15d0)/273.15d0)**1.8d0 * &
                       101325.d0 / pressure_ave
-          dtempreal_dtemp_ave = 1.8d0 * ((temp_ave+273.15d0)/273.15d0)**0.8d0 * &
+          dtempreal_dtemp_ave = 1.8d0 * ((temp_ave+273.15d0)/273.15d0)**0.8d0 / 273.15d0 * &
                                         101325.d0 / pressure_ave         
           dtempreal_dpressure_ave = -1.d0*tempreal/pressure_ave
           dtempreal_dtemp_up = dtempreal_dtemp_ave * 0.5d0
@@ -1079,6 +1148,27 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
             Jup(air_comp_id,3) = Jup(air_comp_id,3) + dX
           case(GAS_STATE)
           case(TWO_PHASE_STATE)
+            ! gas pressure
+            dX = dmole_flux_dstpd_ave_over_dist * &
+                 (dstpd_ave_over_dist_dstpd_up * dstpd_up_dden_up * dden_up_dp_up + &
+                  dstpd_ave_over_dist_dstpd_dn * dstpd_dn_dden_up * dden_up_dp_up + &
+                  dstpd_ave_over_dist_dstpd_up * dstpd_up_dpor_up * gen_auxvar_up%d%por_p) + &
+                  dmole_flux_dtempreal * dtempreal_dpres_up + &
+                  dmole_flux_ddelta * ddelta_dxmol_up * gen_auxvar_up%d%xmol_p(2,iphase)
+            Jup(wat_comp_id,1) = Jup(wat_comp_id,1) - dX
+            Jup(air_comp_id,1) = Jup(air_comp_id,1) + dX 
+            ! air mole fraction
+            dX = dmole_flux_dstpd_ave_over_dist * dstpd_ave_over_dist_dstpd_up * dstpd_up_dsat_up
+            Jup(wat_comp_id,2) = Jup(wat_comp_id,2) - dX
+            Jup(air_comp_id,2) = Jup(air_comp_id,2) + dX
+            ! temperature
+            dX = dmole_flux_dstpd_ave_over_dist * &
+                 (dstpd_ave_over_dist_dstpd_up * dstpd_up_dden_up * dden_up_dT_up + &
+                  dstpd_ave_over_dist_dstpd_dn * dstpd_dn_dden_up * dden_up_dT_up) + &
+                 dmole_flux_dtempreal * dtempreal_dtemp_up + &
+                 dmole_flux_ddelta * ddelta_dxmol_up * gen_auxvar_up%d%xmol_T(2,iphase)
+            Jup(wat_comp_id,3) = Jup(wat_comp_id,3) - dX
+            Jup(air_comp_id,3) = Jup(air_comp_id,3) + dX
         end select  
         ! downwind cell
         select case(global_auxvar_dn%istate)
@@ -1104,6 +1194,27 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
             Jdn(air_comp_id,3) = Jdn(air_comp_id,3) + dX
           case(GAS_STATE)
           case(TWO_PHASE_STATE)
+            ! gas pressure
+            dX = dmole_flux_dstpd_ave_over_dist * &
+                 (dstpd_ave_over_dist_dstpd_up * dstpd_up_dden_dn * dden_dn_dp_dn + &
+                  dstpd_ave_over_dist_dstpd_dn * dstpd_dn_dden_dn * dden_dn_dp_dn + &
+                  dstpd_ave_over_dist_dstpd_dn * dstpd_dn_dpor_dn * gen_auxvar_dn%d%por_p) + &
+                 dmole_flux_dtempreal * dtempreal_dpres_dn + &
+                 dmole_flux_ddelta * ddelta_dxmol_dn * gen_auxvar_dn%d%xmol_p(2,iphase)
+            Jdn(wat_comp_id,1) = Jdn(wat_comp_id,1) - dX
+            Jdn(air_comp_id,1) = Jdn(air_comp_id,1) + dX 
+            ! gas saturation
+            dX = dmole_flux_dstpd_ave_over_dist * dstpd_ave_over_dist_dstpd_dn * dstpd_dn_dsat_dn
+            Jdn(wat_comp_id,2) = Jdn(wat_comp_id,2) - dX
+            Jdn(air_comp_id,2) = Jdn(air_comp_id,2) + dX
+            ! temperature
+            dX = dmole_flux_dstpd_ave_over_dist * &
+                 (dstpd_ave_over_dist_dstpd_up * dstpd_up_dden_dn * dden_dn_dT_dn + &
+                  dstpd_ave_over_dist_dstpd_dn * dstpd_dn_dden_dn * dden_dn_dT_dn) + &
+                 dmole_flux_dtempreal * dtempreal_dtemp_dn + &
+                 dmole_flux_ddelta * ddelta_dxmol_dn * gen_auxvar_dn%d%xmol_T(2,iphase)
+            Jdn(wat_comp_id,3) = Jdn(wat_comp_id,3) - dX
+            Jdn(air_comp_id,3) = Jdn(air_comp_id,3) + dX
         end select  
       endif
     enddo
@@ -1128,6 +1239,9 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
       k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dist_dn+k_eff_dn*dist_up)
       dk_eff_ave_dsatup = (k_eff_ave/k_eff_up - k_eff_ave/(k_eff_up*dist_dn+k_eff_dn*dist_up)*dist_dn)*dk_eff_up_dsatup
       dk_eff_ave_dsatdn = (k_eff_ave/k_eff_dn - k_eff_ave/(k_eff_up*dist_dn+k_eff_dn*dist_up)*dist_up)*dk_eff_dn_dsatdn
+      ! multiply by -1.d0 due to gas saturation = 1.d0 - liquid saturation
+      dk_eff_ave_dsatup = -1.d0 * dk_eff_ave_dsatup
+      dk_eff_ave_dsatdn = -1.d0 * dk_eff_ave_dsatdn
     else
       k_eff_ave = 0.d0
     endif
