@@ -24,13 +24,30 @@ module TOWG_module
 #define LIQUID_DIFFUSION
 #define CONDUCTION
 
+!#define DEBUG_TOWG_FILEOUTPUT
+!#define DEBUG_TOWG_FLUXES  
+
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.d-8
   PetscReal, parameter :: floweps   = 1.d-24
 
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  PetscInt, parameter :: debug_unit = 87
+  PetscInt, parameter :: debug_info_unit = 86
+  character(len=MAXWORDLENGTH) :: debug_filename
+  PetscInt :: debug_flag = 0
+  PetscInt :: debug_iteration_count
+  PetscInt :: debug_timestep_cut_count
+  PetscInt :: debug_timestep_count
+#endif
+
   !pointing to null() function
   procedure(TOWGUpdateAuxVarsDummy), pointer :: TOWGUpdateAuxVars => null()
   procedure(TOWGAccumulationDummy), pointer :: TOWGAccumulation => null()
+  procedure(TOWGComputeMassBalanceDummy), pointer :: &
+                                           TOWGComputeMassBalance => null()
+  procedure(TOWGFluxDummy), pointer :: TOWGFlux => null()
+  procedure(TOWGBCFluxDummy), pointer :: TOWGBCFlux => null()
 
   abstract interface
     subroutine TOWGUpdateAuxVarsDummy(realization,update_state)
@@ -50,7 +67,6 @@ module TOWG_module
       use Material_module
       use Material_Aux_class
       implicit none
-
       class(auxvar_towg_type) :: auxvar
       type(global_auxvar_type) :: global_auxvar
       class(material_auxvar_type) :: material_auxvar
@@ -59,6 +75,79 @@ module TOWG_module
       PetscReal :: Res(option%nflowdof) 
       PetscBool :: debug_cell
     end subroutine TOWGAccumulationDummy
+
+    subroutine TOWGComputeMassBalanceDummy(realization,mass_balance)
+      use Realization_Subsurface_class 
+      implicit none
+      type(realization_subsurface_type) :: realization
+      PetscReal :: mass_balance(realization%option%nflowspec, &
+                            realization%option%nphase)
+
+    end subroutine TOWGComputeMassBalanceDummy
+
+    subroutine TOWGFluxDummy(auxvar_up,global_auxvar_up, &
+                             material_auxvar_up, &
+                             sir_up, &
+                             thermal_conductivity_up, &
+                             auxvar_dn,global_auxvar_dn, &
+                             material_auxvar_dn, &
+                             sir_dn, &
+                             thermal_conductivity_dn, &
+                             area, dist, towg_parameter, &
+                             option,v_darcy,Res, &
+                             debug_connection)
+      use PM_TOWG_Aux_module
+      use AuxVars_TOWG_module
+      use Global_Aux_module
+      use Option_module
+      use Material_Aux_class
+      implicit none
+      class(auxvar_towg_type) :: auxvar_up, auxvar_dn
+      type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+      class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
+      type(option_type) :: option
+      PetscReal :: sir_up(:), sir_dn(:)
+      PetscReal :: v_darcy(option%nphase)
+      PetscReal :: area
+      PetscReal :: dist(-1:3)
+      type(towg_parameter_type) :: towg_parameter
+      PetscReal :: thermal_conductivity_dn(2)
+      PetscReal :: thermal_conductivity_up(2)
+      PetscReal :: Res(option%nflowdof)
+      PetscBool :: debug_connection
+    end subroutine TOWGFluxDummy
+
+    subroutine TOWGBCFluxDummy(ibndtype,bc_auxvar_mapping,bc_auxvars, &
+                               auxvar_up,global_auxvar_up, &
+                               auxvar_dn,global_auxvar_dn, &
+                               material_auxvar_dn, &
+                               sir_dn, &
+                               thermal_conductivity_dn, &
+                               area,dist,towg_parameter, &
+                               option,v_darcy,Res,debug_connection)
+      use PM_TOWG_Aux_module
+      use AuxVars_TOWG_module
+      use Global_Aux_module
+      use Option_module                              
+      use Material_Aux_class
+      implicit none
+      class(auxvar_towg_type) :: auxvar_up, auxvar_dn
+      type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+      class(material_auxvar_type) :: material_auxvar_dn
+      type(option_type) :: option
+      PetscReal :: sir_dn(:)
+      PetscReal :: bc_auxvars(:)
+      PetscReal :: v_darcy(option%nphase), area
+      type(towg_parameter_type) :: towg_parameter
+      PetscReal :: dist(-1:3)
+      PetscReal :: Res(1:option%nflowdof)
+      PetscInt :: ibndtype(1:option%nflowdof)
+      PetscInt :: bc_auxvar_mapping(TOWG_MAX_INDEX)
+      PetscReal :: thermal_conductivity_dn(2)
+      PetscBool :: debug_connection
+    end subroutine TOWGBCFluxDummy
+
+
   end interface
 
 #ifdef TOWG_DEBUG
@@ -76,7 +165,8 @@ module TOWG_module
             TOWGUpdateAuxVars, &
             TOWGUpdateSolution, &
             TOWGMapBCAuxVarsToGlobal, &
-            TOWGInitializeTimestep
+            TOWGInitializeTimestep, &
+            TOWGComputeMassBalance
 
 contains
 
@@ -231,11 +321,26 @@ subroutine TOWGSetup(realization)
     case(TOWG_IMMISCIBLE)
       TOWGUpdateAuxVars => TOWGImsUpdateAuxVars
       TOWGAccumulation => TOWGImsTLAccumulation
+      TOWGComputeMassBalance => TOWGImsTLComputeMassBalance
+      TOWGFlux => TOWGImsTLFlux
+      TOWGBCFlux => TOWGImsTLBCFlux
       call TOWGImsAuxVarComputeSetup()
     case default
       option%io_buffer = 'TOWGSetup: only TOWG_IMMISCIBLE is supported.'
       call printErrMsg(option)
   end select
+
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  debug_flag = 0
+  debug_iteration_count = 0
+  debug_timestep_cut_count = 0
+  debug_timestep_count = 0
+  ! create new file
+  open(debug_info_unit, file='debug_towg_info.txt', action="write", &
+       status="unknown")
+  write(debug_info_unit,*) 'type timestep cut iteration'
+  close(debug_info_unit)
+#endif  
 
 end subroutine TOWGSetup
 
@@ -314,7 +419,7 @@ subroutine TOWGImsUpdateAuxVars(realization,update_state)
 #ifdef DEBUG_AUXVARS
   icall = icall + 1
   write(word,*) icall
-  word = 'genaux' // trim(adjustl(word))
+  word = 'towgaux' // trim(adjustl(word))
 #endif
 
   do ghosted_id = 1, grid%ngmax
@@ -478,7 +583,7 @@ subroutine TOWGInitializeTimestep(realization)
 
   call TOWGUpdateFixedAccum(realization)
   
-#ifdef TOWG_DEBUG
+#ifdef DEBUG_TOWG_FILEOUTPUT
   debug_flag = 0
   if (.true.) then
     debug_iteration_count = 0
@@ -537,6 +642,12 @@ subroutine TOWGUpdateSolution(realization)
   !  towg%auxvars(ZERO_INTEGER,ghosted_id)%istate_store(PREV_TS) = &
   !    global_auxvars(ghosted_id)%istate
   !enddo
+
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  debug_iteration_count = 0
+  debug_timestep_cut_count = 0
+  debug_timestep_count = debug_timestep_count + 1
+#endif 
     
 end subroutine TOWGUpdateSolution
 
@@ -549,7 +660,7 @@ subroutine TOWGZeroMassBalanceDelta(realization)
   !     be located to be shared?? flow_mode_common.F90 ?
   ! 
   ! Author: Paolo Orsini
-  ! Date: 12/06/16 
+  ! Date: 12/08/16 
   ! 
  
   use Realization_Subsurface_class
@@ -634,6 +745,72 @@ subroutine TOWGUpdateMassBalance(realization)
   enddo
 
 end subroutine TOWGUpdateMassBalance
+
+! ************************************************************************** !
+
+subroutine TOWGImsTLComputeMassBalance(realization,mass_balance)
+  ! 
+  ! Initializes mass balance
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/21/16
+  ! 
+ 
+  use Realization_Subsurface_class
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+  use Material_Aux_class
+ 
+  implicit none
+  
+  type(realization_subsurface_type) :: realization
+  PetscReal :: mass_balance(realization%option%nflowspec, &
+                            realization%option%nphase)
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  class(pm_towg_aux_type), pointer :: towg
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iphase, icomp
+  PetscReal :: vol_phase
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  towg => patch%aux%TOWG
+  material_auxvars => patch%aux%Material%auxvars
+
+  mass_balance = 0.d0
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !Ignore inactive cells with inactive materials
+    if (patch%imat(ghosted_id) <= 0) cycle
+    !not for both TOWG_IMS and TL phases and components coincides
+    do iphase = 1, option%nphase
+      ! volume_phase = saturation*porosity*volume
+      vol_phase = &
+        towg%auxvars(ZERO_INTEGER,ghosted_id)%sat(iphase)* &
+        towg%auxvars(ZERO_INTEGER,ghosted_id)%effective_porosity* &
+        material_auxvars(ghosted_id)%volume
+      ! mass = volume_phase*density 
+      mass_balance(iphase,1) = mass_balance(iphase,1) + &
+        towg%auxvars(ZERO_INTEGER,ghosted_id)%den(iphase)* &
+        towg_fmw_comp(iphase) * vol_phase
+    enddo
+  enddo
+
+end subroutine TOWGImsTLComputeMassBalance
 
 ! ************************************************************************** !
 
@@ -983,13 +1160,648 @@ subroutine TOWGImsTLAccumulation(auxvar,global_auxvar,material_auxvar, &
                     material_auxvar%soil_particle_density * &
                     soil_heat_capacity * auxvar%temp) * volume_over_dt
   
-#ifdef TOWG_DEBUG
+#ifdef DEBUG_TOWG_FILEOUTPUT
   if (debug_flag > 0) then
     write(debug_unit,'(a,7es24.15)') 'accum:', Res
   endif
 #endif                    
 
 end subroutine TOWGImsTLAccumulation
+
+! ************************************************************************** !
+
+subroutine TOWGImsTLFlux(auxvar_up,global_auxvar_up, &
+                         material_auxvar_up, &
+                         sir_up, &
+                         thermal_conductivity_up, &
+                         auxvar_dn,global_auxvar_dn, &
+                         material_auxvar_dn, &
+                         sir_dn, &
+                         thermal_conductivity_dn, &
+                         area, dist, towg_parameter, &
+                         option,v_darcy,Res, &
+                         debug_connection)
+  ! 
+  ! Computes the internal flux terms for the residual
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/08/16 
+  ! 
+  use Option_module
+  use Material_Aux_class
+  use Connection_module
+  !use Fracture_module
+  !use Klinkenberg_module
+  
+  implicit none
+  
+  class(auxvar_towg_type) :: auxvar_up, auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
+  type(option_type) :: option
+  PetscReal :: sir_up(:), sir_dn(:)
+  PetscReal :: v_darcy(option%nphase)
+  PetscReal :: area
+  PetscReal :: dist(-1:3)
+  type(towg_parameter_type) :: towg_parameter
+  PetscReal :: thermal_conductivity_dn(2)
+  PetscReal :: thermal_conductivity_up(2)
+  PetscReal :: Res(option%nflowdof)
+  PetscBool :: debug_connection
+
+  PetscReal :: dist_gravity  ! distance along gravity vector
+  PetscReal :: dist_up, dist_dn
+  PetscReal :: upweight
+
+  PetscInt :: energy_id
+  PetscInt :: iphase
+  
+  PetscReal :: density_ave, density_kg_ave
+  PetscReal :: uH
+  PetscReal :: H_ave
+  PetscReal :: perm_ave_over_dist(option%nphase)
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: delta_pressure, delta_temp
+  PetscReal :: pressure_ave
+  PetscReal :: gravity_term
+  PetscReal :: mobility, mole_flux, q
+  PetscReal :: sat_liquid
+  PetscReal :: sat_up, sat_dn, den_up, den_dn
+  PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
+  !for debugging
+  PetscReal :: adv_flux(option%nflowdof)
+  PetscReal :: debug_flux(3), debug_dphi(3)
+  
+  PetscReal :: dummy_dperm_up, dummy_dperm_dn
+  PetscReal :: temp_perm_up, temp_perm_dn
+
+  energy_id = option%energy_id
+
+  call ConnectionCalculateDistances(dist,option%gravity,dist_up,dist_dn, &
+                                    dist_gravity,upweight)
+  call material_auxvar_up%PermeabilityTensorToScalar(dist,perm_up)
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+  
+  ! Fracture permeability change only available for structured grid (Heeho)
+  !if (associated(material_auxvar_up%fracture)) then
+  !  call FracturePermEvaluate(material_auxvar_up,perm_up,temp_perm_up, &
+  !                            dummy_dperm_up,dist)
+  !  perm_up = temp_perm_up
+  !endif
+  !if (associated(material_auxvar_dn%fracture)) then
+  !  call FracturePermEvaluate(material_auxvar_dn,perm_dn,temp_perm_dn, &
+  !                            dummy_dperm_dn,dist)
+  !  perm_dn = temp_perm_dn
+  !endif
+  
+  !if (associated(klinkenberg)) then
+  !  perm_ave_over_dist(1) = (perm_up * perm_dn) / &
+  !                          (dist_up*perm_dn + dist_dn*perm_up)
+  !  temp_perm_up = klinkenberg%Evaluate(perm_up, &
+  !                                       auxvar_up%pres(option%gas_phase))
+  !  temp_perm_dn = klinkenberg%Evaluate(perm_dn, &
+  !                                       auxvar_dn%pres(option%gas_phase))
+  !  perm_ave_over_dist(2) = (temp_perm_up * temp_perm_dn) / &
+  !                          (dist_up*temp_perm_dn + dist_dn*temp_perm_up)
+  !else
+    perm_ave_over_dist(:) = (perm_up * perm_dn) / &
+                            (dist_up*perm_dn + dist_dn*perm_up)
+  !endif
+      
+  Res = 0.d0
+  
+  v_darcy = 0.d0
+#ifdef DEBUG_FLUXES  
+  adv_flux = 0.d0
+#endif
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  debug_flux = 0.d0
+  debug_dphi = 0.d0
+#endif
+
+#ifdef CONVECTION
+  do iphase = 1, option%nphase
+ 
+    if (auxvar_up%mobility(iphase) + &
+        auxvar_dn%mobility(iphase) < eps) then
+      cycle
+    endif
+
+    density_kg_ave = TOWGImsTLAverageDensity(auxvar_up%sat(iphase), &
+                                             auxvar_dn%sat(iphase), &
+                                             auxvar_up%den_kg(iphase), &
+                                             auxvar_dn%den_kg(iphase) )
+
+    gravity_term = density_kg_ave * dist_gravity
+    delta_pressure = auxvar_up%pres(iphase) - &
+                     auxvar_dn%pres(iphase) + &
+                     gravity_term
+
+#ifdef TOWG_DEBUG
+      debug_dphi(iphase) = delta_pressure
+#endif
+
+    if (delta_pressure >= 0.D0) then
+      mobility = auxvar_up%mobility(iphase)
+      H_ave = auxvar_up%H(iphase)
+      uH = H_ave
+    else
+      mobility = auxvar_dn%mobility(iphase)
+      H_ave = auxvar_dn%H(iphase)
+      uH = H_ave
+    endif      
+
+    if (mobility > floweps) then
+      ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
+      !                    dP[Pa]]
+      v_darcy(iphase) = perm_ave_over_dist(iphase) * mobility * delta_pressure
+      density_ave = TOWGImsTLAverageDensity(auxvar_up%sat(iphase), &
+                                            auxvar_dn%sat(iphase), &
+                                            auxvar_up%den(iphase), &
+                                            auxvar_dn%den(iphase) )
+      ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
+      q = v_darcy(iphase) * area  
+      ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
+      !                             density_ave[kmol phase/m^3 phase]        
+      mole_flux = q*density_ave
+
+      ! Res[kmol total/sec] = mole_flux[kmol phase/sec]
+      Res(iphase) = mole_flux
+
+      !do icomp = 1, option%nflowspec
+      !  ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
+      !  !                      xmol[kmol comp/kmol phase]
+      !  Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
+      !enddo
+
+#ifdef DEBUG_FLUXES  
+      adv_flux(iphase) = mole_flux
+      !do icomp = 1, option%nflowspec
+      !  adv_flux(icomp) = adv_flux(icomp) + mole_flux * xmol(icomp)
+      !enddo      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
+#endif
+
+      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
+      Res(energy_id) = Res(energy_id) + mole_flux * uH
+
+#ifdef DEBUG_FLUXES  
+      adv_flux(energy_id) = adv_flux(energy_id) + mole_flux * uH
+#endif
+
+#ifdef DEBUG_TOWG_FILEOUTPUT
+      debug_dphi(iphase) = delta_pressure
+      debug_flux(iphase) = mole_flux * uH
+#endif
+    endif                   
+
+  enddo
+! CONVECTION
+#endif
+
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  if (debug_flag > 0) then  
+    write(debug_unit,'(a,7es24.15)') 'delta pressure :', debug_dphi(:)
+    write(debug_unit,'(a,7es24.15)') 'adv flux (energy):', debug_flux(:)
+  endif
+  debug_flux = 0.d0
+#endif                    
+
+
+#ifdef CONDUCTION
+  ! add heat conduction flux
+  ! based on Somerton et al., 1974:
+  ! k_eff = k_dry + sqrt(s_l)*(k_sat-k_dry) 
+  ! Assuming that oil and water have same conductivity:
+  ! s_l = S_water + S_oil 
+  sat_liquid = auxvar_up%sat(option%liquid_phase) + &
+               auxvar_up%sat(option%oil_phase)
+  k_eff_up = thermal_conductivity_up(1) + &
+             sqrt(sat_liquid) * &
+             (thermal_conductivity_up(2) - thermal_conductivity_up(1))
+  sat_liquid = auxvar_dn%sat(option%liquid_phase) + &
+               auxvar_dn%sat(option%oil_phase)
+  k_eff_dn = thermal_conductivity_dn(1) + &
+             sqrt(sat_liquid) * &
+             (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
+  if (k_eff_up > 0.d0 .or. k_eff_dn > 0.d0) then
+    k_eff_ave = (k_eff_up*k_eff_dn)/(k_eff_up*dist_dn+k_eff_dn*dist_up)
+  else
+    k_eff_ave = 0.d0
+  endif
+  ! units:
+  ! k_eff = W/K-m = J/s/K-m
+  ! delta_temp = K
+  ! area = m^2
+  ! heat_flux = k_eff * delta_temp * area = J/s
+  delta_temp = auxvar_up%temp - auxvar_dn%temp
+  heat_flux = k_eff_ave * delta_temp * area * 1.d-6 ! J/s -> MJ/s
+  ! MJ/s
+  Res(energy_id) = Res(energy_id) + heat_flux
+! CONDUCTION
+#endif
+  
+#ifdef DEBUG_FLUXES  
+  if (debug_connection) then  
+!    write(*,'(a,7es12.4)') 'in: ', adv_flux(:)*dist(1), diff_flux(:)*dist(1)
+    write(*,'('' phase: liquid'')')
+    write(*,'(''  pressure   :'',2es12.4)') auxvar_up%pres(1), auxvar_dn%pres(1)
+    write(*,'(''  saturation :'',2es12.4)') auxvar_up%sat(1), auxvar_dn%sat(1)
+    write(*,'(''  water --'')')
+    write(*,'(''   darcy flux:'',es12.4)') adv_flux(1)
+    write(*,'(''   heat adv. flux:'',es12.4)') debug_flux(1) * 1.d6
+    write(*,'('' phase: oil'')')
+    write(*,'(''  pressure   :'',2es12.4)') auxvar_up%pres(2), auxvar_dn%pres(2)
+    write(*,'(''  saturation :'',2es12.4)') auxvar_up%sat(2), auxvar_dn%sat(2)
+    write(*,'(''  oil --'')')
+    write(*,'(''   darcy flux:'',es12.4)') adv_flux(2)
+    write(*,'(''   heat adv. flux:'',es12.4)') debug_flux(2) * 1.d6
+    write(*,'('' phase: gas'')')
+    write(*,'(''  pressure   :'',2es12.4)') auxvar_up%pres(3), auxvar_dn%pres(3)
+    write(*,'(''  saturation :'',2es12.4)') auxvar_up%sat(3), auxvar_dn%sat(3)
+    write(*,'(''  gas --'')')
+    write(*,'(''   darcy flux:'',es12.4)') adv_flux(3)
+    write(*,'(''   heat adv. flux:'',es12.4)') debug_flux(3) * 1.d6
+    write(*,'(''  energy --'')')
+    write(*,'(''   advective heat flux:'',es12.4)') adv_flux(4) * 1.d6
+    write(*,'(''   conductive heat flux:'',es12.4)') heat_flux * 1.d6
+    write(*,'(''   total heat flux:'',es12.4)') (heat_flux + adv_flux(4))*1.d6
+
+  endif
+#endif
+
+end subroutine TOWGImsTLFlux
+
+! ************************************************************************** !
+
+subroutine TOWGImsTLBCFlux(ibndtype,bc_auxvar_mapping,bc_auxvars, &
+                           auxvar_up,global_auxvar_up, &
+                           auxvar_dn,global_auxvar_dn, &
+                           material_auxvar_dn, &
+                           sir_dn, &
+                           thermal_conductivity_dn, &
+                           area,dist,towg_parameter, &
+                           option,v_darcy,Res,debug_connection)
+  ! 
+  ! Computes the boundary flux terms for the residual
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/22/16
+  ! 
+  use Option_module                              
+  use Material_Aux_class
+  !use Fracture_module
+  !use Klinkenberg_module
+  
+  implicit none
+  
+  class(auxvar_towg_type) :: auxvar_up, auxvar_dn
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_dn
+  type(option_type) :: option
+  PetscReal :: sir_dn(:)
+  PetscReal :: bc_auxvars(:) ! from aux_real_var array
+  PetscReal :: v_darcy(option%nphase), area
+  type(towg_parameter_type) :: towg_parameter
+  PetscReal :: dist(-1:3)
+  PetscReal :: Res(1:option%nflowdof)
+  PetscInt :: ibndtype(1:option%nflowdof)
+  PetscInt :: bc_auxvar_mapping(TOWG_MAX_INDEX)
+  PetscReal :: thermal_conductivity_dn(2)
+  PetscBool :: debug_connection
+  
+  PetscInt :: energy_id
+  PetscInt :: iphase !, icomp
+  PetscInt :: bc_type
+  PetscReal :: density_ave, density_kg_ave
+  PetscReal :: H_ave, uH
+  PetscReal :: perm_dn_adj(option%nphase)
+  PetscReal :: perm_ave_over_dist
+  PetscReal :: dist_gravity
+  PetscReal :: delta_pressure, delta_temp !, delta_xmol
+  PetscReal :: gravity_term
+  PetscReal :: mobility, mole_flux, q
+  PetscReal :: sat_dn, perm_dn, den_dn
+  PetscReal :: temp_ave, stpd_ave_over_dist, pres_ave
+  PetscReal :: k_eff_up, k_eff_dn, k_eff_ave, heat_flux
+
+  PetscReal :: adv_flux(option%nflowdof)
+  PetscReal :: debug_flux(3), debug_dphi(3)
+
+  PetscReal :: boundary_pressure
+  PetscReal :: sat_liquid
+
+  PetscReal :: dden_dn, dden_up
+
+  PetscInt :: idof
+  PetscBool :: neumann_bc_present
+  
+  PetscReal :: temp_perm_dn
+  PetscReal :: dummy_dperm_dn
+  
+  energy_id = option%energy_id
+
+  Res = 0.d0
+  v_darcy = 0.d0  
+
+#ifdef DEBUG_FLUXES  
+  adv_flux = 0.d0
+#endif
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  debug_flux = 0.d0
+  debug_dphi = 0.d0
+#endif
+
+  neumann_bc_present = PETSC_FALSE
+  
+  call material_auxvar_dn%PermeabilityTensorToScalar(dist,perm_dn)
+
+  ! Fracture permeability change only available for structured grid (Heeho)
+  !if (associated(material_auxvar_dn%fracture)) then
+  !  call FracturePermEvaluate(material_auxvar_dn,perm_dn,temp_perm_dn, &
+  !                            dummy_dperm_dn,dist)
+  !  perm_dn = temp_perm_dn
+  !endif  
+  
+  !if (associated(klinkenberg)) then
+  !  perm_dn_adj(1) = perm_dn
+  !                                        
+  !  perm_dn_adj(2) = klinkenberg%Evaluate(perm_dn, &
+  !                                        gen_auxvar_dn%pres(option%gas_phase))
+  !else
+    perm_dn_adj(:) = perm_dn
+  !endif
+  
+#ifdef CONVECTION  
+  do iphase = 1, option%nphase
+ 
+    bc_type = ibndtype(iphase)
+    select case(bc_type)
+      ! figure out the direction of flow
+      case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+
+        ! dist(0) = scalar - magnitude of distance
+        ! gravity = vector(3)
+        ! dist(1:3) = vector(3) - unit vector
+        dist_gravity = dist(0) * dot_product(option%gravity,dist(1:3))
+      
+        if (bc_type == CONDUCTANCE_BC) then
+          select case(option%phase_map(iphase)) 
+            case(LIQUID_PHASE)
+              idof = bc_auxvar_mapping(TOWG_LIQ_CONDUCTANCE_INDEX)
+            case(OIL_PHASE)
+              idof = bc_auxvar_mapping(TOWG_OIL_CONDUCTANCE_INDEX)
+            case(GAS_PHASE)
+              idof = bc_auxvar_mapping(TOWG_GAS_CONDUCTANCE_INDEX)
+          end select        
+          perm_ave_over_dist = bc_auxvars(idof)
+        else
+          perm_ave_over_dist = perm_dn_adj(iphase) / dist(0)
+        endif
+        
+          
+        ! using residual saturation cannot be correct! - geh
+        ! reusing sir_dn for bounary auxvar
+#define BAD_MOVE1 ! this works
+#ifndef BAD_MOVE1       
+        if (auxvar_up%sat(iphase) > sir_dn(iphase) .or. &
+            auxvar_dn%sat(iphase) > sir_dn(iphase)) then
+#endif
+          boundary_pressure = auxvar_up%pres(iphase)
+
+          !PO: no free surfce boundaries considered           
+          !if (iphase == LIQUID_PHASE .and. &
+          !    global_auxvar_up%istate == GAS_STATE) then
+          !  ! the idea here is to accommodate a free surface boundary
+          !  ! face.  this will not work for an interior grid cell as
+          !  ! there should be capillary pressure in force.
+          !  boundary_pressure = gen_auxvar_up%pres(option%gas_phase)
+          !endif
+
+          density_kg_ave = TOWGImsTLAverageDensity(auxvar_up%sat(iphase), &
+                                                   auxvar_dn%sat(iphase), &
+                                                   auxvar_up%den_kg(iphase), &
+                                                   auxvar_dn%den_kg(iphase) )
+
+
+          gravity_term = density_kg_ave * dist_gravity
+          delta_pressure = boundary_pressure - &
+                           auxvar_dn%pres(iphase) + &
+                           gravity_term
+
+#ifdef DEBUG_TOWG_FILEOUTPUT
+          debug_dphi(iphase) = delta_pressure
+#endif
+
+          ! PO CONDUCTANCE_BC and SEEPAGE_BC to be implemented/tested
+          if (bc_type == SEEPAGE_BC .or. &
+              bc_type == CONDUCTANCE_BC) then
+                ! flow in         ! boundary cell is <= pref
+            if (delta_pressure > 0.d0 .and. &
+                auxvar_up%pres(iphase) - &
+                 option%reference_pressure < eps) then
+              delta_pressure = 0.d0
+            endif
+          endif
+          
+          !upwinding mobility and enthalpy  
+          if (delta_pressure >= 0.D0) then
+            mobility = auxvar_up%mobility(iphase)
+            uH = auxvar_up%H(iphase)
+          else
+            mobility = auxvar_dn%mobility(iphase)
+            uH = auxvar_dn%H(iphase)
+          endif      
+
+          if (mobility > floweps) then
+            ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
+            !                    dP[Pa]]
+            v_darcy(iphase) = perm_ave_over_dist * mobility * delta_pressure
+            ! only need average density if velocity > 0.
+            density_ave = TOWGImsTLAverageDensity(auxvar_up%sat(iphase), &
+                                                  auxvar_dn%sat(iphase), &
+                                                  auxvar_up%den(iphase), &
+                                                  auxvar_dn%den(iphase) )
+          endif
+#ifndef BAD_MOVE1        
+        endif ! sat > eps
+#endif
+
+      case(NEUMANN_BC)
+        select case(option%phase_map(iphase))
+          case(LIQUID_PHASE)
+            idof = bc_auxvar_mapping(TOWG_LIQUID_FLUX_INDEX)
+          case(OIL_PHASE)
+            idof = bc_auxvar_mapping(TOWG_OIL_FLUX_INDEX)
+          case(GAS_PHASE)
+            idof = bc_auxvar_mapping(TOWG_GAS_FLUX_INDEX)
+        end select
+        
+        neumann_bc_present = PETSC_TRUE
+        !xmol = 0.d0
+        !xmol(iphase) = 1.d0
+        if (dabs(bc_auxvars(idof)) > floweps) then
+          v_darcy(iphase) = bc_auxvars(idof)
+          !upwinding based on given BC flux sign
+          if (v_darcy(iphase) > 0.d0) then 
+            density_ave = auxvar_up%den(iphase)
+            uH = auxvar_up%H(iphase)
+          else 
+            density_ave = auxvar_dn%den(iphase)
+            uH = auxvar_dn%H(iphase)
+          endif 
+        endif
+      case default
+        option%io_buffer = &
+         'Boundary condition type not recognized in TOWGImsTLBCFlux phase loop'
+        call printErrMsg(option)
+    end select
+
+    if (dabs(v_darcy(iphase)) > 0.d0) then
+      ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
+      q = v_darcy(iphase) * area
+      if (density_ave < 1.d-40) then
+        option%io_buffer = 'Zero density in TOWGImsTLBCFlux()'
+        call printErrMsgByRank(option)
+      endif
+      ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
+      !                              density_ave[kmol phase/m^3 phase]
+      mole_flux = q*density_ave
+      ! Res[kmol phase/sec] 
+      Res(iphase) = mole_flux 
+
+      !do icomp = 1, option%nflowspec
+      !  ! Res[kmol comp/sec] = mole_flux[kmol phase/sec] * 
+      !  !                      xmol[kmol comp/mol phase]
+      !  Res(icomp) = Res(icomp) + mole_flux * xmol(icomp)
+      !enddo
+#ifdef DEBUG_FLUXES  
+      adv_flux(iphase) = mole_flux 
+      !do icomp = 1, option%nflowspec
+      !  adv_flux(icomp,iphase) = adv_flux(icomp,iphase) + mole_flux * xmol(icomp)
+      !enddo
+#endif
+!#ifdef DEBUG_TOWG_FILEOUTPUT
+!      do icomp = 1, option%nflowspec
+!        debug_flux(icomp,iphase) = debug_flux(icomp,iphase) + mole_flux * xmol(icomp)
+!      enddo
+!#endif
+      ! Res[MJ/sec] = mole_flux[kmol comp/sec] * H_ave[MJ/kmol comp]
+      Res(energy_id) = Res(energy_id) + mole_flux * uH ! H_ave
+
+#ifdef DEBUG_FLUXES  
+      adv_flux(energy_id) = adv_flux(energy_id) + mole_flux * uH
+#endif
+#ifdef DEBUG_TOWG_FILEOUTPUT
+      debug_flux(iphase) = mole_flux * uH
+#endif
+    endif
+  enddo
+! CONVECTION
+#endif
+
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  if (debug_flag > 0) then  
+    write(debug_unit,'(a,7es24.15)') 'bc delta pressure :', debug_dphi(:)
+    write(debug_unit,'(a,7es24.15)') 'bc adv flux (energy):', debug_flux(:)
+  endif
+  debug_flux = 0.d0
+#endif                    
+
+#ifdef CONDUCTION
+  ! add heat conduction flux
+  heat_flux = 0.d0
+  select case (ibndtype(towg_energy_eq_idx))
+    case (DIRICHLET_BC)
+      ! based on Somerton et al., 1974:
+      ! k_eff = k_dry + sqrt(s_l)*(k_sat-k_dry)
+      ! Assuming that oil and water have same conductivity:
+      ! s_l = S_water + S_oil 
+      sat_liquid = auxvar_dn%sat(option%liquid_phase) + &
+                   auxvar_dn%sat(option%oil_phase)
+
+      k_eff_dn = thermal_conductivity_dn(1) + &
+                 sqrt(sat_liquid) * &
+                 (thermal_conductivity_dn(2) - thermal_conductivity_dn(1))
+      ! units:
+      ! k_eff = W/K/m/m = J/s/K/m/m
+      ! delta_temp = K
+      ! area = m^2
+      ! heat_flux = J/s
+      k_eff_ave = k_eff_dn / dist(0)
+      delta_temp = auxvar_up%temp - auxvar_dn%temp
+      heat_flux = k_eff_ave * delta_temp * area * 1.d-6 ! convert W -> MW
+    case(NEUMANN_BC)
+                  ! flux prescribed as MW/m^2
+      heat_flux = bc_auxvars(bc_auxvar_mapping(TOWG_ENERGY_FLUX_INDEX)) * area
+
+    case default
+      option%io_buffer = 'Boundary condition type not recognized in ' // &
+        'TOWGImsTLBCFlux heat conduction loop.'
+      call printErrMsg(option)
+  end select
+  Res(energy_id) = Res(energy_id) + heat_flux ! MW
+! CONDUCTION
+#endif
+
+
+#ifdef DEBUG_FLUXES  
+  if (debug_connection) then  
+    write(*,'('' bc phase: liquid'')')
+    write(*,'(''  pressure   :'',2es12.4)') auxvar_up%pres(1), auxvar_dn%pres(1)
+    write(*,'(''  saturation :'',2es12.4)') auxvar_up%sat(1), auxvar_dn%sat(1)
+    write(*,'(''  water --'')')
+    write(*,'(''   darcy flux:'',es12.4)') adv_flux(1)
+    write(*,'(''   heat adv. flux:'',es12.4)') debug_flux(1) * 1.d6
+    write(*,'('' bc phase: oil'')')
+    write(*,'(''  pressure   :'',2es12.4)') auxvar_up%pres(2), auxvar_dn%pres(2)
+    write(*,'(''  saturation :'',2es12.4)') auxvar_up%sat(2), auxvar_dn%sat(2)
+    write(*,'(''  oil --'')')
+    write(*,'(''   darcy flux:'',es12.4)') adv_flux(2)
+    write(*,'(''   heat adv. flux:'',es12.4)') debug_flux(2) * 1.d6
+    write(*,'('' bc phase: gas'')')
+    write(*,'(''  pressure   :'',2es12.4)') auxvar_up%pres(3), auxvar_dn%pres(3)
+    write(*,'(''  saturation :'',2es12.4)') auxvar_up%sat(3), auxvar_dn%sat(3)
+    write(*,'(''  gas --'')')
+    write(*,'(''   darcy flux:'',es12.4)') adv_flux(3)
+    write(*,'(''   heat adv. flux:'',es12.4)') debug_flux(3) * 1.d6
+    write(*,'(''  bc energy --'')')
+    write(*,'(''   advective heat flux:'',es12.4)') adv_flux(4) * 1.d6
+    write(*,'(''   conductive heat flux:'',es12.4)') heat_flux * 1.d6
+    write(*,'(''   total heat flux:'',es12.4)') (heat_flux + adv_flux(4))*1.d6
+
+  endif
+#endif
+  
+end subroutine TOWGImsTLBCFlux
+
+! ************************************************************************** !
+
+
+function TOWGImsTLAverageDensity(sat_up,sat_dn,density_up,density_dn)
+  ! 
+  ! Averages density, using opposite cell density if phase non-existent
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/18/16
+  ! 
+
+  implicit none
+
+  PetscReal :: sat_up, sat_dn
+  PetscReal :: density_up, density_dn
+
+  PetscReal :: TOWGImsTLAverageDensity
+
+  if (sat_up < eps ) then
+    TOWGImsTLAverageDensity = density_dn
+  else if (sat_dn < eps ) then 
+    TOWGImsTLAverageDensity = density_up
+  else ! in here we could use an armonic average, 
+       ! other idea sat weighted average but it needs truncation
+    TOWGImsTLAverageDensity = 0.5d0*(density_up+density_dn)
+  end if
+
+end function TOWGImsTLAverageDensity
 
 ! ************************************************************************** !
 

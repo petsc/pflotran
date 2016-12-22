@@ -896,10 +896,11 @@ output_observation.o : connection.o coupler.o discretization.o field.o \
                        grid_structured.o immis.o integral_flux.o logging.o \
                        material_aux.o miscible.o mphase.o observation.o \
                        option.o output_aux.o output_common.o patch.o \
-                       pflotran_constants.o pm_toil_ims_aux.o reaction_aux.o \
-                       reactive_transport.o reactive_transport_aux.o \
-                       realization_base.o realization_subsurface.o region.o \
-                       richards.o th.o toil_ims.o utility.o variables.o
+                       pflotran_constants.o pm_toil_ims_aux.o pm_towg_aux.o \
+                       reaction_aux.o reactive_transport.o \
+                       reactive_transport_aux.o realization_base.o \
+                       realization_subsurface.o region.o richards.o th.o \
+                       toil_ims.o towg.o utility.o variables.o
 output_surface.o : connection.o coupler.o discretization.o field.o grid.o \
                    grid_unstructured_aux.o grid_unstructured_cell.o hdf5.o \
                    hdf5_aux.o input_aux.o logging.o option.o output_aux.o \
@@ -1017,9 +1018,9 @@ pm_toil_ims.o : checkpoint.o field.o global.o global_aux.o grid.o input_aux.o \
 pm_toil_ims_aux.o : auxvars_toil_ims.o characteristic_curves.o eos_oil.o \
                     eos_water.o global_aux.o grid.o material_aux.o option.o \
                     pflotran_constants.o pm_base_aux.o utility.o
-pm_towg.o : general.o global.o input_aux.o material.o option.o \
-            pflotran_constants.o pm_base.o pm_subsurface_flow.o pm_towg_aux.o \
-            realization_base.o string.o towg.o variables.o
+pm_towg.o : global.o input_aux.o material.o option.o pflotran_constants.o \
+            pm_base.o pm_subsurface_flow.o pm_towg_aux.o realization_base.o \
+            string.o towg.o variables.o
 pm_towg_aux.o : auxvars_towg.o characteristic_curves.o eos_gas.o eos_oil.o \
                 eos_water.o global_aux.o grid.o material_aux.o option.o \
                 pflotran_constants.o pm_base_aux.o utility.o
