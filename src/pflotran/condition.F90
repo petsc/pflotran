@@ -100,6 +100,7 @@ module Condition_module
     type(flow_sub_condition_type), pointer :: gas_in_oil_mole_fraction
     type(flow_sub_condition_type), pointer :: gas_in_gas_mole_fraction
     type(flow_sub_condition_type), pointer :: rate
+    type(flow_sub_condition_type), pointer :: bhp_pressure
   end type flow_towg_condition_type
 
   type, public :: flow_well_condition_type
@@ -368,6 +369,7 @@ function FlowTOWGConditionCreate(option)
   nullify(towg_condition%gas_in_oil_mole_fraction)
   nullify(towg_condition%gas_in_gas_mole_fraction)
   nullify(towg_condition%rate)
+  nullify(towg_condition%bhp_pressure)
 
   FlowTOWGConditionCreate => towg_condition
 
@@ -690,7 +692,7 @@ function FlowTOWGSubConditionPtr(sub_condition_name,towg, &
       if (associated(towg%enthalpy)) then
         sub_condition_ptr => towg%enthalpy
       else
-        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        sub_condition_ptr => FlowSubConditionCreate(option%nphase)
         towg%enthalpy => sub_condition_ptr
       endif
     case('GAS_IN_OIL_MOLE_FRACTION')
@@ -748,6 +750,13 @@ function FlowTOWGSubConditionPtr(sub_condition_name,towg, &
       else
         sub_condition_ptr => FlowSubConditionCreate(option%nflowdof)
         towg%rate => sub_condition_ptr
+      endif
+    case('BHP_PRESSURE')
+      if (associated(towg%bhp_pressure)) then
+        sub_condition_ptr => towg%bhp_pressure
+      else
+        sub_condition_ptr => FlowSubConditionCreate(ONE_INTEGER)
+        towg%bhp_pressure => sub_condition_ptr
       endif
     case default
       call InputKeywordUnrecognized(sub_condition_name, &
@@ -3063,11 +3072,11 @@ subroutine FlowConditionTOWGRead(condition,input,option)
       !when refactoring replace this block  with a mode-specific function 
       case('OIL_PRESSURE','GAS_PRESSURE','OIL_SATURATION', 'GAS_SATURATION', &
            'SOLVENT_SATURATION','TEMPERATURE','GAS_IN_OIL_MOLE_FRACTION', &
-           'GAS_IN_GAS_MOLE_FRACTION','RATE', 'LIQUID_FLUX', &
+           'GAS_IN_GAS_MOLE_FRACTION','RATE','BHP_PRESSURE', 'LIQUID_FLUX', &
            'OIL_FLUX','GAS_FLUX','SOLVENT_FLUX','ENERGY_FLUX','ENTHALPY')
         sub_condition_ptr => FlowTOWGSubConditionPtr(word,towg,option)
         select case(trim(word))
-          case('OIL_PRESSURE','GAS_PRESSURE')
+          case('OIL_PRESSURE','GAS_PRESSURE','BHP_PRESSURE')
             internal_units = 'Pa'
           case('OIL_SATURATION','GAS_SATURATION','SOLVENT_SATURATION', &
                'GAS_IN_OIL_MOLE_FRACTION', 'GAS_IN_GAS_MOLE_FRACTION')
@@ -3260,6 +3269,11 @@ subroutine FlowConditionTOWGRead(condition,input,option)
                               default_time_storage, &
                               PETSC_TRUE)
 
+  word = 'bhp pressure'
+  call FlowSubConditionVerify(option,condition,word,towg%bhp_pressure, &
+                              default_time_storage, &
+                              PETSC_TRUE)
+
   condition%num_sub_conditions = 0
   i = 0
   if (associated(towg%oil_pressure)) &
@@ -3291,6 +3305,8 @@ subroutine FlowConditionTOWGRead(condition,input,option)
   if (associated(towg%energy_flux)) &
     i = i + 1
   if (associated(towg%rate)) &
+    i = i + 1
+  if (associated(towg%bhp_pressure)) &
     i = i + 1
 
   condition%num_sub_conditions = i
@@ -3358,6 +3374,10 @@ subroutine FlowConditionTOWGRead(condition,input,option)
   if (associated(towg%rate)) then
     i = i + 1
     condition%sub_condition_ptr(i)%ptr => towg%rate
+  endif
+  if (associated(towg%bhp_pressure)) then
+    i = i + 1
+    condition%sub_condition_ptr(i)%ptr => towg%bhp_pressure
   endif
 
   ! set condition types

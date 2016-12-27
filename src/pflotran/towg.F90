@@ -48,6 +48,7 @@ module TOWG_module
                                            TOWGComputeMassBalance => null()
   procedure(TOWGFluxDummy), pointer :: TOWGFlux => null()
   procedure(TOWGBCFluxDummy), pointer :: TOWGBCFlux => null()
+  procedure(TOWGSrcSinkDummy), pointer :: TOWGSrcSink => null()
 
   abstract interface
     subroutine TOWGUpdateAuxVarsDummy(realization,update_state)
@@ -147,8 +148,23 @@ module TOWG_module
       PetscBool :: debug_connection
     end subroutine TOWGBCFluxDummy
 
+    subroutine TOWGSrcSinkDummy(option,src_sink_condition, auxvar, &
+                            global_auxvar,ss_flow_vol_flux,scale,Res)
+      use Option_module
+      use AuxVars_TOWG_module
+      use Global_Aux_module
+      use Condition_module  
+      implicit none
+      type(option_type) :: option
+      type(flow_towg_condition_type), pointer :: src_sink_condition
+      class(auxvar_towg_type) :: auxvar
+      type(global_auxvar_type) :: global_auxvar
+      PetscReal :: ss_flow_vol_flux(option%nphase)
+      PetscReal :: scale  
+      PetscReal :: Res(option%nflowdof)
+    end subroutine TOWGSrcSinkDummy
 
-  end interface
+  end interface 
 
 #ifdef TOWG_DEBUG
   PetscInt, parameter :: debug_unit = 87
@@ -324,6 +340,7 @@ subroutine TOWGSetup(realization)
       TOWGComputeMassBalance => TOWGImsTLComputeMassBalance
       TOWGFlux => TOWGImsTLFlux
       TOWGBCFlux => TOWGImsTLBCFlux
+      TOWGSrcSink => TOWGImsTLSrcSink
       call TOWGImsAuxVarComputeSetup()
     case default
       option%io_buffer = 'TOWGSetup: only TOWG_IMMISCIBLE is supported.'
@@ -1776,6 +1793,212 @@ end subroutine TOWGImsTLBCFlux
 
 ! ************************************************************************** !
 
+subroutine TOWGImsTLSrcSink(option,src_sink_condition, auxvar, &
+                            global_auxvar,ss_flow_vol_flux,scale,Res)
+  ! 
+  ! Computes the source/sink terms for the residual 
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/27/16
+  ! 
+
+  use Option_module
+  use Condition_module  
+
+  use EOS_Water_module
+  use EOS_Oil_module
+  use EOS_Gas_module
+
+  implicit none
+
+  type(option_type) :: option
+  type(flow_towg_condition_type), pointer :: src_sink_condition
+  class(auxvar_towg_type) :: auxvar
+  type(global_auxvar_type) :: global_auxvar !keep global_auxvar for salinity
+  PetscReal :: ss_flow_vol_flux(option%nphase)
+  PetscReal :: scale  
+  PetscReal :: Res(option%nflowdof)
+
+  ! local parameter
+  PetscInt, parameter :: SRC_TEMPERATURE = 1
+  PetscInt, parameter :: SRC_ENTHALPY = 2 
+  ! local variables
+  PetscReal, pointer :: qsrc(:)
+  PetscInt :: flow_src_sink_type    
+  PetscReal :: qsrc_mol
+  PetscReal :: den, den_kg, enthalpy, internal_energy_dummy, temperature
+  PetscReal :: cell_pressure
+  PetscInt :: iphase
+  PetscInt :: energy_var
+  PetscErrorCode :: ierr
+
+  ! this can be removed if extending to pressure condition
+  if (.not.associated(src_sink_condition%rate) ) then
+    option%io_buffer = 'TOWGImsTLSrcSink fow condition rate not defined ' // &
+    'rate is needed for a valid src/sink term'
+    call printErrMsg(option)  
+  end if
+
+  qsrc => src_sink_condition%rate%dataset%rarray
+
+  energy_var = 0
+  if ( associated(src_sink_condition%temperature) ) then
+    energy_var = SRC_TEMPERATURE 
+  else if ( associated(src_sink_condition%enthalpy) ) then
+    energy_var = SRC_ENTHALPY
+  end if
+
+  flow_src_sink_type = src_sink_condition%rate%itype
+
+  ! checks that qsrc(liquid_phase), qsrc(oil_phase), qsrc(gas_phase) 
+  ! do not have different signs
+  ! if ( (qsrc(option%liquid_phase)>0.0d0 .and. qsrc(option%oil_phase)<0.d0).or.&
+  !     (qsrc(option%liquid_phase)<0.0d0 .and. qsrc(option%oil_phase)>0.d0)  & 
+  !   ) then
+  !   option%io_buffer = "TOilImsSrcSink error: " // &
+  !     "src(wat) and src(oil) with opposite sign"
+  !   call printErrMsg(option)
+  ! end if
+
+  ! if not given, approximates BHP with pressure of perforated cell
+  if ( associated(src_sink_condition%bhp_pressure) ) then
+    cell_pressure = src_sink_condition%bhp_pressure%dataset%rarray(1)
+  else
+    cell_pressure = &
+        maxval(auxvar%pres(option%liquid_phase:option%gas_phase))
+  end if
+
+  ! if enthalpy is used to define enthalpy or energy rate is used  
+  ! approximate bottom hole temperature (BHT) with local temp
+  if ( energy_var == SRC_TEMPERATURE) then
+    temperature = src_sink_condition%temperature%dataset%rarray(1)
+  else   
+    temperature = auxvar%temp
+  end if
+
+  Res = 0.d0
+  do iphase = 1, option%nphase
+    qsrc_mol = 0.d0
+    if ( qsrc(iphase) > 0.d0) then 
+      select case(option%phase_map(iphase))
+        case(LIQUID_PHASE)
+          call EOSWaterDensity(temperature,cell_pressure,den_kg,den,ierr)
+        case(OIL_PHASE)
+          call EOSOilDensity(temperature,cell_pressure,den,ierr)
+        case(GAS_PHASE)
+          call EOSGasDensity(temperature,cell_pressure,den,ierr)
+      end select 
+    else
+      den = auxvar%den(iphase)
+    end if
+
+    select case(flow_src_sink_type)
+      ! injection and production 
+      case(MASS_RATE_SS)
+        qsrc_mol = qsrc(iphase)/towg_fmw_comp(iphase) ! kg/sec -> kmol/sec
+      case(SCALED_MASS_RATE_SS)                       ! kg/sec -> kmol/sec
+        qsrc_mol = qsrc(iphase)/towg_fmw_comp(iphase)*scale 
+      case(VOLUMETRIC_RATE_SS)  ! assume local density for now 
+                  ! qsrc(iphase) = m^3/sec  
+        qsrc_mol = qsrc(iphase)*den ! den = kmol/m^3 
+      case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
+        ! qsrc1 = m^3/sec             ! den = kmol/m^3
+        qsrc_mol = qsrc(iphase)* den * scale
+    end select
+    ss_flow_vol_flux(iphase) = qsrc_mol/ den
+    Res(iphase) = qsrc_mol
+  enddo
+
+  ! when using scaled src/sinks, the rates (mass or vol) scaling 
+  ! at this point the scale factor is already included in Res(iphase)
+
+  ! Res(option%energy_id), energy units: MJ/sec
+
+  if ( associated(src_sink_condition%temperature) .or. &
+      associated(src_sink_condition%enthalpy) &
+     ) then
+    ! water injection 
+    if (qsrc(option%liquid_phase) > 0.d0) then !implies qsrc(option%oil_phase)>=0
+      if ( energy_var == SRC_TEMPERATURE ) then
+        call EOSWaterEnthalpy(temperature, cell_pressure,enthalpy,ierr)
+        ! enthalpy = [J/kmol]
+      else if ( energy_var == SRC_ENTHALPY ) then
+        !input as J/kg
+        enthalpy = src_sink_condition%enthalpy% &
+                       dataset%rarray(option%liquid_phase)
+                     ! J/kg * kg/kmol = J/kmol  
+        enthalpy = enthalpy * towg_fmw_comp(option%liquid_phase) 
+      end if
+      enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
+      ! enthalpy units: MJ/kmol ! water component mass                     
+      Res(option%energy_id) = Res(option%energy_id) + &
+                              Res(option%liquid_phase) * enthalpy
+    end if
+    ! oil injection 
+    if (qsrc(option%oil_phase) > 0.d0) then !implies qsrc(option%liquid_phase)>=0
+      if ( energy_var == SRC_TEMPERATURE ) then
+        call EOSOilEnthalpy(temperature,cell_pressure,enthalpy,ierr)
+        ! enthalpy = [J/kmol] 
+      else if ( energy_var == SRC_ENTHALPY ) then
+        enthalpy = src_sink_condition%enthalpy% &
+                     dataset%rarray(option%oil_phase)
+                      !J/kg * kg/kmol = J/kmol  
+        enthalpy = enthalpy * towg_fmw_comp(option%oil_phase)        
+      end if
+      enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
+      ! enthalpy units: MJ/kmol ! oil component mass                     
+      Res(option%energy_id) = Res(option%energy_id) + &
+                              Res(option%oil_phase) * enthalpy
+    end if
+    ! gas injection 
+    if (qsrc(option%gas_phase) > 0.d0) then 
+      if ( energy_var == SRC_TEMPERATURE ) then
+        call EOSGasEnergy(temperature,cell_pressure,enthalpy, &
+                              internal_energy_dummy,ierr)
+        ! enthalpy = [J/kmol] 
+      else if ( energy_var == SRC_ENTHALPY ) then
+        enthalpy = src_sink_condition%enthalpy% &
+                     dataset%rarray(option%gas_phase)
+                      !J/kg * kg/kmol = J/kmol  
+        enthalpy = enthalpy * towg_fmw_comp(option%gas_phase)        
+      end if
+      enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
+      ! enthalpy units: MJ/kmol ! oil component mass                     
+      Res(option%energy_id) = Res(option%energy_id) + &
+                              Res(option%gas_phase) * enthalpy
+    end if
+    ! water energy extraction due to water production
+    if (qsrc(option%liquid_phase) < 0.d0) then !implies qsrc(option%oil_phase)<=0
+      ! auxvar enthalpy units: MJ/kmol ! water component mass                     
+      Res(option%energy_id) = Res(option%energy_id) + &
+                              Res(option%liquid_phase) * &
+                              auxvar%H(option%liquid_phase)
+    end if
+    !oil energy extraction due to oil production 
+    if (qsrc(option%oil_phase) < 0.d0) then !implies qsrc(option%liquid_phase)<=0
+      ! auxvar enthalpy units: MJ/kmol ! water component mass                     
+      Res(option%energy_id) = Res(option%energy_id) + &
+                              Res(option%oil_phase) * &
+                              auxvar%H(option%oil_phase)
+    end if
+    if (qsrc(option%gas_phase) < 0.d0) then !implies qsrc(option%liquid_phase)<=0
+      ! auxvar enthalpy units: MJ/kmol ! water component mass                     
+      Res(option%energy_id) = Res(option%energy_id) + &
+                              Res(option%gas_phase) * &
+                              auxvar%H(option%gas_phase)
+    end if
+
+  else !if not temp or enthalpy are given
+    ! if energy rate is given, loaded in qsrc(4) in MJ/sec 
+    Res(option%energy_id) = qsrc(FOUR_INTEGER)* scale ! MJ/s
+  end if
+
+
+  nullify(qsrc)      
+  
+end subroutine TOWGImsTLSrcSink
+
+! ************************************************************************** !
 
 function TOWGImsTLAverageDensity(sat_up,sat_dn,density_up,density_dn)
   ! 
