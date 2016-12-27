@@ -119,6 +119,7 @@ module PM_TOWG_Aux_module
 
   !pointing to null() function
   procedure(TOWGAuxVarComputeDummy), pointer :: TOWGAuxVarCompute => null()
+  procedure(TOWGAuxVarPerturbDummy), pointer :: TOWGAuxVarPerturb => null()
 
   abstract interface
     subroutine TOWGAuxVarComputeDummy(x,auxvar,global_auxvar,material_auxvar, &
@@ -129,24 +130,42 @@ module PM_TOWG_Aux_module
       use EOS_Water_module
       use Characteristic_Curves_module
       use Material_Aux_class
-
-     implicit none
-
-     type(option_type) :: option
-     class(characteristic_curves_type) :: characteristic_curves
-     PetscReal :: x(option%nflowdof)
-     class(auxvar_towg_type) :: auxvar
-     type(global_auxvar_type) :: global_auxvar
-     class(material_auxvar_type) :: material_auxvar
-     PetscInt :: natural_id
+      implicit none
+      type(option_type) :: option
+      class(characteristic_curves_type) :: characteristic_curves
+      PetscReal :: x(option%nflowdof)
+      class(auxvar_towg_type) :: auxvar
+      type(global_auxvar_type) :: global_auxvar
+      class(material_auxvar_type) :: material_auxvar
+      PetscInt :: natural_id
     end subroutine TOWGAuxVarComputeDummy
+
+    subroutine TOWGAuxVarPerturbDummy(auxvar,global_auxvar, &
+                                      material_auxvar, &
+                                      characteristic_curves,natural_id, &
+                                      option)
+      use AuxVars_TOWG_module
+      use Option_module
+      use Characteristic_Curves_module
+      use Global_Aux_module
+      use Material_Aux_class
+      implicit none
+      type(option_type) :: option
+      PetscInt :: natural_id
+      type(auxvar_towg_type) :: auxvar(0:)
+      type(global_auxvar_type) :: global_auxvar
+      class(material_auxvar_type) :: material_auxvar
+      class(characteristic_curves_type) :: characteristic_curves
+    end subroutine 
+
   end interface
  
   public :: TOWGAuxCreate, &
             TOWGAuxDestroy, &
             TOWGAuxVarStrip, &
             TOWGAuxVarCompute, &
-            TOWGImsAuxVarComputeSetup
+            TOWGImsAuxVarComputeSetup, &
+            TOWGAuxVarPerturb
   !          TOilImsAuxVarPerturb, TOilImsAuxDestroy, &
   !          TOilImsAuxVarStrip
 
@@ -495,11 +514,85 @@ subroutine TOWGImsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
 end subroutine TOWGImsAuxVarCompute
 
 ! ************************************************************************** !
+
+subroutine TOWGImsTLAuxVarPerturb(auxvar,global_auxvar, &
+                                  material_auxvar, &
+                                  characteristic_curves,natural_id, &
+                                  option)
+  ! 
+  ! Calculates auxiliary variables for perturbed system
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 12/27/16
+  ! 
+
+  use Option_module
+  use Characteristic_Curves_module
+  use Global_Aux_module
+  use Material_Aux_class
+
+  implicit none
+
+  type(option_type) :: option
+  PetscInt :: natural_id
+  type(auxvar_towg_type) :: auxvar(0:)
+  type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
+  class(characteristic_curves_type) :: characteristic_curves
+     
+  PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), &
+               pert(option%nflowdof), x_pert_save(option%nflowdof)
+
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscReal :: tempreal
+  PetscReal, parameter :: perturbation_tolerance = 1.d-8
+  PetscReal, parameter :: min_perturbation = 1.d-10
+  PetscInt :: idof
+
+  x(TOWG_OIL_PRESSURE_DOF) = auxvar(ZERO_INTEGER)%pres(option%oil_phase)
+  x(TOWG_OIL_SATURATION_DOF) = auxvar(ZERO_INTEGER)%sat(option%oil_phase)
+  x(TOWG_GAS_SATURATION_3PH_DOF) = auxvar(ZERO_INTEGER)%sat(option%gas_phase)
+  x(TOWG_3CMPS_ENERGY_DOF) = auxvar(ZERO_INTEGER)%temp
+  
+  pert(TOWG_OIL_PRESSURE_DOF) = &
+    perturbation_tolerance*x(TOWG_OIL_PRESSURE_DOF)+min_perturbation
+  pert(TOWG_3CMPS_ENERGY_DOF) = &
+    perturbation_tolerance*x(TOWG_3CMPS_ENERGY_DOF)+min_perturbation
+  if (x(TOWG_OIL_SATURATION_DOF) > 0.5d0) then 
+    pert(TOWG_OIL_SATURATION_DOF) = -1.d0 * perturbation_tolerance
+  else
+    pert(TOWG_OIL_SATURATION_DOF) = perturbation_tolerance
+  endif
+  if (x(TOWG_GAS_SATURATION_3PH_DOF) > 0.5d0) then 
+    pert(TOWG_GAS_SATURATION_3PH_DOF) = -1.d0 * perturbation_tolerance
+  else
+    pert(TOWG_GAS_SATURATION_3PH_DOF) = perturbation_tolerance
+  endif
+
+  ! TOWG_UPDATE_FOR_DERIVATIVE indicates call from perturbation
+  option%iflag = TOWG_UPDATE_FOR_DERIVATIVE
+  do idof = 1, option%nflowdof
+    auxvar(idof)%pert = pert(idof)
+    x_pert = x
+    x_pert(idof) = x(idof) + pert(idof)
+    x_pert_save = x_pert
+    call TOWGAuxVarCompute(x_pert,auxvar(idof),global_auxvar, &
+                           material_auxvar, &
+                           characteristic_curves,natural_id,option)
+  enddo
+
+  auxvar(TOWG_OIL_PRESSURE_DOF)%pert = &
+     auxvar(TOWG_OIL_PRESSURE_DOF)%pert / towg_pressure_scale
+ 
+end subroutine TOWGImsTLAuxVarPerturb
+
+! ************************************************************************** !
 subroutine TOWGImsAuxVarComputeSetup()
 
   implicit none
 
   TOWGAuxVarCompute => TOWGImsAuxVarCompute
+  TOWGAuxVarPerturb => TOWGImsTLAuxVarPerturb
 
 end subroutine TOWGImsAuxVarComputeSetup
 
