@@ -1360,9 +1360,9 @@ toil_ims.o : auxvars_flow.o auxvars_toil_ims.o condition.o connection.o \
              output_aux.o output_tecplot.o patch.o pflotran_constants.o \
              pm_toil_ims_aux.o realization_subsurface.o saturation_function.o \
              variables.o
-towg.o : auxvars_towg.o condition.o connection.o coupler.o discretization.o \
-         eos_gas.o eos_oil.o eos_water.o field.o global_aux.o grid.o \
-         material.o material_aux.o option.o output_aux.o patch.o \
+towg.o : auxvars_towg.o condition.o connection.o coupler.o debug.o \
+         discretization.o eos_gas.o eos_oil.o eos_water.o field.o global_aux.o \
+         grid.o material.o material_aux.o option.o output_aux.o patch.o \
          pflotran_constants.o pm_towg_aux.o realization_subsurface.o \
          saturation_function.o variables.o
 transport.o : connection.o global_aux.o material_aux.o matrix_block_aux.o \

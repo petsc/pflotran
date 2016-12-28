@@ -51,13 +51,12 @@ module TOWG_module
   procedure(TOWGSrcSinkDummy), pointer :: TOWGSrcSink => null()
 
   abstract interface
+
     subroutine TOWGUpdateAuxVarsDummy(realization,update_state)
       use Realization_Subsurface_class  
       implicit none
-
       type(realization_subsurface_type) :: realization
       PetscBool :: update_state
-
     end subroutine TOWGUpdateAuxVarsDummy
 
     subroutine TOWGAccumulationDummy(auxvar,global_auxvar,material_auxvar, &
@@ -83,7 +82,6 @@ module TOWG_module
       type(realization_subsurface_type) :: realization
       PetscReal :: mass_balance(realization%option%nflowspec, &
                             realization%option%nphase)
-
     end subroutine TOWGComputeMassBalanceDummy
 
     subroutine TOWGFluxDummy(auxvar_up,global_auxvar_up, &
@@ -166,23 +164,13 @@ module TOWG_module
 
   end interface 
 
-#ifdef TOWG_DEBUG
-  PetscInt, parameter :: debug_unit = 87
-  PetscInt, parameter :: debug_info_unit = 86
-  character(len=MAXWORDLENGTH) :: debug_filename
-  PetscInt :: debug_flag = 0
-  PetscInt :: debug_iteration_count
-  PetscInt :: debug_timestep_cut_count
-  PetscInt :: debug_timestep_count
-#endif
-
-
   public :: TOWGSetup,&
             TOWGUpdateAuxVars, &
             TOWGUpdateSolution, &
             TOWGMapBCAuxVarsToGlobal, &
             TOWGInitializeTimestep, &
-            TOWGComputeMassBalance
+            TOWGComputeMassBalance, &
+            TOWGResidual
 
 contains
 
@@ -2305,6 +2293,416 @@ subroutine TOWGSrcSinkDerivative(option,src_sink_condition,auxvars, &
   endif  
 
 end subroutine TOWGSrcSinkDerivative
+
+! ************************************************************************** !
+
+subroutine TOWGResidual(snes,xx,r,realization,ierr)
+  ! 
+  ! Computes the residual equation
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 12/28/16
+  ! 
+  use Realization_Subsurface_class
+  use Field_module
+  use Patch_module
+  use Discretization_module
+  use Option_module
+
+  use Connection_module
+  use Grid_module
+  use Coupler_module  
+  use Debug_module
+  use Material_Aux_class
+
+  implicit none
+
+  SNES :: snes
+  Vec :: xx
+  Vec :: r
+  type(realization_subsurface_type) :: realization
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+  
+  Mat, parameter :: null_mat = 0
+  type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: source_sink
+  type(material_parameter_type), pointer :: material_parameter
+  class(pm_towg_aux_type), pointer :: towg
+  type(towg_parameter_type), pointer :: towg_parameter
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(global_auxvar_type), pointer :: global_auxvars_bc(:)
+  type(global_auxvar_type), pointer :: global_auxvars_ss(:)
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+
+  PetscInt :: iconn
+  PetscInt :: iphase
+  PetscReal :: scale
+  PetscReal :: ss_flow_vol_flux(realization%option%nphase)
+  PetscInt :: sum_connection
+  PetscInt :: local_start, local_end
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
+  PetscInt :: i, imat, imat_up, imat_dn
+  PetscInt, save :: iplot = 0
+
+  PetscReal, pointer :: r_p(:)
+  PetscReal, pointer :: accum_p(:), accum_p2(:)
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+
+  PetscInt :: icap_up, icap_dn
+  PetscReal :: Res(realization%option%nflowdof)
+  !PetscReal :: Jac_dummy(realization%option%nflowdof, &
+  !                       realization%option%nflowdof)
+  PetscReal :: v_darcy(realization%option%nphase)
+  
+  discretization => realization%discretization
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+  material_parameter => patch%aux%Material%material_parameter
+  towg => patch%aux%TOWG
+  towg_parameter => towg%parameter
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  global_auxvars_ss => patch%aux%Global%auxvars_ss
+  material_auxvars => patch%aux%Material%auxvars
+  
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  if (debug_flag > 0) then
+    debug_iteration_count = debug_iteration_count + 1
+    write(word,*) debug_timestep_count
+    string = 'residual_debug_data_' // trim(adjustl(word))
+    write(word,*) debug_timestep_cut_count
+    string = trim(string) // '_' // trim(adjustl(word))
+    write(word,*) debug_iteration_count
+    debug_filename = trim(string) // '_' // trim(adjustl(word)) // '.txt'
+    open(debug_unit, file=debug_filename, action="write", status="unknown")
+    open(debug_info_unit, file='debug_info.txt', action="write", &
+         position="append", status="unknown")
+    write(debug_info_unit,*) 'residual ', debug_timestep_count, &
+      debug_timestep_cut_count, debug_iteration_count
+    close(debug_info_unit)
+  endif
+#endif
+
+  ! Communication -----------------------------------------
+  ! These 3 must be called before TOWGUpdateAuxVars()
+  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
+  
+                                     ! do update state
+  call TOWGUpdateAuxVars(realization,PETSC_TRUE)
+
+  ! override flags since they will soon be out of date
+  towg%auxvars_up_to_date = PETSC_FALSE 
+
+  ! always assume variables have been swapped; therefore, must copy back
+  call VecLockPop(xx,ierr); CHKERRQ(ierr)
+  call DiscretizationLocalToGlobal(discretization,field%flow_xx_loc,xx, &
+                                   NFLOWDOF)
+  call VecLockPush(xx,ierr); CHKERRQ(ierr)
+
+  if (option%compute_mass_balance_new) then
+    call TOWGZeroMassBalanceDelta(realization)
+  endif
+
+  option%iflag = 1
+  ! now assign access pointer to local variables
+  call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+
+  ! Accumulation terms ------------------------------------
+  ! accumulation at t(k) (doesn't change during Newton iteration)
+  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  r_p = -accum_p
+
+  
+  !Heeho dynamically update p+1 accumulation term
+  !if (towg_tough2_conv_criteria) then
+  !  call VecGetArrayReadF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  !endif
+  
+  ! accumulation at t(k+1)
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    imat = patch%imat(ghosted_id)
+    if (imat <= 0) cycle
+    local_end = local_id * option%nflowdof
+    local_start = local_end - option%nflowdof + 1
+    call TOWGAccumulation(towg%auxvars(ZERO_INTEGER,ghosted_id), &
+                          global_auxvars(ghosted_id), &
+                          material_auxvars(ghosted_id), &
+                          material_parameter%soil_heat_capacity(imat), &
+                          option,Res,local_id == towg_debug_cell_id)
+
+
+    r_p(local_start:local_end) =  r_p(local_start:local_end) + Res(:)
+    
+    !Heeho dynamically update p+1 accumulation term
+    !if (towg_tough2_conv_criteria) then
+    !  accum_p2(local_start:local_end) = Res(:)
+    !endif
+    
+  enddo
+
+  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  !Heeho dynamically update p+1 accumulation term
+  !if (towg_tough2_conv_criteria) then
+  !  call VecRestoreArrayReadF90(field%flow_accum2, accum_p2, ierr);CHKERRQ(ierr)
+  !endif
+
+  ! Interior Flux Terms -----------------------------------
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+
+      imat_up = patch%imat(ghosted_id_up) 
+      imat_dn = patch%imat(ghosted_id_dn) 
+      if (imat_up <= 0 .or. imat_dn <= 0) cycle
+
+      icap_up = patch%sat_func_id(ghosted_id_up)
+      icap_dn = patch%sat_func_id(ghosted_id_dn)
+
+      call TOWGFlux(towg%auxvars(ZERO_INTEGER,ghosted_id_up), &
+                    global_auxvars(ghosted_id_up), &
+                    material_auxvars(ghosted_id_up), & 
+                    material_parameter%soil_residual_saturation(:,icap_up), &
+                    material_parameter%soil_thermal_conductivity(:,imat_up), &
+                    towg%auxvars(ZERO_INTEGER,ghosted_id_dn), &
+                    global_auxvars(ghosted_id_dn), &
+                    material_auxvars(ghosted_id_dn), &
+                    material_parameter%soil_residual_saturation(:,icap_dn), &
+                    material_parameter%soil_thermal_conductivity(:,imat_dn), &
+                    cur_connection_set%area(iconn), &
+                    cur_connection_set%dist(:,iconn), &
+                    towg_parameter,option,v_darcy,Res, &
+                    (local_id_up == towg_debug_cell_id .or. &
+                     local_id_dn == towg_debug_cell_id))
+
+      patch%internal_velocities(:,sum_connection) = v_darcy
+      if (associated(patch%internal_flow_fluxes)) then
+        patch%internal_flow_fluxes(:,sum_connection) = Res(:)
+      endif
+      
+      if (local_id_up > 0) then
+        local_end = local_id_up * option%nflowdof
+        local_start = local_end - option%nflowdof + 1
+        r_p(local_start:local_end) = r_p(local_start:local_end) + Res(:)
+      endif
+         
+      if (local_id_dn > 0) then
+        local_end = local_id_dn * option%nflowdof
+        local_start = local_end - option%nflowdof + 1
+        r_p(local_start:local_end) = r_p(local_start:local_end) - Res(:)
+      endif
+    enddo
+
+    cur_connection_set => cur_connection_set%next
+  enddo    
+
+  ! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%boundary_condition_list%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_set => boundary_condition%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+    
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      imat_dn = patch%imat(ghosted_id)
+      if (imat_dn <= 0) cycle
+
+      if (ghosted_id<=0) then
+        print *, "Wrong boundary node index... STOP!!!"
+        stop
+      endif
+
+      icap_dn = patch%sat_func_id(ghosted_id)
+
+      call TOWGBCFlux(boundary_condition%flow_bc_type, &
+                    boundary_condition%flow_aux_mapping, & 
+                    boundary_condition%flow_aux_real_var(:,iconn), &
+                    towg%auxvars_bc(sum_connection), &
+                    global_auxvars_bc(sum_connection), &
+                    towg%auxvars(ZERO_INTEGER,ghosted_id), &
+                    global_auxvars(ghosted_id), &
+                    material_auxvars(ghosted_id), &
+                    material_parameter%soil_residual_saturation(:,icap_dn), &
+                    material_parameter%soil_thermal_conductivity(:,imat_dn), &
+                    cur_connection_set%area(iconn), &
+                    cur_connection_set%dist(:,iconn), &
+                    towg_parameter,option,v_darcy,Res, &
+                    local_id == towg_debug_cell_id)
+
+      patch%boundary_velocities(:,sum_connection) = v_darcy
+      if (associated(patch%boundary_flow_fluxes)) then
+        patch%boundary_flow_fluxes(:,sum_connection) = Res(:)
+      endif
+      if (option%compute_mass_balance_new) then
+        ! contribution to boundary
+        global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) = &
+          global_auxvars_bc(sum_connection)%mass_balance_delta(1:2,1) - &
+          Res(1:2)
+      endif
+
+      local_end = local_id * option%nflowdof
+      local_start = local_end - option%nflowdof + 1
+      r_p(local_start:local_end)= r_p(local_start:local_end) - Res(:)
+
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  ! Source/sink terms -------------------------------------
+  source_sink => patch%source_sink_list%first 
+  sum_connection = 0
+  do 
+    if (.not.associated(source_sink)) exit
+    
+    cur_connection_set => source_sink%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections      
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      local_end = local_id * option%nflowdof
+      local_start = local_end - option%nflowdof + 1
+
+      if (associated(source_sink%flow_aux_real_var)) then
+        scale = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
+      else
+        scale = 1.d0
+      endif
+
+      call TOWGSrcSink(option,source_sink%flow_condition%towg, &
+                       towg%auxvars(ZERO_INTEGER,ghosted_id), &
+                       global_auxvars(ghosted_id), ss_flow_vol_flux, &
+                       scale,Res)
+
+      r_p(local_start:local_end) =  r_p(local_start:local_end) - Res(:)
+
+      if (associated(patch%ss_flow_vol_fluxes)) then
+        patch%ss_flow_vol_fluxes(:,sum_connection) = ss_flow_vol_flux
+      endif      
+      if (associated(patch%ss_flow_fluxes)) then
+        patch%ss_flow_fluxes(:,sum_connection) = Res(:)
+      endif      
+      if (option%compute_mass_balance_new) then
+        ! contribution to boundary
+        global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) = &
+          global_auxvars_ss(sum_connection)%mass_balance_delta(1:2,1) - &
+          Res(1:2)
+      endif
+
+    enddo
+    source_sink => source_sink%next
+  enddo
+
+  if (towg%inactive_cells_exist) then
+    do i=1,towg%n_inactive_rows
+      r_p(towg%inactive_rows_local(i)) = 0.d0
+    enddo
+  endif
+  
+  call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+  
+  if (Initialized(towg_debug_cell_id)) then
+    call VecGetArrayReadF90(r, r_p, ierr);CHKERRQ(ierr)
+    do local_id = towg_debug_cell_id-1, towg_debug_cell_id+1
+      write(*,'(''  residual   : '',i2,10es12.4)') local_id, &
+        r_p((local_id-1)*option%nflowdof+1:(local_id-1)*option%nflowdof+2), &
+        r_p(local_id*option%nflowdof)*1.d6
+    enddo
+    call VecRestoreArrayReadF90(r, r_p, ierr);CHKERRQ(ierr)
+  endif
+  
+  if (towg_isothermal) then
+    call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+    ! zero energy residual
+    do local_id = 1, grid%nlmax
+      r_p((local_id-1)*option%nflowdof+towg_energy_eq_idx) =  0.d0
+    enddo
+    call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+  endif
+  if (towg_no_oil) then
+    call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+    ! zero energy residual
+    do local_id = 1, grid%nlmax
+      r_p((local_id-1)*option%nflowdof+TOWG_OIL_EQ_IDX) =  0.d0
+    enddo
+    call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+  endif  
+  if (towg_no_gas) then
+    call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+    ! zero energy residual
+    do local_id = 1, grid%nlmax
+      r_p((local_id-1)*option%nflowdof+TOWG_GAS_EQ_IDX) =  0.d0
+    enddo
+    call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+  endif  
+
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  call VecGetArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  do local_id = 1, grid%nlmax
+    write(debug_unit,'(a,i5,7es24.15)') 'fixed residual:', local_id, &
+      accum_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof)
+  enddo
+  call VecRestoreArrayReadF90(field%flow_accum, accum_p, ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+  do local_id = 1, grid%nlmax
+    write(debug_unit,'(a,i5,7es24.15)') 'residual:', local_id, &
+      r_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof)
+  enddo
+  call VecRestoreArrayF90(r, r_p, ierr);CHKERRQ(ierr)
+#endif
+  
+  if (realization%debug%vecview_residual) then
+    string = 'TOWGresidual'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
+    call VecView(r,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+  endif
+  if (realization%debug%vecview_solution) then
+    string = 'TOWGxx'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
+    call VecView(xx,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+  endif
+
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  if (debug_flag > 0) then
+    close(debug_unit)
+  endif
+#endif
+  
+end subroutine TOWGResidual
 
 ! ************************************************************************** !
 

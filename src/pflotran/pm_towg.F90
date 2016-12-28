@@ -38,7 +38,7 @@ module PM_TOWG_class
     procedure, public :: Read => PMTOWGRead
     procedure, public :: InitializeRun => PMTOWGInitializeRun
     procedure, public :: InitializeTimestep => PMTOWGInitializeTimestep
-    !procedure, public :: Residual => PMGeneralResidual
+    procedure, public :: Residual => PMTOWGResidual
     !procedure, public :: Jacobian => PMGeneralJacobian
     !procedure, public :: UpdateTimestep => PMGeneralUpdateTimestep
     procedure, public :: PreSolve => PMTOWGPreSolve
@@ -417,10 +417,33 @@ end subroutine PMTOWGUpdateAuxVars
 
 ! ************************************************************************** !
 
+subroutine PMTOWGResidual(this,snes,xx,r,ierr)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/28/16
+  ! 
+
+  use TOWG_module, only : TOWGResidual
+
+  implicit none
+  
+  class(pm_towg_type) :: this
+  SNES :: snes
+  Vec :: xx
+  Vec :: r
+  PetscErrorCode :: ierr
+  
+  call PMSubsurfaceFlowUpdatePropertiesNI(this)
+  call TOWGResidual(snes,xx,r,this%realization,ierr)
+
+end subroutine PMTOWGResidual
+
+! ************************************************************************** !
+
 subroutine PMTOWGPreSolve(this)
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 03/14/13
+  ! Author: Paolo Orsini
+  ! Date: 12/28/16
 
   implicit none
 
