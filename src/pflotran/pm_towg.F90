@@ -39,7 +39,7 @@ module PM_TOWG_class
     procedure, public :: InitializeRun => PMTOWGInitializeRun
     procedure, public :: InitializeTimestep => PMTOWGInitializeTimestep
     procedure, public :: Residual => PMTOWGResidual
-    !procedure, public :: Jacobian => PMGeneralJacobian
+    procedure, public :: Jacobian => PMTOWGJacobian
     !procedure, public :: UpdateTimestep => PMGeneralUpdateTimestep
     procedure, public :: PreSolve => PMTOWGPreSolve
     !procedure, public :: PostSolve => PMGeneralPostSolve
@@ -437,6 +437,28 @@ subroutine PMTOWGResidual(this,snes,xx,r,ierr)
   call TOWGResidual(snes,xx,r,this%realization,ierr)
 
 end subroutine PMTOWGResidual
+
+! ************************************************************************** !
+
+subroutine PMTOWGJacobian(this,snes,xx,A,B,ierr)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/28/16
+  ! 
+
+  use TOWG_module, only : TOWGJacobian 
+
+  implicit none
+  
+  class(pm_towg_type) :: this
+  SNES :: snes
+  Vec :: xx
+  Mat :: A, B
+  PetscErrorCode :: ierr
+  
+  call TOWGJacobian(snes,xx,A,B,this%realization,ierr)
+
+end subroutine PMTOWGJacobian
 
 ! ************************************************************************** !
 

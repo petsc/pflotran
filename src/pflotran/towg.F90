@@ -170,7 +170,8 @@ module TOWG_module
             TOWGMapBCAuxVarsToGlobal, &
             TOWGInitializeTimestep, &
             TOWGComputeMassBalance, &
-            TOWGResidual
+            TOWGResidual, &
+            TOWGJacobian
 
 contains
 
@@ -2703,6 +2704,399 @@ subroutine TOWGResidual(snes,xx,r,realization,ierr)
 #endif
   
 end subroutine TOWGResidual
+
+! ************************************************************************** !
+
+subroutine TOWGJacobian(snes,xx,A,B,realization,ierr)
+  ! 
+  ! Computes the Jacobian
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/28/16
+  ! 
+
+  use Realization_Subsurface_class
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Connection_module
+  use Coupler_module
+  use Field_module
+  use Debug_module
+  use Material_Aux_class
+
+  implicit none
+
+  SNES :: snes
+  Vec :: xx
+  Mat :: A, B
+  type(realization_subsurface_type) :: realization
+  PetscErrorCode :: ierr
+
+  Mat :: J
+  MatType :: mat_type
+  PetscReal :: norm
+  PetscViewer :: viewer
+
+  PetscInt :: icap_up,icap_dn
+  PetscReal :: qsrc, scale
+  PetscInt :: imat, imat_up, imat_dn
+  PetscInt :: local_id, ghosted_id, natural_id
+  PetscInt :: irow
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  Vec, parameter :: null_vec = 0
+  
+  PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
+               Jdn(realization%option%nflowdof,realization%option%nflowdof)
+  
+  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: iconn
+  PetscInt :: sum_connection  
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity 
+  PetscInt, pointer :: zeros(:)
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option 
+  type(field_type), pointer :: field 
+  type(material_parameter_type), pointer :: material_parameter
+  class(pm_towg_aux_type), pointer :: towg
+  type(towg_parameter_type), pointer :: towg_parameter
+  type(global_auxvar_type), pointer :: global_auxvars(:), global_auxvars_bc(:) 
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  material_parameter => patch%aux%Material%material_parameter
+  towg => patch%aux%TOWG
+  towg_parameter => towg%parameter
+  global_auxvars => patch%aux%Global%auxvars
+  global_auxvars_bc => patch%aux%Global%auxvars_bc
+  material_auxvars => patch%aux%Material%auxvars
+
+  call MatGetType(A,mat_type,ierr);CHKERRQ(ierr)
+  if (mat_type == MATMFFD) then
+    J = B
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  else
+    J = A
+  endif
+
+  call MatZeroEntries(J,ierr);CHKERRQ(ierr)
+
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(word,*) debug_timestep_count
+    string = 'jacobian_debug_data_' // trim(adjustl(word))
+    write(word,*) debug_timestep_cut_count
+    string = trim(string) // '_' // trim(adjustl(word))
+    write(word,*) debug_iteration_count
+    debug_filename = trim(string) // '_' // trim(adjustl(word)) // '.txt'
+    open(debug_unit, file=debug_filename, action="write", status="unknown")
+    open(debug_info_unit, file='debug_info.txt', action="write", &
+         position="append", status="unknown")
+    write(debug_info_unit,*) 'jacobian ', debug_timestep_count, &
+      debug_timestep_cut_count, debug_iteration_count
+    close(debug_info_unit)
+  endif
+#endif
+
+  ! Perturb aux vars
+  do ghosted_id = 1, grid%ngmax  ! For each local node do...
+    if (patch%imat(ghosted_id) <= 0) cycle
+    natural_id = grid%nG2A(ghosted_id)
+    call TOWGAuxVarPerturb(towg%auxvars(:,ghosted_id), &
+                           global_auxvars(ghosted_id), &
+                           material_auxvars(ghosted_id), &
+                           patch%characteristic_curves_array( &
+                           patch%sat_func_id(ghosted_id))%ptr, &
+                           natural_id,option)
+  enddo
+
+  ! Accumulation terms ------------------------------------
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    imat = patch%imat(ghosted_id)
+    if (imat <= 0) cycle
+    call TOWGAccumDerivative(towg%auxvars(:,ghosted_id), &
+                             global_auxvars(ghosted_id), &
+                             material_auxvars(ghosted_id), &
+                             material_parameter%soil_heat_capacity(imat), &
+                             option, &
+                             Jup) 
+    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
+                                  ADD_VALUES,ierr);CHKERRQ(ierr)
+  enddo
+
+  if (realization%debug%matview_Jacobian_detailed) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    string = 'jacobian_accum'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+  endif
+
+
+  ! Interior Flux Terms -----------------------------------  
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+    
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+
+      imat_up = patch%imat(ghosted_id_up)
+      imat_dn = patch%imat(ghosted_id_dn)
+      if (imat_up <= 0 .or. imat_dn <= 0) cycle
+
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+   
+      icap_up = patch%sat_func_id(ghosted_id_up)
+      icap_dn = patch%sat_func_id(ghosted_id_dn)
+                              
+      call TOWGFluxDerivative(towg%auxvars(:,ghosted_id_up), &
+                     global_auxvars(ghosted_id_up), &
+                     material_auxvars(ghosted_id_up), &
+                     material_parameter%soil_residual_saturation(:,icap_up), &
+                     material_parameter%soil_thermal_conductivity(:,imat_up), &
+                     towg%auxvars(:,ghosted_id_dn), &
+                     global_auxvars(ghosted_id_dn), &
+                     material_auxvars(ghosted_id_dn), &
+                     material_parameter%soil_residual_saturation(:,icap_dn), &
+                     material_parameter%soil_thermal_conductivity(:,imat_dn), &
+                     cur_connection_set%area(iconn), &
+                     cur_connection_set%dist(:,iconn), &
+                     towg_parameter,option,&
+                     Jup,Jdn)
+
+      if (local_id_up > 0) then
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+                                      Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+                                      Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
+      endif
+      if (local_id_dn > 0) then
+        Jup = -Jup
+        Jdn = -Jdn
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+                                      Jdn,ADD_VALUES,ierr);CHKERRQ(ierr)
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+                                      Jup,ADD_VALUES,ierr);CHKERRQ(ierr)
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  if (realization%debug%matview_Jacobian_detailed) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    string = 'jacobian_flux'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+  endif
+
+  ! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%boundary_condition_list%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_set => boundary_condition%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+    
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      imat_dn = patch%imat(ghosted_id)
+      if (imat_dn <= 0) cycle
+
+      if (ghosted_id<=0) then
+        print *, "Wrong boundary node index... STOP!!!"
+        stop
+      endif
+
+      icap_dn = patch%sat_func_id(ghosted_id)
+
+      call TOWGBCFluxDerivative(boundary_condition%flow_bc_type, &
+                      boundary_condition%flow_aux_mapping, &
+                      boundary_condition%flow_aux_real_var(:,iconn), &
+                      towg%auxvars_bc(sum_connection), &
+                      global_auxvars_bc(sum_connection), &
+                      towg%auxvars(:,ghosted_id), &
+                      global_auxvars(ghosted_id), &
+                      material_auxvars(ghosted_id), &
+                      material_parameter%soil_residual_saturation(:,icap_dn), &
+                      material_parameter%soil_thermal_conductivity(:,imat_dn), &
+                      cur_connection_set%area(iconn), &
+                      cur_connection_set%dist(:,iconn), &
+                      towg_parameter,option, &
+                      Jdn)
+
+      Jdn = -Jdn
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
+                                    ADD_VALUES,ierr);CHKERRQ(ierr)
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  if (realization%debug%matview_Jacobian_detailed) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    string = 'jacobian_bcflux'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+  endif
+
+  ! Source/sinks
+  source_sink => patch%source_sink_list%first 
+  do 
+    if (.not.associated(source_sink)) exit
+    
+    cur_connection_set => source_sink%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      if (associated(source_sink%flow_aux_real_var)) then
+        scale = source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
+      else
+        scale = 1.d0
+      endif
+      
+      Jup = 0.d0
+      call TOWGSrcSinkDerivative(option, &
+                        source_sink%flow_condition%towg, &
+                        towg%auxvars(:,ghosted_id), &
+                        global_auxvars(ghosted_id), &
+                        scale,Jup)
+
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
+                                    ADD_VALUES,ierr);CHKERRQ(ierr)
+
+    enddo
+    source_sink => source_sink%next
+  enddo
+  
+  if (realization%debug%matview_Jacobian_detailed) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+    string = 'jacobian_srcsink'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
+    call MatView(A,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+  endif
+  
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr);CHKERRQ(ierr)
+
+  ! zero out isothermal and inactive cells
+  if (towg%inactive_cells_exist) then
+    qsrc = 1.d0 ! solely a temporary variable in this conditional
+    call MatZeroRowsLocal(A,towg%n_inactive_rows, &
+                          towg%inactive_rows_local_ghosted, &
+                          qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          ierr);CHKERRQ(ierr)
+  endif
+
+  if (towg_isothermal) then
+    qsrc = 1.d0 ! solely a temporary variable in this conditional
+    zeros => towg%row_zeroing_array
+    ! zero energy residual
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      zeros(local_id) = (ghosted_id-1)*option%nflowdof+ &
+                        towg_energy_eq_idx - 1 ! zero-based
+    enddo
+    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
+  endif
+
+  if (towg_no_oil) then
+    qsrc = 1.d0 ! solely a temporary variable in this conditional
+    zeros => towg%row_zeroing_array
+    ! zero gas component mass balance residual
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      zeros(local_id) = (ghosted_id-1)*option%nflowdof+ &
+                        TOWG_OIL_EQ_IDX - 1 ! zero-based
+    enddo
+    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
+  endif
+
+  if (towg_no_gas) then
+    qsrc = 1.d0 ! solely a temporary variable in this conditional
+    zeros => towg%row_zeroing_array
+    ! zero gas component mass balance residual
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      zeros(local_id) = (ghosted_id-1)*option%nflowdof+ &
+                        TOWG_GAS_EQ_IDX - 1 ! zero-based
+    enddo
+    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
+  endif
+  
+  if (realization%debug%matview_Jacobian) then
+    string = 'TOWGjacobian'
+    call DebugCreateViewer(realization%debug,string,option,viewer)
+    call MatView(J,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+  endif
+  if (realization%debug%norm_Jacobian) then
+    option => realization%option
+    call MatNorm(J,NORM_1,norm,ierr);CHKERRQ(ierr)
+    write(option%io_buffer,'("1 norm: ",es11.4)') norm
+    call printMsg(option) 
+    call MatNorm(J,NORM_FROBENIUS,norm,ierr);CHKERRQ(ierr)
+    write(option%io_buffer,'("2 norm: ",es11.4)') norm
+    call printMsg(option) 
+    call MatNorm(J,NORM_INFINITY,norm,ierr);CHKERRQ(ierr)
+    write(option%io_buffer,'("inf norm: ",es11.4)') norm
+    call printMsg(option) 
+  endif
+
+!  call MatView(J,PETSC_VIEWER_STDOUT_WORLD,ierr)
+
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  if (debug_flag > 0) then
+    write(word,*) debug_timestep_count
+    string = 'jacobian_' // trim(adjustl(word))
+    write(word,*) debug_timestep_cut_count
+    string = trim(string) // '_' // trim(adjustl(word))
+    write(word,*) debug_iteration_count
+    string = trim(string) // '_' // trim(adjustl(word)) // '.out'
+    call PetscViewerASCIIOpen(realization%option%mycomm,trim(string), &
+                              viewer,ierr);CHKERRQ(ierr)
+    call MatView(J,viewer,ierr);CHKERRQ(ierr)
+    call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+    close(debug_unit)
+  endif
+#endif
+
+end subroutine TOWGJacobian
 
 ! ************************************************************************** !
 
