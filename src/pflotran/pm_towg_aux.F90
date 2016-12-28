@@ -22,6 +22,13 @@ module PM_TOWG_Aux_module
   PetscReal, parameter, public :: towg_pressure_scale = 1.d0
 
   PetscBool, public :: towg_isothermal = PETSC_FALSE
+  !PO:needs to add input for towg_no_gas and towg_no_oil in pm_towg%Read
+  !   towg_no_oil currently supported only for TOWG_IMMISCIBLE 
+  !   and TOWG_TODD_LONGSTAFF. To have it working also for BLACK_OIL and SOLV.
+  !   must swap the orger of primary vars for TOWG_LIQ_GAS_STATE,
+  !   Po,Sg,Xg^G -> Po,Xg^G,Sg
+  PetscBool, public :: towg_no_gas = PETSC_FALSE
+  PetscBool, public :: towg_no_oil = PETSC_FALSE 
   PetscInt, public :: towg_miscibility_model = UNINITIALIZED_INTEGER
 
   !list of TOWG paramters

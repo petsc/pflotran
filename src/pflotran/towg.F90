@@ -2000,6 +2000,314 @@ end subroutine TOWGImsTLSrcSink
 
 ! ************************************************************************** !
 
+subroutine TOWGAccumDerivative(auxvar,global_auxvar,material_auxvar, &
+                               soil_heat_capacity,option,J)
+  ! 
+  ! Computes derivatives of the accumulation
+  ! term for the Jacobian
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/27/16
+  ! 
+
+  use Option_module
+  use Saturation_Function_module
+  use Material_Aux_class
+  
+  implicit none
+
+  type(auxvar_towg_type) :: auxvar(0:)
+  type(global_auxvar_type) :: global_auxvar
+  class(material_auxvar_type) :: material_auxvar
+  type(option_type) :: option
+  PetscReal :: soil_heat_capacity
+  PetscReal :: J(option%nflowdof,option%nflowdof)
+     
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscReal :: jac(option%nflowdof,option%nflowdof)
+  PetscReal :: jac_pert(option%nflowdof,option%nflowdof)
+  PetscInt :: idof, irow
+
+  call TOWGAccumulation(auxvar(ZERO_INTEGER),global_auxvar,material_auxvar, &
+                        soil_heat_capacity,option,res,PETSC_FALSE)
+
+  do idof = 1, option%nflowdof
+    call TOWGAccumulation(auxvar(idof),global_auxvar,material_auxvar, &
+                          soil_heat_capacity,option,res_pert,PETSC_FALSE)
+    do irow = 1, option%nflowdof
+      J(irow,idof) = (res_pert(irow)-res(irow))/auxvar(idof)%pert
+    enddo !irow
+  enddo ! idof
+
+  if (towg_isothermal) then
+    J(towg_energy_eq_idx,:) = 0.d0
+    J(:,towg_energy_eq_idx) = 0.d0
+  endif
+
+  if (towg_no_oil) then
+    J(TOWG_OIL_EQ_IDX,:) = 0.d0
+    J(:,TOWG_OIL_EQ_IDX) = 0.d0
+  endif
+
+  if (towg_no_gas) then
+    J(TOWG_GAS_EQ_IDX,:) = 0.d0
+    J(:,TOWG_GAS_EQ_IDX) = 0.d0
+  endif
+  
+
+end subroutine TOWGAccumDerivative
+
+! ************************************************************************** !
+
+subroutine TOWGFluxDerivative(auxvar_up,global_auxvar_up, &
+                              material_auxvar_up, &
+                              sir_up, &
+                              thermal_conductivity_up, &
+                              auxvar_dn,global_auxvar_dn, &
+                              material_auxvar_dn, &
+                              sir_dn, &
+                              thermal_conductivity_dn, &
+                              area, dist, &
+                              towg_parameter, &
+                              option,Jup,Jdn)
+  ! 
+  ! Computes the derivatives of the internal flux terms
+  ! for the Jacobian
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/27/16
+  ! 
+  use Option_module
+  use Material_Aux_class
+  
+  implicit none
+  
+  type(auxvar_towg_type) :: auxvar_up(0:), auxvar_dn(0:)
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_up, material_auxvar_dn
+  type(option_type) :: option
+  PetscReal :: sir_up(:), sir_dn(:)
+  PetscReal :: thermal_conductivity_dn(2)
+  PetscReal :: thermal_conductivity_up(2)
+  PetscReal :: area
+  PetscReal :: dist(-1:3)
+  type(towg_parameter_type) :: towg_parameter
+  PetscReal :: Jup(option%nflowdof,option%nflowdof)
+  PetscReal :: Jdn(option%nflowdof,option%nflowdof)
+
+  PetscReal :: v_darcy(option%nphase)
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscInt :: idof, irow
+
+  Jup = 0.d0
+  Jdn = 0.d0
+  
+  !print *, 'TOWGFluxDerivative'
+  option%iflag = -2
+  call TOWGFlux(auxvar_up(ZERO_INTEGER),global_auxvar_up, &
+                material_auxvar_up,sir_up, &
+                thermal_conductivity_up, &
+                auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
+                material_auxvar_dn,sir_dn, &
+                thermal_conductivity_dn, &
+                area,dist,towg_parameter, &
+                option,v_darcy,res,PETSC_FALSE)
+                           
+  ! upgradient derivatives
+  do idof = 1, option%nflowdof
+    call TOWGFlux(auxvar_up(idof),global_auxvar_up, &
+                  material_auxvar_up,sir_up, &
+                  thermal_conductivity_up, &
+                  auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
+                  material_auxvar_dn,sir_dn, &
+                  thermal_conductivity_dn, &
+                  area,dist,towg_parameter, &
+                  option,v_darcy,res_pert,PETSC_FALSE)
+    do irow = 1, option%nflowdof
+      Jup(irow,idof) = (res_pert(irow)-res(irow))/auxvar_up(idof)%pert
+    enddo !irow
+  enddo ! idof
+
+  ! downgradient derivatives
+  do idof = 1, option%nflowdof
+    call TOWGFlux(auxvar_up(ZERO_INTEGER),global_auxvar_up, &
+                  material_auxvar_up,sir_up, &
+                  thermal_conductivity_up, &
+                  auxvar_dn(idof),global_auxvar_dn, &
+                  material_auxvar_dn,sir_dn, &
+                  thermal_conductivity_dn, &
+                  area,dist,towg_parameter, &
+                  option,v_darcy,res_pert,PETSC_FALSE)
+    do irow = 1, option%nflowdof
+      Jdn(irow,idof) = (res_pert(irow)-res(irow))/auxvar_dn(idof)%pert
+    enddo !irow
+  enddo ! idof
+
+  if (towg_isothermal) then
+    Jup(towg_energy_eq_idx,:) = 0.d0
+    Jup(:,towg_energy_eq_idx) = 0.d0
+    Jdn(towg_energy_eq_idx,:) = 0.d0
+    Jdn(:,towg_energy_eq_idx) = 0.d0
+  endif
+  
+  if (towg_no_oil) then
+    Jup(TOWG_OIL_EQ_IDX,:) = 0.d0
+    Jup(:,TOWG_OIL_EQ_IDX) = 0.d0
+    Jdn(TOWG_OIL_EQ_IDX,:) = 0.d0
+    Jdn(:,TOWG_OIL_EQ_IDX) = 0.d0
+  endif  
+
+  if (towg_no_gas) then
+    Jup(TOWG_GAS_EQ_IDX,:) = 0.d0
+    Jup(:,TOWG_GAS_EQ_IDX) = 0.d0
+    Jdn(TOWG_GAS_EQ_IDX,:) = 0.d0
+    Jdn(:,TOWG_GAS_EQ_IDX) = 0.d0
+  endif  
+
+end subroutine TOWGFluxDerivative
+
+! ************************************************************************** !
+
+subroutine TOWGBCFluxDerivative(ibndtype,bc_auxvar_mapping,bc_auxvars, &
+                                auxvar_up, global_auxvar_up, &
+                                auxvar_dn,global_auxvar_dn, &
+                                material_auxvar_dn,sir_dn, &
+                                thermal_conductivity_dn, &
+                                area,dist,towg_parameter, &
+                                option,Jdn)
+  ! 
+  ! Computes the derivatives of the boundary flux terms
+  ! for the Jacobian
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/27/16
+  ! 
+
+  use Option_module 
+  use Material_Aux_class
+  
+  implicit none
+
+  PetscReal :: bc_auxvars(:) ! from aux_real_var array
+  type(auxvar_towg_type) :: auxvar_up, auxvar_dn(0:)
+  type(global_auxvar_type) :: global_auxvar_up, global_auxvar_dn
+  class(material_auxvar_type) :: material_auxvar_dn
+  type(option_type) :: option
+  PetscReal :: sir_dn(:)
+  PetscReal :: area
+  PetscReal :: dist(-1:3)
+  type(towg_parameter_type) :: towg_parameter
+  PetscReal :: Jdn(option%nflowdof,option%nflowdof)
+  PetscInt :: ibndtype(1:option%nflowdof)
+  PetscInt :: bc_auxvar_mapping(TOWG_MAX_INDEX)
+  PetscReal :: thermal_conductivity_dn(2)
+
+  PetscReal :: v_darcy(option%nphase)
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscInt :: idof, irow
+
+  Jdn = 0.d0
+  !print *, 'TOWGBCFluxDerivative'
+
+  option%iflag = -2
+  call TOWGBCFlux(ibndtype,bc_auxvar_mapping,bc_auxvars, &
+                  auxvar_up,global_auxvar_up, &
+                  auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
+                  material_auxvar_dn,sir_dn, &
+                  thermal_conductivity_dn, &
+                  area,dist,towg_parameter, &
+                  option,v_darcy,res,PETSC_FALSE)
+                    
+  ! downgradient derivatives
+  do idof = 1, option%nflowdof
+    call TOWGBCFlux(ibndtype,bc_auxvar_mapping,bc_auxvars, &
+                    auxvar_up,global_auxvar_up, &
+                    auxvar_dn(idof),global_auxvar_dn, &
+                    material_auxvar_dn,sir_dn, &
+                    thermal_conductivity_dn, &
+                    area,dist,towg_parameter, &
+                    option,v_darcy,res_pert,PETSC_FALSE)
+    do irow = 1, option%nflowdof
+      Jdn(irow,idof) = (res_pert(irow)-res(irow))/auxvar_dn(idof)%pert
+    enddo !irow
+  enddo ! idof
+
+  if (towg_isothermal) then
+    Jdn(towg_energy_eq_idx,:) = 0.d0
+    Jdn(:,towg_energy_eq_idx) = 0.d0
+  endif
+  
+  if (towg_no_oil) then
+    Jdn(TOWG_OIL_EQ_IDX,:) = 0.d0
+    Jdn(:,TOWG_OIL_EQ_IDX) = 0.d0
+  endif  
+
+  if (towg_no_gas) then
+    Jdn(TOWG_GAS_EQ_IDX,:) = 0.d0
+    Jdn(:,TOWG_GAS_EQ_IDX) = 0.d0
+  endif  
+  
+end subroutine TOWGBCFluxDerivative
+
+! ************************************************************************** !
+
+subroutine TOWGSrcSinkDerivative(option,src_sink_condition,auxvars, &
+                                 global_auxvar,scale,Jac)
+  ! 
+  ! Computes the source/sink terms for the residual
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 12/28/16
+  ! 
+
+  use Option_module
+  use Condition_module
+
+  implicit none
+
+  type(option_type) :: option
+  type(flow_towg_condition_type), pointer :: src_sink_condition
+  type(auxvar_towg_type) :: auxvars(0:)
+  type(global_auxvar_type) :: global_auxvar
+  PetscReal :: scale
+  PetscReal :: Jac(option%nflowdof,option%nflowdof)
+  
+  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
+  PetscReal :: dummy_real(option%nphase)
+  PetscInt :: idof, irow
+
+  option%iflag = -3
+  call TOWGSrcSink(option,src_sink_condition,auxvars(ZERO_INTEGER), &
+                   global_auxvar,dummy_real,scale,Res)
+
+  ! downgradient derivatives
+  do idof = 1, option%nflowdof
+    call TOWGSrcSink(option,src_sink_condition,auxvars(idof), &
+                     global_auxvar,dummy_real,scale,res_pert)
+    do irow = 1, option%nflowdof
+      Jac(irow,idof) = (res_pert(irow)-res(irow))/auxvars(idof)%pert
+    enddo !irow
+  enddo ! idof
+ 
+  if (towg_isothermal) then
+    Jac(towg_energy_eq_idx,:) = 0.d0
+    Jac(:,towg_energy_eq_idx) = 0.d0
+  endif
+  
+  if (towg_no_oil) then
+    Jac(TOWG_OIL_EQ_IDX,:) = 0.d0
+    Jac(:,TOWG_OIL_EQ_IDX) = 0.d0
+  endif  
+
+  if (towg_no_gas) then
+    Jac(TOWG_GAS_EQ_IDX,:) = 0.d0
+    Jac(:,TOWG_GAS_EQ_IDX) = 0.d0
+  endif  
+
+end subroutine TOWGSrcSinkDerivative
+
+! ************************************************************************** !
+
 function TOWGImsTLAverageDensity(sat_up,sat_dn,density_up,density_dn)
   ! 
   ! Averages density, using opposite cell density if phase non-existent
