@@ -280,6 +280,10 @@ subroutine PMTOWGRead(this,input)
       !                     error_string)
       case('ISOTHERMAL')
         towg_isothermal = PETSC_TRUE
+      case('NO_OIL')
+        towg_no_oil = PETSC_TRUE
+      case('NO_GAS')
+        towg_no_gas = PETSC_TRUE
       case('MAXIMUM_PRESSURE_CHANGE')
         call InputReadDouble(input,option,this%trunc_max_pressure_change)
         call InputErrorMsg(input,option,'maximum pressure change', &

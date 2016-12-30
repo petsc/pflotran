@@ -981,11 +981,11 @@ subroutine TOWGImsTLMaxChange(realization,max_change_ivar,max_change_isubvar,&
   ! print them out
   if (OptionPrintToScreen(option)) then
     write(*,'("  --> max chng: dpo= ",1pe12.4, " dso= ",1pe12.4, &
-      & " dsg= ",1pe12.4,/,15x,"  dt= ",1pe12.4)') &
+      & " dsg= ",1pe12.4," dt= ",1pe12.4)') &
       max_change_global(1:4)
   endif
   if (OptionPrintToFile(option)) then
-    write(*,'("  --> max chng: dpo= ",1pe12.4, " dso= ",1pe12.4, &
+    write(option%fid_out,'("  --> max chng: dpo= ",1pe12.4, " dso= ",1pe12.4,&
       & " dsg= ",1pe12.4,/,15x,"  dt= ",1pe12.4)') &
       max_change_global(1:4)
   endif
