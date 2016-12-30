@@ -49,6 +49,7 @@ module TOWG_module
   procedure(TOWGFluxDummy), pointer :: TOWGFlux => null()
   procedure(TOWGBCFluxDummy), pointer :: TOWGBCFlux => null()
   procedure(TOWGSrcSinkDummy), pointer :: TOWGSrcSink => null()
+  procedure(TOWGCheckUpdatePreDummy), pointer :: TOWGCheckUpdatePre => null()
 
   abstract interface
 
@@ -162,6 +163,22 @@ module TOWG_module
       PetscReal :: Res(option%nflowdof)
     end subroutine TOWGSrcSinkDummy
 
+    subroutine TOWGCheckUpdatePreDummy(line_search,X,dX,changed,realization, &
+                                       max_it_before_damping,damping_factor, &
+                                       max_pressure_change,ierr)
+      use Realization_Subsurface_class
+      implicit none
+      SNESLineSearch :: line_search
+      Vec :: X
+      Vec :: dX
+      PetscBool :: changed
+      PetscErrorCode :: ierr
+      type(realization_subsurface_type) :: realization
+      PetscInt :: max_it_before_damping
+      PetscReal :: damping_factor
+      PetscReal :: max_pressure_change
+    end subroutine TOWGCheckUpdatePreDummy
+
   end interface 
 
   public :: TOWGSetup,&
@@ -171,7 +188,8 @@ module TOWG_module
             TOWGInitializeTimestep, &
             TOWGComputeMassBalance, &
             TOWGResidual, &
-            TOWGJacobian
+            TOWGJacobian, &
+            TOWGCheckUpdatePre
 
 contains
 
@@ -330,6 +348,7 @@ subroutine TOWGSetup(realization)
       TOWGFlux => TOWGImsTLFlux
       TOWGBCFlux => TOWGImsTLBCFlux
       TOWGSrcSink => TOWGImsTLSrcSink
+      TOWGCheckUpdatePre => TOWGImsTLCheckUpdatePre
       call TOWGImsAuxVarComputeSetup()
     case default
       option%io_buffer = 'TOWGSetup: only TOWG_IMMISCIBLE is supported.'
@@ -3097,6 +3116,183 @@ subroutine TOWGJacobian(snes,xx,A,B,realization,ierr)
 #endif
 
 end subroutine TOWGJacobian
+
+! ************************************************************************** !
+
+subroutine TOWGImsTLCheckUpdatePre(line_search,X,dX,changed,realization, &
+                                   max_it_before_damping,damping_factor, &
+                                   max_pressure_change,ierr)
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 12/30/16
+  ! 
+  use Realization_Subsurface_class
+  use Grid_module
+  use Field_module
+  use Option_module
+  use Patch_module
+
+  implicit none
+
+  SNESLineSearch :: line_search
+  Vec :: X
+  Vec :: dX
+  PetscBool :: changed
+  PetscErrorCode :: ierr
+  type(realization_subsurface_type) :: realization
+  PetscInt :: max_it_before_damping
+  PetscReal :: damping_factor
+  PetscReal :: max_pressure_change
+
+  PetscReal, pointer :: X_p(:), dX_p(:)
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+
+  !type(toil_ims_auxvar_type), pointer :: toil_auxvars(:,:)
+  !type(global_auxvar_type), pointer :: global_auxvars(:)  
+
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: offset
+
+  PetscInt :: pressure_index, saturation_index, temperature_index
+
+  PetscReal :: pressure0, pressure1, del_pressure
+  PetscReal :: temperature0, temperature1, del_temperature
+  PetscReal :: saturation0, saturation1, del_saturation
+
+  PetscReal :: max_saturation_change = 0.125d0
+  PetscReal :: max_temperature_change = 10.d0
+  PetscReal :: scale, temp_scale, temp_real
+  PetscReal, parameter :: tolerance = 0.99d0
+  PetscReal, parameter :: initial_scale = 1.d0
+  SNES :: snes
+  PetscInt :: newton_iteration
+
+  
+  grid => realization%patch%grid
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+
+  call SNESLineSearchGetSNES(line_search,snes,ierr)
+  call SNESGetIterationNumber(snes,newton_iteration,ierr)
+
+  call VecGetArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
+  call VecGetArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
+
+  changed = PETSC_TRUE
+
+  !print *, "TOWGImsTLCheckUpdatePre"
+  ! truncation
+  ! Oil and Gas Saturations must be truncated.  We do not use scaling
+  ! here because of the very small values.  just truncation.
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    offset = (local_id-1)*option%nflowdof
+    saturation_index = offset + TOWG_OIL_SATURATION_DOF
+    if ( (X_p(saturation_index) - dX_p(saturation_index)) < 0.d0 ) then
+      ! we use 1.d-6 since cancelation can occur with smaller values
+      ! this threshold is imposed in the initial condition
+      dX_p(saturation_index) = X_p(saturation_index)
+    end if
+    saturation_index = offset + TOWG_GAS_SATURATION_3PH_DOF
+    if ( (X_p(saturation_index) - dX_p(saturation_index)) < 0.d0 ) then
+      ! we use 1.d-6 since cancelation can occur with smaller values
+      ! this threshold is imposed in the initial condition
+      dX_p(saturation_index) = X_p(saturation_index)
+    end if
+  enddo
+
+  scale = initial_scale
+  if (max_it_before_damping > 0 .and. &
+      newton_iteration > max_it_before_damping) then
+    scale = damping_factor
+  endif
+
+#define LIMIT_MAX_PRESSURE_CHANGE
+#define LIMIT_MAX_SATURATION_CHANGE
+!!#define LIMIT_MAX_TEMPERATURE_CHANGE
+!! TRUNCATE_PRESSURE is needed for times when the solve wants
+!! to pull them negative.
+!#define TRUNCATE_PRESSURE
+
+  ! scaling
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    offset = (local_id-1)*option%nflowdof
+    temp_scale = 1.d0
+    pressure_index = offset + TOWG_OIL_PRESSURE_DOF
+    dX_p(pressure_index) = dX_p(pressure_index) * towg_pressure_scale
+    del_pressure = dX_p(pressure_index)
+    pressure0 = X_p(pressure_index)
+    pressure1 = pressure0 - del_pressure
+#ifdef LIMIT_MAX_PRESSURE_CHANGE
+    if (dabs(del_pressure) > max_pressure_change) then
+      temp_real = dabs(max_pressure_change/del_pressure)
+      temp_scale = min(temp_scale,temp_real)
+     endif
+#endif
+#ifdef TRUNCATE_PRESSURE
+    if (pressure1 <= 0.d0) then
+      if (dabs(del_pressure) > 1.d-40) then
+        temp_real = tolerance * dabs(pressure0 / del_pressure)
+        temp_scale = min(temp_scale,temp_real)
+      endif
+    endif
+#endif 
+!TRUNCATE_PRESSURE
+#ifdef LIMIT_MAX_SATURATION_CHANGE
+    !oil saturation
+    saturation_index = offset + TOWG_OIL_SATURATION_DOF
+    del_saturation = dX_p(saturation_index)
+    !saturation0 = X_p(saturation_index)
+    !saturation1 = saturation0 - del_saturation
+    if (dabs(del_saturation) > max_saturation_change) then
+       temp_real = dabs(max_saturation_change/del_saturation)
+       temp_scale = min(temp_scale,temp_real)
+    endif
+    !gas saturation
+    saturation_index = offset + TOWG_GAS_SATURATION_3PH_DOF
+    del_saturation = dX_p(saturation_index)
+    !saturation0 = X_p(saturation_index)
+    !saturation1 = saturation0 - del_saturation
+    if (dabs(del_saturation) > max_saturation_change) then
+       temp_real = dabs(max_saturation_change/del_saturation)
+       temp_scale = min(temp_scale,temp_real)
+    endif
+#endif 
+!LIMIT_MAX_SATURATION_CHANGE
+#ifdef LIMIT_MAX_TEMPERATURE_CHANGE        
+    temperature_index  = offset + towg_energy_dof
+    del_temperature = dX_p(temperature_index)
+    if (dabs(del_temperature) > max_temperature_change) then
+       temp_real = dabs(max_temperature_change/del_temperature)
+       temp_scale = min(temp_scale,temp_real)
+    endif
+#endif 
+!LIMIT_MAX_TEMPERATURE_CHANGE
+    scale = min(scale,temp_scale) 
+  enddo
+
+  temp_scale = scale
+  call MPI_Allreduce(temp_scale,scale,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION, &
+                     MPI_MIN,option%mycomm,ierr)
+
+  ! it performs an homogenous scaling using the smallest scaling factor
+  ! over all subdomains domains
+  if (scale < 0.9999d0) then
+    dX_p = scale*dX_p
+  endif
+
+  call VecRestoreArrayF90(dX,dX_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayReadF90(X,X_p,ierr);CHKERRQ(ierr)
+
+end subroutine TOWGImsTLCheckUpdatePre
 
 ! ************************************************************************** !
 

@@ -43,7 +43,7 @@ module PM_TOWG_class
     !procedure, public :: UpdateTimestep => PMGeneralUpdateTimestep
     procedure, public :: PreSolve => PMTOWGPreSolve
     !procedure, public :: PostSolve => PMGeneralPostSolve
-    !procedure, public :: CheckUpdatePre => PMGeneralCheckUpdatePre
+    procedure, public :: CheckUpdatePre => PMTOWGCheckUpdatePre
     !procedure, public :: CheckUpdatePost => PMGeneralCheckUpdatePost
     !procedure, public :: TimeCut => PMGeneralTimeCut
     procedure, public :: UpdateSolution => PMTOWGUpdateSolution
@@ -474,6 +474,32 @@ subroutine PMTOWGPreSolve(this)
 end subroutine PMTOWGPreSolve
 
 ! ************************************************************************** !
+
+subroutine PMTOWGCheckUpdatePre(this,line_search,X,dX,changed,ierr)
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 10/22/15
+  ! 
+
+  use TOWG_module, only : TOWGCheckUpdatePre
+
+  implicit none
+  
+  class(pm_towg_type) :: this
+  SNESLineSearch :: line_search
+  Vec :: X
+  Vec :: dX
+  PetscBool :: changed
+  PetscErrorCode :: ierr
+
+  call TOWGCheckUpdatePre(line_search,X,dX,changed,this%realization, &
+                          this%max_it_before_damping,this%damping_factor, &
+                          this%trunc_max_pressure_change,ierr)
+
+end subroutine PMTOWGCheckUpdatePre
+
+! ************************************************************************** !
+
 
 subroutine PMTOWGUpdateSolution(this)
   ! 

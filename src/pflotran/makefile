@@ -1055,10 +1055,11 @@ pmc_subsurface.o : connection.o convergence.o coupler.o discretization.o \
                    eos_water.o field.o grid.o material.o material_aux.o \
                    option.o patch.o pflotran_constants.o pm_base.o \
                    pm_base_pointer.o pm_general.o pm_richards.o pm_rt.o \
-                   pm_subsurface_flow.o pm_th.o pm_toil_ims.o pm_ufd_decay.o \
-                   pm_waste_form.o pmc_base.o realization_base.o \
-                   realization_subsurface.o secondary_continuum.o solver.o \
-                   string.o timestepper_BE.o timestepper_base.o variables.o
+                   pm_subsurface_flow.o pm_th.o pm_toil_ims.o pm_towg.o \
+                   pm_ufd_decay.o pm_waste_form.o pmc_base.o \
+                   realization_base.o realization_subsurface.o \
+                   secondary_continuum.o solver.o string.o timestepper_BE.o \
+                   timestepper_base.o variables.o
 pmc_surface.o : checkpoint.o connection.o coupler.o eos_water.o grid.o \
                 option.o output.o output_aux.o output_surface.o patch.o \
                 pflotran_constants.o pm_base.o pm_surface_flow.o pmc_base.o \
