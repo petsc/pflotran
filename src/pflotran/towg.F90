@@ -50,6 +50,7 @@ module TOWG_module
   procedure(TOWGBCFluxDummy), pointer :: TOWGBCFlux => null()
   procedure(TOWGSrcSinkDummy), pointer :: TOWGSrcSink => null()
   procedure(TOWGCheckUpdatePreDummy), pointer :: TOWGCheckUpdatePre => null()
+  procedure(TOWGMaxChangeDummy), pointer :: TOWGMaxChange => null()
 
   abstract interface
 
@@ -179,6 +180,21 @@ module TOWG_module
       PetscReal :: max_pressure_change
     end subroutine TOWGCheckUpdatePreDummy
 
+    subroutine TOWGMaxChangeDummy(realization,max_change_ivar, &
+                                  max_change_isubvar,max_pressure_change, &
+                                  max_xmol_change,max_saturation_change, &
+                                  max_temperature_change)
+      use Realization_Subsurface_class
+      implicit none
+      class(realization_subsurface_type), pointer :: realization
+      PetscInt :: max_change_ivar(:)
+      PetscInt :: max_change_isubvar(:)
+      PetscReal :: max_pressure_change
+      PetscReal :: max_xmol_change
+      PetscReal :: max_saturation_change
+      PetscReal :: max_temperature_change
+    end subroutine TOWGMaxChangeDummy
+
   end interface 
 
   public :: TOWGSetup,&
@@ -189,7 +205,9 @@ module TOWG_module
             TOWGComputeMassBalance, &
             TOWGResidual, &
             TOWGJacobian, &
-            TOWGCheckUpdatePre
+            TOWGCheckUpdatePre, &
+            TOWGTimeCut, &
+            TOWGMaxChange
 
 contains
 
@@ -349,6 +367,7 @@ subroutine TOWGSetup(realization)
       TOWGBCFlux => TOWGImsTLBCFlux
       TOWGSrcSink => TOWGImsTLSrcSink
       TOWGCheckUpdatePre => TOWGImsTLCheckUpdatePre
+      TOWGMaxChange => TOWGImsTLMaxChange
       call TOWGImsAuxVarComputeSetup()
     case default
       option%io_buffer = 'TOWGSetup: only TOWG_IMMISCIBLE is supported.'
@@ -661,12 +680,10 @@ subroutine TOWGUpdateSolution(realization)
     call TOWGUpdateMassBalance(realization)
   endif
   
-  ! update stored state - currently not needed 
-  !  - if required define istate_store in the auxvar_towg extension 
-  !do ghosted_id = 1, grid%ngmax
-  !  towg%auxvars(ZERO_INTEGER,ghosted_id)%istate_store(PREV_TS) = &
-  !    global_auxvars(ghosted_id)%istate
-  !enddo
+  do ghosted_id = 1, grid%ngmax
+    towg%auxvars(ZERO_INTEGER,ghosted_id)%istate_store(TOWG_PREV_TS) = &
+      global_auxvars(ghosted_id)%istate
+  enddo
 
 #ifdef DEBUG_TOWG_FILEOUTPUT
   debug_iteration_count = 0
@@ -675,6 +692,54 @@ subroutine TOWGUpdateSolution(realization)
 #endif 
     
 end subroutine TOWGUpdateSolution
+
+! ************************************************************************** !
+
+subroutine TOWGTimeCut(realization)
+  ! 
+  ! Resets arrays for time step cut
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/30/16
+  ! 
+  use Realization_Subsurface_class
+  use Option_module
+  use Field_module
+  use Patch_module
+  use Discretization_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_subsurface_type) :: realization
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  class(pm_towg_aux_type), pointer :: towg
+  
+  PetscInt :: local_id, ghosted_id
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  global_auxvars => patch%aux%Global%auxvars
+  towg => patch%aux%TOWG
+
+  ! restore stored state
+  do ghosted_id = 1, grid%ngmax
+    global_auxvars(ghosted_id)%istate = &
+      towg%auxvars(ZERO_INTEGER,ghosted_id)%istate_store(TOWG_PREV_TS)
+  enddo
+
+#ifdef DEBUG_TOWG_FILEOUTPUT
+  debug_timestep_cut_count = debug_timestep_cut_count + 1
+#endif 
+
+  call TOWGInitializeTimestep(realization)  
+
+end subroutine TOWGTimeCut
 
 ! ************************************************************************** !
 
@@ -836,6 +901,104 @@ subroutine TOWGImsTLComputeMassBalance(realization,mass_balance)
   enddo
 
 end subroutine TOWGImsTLComputeMassBalance
+
+! ************************************************************************** !
+
+subroutine TOWGImsTLMaxChange(realization,max_change_ivar,max_change_isubvar,&
+                              max_pressure_change,max_xmol_change, &
+                              max_saturation_change,max_temperature_change)
+  ! 
+  ! Compute primary variable max changes
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/30/16
+  ! 
+
+  use Realization_Base_class
+  use Realization_Subsurface_class
+  use Option_module
+  use Field_module
+  use Grid_module
+  !use Global_Aux_module
+  !use General_Aux_module
+  !use Variables_module, only : LIQUID_PRESSURE, LIQUID_MOLE_FRACTION, &
+  !                             TEMPERATURE, GAS_PRESSURE, AIR_PRESSURE, &
+  !                             GAS_SATURATION
+  implicit none
+  
+  class(realization_subsurface_type), pointer :: realization
+  PetscInt :: max_change_ivar(:)
+  PetscInt :: max_change_isubvar(:)
+  PetscReal :: max_pressure_change
+  PetscReal :: max_xmol_change
+  PetscReal :: max_saturation_change
+  PetscReal :: max_temperature_change
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
+  PetscReal :: max_change_local(4)
+  PetscReal :: max_change_global(4)
+  PetscReal :: max_change
+  PetscInt :: i, j
+  PetscInt :: local_id, ghosted_id
+
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  field => realization%field
+  grid => realization%patch%grid
+
+  max_change_global = 0.d0
+  max_change_local = 0.d0
+  
+  ! 'TOWG_IMMISCIBLE','TODD_LONGOSTAFF'
+  ! max change variables = [OIL_PRESSURE, OIL_SATURATION, &
+  !                         GAS_SATURATION,TEMPERATURE]
+  do i = 1, 4
+    call RealizationGetVariable(realization,field%work, &
+                                max_change_ivar(i),max_change_isubvar(i))
+    ! yes, we could use VecWAXPY and a norm here, but we need the ability
+    ! to customize
+    call VecGetArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
+    call VecGetArrayF90(field%max_change_vecs(i),vec_ptr2,ierr);CHKERRQ(ierr)
+    max_change = 0.d0
+    do j = 1, grid%nlmax
+      ! have to weed out cells that changed state
+      if (dabs(vec_ptr(j)) > 1.d-40 .and. dabs(vec_ptr2(j)) > 1.d-40) then
+        max_change = max(max_change,dabs(vec_ptr(j)-vec_ptr2(j)))
+      endif
+    enddo
+    max_change_local(i) = max_change
+    call VecRestoreArrayF90(field%work,vec_ptr,ierr);CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%max_change_vecs(i),vec_ptr2, &
+                            ierr);CHKERRQ(ierr)
+    call VecCopy(field%work,field%max_change_vecs(i),ierr);CHKERRQ(ierr)
+  enddo
+  call MPI_Allreduce(max_change_local,max_change_global,FOUR_INTEGER, &
+                      MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+  ! print them out
+  if (OptionPrintToScreen(option)) then
+    write(*,'("  --> max chng: dpo= ",1pe12.4, " dso= ",1pe12.4, &
+      & " dsg= ",1pe12.4,/,15x,"  dt= ",1pe12.4)') &
+      max_change_global(1:4)
+  endif
+  if (OptionPrintToFile(option)) then
+    write(*,'("  --> max chng: dpo= ",1pe12.4, " dso= ",1pe12.4, &
+      & " dsg= ",1pe12.4,/,15x,"  dt= ",1pe12.4)') &
+      max_change_global(1:4)
+  endif
+ 
+  ! 'TOWG_IMMISCIBLE','TODD_LONGOSTAFF'
+  ! max change variables = [OIL_PRESSURE, OIL_SATURATION, &
+  !                         GAS_SATURATION,TEMPERATURE]
+  max_pressure_change = max_change_global(1)
+  max_xmol_change = 0.0d0
+  max_saturation_change = maxval(max_change_global(2:3))
+  max_temperature_change = max_change_global(4)
+  
+end subroutine TOWGImsTLMaxChange
 
 ! ************************************************************************** !
 

@@ -13,6 +13,7 @@ module AuxVars_TOWG_module
 #include "petsc/finclude/petscsys.h"
 
   type, public, extends(auxvar_flow_energy_type) :: auxvar_towg_type
+    PetscInt :: istate_store(2) ! 1 = previous timestep; 2 = previous iteration
     ! no data at the moment
   contains
     procedure, public :: Init => AuxVarTOWGInit
@@ -48,6 +49,8 @@ subroutine AuxVarTOWGInit(this,option)
   call AuxVarFlowInit(this,option)
 
   call AuxVarFlowEnergyInit(this,option)
+
+  this%istate_store = 0
 
 end subroutine AuxVarTOWGInit
 

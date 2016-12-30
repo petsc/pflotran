@@ -34,22 +34,24 @@ module PM_TOWG_class
     PetscReal :: tgh2_itol_scld_res_e2 = 1.d0
     PetscBool :: tough2_conv_criteria = PETSC_FALSE
     !PetscInt :: miscibility_model = UNINITIALIZED_INTEGER 
+    !procedure(TOWGMaxChangeDummy), pointer :: MaxChange => null()
+    !procedure(MaxChange), pointer :: MaxChange => null()
   contains
     procedure, public :: Read => PMTOWGRead
     procedure, public :: InitializeRun => PMTOWGInitializeRun
     procedure, public :: InitializeTimestep => PMTOWGInitializeTimestep
     procedure, public :: Residual => PMTOWGResidual
     procedure, public :: Jacobian => PMTOWGJacobian
-    !procedure, public :: UpdateTimestep => PMGeneralUpdateTimestep
+    procedure, public :: UpdateTimestep => PMTOWGUpdateTimestep
     procedure, public :: PreSolve => PMTOWGPreSolve
     !procedure, public :: PostSolve => PMGeneralPostSolve
     procedure, public :: CheckUpdatePre => PMTOWGCheckUpdatePre
     !procedure, public :: CheckUpdatePost => PMGeneralCheckUpdatePost
-    !procedure, public :: TimeCut => PMGeneralTimeCut
+    procedure, public :: TimeCut => PMTOWGTimeCut
     procedure, public :: UpdateSolution => PMTOWGUpdateSolution
     procedure, public :: UpdateAuxVars => PMTOWGUpdateAuxVars
-    !procedure, public :: MaxChange => PMGeneralMaxChange
-    !procedure, public :: ComputeMassBalance => PMGeneralComputeMassBalance
+    procedure, public :: MaxChange => PMTOWGMaxChange
+    procedure, public :: ComputeMassBalance => PMTOWGComputeMassBalance
     !procedure, public :: InputRecord => PMGeneralInputRecord
     !procedure, public :: CheckpointBinary => PMGeneralCheckpointBinary
     !procedure, public :: RestartBinary => PMGeneralRestartBinary
@@ -361,8 +363,6 @@ end subroutine PMTOWGInitializeRun
 
 ! ************************************************************************** !
 
-! ************************************************************************** !
-
 subroutine PMTOWGInitializeTimestep(this)
   ! 
   ! To be replaced by PreSolve? Which is currently empty...
@@ -503,7 +503,7 @@ end subroutine PMTOWGCheckUpdatePre
 
 subroutine PMTOWGUpdateSolution(this)
   ! 
-  ! Author: Paolo Orsini
+  ! Author: Paolo Orsini (OGS)
   ! Date: 12/06/16 
   ! 
 
@@ -521,6 +521,137 @@ subroutine PMTOWGUpdateSolution(this)
 end subroutine PMTOWGUpdateSolution     
 
 ! ************************************************************************** !
+
+subroutine PMTOWGTimeCut(this)
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/14/13
+  ! 
+
+  use TOWG_module, only : TOWGTimeCut
+
+  implicit none
+  
+  class(pm_towg_type) :: this
+  
+  call PMSubsurfaceFlowTimeCut(this)
+  call TOWGTimeCut(this%realization)
+
+end subroutine PMTOWGTimeCut
+
+! ************************************************************************** !
+
+subroutine PMTOWGMaxChange(this)
+  ! 
+  ! Compute primary variable max changes
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/30/16
+  ! 
+  use TOWG_module, only : TOWGMaxChange
+
+  implicit none
+  
+  class(pm_towg_type) :: this
+
+  call TOWGMaxChange(this%realization, this%max_change_ivar, &
+                     this%max_change_isubvar, this%max_pressure_change, &
+                     this%max_xmol_change,this%max_saturation_change, &
+                     this%max_temperature_change)
+
+end subroutine PMTOWGMaxChange
+
+! ************************************************************************** !
+
+subroutine PMTOWGUpdateTimestep(this,dt,dt_min,dt_max,iacceleration, &
+                                    num_newton_iterations,tfac)
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 12/30/16
+  ! 
+
+  use Realization_Base_class, only : RealizationGetVariable
+  use Realization_Subsurface_class, only : RealizationLimitDTByCFL
+  use Field_module
+  use Global_module, only : GlobalSetAuxVarVecLoc
+  use Variables_module, only : LIQUID_SATURATION, GAS_SATURATION
+
+  implicit none
+  
+  class(pm_towg_type) :: this
+  PetscReal :: dt
+  PetscReal :: dt_min,dt_max
+  PetscInt :: iacceleration
+  PetscInt :: num_newton_iterations
+  PetscReal :: tfac(:)
+  
+  PetscReal :: fac
+  PetscInt :: ifac
+  PetscReal :: up, ut, ux, us, umin
+  PetscReal :: dtt
+  type(field_type), pointer :: field
+  
+#ifdef PM_TOWG_DEBUG  
+  call printMsg(this%option,'PMTOWG%UpdateTimestep()')
+#endif
+  
+  fac = 0.5d0
+  if (num_newton_iterations >= iacceleration) then
+    fac = 0.33d0
+    umin = 0.d0
+  else
+    up = this%pressure_change_governor/(this%max_pressure_change+0.1)
+    ut = this%temperature_change_governor/(this%max_temperature_change+1.d-5)
+    ux = this%xmol_change_governor/(this%max_xmol_change+1.d-5)
+    us = this%saturation_change_governor/(this%max_saturation_change+1.d-5)
+    umin = min(up,ut,ux,us)
+  endif
+  ifac = max(min(num_newton_iterations,size(tfac)),1)
+  dtt = fac * dt * (1.d0 + umin)
+  dt = min(dtt,tfac(ifac)*dt,dt_max)
+  dt = max(dt,dt_min)
+
+  !if (Initialized(this%cfl_governor)) then
+  !  ! Since saturations are not stored in global_auxvar for general mode, we
+  !  ! must copy them over for the CFL check
+  !  ! liquid saturation
+  !  field => this%realization%field
+  !  call RealizationGetVariable(this%realization,field%work, &
+  !                              LIQUID_SATURATION,ZERO_INTEGER)
+  !  call this%realization%comm1%GlobalToLocal(field%work,field%work_loc)
+  !  call GlobalSetAuxVarVecLoc(this%realization,field%work_loc, &
+  !                             LIQUID_SATURATION,TIME_NULL)
+  !  call RealizationGetVariable(this%realization,field%work, &
+  !                              GAS_SATURATION,ZERO_INTEGER)
+  !  call this%realization%comm1%GlobalToLocal(field%work,field%work_loc)
+  !  call GlobalSetAuxVarVecLoc(this%realization,field%work_loc, &
+  !                             GAS_SATURATION,TIME_NULL)
+  !  call RealizationLimitDTByCFL(this%realization,this%cfl_governor,dt)
+  !endif
+
+end subroutine PMTOWGUpdateTimestep
+
+! ************************************************************************** !
+
+subroutine PMTOWGComputeMassBalance(this,mass_balance_array)
+  ! 
+  ! Author: Paolo Orsini (OGS)
+  ! Date: 12/30/16
+  ! 
+
+  use TOWG_module, only : TOWGComputeMassBalance
+
+  implicit none
+  
+  class(pm_towg_type) :: this
+  PetscReal :: mass_balance_array(:)
+  
+  call TOWGComputeMassBalance(this%realization,mass_balance_array)
+
+end subroutine PMTOWGComputeMassBalance
+
+! ************************************************************************** !
+
 
 end module PM_TOWG_class
 

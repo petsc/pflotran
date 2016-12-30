@@ -32,8 +32,8 @@ module PM_TOWG_Aux_module
   PetscInt, public :: towg_miscibility_model = UNINITIALIZED_INTEGER
 
   !list of TOWG paramters
-  !PetscInt, parameter, public :: TOWG_PREV_TS = 1
-  !PetscInt, parameter, public :: TOWG_PREV_IT = 2
+  PetscInt, parameter, public :: TOWG_PREV_TS = 1
+  PetscInt, parameter, public :: TOWG_PREV_IT = 2
 
   !available miscibility models
   PetscInt, parameter, public :: TOWG_IMMISCIBLE = 1
