@@ -2209,8 +2209,8 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
  ! FMDM model calculates this%dissolution_rate and Usource [g/m^2/yr]:
  !====================================================================
   time = option%time
-  avg_temp = (sum(global_auxvars(grid%nL2G(cur_waste_form%region% &
-             cell_ids))%temp)/cur_waste_form%region%num_cells)
+  avg_temp = (sum(global_auxvars(grid%nL2G(waste_form%region% &
+             cell_ids))%temp)/waste_form%region%num_cells)
   call AMP_step(this%burnup, time, avg_temp, this%concentration, &
                 initialRun, this%dissolution_rate, Usource, success) 
  !====================================================================
