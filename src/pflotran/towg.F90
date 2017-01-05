@@ -2041,7 +2041,7 @@ subroutine TOWGImsTLSrcSink(option,src_sink_condition, auxvar, &
 
   ! if enthalpy is used to define enthalpy or energy rate is used  
   ! approximate bottom hole temperature (BHT) with local temp
-  if ( energy_var == SRC_TEMPERATURE) then
+  if ( associated(src_sink_condition%temperature) ) then
     temperature = src_sink_condition%temperature%dataset%rarray(1)
   else   
     temperature = auxvar%temp
@@ -2085,85 +2085,88 @@ subroutine TOWGImsTLSrcSink(option,src_sink_condition, auxvar, &
 
   ! Res(option%energy_id), energy units: MJ/sec
 
-  if ( associated(src_sink_condition%temperature) .or. &
-      associated(src_sink_condition%enthalpy) &
-     ) then
+  !if ( associated(src_sink_condition%temperature) .or. &
+  !    associated(src_sink_condition%enthalpy) &
+  !   ) then
+  !if the energy rate is not given, use either temperature or enthalpy
+  if ( dabs(qsrc(FOUR_INTEGER)) < 1.0d-40 ) then
     ! water injection 
     if (qsrc(option%liquid_phase) > 0.d0) then !implies qsrc(option%oil_phase)>=0
-      if ( energy_var == SRC_TEMPERATURE ) then
-        call EOSWaterEnthalpy(temperature, cell_pressure,enthalpy,ierr)
-        ! enthalpy = [J/kmol]
-      else if ( energy_var == SRC_ENTHALPY ) then
+      if ( energy_var == SRC_ENTHALPY ) then
         !input as J/kg
         enthalpy = src_sink_condition%enthalpy% &
                        dataset%rarray(option%liquid_phase)
                      ! J/kg * kg/kmol = J/kmol  
-        enthalpy = enthalpy * towg_fmw_comp(option%liquid_phase) 
+        enthalpy = enthalpy * towg_fmw_comp(option%liquid_phase)
+      else !note: temp can either be input or taken as the one of perf. block
+      !else if ( energy_var == SRC_TEMPERATURE ) then
+        call EOSWaterEnthalpy(temperature, cell_pressure,enthalpy,ierr)
+        ! enthalpy = [J/kmol]
       end if
       enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
-      ! enthalpy units: MJ/kmol ! water component mass                     
+      ! enthalpy units: MJ/kmol ! water component mass    
       Res(option%energy_id) = Res(option%energy_id) + &
                               Res(option%liquid_phase) * enthalpy
     end if
     ! oil injection 
     if (qsrc(option%oil_phase) > 0.d0) then !implies qsrc(option%liquid_phase)>=0
-      if ( energy_var == SRC_TEMPERATURE ) then
-        call EOSOilEnthalpy(temperature,cell_pressure,enthalpy,ierr)
-        ! enthalpy = [J/kmol] 
-      else if ( energy_var == SRC_ENTHALPY ) then
+      if ( energy_var == SRC_ENTHALPY ) then
         enthalpy = src_sink_condition%enthalpy% &
                      dataset%rarray(option%oil_phase)
                       !J/kg * kg/kmol = J/kmol  
-        enthalpy = enthalpy * towg_fmw_comp(option%oil_phase)        
+        enthalpy = enthalpy * towg_fmw_comp(option%oil_phase)
+      else !note: temp can either be input or taken as the one of perf. block
+      !if ( energy_var == SRC_TEMPERATURE ) then
+        call EOSOilEnthalpy(temperature,cell_pressure,enthalpy,ierr)
+        ! enthalpy = [J/kmol]
       end if
       enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
-      ! enthalpy units: MJ/kmol ! oil component mass                     
+      ! enthalpy units: MJ/kmol ! oil component mass
       Res(option%energy_id) = Res(option%energy_id) + &
                               Res(option%oil_phase) * enthalpy
     end if
     ! gas injection 
-    if (qsrc(option%gas_phase) > 0.d0) then 
-      if ( energy_var == SRC_TEMPERATURE ) then
-        call EOSGasEnergy(temperature,cell_pressure,enthalpy, &
-                              internal_energy_dummy,ierr)
-        ! enthalpy = [J/kmol] 
-      else if ( energy_var == SRC_ENTHALPY ) then
+    if (qsrc(option%gas_phase) > 0.d0) then
+      if ( energy_var == SRC_ENTHALPY ) then
         enthalpy = src_sink_condition%enthalpy% &
                      dataset%rarray(option%gas_phase)
-                      !J/kg * kg/kmol = J/kmol  
-        enthalpy = enthalpy * towg_fmw_comp(option%gas_phase)        
+                      !J/kg * kg/kmol = J/kmol
+        enthalpy = enthalpy * towg_fmw_comp(option%gas_phase)
+      else !note: temp can either be input or taken as the one of perf. block
+      !if ( energy_var == SRC_TEMPERATURE ) then
+        call EOSGasEnergy(temperature,cell_pressure,enthalpy, &
+                              internal_energy_dummy,ierr)
+        ! enthalpy = [J/kmol]
       end if
       enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
-      ! enthalpy units: MJ/kmol ! oil component mass                     
+      ! enthalpy units: MJ/kmol ! oil component mass           
       Res(option%energy_id) = Res(option%energy_id) + &
                               Res(option%gas_phase) * enthalpy
     end if
     ! water energy extraction due to water production
     if (qsrc(option%liquid_phase) < 0.d0) then !implies qsrc(option%oil_phase)<=0
-      ! auxvar enthalpy units: MJ/kmol ! water component mass                     
+      ! auxvar enthalpy units: MJ/kmol ! water component mass
       Res(option%energy_id) = Res(option%energy_id) + &
                               Res(option%liquid_phase) * &
                               auxvar%H(option%liquid_phase)
     end if
-    !oil energy extraction due to oil production 
+    !oil energy extraction due to oil production
     if (qsrc(option%oil_phase) < 0.d0) then !implies qsrc(option%liquid_phase)<=0
-      ! auxvar enthalpy units: MJ/kmol ! water component mass                     
+      ! auxvar enthalpy units: MJ/kmol ! water component mass
       Res(option%energy_id) = Res(option%energy_id) + &
                               Res(option%oil_phase) * &
                               auxvar%H(option%oil_phase)
     end if
     if (qsrc(option%gas_phase) < 0.d0) then !implies qsrc(option%liquid_phase)<=0
-      ! auxvar enthalpy units: MJ/kmol ! water component mass                     
+      ! auxvar enthalpy units: MJ/kmol ! water component mass
       Res(option%energy_id) = Res(option%energy_id) + &
                               Res(option%gas_phase) * &
                               auxvar%H(option%gas_phase)
     end if
-
-  else !if not temp or enthalpy are given
+  else !if the energy rate is given, it overwrites both temp and enthalpy
     ! if energy rate is given, loaded in qsrc(4) in MJ/sec 
     Res(option%energy_id) = qsrc(FOUR_INTEGER)* scale ! MJ/s
   end if
-
 
   nullify(qsrc)      
   
