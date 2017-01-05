@@ -361,6 +361,7 @@ subroutine TOWGImsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
   PetscReal :: krl, visl, dkrl_Se
   PetscReal :: kro, viso, dkro_Se
   PetscReal :: krg, visg, dkrg_Se
+  PetscReal :: sat_liq_gas, sat_tot_liq
   PetscReal :: dummy
   !PetscReal :: Uoil_J_kg, Hoil_J_kg
   PetscErrorCode :: ierr
@@ -497,19 +498,20 @@ subroutine TOWGImsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
 
   auxvar%mobility(lid) = krl/visl
 
-
   ! compute oil mobility (rel. perm / viscostiy)
+  sat_liq_gas = auxvar%sat(lid) + auxvar%sat(gid)
   call characteristic_curves%oil_rel_perm_function% &
-         RelativePermeability(auxvar%sat(lid),kro,dkro_Se,option)
+         RelativePermeability(sat_liq_gas,kro,dkro_Se,option)
 
   call EOSOilViscosity(auxvar%temp,auxvar%pres(oid), &
                        auxvar%den(oid), viso, ierr)
 
   auxvar%mobility(oid) = kro/viso
 
-  ! compute gas mobility (rel. perm / viscosity)
+  !compute gas mobility (rel. perm / viscosity)
+  sat_tot_liq = auxvar%sat(lid) + auxvar%sat(oid)
   call characteristic_curves%gas_rel_perm_function% &
-         RelativePermeability(auxvar%sat(lid),krg,dkrg_Se,option)
+         RelativePermeability(sat_tot_liq,krg,dkrg_Se,option)
 
   !currently only a viscosity model for air or constant value   
   call EOSGasViscosity(auxvar%temp,auxvar%pres(gid), &
