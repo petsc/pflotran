@@ -292,7 +292,7 @@ function MechanismFMDMCreate()
   allocate(MechanismFMDMCreate%concentration( &
              MechanismFMDMCreate%num_concentrations, &
              MechanismFMDMCreate%num_grid_cells_in_waste_form))
-  MechanismFMDMCreate%concentration = 1.d-20
+  MechanismFMDMCreate%concentration = 1.d-13
   
   allocate(MechanismFMDMCreate%mapping_fmdm(4))
   MechanismFMDMCreate%mapping_fmdm = [MechanismFMDMCreate%iO2, &
@@ -1066,6 +1066,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
             call InputReadAndConvertUnits(input,new_waste_form%volume, &
                                           'm^3',trim(error_string)//',volume', &
                                           option)
+            new_waste_form%init_volume = new_waste_form%volume
         !-----------------------------
           case('COORDINATE')
             call GeometryReadCoordinate(input,option, &
@@ -2193,11 +2194,13 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
     do i = 1, size(this%mapping_fmdm)
       icomp_fmdm = this%mapping_fmdm(i)
       icomp_pflotran = this%mapping_fmdm_to_pflotran(icomp_fmdm)
-      this%concentration(icomp_fmdm,1) = &
+      this%concentration(icomp_fmdm,:) = &
         rt_auxvars(ghosted_id)%total(icomp_pflotran,LIQUID_PHASE)
-        !jmf: ?? * waste_form%scaling_factor(k)
     enddo
   enddo
+  
+  ! convert total component concentration from mol/L to mol/m3 (*1.d3)
+  this%concentration = this%concentration*1.d3
   
   if (waste_form%volume /= waste_form%init_volume) then
     initialRun = PETSC_FALSE
@@ -2213,8 +2216,11 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
              cell_ids))%temp)/waste_form%region%num_cells)
   call AMP_step(this%burnup, time, avg_temp, this%concentration, &
                 initialRun, this%dissolution_rate, Usource, success) 
+  write(*,*) this%dissolution_rate
  !====================================================================
   
+  ! convert total component concentration from mol/m3 back to mol/L (/1.d3)
+  this%concentration = this%concentration/1.d3
   ! convert this%dissolution_rate from fmdm to pflotran units:
   ! g/m^2/yr => kg/m^2/sec
   this%dissolution_rate = this%dissolution_rate / (1000.0*24.0*3600.0*365)
@@ -2516,7 +2522,7 @@ subroutine PMWFOutputHeader(this)
                                icolumn)
     enddo
     variable_string = 'WF Dissolution Rate'
-    units_string = 'kg/s' !// trim(adjustl(output_option%tunit))
+    units_string = 'kg/s'
     call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
                              icolumn)
     variable_string = 'WF Volume'
