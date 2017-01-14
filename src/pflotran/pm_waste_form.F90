@@ -49,7 +49,15 @@ module PM_Waste_Form_class
   end type wf_mechanism_base_type
 
   type, public, extends(wf_mechanism_base_type) :: wf_mechanism_glass_type
-    PetscReal :: dissolution_rate         ! kg-glass/m^2/sec
+    PetscReal :: dissolution_rate    ! kg-glass/m^2/sec
+    PetscReal :: k0                  ! k-glass/m^2/day
+    PetscReal :: k_long              ! k-glass/m^2/day
+    PetscReal :: nu                  ! [-]
+    PetscReal :: Ea                  ! [J/mol]
+    PetscReal :: Q
+    PetscReal :: K
+    PetscReal :: v
+    PetscReal :: pH
   contains
     procedure, public :: Dissolution => WFMechGlassDissolution
   end type wf_mechanism_glass_type
@@ -204,7 +212,15 @@ function MechanismGlassCreate()
   
   allocate(MechanismGlassCreate)
   call MechanismInit(MechanismGlassCreate)
-  MechanismGlassCreate%dissolution_rate = 0.d0  ! kg/m^2/sec
+  MechanismGlassCreate%dissolution_rate = 0.d0        ! [kg/m^2/sec]
+  MechanismGlassCreate%k0 = UNINITIALIZED_DOUBLE      ! [kg/m^2/sec]
+  MechanismGlassCreate%k_long = UNINITIALIZED_DOUBLE  ! [kg/m^2/sec]
+  MechanismGlassCreate%nu = UNINITIALIZED_DOUBLE      ! [-]
+  MechanismGlassCreate%Ea = UNINITIALIZED_DOUBLE      ! [J/mol]
+  MechanismGlassCreate%Q = UNINITIALIZED_DOUBLE      
+  MechanismGlassCreate%K = UNINITIALIZED_DOUBLE
+  MechanismGlassCreate%v = UNINITIALIZED_DOUBLE    
+  MechanismGlassCreate%pH = UNINITIALIZED_DOUBLE            
 
 end function MechanismGlassCreate
 
@@ -759,6 +775,132 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                 call printErrMsg(option)
             end select
         !--------------------------
+          case('K0')
+            call InputReadDouble(input,option,double)
+            call InputErrorMsg(input,option,'K0 (intrinsic dissolution rate)', &
+                               error_string)
+            call InputReadAndConvertUnits(input,double,'kg/m^2-sec', &
+                  trim(error_string)//',K0 (intrinsic dissolution rate)',option)
+            select type(new_mechanism)
+              type is(wf_mechanism_glass_type)
+                new_mechanism%k0 = double
+              class default
+                option%io_buffer = 'K0 (intrinsic dissolution rate) cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case('K_LONG')
+            call InputReadDouble(input,option,double)
+            call InputErrorMsg(input,option,'K_LONG (dissolution rate)', &
+                               error_string)
+            call InputReadAndConvertUnits(input,double,'kg/m^2-sec', &
+                    trim(error_string)//',K_LONG (dissolution rate)',option)
+            select type(new_mechanism)
+              type is(wf_mechanism_glass_type)
+                new_mechanism%k_long = double
+              class default
+                option%io_buffer = 'K_LONG (dissolution rate) cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case('NU')
+            call InputReadDouble(input,option,double)
+            call InputErrorMsg(input,option,'NU (pH dependence parameter)', &
+                               error_string)
+            select type(new_mechanism)
+              type is(wf_mechanism_glass_type)
+                new_mechanism%nu = double
+              class default
+                option%io_buffer = 'NU (pH dependence parameter) cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case('EA')
+            call InputReadDouble(input,option,double)
+            call InputErrorMsg(input,option,'EA (effective activation energy)',&
+                               error_string)
+            call InputReadAndConvertUnits(input,double,'J/mol', &
+                 trim(error_string)//',EA (effective activation energy)',option)
+            select type(new_mechanism)
+              type is(wf_mechanism_glass_type)
+                new_mechanism%Ea = double
+              class default
+                option%io_buffer = 'EA (effective activation energy) cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case('Q')
+            call InputReadDouble(input,option,double)
+            call InputErrorMsg(input,option,'Q (ion activity product)',&
+                               error_string)
+            select type(new_mechanism)
+              type is(wf_mechanism_glass_type)
+                new_mechanism%Q = double
+              class default
+                option%io_buffer = 'Q (ion activity product) cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case('K')
+            call InputReadDouble(input,option,double)
+            call InputErrorMsg(input,option,'K (equilibrium constant)',&
+                               error_string)
+            select type(new_mechanism)
+              type is(wf_mechanism_glass_type)
+                new_mechanism%K = double
+              class default
+                option%io_buffer = 'K (equilibrium constant) cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case('V')
+            call InputReadDouble(input,option,double)
+            call InputErrorMsg(input,option,'V (exponent parameter)',&
+                               error_string)
+            select type(new_mechanism)
+              type is(wf_mechanism_glass_type)
+                new_mechanism%v = double
+              class default
+                option%io_buffer = 'V (exponent parameter) cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case('PH')
+            call InputReadDouble(input,option,double)
+            call InputErrorMsg(input,option,'PH',error_string)
+            select type(new_mechanism)
+              type is(wf_mechanism_glass_type)
+                new_mechanism%pH = double
+              class default
+                option%io_buffer = 'PH cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
+          case('KIENZLER_DISSOLUTION')
+            select type(new_mechanism)
+              type is(wf_mechanism_glass_type)
+                new_mechanism%k0 = 560.d0/(24.d0*3600.d0)  ! kg/m^2-sec
+                new_mechanism%k_long = 0.d0
+                new_mechanism%nu = 0.d0
+                new_mechanism%Ea = 7397.d0*8.314d0
+                new_mechanism%Q = 0.d0
+                new_mechanism%K = 1.d0     ! This value doesn't matter since Q=0
+                new_mechanism%v = 1.d0
+                new_mechanism%pH = 0.d0
+              class default
+                option%io_buffer = 'KIENZLER_DISSOLUTION cannot be &
+                                   &specified for ' // trim(error_string)
+                call printErrMsg(option)
+            end select
+        !--------------------------
           case('BURNUP')
             select type(new_mechanism)
               type is(wf_mechanism_fmdm_type)
@@ -913,6 +1055,62 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block.'
+            call printErrMsg(option)
+          endif
+          if (uninitialized(new_mechanism%k0)) then
+            option%io_buffer = 'K0 must be specified in ' &
+                               // trim(error_string) // ' ' // &
+                               trim(new_mechanism%name) // ' block, or choose &
+                               &the KIENZLER_DISSOLUTION option.'
+            call printErrMsg(option)
+          endif
+          if (uninitialized(new_mechanism%k_long)) then
+            option%io_buffer = 'K_LONG must be specified in ' &
+                               // trim(error_string) // ' ' // &
+                               trim(new_mechanism%name) // ' block, or choose &
+                               &the KIENZLER_DISSOLUTION option.'
+            call printErrMsg(option)
+          endif
+          if (uninitialized(new_mechanism%nu)) then
+            option%io_buffer = 'NU must be specified in ' &
+                               // trim(error_string) // ' ' // &
+                               trim(new_mechanism%name) // ' block, or choose &
+                               &the KIENZLER_DISSOLUTION option.'
+            call printErrMsg(option)
+          endif
+          if (uninitialized(new_mechanism%Ea)) then
+            option%io_buffer = 'EA must be specified in ' &
+                               // trim(error_string) // ' ' // &
+                               trim(new_mechanism%name) // ' block, or choose &
+                               &the KIENZLER_DISSOLUTION option.'
+            call printErrMsg(option)
+          endif
+          if (uninitialized(new_mechanism%Q)) then
+            option%io_buffer = 'Q must be specified in ' &
+                               // trim(error_string) // ' ' // &
+                               trim(new_mechanism%name) // ' block, or choose &
+                               &the KIENZLER_DISSOLUTION option.'
+            call printErrMsg(option)
+          endif
+          if (uninitialized(new_mechanism%K)) then
+            option%io_buffer = 'K must be specified in ' &
+                               // trim(error_string) // ' ' // &
+                               trim(new_mechanism%name) // ' block, or choose &
+                               &the KIENZLER_DISSOLUTION option.'
+            call printErrMsg(option)
+          endif
+          if (uninitialized(new_mechanism%pH)) then
+            option%io_buffer = 'PH must be specified in ' &
+                               // trim(error_string) // ' ' // &
+                               trim(new_mechanism%name) // ' block, or choose &
+                               &the KIENZLER_DISSOLUTION option.'
+            call printErrMsg(option)
+          endif
+          if (uninitialized(new_mechanism%v)) then
+            option%io_buffer = 'V must be specified in ' &
+                               // trim(error_string) // ' ' // &
+                               trim(new_mechanism%name) // ' block, or choose &
+                               &the KIENZLER_DISSOLUTION option.'
             call printErrMsg(option)
           endif
         type is(wf_mechanism_custom_type)
@@ -2042,12 +2240,16 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   ! HLW Glass, Spent Nuclear Fuel, and Compacted Hulls and End Pieces
   ! (CSD-C Waste). KIT Scientific Reports 7624. Karlsruhe Institute of
   ! Technology, Baden-Wurttemberg, Germany.
+  ! Generalized glass dissolution equation comes from Eq. 2.3.7-6 in
+  ! Yucca Mountain Repository SAR, Section 2.3.7, DOE/RW-0573 Rev.0
   
   avg_temp = (sum(global_auxvars(grid%nL2G(waste_form%region%cell_ids))% &
               temp)/waste_form%region%num_cells)+273.15d0
   
   ! kg-glass/m^2/sec
-  this%dissolution_rate = time_conversion * 560.d0*exp(-7397.d0/avg_temp)
+  this%dissolution_rate = this%k0 * (10.d0**(this%nu*this%pH)) * &
+                          exp(-this%Ea/(8.314d0*avg_temp)) * &
+                          (1.d0 - (this%Q/this%K)**(1/this%v)) + this%k_long
 
   ! kg-glass/sec
   waste_form%eff_dissolution_rate = &
