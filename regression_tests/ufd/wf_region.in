@@ -169,6 +169,7 @@ WASTE_FORM_GENERAL
     NAME glass01
     SPECIFIC_SURFACE_AREA 2.78d-3 m^2/kg
     MATRIX_DENSITY 2.46d3 kg/m^3
+    KIENZLER_DISSOLUTION
     SPECIES
      #name,   MW[g/mol],dcy[1/s], initMF, inst_rel_frac, daughter               
       tracer  128.90d0  1.29d-15  2.18d-1   0.0d0 
