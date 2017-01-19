@@ -409,8 +409,13 @@ subroutine TOWGImsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
 
   !compute capillary pressure gas/water (pc_gw),
   ! pc_go = pc_gw when pc_ow = 0
+  !call characteristic_curves%saturation_function% &
+  !           CapillaryPressure(auxvar%sat(lid),auxvar%pc(lid),option)
+  !To match TOUGH-EOS8, consider water plu poil as wetting phase
+  !for capillary press computation 
+  sat_tot_liq = auxvar%sat(lid) + auxvar%sat(oid)
   call characteristic_curves%saturation_function% &
-             CapillaryPressure(auxvar%sat(lid),auxvar%pc(lid),option)
+             CapillaryPressure(sat_tot_liq,auxvar%pc(lid),option)
   
   auxvar%pres(gid) = auxvar%pres(lid) + auxvar%pc(lid)
 
@@ -508,7 +513,7 @@ subroutine TOWGImsAuxVarCompute(x,auxvar,global_auxvar,material_auxvar, &
 
   auxvar%mobility(oid) = kro/viso
 
-  !compute gas mobility (rel. perm / viscosity)
+  !compute gas mobility (rel. perm / viscosity) 
   sat_tot_liq = auxvar%sat(lid) + auxvar%sat(oid)
   call characteristic_curves%gas_rel_perm_function% &
          RelativePermeability(sat_tot_liq,krg,dkrg_Se,option)
