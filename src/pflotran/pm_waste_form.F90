@@ -114,6 +114,8 @@ module PM_Waste_Form_class
 ! --------------- waste form types --------------------------------------------
   type :: waste_form_base_type
     PetscInt :: id
+    PetscMPIInt :: myMPIgroup_id
+    PetscMPIInt :: myMPIcomm
     type(point3d_type) :: coordinate
     character(len=MAXWORDLENGTH) :: region_name
     type(region_type), pointer :: region
@@ -387,6 +389,8 @@ function WasteFormCreate()
 
   allocate(WasteFormCreate)
   WasteFormCreate%id = UNINITIALIZED_INTEGER
+  WasteFormCreate%myMPIgroup_id = 0
+  WasteFormCreate%myMPIcomm = 0
   WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
@@ -1565,6 +1569,7 @@ end subroutine PMWFSetRealization
 subroutine PMWFSetup(this)
   ! 
   ! Associates the waste forms to their regions and sets the waste form id.
+  ! Creates an MPI group/communicator for processes that own a waste form.
   ! Throws out waste forms on processes that do not own the waste form region.
   ! 
   ! Author: Glenn Hammond
@@ -1578,6 +1583,7 @@ subroutine PMWFSetup(this)
   use Option_module
   use Reaction_Aux_module
   use Utility_module, only : GetRndNumFromNormalDist
+  use String_module
 
   implicit none
   
@@ -1593,6 +1599,8 @@ subroutine PMWFSetup(this)
   PetscInt :: waste_form_id
   PetscInt :: i
   PetscBool :: local, found
+  PetscErrorCode :: ierr
+  PetscMPIInt :: newcomm
   
   option => this%realization%option
   reaction => this%realization%reaction
@@ -1647,10 +1655,22 @@ subroutine PMWFSetup(this)
       endif
     endif
     if (local) then
+      ! assign the waste form ID number and MPI communicator
       cur_waste_form%id = waste_form_id
+      cur_waste_form%myMPIgroup_id = waste_form_id
+      call MPI_Comm_split(option%mycomm,cur_waste_form%myMPIgroup_id, &
+                          option%myrank,newcomm,ierr)
+    else
+      cur_waste_form%id = 0
+      cur_waste_form%myMPIgroup_id = 0
+      call MPI_Comm_split(option%mycomm,MPI_UNDEFINED,option%myrank, &
+                          newcomm,ierr)
+    endif
+    cur_waste_form%myMPIcomm = newcomm
+    if (local) then
       prev_waste_form => cur_waste_form
       cur_waste_form => cur_waste_form%next
-    else
+    else 
       ! remove waste form because it is not local
       next_waste_form => cur_waste_form%next
       if (associated(prev_waste_form)) then
@@ -1910,7 +1930,7 @@ subroutine PMWFInitializeTimestep(this)
   PetscReal :: dV
   PetscReal :: dt
   PetscReal :: avg_temp
-  PetscInt :: k, p, g, d, f
+  PetscInt :: i, k, p, g, d, f
   PetscInt :: num_species
   PetscErrorCode :: ierr
   PetscInt :: cell_id, idof
@@ -1986,8 +2006,17 @@ subroutine PMWFInitializeTimestep(this)
         cur_waste_form%eff_canister_vit_rate = &
           cur_waste_form%eff_canister_vit_rate   
       else
-        avg_temp = (sum(global_auxvars(grid%nL2G(cur_waste_form%region% &
-                   cell_ids))%temp)/cur_waste_form%region%num_cells)+273.15d0
+        i = 0
+        avg_temp = 0.d0
+        do while (i < cur_waste_form%region%num_cells)
+          i = i + 1
+          avg_temp = avg_temp + &  ! Celcius
+            global_auxvars(grid%nL2G(cur_waste_form%region%cell_ids(i)))%temp* &
+            cur_waste_form%scaling_factor(i)
+        enddo
+        call MPI_Allreduce(MPI_IN_PLACE,avg_temp,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,cur_waste_form%myMPIcomm,ierr)
+        avg_temp = avg_temp+273.15d0   ! Kelvin
         cur_waste_form%eff_canister_vit_rate = &
           cur_waste_form%canister_vitality_rate * &
           exp( cwfm%canister_material_constant * ( (1.d0/333.15d0) - &
@@ -2324,9 +2353,9 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   ! Author: Jenn Frederick
   ! Date: 03/28/2016
 
-  use Option_module
   use Grid_module  
   use Global_Aux_module
+  use String_module
   use Reactive_Transport_Aux_module
 
   implicit none
@@ -2365,9 +2394,12 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   do while (i < waste_form%region%num_cells)
     i = i + 1
     avg_temp = avg_temp + &  ! Celcius
-               global_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))%temp
+               global_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))%temp * &
+               waste_form%scaling_factor(i)
   enddo
-  avg_temp = (avg_temp/waste_form%region%num_cells)+273.15d0   ! Kelvin
+  call MPI_Allreduce(MPI_IN_PLACE,avg_temp,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+  avg_temp = avg_temp+273.15d0   ! Kelvin
               
   if (this%use_pH) then
     if (this%h_ion_id > 0) then   ! primary species
@@ -2377,18 +2409,20 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
         i = i + 1
         avg_pri_molal = avg_pri_molal + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
-                        pri_molal(this%h_ion_id)
+                        pri_molal(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      avg_pri_molal = avg_pri_molal/waste_form%region%num_cells
+      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_molal,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
       i = 0
       avg_pri_act_coef = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
         avg_pri_act_coef = avg_pri_act_coef + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
-                        pri_act_coef(this%h_ion_id)
+                        pri_act_coef(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      avg_pri_act_coef = avg_pri_act_coef/waste_form%region%num_cells
+      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_act_coef,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
       this%pH = -log10(avg_pri_molal*avg_pri_act_coef)
     elseif (this%h_ion_id < 0) then   ! secondary species
       i = 0
@@ -2397,18 +2431,20 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
         i = i + 1
         avg_sec_molal = avg_sec_molal + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
-                        sec_molal(this%h_ion_id)
+                        sec_molal(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      avg_sec_molal = avg_sec_molal/waste_form%region%num_cells
+      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_molal,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
       i = 0
       avg_sec_act_coef = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
         avg_sec_act_coef = avg_sec_act_coef + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
-                        sec_act_coef(this%h_ion_id)
+                        sec_act_coef(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      avg_sec_act_coef = avg_sec_act_coef/waste_form%region%num_cells
+      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_act_coef,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
       this%pH = -log10(avg_sec_molal*avg_sec_act_coef)
     endif
   endif
@@ -2421,18 +2457,20 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
         i = i + 1
         avg_pri_molal = avg_pri_molal + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
-                        pri_molal(this%SiO2_id)
+                        pri_molal(this%SiO2_id)*waste_form%scaling_factor(i)
       enddo
-      avg_pri_molal = avg_pri_molal/waste_form%region%num_cells
+      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_molal,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
       i = 0
       avg_pri_act_coef = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
         avg_pri_act_coef = avg_pri_act_coef + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
-                        pri_act_coef(this%SiO2_id)
+                        pri_act_coef(this%SiO2_id)*waste_form%scaling_factor(i)
       enddo
-      avg_pri_act_coef = avg_pri_act_coef/waste_form%region%num_cells
+      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_act_coef,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
       this%Q = avg_pri_molal*avg_pri_act_coef
     elseif (this%SiO2_id < 0) then   ! secondary species
       i = 0
@@ -2441,18 +2479,22 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
         i = i + 1
         avg_sec_molal = avg_sec_molal + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
-                        sec_molal(abs(this%SiO2_id))
+                        sec_molal(abs(this%SiO2_id))* &
+                        waste_form%scaling_factor(i)
       enddo
-      avg_sec_molal = avg_sec_molal/waste_form%region%num_cells
+      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_molal,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
       i = 0
       avg_sec_act_coef = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
         avg_sec_act_coef = avg_sec_act_coef + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
-                        sec_act_coef(abs(this%SiO2_id))
+                        sec_act_coef(abs(this%SiO2_id))* &
+                        waste_form%scaling_factor(i)
       enddo
-      avg_sec_act_coef = avg_sec_act_coef/waste_form%region%num_cells
+      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_act_coef,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
       this%Q = avg_sec_molal*avg_sec_act_coef
     endif
   endif
@@ -2625,19 +2667,27 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
  ! FMDM model calculates this%dissolution_rate and Usource [g/m^2/yr]:
  !====================================================================
   time = option%time
-  avg_temp = (sum(global_auxvars(grid%nL2G(waste_form%region% &
-             cell_ids))%temp)/waste_form%region%num_cells)
+  
+  i = 0
+  avg_temp = 0.d0
+  do while (i < waste_form%region%num_cells)
+    i = i + 1
+    avg_temp = avg_temp + &  ! Celcius
+               global_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))%temp * &
+               waste_form%scaling_factor(i)
+  enddo
+  call MPI_Allreduce(MPI_IN_PLACE,avg_temp,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
   call AMP_step(this%burnup, time, avg_temp, this%concentration, &
                 initialRun, this%dissolution_rate, Usource, success) 
   write(*,*) this%dissolution_rate
- !====================================================================
-  
   ! convert total component concentration from mol/m3 back to mol/L (/1.d3)
   this%concentration = this%concentration/1.d3
   ! convert this%dissolution_rate from fmdm to pflotran units:
   ! g/m^2/yr => kg/m^2/sec
   this%dissolution_rate = this%dissolution_rate / (1000.0*24.0*3600.0*365)
   Usource = Usource / (1000.0*24.0*3600.0*365)
+ !====================================================================
 #else
   ! if no FMDM model, use the burnup as this%dissolution_rate:
   ! if no FMDM model, the units of burnup should already be kg-matrix/m^2/sec:
