@@ -207,7 +207,8 @@ module TOWG_module
             TOWGJacobian, &
             TOWGCheckUpdatePre, &
             TOWGTimeCut, &
-            TOWGMaxChange
+            TOWGMaxChange, &
+            TOWGDestroy
 
 contains
 
@@ -3490,6 +3491,24 @@ end function TOWGImsTLAverageDensity
 
 ! ************************************************************************** !
 
+subroutine TOWGDestroy(realization)
+  ! 
+  ! Deallocates variables associated with TOWG
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 01/19/17
+  ! 
 
+  use Realization_Subsurface_class
+
+  implicit none
+
+  type(realization_subsurface_type) :: realization
+  
+  ! place anything that needs to be freed here.
+
+end subroutine TOWGDestroy
+
+! ************************************************************************** !
 
 end module TOWG_module

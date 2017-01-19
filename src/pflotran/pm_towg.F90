@@ -44,18 +44,18 @@ module PM_TOWG_class
     procedure, public :: Jacobian => PMTOWGJacobian
     procedure, public :: UpdateTimestep => PMTOWGUpdateTimestep
     procedure, public :: PreSolve => PMTOWGPreSolve
-    !procedure, public :: PostSolve => PMGeneralPostSolve
+    !procedure, public :: PostSolve => PMTOWGPostSolve
     procedure, public :: CheckUpdatePre => PMTOWGCheckUpdatePre
-    !procedure, public :: CheckUpdatePost => PMGeneralCheckUpdatePost
+    !procedure, public :: CheckUpdatePost => PMTOWGCheckUpdatePost
     procedure, public :: TimeCut => PMTOWGTimeCut
     procedure, public :: UpdateSolution => PMTOWGUpdateSolution
     procedure, public :: UpdateAuxVars => PMTOWGUpdateAuxVars
     procedure, public :: MaxChange => PMTOWGMaxChange
     procedure, public :: ComputeMassBalance => PMTOWGComputeMassBalance
-    !procedure, public :: InputRecord => PMGeneralInputRecord
-    !procedure, public :: CheckpointBinary => PMGeneralCheckpointBinary
-    !procedure, public :: RestartBinary => PMGeneralRestartBinary
-    !procedure, public :: Destroy => PMGeneralDestroy
+    !procedure, public :: InputRecord => PMTOWGInputRecord
+    procedure, public :: CheckpointBinary => PMTOWGCheckpointBinary
+    procedure, public :: RestartBinary => PMTOWGRestartBinary
+    procedure, public :: Destroy => PMTOWGDestroy
   end type pm_towg_type
   
   public :: PMTOWGCreate
@@ -656,6 +656,92 @@ end subroutine PMTOWGComputeMassBalance
 
 ! ************************************************************************** !
 
+subroutine PMTOWGCheckpointBinary(this,viewer)
+  ! 
+  ! Checkpoints data associated with TOWG PM
+  ! If saves istate for all TOWG submodels, but required only for black oil
+  ! and solvent models
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 01/19/17
+
+  use Checkpoint_module
+  use Global_module
+  use Variables_module, only : STATE
+
+  implicit none
+#include "petsc/finclude/petscviewer.h"      
+
+  class(pm_towg_type) :: this
+  PetscViewer :: viewer
+  
+  call GlobalGetAuxVarVecLoc(this%realization, &
+                             this%realization%field%iphas_loc, &
+                             STATE,ZERO_INTEGER)
+  call PMSubsurfaceFlowCheckpointBinary(this,viewer)
+  
+end subroutine PMTOWGCheckpointBinary
+
+! ************************************************************************** !
+
+subroutine PMTOWGRestartBinary(this,viewer)
+  ! 
+  ! Restarts data associated with TOWG PM
+  ! If loads istate for all TOWG submodels, but required only for black oil
+  ! and solvent models
+  !
+  ! Author: Paolo Orsini
+  ! Date: 01/19/17
+
+  use Checkpoint_module
+  use Global_module
+  use Variables_module, only : STATE
+
+  implicit none
+#include "petsc/finclude/petscviewer.h"      
+
+  class(pm_towg_type) :: this
+  PetscViewer :: viewer
+  
+  call PMSubsurfaceFlowRestartBinary(this,viewer)
+  call GlobalSetAuxVarVecLoc(this%realization, &
+                             this%realization%field%iphas_loc, &
+                             STATE,ZERO_INTEGER)
+  
+end subroutine PMTOWGRestartBinary
+
+! ************************************************************************** !
+
+subroutine PMTOWGDestroy(this)
+  ! 
+  ! Destroys TOWG process model
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 01/19/17
+  ! 
+
+  use TOWG_module, only : TOWGDestroy
+
+  implicit none
+  
+  class(pm_towg_type) :: this
+  
+  if (associated(this%next)) then
+    call this%next%Destroy()
+  endif
+
+  deallocate(this%max_change_ivar)
+  nullify(this%max_change_ivar)
+  deallocate(this%max_change_isubvar)
+  nullify(this%max_change_isubvar)
+
+  ! preserve this ordering
+  call TOWGDestroy(this%realization)
+  call PMSubsurfaceFlowDestroy(this)
+  
+end subroutine PMTOWGDestroy
+
+! ************************************************************************** !
 
 end module PM_TOWG_class
 

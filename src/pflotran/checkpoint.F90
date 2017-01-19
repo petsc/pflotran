@@ -397,7 +397,7 @@ subroutine CheckpointFlowProcessModelBinary(viewer,realization)
     ! that holds variables derived from the primary ones via the translator.
     select case(option%iflowmode)
       case(MPH_MODE,TH_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
-           FLASH2_MODE,G_MODE,TOIL_IMS_MODE)
+           FLASH2_MODE,G_MODE,TOIL_IMS_MODE,TOWG_MODE)
         call DiscretizationLocalToGlobal(realization%discretization, &
                                          field%iphas_loc,global_vec,ONEDOF)
         call VecView(global_vec, viewer, ierr);CHKERRQ(ierr)
@@ -490,7 +490,7 @@ subroutine RestartFlowProcessModelBinary(viewer,realization)
 
     select case(option%iflowmode)
       case(MPH_MODE,TH_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
-           FLASH2_MODE,G_MODE,TOIL_IMS_MODE)
+           FLASH2_MODE,G_MODE,TOIL_IMS_MODE,TOWG_MODE)
         call VecLoad(global_vec,viewer,ierr);CHKERRQ(ierr)
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          field%iphas_loc,ONEDOF)
@@ -505,6 +505,12 @@ subroutine RestartFlowProcessModelBinary(viewer,realization)
         if (option%iflowmode == TOIL_IMS_MODE) then
           !iphase value not needed - leave it as initialised
           ! consider to remove iphase for all ims modes
+        endif
+        if (option%iflowmode == TOWG_MODE) then
+          ! need to copy iphase into global_auxvar%istate
+          ! for black oil and solvent models
+          call GlobalSetAuxVarVecLoc(realization,field%iphas_loc,STATE, &
+                                     ZERO_INTEGER)
         endif
         if (option%iflowmode == MPH_MODE) then
         ! set vardof vec in mphase
