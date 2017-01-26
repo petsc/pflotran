@@ -25,6 +25,8 @@ module Test_Characteristic_Curves_module
       class(characteristic_curves_type), pointer :: cc_vgt
       class(characteristic_curves_type), pointer :: cc_lb
       class(characteristic_curves_type), pointer :: cc_lm
+      class(characteristic_curves_type), pointer :: cc_mk3
+      class(characteristic_curves_type), pointer :: cc_mk4
       procedure(runMethod), pointer :: userMethod => null()
     contains
       procedure :: setUp     
@@ -198,7 +200,7 @@ contains
         print *, 'not Mualem Linear Gas type'
     end select
 
-  ! Setting up the characteristic curve for van Genuchten Burdine
+  ! Setting up the characteristic curve for Linear Burdine
     this%cc_lb => CharacteristicCurvesCreate()
     ! do not set up saturation function as it is tested with cc_lm
     this%cc_lb%liq_rel_perm_function => RPF_Burdine_Linear_Liq_Create()
@@ -212,6 +214,84 @@ contains
         print *, 'not Burdine Linear Gas type'
     end select
 
+  ! Setting up the characteristic curve for 3-param modified Kosugi
+    this%cc_mk3 => CharacteristicCurvesCreate()
+    this%cc_mk3%saturation_function => SF_mK_Create()
+    this%cc_mk3%saturation_function%Sr = 1.53D-1
+    this%cc_mk3%saturation_function%pcmax = 0.999d8
+    select type(sf=>this%cc_mk3%saturation_function)
+      class is(sat_func_mK_type)
+        sf%nparam = 3
+        sf%sigmaz = 3.37D-1
+        sf%muz = -6.3D0
+        sf%rmax = 2.52D-3
+      class default
+        print *, 'no mK3 saturation function type in setUp'
+    end select
+    this%cc_mk3%liq_rel_perm_function => RPF_mK_Liq_Create()
+    this%cc_mk3%liq_rel_perm_function%Sr = 1.53D-1
+    select type(sf=>this%cc_mk3%liq_rel_perm_function)
+      class is(rpf_mK_liq_type)
+        sf%nparam = 3
+        sf%sigmaz = 3.37D-1
+        sf%muz = -6.3D0
+        sf%rmax = 2.52D-3
+      class default
+        print *, 'no mK3 Liq rel perm type in setUp'
+    end select
+    this%cc_mk3%gas_rel_perm_function => RPF_mK_Gas_Create()
+    this%cc_mk3%gas_rel_perm_function%Sr = 1.53D-1
+    select type(sf=>this%cc_mk3%gas_rel_perm_function)
+      class is(rpf_mK_gas_type)
+        sf%nparam = 3
+        sf%sigmaz = 3.37D-1
+        sf%muz = -6.3D0
+        sf%rmax = 2.52D-3
+        sf%Srg = 1.0D-3
+      class default
+        print *, 'no mK3 Gas rel perm type in setUp'
+    end select
+
+  ! Setting up the characteristic curve for 4-param modified Kosugi
+    this%cc_mk4 => CharacteristicCurvesCreate()
+    this%cc_mk4%saturation_function => SF_mK_Create()
+    this%cc_mk4%saturation_function%Sr = 1.53D-1
+    this%cc_mk4%saturation_function%pcmax = 0.999d8
+    select type(sf=>this%cc_mk4%saturation_function)
+      class is(sat_func_mK_type)
+        sf%nparam = 4
+        sf%sigmaz = 3.37D-1
+        sf%muz = -6.3D0
+        sf%rmax = 2.52D-3
+        sf%r0 = 1.07D-4
+      class default
+        print *, 'no mK4 saturation function type in setUp'
+    end select
+    this%cc_mk4%liq_rel_perm_function => RPF_mK_Liq_Create()
+    this%cc_mk4%liq_rel_perm_function%Sr = 1.53D-1
+    select type(sf=>this%cc_mk4%liq_rel_perm_function)
+      class is(rpf_mK_liq_type)
+        sf%nparam = 4
+        sf%sigmaz = 3.37D-1
+        sf%muz = -6.3D0
+        sf%rmax = 2.52D-3
+        sf%r0 = 1.07D-4
+      class default
+        print *, 'no mK4 Liq rel perm type in setUp'
+    end select
+    this%cc_mk4%gas_rel_perm_function => RPF_mK_Gas_Create()
+    this%cc_mk4%gas_rel_perm_function%Sr = 1.53D-1
+    select type(sf=>this%cc_mk4%gas_rel_perm_function)
+      class is(rpf_mK_gas_type)
+        sf%nparam = 4
+        sf%sigmaz = 3.37D-1
+        sf%muz = -6.3D0
+        sf%rmax = 2.52D-3
+        sf%r0 = 1.07D-4
+        sf%Srg = 1.0D-3
+      class default
+        print *, 'no mK4 Gas rel perm type in setUp'
+    end select
   end subroutine setUp
 
 ! ************************************************************************** !
@@ -963,6 +1043,248 @@ contains
     @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
   end subroutine testrpf_Linear_Burdine
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testsf_modified_kosugi_3param(this)
+
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+
+    PetscReal :: capillary_pressure
+    PetscReal :: liquid_saturation
+    PetscReal :: relative_permeability
+    PetscReal :: dsat_pres
+    PetscReal :: value
+    PetscReal :: dkr_sat
+    PetscReal :: dkr_p
+    PetscReal, parameter :: tolerance = 1.d-8
+    character(len=128) :: string
+
+    ! saturation = f(capillary_pressure)
+    capillary_pressure = 1.0D+2
+    call this%cc_mk3%saturation_function%Saturation(capillary_pressure, &
+                                         liquid_saturation, &
+                                         dsat_pres,this%option)
+    ! relative permeability = f(saturation)
+    call this%cc_mk3%liq_rel_perm_function% &
+         RelativePermeability(liquid_saturation, &
+                              relative_permeability,dkr_sat,this%option)
+    dkr_p = dsat_pres * dkr_sat
+    string = '3-parameter modified Kosugi saturation as a function of '//&
+         &'capillary pressure'
+    value = 0.97111238330715377d0
+    @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
+    string = '3-parameter modified Kosugi relative permeability as a '//&
+         &'function of capillary pressure'
+    value = 0.91541903431893679d0
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = '3-parameter modified Kosugi derivative of saturation as '//&
+         &'a function of capillary pressure'
+    value = -4.6591923068046767D-3
+    @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+    string = '3-parameter modified Kosugi derivative of relative perm as'// &
+         &' a function of capillary pressure'
+    value = -2.4954306904234067D-3
+    @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
+
+  end subroutine testsf_modified_kosugi_3param
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testcp_modified_kosugi_3param(this)
+
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+
+    PetscReal :: capillary_pressure
+    PetscReal :: liquid_saturation
+    PetscReal :: value
+    PetscReal, parameter :: tolerance = 1.d-8
+    character(len=128) :: string
+    PetscReal, parameter :: temperature = 25.d0
+
+    ! capillary pressure = f(saturation)
+    liquid_saturation = 2.5d-1
+    call this%cc_mk3%saturation_function% &
+         CapillaryPressure(liquid_saturation, &
+                           capillary_pressure, this%option)
+    string = '3-parameter modified Kosugi capillary pressure as a '//&
+         &'function of saturation'
+    value = 177.38940531841268d0
+    @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
+
+  end subroutine testcp_modified_kosugi_3param
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testrpf_modified_kosugi_3param(this)
+
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+
+    PetscReal :: liquid_saturation
+    PetscReal :: relative_permeability
+    PetscReal :: dkr_sat
+    PetscReal :: value
+    PetscReal, parameter :: tolerance = 1.d-8
+    character(len=128) :: string
+
+    ! liquid relative permeability = f(saturation)
+    liquid_saturation = 0.5d0
+    call this%cc_mk3%liq_rel_perm_function% &
+         RelativePermeability(liquid_saturation, relative_permeability, &
+                              dkr_sat, this%option)
+    string = '3-parameter modified Kosugi liquid relative permeability'//&
+         &' as a function of liquid saturation'
+    value = 0.18300229972367688d0
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = '3-parameter modified Kosugi derivative of liquid relative'//&
+         &' permeability as a function of liquid saturation'
+    value = 0.75483124455850648d0
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
+
+    ! gas relative permeability = f(saturation)
+    call this%cc_mk3%gas_rel_perm_function% &
+         RelativePermeability(liquid_saturation, relative_permeability, &
+                              dkr_sat, this%option)
+    string = '3-parameter modified Kosugi gas relative permeability as'//&
+         &' a function of liquid saturation'
+    value = 0.35040465818058597d0
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = '3-parameter modified Kosugi derivative of gas relative'//&
+         &' permeability as a function of liquid saturation'
+    value = 1.2304771805582269d0
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
+
+  end subroutine testrpf_modified_kosugi_3param
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testsf_modified_kosugi_4param(this)
+
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+
+    PetscReal :: capillary_pressure
+    PetscReal :: liquid_saturation
+    PetscReal :: relative_permeability
+    PetscReal :: dsat_pres
+    PetscReal :: value
+    PetscReal :: dkr_sat
+    PetscReal :: dkr_p
+    PetscReal, parameter :: tolerance = 1.d-8
+    character(len=128) :: string
+
+    ! saturation = f(capillary_pressure)
+    capillary_pressure = 1.0D+2
+    call this%cc_mk4%saturation_function%Saturation(capillary_pressure, &
+                                         liquid_saturation, &
+                                         dsat_pres,this%option)
+    ! relative permeability = f(saturation)
+    call this%cc_mk4%liq_rel_perm_function% &
+         RelativePermeability(liquid_saturation, &
+                              relative_permeability,dkr_sat,this%option)
+    dkr_p = dsat_pres * dkr_sat
+    string = '4-parameter modified Kosugi saturation as a function of '//&
+         &'capillary pressure'
+    value = 0.91712977496015746d0
+    @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
+    string = '4-parameter modified Kosugi relative permeability as a '//&
+         &'function of capillary pressure'
+    value = 0.78902231709586002d0
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = '4-parameter modified Kosugi derivative of saturation as '//&
+         &'a function of capillary pressure'
+    value = -9.0797142006156725D-3
+    @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
+    string = '4-parameter modified Kosugi derivative of relative perm as'// &
+         &' a function of capillary pressure'
+    value = -6.3325258736223024D-3
+    @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
+
+  end subroutine testsf_modified_kosugi_4param
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testcp_modified_kosugi_4param(this)
+
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+
+    PetscReal :: capillary_pressure
+    PetscReal :: liquid_saturation
+    PetscReal :: value
+    PetscReal, parameter :: tolerance = 1.d-8
+    character(len=128) :: string
+    PetscReal, parameter :: temperature = 25.d0
+
+    ! capillary pressure = f(saturation)
+    liquid_saturation = 2.5d-1
+    call this%cc_mk4%saturation_function% &
+         CapillaryPressure(liquid_saturation, &
+                           capillary_pressure, this%option)
+    string = '4-parameter modified Kosugi capillary pressure as a '//&
+         &'function of saturation'
+    value = 157.00202462439313d0
+    @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
+
+  end subroutine testcp_modified_kosugi_4param
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testrpf_modified_kosugi_4param(this)
+
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+
+    PetscReal :: liquid_saturation
+    PetscReal :: relative_permeability
+    PetscReal :: dkr_sat
+    PetscReal :: value
+    PetscReal, parameter :: tolerance = 1.d-8
+    character(len=128) :: string
+
+    ! liquid relative permeability = f(saturation)
+    liquid_saturation = 0.5d0
+    call this%cc_mk4%liq_rel_perm_function% &
+         RelativePermeability(liquid_saturation, relative_permeability, &
+                              dkr_sat, this%option)
+    string = '4-parameter modified Kosugi liquid relative permeability'//&
+         &' as a function of liquid saturation'
+    value = 0.18300229972367688d0  ! same as 3-param
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = '4-parameter modified Kosugi derivative of liquid relative'//&
+         &' permeability as a function of liquid saturation'
+    value = 0.75483124455850648d0  ! same as 3-param
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
+
+    ! gas relative permeability = f(saturation)
+    call this%cc_mk4%gas_rel_perm_function% &
+         RelativePermeability(liquid_saturation, relative_permeability, &
+                              dkr_sat, this%option)
+    string = '4-parameter modified Kosugi gas relative permeability as'//&
+         &' a function of liquid saturation'
+    value = 0.35040465818058597d0  ! same as 3-param
+    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
+    string = '4-parameter modified Kosugi derivative of gas relative'//&
+         &' permeability as a function of liquid saturation'
+    value = 1.2304771805582269d0   ! same as 3-param
+    @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
+
+  end subroutine testrpf_modified_kosugi_4param
 
 ! ************************************************************************** !
 

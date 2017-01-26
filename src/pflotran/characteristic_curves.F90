@@ -120,7 +120,17 @@ module Characteristic_Curves_module
   contains
     procedure, public :: Verify => SF_BF_KRP12_Verify
     procedure, public :: CapillaryPressure => SF_BF_KRP12_CapillaryPressure
-  end type sat_func_BF_KRP12_type 
+  end type sat_func_BF_KRP12_type
+  ! modified Kosugi Model (Malama & Kuhlman, 2015)
+  type, public, extends(sat_func_base_type) :: sat_func_mK_type
+    PetscReal :: sigmaz, muz
+    PetscReal :: rmax, r0
+    PetscInt :: nparam
+  contains
+    procedure, public :: Verify => SF_mK_Verify
+    procedure, public :: CapillaryPressure => SF_mK_CapillaryPressure
+    procedure, public :: Saturation => SF_mK_Saturation
+  end type sat_func_mK_type
   ! End Saturation Functions --------------------------------------------------
 
   ! Begin Relative Permeability Functions -------------------------------------
@@ -351,6 +361,24 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPFConstantVerify
     procedure, public :: RelativePermeability => RPF_ConstantRelPerm
   end type rel_perm_func_constant_type
+  ! modified Kosugi (Malama & Kuhlman, 2015) for liquid and gas
+  type, public, extends(rel_perm_func_base_type) :: rpf_mK_liq_type
+    PetscReal :: sigmaz, muz
+    PetscReal :: rmax, r0
+    PetscInt :: nparam
+  contains
+    procedure, public :: Verify => RPF_mK_Liq_Verify
+    procedure, public :: RelativePermeability => RPF_mK_Liq_RelPerm
+  end type rpf_mK_liq_type
+  type, public, extends(rel_perm_func_base_type) :: rpf_mK_gas_type
+    PetscReal :: Srg
+    PetscReal :: sigmaz, muz
+    PetscReal :: rmax, r0
+    PetscInt :: nparam
+  contains
+    procedure, public :: Verify => RPF_mK_Gas_Verify
+    procedure, public :: RelativePermeability => RPF_mK_Gas_RelPerm
+  end type rpf_mK_gas_type
   ! End Relative Permeability Functions ---------------------------------------
  
   type, public :: characteristic_curves_type
@@ -386,6 +414,7 @@ module Characteristic_Curves_module
             SF_BF_KRP4_Create, &
             SF_BF_KRP11_Create, &
             SF_BF_KRP12_Create, &
+            SF_mK_Create, &
             RPF_Mualem_VG_Liq_Create, &
             RPF_Mualem_VG_Gas_Create, &
             RPF_Burdine_BC_Liq_Create, &
@@ -411,6 +440,8 @@ module Characteristic_Curves_module
             RPF_BRAGFLO_KRP11_Gas_Create, &
             RPF_BRAGFLO_KRP12_Liq_Create, &
             RPF_BRAGFLO_KRP12_Gas_Create, &
+            RPF_mK_Liq_Create, &
+            RPF_mK_Gas_Create, &
             PolynomialCreate
 
 contains
@@ -512,6 +543,8 @@ subroutine CharacteristicCurvesRead(this,input,option)
             this%saturation_function => SF_BF_KRP11_Create()
           case('BRAGFLO_KRP12')
             this%saturation_function => SF_BF_KRP12_Create()
+          case('MODIFIED_KOSUGI')
+            this%saturation_function => SF_mK_Create()
           case default
             call InputKeywordUnrecognized(word,'SATURATION_FUNCTION',option)
         end select
@@ -603,6 +636,12 @@ subroutine CharacteristicCurvesRead(this,input,option)
             phase_keyword = 'LIQUID'
           case('BRAGFLO_KRP12_GAS')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP12_Gas_Create()
+            phase_keyword = 'GAS'
+          case('MODIFIED_KOSUGI_LIQ')
+            rel_perm_function_ptr => RPF_mK_Liq_Create()
+            phase_keyword = 'LIQUID'
+          case('MODIFIED_KOSUGI_GAS')
+            rel_perm_function_ptr => RPF_mK_Gas_Create()
             phase_keyword = 'GAS'
           case('TOUGH2_LINEAR_OIL')
             rel_perm_function_ptr => RPF_TOUGH2_Linear_Oil_Create()
@@ -703,6 +742,8 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
       error_string = trim(error_string) // 'BRAGFLO_KRP11'
     class is(sat_func_BF_KRP12_type)
       error_string = trim(error_string) // 'BRAGFLO_KRP12'
+    class is(sat_func_mK_type)
+      error_string = trim(error_string) // 'MODIFIED_KOSUGI'
   end select
   do
     call InputReadPflotranString(input,option)
@@ -842,7 +883,28 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
           case default
             call InputKeywordUnrecognized(keyword, &
                    'BRAGFLO_KRP12 saturation function',option)
-        end select
+          end select
+        class is(sat_func_mK_type)
+          select case(keyword)
+            case('SIGMAZ')
+              call InputReadDouble(input,option,sf%sigmaz)
+              call InputErrorMsg(input,option,'sigmaz',error_string)
+            case('MUZ')
+              call InputReadDouble(input,option,sf%muz)
+              call InputErrorMsg(input,option,'muz',error_string)
+            case('RMAX')
+              call InputReadDouble(input,option,sf%rmax)
+              call InputErrorMsg(input,option,'rmax',error_string)
+            case('R0')
+              call InputReadDouble(input,option,sf%r0)
+              call InputErrorMsg(input,option,'r0',error_string)
+            case('NPARAM')
+              call InputReadInt(input,option,sf%nparam)
+              call InputErrorMsg(input,option,'nparam',error_string)
+            case default
+              call InputKeywordUnrecognized(keyword, &
+                   'MODIFIED_KOSUGI saturation function',option)
+          end select
       class default
         option%io_buffer = 'Read routine not implemented for ' &
                            // trim(error_string) // '.'
@@ -959,6 +1021,10 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
       error_string = trim(error_string) // 'BURDINE_BF_KRP12_LIQ'
     class is(rpf_BRAGFLO_KRP12_gas_type)
       error_string = trim(error_string) // 'BURDINE_BF_KRP12_GAS'
+    class is(rpf_mK_liq_type)
+      error_string = trim(error_string) // 'MODIFIED_KOSUGI_LIQ'
+    class is(rpf_mK_gas_type)
+      error_string = trim(error_string) // 'MODIFIED_KOSUGI_GAS'
     class is(rpf_TOUGH2_Linear_oil_type)
       error_string = trim(error_string) // 'TOUGH2_Linear_OIL'
     class is(rpf_mod_BC_liq_type)
@@ -1274,6 +1340,50 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
               'BRAGFLO KRP4 gas relative permeability function', &
               option)
         end select
+      class is(rpf_mK_liq_type)
+        select case(keyword)
+          case('SIGMAZ')
+            call InputReadDouble(input,option,rpf%sigmaz)
+            call InputErrorMsg(input,option,'sigmaz',error_string)
+          case('MUZ')
+            call InputReadDouble(input,option,rpf%muz)
+            call InputErrorMsg(input,option,'muz',error_string)
+          case('RMAX')
+            call InputReadDouble(input,option,rpf%rmax)
+            call InputErrorMsg(input,option,'rmax',error_string)
+          case('R0')
+            call InputReadDouble(input,option,rpf%r0)
+            call InputErrorMsg(input,option,'r0',error_string)
+          case('NPARAM')
+            call InputReadInt(input,option,rpf%nparam)
+            call InputErrorMsg(input,option,'nparam',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                 'MODIFIED_KOSUGI liquid relative permeability '//&
+                 &'function',option)
+        end select
+      class is(rpf_mK_gas_type)
+        select case(keyword)
+          case('SIGMAZ')
+            call InputReadDouble(input,option,rpf%sigmaz)
+            call InputErrorMsg(input,option,'sigmaz',error_string)
+          case('MUZ')
+            call InputReadDouble(input,option,rpf%muz)
+            call InputErrorMsg(input,option,'muz',error_string)
+          case('RMAX')
+            call InputReadDouble(input,option,rpf%rmax)
+            call InputErrorMsg(input,option,'rmax',error_string)
+          case('R0')
+            call InputReadDouble(input,option,rpf%r0)
+            call InputErrorMsg(input,option,'r0',error_string)
+          case('NPARAM')
+            call InputReadInt(input,option,rpf%nparam)
+            call InputErrorMsg(input,option,'nparam',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                 'MODIFIED_KOSUGI gas relative permeability '//&
+                 &'function',option)
+        end select
       class is(rpf_TOUGH2_Linear_oil_type)
         select case(keyword)
           case('OIL_RESIDUAL_SATURATION') 
@@ -1531,6 +1641,10 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
       class is(rpf_BRAGFLO_KRP11_liq_type)
         CharCurvesGetGetResidualSats(2) = rpf%Sr
       class is(rpf_BRAGFLO_KRP11_gas_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Srg
+      class is(rpf_mK_liq_type)
+        CharCurvesGetGetResidualSats(2) = rpf%Sr
+      class is(rpf_mK_gas_type)
         CharCurvesGetGetResidualSats(2) = rpf%Srg
       class is(rpf_TOUGH2_Linear_oil_type)
         CharCurvesGetGetResidualSats(2) = rpf%Sro
@@ -1804,6 +1918,24 @@ subroutine CharCurvesInputRecord(char_curve_list)
           write(word1,*) sf%soceffmin
           write(id,'(a)') adjustl(trim(word1))
       !---------------------------------
+        class is (sat_func_mK_type)
+          write(id,'(a)') 'Modified Kosugi'
+          write(id,'(a29)',advance='no') 'sigmaz: '
+          write(word1,*) sf%sigmaz
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'muz: '
+          write(word1,*) sf%muz
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'liquid residual sat.: '
+          write(word1,*) sf%Sr
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'rmax: '
+          write(word1,*) sf%rmax
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'r0: '
+          write(word1,*) sf%r0
+          write(id,'(a)') adjustl(trim(word1))
+      !---------------------------------
         class is (sat_func_default_type)
           write(id,'(a)') 'default'
       !---------------------------------
@@ -1884,6 +2016,24 @@ subroutine CharCurvesInputRecord(char_curve_list)
           write(id,'(a)') 'bragflo_krp12_liq'
           write(id,'(a29)',advance='no') 'lambda: '
           write(word1,*) rpf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_mK_liq_type)
+          write(id,'(a)') 'modified_kosugi_liq'
+          write(id,'(a29)',advance='no') 'sigmaz: '
+          write(word1,*) rpf%sigmaz
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'muz: '
+          write(word1,*) rpf%muz
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'liquid residual sat.: '
+          write(word1,*) rpf%Sr
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'rmax: '
+          write(word1,*) rpf%rmax
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'r0: '
+          write(word1,*) rpf%r0
           write(id,'(a)') adjustl(trim(word1))
       !------------------------------------
         class default
@@ -2002,6 +2152,21 @@ subroutine CharCurvesInputRecord(char_curve_list)
           write(id,'(a)') adjustl(trim(word1))
           write(id,'(a29)',advance='no') 'gas residual sat.: '
           write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_mK_liq_type)
+          write(id,'(a)') 'modified_kosugi_gas'
+          write(id,'(a29)',advance='no') 'sigmaz: '
+          write(word1,*) rpf%sigmaz
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'muz: '
+          write(word1,*) rpf%muz
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'rmax: '
+          write(word1,*) rpf%rmax
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'r0: '
+          write(word1,*) rpf%r0
           write(id,'(a)') adjustl(trim(word1))
       !------------------------------------
         class default
@@ -2236,8 +2401,7 @@ subroutine SFBaseTest(this,cc_name,option)
     call this%Saturation(capillary_pressure_pert(count), &
                          liquid_saturation_pert(count),dummy_real(count),option)
     dsat_dpres_numerical(count) = (liquid_saturation_pert(count) - &
-                                   liquid_saturation(count))/(pc*perturbation) &
-                                   * -1.d0 ! dPc/dPres
+         & liquid_saturation(count))/(pc*perturbation)*(-1.d0) ! dPc/dPres
     ! get next value for pc
     if (pc > 0.99d0*pc_increment*10.d0) pc_increment = pc_increment*10.d0
     pc = pc + pc_increment
@@ -3948,6 +4112,201 @@ subroutine SF_BF_KRP12_CapillaryPressure(this,liquid_saturation, &
 end subroutine SF_BF_KRP12_CapillaryPressure
 
 ! End SF: BRAGFLO KRP12 Model  
+
+! ************************************************************************** !
+function SF_mK_Create()
+
+  ! Creates the modified Kosugi saturation function object
+
+  implicit none
+
+  class(sat_func_mK_type), pointer :: SF_mK_Create
+
+  allocate(SF_mK_Create)
+  call SF_mK_Create%Init()
+
+end function SF_mK_Create
+! ************************************************************************** !
+
+subroutine SF_mK_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+
+  class(sat_func_mK_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+
+  if (index(name,'SATURATION_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'SATURATION_FUNCTION,MODIFIED_KOSUGI'
+  endif
+  call SFBaseVerify(this,string,option)
+  if (Uninitialized(this%sigmaz)) then
+    option%io_buffer = UninitializedMessage('SIGMAZ',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%muz)) then
+    option%io_buffer = UninitializedMessage('MUZ',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%nparam)) then
+    option%io_buffer = UninitializedMessage('NPARAM',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%rmax)) then
+    ! rmax is used for both nparam 3 and 4
+    option%io_buffer = UninitializedMessage('RMAX',string)
+    call printErrMsg(option)
+  endif
+  select case(this%nparam)
+  case(4)
+    ! r0 is only used for nparam 4
+    if (Uninitialized(this%r0)) then
+      option%io_buffer = UninitializedMessage('R0',string)
+      call printErrMsg(option)
+    endif
+  case(3)
+    continue ! rmax handled above
+  case default
+    option%io_buffer = &
+         & UninitializedMessage('invalid NPARAM value',string)
+    call printErrMsg(option)
+  end select
+
+end subroutine SF_MK_Verify
+! ************************************************************************** !
+
+subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
+                                   capillary_pressure,option)
+  !
+  ! Computes the capillary_pressure as a function of saturation
+  ! for modified Kosugi model.
+  !
+  ! Malama, B. & K.L. Kuhlman, 2015. Unsaturated Hydraulic Conductivity
+  ! Models Based on Truncated Lognormal Pore-size Distributions, Groundwater,
+  ! 53(3):498–502. http://dx.doi.org/10.1111/gwat.12220
+  !
+  ! Author: Kris Kuhlman
+  ! Date: 2017
+  !
+  use Option_module
+  use utility_module, only : InverseNorm
+
+  implicit none
+
+  ! 0.149 cm^2 (water in glass tube) -> 1.49E-5 m^2 -> *rho*g ~ 0.146 Pa-m
+  PetscReal, parameter :: KAPPA = 1.46169D-1
+  PetscReal, parameter :: LNKAP = log(KAPPA)
+
+  class(sat_func_mK_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: capillary_pressure
+  type(option_type), intent(inout) :: option
+
+  PetscReal :: Se
+  PetscReal :: inverse, exparg
+  PetscReal :: mueta, hc, hmaxinv
+
+  if (liquid_saturation <= this%Sr) then
+    capillary_pressure = this%pcmax
+    return
+  else if (liquid_saturation >= 1.d0) then
+    capillary_pressure = 0.d0
+    return
+  endif
+
+  Se = (liquid_saturation - this%Sr)/(1.d0 - this%Sr)
+  ! 2 & 1/2 cancel in argument, sqrt2 & 1/sqrt2 cancel outside
+  inverse = -InverseNorm(Se)
+  mueta = LNKAP - this%muz
+  exparg = this%sigmaz*inverse + mueta
+
+  hc = KAPPA/this%rmax
+  capillary_pressure = exp(exparg) + hc
+  if (this%nparam == 4) then
+    hmaxinv = this%r0/KAPPA
+    capillary_pressure = 1.d0/(1.d0/capillary_pressure + hmaxinv)
+  end if
+
+  capillary_pressure = min(capillary_pressure,this%pcmax)
+
+end subroutine SF_mK_CapillaryPressure
+
+! ************************************************************************** !
+
+subroutine SF_mK_Saturation(this,capillary_pressure,liquid_saturation, &
+                            dsat_dpres,option)
+  !
+  ! Computes the saturation (and associated derivatives) as a function of
+  ! capillary pressure for modified Kosugi model
+  !
+  ! Malama, B. & K.L. Kuhlman, 2015. Unsaturated Hydraulic Conductivity
+  ! Models Based on Truncated Lognormal Pore-size Distributions, Groundwater,
+  ! 53(3):498–502. http://dx.doi.org/10.1111/gwat.12220
+  !
+  ! Author: Kris Kuhlman
+  ! Date: 2017
+  !
+  use Option_module
+  use Utility_module, only : InverseNorm
+
+  implicit none
+
+  ! gnu & intel extension and required in f2008
+  intrinsic :: erfc
+
+  ! 0.149 cm^2 (water in glass tube) -> 1.49E-5 m^2 -> *rho*g ~ 0.146 Pa-m
+  PetscReal, parameter :: KAPPA = 1.46169D-1
+  PetscReal, parameter :: LNKAP = log(KAPPA)
+  PetscReal, parameter :: SQRT2 = sqrt(2.0d0)
+  PetscReal, parameter :: SQRTPI = sqrt(4.0d0*atan(1.0d0))
+
+  class(sat_func_mK_type) :: this
+  PetscReal, intent(in) :: capillary_pressure
+  PetscReal, intent(out) :: liquid_saturation
+  PetscReal, intent(out) :: dsat_dpres
+  type(option_type), intent(inout) :: option
+
+  PetscReal :: hc, hmax
+  PetscReal :: mueta, rt2sz
+  PetscReal :: lnArg, erfcArg
+
+  dsat_dpres = UNINITIALIZED_DOUBLE
+
+  if (capillary_pressure <= 0.d0) then
+    liquid_saturation = 1.d0
+    return
+  end if
+
+  hc = KAPPA/this%rmax
+  if (capillary_pressure <= hc) then
+    liquid_saturation = 1.d0
+    return
+  end if
+  if (this%nparam == 3) then
+    lnArg = capillary_pressure - hc
+  elseif (this%nparam == 4) then
+    hmax = KAPPA/this%r0
+    if (capillary_pressure >= hmax) then
+      liquid_saturation = 0.d0
+      return
+    end if
+    lnArg = 1.d0/(1.d0/capillary_pressure - 1.d0/hmax) - hc
+  end if
+  rt2sz = SQRT2*this%sigmaz
+  mueta = LNKAP - this%muz
+  erfcArg = (log(lnArg) - mueta)/rt2sz
+  liquid_saturation = this%Sr + (1.0d0-this%Sr)*5.0D-1*erfc(erfcArg)
+  dsat_dpres = -exp(-erfcArg**2)/(SQRTPI*rt2sz*lnArg)
+
+end subroutine SF_mK_Saturation
+! End SF: modified Kosugi
+
 
 ! ************************************************************************** !
 
@@ -6323,7 +6682,280 @@ end subroutine RPF_BRAGFLO_KRP12_Gas_RelPerm
 ! End RPF: Burdine, Brooks-Corey (Gas)
   
 ! ************************************************************************** !
-  
+
+! Begin RPF: modified Kosugi (Liq)
+function RPF_mK_Liq_Create()
+
+  ! Creates the modified Kosugi liq relative permeability function object
+
+  implicit none
+
+  class(rpf_mK_liq_type), pointer :: RPF_mK_Liq_Create
+
+  allocate(RPF_mK_Liq_Create)
+  call RPF_mK_Liq_Create%Init()
+
+end function RPF_mK_Liq_Create
+! End RPF:  modified Kosugi (Liq)
+
+! ************************************************************************** !
+
+subroutine RPF_mK_Liq_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+
+  class(RPF_mK_Liq_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+
+  if (index(name,'LIQUID_RELATIVE_PERM') > 0) then
+    string = name
+  else
+    string = trim(name) // 'LIQUID_RELATIVE_PERM,MODIFIED_KOSUGI'
+  endif
+  call RPFBaseVerify(this,string,option)
+  if (Uninitialized(this%sigmaz)) then
+    option%io_buffer = UninitializedMessage('SIGMAZ',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%muz)) then
+    option%io_buffer = UninitializedMessage('MUZ',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%nparam)) then
+    option%io_buffer = UninitializedMessage('NPARAM',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%rmax)) then
+    ! rmax is used for both nparam 3 and 4
+    option%io_buffer = UninitializedMessage('RMAX',string)
+    call printErrMsg(option)
+  endif
+  select case(this%nparam)
+  case(4)
+    ! r0 is only used for nparam 4
+    if (Uninitialized(this%r0)) then
+      option%io_buffer = UninitializedMessage('R0',string)
+      call printErrMsg(option)
+    endif
+  case(3)
+    continue ! rmax handled above
+  case default
+    option%io_buffer = &
+         & UninitializedMessage('invalid NPARAM value',string)
+    call printErrMsg(option)
+  end select
+
+end subroutine RPF_mK_Liq_Verify
+! ************************************************************************** !
+
+
+subroutine RPF_mK_Liq_RelPerm(this,liquid_saturation, &
+                              relative_permeability,dkr_sat,option)
+  !
+  ! Computes the relative permeability (and associated derivatives) as a
+  ! function of saturation for modified Kosugi model
+  !
+  ! Malama, B. & K.L. Kuhlman, 2015. Unsaturated Hydraulic Conductivity
+  ! Models Based on Truncated Lognormal Pore-size Distributions, Groundwater,
+  ! 53(3):498–502. http://dx.doi.org/10.1111/gwat.12220
+  !
+  ! Author: Kris Kuhlman
+  ! Date: 2017
+  !
+  use Option_module
+  use Utility_module
+
+  implicit none
+
+  ! gnu & intel extension and required in f2008
+  intrinsic :: erfc
+
+  PetscReal, parameter :: SQRT2 = sqrt(2.0d0)
+
+  class(rpf_mK_liq_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: relative_permeability
+  PetscReal, intent(out) :: dkr_sat
+  type(option_type), intent(inout) :: option
+
+  PetscReal :: Se
+  PetscReal :: erfcArg, erfcRes
+  PetscReal :: invErfcRes
+  PetscReal :: sqrtSe, expArg
+
+  relative_permeability = 0.d0
+  dkr_sat = UNINITIALIZED_DOUBLE
+
+  Se = (liquid_saturation - this%Sr)/(1.0D0 - this%Sr)
+  if (Se >= 1.d0) then
+    relative_permeability = 1.d0
+    return
+  else if (Se <= 0.d0) then
+    relative_permeability = 0.d0
+    return
+  endif
+
+  invErfcRes = InverseNorm(Se)
+  erfcArg = (this%sigmaz - invErfcRes)/SQRT2
+  erfcRes = erfc(erfcArg)
+  sqrtSe = sqrt(Se)
+  relative_permeability = sqrtSe*erfcRes*5.0D-1
+
+  ! from Wolfram Alpha
+  expArg = 5.0D-1*invErfcRes**2 + erfcArg**2
+  dkr_sat = erfcres/(4.0D0*sqrtSe) + sqrtSe*exp(-expArg)
+
+end subroutine RPF_mK_Liq_RelPerm
+! End RPF: modified Kosugi (Liquid)
+
+! ************************************************************************** !
+
+! Begin RPF: modified Kosugi (Gas)
+function RPF_mK_Gas_Create()
+
+  ! Creates the modified Kosugi gas relative permeability function object
+
+  implicit none
+
+  class(rpf_mK_gas_type), pointer :: RPF_mK_Gas_Create
+
+  allocate(RPF_mK_Gas_Create)
+  call RPF_mK_Gas_Create%Init()
+
+end function RPF_mK_Gas_Create
+! End RPF:  modified Kosugi (Gas)
+
+! ************************************************************************** !
+
+subroutine RPF_mK_Gas_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+
+  class(RPF_mK_Gas_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+
+  if (index(name,'GAS_RELATIVE_PERM') > 0) then
+    string = name
+  else
+    string = trim(name) // 'GAS_RELATIVE_PERM,MODIFIED_KOSUGI'
+  endif
+  call RPFBaseVerify(this,string,option)
+  if (Uninitialized(this%sigmaz)) then
+    option%io_buffer = UninitializedMessage('SIGMAZ',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%muz)) then
+    option%io_buffer = UninitializedMessage('MUZ',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%Srg)) then
+    option%io_buffer = UninitializedMessage('SRG',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%nparam)) then
+    option%io_buffer = UninitializedMessage('NPARAM',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%rmax)) then
+    ! rmax is used for both nparam 3 and 4
+    option%io_buffer = UninitializedMessage('RMAX',string)
+    call printErrMsg(option)
+  endif
+  select case(this%nparam)
+  case(4)
+    ! r0 is only used for nparam 4
+    if (Uninitialized(this%r0)) then
+      option%io_buffer = UninitializedMessage('R0',string)
+      call printErrMsg(option)
+    endif
+  case(3)
+    continue ! rmax handled above
+  case default
+    option%io_buffer = &
+         & UninitializedMessage('invalid NPARAM value',string)
+    call printErrMsg(option)
+  end select
+
+end subroutine RPF_mK_Gas_Verify
+! ************************************************************************** !
+
+subroutine RPF_mK_Gas_RelPerm(this,liquid_saturation, &
+                              relative_permeability,dkr_sat,option)
+  !
+  ! Computes the relative permeability (and associated derivatives) as a
+  ! function of saturation for modified Kosugi model
+  !
+  ! Malama, B. & K.L. Kuhlman, 2015. Unsaturated Hydraulic Conductivity
+  ! Models Based on Truncated Lognormal Pore-size Distributions, Groundwater,
+  ! 53(3):498–502. http://dx.doi.org/10.1111/gwat.12220
+  !
+  ! Author: Kris Kuhlman
+  ! Date: 2017
+  !
+  use Option_module
+  use utility_module, only : InverseNorm
+
+  implicit none
+
+  ! gnu & intel extension and required in f2008
+  intrinsic :: erfc
+
+  PetscReal, parameter :: SQRT2 = sqrt(2.0d0)
+
+  class(rpf_mK_gas_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: relative_permeability
+  PetscReal, intent(out) :: dkr_sat
+  type(option_type), intent(inout) :: option
+
+  PetscReal :: Se, Seg
+  PetscReal :: dkr_Se, dSe_sat
+  PetscReal :: erfcArg, erfcRes
+  PetscReal :: invErfcRes
+  PetscReal :: sqrtSe, expArg
+
+  Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
+
+  relative_permeability = 0.d0
+  dkr_sat = UNINITIALIZED_DOUBLE
+  if (Se >= 1.d0) then
+    relative_permeability = 0.d0
+    return
+  else if (Se <=  0.d0) then
+    relative_permeability = 1.d0
+    return
+  endif
+
+  Seg = 1.d0 - Se
+
+  invErfcRes = InverseNorm(Seg)
+  erfcArg = (this%sigmaz - invErfcRes)/SQRT2
+  erfcRes = erfc(erfcArg)
+  sqrtSe = sqrt(Seg)
+  relative_permeability = sqrtSe*erfcRes*5.0D-1
+
+  ! from Wolfram Alpha
+  expArg = 5.0D-1*invErfcRes**2 + erfcArg**2
+  dkr_Se = erfcres/(4.d0*sqrtSe) + sqrtSe*exp(-expArg)
+
+  dSe_sat = 1.d0 / (1.d0 - this%Sr - this%Srg)
+  dkr_sat = dkr_Se * dSe_sat
+
+end subroutine RPF_MK_Gas_RelPerm
+! End RPF: modified Kosigi (Gas)
+
+! ************************************************************************** !
+
 ! Begin RPF: TOUGH2, Linear (Oil) 
 function RPF_TOUGH2_Linear_Oil_Create()
 
