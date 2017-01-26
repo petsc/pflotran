@@ -60,8 +60,8 @@ subroutine GeneralDerivativeDriver(option)
   option%flow_dt = 1.d0
   
 !  istate = LIQUID_STATE
-!  istate = GAS_STATE
-  istate = TWO_PHASE_STATE
+  istate = GAS_STATE
+!  istate = TWO_PHASE_STATE
   select case(istate)
     case(LIQUID_STATE)
       xx(1) = 1.d6
@@ -132,10 +132,10 @@ subroutine GeneralDerivativeDriver(option)
                                     characteristic_curves, &
                                     option)  
   
-!  call GeneralDerivativeAuxVar(pert,general_auxvar,global_auxvar, &
-!                               material_auxvar,option)
-!  call GeneralDerivativeAuxVar(pert2,general_auxvar2,global_auxvar2, &
-!                               material_auxvar2,option)
+  call GeneralDerivativeAuxVar(pert,general_auxvar,global_auxvar, &
+                               material_auxvar,option)
+  call GeneralDerivativeAuxVar(pert2,general_auxvar2,global_auxvar2, &
+                               material_auxvar2,option)
 
 !  call GeneralDerivativeAccum(pert,general_auxvar,global_auxvar, &
 !                              material_auxvar,material_parameter,option)
@@ -466,7 +466,7 @@ subroutine GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
   PetscInt :: natural_id = 1
   PetscInt :: i
   PetscReal, parameter :: area = 1.d0
-  PetscReal, parameter :: dist(-1:3) = [0.5d0,1.d0,0.d0,0.d0,1.d0]
+  PetscReal, parameter :: dist(-1:3) = [0.5d0,1.d0,1.d0,0.d0,0.d0]
   
   PetscReal :: v_darcy(2)
   
@@ -488,7 +488,7 @@ subroutine GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
   call GeneralPrintAuxVars(general_auxvar2(0),global_auxvar2(0),material_auxvar2(0), &
                            natural_id,'downwind',option)
 
-  call GeneralFlux(general_auxvar(ZERO_INTEGER), &
+  call GeneralFluxB(general_auxvar(ZERO_INTEGER), &
                    global_auxvar(ZERO_INTEGER), &
                    material_auxvar(ZERO_INTEGER), &
                    material_parameter%soil_residual_saturation(:,1), &
@@ -503,7 +503,7 @@ subroutine GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
                    PETSC_TRUE,PETSC_FALSE)                           
 
   do i = 1, 3
-    call GeneralFlux(general_auxvar(i), &
+    call GeneralFluxB(general_auxvar(i), &
                      global_auxvar(i), &
                      material_auxvar(i), &
                      material_parameter%soil_residual_saturation(:,1), &
@@ -522,7 +522,7 @@ subroutine GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
   enddo
   
   do i = 1, 3
-    call GeneralFlux(general_auxvar(ZERO_INTEGER), &
+    call GeneralFluxB(general_auxvar(ZERO_INTEGER), &
                      global_auxvar(ZERO_INTEGER), &
                      material_auxvar(ZERO_INTEGER), &
                      material_parameter%soil_residual_saturation(:,1), &
