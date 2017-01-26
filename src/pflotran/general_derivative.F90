@@ -40,6 +40,7 @@ subroutine GeneralDerivativeDriver(option)
   PetscInt :: istate2
   PetscReal :: xx2(3)
   PetscReal :: pert2(3)
+  PetscReal :: scale2
   type(general_auxvar_type), pointer :: general_auxvar2(:)
   type(global_auxvar_type), pointer :: global_auxvar2(:)
   class(material_auxvar_type), pointer :: material_auxvar2(:)
@@ -68,9 +69,6 @@ subroutine GeneralDerivativeDriver(option)
       xx(2) = 1.d-6
       xx(3) = 30.d0
 !      xx(3) = 100.d0
-!      xx(1) = 1.001d6
-!      xx(2) = 1.001d-6
-!      xx(3) = 30.01d0    
     case(GAS_STATE)
 !      xx(1) = 1.d4
 !      xx(2) = 0.98d4
@@ -82,12 +80,9 @@ subroutine GeneralDerivativeDriver(option)
 !      xx(2) = 0.98d7
 !      xx(3) = 85.d0
     case(TWO_PHASE_STATE)
-!      xx(1) = 1.d6
-!      xx(2) = 0.5d0
-!      xx(3) = 30.d0
-      xx(1) = 1.001d6
-      xx(2) = 0.5001d0
-      xx(3) = 30.01d0
+      xx(1) = 1.d6
+      xx(2) = 0.5d0
+      xx(3) = 30.d0
   end select
 
   call GeneralDerivativeSetupAuxVar(istate,xx,pert,general_auxvar, &
@@ -95,36 +90,36 @@ subroutine GeneralDerivativeDriver(option)
                                     characteristic_curves, &
                                     option)  
   
-  istate2 = istate
-!  istate2 = LIQUID_STATE
+!  istate2 = istate
+  istate2 = LIQUID_STATE
 !  istate2 = GAS_STATE
 !  istate2 = TWO_PHASE_STATE
+  scale2 = 1.d0
+!  scale2 = 1.001d0
+!  scale2 = 0.999d0
+  scale2 = 0.99999999999d0
+  scale2 = 0.999d0
+  scale2 = 1.00000001d0
   select case(istate2)
     case(LIQUID_STATE)
-!      xx2(1) = 1.d6
-!      xx2(2) = 1.d-6
-!      xx2(3) = 30.d0
+      xx2(1) = 1.d6*scale2
+      xx2(2) = 1.d-6*scale2
+      xx2(3) = 30.d0*scale2
 !      xx2(3) = 100.d0
-      xx2(1) = 1.001d6
-      xx2(2) = 1.001d-6
-      xx2(3) = 30.01d0
     case(GAS_STATE)
 !      xx2(1) = 1.d4
 !      xx2(2) = 0.98d4
 !      xx2(3) = 15.d0
-      xx2(1) = 1.d6
-      xx2(2) = 0.98d6
-      xx2(3) = 30.d0
+      xx2(1) = 1.d6*scale2
+      xx2(2) = 0.98d6*scale2
+      xx2(3) = 30.d0*scale2
 !      xx2(1) = 1.d7
 !      xx2(2) = 0.98d7
 !      xx2(3) = 85.d0
     case(TWO_PHASE_STATE)
-      xx2(1) = 1.d6
-      xx2(2) = 0.5d0
-      xx2(3) = 30.d0
-!      xx2(1) = 1.001d6
-!      xx2(2) = 0.5001d0
-!      xx2(3) = 30.01d0
+      xx2(1) = 1.d6*scale2
+      xx2(2) = 0.5d0*scale2
+      xx2(3) = 30.d0*scale2
   end select    
   
   call GeneralDerivativeSetupAuxVar(istate2,xx2,pert2,general_auxvar2, &
@@ -303,7 +298,7 @@ subroutine GeneralDerivativeSetupEOS(option)
   call EOSWaterSetEnthalpy('PLANAR')
   call EOSWaterSetSteamDensity('PLANAR')
   
-  ! for ruling out gas density partial derivative
+  ! for ruling out density partial derivative
 !  aux(1) = 1.d3
 !  call EOSWaterSetDensity('CONSTANT',aux)
 !  call EOSGasSetDensityConstant(196.d0)

@@ -483,8 +483,10 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: h_air_pv, u_air_pv
   PetscReal :: h_air_T, u_air_T
   PetscReal :: xmol_air_in_gas, xmol_water_in_gas
-  PetscReal :: krl, visl, dkrl_dsat, dvis_dp, dvis_dT, dvis_dpa
-  PetscReal :: krg, visg, dkrg_dsat
+  PetscReal :: krl, visl, dvis_dp, dvis_dT, dvis_dpa
+  PetscReal :: dkrl_dsatl, dkrl_dsatg
+  PetscReal :: dkrg_dsatl, dkrg_dsatg
+  PetscReal :: krg, visg
   PetscReal :: K_H_tilde
   PetscReal :: guess, dummy
   PetscInt :: apid, cpid, vpid, spid
@@ -1049,10 +1051,10 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for LIQUID_STATE (=1)
     call characteristic_curves%liq_rel_perm_function% &
-           RelativePermeability(gen_auxvar%sat(lid),krl,dkrl_dsat,option)
+           RelativePermeability(gen_auxvar%sat(lid),krl,dkrl_dsatl,option)
     ! dkrl_sat is with respect to liquid pressure, but the primary dependent
     ! variable is gas pressure.  therefore, negate
-    dkrl_dsat = -1.d0 * dkrl_dsat
+    dkrl_dsatg = -1.d0 * dkrl_dsatl
     ! use cell_pressure; cell_pressure - psat calculated internally
     if (.not.option%flow%density_depends_on_salinity) then
       if (associated(gen_auxvar%d)) then
@@ -1082,7 +1084,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       tempreal = -1.d0*krl/(visl*visl)
       gen_auxvar%d%mobilityl_pl = tempreal*dvis_dp
       gen_auxvar%d%mobilityl_T = tempreal*dvis_dT
-      gen_auxvar%d%mobilityl_satg = -1.d0*dkrl_dsat/visl
+      gen_auxvar%d%mobilityl_satg = dkrl_dsatg/visl
     endif
   endif
 
@@ -1090,10 +1092,10 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for GAS_STATE (=1)
     call characteristic_curves%gas_rel_perm_function% &
-           RelativePermeability(gen_auxvar%sat(lid),krg,dkrg_dsat,option)                            
+           RelativePermeability(gen_auxvar%sat(lid),krg,dkrg_dsatl,option)                            
     ! dkrl_sat is with respect to liquid pressure, but the primary dependent
     ! variable is gas pressure.  therefore, negate
-    dkrg_dsat = -1.d0 * dkrg_dsat
+    dkrg_dsatg = -1.d0 * dkrg_dsatl
     ! STOMP uses separate functions for calculating viscosity of vapor and
     ! and air (WATGSV,AIRGSV) and then uses GASVIS to calculate mixture 
     ! viscosity.
@@ -1115,7 +1117,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       tempreal = -1.d0*krg/(visg*visg)
       gen_auxvar%d%mobilityg_pg = tempreal*dvis_dp
       gen_auxvar%d%mobilityg_T = tempreal*dvis_dT
-      gen_auxvar%d%mobilityg_satg = dkrg_dsat/visg
+      gen_auxvar%d%mobilityg_satg = dkrg_dsatg/visg
       gen_auxvar%d%mobilityg_pa = tempreal*dvis_dpa
       gen_auxvar%d%mug = visg
       gen_auxvar%d%mug_T = dvis_dT
