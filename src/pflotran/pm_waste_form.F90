@@ -1494,7 +1494,7 @@ subroutine PMWFAssociateRegion(this,region_list)
                            trim(cur_waste_form%region_name) // ' not found.'
         call printErrMsg(option)
       endif
-      call PMWFSetRegionScaling(this,cur_waste_form)
+      !call PMWFSetRegionScaling(this,cur_waste_form)
     endif
     !
     cur_waste_form => cur_waste_form%next
@@ -1516,6 +1516,7 @@ subroutine PMWFSetRegionScaling(this,waste_form)
   !
 
   use Material_Aux_class
+  use Grid_module
 
   implicit none
   
@@ -1523,24 +1524,26 @@ subroutine PMWFSetRegionScaling(this,waste_form)
   class(waste_form_base_type), pointer :: waste_form
   
   class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(grid_type), pointer :: grid
   PetscInt :: k, cell_id
   PetscReal :: total_volume_local, total_volume_global
   PetscErrorCode :: ierr
   
   material_auxvars => this%realization%patch%aux%Material%auxvars
+  grid => this%realization%patch%grid
   allocate(waste_form%scaling_factor(waste_form%region%num_cells))
   total_volume_local = 0.d0
   total_volume_global = 0.d0
   
   ! scale by cell volume
   do k = 1,waste_form%region%num_cells
-    cell_id = waste_form%region%cell_ids(k)
+    cell_id = grid%nL2G(waste_form%region%cell_ids(k))
     waste_form%scaling_factor(k) = material_auxvars(cell_id)%volume ! [m^3]
     total_volume_local = total_volume_local &
                          + material_auxvars(cell_id)%volume  ! [m^3]
   enddo
   call MPI_Allreduce(total_volume_local,total_volume_global,ONE_INTEGER_MPI, &
-              MPI_DOUBLE_PRECISION,MPI_SUM,this%realization%option%mycomm,ierr)
+              MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
   waste_form%scaling_factor = waste_form%scaling_factor/total_volume_global 
   
 end subroutine PMWFSetRegionScaling
@@ -1668,6 +1671,7 @@ subroutine PMWFSetup(this)
     endif
     cur_waste_form%myMPIcomm = newcomm
     if (local) then
+      call PMWFSetRegionScaling(this,cur_waste_form)
       prev_waste_form => cur_waste_form
       cur_waste_form => cur_waste_form%next
     else 
@@ -2032,8 +2036,11 @@ subroutine PMWFInitializeTimestep(this)
     endif
 
     !------- instantaneous release ----------------------------------------- 
-    if (.not.cur_waste_form%breached .and. &
-        cur_waste_form%canister_vitality < 1.d-3) then
+    if ((.not.cur_waste_form%breached .and. &
+         cur_waste_form%canister_vitality < 1.d-3) .or. &
+        (.not.cur_waste_form%breached .and. &
+         initialized(cur_waste_form%breach_time) .and. &
+         option%time > cur_waste_form%breach_time)) then
       call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
       do k = 1,num_species
         cur_waste_form%inst_release_amount(k) = &
@@ -2049,7 +2056,7 @@ subroutine PMWFInitializeTimestep(this)
         ! update transport solution vector with mass injection molality
         ! as an alternative to a source term (issue with tran_dt changing)
         do f = 1, cur_waste_form%region%num_cells
-          cell_id = cur_waste_form%region%cell_ids(f)
+          cell_id = grid%nL2G(cur_waste_form%region%cell_ids(f))
           inst_release_molality = &                    ! [mol-rad/kg-water]
             ! [mol-rad]
             (cur_waste_form%inst_release_amount(k) * & ! [mol-rad/g-matrix]
@@ -2062,7 +2069,7 @@ subroutine PMWFInitializeTimestep(this)
              material_auxvars(cell_id)%volume * &           ! [m^3]
              global_auxvars(cell_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
           idof = cwfm%rad_species_list(k)%ispecies + &
-                 ((cell_id - 1) * option%ntrandof) 
+                 ((cur_waste_form%region%cell_ids(f) - 1) * option%ntrandof) 
           xx_p(idof) = xx_p(idof) + & 
                        (inst_release_molality*cur_waste_form%scaling_factor(f))
         enddo
@@ -2191,6 +2198,7 @@ subroutine PMWFSolve(this,time,ierr)
   
   use Global_Aux_module
   use Material_Aux_class
+  use Grid_module
   
   implicit none
 
@@ -2213,11 +2221,13 @@ subroutine PMWFSolve(this,time,ierr)
   character(len=MAXWORDLENGTH) :: word
   type(global_auxvar_type), pointer :: global_auxvars(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(grid_type), pointer :: grid
   
   fmdm_count_global = 0
   fmdm_count_local = 0
   global_auxvars => this%realization%patch%aux%Global%auxvars
   material_auxvars => this%realization%patch%aux%Material%auxvars
+  grid => this%realization%patch%grid
 
   call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(this%realization%field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
@@ -2239,7 +2249,7 @@ subroutine PMWFSolve(this,time,ierr)
         ! solution vector instead (see note in WFMech[DSNF/WIPP]Dissolution):
         class is(wf_mechanism_dsnf_type)
           do k = 1,cur_waste_form%region%num_cells
-            cell_id = cur_waste_form%region%cell_ids(k)
+            cell_id = grid%nL2G(cur_waste_form%region%cell_ids(k))
             do j = 1,num_species
               i = i + 1
               cur_waste_form%instantaneous_mass_rate(j) = &
@@ -2256,7 +2266,8 @@ subroutine PMWFSolve(this,time,ierr)
                  material_auxvars(cell_id)%volume * &          ! [m^3]
                  global_auxvars(cell_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
               idof = cwfm%rad_species_list(j)%ispecies + &
-                     ((cell_id - 1) * this%option%ntrandof)
+                     ((cur_waste_form%region%cell_ids(k) - 1) * &
+                      this%option%ntrandof)
               xx_p(idof) = xx_p(idof) + &                     ! mol-rad/kg-water
                            (inst_diss_molality*cur_waste_form%scaling_factor(k))  
               vec_p(i) = 0.d0

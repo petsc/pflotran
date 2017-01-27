@@ -225,8 +225,10 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
                          this%inundated_corrosion_rate
   humid_degradation_rate = this%humid_degradation_factor * & 
                            this%inundated_degradation_rate
+  ! Eq. 143 BRAGFLO v6.02 User's Manual, section 4.13.3, pg 55
   corrosion_gas_rate = this%inundated_corrosion_rate * s_eff + &
                        humid_corrosion_rate * (1.d0 - s_eff)
+  ! Eq. 148 BRAGFLO v6.02 User's Manual, section 4.13.4, pg 55
   degradation_gas_rate = this%inundated_degradation_rate * s_eff + &
                          humid_degradation_rate * (1.d0 - s_eff)
   ! gas generation unit: mol of H2 / (m^3 * s)
