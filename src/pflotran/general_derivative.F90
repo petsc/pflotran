@@ -94,9 +94,11 @@ subroutine GeneralDerivativeDriver(option)
 !  istate2 = LIQUID_STATE
 !  istate2 = GAS_STATE
 !  istate2 = TWO_PHASE_STATE
+  ! scales must range (0.001 - 1.999d0)
   scale2 = 1.d0
 !  scale2 = 1.001d0
 !  scale2 = 0.999d0
+!  scale2 = 100.d0
   select case(istate2)
     case(LIQUID_STATE)
       xx2(1) = 1.d6*scale2
@@ -115,6 +117,7 @@ subroutine GeneralDerivativeDriver(option)
 !      xx2(3) = 85.d0
     case(TWO_PHASE_STATE)
       xx2(1) = 1.d6*scale2
+!      xx2(1) = 1.d8
       xx2(2) = 0.5d0*scale2
       xx2(3) = 30.d0*scale2
   end select    
@@ -296,9 +299,22 @@ subroutine GeneralDerivativeSetupEOS(option)
   call EOSWaterSetSteamDensity('PLANAR')
   
   ! for ruling out density partial derivative
-!  aux(1) = 1.d3
-!  call EOSWaterSetDensity('CONSTANT',aux)
+#if 0
+  aux(1) = 996.000000000000d0
+  call EOSWaterSetDensity('CONSTANT',aux)
+  aux(1) = 2.27d6
+  call EOSWaterSetEnthalpy('CONSTANT',aux)
+#endif
+#if 0
+  aux(1) = 9.899986173768605D-002
+  call EOSWaterSetSteamDensity('CONSTANT',aux)  
+  aux(1) = 45898000.0921749d0
+  call EOSWaterSetSteamEnthalpy('CONSTANT',aux)
+  
 !  call EOSGasSetDensityConstant(196.d0)
+  call EOSGasSetDensityConstant(0.395063665868904d0)
+  call EOSGasSetEnergyConstant(8841206.16464255d0)
+#endif
 
   tlow = 1.d-1
   thigh = 350.d0
@@ -512,7 +528,6 @@ subroutine GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
       jac_num(irow,i) = (res_pert(irow,i)-res(irow))/pert(i)
     enddo !irow
   enddo
-  
   do i = 1, 3
     call GeneralFluxB(general_auxvar(ZERO_INTEGER), &
                      global_auxvar(ZERO_INTEGER), &

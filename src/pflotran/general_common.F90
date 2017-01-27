@@ -1495,6 +1495,8 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: ddiffusion_coef_dpup, ddiffusion_coef_dpdn
   PetscReal :: dtot_mole_flux_ddiffusion_coef
   
+  ! DELETE
+  
   PetscReal :: Jlup(3,3), Jldn(3,3)
   PetscReal :: Jgup(3,3), Jgdn(3,3)
    
@@ -2421,18 +2423,21 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
 
 #ifdef DIFFUSION
   ! add in gas component diffusion in gas and liquid phases
+!#if 0
 #ifdef LIQUID_DIFFUSION  
   iphase = LIQUID_PHASE
   sat_up = gen_auxvar_up%sat(iphase)
   sat_dn = gen_auxvar_dn%sat(iphase)
   !geh: i am not sure why both of these conditionals were included.  seems
   !     like the latter would never be false.
-  if (sqrt(sat_up*sat_dn) > eps .and. &
-      (sat_up > eps .or. sat_dn > eps)) then
+  dsatup = 1.d0
+  dsatdn = 1.d0
+#if 1
+  if (sqrt(sat_up*sat_dn) > eps) then
+#else
+  if (sat_up > eps .or. sat_dn > eps) then
     ! for now, if liquid state neighboring gas, we allow for minute
     ! diffusion in liquid phase.
-    dsatup = 1.d0
-    dsatdn = 1.d0
     if (iphase == option%liquid_phase) then
       if ((sat_up > eps .or. sat_dn > eps)) then
         ! sat_up = max(sat_up,eps)
@@ -2443,10 +2448,11 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
         ! sat_dn = max(sat_dn,eps)
         if (sat_dn < eps) then
           sat_dn = eps
-          sat_dn = 0.d0
+          dsatdn = 0.d0
         endif
       endif
     endif
+#endif
     if (general_harmonic_diff_density) then
       den_up = gen_auxvar_up%den(iphase)
       den_dn = gen_auxvar_dn%den(iphase)
@@ -2502,20 +2508,7 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
     stpd_ave_over_dist = stpd_up*stpd_dn/tempreal
     dstpd_ave_over_dist_dstpd_up = (stpd_dn-stpd_ave_over_dist*dist_dn)/tempreal
     dstpd_ave_over_dist_dstpd_dn = (stpd_up-stpd_ave_over_dist*dist_up)/tempreal
-    ! need to account for multiple phases
-    tempreal = 1.d0
-#if 0   
-! gas phase only
-    ! Eq. 1.9b.  The gas density is added below
-    if (general_temp_dep_gas_air_diff .and. &
-        iphase == option%gas_phase) then
-      temp_ave = 0.5d0*(gen_auxvar_up%temp+gen_auxvar_dn%temp)
-      pressure_ave = 0.5d0*(gen_auxvar_up%pres(iphase)+ &
-                            gen_auxvar_dn%pres(iphase))
-      tempreal = ((temp_ave+273.15d0)/273.15d0)**1.8d0 * &
-                  101325.d0 / pressure_ave
-    endif
-#endif    
+    
     ! units = mole/sec
     dtot_mole_flux_ddeltaX = stpd_ave_over_dist * &
                              general_parameter%diffusion_coefficient(iphase) * &
@@ -2626,7 +2619,8 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
         ! derivative wrt gas saturation
         ! derivative total mole flux wrt gas saturation
         dtot_mole_flux_dsatg = &
-          dtot_mole_flux_dstpd * dstpd_up_dsatup * dsatup * -1.d0 ! satl -> satg
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_up * &
+          dstpd_up_dsatup * dsatup * -1.d0 ! satl -> satg
         ! derivative water wrt gas saturation
         Jlup(1,2) = -1.d0 * dtot_mole_flux_dsatg
         ! derivative air wrt gas saturation
@@ -2639,7 +2633,7 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
         dtot_mole_flux_dT = &
           ! liquid density
           dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_up * &
-          dstpd_up_ddenup * gen_auxvar_up%d%denl_pl + &
+          dstpd_up_ddenup * gen_auxvar_up%d%denl_T + &
           ! dispersion coefficient
           ! air mole fraction
           1.d0 * & ! xmolup - xmoldn, not -1 in docs
@@ -2752,7 +2746,8 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
         ! derivative wrt gas saturation
         ! derivative total mole flux wrt gas saturation
         dtot_mole_flux_dsatg = &
-          dtot_mole_flux_dstpd * dstpd_dn_dsatdn * dsatdn * -1.d0 ! satl -> satg
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
+          dstpd_dn_dsatdn * dsatdn * -1.d0 ! satl -> satg
         ! derivative water wrt gas saturation
         Jldn(1,2) = -1.d0 * dtot_mole_flux_dsatg
         ! derivative air wrt gas saturation
@@ -2765,7 +2760,7 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
         dtot_mole_flux_dT = &
           ! liquid density
           dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
-          dstpd_dn_ddendn * gen_auxvar_dn%d%denl_pl + &
+          dstpd_dn_ddendn * gen_auxvar_dn%d%denl_T + &
           ! dispersion coefficient
           ! air mole fraction
           1.d0 * & ! xmoldn - xmoldn, not -1 in docs
@@ -2784,6 +2779,7 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
     Jdn = Jdn + Jldn
   endif
 #endif
+!#if 0
 #ifdef GAS_DIFFUSION
   iphase = GAS_PHASE
   sat_up = gen_auxvar_up%sat(iphase)
@@ -2818,7 +2814,6 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
               gen_auxvar_up%effective_porosity*den_up
     stpd_dn = sat_dn*material_auxvar_dn%tortuosity* &
               gen_auxvar_dn%effective_porosity*den_dn
-              
     dstpd_up_dporup = stpd_up / gen_auxvar_up%effective_porosity
     dstpd_dn_dpordn = stpd_dn / gen_auxvar_dn%effective_porosity
     dstpd_up_dsatup = stpd_up / sat_up
@@ -2851,9 +2846,11 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
     stpd_ave_over_dist = stpd_up*stpd_dn/tempreal
     dstpd_ave_over_dist_dstpd_up = (stpd_dn-stpd_ave_over_dist*dist_dn)/tempreal
     dstpd_ave_over_dist_dstpd_dn = (stpd_up-stpd_ave_over_dist*dist_up)/tempreal
+!    dstpd_ave_over_dist_dsat_ave = stpd_up*stpd_dn/tempreal
     ! need to account for multiple phases
     ! Eq. 1.9b.  The gas density is added below
     if (general_temp_dep_gas_air_diff) then
+!    if (.false.) then    
       temp_ave = 0.5d0*(gen_auxvar_up%temp+gen_auxvar_dn%temp)
       pressure_ave = 0.5d0*(gen_auxvar_up%pres(iphase)+ &
                             gen_auxvar_dn%pres(iphase))
@@ -2865,14 +2862,14 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
       ddiffusion_coef_dpup = -1.d0 * diffusion_scale / pressure_ave * 0.5d0
       ddiffusion_coef_dpdn = ddiffusion_coef_dpup
     else
-      tempreal = 1.d0
+      diffusion_scale = 1.d0
       ddiffusion_coef_dTup = 0.d0
       ddiffusion_coef_dTdn = 0.d0
       ddiffusion_coef_dpup = 0.d0
       ddiffusion_coef_dpdn = 0.d0
     endif
     ! units = mole/sec
-    dtot_mole_flux_ddeltaX = stpd_ave_over_dist * tempreal * &
+    dtot_mole_flux_ddeltaX = stpd_ave_over_dist * diffusion_scale * &
                              general_parameter%diffusion_coefficient(iphase) * &
                              area
     tot_mole_flux = dtot_mole_flux_ddeltaX * delta_X_whatever
@@ -2880,8 +2877,8 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
     dtot_mole_flux_ddiffusion_coef = tot_mole_flux / diffusion_scale
     Res(wat_comp_id) = Res(wat_comp_id) - tot_mole_flux
     Res(air_comp_id) = Res(air_comp_id) + tot_mole_flux
-    Jlup = 0.d0
-    Jldn = 0.d0
+    Jgup = 0.d0
+    Jgdn = 0.d0
     select case(global_auxvar_up%istate)
       case(LIQUID_STATE)
         ! derivative wrt liquid pressure
@@ -2894,19 +2891,19 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
           ! diffusion coefficient
           dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dpup
         ! derivative water wrt liquid pressure
-        Jlup(1,1) = -1.d0 * dtot_mole_flux_dp
+        Jgup(1,1) = -1.d0 * dtot_mole_flux_dp
         ! derivative air wrt liquid pressure
-        Jlup(2,1) = 1.d0 * dtot_mole_flux_dp
+        Jgup(2,1) = 1.d0 * dtot_mole_flux_dp
         ! derivative energy wrt liquid pressure
-        Jlup(3,1) = 0.0
+        Jgup(3,1) = 0.0
             
         ! derivative wrt air mole fraction
         ! derivative water wrt air mole fraction
-        Jlup(1,2) = -1.d0 * dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup
+        Jgup(1,2) = -1.d0 * dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup
         ! derivative air wrt air mole fraction
-        Jlup(2,2) = 1.d0 * dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup
+        Jgup(2,2) = 1.d0 * dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup
         ! derivative energy wrt air mole fraction
-        ! Jlup(3,2) = 0.d0
+        ! Jgup(3,2) = 0.d0
           
         ! derivative wrt temperature
         ! derivative total mole flux wrt temperature
@@ -2917,11 +2914,11 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
           ! diffusion coefficient
           dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dTup
         ! derivative water wrt temperature
-        Jlup(1,3) = -1.d0 * dtot_mole_flux_dT
+        Jgup(1,3) = -1.d0 * dtot_mole_flux_dT
         ! derivative air wrt temperature
-        Jlup(2,3) = 1.d0 * dtot_mole_flux_dT
+        Jgup(2,3) = 1.d0 * dtot_mole_flux_dT
         ! derivative energy wrt temperature
-        Jlup(3,3) = 0.d0
+        Jgup(3,3) = 0.d0
                      
       case(GAS_STATE)
         ! derivative wrt gas pressure
@@ -2932,24 +2929,32 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
           (dstpd_up_dporup * gen_auxvar_up%d%por_p + &
            dstpd_up_ddenup * gen_auxvar_up%d%deng_pg) + &
           ! diffusion coefficient
-          dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dpup
+          dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dpup + &
+          ! air mole fraction
+          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup * &
+          gen_auxvar_up%d%xmol_p(air_comp_id,GAS_PHASE)
         ! derivative water wrt gas pressure
-        Jlup(1,1) = -1.d0 * dtot_mole_flux_dp
+        Jgup(1,1) = -1.d0 * dtot_mole_flux_dp
         ! derivative air wrt gas pressure
-        Jlup(2,1) = 1.d0 * dtot_mole_flux_dp
+        Jgup(2,1) = 1.d0 * dtot_mole_flux_dp
         ! derivative energy wrt gas pressure
-        Jlup(3,1) = 0.d0
+        Jgup(3,1) = 0.d0
 
         ! derivative wrt air pressure
         dtot_mole_flux_dp = &
+          ! liquid density and porosity
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_up * &
+           dstpd_up_ddenup * gen_auxvar_up%d%deng_pa + &
+          ! air mole fraction
           dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup * &
-          gen_auxvar_up%d%Hc
+                            ! liquid phase is hijacked to store \dpa
+          gen_auxvar_up%d%xmol_p(air_comp_id,LIQUID_PHASE)
         ! derivative water wrt air saturation
-         Jlup(1,2) = -1.d0 * dtot_mole_flux_dp
+         Jgup(1,2) = -1.d0 * dtot_mole_flux_dp
         ! derivative air wrt air saturation
-         Jlup(2,2) = 1.d0 * dtot_mole_flux_dp
+         Jgup(2,2) = 1.d0 * dtot_mole_flux_dp
         ! derivative energy wrt air saturation
-         Jlup(3,2) = 0.d0
+         Jgup(3,2) = 0.d0
           
         ! derivative wrt temperature
         ! derivative total mole flux wrt temperature
@@ -2958,13 +2963,16 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
           dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_up * &
           dstpd_up_ddenup * gen_auxvar_up%d%deng_T + &
           ! diffusion coefficient
-          dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dTup        
+          dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dTup + &
+          ! air mole fraction
+          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup * &
+          gen_auxvar_up%d%xmol_T(air_comp_id,GAS_PHASE)  
         ! derivative water wrt temperature
-        Jlup(1,3) = -1.d0 * dtot_mole_flux_dT
+        Jgup(1,3) = -1.d0 * dtot_mole_flux_dT
         ! derivative air wrt temperature
-        Jlup(2,3) = dtot_mole_flux_dT
+        Jgup(2,3) = dtot_mole_flux_dT
         ! derivative energy wrt temperature
-        Jlup(3,3) = 0.d0
+        Jgup(3,3) = 0.d0
                      
       case(TWO_PHASE_STATE)
         ! derivative wrt gas pressure
@@ -2977,46 +2985,194 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
           ! diffusion coefficient
           dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dpup + &
           ! air mole fraction
-          1.d0 * & ! xmolup - xmoldn, not -1 in docs
           dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup * &
           gen_auxvar_up%d%xmol_p(air_comp_id,GAS_PHASE)
         ! derivative water wrt gas pressure
-        Jlup(1,1) = -1.d0 * dtot_mole_flux_dp
+        Jgup(1,1) = -1.d0 * dtot_mole_flux_dp
         ! derivative air wrt gas pressure
-        Jlup(2,1) = 1.d0 * dtot_mole_flux_dp
+        Jgup(2,1) = 1.d0 * dtot_mole_flux_dp
         ! derivative energy wrt gas pressure
-        Jlup(3,1) = 0.d0        
+        Jgup(3,1) = 0.d0        
             
         ! derivative wrt gas saturation
         ! derivative total mole flux wrt gas saturation
         dtot_mole_flux_dsatg = &
-          dtot_mole_flux_dstpd * dstpd_up_dsatup * dsatup * -1.d0 ! satl -> satg
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_up * &
+          dstpd_up_dsatup * dsatup ! satg
         ! derivative water wrt gas saturation
-        Jlup(1,2) = -1.d0 * dtot_mole_flux_dsatg
+        Jgup(1,2) = -1.d0 * dtot_mole_flux_dsatg
         ! derivative air wrt gas saturation
-        Jlup(2,2) = 1.d0 * dtot_mole_flux_dsatg
+        Jgup(2,2) = 1.d0 * dtot_mole_flux_dsatg
         ! derivative energy wrt gas saturation
-        Jlup(3,2) = 0.d0
+        Jgup(3,2) = 0.d0
           
         ! derivative wrt temperature
         ! derivative total mole flux wrt temperature
         dtot_mole_flux_dT = &
           ! liquid density
           dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_up * &
-          dstpd_up_ddenup * gen_auxvar_up%d%deng_pg + &
+          dstpd_up_ddenup * gen_auxvar_up%d%deng_T + &
           ! diffusion coefficient
           dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dTup  + &
           ! air mole fraction
-          1.d0 * & ! xmolup - xmoldn, not -1 in docs
           dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup * &
           gen_auxvar_up%d%xmol_T(air_comp_id,GAS_PHASE)          
         ! derivative water wrt temperature
-        Jlup(1,3) = -1.d0 * dtot_mole_flux_dT
+        Jgup(1,3) = -1.d0 * dtot_mole_flux_dT
         ! derivative air wrt temperature
-        Jlup(2,3) = 1.d0 * dtot_mole_flux_dT
+        Jgup(2,3) = 1.d0 * dtot_mole_flux_dT
         ! derivative energy wrt temperature
-        Jlup(3,3) = 0.d0
+        Jgup(3,3) = 0.d0
     end select
+    select case(global_auxvar_dn%istate)
+      case(LIQUID_STATE)
+        ! derivative wrt liquid pressure
+        ! derivative total mole flux wrt liquid pressure
+        dtot_mole_flux_dp = & 
+          ! liquid density and porosity
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
+          (dstpd_dn_dpordn * gen_auxvar_dn%d%por_p + &
+           dstpd_dn_ddendn * gen_auxvar_dn%d%deng_pg) + &
+          ! diffusion coefficient
+          dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dpdn
+        ! derivative water wrt liquid pressure
+        Jgdn(1,1) = -1.d0 * dtot_mole_flux_dp
+        ! derivative air wrt liquid pressure
+        Jgdn(2,1) = 1.d0 * dtot_mole_flux_dp
+        ! derivative energy wrt liquid pressure
+        Jgdn(3,1) = 0.0
+            
+        ! derivative wrt air mole fraction
+        ! derivative water wrt air mole fraction
+        Jgdn(1,2) = -1.d0 * dtot_mole_flux_ddeltaX * delta_X_whatever_dxmoldn
+        ! derivative air wrt air mole fraction
+        Jgdn(2,2) = 1.d0 * dtot_mole_flux_ddeltaX * delta_X_whatever_dxmoldn
+        ! derivative energy wrt air mole fraction
+        ! Jgdn(3,2) = 0.d0
+          
+        ! derivative wrt temperature
+        ! derivative total mole flux wrt temperature
+        dtot_mole_flux_dT = & 
+          ! liquid density
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
+          dstpd_dn_ddendn * gen_auxvar_dn%d%deng_T + &
+          ! diffusion coefficient
+          dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dTdn
+        ! derivative water wrt temperature
+        Jgdn(1,3) = -1.d0 * dtot_mole_flux_dT
+        ! derivative air wrt temperature
+        Jgdn(2,3) = 1.d0 * dtot_mole_flux_dT
+        ! derivative energy wrt temperature
+        Jgdn(3,3) = 0.d0
+                     
+      case(GAS_STATE)
+        ! derivative wrt gas pressure
+        ! derivative total mole flux wrt gas pressure
+        dtot_mole_flux_dp = & 
+          ! liquid density and porosity
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
+          (dstpd_dn_dpordn * gen_auxvar_dn%d%por_p + &
+           dstpd_dn_ddendn * gen_auxvar_dn%d%deng_pg) + &
+          ! diffusion coefficient
+          dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dpdn + &
+          ! air mole fraction
+          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmoldn * &
+          gen_auxvar_dn%d%xmol_p(air_comp_id,GAS_PHASE)
+        ! derivative water wrt gas pressure
+        Jgdn(1,1) = -1.d0 * dtot_mole_flux_dp
+        ! derivative air wrt gas pressure
+        Jgdn(2,1) = 1.d0 * dtot_mole_flux_dp
+        ! derivative energy wrt gas pressure
+        Jgdn(3,1) = 0.d0
+
+        ! derivative wrt air pressure
+        dtot_mole_flux_dp = &
+          ! liquid density and porosity
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
+           dstpd_dn_ddendn * gen_auxvar_dn%d%deng_pa + &
+          ! air mole fraction
+          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmoldn * &
+                            ! liquid phase is hijacked to store \dpa
+          gen_auxvar_dn%d%xmol_p(air_comp_id,LIQUID_PHASE)
+        ! derivative water wrt air saturation
+         Jgdn(1,2) = -1.d0 * dtot_mole_flux_dp
+        ! derivative air wrt air saturation
+         Jgdn(2,2) = 1.d0 * dtot_mole_flux_dp
+        ! derivative energy wrt air saturation
+         Jgdn(3,2) = 0.d0
+          
+        ! derivative wrt temperature
+        ! derivative total mole flux wrt temperature
+        dtot_mole_flux_dT = & 
+          ! liquid density
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
+          dstpd_dn_ddendn * gen_auxvar_dn%d%deng_T + &
+          ! diffusion coefficient
+          dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dTdn + &
+          ! air mole fraction
+          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmoldn * &
+          gen_auxvar_dn%d%xmol_T(air_comp_id,GAS_PHASE)  
+        ! derivative water wrt temperature
+        Jgdn(1,3) = -1.d0 * dtot_mole_flux_dT
+        ! derivative air wrt temperature
+        Jgdn(2,3) = dtot_mole_flux_dT
+        ! derivative energy wrt temperature
+        Jgdn(3,3) = 0.d0
+                     
+      case(TWO_PHASE_STATE)
+        ! derivative wrt gas pressure
+        ! derivative total mole flux wrt gas pressure
+        dtot_mole_flux_dp = & 
+          ! liquid density and porosity
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
+          (dstpd_dn_dpordn * gen_auxvar_dn%d%por_p + &
+           dstpd_dn_ddendn * gen_auxvar_dn%d%deng_pg) + &
+          ! diffusion coefficient
+          dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dpdn + &
+          ! air mole fraction
+          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmoldn * &
+          gen_auxvar_dn%d%xmol_p(air_comp_id,GAS_PHASE)
+        ! derivative water wrt gas pressure
+        Jgdn(1,1) = -1.d0 * dtot_mole_flux_dp
+        ! derivative air wrt gas pressure
+        Jgdn(2,1) = 1.d0 * dtot_mole_flux_dp
+        ! derivative energy wrt gas pressure
+        Jgdn(3,1) = 0.d0        
+            
+        ! derivative wrt gas saturation
+        ! derivative total mole flux wrt gas saturation
+        dtot_mole_flux_dsatg = &
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
+          dstpd_dn_dsatdn * dsatdn ! satg
+        ! derivative water wrt gas saturation
+        Jgdn(1,2) = -1.d0 * dtot_mole_flux_dsatg
+        ! derivative air wrt gas saturation
+        Jgdn(2,2) = 1.d0 * dtot_mole_flux_dsatg
+        ! derivative energy wrt gas saturation
+        Jgdn(3,2) = 0.d0
+          
+        ! derivative wrt temperature
+        ! derivative total mole flux wrt temperature
+        dtot_mole_flux_dT = &
+          ! liquid density
+          dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
+          dstpd_dn_ddendn * gen_auxvar_dn%d%deng_T + &
+          ! diffusion coefficient
+          dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dTdn  + &
+          ! air mole fraction
+          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmoldn * &
+          gen_auxvar_dn%d%xmol_T(air_comp_id,GAS_PHASE)          
+        ! derivative water wrt temperature
+        Jgdn(1,3) = -1.d0 * dtot_mole_flux_dT
+        ! derivative air wrt temperature
+        Jgdn(2,3) = 1.d0 * dtot_mole_flux_dT
+        ! derivative energy wrt temperature
+        Jgdn(3,3) = 0.d0
+    end select
+    
+    
+    Jup = Jup + Jgup
+    Jdn = Jdn + Jgdn    
   endif
 #endif
 ! DIFFUSION

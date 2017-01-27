@@ -747,6 +747,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                                option)                             
       if (associated(gen_auxvar%d)) then
         ! for now, calculate derivative through finite differencing
+        !TODO(geh): make an analytical derivative
         tempreal = 1.d-6 * gen_auxvar%sat(lid)
         tempreal2 = gen_auxvar%sat(lid) + tempreal
         call characteristic_curves%saturation_function% &
