@@ -61,8 +61,8 @@ subroutine GeneralDerivativeDriver(option)
   option%flow_dt = 1.d0
   
 !  istate = LIQUID_STATE
-  istate = GAS_STATE
-!  istate = TWO_PHASE_STATE
+!  istate = GAS_STATE
+  istate = TWO_PHASE_STATE
   select case(istate)
     case(LIQUID_STATE)
       xx(1) = 1.d6
@@ -90,16 +90,13 @@ subroutine GeneralDerivativeDriver(option)
                                     characteristic_curves, &
                                     option)  
   
-!  istate2 = istate
-  istate2 = LIQUID_STATE
+  istate2 = istate
+!  istate2 = LIQUID_STATE
 !  istate2 = GAS_STATE
 !  istate2 = TWO_PHASE_STATE
   scale2 = 1.d0
 !  scale2 = 1.001d0
 !  scale2 = 0.999d0
-  scale2 = 0.99999999999d0
-  scale2 = 0.999d0
-  scale2 = 1.00000001d0
   select case(istate2)
     case(LIQUID_STATE)
       xx2(1) = 1.d6*scale2
