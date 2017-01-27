@@ -1040,7 +1040,7 @@ subroutine ReactionReadPass2(reaction,input,option)
       case('MOLAL','MOLALITY', &
             'UPDATE_POROSITY','UPDATE_TORTUOSITY', &
             'UPDATE_PERMEABILITY','UPDATE_MINERAL_SURFACE_AREA', &
-            'NO_RESTART_MINERAL_VOL_FRAC')
+            'NO_RESTART_MINERAL_VOL_FRAC','USE_FULL_GEOCHEMISTRY')
         ! dummy placeholder
     end select
   enddo  
