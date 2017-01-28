@@ -363,18 +363,14 @@ module Characteristic_Curves_module
   end type rel_perm_func_constant_type
   ! modified Kosugi (Malama & Kuhlman, 2015) for liquid and gas
   type, public, extends(rel_perm_func_base_type) :: rpf_mK_liq_type
-    PetscReal :: sigmaz, muz
-    PetscReal :: rmax, r0
-    PetscInt :: nparam
+    PetscReal :: sigmaz
   contains
     procedure, public :: Verify => RPF_mK_Liq_Verify
     procedure, public :: RelativePermeability => RPF_mK_Liq_RelPerm
   end type rpf_mK_liq_type
   type, public, extends(rel_perm_func_base_type) :: rpf_mK_gas_type
     PetscReal :: Srg
-    PetscReal :: sigmaz, muz
-    PetscReal :: rmax, r0
-    PetscInt :: nparam
+    PetscReal :: sigmaz
   contains
     procedure, public :: Verify => RPF_mK_Gas_Verify
     procedure, public :: RelativePermeability => RPF_mK_Gas_RelPerm
@@ -1345,18 +1341,6 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
           case('SIGMAZ')
             call InputReadDouble(input,option,rpf%sigmaz)
             call InputErrorMsg(input,option,'sigmaz',error_string)
-          case('MUZ')
-            call InputReadDouble(input,option,rpf%muz)
-            call InputErrorMsg(input,option,'muz',error_string)
-          case('RMAX')
-            call InputReadDouble(input,option,rpf%rmax)
-            call InputErrorMsg(input,option,'rmax',error_string)
-          case('R0')
-            call InputReadDouble(input,option,rpf%r0)
-            call InputErrorMsg(input,option,'r0',error_string)
-          case('NPARAM')
-            call InputReadInt(input,option,rpf%nparam)
-            call InputErrorMsg(input,option,'nparam',error_string)
           case default
             call InputKeywordUnrecognized(keyword, &
                  'MODIFIED_KOSUGI liquid relative permeability '//&
@@ -1367,18 +1351,6 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
           case('SIGMAZ')
             call InputReadDouble(input,option,rpf%sigmaz)
             call InputErrorMsg(input,option,'sigmaz',error_string)
-          case('MUZ')
-            call InputReadDouble(input,option,rpf%muz)
-            call InputErrorMsg(input,option,'muz',error_string)
-          case('RMAX')
-            call InputReadDouble(input,option,rpf%rmax)
-            call InputErrorMsg(input,option,'rmax',error_string)
-          case('R0')
-            call InputReadDouble(input,option,rpf%r0)
-            call InputErrorMsg(input,option,'r0',error_string)
-          case('NPARAM')
-            call InputReadInt(input,option,rpf%nparam)
-            call InputErrorMsg(input,option,'nparam',error_string)
           case('GAS_RESIDUAL_SATURATION')
             call InputReadDouble(input,option,rpf%Srg)
             call InputErrorMsg(input,option,'Srg',error_string)
@@ -2026,17 +1998,8 @@ subroutine CharCurvesInputRecord(char_curve_list)
           write(id,'(a29)',advance='no') 'sigmaz: '
           write(word1,*) rpf%sigmaz
           write(id,'(a)') adjustl(trim(word1))
-          write(id,'(a29)',advance='no') 'muz: '
-          write(word1,*) rpf%muz
-          write(id,'(a)') adjustl(trim(word1))
           write(id,'(a29)',advance='no') 'liquid residual sat.: '
           write(word1,*) rpf%Sr
-          write(id,'(a)') adjustl(trim(word1))
-          write(id,'(a29)',advance='no') 'rmax: '
-          write(word1,*) rpf%rmax
-          write(id,'(a)') adjustl(trim(word1))
-          write(id,'(a29)',advance='no') 'r0: '
-          write(word1,*) rpf%r0
           write(id,'(a)') adjustl(trim(word1))
       !------------------------------------
         class default
@@ -2157,19 +2120,13 @@ subroutine CharCurvesInputRecord(char_curve_list)
           write(word1,*) rpf%Srg
           write(id,'(a)') adjustl(trim(word1))
       !------------------------------------
-        class is (rpf_mK_liq_type)
+        class is (rpf_mK_gas_type)
           write(id,'(a)') 'modified_kosugi_gas'
           write(id,'(a29)',advance='no') 'sigmaz: '
           write(word1,*) rpf%sigmaz
           write(id,'(a)') adjustl(trim(word1))
-          write(id,'(a29)',advance='no') 'muz: '
-          write(word1,*) rpf%muz
-          write(id,'(a)') adjustl(trim(word1))
-          write(id,'(a29)',advance='no') 'rmax: '
-          write(word1,*) rpf%rmax
-          write(id,'(a)') adjustl(trim(word1))
-          write(id,'(a29)',advance='no') 'r0: '
-          write(word1,*) rpf%r0
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
           write(id,'(a)') adjustl(trim(word1))
       !------------------------------------
         class default
@@ -6724,37 +6681,6 @@ subroutine RPF_mK_Liq_Verify(this,name,option)
     option%io_buffer = UninitializedMessage('SIGMAZ',string)
     call printErrMsg(option)
   endif
-  if (Uninitialized(this%muz)) then
-    option%io_buffer = UninitializedMessage('MUZ',string)
-    call printErrMsg(option)
-  endif
-  if (Uninitialized(this%nparam)) then
-    option%io_buffer = UninitializedMessage('NPARAM',string)
-    call printErrMsg(option)
-  endif
-  if (Uninitialized(this%rmax)) then
-    ! rmax is used for both nparam 3 and 4
-    option%io_buffer = UninitializedMessage('RMAX',string)
-    call printErrMsg(option)
-  endif
-  select case(this%nparam)
-   case(4)
-     ! r0 is only used for nparam 4
-     if (Uninitialized(this%r0)) then
-       option%io_buffer = UninitializedMessage('R0',string)
-       call printErrMsg(option)
-     endif
-     if (this%r0 >= this%rmax) then
-       option%io_buffer = string //' requires RMAX > R0'
-       call printErrMsg(option)
-     end if
-   case(3)
-     continue ! rmax handled above
-   case default
-     option%io_buffer = 'invalid NPARAM value in' &
-          &// string // '. Only NPARAM=(3,4) supported.'
-     call printErrMsg(option)
-  end select
 
 end subroutine RPF_mK_Liq_Verify
 ! ************************************************************************** !
@@ -6870,41 +6796,10 @@ subroutine RPF_mK_Gas_Verify(this,name,option)
     option%io_buffer = UninitializedMessage('SIGMAZ',string)
     call printErrMsg(option)
   endif
-  if (Uninitialized(this%muz)) then
-    option%io_buffer = UninitializedMessage('MUZ',string)
-    call printErrMsg(option)
-  endif
-  if (Uninitialized(this%Srg)) then
+  if (Uninitialized(this%srg)) then
     option%io_buffer = UninitializedMessage('SRG',string)
     call printErrMsg(option)
   endif
-  if (Uninitialized(this%nparam)) then
-    option%io_buffer = UninitializedMessage('NPARAM',string)
-    call printErrMsg(option)
-  endif
-  if (Uninitialized(this%rmax)) then
-    ! rmax is used for both nparam 3 and 4
-    option%io_buffer = UninitializedMessage('RMAX',string)
-    call printErrMsg(option)
-  endif
-  select case(this%nparam)
-    case(4)
-      ! r0 is only used for nparam 4
-      if (Uninitialized(this%r0)) then
-        option%io_buffer = UninitializedMessage('R0',string)
-        call printErrMsg(option)
-      endif
-      if (this%r0 >= this%rmax) then
-        option%io_buffer = string //' requires RMAX > R0'
-        call printErrMsg(option)
-      end if
-    case(3)
-      continue ! rmax handled above
-    case default
-      option%io_buffer = 'invalid NPARAM value in' &
-           &// string // '. Only NPARAM=(3,4) supported.'
-      call printErrMsg(option)
-  end select
 
 end subroutine RPF_mK_Gas_Verify
 ! ************************************************************************** !

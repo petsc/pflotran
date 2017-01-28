@@ -232,10 +232,7 @@ contains
     this%cc_mk3%liq_rel_perm_function%Sr = 1.53D-1
     select type(sf=>this%cc_mk3%liq_rel_perm_function)
       class is(rpf_mK_liq_type)
-        sf%nparam = 3
         sf%sigmaz = 3.37D-1
-        sf%muz = -6.3D0
-        sf%rmax = 2.52D-3
       class default
         print *, 'no mK3 Liq rel perm type in setUp'
     end select
@@ -243,10 +240,7 @@ contains
     this%cc_mk3%gas_rel_perm_function%Sr = 1.53D-1
     select type(sf=>this%cc_mk3%gas_rel_perm_function)
       class is(rpf_mK_gas_type)
-        sf%nparam = 3
         sf%sigmaz = 3.37D-1
-        sf%muz = -6.3D0
-        sf%rmax = 2.52D-3
         sf%Srg = 1.0D-3
       class default
         print *, 'no mK3 Gas rel perm type in setUp'
@@ -271,11 +265,7 @@ contains
     this%cc_mk4%liq_rel_perm_function%Sr = 1.53D-1
     select type(sf=>this%cc_mk4%liq_rel_perm_function)
       class is(rpf_mK_liq_type)
-        sf%nparam = 4
         sf%sigmaz = 3.37D-1
-        sf%muz = -6.3D0
-        sf%rmax = 2.52D-3
-        sf%r0 = 1.07D-4
       class default
         print *, 'no mK4 Liq rel perm type in setUp'
     end select
@@ -283,11 +273,7 @@ contains
     this%cc_mk4%gas_rel_perm_function%Sr = 1.53D-1
     select type(sf=>this%cc_mk4%gas_rel_perm_function)
       class is(rpf_mK_gas_type)
-        sf%nparam = 4
         sf%sigmaz = 3.37D-1
-        sf%muz = -6.3D0
-        sf%rmax = 2.52D-3
-        sf%r0 = 1.07D-4
         sf%Srg = 1.0D-3
       class default
         print *, 'no mK4 Gas rel perm type in setUp'
