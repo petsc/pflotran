@@ -4167,22 +4167,22 @@ subroutine SF_mK_Verify(this,name,option)
     call printErrMsg(option)
   endif
   select case(this%nparam)
-  case(4)
-    ! r0 is only used for nparam 4
-    if (Uninitialized(this%r0)) then
-      option%io_buffer = UninitializedMessage('R0',string)
+    case(4)
+      ! r0 is only used for nparam 4
+      if (Uninitialized(this%r0)) then
+        option%io_buffer = UninitializedMessage('R0',string)
+        call printErrMsg(option)
+      endif
+      if (this%r0 >= this%rmax) then
+        option%io_buffer = string //' requires RMAX > R0'
+        call printErrMsg(option)
+      end if
+    case(3)
+      continue ! rmax handled above
+    case default
+      option%io_buffer = 'invalid NPARAM value in' &
+           &// string // '. Only NPARAM=(3,4) supported.'
       call printErrMsg(option)
-    endif
-    if (this%r0 >= this%rmax) then
-      option%io_buffer = string //' requires RMAX > R0'
-      call printErrMsg(option)
-    end if
-  case(3)
-    continue ! rmax handled above
-  case default
-    option%io_buffer = 'invalid NPARAM value in' &
-         &// string // '. Only NPARAM=(3,4) supported.'
-    call printErrMsg(option)
   end select
 
 end subroutine SF_MK_Verify
@@ -4228,7 +4228,6 @@ subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
   endif
 
   Se = (liquid_saturation - this%Sr)/(1.d0 - this%Sr)
-  ! 2 & 1/2 cancel in argument, sqrt2 & 1/sqrt2 cancel outside
   inverse = -InverseNorm(Se)
   mueta = LNKAP - this%muz
   exparg = this%sigmaz*inverse + mueta
@@ -6739,22 +6738,22 @@ subroutine RPF_mK_Liq_Verify(this,name,option)
     call printErrMsg(option)
   endif
   select case(this%nparam)
-  case(4)
-    ! r0 is only used for nparam 4
-    if (Uninitialized(this%r0)) then
-      option%io_buffer = UninitializedMessage('R0',string)
-      call printErrMsg(option)
-    endif
-    if (this%r0 >= this%rmax) then
-      option%io_buffer = string //' requires RMAX > R0'
-      call printErrMsg(option)
-    end if
-  case(3)
-    continue ! rmax handled above
-  case default
-    option%io_buffer = 'invalid NPARAM value in' &
-         &// string // '. Only NPARAM=(3,4) supported.'
-    call printErrMsg(option)
+   case(4)
+     ! r0 is only used for nparam 4
+     if (Uninitialized(this%r0)) then
+       option%io_buffer = UninitializedMessage('R0',string)
+       call printErrMsg(option)
+     endif
+     if (this%r0 >= this%rmax) then
+       option%io_buffer = string //' requires RMAX > R0'
+       call printErrMsg(option)
+     end if
+   case(3)
+     continue ! rmax handled above
+   case default
+     option%io_buffer = 'invalid NPARAM value in' &
+          &// string // '. Only NPARAM=(3,4) supported.'
+     call printErrMsg(option)
   end select
 
 end subroutine RPF_mK_Liq_Verify
@@ -6889,22 +6888,22 @@ subroutine RPF_mK_Gas_Verify(this,name,option)
     call printErrMsg(option)
   endif
   select case(this%nparam)
-  case(4)
-    ! r0 is only used for nparam 4
-    if (Uninitialized(this%r0)) then
-      option%io_buffer = UninitializedMessage('R0',string)
+    case(4)
+      ! r0 is only used for nparam 4
+      if (Uninitialized(this%r0)) then
+        option%io_buffer = UninitializedMessage('R0',string)
+        call printErrMsg(option)
+      endif
+      if (this%r0 >= this%rmax) then
+        option%io_buffer = string //' requires RMAX > R0'
+        call printErrMsg(option)
+      end if
+    case(3)
+      continue ! rmax handled above
+    case default
+      option%io_buffer = 'invalid NPARAM value in' &
+           &// string // '. Only NPARAM=(3,4) supported.'
       call printErrMsg(option)
-    endif
-    if (this%r0 >= this%rmax) then
-      option%io_buffer = string //' requires RMAX > R0'
-      call printErrMsg(option)
-    end if
-  case(3)
-    continue ! rmax handled above
-  case default
-    option%io_buffer = 'invalid NPARAM value in' &
-         &// string // '. Only NPARAM=(3,4) supported.'
-    call printErrMsg(option)
   end select
 
 end subroutine RPF_mK_Gas_Verify
@@ -6965,7 +6964,7 @@ subroutine RPF_mK_Gas_RelPerm(this,liquid_saturation, &
   sqrtSe = sqrt(Seg)
   relative_permeability = sqrtSe*erfcRes*5.0D-1
 
-  ! from Wolfram Alpha (x -> Se)
+  ! from Wolfram Alpha (x -> Seg)
   ! (InverseErfc[x] -> -1/Sqrt[x] InverseNorm[x/2])
   !
   ! D[(Sqrt[x] Erfc[sigmaz/Sqrt[2] + InverseErfc[2 x]])/2, x] =
