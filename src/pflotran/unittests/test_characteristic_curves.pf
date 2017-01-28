@@ -1075,19 +1075,19 @@ contains
     dkr_p = dsat_pres * dkr_sat
     string = '3-parameter modified Kosugi saturation as a function of '//&
          &'capillary pressure'
-    value = 0.97111238330715377d0
+    value = 0.97553218866115921d0
     @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
     string = '3-parameter modified Kosugi relative permeability as a '//&
          &'function of capillary pressure'
-    value = 0.91541903431893679d0
+    value = 0.92698086319910944d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = '3-parameter modified Kosugi derivative of saturation as '//&
          &'a function of capillary pressure'
-    value = -4.6591923068046767D-3
+    value = 4.6591923068046767D-3
     @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
     string = '3-parameter modified Kosugi derivative of relative perm as'// &
          &' a function of capillary pressure'
-    value = -2.4954306904234067D-3
+    value = 1.2332728973048976D-2
     @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
 
   end subroutine testsf_modified_kosugi_3param
@@ -1147,7 +1147,7 @@ contains
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = '3-parameter modified Kosugi derivative of liquid relative'//&
          &' permeability as a function of liquid saturation'
-    value = 0.75483124455850648d0
+    value = 0.92477440290277491d0
     @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
     ! gas relative permeability = f(saturation)
@@ -1160,7 +1160,7 @@ contains
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = '3-parameter modified Kosugi derivative of gas relative'//&
          &' permeability as a function of liquid saturation'
-    value = 1.2304771805582269d0
+    value = -1.2770282015052443d0
     @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
   end subroutine testrpf_modified_kosugi_3param
@@ -1196,19 +1196,19 @@ contains
     dkr_p = dsat_pres * dkr_sat
     string = '4-parameter modified Kosugi saturation as a function of '//&
          &'capillary pressure'
-    value = 0.91712977496015746d0
+    value = 0.92980891939125332d0
     @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
     string = '4-parameter modified Kosugi relative permeability as a '//&
          &'function of capillary pressure'
-    value = 0.78902231709586002d0
+    value = 0.81681096378122864d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = '4-parameter modified Kosugi derivative of saturation as '//&
          &'a function of capillary pressure'
-    value = -9.0797142006156725D-3
+    value = 9.0797142006156725D-3
     @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
     string = '4-parameter modified Kosugi derivative of relative perm as'// &
          &' a function of capillary pressure'
-    value = -6.3325258736223024D-3
+    value = 2.0247446418857194D-2
     @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
 
   end subroutine testsf_modified_kosugi_4param
@@ -1268,7 +1268,7 @@ contains
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = '4-parameter modified Kosugi derivative of liquid relative'//&
          &' permeability as a function of liquid saturation'
-    value = 0.75483124455850648d0  ! same as 3-param
+    value = 0.92477440290277491d0  ! same as 3-param
     @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
     ! gas relative permeability = f(saturation)
@@ -1281,7 +1281,7 @@ contains
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = '4-parameter modified Kosugi derivative of gas relative'//&
          &' permeability as a function of liquid saturation'
-    value = 1.2304771805582269d0   ! same as 3-param
+    value = -1.2770282015052443d0   ! same as 3-param
     @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
   end subroutine testrpf_modified_kosugi_4param

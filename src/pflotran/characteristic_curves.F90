@@ -1379,6 +1379,9 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
           case('NPARAM')
             call InputReadInt(input,option,rpf%nparam)
             call InputErrorMsg(input,option,'nparam',error_string)
+          case('GAS_RESIDUAL_SATURATION')
+            call InputReadDouble(input,option,rpf%Srg)
+            call InputErrorMsg(input,option,'Srg',error_string)
           case default
             call InputKeywordUnrecognized(keyword, &
                  'MODIFIED_KOSUGI gas relative permeability '//&
@@ -4278,16 +4281,12 @@ subroutine SF_mK_Saturation(this,capillary_pressure,liquid_saturation, &
 
   dsat_dpres = UNINITIALIZED_DOUBLE
 
-  if (capillary_pressure <= 0.d0) then
-    liquid_saturation = 1.d0
-    return
-  end if
-
   hc = KAPPA/this%rmax
   if (capillary_pressure <= hc) then
     liquid_saturation = 1.d0
     return
   end if
+
   if (this%nparam == 3) then
     lnArg = capillary_pressure - hc
   elseif (this%nparam == 4) then
@@ -4298,15 +4297,15 @@ subroutine SF_mK_Saturation(this,capillary_pressure,liquid_saturation, &
     end if
     lnArg = 1.d0/(1.d0/capillary_pressure - 1.d0/hmax) - hc
   end if
+
   rt2sz = SQRT2*this%sigmaz
   mueta = LNKAP - this%muz
   erfcArg = (log(lnArg) - mueta)/rt2sz
   liquid_saturation = this%Sr + (1.0d0-this%Sr)*5.0D-1*erfc(erfcArg)
-  dsat_dpres = -exp(-erfcArg**2)/(SQRTPI*rt2sz*lnArg)
+  dsat_dpres = exp(-erfcArg**2)/(SQRTPI*rt2sz*lnArg)
 
 end subroutine SF_mK_Saturation
 ! End SF: modified Kosugi
-
 
 ! ************************************************************************** !
 
@@ -6783,7 +6782,8 @@ subroutine RPF_mK_Liq_RelPerm(this,liquid_saturation, &
   PetscReal, intent(out) :: dkr_sat
   type(option_type), intent(inout) :: option
 
-  PetscReal :: Se
+  PetscReal :: Se, dkr_Se, dSe_sat
+  PetscReal :: InvSatRange
   PetscReal :: erfcArg, erfcRes
   PetscReal :: invErfcRes
   PetscReal :: sqrtSe, expArg
@@ -6791,7 +6791,8 @@ subroutine RPF_mK_Liq_RelPerm(this,liquid_saturation, &
   relative_permeability = 0.d0
   dkr_sat = UNINITIALIZED_DOUBLE
 
-  Se = (liquid_saturation - this%Sr)/(1.0D0 - this%Sr)
+  InvSatRange = 1.0d0/(1.0d0 - this%Sr)
+  Se = (liquid_saturation - this%Sr)*InvSatRange
   if (Se >= 1.d0) then
     relative_permeability = 1.d0
     return
@@ -6806,9 +6807,17 @@ subroutine RPF_mK_Liq_RelPerm(this,liquid_saturation, &
   sqrtSe = sqrt(Se)
   relative_permeability = sqrtSe*erfcRes*5.0D-1
 
-  ! from Wolfram Alpha
-  expArg = 5.0D-1*invErfcRes**2 + erfcArg**2
-  dkr_sat = erfcres/(4.0D0*sqrtSe) + sqrtSe*exp(-expArg)
+  ! from Wolfram Alpha (x -> Se)
+  ! (InverseErfc[x] -> -1/Sqrt[x] InverseNorm[x/2])
+  !
+  ! D[(Sqrt[x] Erfc[sigmaz/Sqrt[2] + InverseErfc[2 x]])/2, x] =
+  ! E^(InverseErfc[2 x]^2 - (simgaz/Sqrt[2] + InverseErfc[2 x])^2) * ...
+  ! Sqrt[x] + Erfc[sigmaz/Sqrt[2] + InverseErfc[2 x]]/(4 Sqrt[x])
+  expArg = 5.0D-1*invErfcRes**2 - erfcArg**2
+  dkr_Se = erfcres/(4.0D0*sqrtSe) + sqrtSe*exp(expArg)
+
+  dSe_sat = InvSatRange
+  dkr_sat = dkr_Se * dSe_sat
 
 end subroutine RPF_mK_Liq_RelPerm
 ! End RPF: modified Kosugi (Liquid)
@@ -6944,12 +6953,17 @@ subroutine RPF_mK_Gas_RelPerm(this,liquid_saturation, &
   sqrtSe = sqrt(Seg)
   relative_permeability = sqrtSe*erfcRes*5.0D-1
 
-  ! from Wolfram Alpha
-  expArg = 5.0D-1*invErfcRes**2 + erfcArg**2
-  dkr_Se = erfcres/(4.d0*sqrtSe) + sqrtSe*exp(-expArg)
+  ! from Wolfram Alpha (x -> Se)
+  ! (InverseErfc[x] -> -1/Sqrt[x] InverseNorm[x/2])
+  !
+  ! D[(Sqrt[x] Erfc[sigmaz/Sqrt[2] + InverseErfc[2 x]])/2, x] =
+  ! E^(InverseErfc[2 x]^2 - (simgaz/Sqrt[2] + InverseErfc[2 x])^2) * ...
+  ! Sqrt[x] + Erfc[sigmaz/Sqrt[2] + InverseErfc[2 x]]/(4 Sqrt[x])
+  expArg = 5.0D-1*invErfcRes**2 - erfcArg**2
+  dkr_Se = erfcres/(4.0D0*sqrtSe) + sqrtSe*exp(expArg)
 
   dSe_sat = 1.d0 / (1.d0 - this%Sr - this%Srg)
-  dkr_sat = dkr_Se * dSe_sat
+  dkr_sat = -1.d0 * dkr_Se * dSe_sat
 
 end subroutine RPF_MK_Gas_RelPerm
 ! End RPF: modified Kosigi (Gas)
