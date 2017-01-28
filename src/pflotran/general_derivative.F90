@@ -60,9 +60,9 @@ subroutine GeneralDerivativeDriver(option)
                               material_parameter,option)  
   option%flow_dt = 1.d0
   
-!  istate = LIQUID_STATE
+  istate = LIQUID_STATE
 !  istate = GAS_STATE
-  istate = TWO_PHASE_STATE
+!  istate = TWO_PHASE_STATE
   select case(istate)
     case(LIQUID_STATE)
       xx(1) = 1.d6
@@ -93,11 +93,11 @@ subroutine GeneralDerivativeDriver(option)
   istate2 = istate
 !  istate2 = LIQUID_STATE
 !  istate2 = GAS_STATE
-!  istate2 = TWO_PHASE_STATE
+  istate2 = TWO_PHASE_STATE
   ! scales must range (0.001 - 1.999d0)
   scale2 = 1.d0
 !  scale2 = 1.001d0
-!  scale2 = 0.999d0
+  scale2 = 0.999d0
 !  scale2 = 100.d0
   select case(istate2)
     case(LIQUID_STATE)

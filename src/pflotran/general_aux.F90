@@ -700,6 +700,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
         gen_auxvar%d%xmol_p(acid,gid) = -gen_auxvar%xmol(acid,gid)/gen_auxvar%pres(gid)
         gen_auxvar%d%xmol_p(wid,gid) = -gen_auxvar%d%xmol_p(acid,gid)
         ! we hijack the liquid phase for air pressure
+        ! this could be pushed to where it is used
         gen_auxvar%d%xmol_p(acid,lid) = 1.d0/gen_auxvar%pres(gid)
         gen_auxvar%d%xmol_p(wid,lid) = -gen_auxvar%d%xmol_p(acid,lid)
       endif                             

@@ -2428,10 +2428,10 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
   iphase = LIQUID_PHASE
   sat_up = gen_auxvar_up%sat(iphase)
   sat_dn = gen_auxvar_dn%sat(iphase)
-  !geh: i am not sure why both of these conditionals were included.  seems
-  !     like the latter would never be false.
   dsatup = 1.d0
   dsatdn = 1.d0
+  ! by changing #if 1 -> 0, gas component is allowed to diffuse in liquid
+  ! phase even if the phase does not exist.
 #if 1
   if (sqrt(sat_up*sat_dn) > eps) then
 #else
@@ -2454,22 +2454,26 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
     endif
 #endif
     if (general_harmonic_diff_density) then
+!    if (.false.) then
+      ! density_ave in this case is not used.
+      density_ave = 1.d0
       den_up = gen_auxvar_up%den(iphase)
       den_dn = gen_auxvar_dn%den(iphase)
       ddensity_ave_dden_up = 1.d0
       ddensity_ave_dden_dn = 1.d0
     else
+      ! den_up and den_dn are not used in this case
+      den_up = 1.d0
+      den_dn = 1.d0
       ! we use upstream weighting when iphase is not equal, otherwise
       ! arithmetic with 50/50 weighting
-      den_up = GeneralAverageDensity(iphase, &
+      density_ave = GeneralAverageDensity(iphase, &
                                       global_auxvar_up%istate, &
                                       global_auxvar_dn%istate, &
                                       gen_auxvar_up%den, &
                                       gen_auxvar_dn%den, &
                                       ddensity_ave_dden_up, &
                                       ddensity_ave_dden_dn)
-      ! by setting both equal, we avoid the harmonic weighting below
-      den_dn = den_up
     endif
     stpd_up = sat_up*material_auxvar_up%tortuosity* &
               gen_auxvar_up%effective_porosity*den_up
@@ -2481,7 +2485,7 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
     dstpd_up_dsatup = stpd_up / sat_up
     dstpd_dn_dsatdn = stpd_dn / sat_dn
     dstpd_up_ddenup = stpd_up / den_up * ddensity_ave_dden_up
-    dstpd_dn_ddendn = stpd_dn / den_dn * ddensity_ave_dden_up
+    dstpd_dn_ddendn = stpd_dn / den_dn * ddensity_ave_dden_dn
     
     if (general_diffuse_xmol) then ! delta of mole fraction
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
@@ -2574,7 +2578,8 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
 
         ! derivative wrt air pressure
         dtot_mole_flux_dp = &
-          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup * &
+          ! air mole fraction
+          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup / &
           gen_auxvar_up%d%Hc
         ! derivative water wrt air saturation
          Jlup(1,2) = -1.d0 * dtot_mole_flux_dp
@@ -2588,7 +2593,11 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
         dtot_mole_flux_dT = & 
           ! liquid density
           dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_up * &
-          dstpd_up_ddenup * gen_auxvar_up%d%denl_T
+          dstpd_up_ddenup * gen_auxvar_up%d%denl_T + &
+          ! air mole fraction
+          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup  * &
+          -1.d0 * gen_auxvar_up%xmol(air_comp_id,LIQUID_PHASE) / &
+          gen_auxvar_up%d%Hc * gen_auxvar_up%d%Hc_T
         ! diffusion coefficient derivative wrt temperature          
         ! derivative water wrt temperature
         Jlup(1,3) = -1.d0 * dtot_mole_flux_dT
@@ -2701,7 +2710,7 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
 
         ! derivative wrt air pressure
         dtot_mole_flux_dp = &
-          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmoldn * &
+          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmoldn / &
           gen_auxvar_dn%d%Hc
         ! derivative water wrt air saturation
          Jldn(1,2) = -1.d0 * dtot_mole_flux_dp
@@ -2715,7 +2724,11 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
         dtot_mole_flux_dT = & 
           ! liquid density
           dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
-          dstpd_dn_ddendn * gen_auxvar_dn%d%denl_T
+          dstpd_dn_ddendn * gen_auxvar_dn%d%denl_T + &
+          ! air mole fraction
+          dtot_mole_flux_ddeltaX * delta_X_whatever_dxmoldn  * &
+          -1.d0 * gen_auxvar_dn%xmol(air_comp_id,LIQUID_PHASE) / &
+          gen_auxvar_dn%d%Hc * gen_auxvar_dn%d%Hc_T          
         ! diffusion coefficient derivative wrt temperature          
         ! derivative water wrt temperature
         Jldn(1,3) = -1.d0 * dtot_mole_flux_dT
@@ -2819,7 +2832,7 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
     dstpd_up_dsatup = stpd_up / sat_up
     dstpd_dn_dsatdn = stpd_dn / sat_dn
     dstpd_up_ddenup = stpd_up / den_up * ddensity_ave_dden_up
-    dstpd_dn_ddendn = stpd_dn / den_dn * ddensity_ave_dden_up
+    dstpd_dn_ddendn = stpd_dn / den_dn * ddensity_ave_dden_dn
     
     if (general_diffuse_xmol) then ! delta of mole fraction
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
@@ -2846,7 +2859,6 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
     stpd_ave_over_dist = stpd_up*stpd_dn/tempreal
     dstpd_ave_over_dist_dstpd_up = (stpd_dn-stpd_ave_over_dist*dist_dn)/tempreal
     dstpd_ave_over_dist_dstpd_dn = (stpd_up-stpd_ave_over_dist*dist_up)/tempreal
-!    dstpd_ave_over_dist_dsat_ave = stpd_up*stpd_dn/tempreal
     ! need to account for multiple phases
     ! Eq. 1.9b.  The gas density is added below
     if (general_temp_dep_gas_air_diff) then
