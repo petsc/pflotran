@@ -4173,11 +4173,15 @@ subroutine SF_mK_Verify(this,name,option)
       option%io_buffer = UninitializedMessage('R0',string)
       call printErrMsg(option)
     endif
+    if (this%r0 >= this%rmax) then
+      option%io_buffer = string //' requires RMAX > R0'
+      call printErrMsg(option)
+    end if
   case(3)
     continue ! rmax handled above
   case default
-    option%io_buffer = &
-         & UninitializedMessage('invalid NPARAM value',string)
+    option%io_buffer = 'invalid NPARAM value in' &
+         &// string // '. Only NPARAM=(3,4) supported.'
     call printErrMsg(option)
   end select
 
@@ -6741,11 +6745,15 @@ subroutine RPF_mK_Liq_Verify(this,name,option)
       option%io_buffer = UninitializedMessage('R0',string)
       call printErrMsg(option)
     endif
+    if (this%r0 >= this%rmax) then
+      option%io_buffer = string //' requires RMAX > R0'
+      call printErrMsg(option)
+    end if
   case(3)
     continue ! rmax handled above
   case default
-    option%io_buffer = &
-         & UninitializedMessage('invalid NPARAM value',string)
+    option%io_buffer = 'invalid NPARAM value in' &
+         &// string // '. Only NPARAM=(3,4) supported.'
     call printErrMsg(option)
   end select
 
@@ -6887,11 +6895,15 @@ subroutine RPF_mK_Gas_Verify(this,name,option)
       option%io_buffer = UninitializedMessage('R0',string)
       call printErrMsg(option)
     endif
+    if (this%r0 >= this%rmax) then
+      option%io_buffer = string //' requires RMAX > R0'
+      call printErrMsg(option)
+    end if
   case(3)
     continue ! rmax handled above
   case default
-    option%io_buffer = &
-         & UninitializedMessage('invalid NPARAM value',string)
+    option%io_buffer = 'invalid NPARAM value in' &
+         &// string // '. Only NPARAM=(3,4) supported.'
     call printErrMsg(option)
   end select
 
