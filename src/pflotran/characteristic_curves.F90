@@ -4240,7 +4240,6 @@ subroutine SF_mK_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: lnArg, erfcArg
 
   dsat_dpres = 0.0d0
-
   cap_press_scaled = capillary_pressure/UNIT_CONVERSION
   
   hc = KAPPA/this%rmax
@@ -4251,7 +4250,7 @@ subroutine SF_mK_Saturation(this,capillary_pressure,liquid_saturation, &
 
   if (this%nparam == 3) then
     lnArg = cap_press_scaled - hc
-  elseif (this%nparam == 4) then
+  else ! nparam == 4 (checked elsewhere)
     hmax = KAPPA/this%r0
     if (cap_press_scaled >= hmax) then
       liquid_saturation = this%Sr
@@ -6871,7 +6870,7 @@ subroutine RPF_mK_Gas_RelPerm(this,liquid_saturation, &
   dkr_Se = erfcres/(4.0D0*sqrtSe) + sqrtSe*exp(expArg)
 
   dSe_sat = 1.d0 / (1.d0 - this%Sr - this%Srg)
-  dkr_sat = -1.d0 * dkr_Se * dSe_sat
+  dkr_sat = -1.d0 * dkr_Se * dSe_sat ! -1 from dSeg/dSe
 
 end subroutine RPF_MK_Gas_RelPerm
 ! End RPF: modified Kosigi (Gas)
