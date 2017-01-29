@@ -4163,10 +4163,10 @@ subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
 
   implicit none
 
-  ! 0.149 cm^2 (water in glass tube) -> 1.49E-5 m^2 -> *rho*g ~ 0.146 Pa-m
-  PetscReal, parameter :: KAPPA = 1.46169D-1
+  PetscReal, parameter :: KAPPA = 1.49D-1 !  water in glass tube
   PetscReal, parameter :: LNKAP = log(KAPPA)
-
+  PetscReal, parameter :: UNIT_CONVERSION = 1.0D+3*9.81d0/1.0D+2
+  
   class(sat_func_mK_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: capillary_pressure
@@ -4196,7 +4196,7 @@ subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
     capillary_pressure = 1.d0/(1.d0/capillary_pressure + hmaxinv)
   end if
 
-  capillary_pressure = min(capillary_pressure,this%pcmax)
+  capillary_pressure = min(capillary_pressure*UNIT_CONVERSION,this%pcmax)
 
 end subroutine SF_mK_CapillaryPressure
 
@@ -4223,46 +4223,48 @@ subroutine SF_mK_Saturation(this,capillary_pressure,liquid_saturation, &
   ! gnu & intel extension and required in f2008
   intrinsic :: erfc
 
-  ! 0.149 cm^2 (water in glass tube) -> 1.49E-5 m^2 -> *rho*g ~ 0.146 Pa-m
-  PetscReal, parameter :: KAPPA = 1.46169D-1
+  PetscReal, parameter :: KAPPA = 1.49D-1 ! water in glass tube
   PetscReal, parameter :: LNKAP = log(KAPPA)
   PetscReal, parameter :: SQRT2 = sqrt(2.0d0)
   PetscReal, parameter :: SQRTPI = sqrt(4.0d0*atan(1.0d0))
-
+  PetscReal, parameter :: UNIT_CONVERSION = 1.0D+3*9.81d0/1.0D+2
+  
   class(sat_func_mK_type) :: this
   PetscReal, intent(in) :: capillary_pressure
   PetscReal, intent(out) :: liquid_saturation
   PetscReal, intent(out) :: dsat_dpres
   type(option_type), intent(inout) :: option
 
-  PetscReal :: hc, hmax
+  PetscReal :: hc, hmax, cap_press_scaled
   PetscReal :: mueta, rt2sz
   PetscReal :: lnArg, erfcArg
 
-  dsat_dpres = UNINITIALIZED_DOUBLE
+  dsat_dpres = 0.0d0
 
+  cap_press_scaled = capillary_pressure/UNIT_CONVERSION
+  
   hc = KAPPA/this%rmax
-  if (capillary_pressure <= hc) then
+  if (cap_press_scaled <= hc) then
     liquid_saturation = 1.d0
     return
   end if
 
   if (this%nparam == 3) then
-    lnArg = capillary_pressure - hc
+    lnArg = cap_press_scaled - hc
   elseif (this%nparam == 4) then
     hmax = KAPPA/this%r0
-    if (capillary_pressure >= hmax) then
-      liquid_saturation = 0.d0
+    if (cap_press_scaled >= hmax) then
+      liquid_saturation = this%Sr
       return
     end if
-    lnArg = 1.d0/(1.d0/capillary_pressure - 1.d0/hmax) - hc
+    lnArg = 1.d0/(1.d0/cap_press_scaled - 1.d0/hmax) - hc
   end if
 
   rt2sz = SQRT2*this%sigmaz
   mueta = LNKAP - this%muz
   erfcArg = (log(lnArg) - mueta)/rt2sz
   liquid_saturation = this%Sr + (1.0d0-this%Sr)*5.0D-1*erfc(erfcArg)
-  dsat_dpres = exp(-erfcArg**2)/(SQRTPI*rt2sz*lnArg)
+  dsat_dpres = exp(-erfcArg**2)/(SQRTPI*rt2sz*lnArg)/UNIT_CONVERSION
 
 end subroutine SF_mK_Saturation
 ! End SF: modified Kosugi
@@ -6722,7 +6724,7 @@ subroutine RPF_mK_Liq_RelPerm(this,liquid_saturation, &
   PetscReal :: sqrtSe, expArg
 
   relative_permeability = 0.d0
-  dkr_sat = UNINITIALIZED_DOUBLE
+  dkr_sat = 0.d0
 
   InvSatRange = 1.0d0/(1.0d0 - this%Sr)
   Se = (liquid_saturation - this%Sr)*InvSatRange
@@ -6842,7 +6844,7 @@ subroutine RPF_mK_Gas_RelPerm(this,liquid_saturation, &
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
 
   relative_permeability = 0.d0
-  dkr_sat = UNINITIALIZED_DOUBLE
+  dkr_sat = 0.d0
   if (Se >= 1.d0) then
     relative_permeability = 0.d0
     return
