@@ -1050,7 +1050,7 @@ contains
     character(len=128) :: string
 
     ! saturation = f(capillary_pressure)
-    capillary_pressure = 1.0D+2
+    capillary_pressure = 1.0D+4
     call this%cc_mk3%saturation_function%Saturation(capillary_pressure, &
                                          liquid_saturation, &
                                          dsat_pres,this%option)
@@ -1061,19 +1061,19 @@ contains
     dkr_p = dsat_pres * dkr_sat
     string = '3-parameter modified Kosugi saturation as a function of '//&
          &'capillary pressure'
-    value = 0.97553218866115921d0
+    value = 0.97481347586415668d0
     @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
     string = '3-parameter modified Kosugi relative permeability as a '//&
          &'function of capillary pressure'
-    value = 0.92698086319910944d0
+    value = 0.92508223462292838d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = '3-parameter modified Kosugi derivative of saturation as '//&
          &'a function of capillary pressure'
-    value = 4.6591923068046767D-3
+    value = 4.7607337955577978D-5
     @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
     string = '3-parameter modified Kosugi derivative of relative perm as'// &
          &' a function of capillary pressure'
-    value = 1.2332728973048976D-2
+    value = 1.2551629198938072D-4
     @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
 
   end subroutine testsf_modified_kosugi_3param
@@ -1101,7 +1101,7 @@ contains
                            capillary_pressure, this%option)
     string = '3-parameter modified Kosugi capillary pressure as a '//&
          &'function of saturation'
-    value = 177.38940531841268d0
+    value = 17707.010438883957d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
   end subroutine testcp_modified_kosugi_3param
@@ -1142,11 +1142,11 @@ contains
                               dkr_sat, this%option)
     string = '3-parameter modified Kosugi gas relative permeability as'//&
          &' a function of liquid saturation'
-    value = 0.35040465818058597d0
+    value = 0.35040465818058608d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = '3-parameter modified Kosugi derivative of gas relative'//&
          &' permeability as a function of liquid saturation'
-    value = -1.2770282015052443d0
+    value = -1.2770282015052450d0
     @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
   end subroutine testrpf_modified_kosugi_3param
@@ -1171,7 +1171,7 @@ contains
     character(len=128) :: string
 
     ! saturation = f(capillary_pressure)
-    capillary_pressure = 1.0D+2
+    capillary_pressure = 1.0D+4
     call this%cc_mk4%saturation_function%Saturation(capillary_pressure, &
                                          liquid_saturation, &
                                          dsat_pres,this%option)
@@ -1182,19 +1182,19 @@ contains
     dkr_p = dsat_pres * dkr_sat
     string = '4-parameter modified Kosugi saturation as a function of '//&
          &'capillary pressure'
-    value = 0.92980891939125332d0
+    value = 0.92818361251082959d0
     @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
     string = '4-parameter modified Kosugi relative permeability as a '//&
          &'function of capillary pressure'
-    value = 0.81681096378122864d0
+    value = 0.81319485595377061d0
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = '4-parameter modified Kosugi derivative of saturation as '//&
          &'a function of capillary pressure'
-    value = 9.0797142006156725D-3
+    value = 9.2150539010847664D-5
     @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
     string = '4-parameter modified Kosugi derivative of relative perm as'// &
          &' a function of capillary pressure'
-    value = 2.0247446418857194D-2
+    value = 2.0455735204588673D-4
     @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
 
   end subroutine testsf_modified_kosugi_4param
@@ -1222,7 +1222,7 @@ contains
                            capillary_pressure, this%option)
     string = '4-parameter modified Kosugi capillary pressure as a '//&
          &'function of saturation'
-    value = 157.00202462439313d0
+    value = 15671.942098006928d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
 
   end subroutine testcp_modified_kosugi_4param
@@ -1263,11 +1263,11 @@ contains
                               dkr_sat, this%option)
     string = '4-parameter modified Kosugi gas relative permeability as'//&
          &' a function of liquid saturation'
-    value = 0.35040465818058597d0  ! same as 3-param
+    value = 0.35040465818058608d0  ! same as 3-param
     @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
     string = '4-parameter modified Kosugi derivative of gas relative'//&
          &' permeability as a function of liquid saturation'
-    value = -1.2770282015052443d0   ! same as 3-param
+    value = -1.2770282015052450d0   ! same as 3-param
     @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
   end subroutine testrpf_modified_kosugi_4param
