@@ -60,9 +60,9 @@ subroutine GeneralDerivativeDriver(option)
                               material_parameter,option)  
   option%flow_dt = 1.d0
   
-  istate = LIQUID_STATE
+!  istate = LIQUID_STATE
 !  istate = GAS_STATE
-!  istate = TWO_PHASE_STATE
+  istate = TWO_PHASE_STATE
   select case(istate)
     case(LIQUID_STATE)
       xx(1) = 1.d6
@@ -99,6 +99,7 @@ subroutine GeneralDerivativeDriver(option)
 !  scale2 = 1.001d0
   scale2 = 0.999d0
 !  scale2 = 100.d0
+!  scale2 = 0.1d0
   select case(istate2)
     case(LIQUID_STATE)
       xx2(1) = 1.d6*scale2
@@ -111,6 +112,7 @@ subroutine GeneralDerivativeDriver(option)
 !      xx2(3) = 15.d0
       xx2(1) = 1.d6*scale2
       xx2(2) = 0.98d6*scale2
+!      xx2(2) = 0.97d6*scale2  ! to generate gradient in air mole fraction
       xx2(3) = 30.d0*scale2
 !      xx2(1) = 1.d7
 !      xx2(2) = 0.98d7
