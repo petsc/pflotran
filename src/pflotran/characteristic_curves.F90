@@ -1707,10 +1707,13 @@ subroutine CharacteristicCurvesTest(characteristic_curves,option)
   call characteristic_curves%liq_rel_perm_function%Test( &
                                                  characteristic_curves%name, &
                                                  phase,option)
-  phase = 'gas'
-  call characteristic_curves%gas_rel_perm_function%Test( &
+              
+  if ( associated(characteristic_curves%gas_rel_perm_function) ) then
+    phase = 'gas'
+    call characteristic_curves%gas_rel_perm_function%Test( &
                                                  characteristic_curves%name, &
                                                  phase,option)
+  endif
 
   if ( associated(characteristic_curves%oil_rel_perm_function) ) then
     phase = 'oil'
