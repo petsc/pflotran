@@ -4165,7 +4165,7 @@ subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
 
   PetscReal, parameter :: KAPPA = 1.49D-1 !  water in glass tube
   PetscReal, parameter :: LNKAP = log(KAPPA)
-  PetscReal, parameter :: UNIT_CONVERSION = 1.0D+3*9.81d0/1.0D+2
+  PetscReal, parameter :: UNIT_CONVERSION = 9.982D+2*9.81d0/1.0D+2
   
   class(sat_func_mK_type) :: this
   PetscReal, intent(in) :: liquid_saturation
@@ -4174,7 +4174,7 @@ subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
 
   PetscReal :: Se
   PetscReal :: inverse, exparg
-  PetscReal :: mueta, hc, hmaxinv
+  PetscReal :: hc, hmaxinv
 
   if (liquid_saturation <= this%Sr) then
     capillary_pressure = this%pcmax
@@ -4186,8 +4186,7 @@ subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
 
   Se = (liquid_saturation - this%Sr)/(1.d0 - this%Sr)
   inverse = -InverseNorm(Se)
-  mueta = LNKAP - this%muz
-  exparg = this%sigmaz*inverse + mueta
+  exparg = this%sigmaz*inverse + LNKAP - this%muz
 
   hc = KAPPA/this%rmax
   capillary_pressure = exp(exparg) + hc
@@ -4227,7 +4226,7 @@ subroutine SF_mK_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal, parameter :: LNKAP = log(KAPPA)
   PetscReal, parameter :: SQRT2 = sqrt(2.0d0)
   PetscReal, parameter :: SQRTPI = sqrt(4.0d0*atan(1.0d0))
-  PetscReal, parameter :: UNIT_CONVERSION = 1.0D+3*9.81d0/1.0D+2
+  PetscReal, parameter :: UNIT_CONVERSION = 9.982D+2*9.81d0/1.0D+2
   
   class(sat_func_mK_type) :: this
   PetscReal, intent(in) :: capillary_pressure
@@ -4236,7 +4235,7 @@ subroutine SF_mK_Saturation(this,capillary_pressure,liquid_saturation, &
   type(option_type), intent(inout) :: option
 
   PetscReal :: hc, hmax, cap_press_scaled
-  PetscReal :: mueta, rt2sz
+  PetscReal :: rt2sz
   PetscReal :: lnArg, erfcArg
 
   dsat_dpres = 0.0d0
@@ -4250,7 +4249,7 @@ subroutine SF_mK_Saturation(this,capillary_pressure,liquid_saturation, &
 
   if (this%nparam == 3) then
     lnArg = cap_press_scaled - hc
-  else ! nparam == 4 (checked elsewhere)
+  else ! nparam == 4 
     hmax = KAPPA/this%r0
     if (cap_press_scaled >= hmax) then
       liquid_saturation = this%Sr
@@ -4260,8 +4259,7 @@ subroutine SF_mK_Saturation(this,capillary_pressure,liquid_saturation, &
   end if
 
   rt2sz = SQRT2*this%sigmaz
-  mueta = LNKAP - this%muz
-  erfcArg = (log(lnArg) - mueta)/rt2sz
+  erfcArg = (log(lnArg) - LNKAP + this%muz)/rt2sz
   liquid_saturation = this%Sr + (1.0d0-this%Sr)*5.0D-1*erfc(erfcArg)
   dsat_dpres = exp(-erfcArg**2)/(SQRTPI*rt2sz*lnArg)/UNIT_CONVERSION
 
@@ -6716,7 +6714,7 @@ subroutine RPF_mK_Liq_RelPerm(this,liquid_saturation, &
   PetscReal, intent(out) :: dkr_sat
   type(option_type), intent(inout) :: option
 
-  PetscReal :: Se, dkr_Se, dSe_sat
+  PetscReal :: Se, dkr_Se
   PetscReal :: InvSatRange
   PetscReal :: erfcArg, erfcRes
   PetscReal :: invErfcRes
@@ -6750,8 +6748,8 @@ subroutine RPF_mK_Liq_RelPerm(this,liquid_saturation, &
   expArg = 5.0D-1*invErfcRes**2 - erfcArg**2
   dkr_Se = erfcres/(4.0D0*sqrtSe) + sqrtSe*exp(expArg)
 
-  dSe_sat = InvSatRange
-  dkr_sat = dkr_Se * dSe_sat
+  ! InvSatRange = dSe/dsat
+  dkr_sat = dkr_Se * InvSatRange 
 
 end subroutine RPF_mK_Liq_RelPerm
 ! End RPF: modified Kosugi (Liquid)
@@ -6834,13 +6832,14 @@ subroutine RPF_mK_Gas_RelPerm(this,liquid_saturation, &
   PetscReal, intent(out) :: dkr_sat
   type(option_type), intent(inout) :: option
 
-  PetscReal :: Se, Seg
+  PetscReal :: Se, Seg, InvSatRange
   PetscReal :: dkr_Se, dSe_sat
   PetscReal :: erfcArg, erfcRes
   PetscReal :: invErfcRes
   PetscReal :: sqrtSe, expArg
 
-  Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
+  InvSatRange = 1.d0/(1.d0 - this%Sr - this%Srg)
+  Se = (liquid_saturation - this%Sr)*InvSatRange
 
   relative_permeability = 0.d0
   dkr_sat = 0.d0
@@ -6869,8 +6868,9 @@ subroutine RPF_mK_Gas_RelPerm(this,liquid_saturation, &
   expArg = 5.0D-1*invErfcRes**2 - erfcArg**2
   dkr_Se = erfcres/(4.0D0*sqrtSe) + sqrtSe*exp(expArg)
 
-  dSe_sat = 1.d0 / (1.d0 - this%Sr - this%Srg)
-  dkr_sat = -1.d0 * dkr_Se * dSe_sat ! -1 from dSeg/dSe
+  ! -1 = dSeg/dSe
+  ! InvSatRange = dSe/dsat
+  dkr_sat = -1.d0 * dkr_Se * InvSatRange 
 
 end subroutine RPF_MK_Gas_RelPerm
 ! End RPF: modified Kosigi (Gas)
