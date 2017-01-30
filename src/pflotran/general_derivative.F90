@@ -93,7 +93,7 @@ subroutine GeneralDerivativeDriver(option)
   istate2 = istate
 !  istate2 = LIQUID_STATE
 !  istate2 = GAS_STATE
-  istate2 = TWO_PHASE_STATE
+!  istate2 = TWO_PHASE_STATE
   ! scales must range (0.001 - 1.999d0)
   scale2 = 1.d0
 !  scale2 = 1.001d0

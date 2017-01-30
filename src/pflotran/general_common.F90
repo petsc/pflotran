@@ -1490,6 +1490,7 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
   PetscReal :: delta_X_whatever_dxmolup, delta_X_whatever_dxmoldn
   PetscReal :: dxmass_air_up_dxmol_air_up, dxmass_air_dn_dxmol_air_dn
   PetscReal :: dtot_mole_flux_dstpd, dtot_mole_flux_ddeltaX
+  PetscReal :: dtot_mole_flux_ddenave
   PetscReal :: diffusion_scale
   PetscReal :: ddiffusion_coef_dTup, ddiffusion_coef_dTdn
   PetscReal :: ddiffusion_coef_dpup, ddiffusion_coef_dpdn
@@ -2459,8 +2460,6 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
       density_ave = 1.d0
       den_up = gen_auxvar_up%den(iphase)
       den_dn = gen_auxvar_dn%den(iphase)
-      ddensity_ave_dden_up = 1.d0
-      ddensity_ave_dden_dn = 1.d0
     else
       ! den_up and den_dn are not used in this case
       den_up = 1.d0
@@ -2484,8 +2483,13 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
     dstpd_dn_dpordn = stpd_dn / gen_auxvar_dn%effective_porosity
     dstpd_up_dsatup = stpd_up / sat_up
     dstpd_dn_dsatdn = stpd_dn / sat_dn
-    dstpd_up_ddenup = stpd_up / den_up * ddensity_ave_dden_up
-    dstpd_dn_ddendn = stpd_dn / den_dn * ddensity_ave_dden_dn
+    dstpd_up_ddenup = stpd_up / den_up
+    dstpd_dn_ddendn = stpd_dn / den_dn
+    ! units = [mole/m^4 bulk]
+    tempreal = stpd_up*dist_dn+stpd_dn*dist_up
+    stpd_ave_over_dist = stpd_up*stpd_dn/tempreal
+    dstpd_ave_over_dist_dstpd_up = (stpd_dn-stpd_ave_over_dist*dist_dn)/tempreal
+    dstpd_ave_over_dist_dstpd_dn = (stpd_up-stpd_ave_over_dist*dist_up)/tempreal
     
     if (general_diffuse_xmol) then ! delta of mole fraction
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
@@ -2507,11 +2511,6 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
       delta_X_whatever_dxmolup = 1.d0 * dxmass_air_up_dxmol_air_up
       delta_X_whatever_dxmoldn = -1.d0 * dxmass_air_dn_dxmol_air_dn
     endif
-    ! units = [mole/m^4 bulk]
-    tempreal = stpd_up*dist_dn+stpd_dn*dist_up
-    stpd_ave_over_dist = stpd_up*stpd_dn/tempreal
-    dstpd_ave_over_dist_dstpd_up = (stpd_dn-stpd_ave_over_dist*dist_dn)/tempreal
-    dstpd_ave_over_dist_dstpd_dn = (stpd_up-stpd_ave_over_dist*dist_up)/tempreal
     
     ! units = mole/sec
     dtot_mole_flux_ddeltaX = stpd_ave_over_dist * &
@@ -2808,8 +2807,6 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
     if (general_harmonic_diff_density) then
       den_up = gen_auxvar_up%den(iphase)
       den_dn = gen_auxvar_dn%den(iphase)
-      ddensity_ave_dden_up = 1.d0
-      ddensity_ave_dden_dn = 1.d0
     else
       ! we use upstream weighting when iphase is not equal, otherwise
       ! arithmetic with 50/50 weighting
@@ -2831,8 +2828,13 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
     dstpd_dn_dpordn = stpd_dn / gen_auxvar_dn%effective_porosity
     dstpd_up_dsatup = stpd_up / sat_up
     dstpd_dn_dsatdn = stpd_dn / sat_dn
-    dstpd_up_ddenup = stpd_up / den_up * ddensity_ave_dden_up
-    dstpd_dn_ddendn = stpd_dn / den_dn * ddensity_ave_dden_dn
+    dstpd_up_ddenup = stpd_up / den_up
+    dstpd_dn_ddendn = stpd_dn / den_dn
+    ! units = [mole/m^4 bulk]
+    tempreal = stpd_up*dist_dn+stpd_dn*dist_up
+    stpd_ave_over_dist = stpd_up*stpd_dn/tempreal
+    dstpd_ave_over_dist_dstpd_up = (stpd_dn-stpd_ave_over_dist*dist_dn)/tempreal
+    dstpd_ave_over_dist_dstpd_dn = (stpd_up-stpd_ave_over_dist*dist_up)/tempreal
     
     if (general_diffuse_xmol) then ! delta of mole fraction
       delta_xmol = gen_auxvar_up%xmol(air_comp_id,iphase) - &
@@ -2854,11 +2856,6 @@ subroutine GeneralFluxB(gen_auxvar_up,global_auxvar_up, &
       delta_X_whatever_dxmolup = 1.d0 * dxmass_air_up_dxmol_air_up
       delta_X_whatever_dxmoldn = -1.d0 * dxmass_air_dn_dxmol_air_dn
     endif
-    ! units = [mole/m^4 bulk]
-    tempreal = stpd_up*dist_dn+stpd_dn*dist_up
-    stpd_ave_over_dist = stpd_up*stpd_dn/tempreal
-    dstpd_ave_over_dist_dstpd_up = (stpd_dn-stpd_ave_over_dist*dist_dn)/tempreal
-    dstpd_ave_over_dist_dstpd_dn = (stpd_up-stpd_ave_over_dist*dist_up)/tempreal
     ! need to account for multiple phases
     ! Eq. 1.9b.  The gas density is added below
     if (general_temp_dep_gas_air_diff) then
