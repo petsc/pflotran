@@ -1,0 +1,76 @@
+-- PRESSURE: Liquid Pressure --
+      Max:   2.1599424513195E+05
+      Min:   1.8665606446827E+05
+     Mean:   2.0132513324471E+05
+        5:   2.1599424513195E+05
+-- SATURATION: Liquid Saturation --
+      Max:   1.0000000000000E+00
+      Min:   1.0000000000000E+00
+     Mean:   1.0000000000000E+00
+        5:   1.0000000000000E+00
+-- GENERIC: pH --
+      Max:   7.9987846864684E+00
+      Min:   7.9987845245513E+00
+     Mean:   7.9987846055115E+00
+        5:   7.9987846864684E+00
+-- CONCENTRATION: Total I-129 --
+      Max:   2.3712021131275E-04
+      Min:   2.4677902810051E-08
+     Mean:   1.1857242768990E-04
+        5:   2.3712021131275E-04
+-- CONCENTRATION: Total Am-241 --
+      Max:   3.6034664350144E-10
+      Min:   1.1231917897959E-14
+     Mean:   1.3513588965015E-10
+        5:   3.6034664350142E-10
+-- CONCENTRATION: Total Np-237 --
+      Max:   5.0886250465660E-04
+      Min:   5.2959042849098E-08
+     Mean:   2.5445769552993E-04
+        5:   5.0886250465660E-04
+-- CONCENTRATION: Total U-233 --
+      Max:   4.2980854949089E-15
+      Min:   1.4368955565729E-19
+     Mean:   1.6118585164789E-15
+        5:   4.2980854949086E-15
+-- CONCENTRATION: Total Th-229 --
+      Max:   1.9663978800466E-18
+      Min:   1.0060856170600E-20
+     Mean:   7.4368117272584E-19
+        5:   1.9663978800465E-18
+-- CONCENTRATION: Total Pu-240 --
+      Max:   1.0000064260477E-20
+      Min:   9.9999357388233E-21
+     Mean:   1.0000000000000E-20
+        5:   1.0000064260477E-20
+-- CONCENTRATION: Total Tc-99 --
+      Max:   1.0000064260477E-20
+      Min:   9.9999357388233E-21
+     Mean:   1.0000000000000E-20
+        5:   1.0000064260477E-20
+-- CONCENTRATION: Total C-tracer --
+      Max:   1.0000064260477E-20
+      Min:   9.9999357388233E-21
+     Mean:   1.0000000000000E-20
+        5:   1.0000064260477E-20
+-- DISCRETE: Material ID --
+      Max:         1
+      Min:         1
+     Mean:   1.0000000000000E+00
+        5:         1
+-- SOLUTION: Flow --
+   Time (seconds):   1.6586940288544E+00
+   Time Steps:          122
+   Newton Iterations:          130
+   Solver Iterations:         1095
+   Time Step Cuts:            0
+   Solution 2-Norm:   1.6129744935143E+06
+   Residual 2-Norm:   5.8873525715668E-18
+-- SOLUTION: Transport --
+   Time (seconds):   7.0445585250854E-01
+   Time Steps:          122
+   Newton Iterations:          149
+   Solver Iterations:          149
+   Time Step Cuts:            0
+   Solution 2-Norm:   2.7426246499809E-03
+   Residual 2-Norm:   2.6900987557955E-22

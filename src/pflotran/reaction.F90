@@ -858,6 +858,8 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('MINIMUM_POROSITY')
         call InputReadDouble(input,option,reaction%minimum_porosity)
         call InputErrorMsg(input,option,'minimim porosity','CHEMISTRY')
+      case('USE_FULL_GEOCHEMISTRY')
+        reaction%use_full_geochemistry = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(word,'CHEMISTRY',option)
     end select
@@ -1038,7 +1040,7 @@ subroutine ReactionReadPass2(reaction,input,option)
       case('MOLAL','MOLALITY', &
             'UPDATE_POROSITY','UPDATE_TORTUOSITY', &
             'UPDATE_PERMEABILITY','UPDATE_MINERAL_SURFACE_AREA', &
-            'NO_RESTART_MINERAL_VOL_FRAC')
+            'NO_RESTART_MINERAL_VOL_FRAC','USE_FULL_GEOCHEMISTRY')
         ! dummy placeholder
     end select
   enddo  

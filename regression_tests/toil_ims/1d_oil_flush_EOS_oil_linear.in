@@ -155,7 +155,7 @@ EOS OIL
   ! den = den0 + C(p-p1) - E(t-t1)
   DENSITY LINEAR
     REFERENCE_VALUE 734.29d0        !den0 [kg/m3]  
-    PRES_REF_VAULE 1.d5             !p1 [Pa]
+    PRES_REF_VALUE 1.d5             !p1 [Pa]
     TEMP_REF_VALUE 15.0             !t1 [°C]
     COMPRESS_COEFF 0.7345d-6        !C [kg/m3/Pa]
     THERMAL_EXPANSION_COEFF 0.774d0 !E [kg/m3/°C]
@@ -166,7 +166,7 @@ EOS OIL
   ! vis = vis0 + a1(p-p1) + a2(p-p2)^2 + b1(t-t1) + b2(t-t2)^2 
   VISCOSITY QUADRATIC 
     REFERENCE_VALUE 0.987d-3    !vis0  
-    PRES_REF_VAULES 1.d5 0.0    !p1, p2 [Pa]
+    PRES_REF_VALUES 1.d5 0.0    !p1, p2 [Pa]
     TEMP_REF_VALUES 15.0  0.0   !t1, t2 [°C]
     PRES_COEFFICIENTS 0.0122d-9 0.0d0     !a1 [kg/m3/Pa], a2 [..]
     TEMP_COEFFICIENTS -0.010785d-3 0.0d0  !b1 [kg/m3/°C], b2 [..]
