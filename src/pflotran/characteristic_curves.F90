@@ -467,7 +467,6 @@ subroutine CharacteristicCurvesRead(this,input,option)
   class(characteristic_curves_type) :: this
   type(input_type), pointer :: input
   type(option_type) :: option
-  PetscInt :: iphase
   
   character(len=MAXWORDLENGTH) :: keyword, word, phase_keyword
   character(len=MAXSTRINGLENGTH) :: error_string
@@ -1700,8 +1699,7 @@ subroutine CharCurvesInputRecord(char_curve_list)
   class(characteristic_curves_type), pointer :: char_curve_list
   
   class(characteristic_curves_type), pointer :: cur_ccurve
-  character(len=MAXWORDLENGTH) :: word1, word2
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word1
   PetscInt :: id = INPUT_RECORD_UNIT
 
   write(id,'(a)') ' '
@@ -2704,7 +2702,6 @@ subroutine SF_BC_Init(this)
   implicit none
   
   class(sat_func_BC_type) :: this
-  character(len=MAXWORDLENGTH) :: name
   type(option_type) :: option
 
   call SFBaseInit(this)
@@ -3169,11 +3166,7 @@ subroutine SF_BF_KRP1_CapillaryPressure(this,liquid_saturation, &
   PetscReal, intent(out) :: capillary_pressure
   type(option_type), intent(inout) :: option
   
-  PetscReal :: n
   PetscReal :: Se2
-  PetscReal :: one_plus_pc_alpha_n
-  PetscReal :: pc_alpha_n
-  PetscReal :: pc_alpha
   
   if (liquid_saturation <= this%Sr) then
     capillary_pressure = this%pcmax
@@ -3829,9 +3822,6 @@ subroutine SF_BF_KRP11_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal, intent(out) :: liquid_saturation
   PetscReal, intent(out) :: dsat_dpres
   type(option_type), intent(inout) :: option
-  
-  PetscReal :: Se
-  PetscReal :: dSe_dpc
   
   dsat_dpres = 0.d0
 
@@ -5254,7 +5244,6 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   PetscReal :: liquid_dkr_sat  
   PetscReal :: dkr_dSe
   PetscReal :: dSe_dsat
-  PetscReal :: one_over_apcm
   
   call RPF_Mualem_Linear_Liq_RelPerm(this,liquid_saturation, &
                                      liquid_relative_permeability, &
@@ -5366,8 +5355,6 @@ subroutine RPF_Burdine_Linear_Liq_RelPerm(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
-  PetscReal :: one_over_m
-  PetscReal :: Se_one_over_m
   
   relative_permeability = 0.d0
   dkr_sat = 0.d0
@@ -5473,8 +5460,6 @@ subroutine RPF_Burdine_Linear_Gas_RelPerm(this,liquid_saturation, &
   
   PetscReal :: Se
   PetscReal :: Seg
-  PetscReal :: liquid_relative_permeability
-  PetscReal :: liquid_dkr_sat
   PetscReal :: dkr_Se
   PetscReal :: dSe_sat
   
@@ -5614,8 +5599,6 @@ subroutine RPF_BRAGFLO_KRP5_Liq_RelPerm(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
-  PetscReal :: one_over_m
-  PetscReal :: Se_one_over_m
   
   relative_permeability = 0.d0
   dkr_sat = 0.d0
@@ -5733,8 +5716,6 @@ subroutine RPF_BRAGFLO_KRP9_Liq_RelPerm(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
-  PetscReal :: one_over_m
-  PetscReal :: Se_one_over_m
   PetscReal :: dkr_dSe
   PetscReal :: dSe_dsat
   
@@ -5838,7 +5819,6 @@ subroutine RPF_BRAGFLO_KRP9_Gas_RelPerm(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
-  PetscReal :: Seg
   PetscReal :: liquid_relative_permeability
   PetscReal :: liquid_dkr_sat
 
@@ -6406,10 +6386,7 @@ subroutine RPF_TOUGH2_Linear_Oil_RelPerm(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: So
-  PetscReal :: Se
   PetscReal :: Seo
-  PetscReal :: liquid_relative_permeability
-  PetscReal :: liquid_dkr_sat
   
   ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
@@ -6660,7 +6637,6 @@ subroutine RPF_Mod_BC_Oil_RelPerm(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: So
-  PetscReal :: Se
   PetscReal :: Seo
   PetscReal :: dkr_Se
   

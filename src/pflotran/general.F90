@@ -1230,12 +1230,10 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       call GeneralFlux(gen_auxvars(ZERO_INTEGER,ghosted_id_up), &
                        global_auxvars(ghosted_id_up), &
                        material_auxvars(ghosted_id_up), &
-                       material_parameter%soil_residual_saturation(:,icap_up), &
                        material_parameter%soil_thermal_conductivity(:,imat_up), &
                        gen_auxvars(ZERO_INTEGER,ghosted_id_dn), &
                        global_auxvars(ghosted_id_dn), &
                        material_auxvars(ghosted_id_dn), &
-                       material_parameter%soil_residual_saturation(:,icap_dn), &
                        material_parameter%soil_thermal_conductivity(:,imat_dn), &
                        cur_connection_set%area(iconn), &
                        cur_connection_set%dist(:,iconn), &
@@ -1298,7 +1296,6 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
                      gen_auxvars(ZERO_INTEGER,ghosted_id), &
                      global_auxvars(ghosted_id), &
                      material_auxvars(ghosted_id), &
-                     material_parameter%soil_residual_saturation(:,icap_dn), &
                      material_parameter%soil_thermal_conductivity(:,imat_dn), &
                      cur_connection_set%area(iconn), &
                      cur_connection_set%dist(:,iconn), &
@@ -1623,12 +1620,10 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
       call GeneralFluxDerivative(gen_auxvars(:,ghosted_id_up), &
                      global_auxvars(ghosted_id_up), &
                      material_auxvars(ghosted_id_up), &
-                     material_parameter%soil_residual_saturation(:,icap_up), &
                      material_parameter%soil_thermal_conductivity(:,imat_up), &
                      gen_auxvars(:,ghosted_id_dn), &
                      global_auxvars(ghosted_id_dn), &
                      material_auxvars(ghosted_id_dn), &
-                     material_parameter%soil_residual_saturation(:,icap_dn), &
                      material_parameter%soil_thermal_conductivity(:,imat_dn), &
                      cur_connection_set%area(iconn), &
                      cur_connection_set%dist(:,iconn), &
@@ -1693,7 +1688,6 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
                       gen_auxvars(:,ghosted_id), &
                       global_auxvars(ghosted_id), &
                       material_auxvars(ghosted_id), &
-                      material_parameter%soil_residual_saturation(:,icap_dn), &
                       material_parameter%soil_thermal_conductivity(:,imat_dn), &
                       cur_connection_set%area(iconn), &
                       cur_connection_set%dist(:,iconn), &

@@ -477,11 +477,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: cell_pressure, water_vapor_pressure
   PetscReal :: den_water_vapor, den_kg_water_vapor
   PetscReal :: u_water_vapor, h_water_vapor
-  PetscReal :: u_water_vapor_pv, h_water_vapor_pv
-  PetscReal :: u_water_vapor_T, h_water_vapor_T
   PetscReal :: den_air, h_air, u_air
-  PetscReal :: h_air_pv, u_air_pv
-  PetscReal :: h_air_T, u_air_T
   PetscReal :: xmol_air_in_gas, xmol_water_in_gas
   PetscReal :: krl, visl, dvis_dp, dvis_dT, dvis_dpa
   PetscReal :: dkrl_dsatl, dkrl_dsatg
@@ -493,7 +489,6 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: NaN
   PetscReal :: creep_closure_time
   PetscReal :: xmass_air_in_gas
-  PetscReal :: xmass_air_in_liquid
   PetscReal :: Ugas_J_kg, Hgas_J_kg
   PetscReal :: Uair_J_kg, Hair_J_kg
   PetscReal :: Uvapor_J_kg, Hvapor_J_kg
@@ -1206,11 +1201,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   PetscReal :: x(option%nflowdof)
   PetscInt :: apid, cpid, vpid, spid
   PetscInt :: gid, lid, acid, wid, eid
-  PetscReal :: dummy, guess
-  PetscReal :: n_air, n_air_in_gas, n_air_in_liquid, RT, K_H_tilde, theta
   PetscBool :: flag
   character(len=MAXSTRINGLENGTH) :: state_change_string, string
-  PetscErrorCode :: ierr
 
   lid = option%liquid_phase
   gid = option%gas_phase
@@ -1447,7 +1439,6 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
   PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), &
                pert(option%nflowdof), x_pert_save(option%nflowdof)
 
-  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscReal :: tempreal
 !#define LEGACY_PERTURBATION
 #ifdef LEGACY_PERTURBATION
@@ -1462,7 +1453,6 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
   PetscInt :: idof
 
 #ifdef DEBUG_GENERAL
-  character(len=MAXWORDLENGTH) :: word
   type(global_auxvar_type) :: global_auxvar_debug
   type(general_auxvar_type) :: general_auxvar_debug
   call GlobalAuxVarInit(global_auxvar_debug,option)
@@ -2164,7 +2154,6 @@ subroutine GeneralAuxDestroy(aux)
   implicit none
 
   type(general_type), pointer :: aux
-  PetscInt :: iaux, idof
   
   if (.not.associated(aux)) return
   

@@ -956,7 +956,7 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
   
   PetscInt :: i, num_values, icount
   type(input_type), pointer :: input2
-  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXSTRINGLENGTH) :: string2
   character(len=MAXWORDLENGTH) :: word, word2, word3
   character(len=1) :: backslash
   character(len=MAXSTRINGLENGTH) :: err_string
@@ -964,7 +964,6 @@ subroutine UtilityReadIntArray(array,array_size,comment,input,option)
   PetscInt :: value
   PetscInt, pointer :: temp_array(:)
   PetscInt :: temp_array_size
-  PetscErrorCode :: ierr
 
   err_string = trim(comment) // ',UtilityReadIntArray'
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
@@ -1120,7 +1119,7 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
   
   PetscInt :: i, num_values, icount
   type(input_type), pointer :: input2
-  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXSTRINGLENGTH) :: string2
   character(len=MAXWORDLENGTH) :: word, word2, word3
   character(len=1) :: backslash
   character(len=MAXSTRINGLENGTH) :: err_string
@@ -1128,7 +1127,6 @@ subroutine UtilityReadRealArray(array,array_size,comment,input,option)
   PetscReal :: value
   PetscReal, pointer :: temp_array(:)
   PetscInt :: temp_array_size
-  PetscErrorCode :: ierr
 
   err_string = trim(comment) // ',UtilityReadRealArray'
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
@@ -1778,7 +1776,7 @@ subroutine ConvertMatrixToVector(A,vecA)
 
   PetscReal :: A(:,:)
   PetscReal, allocatable :: vecA(:,:)
-  PetscInt :: m, n, i, j
+  PetscInt :: m, n
   
   m = size(A,1)
   n = size(A,2)

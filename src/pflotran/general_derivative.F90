@@ -498,30 +498,26 @@ subroutine GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
   call GeneralPrintAuxVars(general_auxvar2(0),global_auxvar2(0),material_auxvar2(0), &
                            natural_id,'downwind',option)
 
-  call GeneralFluxB(general_auxvar(ZERO_INTEGER), &
+  call GeneralFlux(general_auxvar(ZERO_INTEGER), &
                    global_auxvar(ZERO_INTEGER), &
                    material_auxvar(ZERO_INTEGER), &
-                   material_parameter%soil_residual_saturation(:,1), &
                    material_parameter%soil_thermal_conductivity(:,1), &
                    general_auxvar2(ZERO_INTEGER), &
                    global_auxvar2(ZERO_INTEGER), &
                    material_auxvar2(ZERO_INTEGER), &
-                   material_parameter2%soil_residual_saturation(:,1), &
                    material_parameter2%soil_thermal_conductivity(:,1), &
                    area, dist, general_parameter, &
                    option,v_darcy,res,jac_anal,jac_anal2, &
                    PETSC_TRUE,PETSC_FALSE)                           
 
   do i = 1, 3
-    call GeneralFluxB(general_auxvar(i), &
+    call GeneralFlux(general_auxvar(i), &
                      global_auxvar(i), &
                      material_auxvar(i), &
-                     material_parameter%soil_residual_saturation(:,1), &
                      material_parameter%soil_thermal_conductivity(:,1), &
                      general_auxvar2(ZERO_INTEGER), &
                      global_auxvar2(ZERO_INTEGER), &
                      material_auxvar2(ZERO_INTEGER), &
-                     material_parameter2%soil_residual_saturation(:,1), &
                      material_parameter2%soil_thermal_conductivity(:,1), &
                      area, dist, general_parameter, &
                      option,v_darcy,res_pert(:,i),jac_dum,jac_dum2, &
@@ -531,15 +527,13 @@ subroutine GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
     enddo !irow
   enddo
   do i = 1, 3
-    call GeneralFluxB(general_auxvar(ZERO_INTEGER), &
+    call GeneralFlux(general_auxvar(ZERO_INTEGER), &
                      global_auxvar(ZERO_INTEGER), &
                      material_auxvar(ZERO_INTEGER), &
-                     material_parameter%soil_residual_saturation(:,1), &
                      material_parameter%soil_thermal_conductivity(:,1), &
                      general_auxvar2(i), &
                      global_auxvar2(i), &
                      material_auxvar2(i), &
-                     material_parameter2%soil_residual_saturation(:,1), &
                      material_parameter2%soil_thermal_conductivity(:,1), &
                      area, dist, general_parameter, &
                      option,v_darcy,res_pert2(:,i),jac_dum,jac_dum2, &
@@ -1180,17 +1174,19 @@ subroutine GeneralDiffJacobian(string,numerical_jacobian,analytical_jacobian, &
   
   PetscInt :: irow, icol
   
-100 format(2i2,2es13.5,es16.8)
+100 format(2i2,2es13.5,i3,es16.8)
 
   if (len_trim(string) > 1) then
     write(*,'(x,a)') string
   endif
   write(*,'(" Perturbation tolerance: ",es12.4)') perturbation_tolerance
-  write(*,'(" r c    numerical   analytical")')
+  write(*,'(" r c  numerical    analytical   digits of accuracy")')
   do icol = 1, 3
     do irow = 1, 3
       write(*,100) irow, icol, numerical_jacobian(irow,icol), &
-                   analytical_jacobian(irow,icol)
+                   analytical_jacobian(irow,icol), &
+                   GeneralDigitsOfAccuracy(numerical_jacobian(irow,icol), &
+                                           analytical_jacobian(irow,icol))
     enddo
   enddo
 
@@ -1209,6 +1205,31 @@ subroutine GeneralDiffJacobian(string,numerical_jacobian,analytical_jacobian, &
 
   
 end subroutine GeneralDiffJacobian
+
+! ************************************************************************** !
+
+function GeneralDigitsOfAccuracy(num1,num2)
+
+  implicit none
+  
+  PetscReal :: num1
+  PetscReal :: num2
+  
+  PetscInt :: GeneralDigitsOfAccuracy
+  
+  PetscReal :: tempreal
+  
+  GeneralDigitsOfAccuracy = 0
+  if (dabs(num1) > 0.d0 .and. dabs(num2) > 0.d0) then
+    tempreal = dabs(num2/(num1-num2))
+    do
+      if (tempreal < 10.d0) exit
+      tempreal = tempreal / 10.d0
+      GeneralDigitsOfAccuracy = GeneralDigitsOfAccuracy + 1
+    enddo
+  endif
+    
+end function GeneralDigitsOfAccuracy
 
 ! ************************************************************************** !
 
