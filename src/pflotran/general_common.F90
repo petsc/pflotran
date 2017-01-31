@@ -575,14 +575,18 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
     delta_pressure = gen_auxvar_up%pres(iphase) - &
                      gen_auxvar_dn%pres(iphase) + &
                      gravity_term
-    ddelta_pressure_dpup = 1.d0 + dist_gravity * ddensity_kg_ave_dden_kg_up * &
-                           gen_auxvar_up%d%denl_pl * fmw_comp(iphase)
-    ddelta_pressure_dpdn = -1.d0 + dist_gravity * ddensity_kg_ave_dden_kg_dn * &
-                           gen_auxvar_dn%d%denl_pl * fmw_comp(iphase)
-    ddelta_pressure_dTup = dist_gravity * ddensity_kg_ave_dden_kg_up * &
-                           gen_auxvar_up%d%denl_T * fmw_comp(iphase)
-    ddelta_pressure_dTdn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
-                           gen_auxvar_dn%d%denl_T * fmw_comp(iphase)
+    if (analytical_derivatives) then
+      ddelta_pressure_dpup = 1.d0 + dist_gravity * &
+                             ddensity_kg_ave_dden_kg_up * &
+                             gen_auxvar_up%d%denl_pl * fmw_comp(iphase)
+      ddelta_pressure_dpdn = -1.d0 + dist_gravity * &
+                             ddensity_kg_ave_dden_kg_dn * &
+                             gen_auxvar_dn%d%denl_pl * fmw_comp(iphase)
+      ddelta_pressure_dTup = dist_gravity * ddensity_kg_ave_dden_kg_up * &
+                             gen_auxvar_up%d%denl_T * fmw_comp(iphase)
+      ddelta_pressure_dTdn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
+                             gen_auxvar_dn%d%denl_T * fmw_comp(iphase)
+    endif
     up_scale = 0.d0
     dn_scale = 0.d0
     if (delta_pressure >= 0.d0) then
@@ -1011,18 +1015,22 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
                      gravity_term
     ! if a gas phase does not exist on either side of the connection, the gas
     ! phase properties from the opposite side are used.
-    ddelta_pressure_dpup = 1.d0 + dist_gravity * ddensity_kg_ave_dden_kg_up * &
-                           gen_auxvar_up%d%deng_pg * fmw_comp(iphase)
-    ddelta_pressure_dpdn = -1.d0 + dist_gravity * ddensity_kg_ave_dden_kg_dn * &
-                           gen_auxvar_dn%d%deng_pg * fmw_comp(iphase)
-    ddelta_pressure_dpaup = dist_gravity * ddensity_kg_ave_dden_kg_up * &
-                            gen_auxvar_up%d%deng_pa * fmw_comp(iphase)
-    ddelta_pressure_dpadn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
-                            gen_auxvar_dn%d%deng_pa * fmw_comp(iphase)
-    ddelta_pressure_dTup = dist_gravity * ddensity_kg_ave_dden_kg_up * &
-                           gen_auxvar_up%d%deng_T * fmw_comp(iphase)
-    ddelta_pressure_dTdn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
-                           gen_auxvar_dn%d%deng_T * fmw_comp(iphase)
+    if (analytical_derivatives) then
+      ddelta_pressure_dpup = 1.d0 + dist_gravity * &
+                             ddensity_kg_ave_dden_kg_up * &
+                             gen_auxvar_up%d%deng_pg * fmw_comp(iphase)
+      ddelta_pressure_dpdn = -1.d0 + dist_gravity * &
+                             ddensity_kg_ave_dden_kg_dn * &
+                             gen_auxvar_dn%d%deng_pg * fmw_comp(iphase)
+      ddelta_pressure_dpaup = dist_gravity * ddensity_kg_ave_dden_kg_up * &
+                              gen_auxvar_up%d%deng_pa * fmw_comp(iphase)
+      ddelta_pressure_dpadn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
+                              gen_auxvar_dn%d%deng_pa * fmw_comp(iphase)
+      ddelta_pressure_dTup = dist_gravity * ddensity_kg_ave_dden_kg_up * &
+                             gen_auxvar_up%d%deng_T * fmw_comp(iphase)
+      ddelta_pressure_dTdn = dist_gravity * ddensity_kg_ave_dden_kg_dn * &
+                             gen_auxvar_dn%d%deng_T * fmw_comp(iphase)
+    endif
     up_scale = 0.d0
     dn_scale = 0.d0
     if (delta_pressure >= 0.d0) then
@@ -1633,7 +1641,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
             gen_auxvar_up%d%denl_T + &
             ! air mole fraction
             dtot_mole_flux_ddeltaX * delta_X_whatever_dxmolup  * &
-            -1.d0 * gen_auxvar_up%xmol(air_comp_id,LIQUID_PHASE) / &
+            (-1.d0) * gen_auxvar_up%xmol(air_comp_id,LIQUID_PHASE) / &
             gen_auxvar_up%d%Hc * gen_auxvar_up%d%Hc_T
           ! diffusion coefficient derivative wrt temperature          
           ! derivative water wrt temperature
@@ -1669,7 +1677,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
           ! derivative total mole flux wrt gas saturation
           dtot_mole_flux_dsatg = &
             dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_up * &
-            dstpd_up_dsatup * dsatup * -1.d0 ! satl -> satg
+            dstpd_up_dsatup * dsatup * (-1.d0) ! satl -> satg
           ! derivative water wrt gas saturation
           Jlup(1,2) = -1.d0 * dtot_mole_flux_dsatg
           ! derivative air wrt gas saturation
@@ -1782,7 +1790,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
             gen_auxvar_dn%d%denl_T + &
             ! air mole fraction
             dtot_mole_flux_ddeltaX * delta_X_whatever_dxmoldn  * &
-            -1.d0 * gen_auxvar_dn%xmol(air_comp_id,LIQUID_PHASE) / &
+            (-1.d0) * gen_auxvar_dn%xmol(air_comp_id,LIQUID_PHASE) / &
             gen_auxvar_dn%d%Hc * gen_auxvar_dn%d%Hc_T          
           ! diffusion coefficient derivative wrt temperature          
           ! derivative water wrt temperature
@@ -1818,7 +1826,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
           ! derivative total mole flux wrt gas saturation
           dtot_mole_flux_dsatg = &
             dtot_mole_flux_dstpd * dstpd_ave_over_dist_dstpd_dn * &
-            dstpd_dn_dsatdn * dsatdn * -1.d0 ! satl -> satg
+            dstpd_dn_dsatdn * dsatdn * (-1.d0) ! satl -> satg
           ! derivative water wrt gas saturation
           Jldn(1,2) = -1.d0 * dtot_mole_flux_dsatg
           ! derivative air wrt gas saturation
@@ -1997,7 +2005,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
             dstpd_up_ddenup * gen_auxvar_up%d%deng_T + &
             ! if density arithmetically averaged
             dtot_mole_flux_ddenave * ddensity_ave_dden_up * &
-            gen_auxvar_up%d%deng_T + & + &
+            gen_auxvar_up%d%deng_T + &
             ! diffusion coefficient
             dtot_mole_flux_ddiffusion_coef * ddiffusion_coef_dTup
           ! derivative water wrt temperature
@@ -2355,7 +2363,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         ! only derivatives are energy wrt saturation and temperature
         ! derivative energy wrt gas saturation
         Jcup(3,2) = dheat_flux_dkeff_ave * dkeff_ave_dkeffup * &
-                    dkeff_up_dsatlup * -1.d0 ! satl -> satg
+                    dkeff_up_dsatlup * (-1.d0) ! satl -> satg
         ! derivative energy wrt temperature
         ! positive for upwind
         Jcup(3,3) = 1.d0 * dheat_flux_ddelta_temp
@@ -2371,7 +2379,7 @@ subroutine GeneralFlux(gen_auxvar_up,global_auxvar_up, &
         ! only derivatives are energy wrt saturation and temperature
         ! derivative energy wrt gas saturation
         Jcdn(3,2) = dheat_flux_dkeff_ave * dkeff_ave_dkeffdn * &
-                    dkeff_dn_dsatldn * -1.d0 ! satl -> satg
+                    dkeff_dn_dsatldn * (-1.d0) ! satl -> satg
         ! derivative energy wrt temperature
         ! positive for upwind
         Jcdn(3,3) = -1.d0 * dheat_flux_ddelta_temp
