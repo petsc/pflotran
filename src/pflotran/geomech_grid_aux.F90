@@ -3,6 +3,7 @@ module Geomechanics_Grid_Aux_module
   use Grid_Unstructured_Cell_module
   use Gauss_module
   use PFLOTRAN_Constants_module
+  use Geometry_module  
 
   implicit none
 
@@ -38,7 +39,7 @@ module Geomechanics_Grid_Aux_module
     PetscInt :: max_elem_sharing_a_node      ! Max. number of elements sharing a common node
     PetscInt, pointer :: elem_type(:)        ! Type of element
     PetscInt, pointer :: elem_nodes(:,:)     ! Node number on each element
-    type(point_type), pointer :: nodes(:)    ! Coordinates of the nodes
+    type(point3d_type), pointer :: nodes(:)    ! Coordinates of the nodes
     PetscInt, pointer :: node_ids_ghosted_petsc(:)   ! Petsc ids of ghosted local nodes
     PetscInt, pointer :: node_ids_ghosted_natural(:) ! Natural ids of ghosted local nodes
     PetscInt, pointer :: node_ids_local_natural(:)   ! Natural ids of local nodes

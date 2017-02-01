@@ -9,11 +9,19 @@ module Geometry_module
 #include "petsc/finclude/petscsys.h"
  
   type, public :: point3d_type
+    PetscInt :: id
     PetscReal :: x
     PetscReal :: y
     PetscReal :: z
   end type point3d_type
-
+  
+  type, public :: plane_type
+    PetscReal :: A
+    PetscReal :: B
+    PetscReal :: C
+    PetscReal :: D
+  end type plane_type
+  
   type, public :: polygonal_volume_type
     type(point3d_type), pointer :: xy_coordinates(:)
     type(point3d_type), pointer :: xz_coordinates(:)
@@ -31,8 +39,15 @@ module Geometry_module
             GeometryPointInPolygonalVolume, &
             GeometryCopyCoordinates, &
             GeometryDestroyPolygonalVolume, &
-            GeometryPointInPolygon
-
+            GeometryPointInPolygon, &
+            GeometryComputePlaneWithPoints, &
+            GeomComputePlaneWithGradients, &
+            GeometryProjectPointOntoPlane, &
+            GeometryGetPlaneIntercept, &
+            GeometryGetPlaneZIntercept, &
+            GeomGetPlaneGradientinXandY, &
+            GeomComputeDistanceFromPlane
+!           12345678901234567890123456789012
 contains
 
 ! ************************************************************************** !
@@ -390,5 +405,210 @@ subroutine GeometryDestroyPolygonalVolume(polygonal_volume)
   nullify(polygonal_volume)
   
 end subroutine GeometryDestroyPolygonalVolume
+
+! ************************************************************************** !
+
+subroutine GeometryComputePlaneWithPoints(plane,point1,point2,point3)
+  ! 
+  ! Calculates the plane defined by a point and gradients in x and y
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/09
+  ! 
+
+  implicit none
+  
+  type(plane_type) :: plane
+  type(point3d_type) :: point1, point2, point3
+  
+  PetscReal :: x1,y1,z1
+  PetscReal :: x2,y2,z2
+  PetscReal :: x3,y3,z3
+  x1 = point1%x
+  y1 = point1%y
+  z1 = point1%z
+  x2 = point2%x
+  y2 = point2%y
+  z2 = point2%z
+  x3 = point3%x
+  y3 = point3%y
+  z3 = point3%z
+  
+  ! this grabbed from python script
+  plane%A = y1*(z2-z3)+y2*(z3-z1)+y3*(z1-z2)
+  plane%B = z1*(x2-x3)+z2*(x3-x1)+z3*(x1-x2)
+  plane%C = x1*(y2-y3)+x2*(y3-y1)+x3*(y1-y2)
+  plane%D = -1.*(x1*(y2*z3-y3*z2)+x2*(y3*z1-y1*z3)+x3*(y1*z2-y2*z1))
+
+end subroutine GeometryComputePlaneWithPoints
+
+! ************************************************************************** !
+
+subroutine GeomComputePlaneWithGradients(plane,x,y,z,dz_dx,dz_dy)
+  ! 
+  ! Calculates the plane defined by a point and gradients in x and y
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/09
+  ! 
+
+  implicit none
+  
+  type(plane_type) :: plane
+  PetscReal :: x
+  PetscReal :: y
+  PetscReal :: z
+  PetscReal :: dz_dx
+  PetscReal :: dz_dy
+  
+  type(point3d_type) :: point1, point2, point3
+  
+  point1%x = x
+  point1%y = y
+  point1%z = z
+  point2%x = x + 1.d0
+  point2%y = y
+  point2%z = z + dz_dx
+  point3%x = x
+  point3%y = y + 1.d0
+  point3%z = z + dz_dy
+  
+  call GeometryComputePlaneWithPoints(plane,point1,point2,point3)
+
+end subroutine GeomComputePlaneWithGradients
+
+! ************************************************************************** !
+
+subroutine GeometryProjectPointOntoPlane(plane,point,intercept)
+  ! 
+  ! Calculates the intercept of a point with a plane
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 11/22/11
+  ! 
+
+  implicit none
+  
+  type(plane_type) :: plane
+  type(point3d_type) :: point
+  type(point3d_type) :: intercept
+
+  PetscReal :: scalar
+  
+  ! plane equation:
+  !   A*x + B*y + C*z + D = 0
+
+  scalar = (plane%A*point%x + plane%B*point%y + plane%C*point%z + plane%D) / &
+           (plane%A*plane%A + plane%B*plane%B + plane%C*plane%C)
+  
+  intercept%x = point%x - plane%A * scalar
+  intercept%y = point%y - plane%B * scalar
+  intercept%z = point%z - plane%C * scalar
+
+end subroutine GeometryProjectPointOntoPlane
+
+! ************************************************************************** !
+
+subroutine GeometryGetPlaneIntercept(plane,point1,point2,intercept)
+  ! 
+  ! Calculates the intercept of a line with a plane
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/09
+  ! 
+
+  implicit none
+  
+  type(plane_type) :: plane
+  type(point3d_type) :: point1, point2
+  type(point3d_type) :: intercept
+
+  PetscReal :: x1,y1,z1
+  PetscReal :: x2,y2,z2
+  PetscReal :: u
+    
+  x1 = point1%x
+  y1 = point1%y
+  z1 = point1%z
+  x2 = point2%x
+  y2 = point2%y
+  z2 = point2%z
+ 
+ 
+  u = (plane%A*x1 + plane%B*y1 + plane%C*z1 + plane%D) / &
+      (plane%A*(x1-x2) + plane%B*(y1-y2) + plane%C*(z1-z2))
+
+  intercept%x = point1%x + u*(point2%x-point1%x)
+  intercept%y = point1%y + u*(point2%y-point1%y)
+  intercept%z = point1%z + u*(point2%z-point1%z)
+
+end subroutine GeometryGetPlaneIntercept
+
+! ************************************************************************** !
+
+function GeometryGetPlaneZIntercept(plane,x,y)
+  ! 
+  ! Calculates the intercept of a line with a plane
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/09
+  ! 
+
+  implicit none
+  
+  type(plane_type) :: plane
+  PetscReal :: x
+  PetscReal :: y
+
+  PetscReal :: GeometryGetPlaneZIntercept
+    
+  GeometryGetPlaneZIntercept =  (x * plane%A + y * plane%B - plane%D) / &
+                                plane%C
+
+end function GeometryGetPlaneZIntercept
+
+! ************************************************************************** !
+
+subroutine GeomGetPlaneGradientinXandY(plane,dz_dx,dz_dy)
+  ! 
+  ! Calculates the intercept of a line with a plane
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/09
+  ! 
+
+  implicit none
+  
+  type(plane_type) :: plane
+  PetscReal :: dz_dx
+  PetscReal :: dz_dy
+    
+  dz_dx = plane%A/plane%C
+  dz_dy = plane%B/plane%C
+
+end subroutine GeomGetPlaneGradientinXandY
+
+! ************************************************************************** !
+
+function GeomComputeDistanceFromPlane(plane,point)
+  ! 
+  ! Calculates the distance of a point from a plane
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/24/11
+  ! 
+
+  implicit none
+  
+  type(plane_type) :: plane
+  type(point3d_type) :: point
+  
+  PetscReal :: GeomComputeDistanceFromPlane
+
+  GeomComputeDistanceFromPlane = &
+    (plane%A*point%x + plane%B*point%y + plane%C*point%z + plane%D) / &
+    sqrt(plane%A*plane%A+plane%B*plane%B+plane%C*plane%C)
+  
+end function GeomComputeDistanceFromPlane
 
 end module Geometry_module
