@@ -418,7 +418,7 @@ subroutine GeometryComputePlaneWithPoints1(plane,x1,y1,z1,x2,y2,z2,x3,y3,z3)
   ! Calculates the plane defined by a point and gradients in x and y
   ! 
   ! Author: Glenn Hammond
-  ! Date: 10/30/09
+  ! Date: 10/30/09, 02/01/17
   ! 
 
   implicit none
@@ -428,19 +428,28 @@ subroutine GeometryComputePlaneWithPoints1(plane,x1,y1,z1,x2,y2,z2,x3,y3,z3)
   PetscReal :: x2,y2,z2
   PetscReal :: x3,y3,z3
 
-  type(point3d_type) :: point1, point2, point3
-  
-  point1%x = x1
-  point1%y = y1
-  point1%z = z1
-  point2%x = x2
-  point2%y = y2
-  point2%z = z2
-  point3%x = x3
-  point3%y = y3
-  point3%z = z3
-  
-  call GeometryComputePlaneWithPoints2(plane,point1,point2,point3)
+  PetscReal :: x12, y12, z12
+  PetscReal :: x13, y13, z13
+
+#if 0
+  ! more math here
+  plane%A = y1*(z2-z3)+y2*(z3-z1)+y3*(z1-z2)
+  plane%B = z1*(x2-x3)+z2*(x3-x1)+z3*(x1-x2)
+  plane%C = x1*(y2-y3)+x2*(y3-y1)+x3*(y1-y2)
+  plane%D = -1.d0*(x1*(y2*z3-y3*z2)+x2*(y3*z1-y1*z3)+x3*(y1*z2-y2*z1))
+#else
+  ! less math here
+  x12 = x2-x1
+  y12 = y2-y1
+  z12 = z2-z1
+  x13 = x3-x1
+  y13 = y3-y1
+  z13 = z3-z1
+  plane%A = y12*z13-z12*y13
+  plane%B = z12*x13-x12*z13
+  plane%C = x12*y13-y12*x13
+  plane%D = -1.d0*(plane%A*x1+plane%B*y1+plane%C*z1)
+#endif
   
 end subroutine GeometryComputePlaneWithPoints1
 
@@ -448,7 +457,7 @@ end subroutine GeometryComputePlaneWithPoints1
 
 subroutine GeometryComputePlaneWithPoints2(plane,point1,point2,point3)
   ! 
-  ! Calculates the plane defined by a point and gradients in x and y
+  ! Calculates the plane defined by three points
   ! 
   ! Author: Glenn Hammond
   ! Date: 10/30/09
@@ -459,24 +468,10 @@ subroutine GeometryComputePlaneWithPoints2(plane,point1,point2,point3)
   type(plane_type) :: plane
   type(point3d_type) :: point1, point2, point3
   
-  PetscReal :: x1,y1,z1
-  PetscReal :: x2,y2,z2
-  PetscReal :: x3,y3,z3
-  x1 = point1%x
-  y1 = point1%y
-  z1 = point1%z
-  x2 = point2%x
-  y2 = point2%y
-  z2 = point2%z
-  x3 = point3%x
-  y3 = point3%y
-  z3 = point3%z
-  
-  ! this grabbed from python script
-  plane%A = y1*(z2-z3)+y2*(z3-z1)+y3*(z1-z2)
-  plane%B = z1*(x2-x3)+z2*(x3-x1)+z3*(x1-x2)
-  plane%C = x1*(y2-y3)+x2*(y3-y1)+x3*(y1-y2)
-  plane%D = -1.*(x1*(y2*z3-y3*z2)+x2*(y3*z1-y1*z3)+x3*(y1*z2-y2*z1))
+  call GeometryComputePlaneWithPoints1(plane, &
+                                       point1%x,point1%y,point1%z, &
+                                       point2%x,point2%y,point2%z, &
+                                       point3%x,point3%y,point3%z)
 
 end subroutine GeometryComputePlaneWithPoints2
 
@@ -499,19 +494,19 @@ subroutine GeomComputePlaneWithGradients(plane,x,y,z,dz_dx,dz_dy)
   PetscReal :: dz_dx
   PetscReal :: dz_dy
   
-  type(point3d_type) :: point1, point2, point3
+  PetscReal :: x1, y1, z1, x2, y2, z2, x3, y3, z3
   
-  point1%x = x
-  point1%y = y
-  point1%z = z
-  point2%x = x + 1.d0
-  point2%y = y
-  point2%z = z + dz_dx
-  point3%x = x
-  point3%y = y + 1.d0
-  point3%z = z + dz_dy
+  x1 = x
+  y1 = y
+  z1 = z
+  x2 = x + 1.d0
+  y2 = y
+  z2 = z + dz_dx
+  x3 = x
+  y3 = y + 1.d0
+  z3 = z + dz_dy
   
-  call GeometryComputePlaneWithPoints(plane,point1,point2,point3)
+  call GeometryComputePlaneWithPoints(plane,x1,y1,z1,x2,y2,z2,x3,y3,z3)
 
 end subroutine GeomComputePlaneWithGradients
 
@@ -586,10 +581,10 @@ end subroutine GeometryGetPlaneIntercept
 
 function GeometryGetPlaneZIntercept(plane,x,y)
   ! 
-  ! Calculates the intercept of a line with a plane
+  ! Calculates the intercept of a line with an x,y coordinate
   ! 
   ! Author: Glenn Hammond
-  ! Date: 10/30/09
+  ! Date: 02/01/17
   ! 
 
   implicit none
@@ -599,9 +594,13 @@ function GeometryGetPlaneZIntercept(plane,x,y)
   PetscReal :: y
 
   PetscReal :: GeometryGetPlaneZIntercept
+
+  ! Ax + By + Cz + D = 0
+  ! z = (Ax + By + D)/-C
     
-  GeometryGetPlaneZIntercept =  (x * plane%A + y * plane%B - plane%D) / &
-                                plane%C
+  GeometryGetPlaneZIntercept = -1.d0 * &
+                               (x * plane%A + y * plane%B + plane%D) / &
+                               plane%C
 
 end function GeometryGetPlaneZIntercept
 
