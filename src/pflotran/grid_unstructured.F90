@@ -2971,7 +2971,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
       endif
 
       call GeometryComputePlaneWithPoints(plane1,point1,point2,point3)
-      distance = GeometryComputeDistanceFromPlane(plane1,point)
+      distance = GeomComputeDistanceFromPlane(plane1,point)
 
       if (distance > 0.d0) then
         ! need to swap so that distance is negative (point lies below plane)
@@ -3113,7 +3113,7 @@ subroutine UGridGetCellFromPoint(x,y,z,unstructured_grid,option,icell)
       point2 = unstructured_grid%vertices(unstructured_grid%cell_vertices(vertex_ids(2),ghosted_id))
       point3 = unstructured_grid%vertices(unstructured_grid%cell_vertices(vertex_ids(3),ghosted_id))
       call GeometryComputePlaneWithPoints(plane1,point1,point2,point3)
-      distance = GeometryComputeDistanceFromPlane(plane1,point)
+      distance = GeomComputeDistanceFromPlane(plane1,point)
       if (distance > 0.d0) then
         inside = PETSC_FALSE
         exit
@@ -3121,7 +3121,7 @@ subroutine UGridGetCellFromPoint(x,y,z,unstructured_grid,option,icell)
       if (face_type == QUAD_FACE_TYPE) then
         point4 = unstructured_grid%vertices(unstructured_grid%cell_vertices(vertex_ids(4),ghosted_id))
         call GeometryComputePlaneWithPoints(plane2,point3,point4,point1)
-        distance = GeometryComputeDistanceFromPlane(plane2,point)
+        distance = GeomComputeDistanceFromPlane(plane2,point)
         if (distance > 0.d0) then
           inside = PETSC_FALSE
           exit

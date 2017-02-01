@@ -4152,7 +4152,7 @@ subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
   ! Date: 2017
   !
   use Option_module
-  use utility_module, only : InverseNorm
+  use Utility_module, only : InverseNorm
 
   implicit none
 
@@ -6800,7 +6800,7 @@ subroutine RPF_mK_Gas_RelPerm(this,liquid_saturation, &
   ! Date: 2017
   !
   use Option_module
-  use utility_module, only : InverseNorm
+  use Utility_module, only : InverseNorm
 
   implicit none
 
