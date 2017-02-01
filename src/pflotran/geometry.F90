@@ -33,6 +33,11 @@ module Geometry_module
     module procedure GeometryPointInPolygon2
   end interface GeometryPointInPolygon
   
+  interface GeometryComputePlaneWithPoints
+    module procedure GeometryComputePlaneWithPoints1
+    module procedure GeometryComputePlaneWithPoints2
+  end interface GeometryComputePlaneWithPoints
+  
   public :: GeometryCreatePolygonalVolume, &
             GeometryReadCoordinates, &
             GeometryReadCoordinate, &
@@ -408,7 +413,40 @@ end subroutine GeometryDestroyPolygonalVolume
 
 ! ************************************************************************** !
 
-subroutine GeometryComputePlaneWithPoints(plane,point1,point2,point3)
+subroutine GeometryComputePlaneWithPoints1(plane,x1,y1,z1,x2,y2,z2,x3,y3,z3)
+  ! 
+  ! Calculates the plane defined by a point and gradients in x and y
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/30/09
+  ! 
+
+  implicit none
+  
+  type(plane_type) :: plane
+  PetscReal :: x1,y1,z1
+  PetscReal :: x2,y2,z2
+  PetscReal :: x3,y3,z3
+
+  type(point3d_type) :: point1, point2, point3
+  
+  point1%x = x1
+  point1%y = y1
+  point1%z = z1
+  point2%x = x2
+  point2%y = y2
+  point2%z = z2
+  point3%x = x3
+  point3%y = y3
+  point3%z = z3
+  
+  call GeometryComputePlaneWithPoints2(plane,point1,point2,point3)
+  
+end subroutine GeometryComputePlaneWithPoints1
+
+! ************************************************************************** !
+
+subroutine GeometryComputePlaneWithPoints2(plane,point1,point2,point3)
   ! 
   ! Calculates the plane defined by a point and gradients in x and y
   ! 
@@ -440,7 +478,7 @@ subroutine GeometryComputePlaneWithPoints(plane,point1,point2,point3)
   plane%C = x1*(y2-y3)+x2*(y3-y1)+x3*(y1-y2)
   plane%D = -1.*(x1*(y2*z3-y3*z2)+x2*(y3*z1-y1*z3)+x3*(y1*z2-y2*z1))
 
-end subroutine GeometryComputePlaneWithPoints
+end subroutine GeometryComputePlaneWithPoints2
 
 ! ************************************************************************** !
 
