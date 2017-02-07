@@ -925,6 +925,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       ! add in partial w/respec to pv_T
       dden_water_vapor_dT = dden_water_vapor_dT + dden_water_vapor_dpv * gen_auxvar%d%pv_T  
       dh_water_vapor_dT = dh_water_vapor_dT + dh_water_vapor_dpv * gen_auxvar%d%pv_T
+      !geh: the numerical derivatives with respect to water vapor calculated 
+      !     through the chain rule can be very sensitive to the perturbation.
+      !     Try decreasing the perturbation to see the effect.
       du_water_vapor_dpv = dh_water_vapor_dpv - &
         (1.d0/den_water_vapor- &
          water_vapor_pressure/(den_water_vapor*den_water_vapor)*dden_water_vapor_dpv)

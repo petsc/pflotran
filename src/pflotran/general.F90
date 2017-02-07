@@ -1300,7 +1300,8 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
                      cur_connection_set%area(iconn), &
                      cur_connection_set%dist(:,iconn), &
                      general_parameter,option, &
-                     v_darcy,Res, &
+                     v_darcy,Res,Jac_dummy, &
+                     general_analytical_derivatives, &
                      local_id == general_debug_cell_id)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (associated(patch%boundary_flow_fluxes)) then

@@ -45,6 +45,10 @@ subroutine GeneralDerivativeDriver(option)
   type(global_auxvar_type), pointer :: global_auxvar2(:)
   class(material_auxvar_type), pointer :: material_auxvar2(:)
   
+  PetscInt :: ibndtype(3)
+  PetscInt :: auxvar_mapping(GENERAL_MAX_INDEX)
+  PetscReal :: auxvars(10) ! from aux_real_var array
+  
   class(characteristic_curves_type), pointer :: characteristic_curves
   type(material_parameter_type), pointer :: material_parameter
   type(general_parameter_type), pointer :: general_parameter
@@ -71,13 +75,13 @@ subroutine GeneralDerivativeDriver(option)
 !      xx(3) = 100.d0
     case(GAS_STATE)
 !      xx(1) = 1.d4
-!      xx(2) = 0.98d4
+!      xx(2) = 0.997d4
 !      xx(3) = 15.d0
       xx(1) = 1.d6
-      xx(2) = 0.98d6
+      xx(2) = 0.997d6
       xx(3) = 30.d0
 !      xx(1) = 1.d7
-!      xx(2) = 0.98d7
+!      xx(2) = 0.997d7
 !      xx(3) = 85.d0
     case(TWO_PHASE_STATE)
       xx(1) = 1.d6
@@ -108,14 +112,14 @@ subroutine GeneralDerivativeDriver(option)
 !      xx2(3) = 100.d0
     case(GAS_STATE)
 !      xx2(1) = 1.d4
-!      xx2(2) = 0.98d4
+!      xx2(2) = 0.997d4
 !      xx2(3) = 15.d0
       xx2(1) = 1.d6*scale2
-      xx2(2) = 0.98d6*scale2
-!      xx2(2) = 0.97d6*scale2  ! to generate gradient in air mole fraction
+      xx2(2) = 0.997d6*scale2
+!      xx2(2) = 0.996d6*scale2  ! to generate gradient in air mole fraction
       xx2(3) = 30.d0*scale2
 !      xx2(1) = 1.d7
-!      xx2(2) = 0.98d7
+!      xx2(2) = 0.997d7
 !      xx2(3) = 85.d0
     case(TWO_PHASE_STATE)
       xx2(1) = 1.d6*scale2
@@ -136,7 +140,8 @@ subroutine GeneralDerivativeDriver(option)
 
 !  call GeneralDerivativeAccum(pert,general_auxvar,global_auxvar, &
 !                              material_auxvar,material_parameter,option)
-  
+
+#if 0
   call GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
                              material_auxvar,characteristic_curves, &
                              material_parameter,&
@@ -144,6 +149,21 @@ subroutine GeneralDerivativeDriver(option)
                              material_auxvar2,characteristic_curves, &
                              material_parameter, &
                              general_parameter,option)
+#endif
+
+  ibndtype = DIRICHLET_BC     
+  auxvar_mapping = 0
+  auxvars = 0.d0
+  ! everything downwind is XXX2, boundary is XXX
+  call GeneralDerivativeFluxBC(pert2, &
+                               ibndtype,auxvar_mapping,auxvars, &
+                               general_auxvar(ZERO_INTEGER), &
+                               global_auxvar(ZERO_INTEGER), &
+                               general_auxvar2,global_auxvar2, &
+                               material_auxvar2, &
+                               characteristic_curves, &
+                               material_parameter, &
+                               general_parameter,option)
 
   ! Destroy objects
   call GeneralDerivativeDestroyAuxVar(general_auxvar,global_auxvar, &
@@ -251,6 +271,7 @@ subroutine GeneralDerivativeSetupAuxVar(istate,xx,pert,general_auxvar, &
     call GlobalAuxVarInit(global_auxvar(i),option)
     call MaterialAuxVarInit(material_auxvar(i),option)
     material_auxvar(i)%porosity_base = 0.25d0
+    material_auxvar(i)%permeability = 1.d-12
     material_auxvar(i)%volume = 1.d0
     global_auxvar(i)%istate = istate
   enddo
@@ -295,11 +316,13 @@ subroutine GeneralDerivativeSetupEOS(option)
   PetscInt :: ntemp, npres  
   PetscReal :: aux(1)
   character(len=MAXWORDLENGTH) :: word
-  
+ 
+#if 1
   call EOSWaterSetDensity('PLANAR')
   call EOSWaterSetEnthalpy('PLANAR')
   call EOSWaterSetSteamDensity('PLANAR')
-  
+#endif
+
   ! for ruling out density partial derivative
 #if 0
   aux(1) = 996.000000000000d0
@@ -476,7 +499,9 @@ subroutine GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
   PetscInt :: natural_id = 1
   PetscInt :: i
   PetscReal, parameter :: area = 1.d0
-  PetscReal, parameter :: dist(-1:3) = [0.5d0,1.d0,1.d0,0.d0,0.d0]
+!  PetscReal, parameter :: dist(-1:3) = [0.5d0,1.d0,1.d0,0.d0,0.d0]
+!  PetscReal, parameter :: dist(-1:3) = [0.5d0,1.d0,sqrt(2.d0/2.d0),0.d0,sqrt(2.d0/2.d0)]
+  PetscReal, parameter :: dist(-1:3) = [0.5d0,1.d0,0.d0,0.d0,1.d0]
   
   PetscReal :: v_darcy(2)
   
@@ -550,6 +575,86 @@ subroutine GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
                            general_auxvar2,option)
   
 end subroutine GeneralDerivativeFlux
+
+! ************************************************************************** !
+
+subroutine GeneralDerivativeFluxBC(pert, &
+                                   ibndtype,auxvar_mapping,auxvars, &
+                                   general_auxvar_bc,global_auxvar_bc, &
+                                   general_auxvar_dn,global_auxvar_dn, &
+                                   material_auxvar_dn, &
+                                   characteristic_curves_dn, &
+                                   material_parameter_dn, &
+                                   general_parameter,option)
+
+  use Option_module
+  use Characteristic_Curves_module
+  use Material_Aux_class
+  
+  implicit none
+
+  type(option_type), pointer :: option
+  PetscReal :: pert(3)
+  PetscInt :: ibndtype(1:option%nflowdof)
+  PetscInt :: auxvar_mapping(GENERAL_MAX_INDEX)  
+  PetscReal :: auxvars(:) ! from aux_real_var array
+  type(general_auxvar_type) :: general_auxvar_bc
+  type(global_auxvar_type) :: global_auxvar_bc
+  type(general_auxvar_type) :: general_auxvar_dn(0:)
+  type(global_auxvar_type) :: global_auxvar_dn(0:)
+  class(material_auxvar_type) :: material_auxvar_dn(0:)
+  class(characteristic_curves_type) :: characteristic_curves_dn
+  type(material_parameter_type) :: material_parameter_dn
+  type(general_parameter_type) :: general_parameter
+
+  PetscInt :: natural_id = 1
+  PetscInt :: i
+  PetscReal, parameter :: area = 1.d0
+  PetscReal, parameter :: dist(-1:3) = [0.5d0,1.d0,1.d0,0.d0,0.d0]
+  
+  PetscReal :: v_darcy(2)
+  
+  
+  PetscInt :: irow
+  PetscReal :: res(3)
+  PetscReal :: res_pert(3,3)
+  PetscReal :: jac_anal(3,3)
+  PetscReal :: jac_num(3,3)
+  PetscReal :: jac_dum(3,3)
+  
+  call GeneralPrintAuxVars(general_auxvar_bc,global_auxvar_bc,material_auxvar_dn(0), &
+                           natural_id,'boundary',option)
+  call GeneralPrintAuxVars(general_auxvar_dn(0),global_auxvar_dn(0),material_auxvar_dn(0), &
+                           natural_id,'internal',option)
+
+  call GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
+                     general_auxvar_bc,global_auxvar_bc, &
+                     general_auxvar_dn(ZERO_INTEGER),global_auxvar_dn(ZERO_INTEGER), &
+                     material_auxvar_dn(ZERO_INTEGER), &
+                     material_parameter_dn%soil_thermal_conductivity(:,1), &
+                     area,dist,general_parameter, &
+                     option,v_darcy,res,jac_anal, &
+                     PETSC_TRUE,PETSC_FALSE)                           
+                           
+  do i = 1, 3
+    call GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
+                       general_auxvar_bc,global_auxvar_bc, &
+                       general_auxvar_dn(i),global_auxvar_dn(i), &
+                       material_auxvar_dn(i), &
+                       material_parameter_dn%soil_thermal_conductivity(:,1), &
+                       area,dist,general_parameter, &
+                       option,v_darcy,res_pert(:,i),jac_dum, &
+                       PETSC_FALSE,PETSC_FALSE)                           
+    do irow = 1, option%nflowdof
+      jac_num(irow,i) = (res_pert(irow,i)-res(irow))/pert(i)
+    enddo !irow
+  enddo
+  
+  write(*,*) '-----------------------------------------------------------------'
+  call GeneralDiffJacobian('boundary',jac_num,jac_anal,res,res_pert,pert, &
+                           general_auxvar_dn,option)
+  
+end subroutine GeneralDerivativeFluxBC
 
 ! ************************************************************************** !
 
@@ -1125,9 +1230,11 @@ subroutine GeneralAuxVarPrintResult(string,numerical,analytical, &
   character(len=8) :: word
   PetscReal :: tempreal
   PetscReal, parameter :: tol = 1.d-5
+  PetscInt :: precision
           
-100 format(a24,': ',2(es13.5),'  ',a8,' ',es16.8)
+100 format(a24,': ',2(es13.5),2x,i2,x,a8,x,es16.8)
 
+  precision = GeneralDigitsOfAccuracy(numerical,analytical)
   word = ''
   if (dabs(analytical-uninitialized_value) > 1.d-20) then
     if (dabs(analytical) > 0.d0) then
@@ -1145,7 +1252,7 @@ subroutine GeneralAuxVarPrintResult(string,numerical,analytical, &
         word = ' PASS'
       endif
     endif
-    write(*,100) trim(string), numerical, analytical, word
+    write(*,100) trim(string), numerical, analytical, precision, word
   else
     write(*,100) trim(string), numerical
   endif
@@ -1193,6 +1300,7 @@ subroutine GeneralDiffJacobian(string,numerical_jacobian,analytical_jacobian, &
 200 format(2es20.12)
 300 format(a24,10es20.12)
 
+#if 0
   do icol = 1, 3
     write(*,'(/," dof = ",i1,"  perturbation = ",es13.5)') icol, perturbation(icol)
 !    write(*,300) 'density', general_auxvar(icol)%den(:), general_auxvar(0)%den(:)
@@ -1202,6 +1310,7 @@ subroutine GeneralDiffJacobian(string,numerical_jacobian,analytical_jacobian, &
       write(*,200) residual_pert(irow,icol), residual(irow)
     enddo
   enddo
+#endif  
 
   
 end subroutine GeneralDiffJacobian
@@ -1218,15 +1327,26 @@ function GeneralDigitsOfAccuracy(num1,num2)
   PetscInt :: GeneralDigitsOfAccuracy
   
   PetscReal :: tempreal
+  PetscReal :: relative_difference
   
   GeneralDigitsOfAccuracy = 0
   if (dabs(num1) > 0.d0 .and. dabs(num2) > 0.d0) then
-    tempreal = dabs(num2/(num1-num2))
-    do
-      if (tempreal < 10.d0) exit
-      tempreal = tempreal / 10.d0
-      GeneralDigitsOfAccuracy = GeneralDigitsOfAccuracy + 1
-    enddo
+    relative_difference = dabs((num1-num2)/num2)
+    if (relative_difference < 1.d-17) then
+      ! accuracy is beyond double precision
+      GeneralDigitsOfAccuracy = 99
+    else
+      tempreal = 1.d0 / relative_difference
+      do
+        if (tempreal < 10.d0) exit
+        tempreal = tempreal / 10.d0
+        GeneralDigitsOfAccuracy = GeneralDigitsOfAccuracy + 1
+      enddo
+    endif
+  else
+    ! change this value if you want to report something difference for
+    ! double zeros.
+    GeneralDigitsOfAccuracy = 0
   endif
     
 end function GeneralDigitsOfAccuracy
