@@ -77,10 +77,11 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
 		default/discretization/discretization.cfg \
 		geomech/uniaxial_strain/uniaxial_strain.cfg \
-        geomech/uniaxial_loading/uniaxial_loading.cfg \
-        surfaceflow/surface_flow_only/surface_only.cfg \
-	surfaceflow/surface_th/surface_th.cfg \
-	surfaceflow/inlinesurface/inlinesurface.cfg
+	        geomech/uniaxial_loading/uniaxial_loading.cfg \
+        	geomech/uniaxial_loading_biot/uniaxial_loading_biot.cfg \
+	        surfaceflow/surface_flow_only/surface_only.cfg \
+		surfaceflow/surface_th/surface_th.cfg \
+		surfaceflow/inlinesurface/inlinesurface.cfg
 endif
 
 #
@@ -103,7 +104,8 @@ GEOCHEMISTRY_CFG = \
 
 GEOMECHANICS_CFG = \
 	geomech/uniaxial_strain/uniaxial_strain.cfg \
-	geomech/uniaxial_loading/uniaxial_loading.cfg
+	geomech/uniaxial_loading/uniaxial_loading.cfg \
+	geomech/uniaxial_loading_biot/uniaxial_loading_biot.cfg
 
 FLOW_CFG = \
 	default/543/543.cfg \
@@ -114,7 +116,7 @@ FLOW_CFG = \
 	default/scco2/mphase/mphase.cfg \
 	default/scco2/flash2/flash2.cfg \
 	general/general.cfg \
-        toil_ims/toil_ims.cfg \
+    	toil_ims/toil_ims.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
 	wipp/bragflo/bragflo.cfg
