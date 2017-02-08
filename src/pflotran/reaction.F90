@@ -3431,18 +3431,17 @@ subroutine RReact(rt_auxvar,global_auxvar,material_auxvar,tran_xx_p, &
     ! residual is overwritten in RTAccumulation()
     call RTAccumulation(rt_auxvar,global_auxvar,material_auxvar,reaction, &
                         option,residual)
-    residual = residual-fixed_accum
-
     ! J is overwritten in RTAccumulationDerivative()
     call RTAccumulationDerivative(rt_auxvar,global_auxvar,material_auxvar, &
                                   reaction,option,J)
-
     if (reaction%neqsorb > 0) then
       call RAccumulationSorb(rt_auxvar,global_auxvar,material_auxvar,reaction, &
                              option,residual)
-      call RAccumulationSorbDerivative(rt_auxvar,global_auxvar,material_auxvar, &
-                                       reaction,option,J)
+      call RAccumulationSorbDerivative(rt_auxvar,global_auxvar, &
+                                       material_auxvar,reaction,option,J)
     endif
+    ! must come after sorbed accumulation
+    residual = (residual-fixed_accum) / option%tran_dt
 
                          ! derivative
     call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar, &
