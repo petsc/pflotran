@@ -1122,7 +1122,8 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
   
     select case(word)
       case('CONNECTIONS')
-        hint = 'Explicit Unstructured Grid CONNECTIONS'
+        hint = 'Explicit Unstructured Grid CONNECTIONS in file: ' // &
+          trim(adjustl(filename))
         call InputReadInt(input,option,num_connections)
         call InputErrorMsg(input,option,'number of connections',hint)
         

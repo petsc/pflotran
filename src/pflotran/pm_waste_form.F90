@@ -58,6 +58,10 @@ module PM_Waste_Form_class
     PetscReal :: K
     PetscReal :: v
     PetscReal :: pH
+    PetscBool :: use_pH
+    PetscBool :: use_Q
+    PetscInt :: h_ion_id
+    PetscInt :: SiO2_id
   contains
     procedure, public :: Dissolution => WFMechGlassDissolution
   end type wf_mechanism_glass_type
@@ -110,6 +114,8 @@ module PM_Waste_Form_class
 ! --------------- waste form types --------------------------------------------
   type :: waste_form_base_type
     PetscInt :: id
+    PetscMPIInt :: myMPIgroup_id
+    PetscMPIInt :: myMPIcomm
     type(point3d_type) :: coordinate
     character(len=MAXWORDLENGTH) :: region_name
     type(region_type), pointer :: region
@@ -220,7 +226,11 @@ function MechanismGlassCreate()
   MechanismGlassCreate%Q = UNINITIALIZED_DOUBLE      
   MechanismGlassCreate%K = UNINITIALIZED_DOUBLE
   MechanismGlassCreate%v = UNINITIALIZED_DOUBLE    
-  MechanismGlassCreate%pH = UNINITIALIZED_DOUBLE            
+  MechanismGlassCreate%pH = UNINITIALIZED_DOUBLE   
+  MechanismGlassCreate%use_pH = PETSC_FALSE  
+  MechanismGlassCreate%use_Q = PETSC_FALSE
+  MechanismGlassCreate%h_ion_id = 0
+  MechanismGlassCreate%SiO2_id = 0
 
 end function MechanismGlassCreate
 
@@ -379,6 +389,8 @@ function WasteFormCreate()
 
   allocate(WasteFormCreate)
   WasteFormCreate%id = UNINITIALIZED_INTEGER
+  WasteFormCreate%myMPIgroup_id = 0
+  WasteFormCreate%myMPIcomm = 0
   WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
@@ -834,12 +846,27 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             end select
         !--------------------------
           case('Q')
-            call InputReadDouble(input,option,double)
-            call InputErrorMsg(input,option,'Q (ion activity product)',&
-                               error_string)
             select type(new_mechanism)
               type is(wf_mechanism_glass_type)
-                new_mechanism%Q = double
+                temp_buf = input%buf
+                call InputReadDouble(input,option,double)
+                if (InputError(input)) then
+                  word = adjustl(trim(temp_buf))
+                  call StringToUpper(word)
+                  if (trim(word) == 'AS_CALCULATED') then 
+                    new_mechanism%use_Q = PETSC_TRUE
+                  else
+                    option%io_buffer = 'Q value (ion activity product) was &
+                                       &not provided, or Q instructions not &
+                                       &understood for ' // trim(error_string)
+                    call printErrMsg(option)
+                  endif
+                endif
+                if (new_mechanism%use_Q) then
+                  new_mechanism%Q = 0.d0  ! initializes to value
+                else
+                  new_mechanism%Q = double
+                endif
               class default
                 option%io_buffer = 'Q (ion activity product) cannot be &
                                    &specified for ' // trim(error_string)
@@ -873,11 +900,27 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             end select
         !--------------------------
           case('PH')
-            call InputReadDouble(input,option,double)
-            call InputErrorMsg(input,option,'PH',error_string)
             select type(new_mechanism)
               type is(wf_mechanism_glass_type)
-                new_mechanism%pH = double
+                temp_buf = input%buf
+                call InputReadDouble(input,option,double)
+                if (InputError(input)) then
+                  word = adjustl(trim(temp_buf))
+                  call StringToUpper(word)
+                  if (trim(word) == 'AS_CALCULATED') then 
+                    new_mechanism%use_pH = PETSC_TRUE
+                  else
+                    option%io_buffer = 'PH value was not provided, or PH &
+                                       &instructions not understood for ' &
+                                       // trim(error_string) // '.'
+                    call printErrMsg(option)
+                  endif
+                endif
+                if (new_mechanism%use_pH) then
+                  new_mechanism%pH = 7.d0  ! initializes to neutral value
+                else
+                  new_mechanism%pH = double
+                endif
               class default
                 option%io_buffer = 'PH cannot be &
                                    &specified for ' // trim(error_string)
@@ -1451,7 +1494,7 @@ subroutine PMWFAssociateRegion(this,region_list)
                            trim(cur_waste_form%region_name) // ' not found.'
         call printErrMsg(option)
       endif
-      call PMWFSetRegionScaling(this,cur_waste_form)
+      !call PMWFSetRegionScaling(this,cur_waste_form)
     endif
     !
     cur_waste_form => cur_waste_form%next
@@ -1473,6 +1516,7 @@ subroutine PMWFSetRegionScaling(this,waste_form)
   !
 
   use Material_Aux_class
+  use Grid_module
 
   implicit none
   
@@ -1480,24 +1524,26 @@ subroutine PMWFSetRegionScaling(this,waste_form)
   class(waste_form_base_type), pointer :: waste_form
   
   class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(grid_type), pointer :: grid
   PetscInt :: k, cell_id
   PetscReal :: total_volume_local, total_volume_global
   PetscErrorCode :: ierr
   
   material_auxvars => this%realization%patch%aux%Material%auxvars
+  grid => this%realization%patch%grid
   allocate(waste_form%scaling_factor(waste_form%region%num_cells))
   total_volume_local = 0.d0
   total_volume_global = 0.d0
   
   ! scale by cell volume
   do k = 1,waste_form%region%num_cells
-    cell_id = waste_form%region%cell_ids(k)
+    cell_id = grid%nL2G(waste_form%region%cell_ids(k))
     waste_form%scaling_factor(k) = material_auxvars(cell_id)%volume ! [m^3]
     total_volume_local = total_volume_local &
                          + material_auxvars(cell_id)%volume  ! [m^3]
   enddo
   call MPI_Allreduce(total_volume_local,total_volume_global,ONE_INTEGER_MPI, &
-              MPI_DOUBLE_PRECISION,MPI_SUM,this%realization%option%mycomm,ierr)
+              MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
   waste_form%scaling_factor = waste_form%scaling_factor/total_volume_global 
   
 end subroutine PMWFSetRegionScaling
@@ -1526,6 +1572,7 @@ end subroutine PMWFSetRealization
 subroutine PMWFSetup(this)
   ! 
   ! Associates the waste forms to their regions and sets the waste form id.
+  ! Creates an MPI group/communicator for processes that own a waste form.
   ! Throws out waste forms on processes that do not own the waste form region.
   ! 
   ! Author: Glenn Hammond
@@ -1539,6 +1586,7 @@ subroutine PMWFSetup(this)
   use Option_module
   use Reaction_Aux_module
   use Utility_module, only : GetRndNumFromNormalDist
+  use String_module
 
   implicit none
   
@@ -1547,11 +1595,15 @@ subroutine PMWFSetup(this)
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: species_name
+  character(len=MAXWORDLENGTH), pointer :: names(:)
   class(waste_form_base_type), pointer :: cur_waste_form, prev_waste_form
   class(waste_form_base_type), pointer :: next_waste_form
   class(wf_mechanism_base_type), pointer :: cur_mechanism
   PetscInt :: waste_form_id
-  PetscBool :: local
+  PetscInt :: i
+  PetscBool :: local, found
+  PetscErrorCode :: ierr
+  PetscMPIInt :: newcomm
   
   option => this%realization%option
   reaction => this%realization%reaction
@@ -1606,10 +1658,23 @@ subroutine PMWFSetup(this)
       endif
     endif
     if (local) then
+      ! assign the waste form ID number and MPI communicator
       cur_waste_form%id = waste_form_id
+      cur_waste_form%myMPIgroup_id = waste_form_id
+      call MPI_Comm_split(option%mycomm,cur_waste_form%myMPIgroup_id, &
+                          option%myrank,newcomm,ierr)
+    else
+      cur_waste_form%id = 0
+      cur_waste_form%myMPIgroup_id = 0
+      call MPI_Comm_split(option%mycomm,MPI_UNDEFINED,option%myrank, &
+                          newcomm,ierr)
+    endif
+    cur_waste_form%myMPIcomm = newcomm
+    if (local) then
+      call PMWFSetRegionScaling(this,cur_waste_form)
       prev_waste_form => cur_waste_form
       cur_waste_form => cur_waste_form%next
-    else
+    else 
       ! remove waste form because it is not local
       next_waste_form => cur_waste_form%next
       if (associated(prev_waste_form)) then
@@ -1622,7 +1687,7 @@ subroutine PMWFSetup(this)
     endif
   enddo
   
-  ! check if the mechanism list includes fmdm mechanisms:
+  ! check if the mechanism list includes fmdm or glass mechanisms:
   cur_mechanism => this%mechanism_list
   do
     if (.not.associated(cur_mechanism)) exit
@@ -1641,9 +1706,77 @@ subroutine PMWFSetup(this)
         species_name = 'Fe++'
         cur_mechanism%mapping_fmdm_to_pflotran(cur_mechanism%iFe_2p) = &
           GetPrimarySpeciesIDFromName(species_name,reaction,option)
+      type is(wf_mechanism_glass_type)
+        if (cur_mechanism%use_pH) then
+          if ((associated(this%realization%reaction%species_idx) .and. &
+              (this%realization%reaction%species_idx%h_ion_id == 0)) .or. &
+              (.not.associated(this%realization%reaction%species_idx))) then
+            option%io_buffer = 'pH may not be calculated when H+ is not &
+                               &defined as a species and/or the card&
+                               &USE_FULL_GEOCHEMISTRY is not specified in the &
+                               &CHEMISTRY block - (MECHANISM GLASS).'
+            call printErrMsg(option)
+          else
+            cur_mechanism%h_ion_id = &
+                                 this%realization%reaction%species_idx%h_ion_id                                
+          endif  
+        endif
+        if (cur_mechanism%use_Q) then   
+          species_name = 'SiO2(aq)'
+          if (associated(this%realization%reaction)) then
+            ! search through the species names so that the generic error
+            ! message from GetPrimarySpeciesIDFromName is not thrown first
+            ! when SiO2 is missing
+            allocate(names(GetPrimarySpeciesCount(this%realization%reaction)))
+            names = GetPrimarySpeciesNames(this%realization%reaction)
+            i = 0
+            found = PETSC_FALSE
+            do while (i < len(names))
+              i = i + 1
+              if (adjustl(trim(species_name)) == adjustl(trim(names(i)))) then
+                cur_mechanism%SiO2_id = &
+                                     GetPrimarySpeciesIDFromName(species_name, &
+                                     this%realization%reaction,option)
+                found = PETSC_TRUE
+              endif
+              if (found) exit
+              if ((.not.found) .and. (i == len(names))) then
+                deallocate(names)
+                allocate(names(GetSecondarySpeciesCount(this%realization%reaction)))
+                names = GetSecondarySpeciesNames(this%realization%reaction)
+                i = 0
+                do while (i < len(names))
+                  i = i + 1
+                  if (adjustl(trim(species_name)) == &
+                      adjustl(trim(names(i)))) then
+                    cur_mechanism%SiO2_id = &
+                                   GetSecondarySpeciesIDFromName(species_name, &
+                                   this%realization%reaction,option)
+                    found = PETSC_TRUE
+                  endif
+                  if (found) exit
+                  if ((.not.found) .and. (i == len(names))) then
+                    option%io_buffer = 'Q may not be calculated when SiO2(aq) &
+                              &is not defined as a primary or secondary &
+                              &species - (MECHANISM GLASS).'
+                    call printErrMsg(option)
+                  endif
+                enddo
+              endif
+            enddo
+            deallocate(names)
+          else
+            option%io_buffer = 'Q may not be calculated when SiO2(aq) is not &
+                               &defined as a species and/or the card &
+                               &USE_FULL_GEOCHEMISTRY is not specified in the &
+                               &CHEMISTRY block - (MECHANISM GLASS).'
+            call printErrMsg(option)
+          endif
+        endif
     end select
     cur_mechanism => cur_mechanism%next
   enddo
+  
   
 end subroutine PMWFSetup
 
@@ -1801,7 +1934,7 @@ subroutine PMWFInitializeTimestep(this)
   PetscReal :: dV
   PetscReal :: dt
   PetscReal :: avg_temp
-  PetscInt :: k, p, g, d, f
+  PetscInt :: i, k, p, g, d, f
   PetscInt :: num_species
   PetscErrorCode :: ierr
   PetscInt :: cell_id, idof
@@ -1877,8 +2010,17 @@ subroutine PMWFInitializeTimestep(this)
         cur_waste_form%eff_canister_vit_rate = &
           cur_waste_form%eff_canister_vit_rate   
       else
-        avg_temp = (sum(global_auxvars(grid%nL2G(cur_waste_form%region% &
-                   cell_ids))%temp)/cur_waste_form%region%num_cells)+273.15d0
+        i = 0
+        avg_temp = 0.d0
+        do while (i < cur_waste_form%region%num_cells)
+          i = i + 1
+          avg_temp = avg_temp + &  ! Celcius
+            global_auxvars(grid%nL2G(cur_waste_form%region%cell_ids(i)))%temp* &
+            cur_waste_form%scaling_factor(i)
+        enddo
+        call MPI_Allreduce(MPI_IN_PLACE,avg_temp,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,cur_waste_form%myMPIcomm,ierr)
+        avg_temp = avg_temp+273.15d0   ! Kelvin
         cur_waste_form%eff_canister_vit_rate = &
           cur_waste_form%canister_vitality_rate * &
           exp( cwfm%canister_material_constant * ( (1.d0/333.15d0) - &
@@ -1894,8 +2036,11 @@ subroutine PMWFInitializeTimestep(this)
     endif
 
     !------- instantaneous release ----------------------------------------- 
-    if (.not.cur_waste_form%breached .and. &
-        cur_waste_form%canister_vitality < 1.d-3) then
+    if ((.not.cur_waste_form%breached .and. &
+         cur_waste_form%canister_vitality < 1.d-3) .or. &
+        (.not.cur_waste_form%breached .and. &
+         initialized(cur_waste_form%breach_time) .and. &
+         option%time > cur_waste_form%breach_time)) then
       call VecGetArrayF90(field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
       do k = 1,num_species
         cur_waste_form%inst_release_amount(k) = &
@@ -1911,7 +2056,7 @@ subroutine PMWFInitializeTimestep(this)
         ! update transport solution vector with mass injection molality
         ! as an alternative to a source term (issue with tran_dt changing)
         do f = 1, cur_waste_form%region%num_cells
-          cell_id = cur_waste_form%region%cell_ids(f)
+          cell_id = grid%nL2G(cur_waste_form%region%cell_ids(f))
           inst_release_molality = &                    ! [mol-rad/kg-water]
             ! [mol-rad]
             (cur_waste_form%inst_release_amount(k) * & ! [mol-rad/g-matrix]
@@ -1924,7 +2069,7 @@ subroutine PMWFInitializeTimestep(this)
              material_auxvars(cell_id)%volume * &           ! [m^3]
              global_auxvars(cell_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
           idof = cwfm%rad_species_list(k)%ispecies + &
-                 ((cell_id - 1) * option%ntrandof) 
+                 ((cur_waste_form%region%cell_ids(f) - 1) * option%ntrandof) 
           xx_p(idof) = xx_p(idof) + & 
                        (inst_release_molality*cur_waste_form%scaling_factor(f))
         enddo
@@ -2053,6 +2198,7 @@ subroutine PMWFSolve(this,time,ierr)
   
   use Global_Aux_module
   use Material_Aux_class
+  use Grid_module
   
   implicit none
 
@@ -2075,11 +2221,13 @@ subroutine PMWFSolve(this,time,ierr)
   character(len=MAXWORDLENGTH) :: word
   type(global_auxvar_type), pointer :: global_auxvars(:)
   class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(grid_type), pointer :: grid
   
   fmdm_count_global = 0
   fmdm_count_local = 0
   global_auxvars => this%realization%patch%aux%Global%auxvars
   material_auxvars => this%realization%patch%aux%Material%auxvars
+  grid => this%realization%patch%grid
 
   call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(this%realization%field%tran_xx,xx_p,ierr);CHKERRQ(ierr)
@@ -2101,7 +2249,7 @@ subroutine PMWFSolve(this,time,ierr)
         ! solution vector instead (see note in WFMech[DSNF/WIPP]Dissolution):
         class is(wf_mechanism_dsnf_type)
           do k = 1,cur_waste_form%region%num_cells
-            cell_id = cur_waste_form%region%cell_ids(k)
+            cell_id = grid%nL2G(cur_waste_form%region%cell_ids(k))
             do j = 1,num_species
               i = i + 1
               cur_waste_form%instantaneous_mass_rate(j) = &
@@ -2118,7 +2266,8 @@ subroutine PMWFSolve(this,time,ierr)
                  material_auxvars(cell_id)%volume * &          ! [m^3]
                  global_auxvars(cell_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
               idof = cwfm%rad_species_list(j)%ispecies + &
-                     ((cell_id - 1) * this%option%ntrandof)
+                     ((cur_waste_form%region%cell_ids(k) - 1) * &
+                      this%option%ntrandof)
               xx_p(idof) = xx_p(idof) + &                     ! mol-rad/kg-water
                            (inst_diss_molality*cur_waste_form%scaling_factor(k))  
               vec_p(i) = 0.d0
@@ -2217,6 +2366,8 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
 
   use Grid_module  
   use Global_Aux_module
+  use String_module
+  use Reactive_Transport_Aux_module
 
   implicit none
   
@@ -2226,12 +2377,18 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   PetscErrorCode :: ierr
 
   type(grid_type), pointer :: grid
-  type(global_auxvar_type), pointer :: global_auxvars(:)                                                                    ! 1/day -> 1/sec
+  type(global_auxvar_type), pointer :: global_auxvars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+                                            ! 1/day -> 1/sec
   PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
   PetscReal :: avg_temp
+  PetscReal :: avg_pri_molal, avg_sec_molal
+  PetscReal :: avg_pri_act_coef, avg_sec_act_coef
+  PetscInt :: i
 
   grid => pm%realization%patch%grid
   global_auxvars => pm%realization%patch%aux%Global%auxvars
+  rt_auxvars => pm%realization%patch%aux%RT%auxvars
   
   ierr = 0
 
@@ -2243,8 +2400,115 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   ! Generalized glass dissolution equation comes from Eq. 2.3.7-6 in
   ! Yucca Mountain Repository SAR, Section 2.3.7, DOE/RW-0573 Rev.0
   
-  avg_temp = (sum(global_auxvars(grid%nL2G(waste_form%region%cell_ids))% &
-              temp)/waste_form%region%num_cells)+273.15d0
+  i = 0
+  avg_temp = 0.d0
+  do while (i < waste_form%region%num_cells)
+    i = i + 1
+    avg_temp = avg_temp + &  ! Celcius
+               global_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))%temp * &
+               waste_form%scaling_factor(i)
+  enddo
+  call MPI_Allreduce(MPI_IN_PLACE,avg_temp,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+  avg_temp = avg_temp+273.15d0   ! Kelvin
+              
+  if (this%use_pH) then
+    if (this%h_ion_id > 0) then   ! primary species
+      i = 0
+      avg_pri_molal = 0.d0
+      do while (i < waste_form%region%num_cells)
+        i = i + 1
+        avg_pri_molal = avg_pri_molal + &
+                        rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
+                        pri_molal(this%h_ion_id)*waste_form%scaling_factor(i)
+      enddo
+      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_molal,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      i = 0
+      avg_pri_act_coef = 0.d0
+      do while (i < waste_form%region%num_cells)
+        i = i + 1
+        avg_pri_act_coef = avg_pri_act_coef + &
+                        rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
+                        pri_act_coef(this%h_ion_id)*waste_form%scaling_factor(i)
+      enddo
+      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_act_coef,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      this%pH = -log10(avg_pri_molal*avg_pri_act_coef)
+    elseif (this%h_ion_id < 0) then   ! secondary species
+      i = 0
+      avg_sec_molal = 0.d0
+      do while (i < waste_form%region%num_cells)
+        i = i + 1
+        avg_sec_molal = avg_sec_molal + &
+                        rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
+                        sec_molal(this%h_ion_id)*waste_form%scaling_factor(i)
+      enddo
+      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_molal,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      i = 0
+      avg_sec_act_coef = 0.d0
+      do while (i < waste_form%region%num_cells)
+        i = i + 1
+        avg_sec_act_coef = avg_sec_act_coef + &
+                        rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
+                        sec_act_coef(this%h_ion_id)*waste_form%scaling_factor(i)
+      enddo
+      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_act_coef,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      this%pH = -log10(avg_sec_molal*avg_sec_act_coef)
+    endif
+  endif
+  
+  if (this%use_Q) then
+    if (this%SiO2_id > 0) then   ! primary species
+      i = 0
+      avg_pri_molal = 0.d0
+      do while (i < waste_form%region%num_cells)
+        i = i + 1
+        avg_pri_molal = avg_pri_molal + &
+                        rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
+                        pri_molal(this%SiO2_id)*waste_form%scaling_factor(i)
+      enddo
+      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_molal,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      i = 0
+      avg_pri_act_coef = 0.d0
+      do while (i < waste_form%region%num_cells)
+        i = i + 1
+        avg_pri_act_coef = avg_pri_act_coef + &
+                        rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
+                        pri_act_coef(this%SiO2_id)*waste_form%scaling_factor(i)
+      enddo
+      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_act_coef,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      this%Q = avg_pri_molal*avg_pri_act_coef
+    elseif (this%SiO2_id < 0) then   ! secondary species
+      i = 0
+      avg_sec_molal = 0.d0
+      do while (i < waste_form%region%num_cells)
+        i = i + 1
+        avg_sec_molal = avg_sec_molal + &
+                        rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
+                        sec_molal(abs(this%SiO2_id))* &
+                        waste_form%scaling_factor(i)
+      enddo
+      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_molal,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      i = 0
+      avg_sec_act_coef = 0.d0
+      do while (i < waste_form%region%num_cells)
+        i = i + 1
+        avg_sec_act_coef = avg_sec_act_coef + &
+                        rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
+                        sec_act_coef(abs(this%SiO2_id))* &
+                        waste_form%scaling_factor(i)
+      enddo
+      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_act_coef,ONE_INTEGER_MPI, &
+                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      this%Q = avg_sec_molal*avg_sec_act_coef
+    endif
+  endif
   
   ! kg-glass/m^2/sec
   this%dissolution_rate = this%k0 * (10.d0**(this%nu*this%pH)) * &
@@ -2414,19 +2678,27 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
  ! FMDM model calculates this%dissolution_rate and Usource [g/m^2/yr]:
  !====================================================================
   time = option%time
-  avg_temp = (sum(global_auxvars(grid%nL2G(waste_form%region% &
-             cell_ids))%temp)/waste_form%region%num_cells)
+  
+  i = 0
+  avg_temp = 0.d0
+  do while (i < waste_form%region%num_cells)
+    i = i + 1
+    avg_temp = avg_temp + &  ! Celcius
+               global_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))%temp * &
+               waste_form%scaling_factor(i)
+  enddo
+  call MPI_Allreduce(MPI_IN_PLACE,avg_temp,ONE_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
   call AMP_step(this%burnup, time, avg_temp, this%concentration, &
                 initialRun, this%dissolution_rate, Usource, success) 
   write(*,*) this%dissolution_rate
- !====================================================================
-  
   ! convert total component concentration from mol/m3 back to mol/L (/1.d3)
   this%concentration = this%concentration/1.d3
   ! convert this%dissolution_rate from fmdm to pflotran units:
   ! g/m^2/yr => kg/m^2/sec
   this%dissolution_rate = this%dissolution_rate / (1000.0*24.0*3600.0*365)
   Usource = Usource / (1000.0*24.0*3600.0*365)
+ !====================================================================
 #else
   ! if no FMDM model, use the burnup as this%dissolution_rate:
   ! if no FMDM model, the units of burnup should already be kg-matrix/m^2/sec:

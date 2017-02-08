@@ -312,4 +312,5 @@ clean-tests :
 	-rm -f ufd/glass-*.vtk
 	-rm -f ufd/wf_doubles-*.vtk
 	-rm -f ufd/wf_region-*.vtk
+	-rm -f ufd/glass_full_geochem_np4-*.vtk
 
