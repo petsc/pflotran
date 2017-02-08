@@ -47,7 +47,7 @@ subroutine GeneralDerivativeDriver(option)
   
   PetscInt :: ibndtype(3)
   PetscInt :: auxvar_mapping(GENERAL_MAX_INDEX)
-  PetscReal :: auxvars(10) ! from aux_real_var array
+  PetscReal :: auxvars(3) ! from aux_real_var array
   
   class(characteristic_curves_type), pointer :: characteristic_curves
   type(material_parameter_type), pointer :: material_parameter
@@ -101,7 +101,7 @@ subroutine GeneralDerivativeDriver(option)
   ! scales must range (0.001 - 1.999d0)
   scale2 = 1.d0
 !  scale2 = 1.001d0
-  scale2 = 0.999d0
+!  scale2 = 0.999d0
 !  scale2 = 100.d0
 !  scale2 = 0.1d0
   select case(istate2)
@@ -152,8 +152,13 @@ subroutine GeneralDerivativeDriver(option)
 #endif
 
   ibndtype = DIRICHLET_BC     
-  auxvar_mapping = 0
-  auxvars = 0.d0
+!  ibndtype = NEUMANN_BC
+  auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX) = 1
+  auxvar_mapping(GENERAL_GAS_FLUX_INDEX) = 2
+  auxvar_mapping(GENERAL_ENERGY_FLUX_INDEX) = 3
+  auxvars(1) = -1.d-2
+  auxvars(2) = -1.d-2
+  auxvars(3) = -1.d-2
   ! everything downwind is XXX2, boundary is XXX
   call GeneralDerivativeFluxBC(pert2, &
                                ibndtype,auxvar_mapping,auxvars, &
@@ -610,7 +615,7 @@ subroutine GeneralDerivativeFluxBC(pert, &
   PetscInt :: natural_id = 1
   PetscInt :: i
   PetscReal, parameter :: area = 1.d0
-  PetscReal, parameter :: dist(-1:3) = [0.5d0,1.d0,1.d0,0.d0,0.d0]
+  PetscReal, parameter :: dist(-1:3) = [0.5d0,1.d0,0.d0,0.d0,1.d0]
   
   PetscReal :: v_darcy(2)
   
