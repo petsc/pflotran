@@ -18,6 +18,7 @@ module Test_Characteristic_Curves_module
   @TestCase
   type, extends(TestCase) :: Test_Characteristic_Curves
       type(option_type), pointer :: option
+      class(characteristic_curves_type), pointer :: cc_const
       class(characteristic_curves_type), pointer :: cc_bcb
       class(characteristic_curves_type), pointer :: cc_bcm
       class(characteristic_curves_type), pointer :: cc_vgm
@@ -278,6 +279,19 @@ contains
       class default
         print *, 'no mK4 Gas rel perm type in setUp'
     end select
+
+  ! Setting up the characteristic curve constant capillary pressure 
+  ! saturation function
+    this%cc_const => CharacteristicCurvesCreate()
+    this%cc_const%saturation_function => SF_Constant_Create()
+    select type(sf=>this%cc_const%saturation_function)
+      class is(sat_func_constant_type)
+        sf%constant_capillary_pressure = 1.d5
+        sf%constant_saturation = 0.5d0
+      class default
+        print *, 'no constant saturation function type in setUp'
+    end select
+
   end subroutine setUp
 
 ! ************************************************************************** !
@@ -1154,54 +1168,6 @@ contains
 ! ************************************************************************** !
 
   @Test
-  subroutine testsf_modified_kosugi_4param(this)
-
-    implicit none
-
-    class(Test_Characteristic_Curves), intent(inout) :: this
-
-    PetscReal :: capillary_pressure
-    PetscReal :: liquid_saturation
-    PetscReal :: relative_permeability
-    PetscReal :: dsat_pres
-    PetscReal :: value
-    PetscReal :: dkr_sat
-    PetscReal :: dkr_p
-    PetscReal, parameter :: tolerance = 1.d-8
-    character(len=128) :: string
-
-    ! saturation = f(capillary_pressure)
-    capillary_pressure = 1.0D+4
-    call this%cc_mk4%saturation_function%Saturation(capillary_pressure, &
-                                         liquid_saturation, &
-                                         dsat_pres,this%option)
-    ! relative permeability = f(saturation)
-    call this%cc_mk4%liq_rel_perm_function% &
-         RelativePermeability(liquid_saturation, &
-                              relative_permeability,dkr_sat,this%option)
-    dkr_p = dsat_pres * dkr_sat
-    string = '4-parameter modified Kosugi saturation as a function of '//&
-         &'capillary pressure'
-    value = 0.92818361251082959d0
-    @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
-    string = '4-parameter modified Kosugi relative permeability as a '//&
-         &'function of capillary pressure'
-    value = 0.81319485595377061d0
-    @assertEqual(value, relative_permeability, dabs(value)*tolerance, string)
-    string = '4-parameter modified Kosugi derivative of saturation as '//&
-         &'a function of capillary pressure'
-    value = 9.2150539010847664D-5
-    @assertEqual(value, dsat_pres, dabs(value)*tolerance, string)
-    string = '4-parameter modified Kosugi derivative of relative perm as'// &
-         &' a function of capillary pressure'
-    value = 2.0455735204588673D-4
-    @assertEqual(value, dkr_p, dabs(value)*tolerance, string)
-
-  end subroutine testsf_modified_kosugi_4param
-
-! ************************************************************************** !
-
-  @Test
   subroutine testcp_modified_kosugi_4param(this)
 
     implicit none
@@ -1271,6 +1237,46 @@ contains
     @assertEqual(value, dkr_sat, dabs(value)*tolerance, string)
 
   end subroutine testrpf_modified_kosugi_4param
+
+! ************************************************************************** !
+
+  @Test
+  subroutine testsf_constant(this)
+
+    implicit none
+
+    class(Test_Characteristic_Curves), intent(inout) :: this
+
+    PetscReal :: capillary_pressure
+    PetscReal :: liquid_saturation
+    PetscReal :: dsat_pres
+    PetscReal :: value
+    PetscReal, parameter :: tolerance = 1.d-8
+    character(len=128) :: string
+
+    ! saturation = f(capillary_pressure)
+    capillary_pressure = 1.d5
+    call this%cc_const%saturation_function%Saturation(capillary_pressure, &
+                                                      liquid_saturation, &
+                                                      dsat_pres,this%option)
+    string = 'Constant saturation function liquid saturation'
+    value = 0.5d0
+    @assertEqual(value, liquid_saturation, dabs(value)*tolerance, string)
+    string = 'Constant saturation function liquid saturation derivative'
+    value = 0.d0
+    @assertEqual(value, dsat_pres, tolerance, string)
+
+    ! capillary_pressure = f(saturation)
+    liquid_saturation = 0.5d0
+    call this%cc_const%saturation_function% &
+                                    CapillaryPressure(liquid_saturation, &
+                                                      capillary_pressure, &
+                                                      this%option)
+    string = 'Constant saturation function capillary pressure'
+    value = 1.d5
+    @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
+
+  end subroutine testsf_constant
 
 ! ************************************************************************** !
 

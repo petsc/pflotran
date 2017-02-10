@@ -94,7 +94,6 @@ MATERIAL_PROPERTY soil
 #=========================== saturation functions =============================
 CHARACTERISTIC_CURVES cc1
   SATURATION_FUNCTION CONSTANT
-    CONSTANT_SATURATION 1.d0
     CONSTANT_CAPILLARY_PRESSURE 0.d0
   /
   PERMEABILITY_FUNCTION MUALEM

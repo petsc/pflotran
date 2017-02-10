@@ -409,6 +409,7 @@ module Characteristic_Curves_module
             CharacteristicCurvesDestroy, &
             CharCurvesInputRecord, &
   ! required to be public for unit tests - Heeho Park
+            SF_Constant_Create, &
             SF_VG_Create, &
             SF_BC_Create, &
             SF_Linear_Create, &
@@ -2678,15 +2679,35 @@ subroutine SFConstantVerify(this,name,option)
     string = trim(name) // 'SATURATION_FUNCTION,CONSTANT'
   endif
   call SFBaseVerify(this,string,option)
-  if (Uninitialized(this%constant_capillary_pressure)) then
-    option%io_buffer = UninitializedMessage('CAPILLARY PRESSURE',string)
-    call printErrMsg(option)
-  endif   
-  if (Uninitialized(this%constant_saturation)) then
-    option%io_buffer = UninitializedMessage('SATURATION',string)
-    call printErrMsg(option)
-  endif   
-  
+  select case(option%iflowmode)
+    case(RICHARDS_MODE,TH_MODE)
+      if (Initialized(this%constant_capillary_pressure)) then
+        option%io_buffer = 'CONSTANT_CAPILLARY_PRESSURE is not supported for &
+          &Richards or TH flow modes as CONSTANT_SATURATION must be applied. &
+          &See ' // trim(string) // '.'
+        call printErrMsg(option)
+      endif
+      if (Uninitialized(this%constant_saturation)) then
+        option%io_buffer = 'CONSTANT_SATURATION must be specified for ' // &
+          trim(string) // '.'
+        call printErrMsg(option)
+      endif
+    case(G_MODE,TOIL_IMS_MODE,IMS_MODE,MIS_MODE,MPH_MODE,FLASH2_MODE)
+      if (Initialized(this%constant_saturation)) then
+        option%io_buffer = 'CONSTANT_SATURATION is not supported for &
+          &multiphase flow modes as CONSTANT_CAPILLARY_PRESSURE must be &
+          &applied. Saturation is a primary dependent variables. &
+          &See ' // trim(string) // '.'
+        call printErrMsg(option)
+      endif
+      if (Uninitialized(this%constant_capillary_pressure)) then
+        option%io_buffer = 'CONSTANT_CAPILLARY_PRESSURE must be specified &
+          &for ' // trim(string) // '.'
+        call printErrMsg(option)
+      endif
+    case default
+  end select
+
 end subroutine SFConstantVerify
 
 ! ************************************************************************** !

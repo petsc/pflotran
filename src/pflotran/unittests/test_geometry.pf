@@ -127,8 +127,8 @@ contains
     @assertEqual(z3, z, 1.0d-16)
 
     call GeomGetPlaneGradientinXandY(plane,dz_dx,dz_dy)
-    @assertEqual(0.4d0, dz_dx, 1.0d-16)
-    @assertEqual(-1.6d0, dz_dy, 1.0d-16)
+    @assertEqual(-0.4d0, dz_dx, 1.0d-16)
+    @assertEqual(1.6d0, dz_dy, 1.0d-16)
 
   end subroutine testGeometry_XXX
 
