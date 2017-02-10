@@ -18,6 +18,10 @@ module General_Common_module
 #define LIQUID_DIFFUSION
 #define GAS_DIFFUSION
 #define CONDUCTION
+
+#define WATER_SRCSINK
+#define GAS_SRCSINK
+#define ENERGY_SRCSINK
   
 !#define DEBUG_GENERAL_FILEOUTPUT
 !#define DEBUG_FLUXES  
@@ -2949,7 +2953,7 @@ subroutine GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
           mobility = gen_auxvar_dn%mobility(iphase)
           xmol(:) = gen_auxvar_dn%xmol(:,iphase)
           uH = gen_auxvar_dn%H(iphase)
-        endif      
+        endif  
         ! v_darcy[m/sec] = perm[m^2] / dist[m] * kr[-] / mu[Pa-sec]
         !                    dP[Pa]]
         dv_darcy_ddelta_pressure = perm_ave_over_dist * mobility
@@ -3769,7 +3773,7 @@ end subroutine GeneralBCFlux
 
 subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                           gen_auxvar,global_auxvar,ss_flow_vol_flux, &
-                          scale,Res,debug_cell)
+                          scale,Res,J,analytical_derivatives,debug_cell)
   ! 
   ! Computes the source/sink terms for the residual
   ! 
@@ -3792,40 +3796,153 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
   PetscReal :: ss_flow_vol_flux(option%nphase)
   PetscReal :: scale
   PetscReal :: Res(option%nflowdof)
+  PetscReal :: J(option%nflowdof,option%nflowdof)  
+  PetscBool :: analytical_derivatives  
   PetscBool :: debug_cell
       
   PetscReal :: qsrc_mol
   PetscReal :: enthalpy, internal_energy
   PetscReal :: cell_pressure, dummy_pressure
-  PetscInt :: icomp
+  PetscInt :: wat_comp_id, air_comp_id, energy_id
+  PetscReal :: Jl(option%nflowdof,option%nflowdof)  
+  PetscReal :: Jg(option%nflowdof,option%nflowdof)  
+  PetscReal :: Je(option%nflowdof,option%nflowdof)  
+  PetscReal :: dden_bool
+  PetscReal :: hw_dp, hw_dT, ha_dp, ha_dT, dum1, dum2, dum3
   PetscErrorCode :: ierr
 
+  wat_comp_id = option%water_id
+  air_comp_id = option%air_id
+  energy_id = option%energy_id
+  
   Res = 0.d0
-  do icomp = 1, option%nflowspec
-    qsrc_mol = 0.d0
-    select case(flow_src_sink_type)
-      case(MASS_RATE_SS)
-        qsrc_mol = qsrc(icomp)/fmw_comp(icomp) ! kg/sec -> kmol/sec
-      case(SCALED_MASS_RATE_SS)                       ! kg/sec -> kmol/sec
-        qsrc_mol = qsrc(icomp)/fmw_comp(icomp)*scale 
-      case(VOLUMETRIC_RATE_SS)  ! assume local density for now
-        ! qsrc1 = m^3/sec
-        qsrc_mol = qsrc(icomp)*gen_auxvar%den(icomp) ! den = kmol/m^3
-      case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
-        ! qsrc1 = m^3/sec             ! den = kmol/m^3
-        qsrc_mol = qsrc(icomp)*gen_auxvar%den(icomp)*scale 
+  J = 0.d0
+  
+#ifdef WATER_SRCSINK
+  qsrc_mol = 0.d0
+  dden_bool = 0.d0
+  select case(flow_src_sink_type)
+    case(MASS_RATE_SS)
+      qsrc_mol = qsrc(wat_comp_id)/fmw_comp(wat_comp_id) ! kg/sec -> kmol/sec
+    case(SCALED_MASS_RATE_SS)                       ! kg/sec -> kmol/sec
+      qsrc_mol = qsrc(wat_comp_id)/fmw_comp(wat_comp_id)*scale 
+    case(VOLUMETRIC_RATE_SS)  ! assume local density for now
+      ! qsrc1 = m^3/sec
+      qsrc_mol = qsrc(wat_comp_id)*gen_auxvar%den(wat_comp_id) ! den = kmol/m^3
+      dden_bool = 1.d0
+    case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
+      ! qsrc1 = m^3/sec             ! den = kmol/m^3
+      qsrc_mol = qsrc(wat_comp_id)*gen_auxvar%den(wat_comp_id)*scale
+      dden_bool = 1.d0
+  end select
+  ss_flow_vol_flux(wat_comp_id) = qsrc_mol/gen_auxvar%den(wat_comp_id)
+  Res(wat_comp_id) = qsrc_mol
+  if (analytical_derivatives) then
+    Jl = 0.d0
+    select case(global_auxvar%istate)
+      case(LIQUID_STATE)
+        ! derivative wrt liquid pressure
+        Jl(1,1) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_pl
+        ! derivative wrt air mole fraction
+        ! derivative wrt temperature
+        Jl(1,3) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_T
+      case(GAS_STATE)
+        option%io_buffer = 'Water injection not set up for gas state in &
+          &GeneralSrcSink.'
+        call printErrMsg(option)
+        ! derivative wrt gas pressure
+        ! derivative wrt air pressure
+        ! derivative wrt temperature
+      case(TWO_PHASE_STATE)
+        ! derivative wrt gas pressure
+        Jl(1,1) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_pl
+        ! derivative wrt gas saturation
+        ! derivative wrt temperature
+        Jl(1,1) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_T
     end select
-    ! icomp here is really iphase
-    ss_flow_vol_flux(icomp) = qsrc_mol/gen_auxvar%den(icomp)
-    Res(icomp) = qsrc_mol
-  enddo
+    J = J + Jl
+  endif
+#endif
+#ifdef AIR_SRCSINK
+  qsrc_mol = 0.d0
+  dden_bool = 0.d0
+  select case(flow_src_sink_type)
+    case(MASS_RATE_SS)
+      qsrc_mol = qsrc(air_comp_id)/fmw_comp(air_comp_id) ! kg/sec -> kmol/sec
+    case(SCALED_MASS_RATE_SS)                       ! kg/sec -> kmol/sec
+      qsrc_mol = qsrc(air_comp_id)/fmw_comp(air_comp_id)*scale 
+    case(VOLUMETRIC_RATE_SS)  ! assume local density for now
+      ! qsrc1 = m^3/sec
+      qsrc_mol = qsrc(air_comp_id)*gen_auxvar%den(air_comp_id) ! den = kmol/m^3
+      dden_bool = 1.d0
+    case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
+      ! qsrc1 = m^3/sec             ! den = kmol/m^3
+      qsrc_mol = qsrc(air_comp_id)*gen_auxvar%den(air_comp_id)*scale
+      dden_bool = 1.d0
+  end select
+  ss_flow_vol_flux(air_comp_id) = qsrc_mol/gen_auxvar%den(air_comp_id)
+  Res(air_comp_id) = qsrc_mol
+  if (analytical_derivatives) then
+    Jg = 0.d0
+    select case(global_auxvar%istate)
+      case(LIQUID_STATE)
+        option%io_buffer = 'Air injection not set up for liquid state in &
+          &GeneralSrcSink.'
+        call printErrMsg(option)
+        ! derivative wrt liquid pressure
+        ! derivative wrt air mole fraction
+        ! derivative wrt temperature
+      case(GAS_STATE)
+        ! derivative wrt gas pressure
+        Jg(2,1) = dden_bool * qsrc(air_comp_id) * gen_auxvar%d%deng_pg
+        ! derivative wrt air pressure
+        Jg(2,2) = dden_bool * qsrc(air_comp_id) * gen_auxvar%d%deng_pa
+        ! derivative wrt temperature
+        Jg(2,3) = dden_bool * qsrc(air_comp_id) * gen_auxvar%d%deng_T
+      case(TWO_PHASE_STATE)
+        ! derivative wrt gas pressure
+        Jg(2,1) = dden_bool * qsrc(air_comp_id) * gen_auxvar%d%deng_pg
+        ! derivative wrt gas saturation
+        ! derivative wrt temperature
+        Jg(2,3) = dden_bool * qsrc(air_comp_id) * gen_auxvar%d%deng_T
+    end select
+    J = J + Jg
+  endif
+#endif
   if (dabs(qsrc(TWO_INTEGER)) < 1.d-40 .and. &
       qsrc(ONE_INTEGER) < 0.d0) then ! extraction only
     ! Res(1) holds qsrc_mol for water.  If the src/sink value for air is zero,
     ! remove/add the equivalent mole fraction of air in the liquid phase.
-    qsrc_mol = Res(ONE_INTEGER)*gen_auxvar%xmol(TWO_INTEGER,ONE_INTEGER)
+    qsrc_mol = Res(wat_comp_id)*gen_auxvar%xmol(TWO_INTEGER,ONE_INTEGER)
     Res(TWO_INTEGER) = qsrc_mol
-    ss_flow_vol_flux(TWO_INTEGER) = qsrc_mol/gen_auxvar%den(TWO_INTEGER)
+    ss_flow_vol_flux(air_comp_id) = qsrc_mol/gen_auxvar%den(TWO_INTEGER)
+    if (analytical_derivatives) then
+      !Jg = 0.d0
+      select case(global_auxvar%istate)
+        case(LIQUID_STATE)
+          ! derivative wrt liquid pressure
+          ! derivative wrt air mole fraction
+          Jg(2,2) = Jg(2,2) + Res(ONE_INTEGER)
+          ! derivative wrt temperature
+        case(GAS_STATE)
+          ! derivative wrt gas pressure
+          ! derivative wrt air pressure
+          ! derivative wrt temperature
+        case(TWO_PHASE_STATE)
+          ! derivative wrt gas pressure
+          Jg(2,1) = Jg(2,1) + &
+                    dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_pl * &
+                    gen_auxvar%xmol(TWO_INTEGER,ONE_INTEGER) + &
+                    Res(ONE_INTEGER) * gen_auxvar%d%xmol_p(2,1)
+          ! derivative wrt gas saturation
+          ! derivative wrt temperature
+          Jg(2,3) = Jg(2,3) + &
+                    dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_T * &
+                    gen_auxvar%xmol(TWO_INTEGER,ONE_INTEGER) + &
+                    Res(ONE_INTEGER) * gen_auxvar%d%xmol_T(2,1)
+      end select
+      J = J + Jg
+    endif
   endif
   ! energy units: MJ/sec
   if (size(qsrc) == THREE_INTEGER) then
@@ -3833,34 +3950,60 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
       cell_pressure = &
         maxval(gen_auxvar%pres(option%liquid_phase:option%gas_phase))
       if (dabs(qsrc(ONE_INTEGER)) > 0.d0) then
-        call EOSWaterEnthalpy(gen_auxvar%temp,cell_pressure,enthalpy,ierr)
+        if (associated(gen_auxvar%d)) then
+          call EOSWaterEnthalpy(gen_auxvar%temp,cell_pressure,enthalpy, &
+                                hw_dp,hw_dT,ierr)
+          hw_dp = hw_dp * 1.d-6
+          hw_dT = hw_dT * 1.d-6
+        else
+          call EOSWaterEnthalpy(gen_auxvar%temp,cell_pressure,enthalpy,ierr)
+        endif
         enthalpy = enthalpy * 1.d-6 ! J/kmol -> whatever units
         ! enthalpy units: MJ/kmol                       ! water component mass
         Res(option%energy_id) = Res(option%energy_id) + Res(ONE_INTEGER) * &
                                                         enthalpy
+        if (analytical_derivatives) then
+          Je = 0.d0
+          Je(3,1) = Jl(1,1) * enthalpy + &
+                    Res(ONE_INTEGER) * hw_dp
+          Je(3,3) = Jl(1,3) * enthalpy + &
+                    Res(ONE_INTEGER) * hw_dT
+        endif
+        J = J + Je
       endif
       if (dabs(qsrc(TWO_INTEGER)) > 0.d0) then
         ! this is pure air, we use the enthalpy of air, NOT the air/water
         ! mixture in gas
         ! air enthalpy is only a function of temperature and the 
         dummy_pressure = 0.d0
-        call EOSGasEnergy(gen_auxvar%temp,dummy_pressure, &
-                          enthalpy,internal_energy,ierr)
+        if (associated(gen_auxvar%d)) then
+          call EOSGasEnergy(gen_auxvar%temp,dummy_pressure,enthalpy, &
+                            ha_dT,ha_dp,dum1,dum2,dum3,ierr)
+          ha_dp = ha_dp * 1.d-6
+          ha_dT = ha_dT * 1.d-6
+        else
+          call EOSGasEnergy(gen_auxvar%temp,dummy_pressure, &
+                            enthalpy,internal_energy,ierr)
+        endif
         enthalpy = enthalpy * 1.d-6 ! J/kmol -> MJ/kmol                                  
         ! enthalpy units: MJ/kmol                       ! air component mass
         Res(option%energy_id) = Res(option%energy_id) + Res(TWO_INTEGER) * &
                                                         enthalpy
+        if (analytical_derivatives) then
+          Je = 0.d0
+          Je(3,1) = Jl(2,1) * enthalpy + &
+                    Res(TWO_INTEGER) * ha_dp
+          Je(3,2) = Jl(2,2) * enthalpy
+          Je(3,3) = Jl(2,3) * enthalpy + &
+                    Res(TWO_INTEGER) * ha_dT
+        endif
+        J = J + Je
       endif
     else
       Res(option%energy_id) = qsrc(THREE_INTEGER)*scale ! MJ/s
+      ! no derivative
     endif
   endif
-  
-#ifdef DEBUG_GENERAL_FILEOUTPUT
-  if (debug_flag > 0) then  
-    write(debug_unit,'(a,7es24.15)') 'src/sink:', Res(1)-Res(2),Res(12:3)
-  endif
-#endif   
   
 end subroutine GeneralSrcSink
 
@@ -4160,16 +4303,17 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
   PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscReal :: dummy_real(option%nphase)
   PetscInt :: idof, irow
+  PetscReal :: Jdum(option%nflowdof,option%nflowdof)  
 
   option%iflag = -3
   call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                       gen_auxvars(ZERO_INTEGER),global_auxvar,dummy_real, &
-                      scale,res,PETSC_FALSE)
+                      scale,res,Jdum,PETSC_FALSE,PETSC_FALSE)
   ! downgradient derivatives
   do idof = 1, option%nflowdof
     call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                         gen_auxvars(idof),global_auxvar,dummy_real, &
-                        scale,res_pert,PETSC_FALSE)            
+                        scale,res_pert,Jdum,PETSC_FALSE,PETSC_FALSE)            
     do irow = 1, option%nflowdof
       Jac(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvars(idof)%pert
     enddo !irow

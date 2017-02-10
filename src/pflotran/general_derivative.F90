@@ -30,6 +30,13 @@ subroutine GeneralDerivativeDriver(option)
   
   type(option_type), pointer :: option
   
+  PetscInt, parameter :: ACCUMULATION = 1
+  PetscInt, parameter :: INTERIOR_FLUX = 2
+  PetscInt, parameter :: BOUNDARY_FLUX = 3
+  PetscInt, parameter :: SRCSINK = 4
+  
+  PetscInt :: itype
+
   PetscInt :: istate
   PetscReal :: xx(3)
   PetscReal :: pert(3)
@@ -49,6 +56,10 @@ subroutine GeneralDerivativeDriver(option)
   PetscInt :: auxvar_mapping(GENERAL_MAX_INDEX)
   PetscReal :: auxvars(3) ! from aux_real_var array
   
+  PetscInt :: flow_src_sink_type
+  PetscReal :: qsrc(3)
+  PetscReal :: srcsink_scale
+  
   class(characteristic_curves_type), pointer :: characteristic_curves
   type(material_parameter_type), pointer :: material_parameter
   type(general_parameter_type), pointer :: general_parameter
@@ -63,6 +74,10 @@ subroutine GeneralDerivativeDriver(option)
                               characteristic_curves, &
                               material_parameter,option)  
   option%flow_dt = 1.d0
+!  itype = ACCUMULATION
+!  itype = INTERIOR_FLUX
+!  itype = BOUNDARY_FLUX
+  itype = SRCSINK
   
 !  istate = LIQUID_STATE
 !  istate = GAS_STATE
@@ -100,6 +115,7 @@ subroutine GeneralDerivativeDriver(option)
 !  istate2 = TWO_PHASE_STATE
   ! scales must range (0.001 - 1.999d0)
   scale2 = 1.d0
+!  scale2 = 1.d0 - 1.d-14
 !  scale2 = 1.001d0
 !  scale2 = 0.999d0
 !  scale2 = 100.d0
@@ -135,41 +151,52 @@ subroutine GeneralDerivativeDriver(option)
   
   call GeneralDerivativeAuxVar(pert,general_auxvar,global_auxvar, &
                                material_auxvar,option)
-  call GeneralDerivativeAuxVar(pert2,general_auxvar2,global_auxvar2, &
-                               material_auxvar2,option)
 
-!  call GeneralDerivativeAccum(pert,general_auxvar,global_auxvar, &
-!                              material_auxvar,material_parameter,option)
-
-#if 0
-  call GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
-                             material_auxvar,characteristic_curves, &
-                             material_parameter,&
-                             pert2,general_auxvar2,global_auxvar2, &
-                             material_auxvar2,characteristic_curves, &
-                             material_parameter, &
-                             general_parameter,option)
-#endif
-
-  ibndtype = DIRICHLET_BC     
-!  ibndtype = NEUMANN_BC
-  auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX) = 1
-  auxvar_mapping(GENERAL_GAS_FLUX_INDEX) = 2
-  auxvar_mapping(GENERAL_ENERGY_FLUX_INDEX) = 3
-  auxvars(1) = -1.d-2
-  auxvars(2) = -1.d-2
-  auxvars(3) = -1.d-2
-  ! everything downwind is XXX2, boundary is XXX
-  call GeneralDerivativeFluxBC(pert2, &
-                               ibndtype,auxvar_mapping,auxvars, &
-                               general_auxvar(ZERO_INTEGER), &
-                               global_auxvar(ZERO_INTEGER), &
-                               general_auxvar2,global_auxvar2, &
-                               material_auxvar2, &
-                               characteristic_curves, &
-                               material_parameter, &
-                               general_parameter,option)
-
+  select case(itype)
+    case(ACCUMULATION)
+      call GeneralDerivativeAccum(pert,general_auxvar,global_auxvar, &
+                                  material_auxvar,material_parameter,option)
+    case(INTERIOR_FLUX)
+      call GeneralDerivativeAuxVar(pert2,general_auxvar2,global_auxvar2, &
+                                   material_auxvar2,option)
+      call GeneralDerivativeFlux(pert,general_auxvar,global_auxvar, &
+                                 material_auxvar,characteristic_curves, &
+                                 material_parameter,&
+                                 pert2,general_auxvar2,global_auxvar2, &
+                                 material_auxvar2,characteristic_curves, &
+                                 material_parameter, &
+                                 general_parameter,option)
+    case(BOUNDARY_FLUX)
+      ibndtype = DIRICHLET_BC     
+    !  ibndtype = NEUMANN_BC
+      auxvar_mapping(GENERAL_LIQUID_FLUX_INDEX) = 1
+      auxvar_mapping(GENERAL_GAS_FLUX_INDEX) = 2
+      auxvar_mapping(GENERAL_ENERGY_FLUX_INDEX) = 3
+      auxvars(1) = -1.d-2
+      auxvars(2) = -1.d-2
+      auxvars(3) = -1.d-2
+      ! everything downwind is XXX2, boundary is XXX
+      call GeneralDerivativeAuxVar(pert2,general_auxvar2,global_auxvar2, &
+                                   material_auxvar2,option)
+      call GeneralDerivativeFluxBC(pert2, &
+                                   ibndtype,auxvar_mapping,auxvars, &
+                                   general_auxvar(ZERO_INTEGER), &
+                                   global_auxvar(ZERO_INTEGER), &
+                                   general_auxvar2,global_auxvar2, &
+                                   material_auxvar2, &
+                                   characteristic_curves, &
+                                   material_parameter, &
+                                   general_parameter,option)
+    case(SRCSINK)
+      flow_src_sink_type = VOLUMETRIC_RATE_SS
+      qsrc = 0.d0
+      qsrc(1) = 1.d-10
+      srcsink_scale = 1.d0
+      call GeneralDerivativeSrcSink(pert,qsrc,flow_src_sink_type, &
+                                    general_auxvar,global_auxvar, &
+                                    material_auxvar,srcsink_scale,option)
+  end select
+  
   ! Destroy objects
   call GeneralDerivativeDestroyAuxVar(general_auxvar,global_auxvar, &
                                       material_auxvar,option)  
@@ -326,6 +353,7 @@ subroutine GeneralDerivativeSetupEOS(option)
   call EOSWaterSetDensity('PLANAR')
   call EOSWaterSetEnthalpy('PLANAR')
   call EOSWaterSetSteamDensity('PLANAR')
+  call EOSWaterSetSteamEnthalpy('PLANAR')
 #endif
 
   ! for ruling out density partial derivative
@@ -336,14 +364,17 @@ subroutine GeneralDerivativeSetupEOS(option)
   call EOSWaterSetEnthalpy('CONSTANT',aux)
 #endif
 #if 0
+#if 1
   aux(1) = 9.899986173768605D-002
   call EOSWaterSetSteamDensity('CONSTANT',aux)  
   aux(1) = 45898000.0921749d0
   call EOSWaterSetSteamEnthalpy('CONSTANT',aux)
-  
+#endif
+#if 1
 !  call EOSGasSetDensityConstant(196.d0)
   call EOSGasSetDensityConstant(0.395063665868904d0)
   call EOSGasSetEnergyConstant(8841206.16464255d0)
+#endif
 #endif
 
   tlow = 1.d-1
@@ -660,6 +691,63 @@ subroutine GeneralDerivativeFluxBC(pert, &
                            general_auxvar_dn,option)
   
 end subroutine GeneralDerivativeFluxBC
+
+! ************************************************************************** !
+
+subroutine GeneralDerivativeSrcSink(pert,qsrc,flow_src_sink_type, &
+                                    general_auxvar,global_auxvar, &
+                                    material_auxvar,scale,option)
+
+  use Option_module
+  use Characteristic_Curves_module
+  use Material_Aux_class
+  
+  implicit none
+
+  type(option_type), pointer :: option
+  PetscReal :: pert(3)
+  PetscReal :: qsrc(:)
+  PetscInt :: flow_src_sink_type  
+  type(general_auxvar_type) :: general_auxvar(0:)
+  type(global_auxvar_type) :: global_auxvar(0:)
+  type(material_auxvar_type) :: material_auxvar(0:)
+  PetscReal :: scale
+  
+  PetscReal :: ss_flow_vol_flux(option%nphase)  
+
+  PetscInt :: natural_id = 1
+  PetscInt :: i
+  
+  PetscInt :: irow
+  PetscReal :: res(3)
+  PetscReal :: res_pert(3,3)
+  PetscReal :: jac_anal(3,3)
+  PetscReal :: jac_num(3,3)
+  PetscReal :: jac_dum(3,3)
+  
+  call GeneralPrintAuxVars(general_auxvar(0),global_auxvar(0),material_auxvar(0), &
+                           natural_id,'srcsink',option)
+
+  call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
+                      general_auxvar(ZERO_INTEGER),global_auxvar(ZERO_INTEGER), &
+                      ss_flow_vol_flux, &
+                      scale,res,jac_anal,PETSC_TRUE,PETSC_FALSE)                           
+                           
+  do i = 1, 3
+    call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
+                        general_auxvar(i),global_auxvar(i), &
+                        ss_flow_vol_flux, &
+                        scale,res_pert(:,i),jac_dum,PETSC_FALSE,PETSC_FALSE)                           
+    do irow = 1, option%nflowdof
+      jac_num(irow,i) = (res_pert(irow,i)-res(irow))/pert(i)
+    enddo !irow
+  enddo
+  
+  write(*,*) '-----------------------------------------------------------------'
+  call GeneralDiffJacobian('srcsink',jac_num,jac_anal,res,res_pert,pert, &
+                           general_auxvar,option)
+  
+end subroutine GeneralDerivativeSrcSink
 
 ! ************************************************************************** !
 
