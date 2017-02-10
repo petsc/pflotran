@@ -148,7 +148,10 @@ module Output_Aux_module
   PetscInt, parameter, public :: OUTPUT_RATE = 4
   PetscInt, parameter, public :: OUTPUT_VOLUME_FRACTION = 5
   PetscInt, parameter, public :: OUTPUT_DISCRETE = 6
-  
+  PetscInt, parameter, public :: OUTPUT_DISPLACEMENT = 7
+  PetscInt, parameter, public :: OUTPUT_STRESS = 8
+  PetscInt, parameter, public :: OUTPUT_STRAIN = 9
+
   public :: OutputOptionCreate, &
             OutputOptionDuplicate, &
             OutputVariableCreate, &
@@ -813,6 +816,12 @@ function OutputVariableToCategoryString(icategory)
       string = 'VOLUME_FRACTION'
     case(OUTPUT_DISCRETE)
       string = 'DISCRETE'
+    case(OUTPUT_DISPLACEMENT)
+      string = 'DISPLACEMENT'
+    case(OUTPUT_STRESS)
+      string = 'STRESS'
+    case(OUTPUT_STRAIN)
+      string = 'STRAIN'
     case default
       string = 'GENERIC'
   end select
