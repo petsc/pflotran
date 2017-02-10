@@ -148,6 +148,21 @@ module Output_Aux_module
   PetscInt, parameter, public :: OUTPUT_RATE = 4
   PetscInt, parameter, public :: OUTPUT_VOLUME_FRACTION = 5
   PetscInt, parameter, public :: OUTPUT_DISCRETE = 6
+  PetscInt, parameter, public :: OUTPUT_DISPLACEMENT_X = 7
+  PetscInt, parameter, public :: OUTPUT_DISPLACEMENT_Y = 8
+  PetscInt, parameter, public :: OUTPUT_DISPLACEMENT_Z = 9
+  PetscInt, parameter, public :: OUTPUT_STRESS_XX = 10
+  PetscInt, parameter, public :: OUTPUT_STRESS_YY = 11
+  PetscInt, parameter, public :: OUTPUT_STRESS_ZZ = 12
+  PetscInt, parameter, public :: OUTPUT_STRESS_XY = 13
+  PetscInt, parameter, public :: OUTPUT_STRESS_YZ = 14
+  PetscInt, parameter, public :: OUTPUT_STRESS_ZX = 15
+  PetscInt, parameter, public :: OUTPUT_STRAIN_XX = 16
+  PetscInt, parameter, public :: OUTPUT_STRAIN_YY = 17
+  PetscInt, parameter, public :: OUTPUT_STRAIN_ZZ = 18
+  PetscInt, parameter, public :: OUTPUT_STRAIN_XY = 19
+  PetscInt, parameter, public :: OUTPUT_STRAIN_YZ = 20
+  PetscInt, parameter, public :: OUTPUT_STRAIN_ZX = 21
   
   public :: OutputOptionCreate, &
             OutputOptionDuplicate, &
@@ -813,6 +828,36 @@ function OutputVariableToCategoryString(icategory)
       string = 'VOLUME_FRACTION'
     case(OUTPUT_DISCRETE)
       string = 'DISCRETE'
+    case(OUTPUT_DISPLACEMENT_X)
+      string = 'DISPLACEMENT_X'
+    case(OUTPUT_DISPLACEMENT_Y)
+      string = 'DISPLACEMENT_Y'
+    case(OUTPUT_DISPLACEMENT_Z)
+      string = 'DISPLACEMENT_Z'
+    case(OUTPUT_STRESS_XX)
+      string = 'STRESS_XX'
+    case(OUTPUT_STRESS_YY)
+      string = 'STRESS_YY'
+    case(OUTPUT_STRESS_ZZ)
+      string = 'STRESS_ZZ'
+    case(OUTPUT_STRESS_XY)
+      string = 'STRESS_XY'
+    case(OUTPUT_STRESS_YZ)
+      string = 'STRESS_YZ'
+    case(OUTPUT_STRESS_ZX)
+      string = 'STRESS_ZX'
+    case(OUTPUT_STRAIN_XX)
+      string = 'STRAIN_XX'
+    case(OUTPUT_STRAIN_YY)
+      string = 'STRAIN_YY'
+    case(OUTPUT_STRAIN_ZZ)
+      string = 'STRAIN_ZZ'
+    case(OUTPUT_STRAIN_XY)
+      string = 'STRAIN_XY'
+    case(OUTPUT_STRAIN_YZ)
+      string = 'STRAIN_YZ'
+    case(OUTPUT_STRAIN_ZX)
+      string = 'STRAIN_ZX'
     case default
       string = 'GENERIC'
   end select

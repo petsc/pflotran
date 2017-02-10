@@ -82,6 +82,21 @@ class RegressionTest(object):
         self._VOLUME_FRACTION = "volume_fraction"
         self._PRESSURE = "pressure"
         self._SATURATION = "saturation"
+        self._DISPLACEMENT_X = "displacement_x"
+        self._DISPLACEMENT_Y = "displacement_y"
+        self._DISPLACEMENT_Z = "displacement_z"
+        self._STRAIN_XX = "strain_xx"
+        self._STRAIN_YY = "strain_yy"
+        self._STRAIN_ZZ = "strain_zz"
+        self._STRAIN_XY = "strain_xy"
+        self._STRAIN_YZ = "strain_yz"
+        self._STRAIN_ZX = "strain_zx"
+        self._STRESS_XX = "stress_xx"
+        self._STRESS_YY = "stress_yy"
+        self._STRESS_ZZ = "stress_zz"
+        self._STRESS_XY = "stress_xy"
+        self._STRESS_YZ = "stress_yz"
+        self._STRESS_ZX = "stress_zx"
         self._SOLUTION = "solution"
         self._RESIDUAL = "residual"
         self._TOL_VALUE = 0
@@ -117,7 +132,12 @@ class RegressionTest(object):
                                        0.0, sys.float_info.max]
         self._tolerance[self._DISCRETE] = [0, self._ABSOLUTE, 0, sys.maxsize]
         common = [self._CONCENTRATION, self._GENERIC, self._RATE, self._VOLUME_FRACTION, \
-                  self._PRESSURE, self._SATURATION, self._RESIDUAL]
+                  self._PRESSURE, self._SATURATION, self._RESIDUAL, \
+                  self._DISPLACEMENT_X, self._DISPLACEMENT_Y, self._DISPLACEMENT_Z, \
+                  self._STRESS_XX, self._STRESS_YY, self._STRESS_ZZ, \
+                  self._STRESS_XY, self._STRESS_YZ, self._STRESS_ZX, \
+                  self._STRAIN_XX, self._STRAIN_YY, self._STRAIN_ZZ, \
+                  self._STRAIN_XY, self._STRAIN_YZ, self._STRAIN_ZX]
         for t in common:
             self._tolerance[t] = [1.0e-12, self._ABSOLUTE, \
                                   0.0, sys.float_info.max]
@@ -767,7 +787,22 @@ class RegressionTest(object):
             key == self._RATE or
             key == self._VOLUME_FRACTION or
             key == self._PRESSURE or
-                key == self._SATURATION):
+            key == self._SATURATION or
+            key == self._DISPLACEMENT_X or
+            key == self._DISPLACEMENT_Y or
+            key == self._DISPLACEMENT_Z or
+            key == self._STRAIN_XX or 
+            key == self._STRAIN_YY or 
+            key == self._STRAIN_ZZ or 
+            key == self._STRAIN_XY or 
+            key == self._STRAIN_YZ or 
+            key == self._STRAIN_ZX or 
+            key == self._STRESS_XX or
+            key == self._STRESS_YY or
+            key == self._STRESS_ZZ or
+            key == self._STRESS_XY or
+            key == self._STRESS_YZ or
+            key == self._STRESS_ZX):
             previous = float(previous)
             current = float(current)
             tol = self._tolerance[key]
@@ -968,6 +1003,24 @@ class RegressionTest(object):
         self._set_criteria(self._PRESSURE, cfg_criteria, test_data)
 
         self._set_criteria(self._SATURATION, cfg_criteria, test_data)
+        
+        self._set_criteria(self._DISPLACEMENT_X, cfg_criteria, test_data)
+        self._set_criteria(self._DISPLACEMENT_Y, cfg_criteria, test_data)
+        self._set_criteria(self._DISPLACEMENT_Z, cfg_criteria, test_data)
+       
+        self._set_criteria(self._STRAIN_XX, cfg_criteria, test_data)
+        self._set_criteria(self._STRAIN_YY, cfg_criteria, test_data)
+        self._set_criteria(self._STRAIN_ZZ, cfg_criteria, test_data)
+        self._set_criteria(self._STRAIN_XY, cfg_criteria, test_data)
+        self._set_criteria(self._STRAIN_YZ, cfg_criteria, test_data)
+        self._set_criteria(self._STRAIN_ZX, cfg_criteria, test_data)
+       
+        self._set_criteria(self._STRESS_XX, cfg_criteria, test_data)
+        self._set_criteria(self._STRESS_YY, cfg_criteria, test_data)
+        self._set_criteria(self._STRESS_ZZ, cfg_criteria, test_data)
+        self._set_criteria(self._STRESS_XY, cfg_criteria, test_data)
+        self._set_criteria(self._STRESS_YZ, cfg_criteria, test_data)
+        self._set_criteria(self._STRESS_ZX, cfg_criteria, test_data)
 
     def _set_criteria(self, key, cfg_criteria, test_data):
         """

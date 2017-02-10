@@ -147,17 +147,17 @@ subroutine GeomechForceSetPlotVariables(list)
 
   name = 'disp_x'
   units = 'm'
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_DISPLACEMENT_X,units, &
                                GEOMECH_DISP_X)
                                
   name = 'disp_y'
   units = 'm'
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_DISPLACEMENT_Y,units, &
                                GEOMECH_DISP_Y)
                                
   name = 'disp_z'
   units = 'm'
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_DISPLACEMENT_Z,units, &
                                GEOMECH_DISP_Z)
 
   units = ''
@@ -169,76 +169,76 @@ subroutine GeomechForceSetPlotVariables(list)
                              
   name = 'strain_xx'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRAIN_XX,units, &
                                STRAIN_XX)
                                
   name = 'strain_yy'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRAIN_YY,units, &
                                STRAIN_YY)
                                
   name = 'strain_zz'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRAIN_ZZ,units, &
                                STRAIN_ZZ)
                                
   name = 'strain_xy'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRAIN_XY,units, &
                                STRAIN_XY)
                                
   name = 'strain_yz'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRAIN_YZ,units, &
                                STRAIN_YZ)
                                
   name = 'strain_zx'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRAIN_ZX,units, &
                                STRAIN_ZX)
                                                                               
   name = 'stress_xx'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRESS_XX,units, &
                                STRESS_XX)
                                
   name = 'stress_yy'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRESS_YY,units, &
                                STRESS_YY)
                                
   name = 'stress_zz'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRESS_ZZ,units, &
                                STRESS_ZZ)
                                
   name = 'stress_xy'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRESS_XY,units, &
                                STRESS_XY)
                                
   name = 'stress_yz'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRESS_YZ,units, &
                                STRESS_YZ)
                                
   name = 'stress_zx'
   units = ''
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_STRESS_ZX,units, &
                                STRESS_ZX)
   name = 'rel_disp_x'
   units = 'm'
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_DISPLACEMENT_X,units, &
                                GEOMECH_REL_DISP_X)
                                
   name = 'rel_disp_y'
   units = 'm'
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_DISPLACEMENT_Y,units, &
                                GEOMECH_REL_DISP_Y)
                                
   name = 'rel_disp_z'
   units = 'm'
-  call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+  call OutputVariableAddToList(list,name,OUTPUT_DISPLACEMENT_Z,units, &
                                GEOMECH_REL_DISP_Z)
 
 
