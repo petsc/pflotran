@@ -316,9 +316,9 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
 
   hc = this%conn_h(iconn)
   cfact = this%conn_factors(iconn)
-
+ 
   mob = this%ConnMob(this%flow_auxvars(dof,ghosted_id)%mobility, &
-                                       option%liquid_phase)
+                                       option%liquid_phase,dof,ghosted_id)
   !mob = 1754.0d0
   dphi = this%pw_ref + hc - & 
             this%flow_auxvars(dof,ghosted_id)%pres(option%liquid_phase)
@@ -490,7 +490,8 @@ subroutine TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
       end if 
     end if
     
-    mob = this%ConnMob(this%flow_auxvars(dof,ghosted_id)%mobility,i_ph)
+    mob = this%ConnMob(this%flow_auxvars(dof,ghosted_id)%mobility,i_ph, &
+                       dof,ghosted_id)
 
     !if ( dabs(dphi) < 1.d-5 ) dphi = 0.0d0 !cut off noise (Pa)
     !if ( dphi < 0.0d0 ) &
