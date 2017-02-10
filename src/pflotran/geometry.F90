@@ -620,8 +620,8 @@ subroutine GeomGetPlaneGradientinXandY(plane,dz_dx,dz_dy)
   PetscReal :: dz_dx
   PetscReal :: dz_dy
     
-  dz_dx = plane%A/plane%C
-  dz_dy = plane%B/plane%C
+  dz_dx = -1.d0*plane%A/plane%C
+  dz_dy = -1.d0*plane%B/plane%C
 
 end subroutine GeomGetPlaneGradientinXandY
 

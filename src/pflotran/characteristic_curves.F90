@@ -37,6 +37,14 @@ module Characteristic_Curves_module
     procedure, public :: CapillaryPressure => SFDefaultCapillaryPressure
     procedure, public :: Saturation => SFDefaultSaturation
   end type sat_func_default_type  
+  type, public, extends(sat_func_base_type) :: sat_func_constant_type
+    PetscReal :: constant_capillary_pressure
+    PetscReal :: constant_saturation
+  contains
+    procedure, public :: Verify => SFConstantVerify
+    procedure, public :: CapillaryPressure => SFConstantCapillaryPressure
+    procedure, public :: Saturation => SFConstantSaturation
+  end type sat_func_constant_type  
   type, public, extends(sat_func_base_type) :: sat_func_VG_type
     PetscReal :: alpha
     PetscReal :: m
@@ -520,6 +528,8 @@ subroutine CharacteristicCurvesRead(this,input,option)
                            error_string)
         call StringToUpper(word)
         select case(word)
+          case('CONSTANT')
+            this%saturation_function => SF_Constant_Create()
           case('VAN_GENUCHTEN')
             this%saturation_function => SF_VG_Create()
           case('BROOKS_COREY')
@@ -719,6 +729,8 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   smooth = PETSC_FALSE
   error_string = 'CHARACTERISTIC_CURVES,SATURATION_FUNCTION,'
   select type(sf => saturation_function)
+    class is(sat_func_constant_type)
+      error_string = trim(error_string) // 'CONSTANT'
     class is(sat_func_VG_type)
       error_string = trim(error_string) // 'VAN_GENUCHTEN'
     class is(sat_func_BC_type)
@@ -768,6 +780,20 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
     if (found) cycle
     
     select type(sf => saturation_function)
+      class is(sat_func_constant_type)
+        select case(keyword)
+          case('CONSTANT_CAPILLARY_PRESSURE') 
+            call InputReadDouble(input,option,sf%constant_capillary_pressure)
+            call InputErrorMsg(input,option,'constant capillary pressure', &
+                               error_string)
+          case('CONSTANT_SATURATION') 
+            call InputReadDouble(input,option,sf%constant_saturation)
+            call InputErrorMsg(input,option,'constant saturation', &
+                                error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                   'constant saturation function',option)
+        end select
       class is(sat_func_VG_type)
         select case(keyword)
           case('M') 
@@ -912,6 +938,9 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   endif
 
   select type(sf => saturation_function)
+    class is(sat_func_constant_type)
+      option%io_buffer = 'Constant saturation function is being used.'
+      call printWrnMsg(option)
     class is(sat_func_VG_type)
     class is(sat_func_BC_type)
       if (.not.smooth) then
@@ -2608,6 +2637,94 @@ subroutine RPF_DefaultRelPerm(this,liquid_saturation,relative_permeability, &
   
 end subroutine RPF_DefaultRelPerm
 ! End Default Routines
+
+! ************************************************************************** !
+
+! Begin SF: Constant
+function SF_Constant_Create()
+
+  ! Creates the default saturation function object
+
+  implicit none
+  
+  class(sat_func_constant_type), pointer :: SF_Constant_Create
+  
+  allocate(SF_Constant_Create)
+  call SFBaseInit(SF_Constant_Create)
+  ! set Sr to zero as it doesn't matter, but must be initialized
+  SF_Constant_Create%Sr = 0.d0 
+  SF_Constant_Create%constant_capillary_pressure = UNINITIALIZED_DOUBLE
+  SF_Constant_Create%constant_saturation = UNINITIALIZED_DOUBLE
+  
+end function SF_Constant_Create
+
+! ************************************************************************** !
+
+subroutine SFConstantVerify(this,name,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_constant_type) :: this  
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option  
+
+  character(len=MAXSTRINGLENGTH) :: string  
+
+  if (index(name,'SATURATION_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'SATURATION_FUNCTION,CONSTANT'
+  endif
+  call SFBaseVerify(this,string,option)
+  if (Uninitialized(this%constant_capillary_pressure)) then
+    option%io_buffer = UninitializedMessage('CAPILLARY PRESSURE',string)
+    call printErrMsg(option)
+  endif   
+  if (Uninitialized(this%constant_saturation)) then
+    option%io_buffer = UninitializedMessage('SATURATION',string)
+    call printErrMsg(option)
+  endif   
+  
+end subroutine SFConstantVerify
+
+! ************************************************************************** !
+
+subroutine SFConstantCapillaryPressure(this,liquid_saturation, &
+                                      capillary_pressure,option)
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_constant_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: capillary_pressure
+  type(option_type), intent(inout) :: option
+  
+  capillary_pressure = this%constant_capillary_pressure
+
+end subroutine SFConstantCapillaryPressure
+
+! ************************************************************************** !
+
+subroutine SFConstantSaturation(this,capillary_pressure,liquid_saturation, &
+                               dsat_dpres,option)
+  use Option_module
+
+  implicit none
+  
+  class(sat_func_constant_type) :: this
+  PetscReal, intent(in) :: capillary_pressure
+  PetscReal, intent(out) :: liquid_saturation
+  PetscReal, intent(out) :: dsat_dpres
+  type(option_type), intent(inout) :: option
+
+  liquid_saturation = this%constant_saturation
+  dsat_dpres = 0.d0
+
+end subroutine SFConstantSaturation
+! End Constant Routines
 
 ! ************************************************************************** !
 
