@@ -1347,12 +1347,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       
       call GeneralSrcSink(option,source_sink%flow_condition%general%rate% &
                                   dataset%rarray(:), &
-                        source_sink%flow_condition%general%rate%itype, &
-                        gen_auxvars(ZERO_INTEGER,ghosted_id), &
-                        global_auxvars(ghosted_id), &
-                        ss_flow_vol_flux, &
-                        scale,Res, &
-                        local_id == general_debug_cell_id)
+                          source_sink%flow_condition%general%rate%itype, &
+                          gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                          global_auxvars(ghosted_id), &
+                          ss_flow_vol_flux, &
+                          scale,Res,Jac_dummy, &
+                          general_analytical_derivatives, &
+                          local_id == general_debug_cell_id)
 
       r_p(local_start:local_end) =  r_p(local_start:local_end) - Res(:)
 

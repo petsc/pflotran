@@ -20,7 +20,7 @@ module General_Common_module
 #define CONDUCTION
 
 #define WATER_SRCSINK
-#define GAS_SRCSINK
+#define AIR_SRCSINK
 #define ENERGY_SRCSINK
   
 !#define DEBUG_GENERAL_FILEOUTPUT

@@ -944,8 +944,8 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
     class is(sat_func_VG_type)
     class is(sat_func_BC_type)
       if (.not.smooth) then
-        option%io_buffer = 'Brooks-Corey saturation function is being used ' // &
-          'without SMOOTH option.'
+        option%io_buffer = 'Brooks-Corey saturation function is being used &
+          &without SMOOTH option.'
         call printWrnMsg(option)
       endif
     class is(sat_func_Linear_type)
@@ -953,14 +953,14 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
     class is(sat_func_BF_KRP5_type)
     class is(sat_func_BF_KRP4_type)
       if (.not.smooth) then
-        option%io_buffer = 'Brooks-Corey saturation function is being used ' // &
-          'without SMOOTH option.'
+        option%io_buffer = 'Brooks-Corey saturation function is being used &
+          &without SMOOTH option.'
         call printWrnMsg(option)
       endif
     class is(sat_func_BF_KRP12_type)
       if (.not.smooth) then
-        option%io_buffer = 'Brooks-Corey saturation function is being used ' // &
-          'without SMOOTH option.'
+        option%io_buffer = 'Brooks-Corey saturation function is being used &
+          &without SMOOTH option.'
         call printWrnMsg(option)
       endif
   end select
@@ -4241,18 +4241,19 @@ subroutine SF_mK_Verify(this,name,option)
         call printErrMsg(option)
       endif
       if (this%r0 >= this%rmax) then
-        option%io_buffer = string //' requires RMAX > R0'
+        option%io_buffer = trim(string) // ' requires RMAX > R0'
         call printErrMsg(option)
       end if
     case(3)
       continue ! rmax handled above
     case default
-      option%io_buffer = 'invalid NPARAM value in' &
-           &// string // '. Only NPARAM=(3,4) supported.'
+      option%io_buffer = 'invalid NPARAM value in' // &
+        trim(string) // '. Only NPARAM=(3,4) supported.'
       call printErrMsg(option)
   end select
 
 end subroutine SF_MK_Verify
+
 ! ************************************************************************** !
 
 subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
