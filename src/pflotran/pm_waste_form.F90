@@ -1728,7 +1728,7 @@ subroutine PMWFSetup(this)
             ! message from GetPrimarySpeciesIDFromName is not thrown first
             ! when SiO2 is missing
             allocate(names(GetPrimarySpeciesCount(this%realization%reaction)))
-            names = GetPrimarySpeciesNames(this%realization%reaction)
+            names => GetPrimarySpeciesNames(this%realization%reaction)
             i = 0
             found = PETSC_FALSE
             do while (i < len(names))
@@ -1743,7 +1743,7 @@ subroutine PMWFSetup(this)
               if ((.not.found) .and. (i == len(names))) then
                 deallocate(names)
                 allocate(names(GetSecondarySpeciesCount(this%realization%reaction)))
-                names = GetSecondarySpeciesNames(this%realization%reaction)
+                names => GetSecondarySpeciesNames(this%realization%reaction)
                 i = 0
                 do while (i < len(names))
                   i = i + 1
