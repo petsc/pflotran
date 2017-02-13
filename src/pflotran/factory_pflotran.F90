@@ -26,6 +26,7 @@ subroutine PFLOTRANInitializePrePetsc(multisimulation,option)
   use Option_module
   use Input_Aux_module
   use Multi_Simulation_module
+  use Logging_module
   
   implicit none
   
@@ -44,6 +45,7 @@ subroutine PFLOTRANInitializePrePetsc(multisimulation,option)
   string = '-stochastic'
   call InputGetCommandLineTruth(string,bool_flag,option_found,option)
   if (option_found) then
+    call LoggingSetStochastic()
     multisimulation => MultiSimulationCreate()
     call MultiSimulationInitialize(multisimulation,option)
   endif
