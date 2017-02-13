@@ -100,7 +100,6 @@ module Logging_module
     PetscLogEvent :: event_mass_balance
 
     PetscBool :: setup_complete
-    PetscBool :: is_stochastic
 
   end type logging_type
   
@@ -109,7 +108,6 @@ module Logging_module
   public :: LoggingCreate, &
             LoggingCreateStage, &
             LoggingSetupComplete, &
-            LoggingSetStochastic, &
             LoggingDestroy
 
 contains
@@ -131,7 +129,6 @@ subroutine LoggingCreate()
   allocate(logging)
 
   logging%setup_complete = PETSC_FALSE
-  logging%is_stochastic = PETSC_FALSE
   logging%stage_count = FINAL_STAGE
   
   call PetscLogStageRegister('Init Stage',  & 
@@ -405,13 +402,10 @@ subroutine LoggingCreateStage(stage_name,stage_id)
   character(len=MAXSTRINGLENGTH) :: full_stage_name
   PetscErrorCode :: ierr
 
-  character(len=MAXSTRINGLENGTH) :: string
-  PetscBool :: bool_flag, option_found
-
   ! this conditional prevents duplicate stages that can be generated during
   ! multirealization simulations.
-  if (logging%is_stochastic) return
-
+  if (logging%setup_complete) return
+  
   logging%stage_count = logging%stage_count + 1
   full_stage_name = trim(stage_name) // ' Stage'
   call PetscLogStageRegister(full_stage_name,stage_id,ierr);CHKERRQ(ierr)
@@ -434,23 +428,6 @@ subroutine LoggingSetupComplete()
   logging%setup_complete = PETSC_TRUE
   
 end subroutine LoggingSetupComplete
-
-! ************************************************************************** !
-
-subroutine LoggingSetStochastic()
-  ! 
-  ! Sets flag that indicates that multirealization mode ("-stochastic) is 
-  ! being employed.
-  ! 
-  ! Author: Richard Mills
-  ! Date: 02/13/17
-  !
-
-  implicit none
-
-  logging%is_stochastic = PETSC_TRUE
-  
-end subroutine LoggingSetStochastic
 
 ! ************************************************************************** !
 
