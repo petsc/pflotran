@@ -232,6 +232,7 @@ shared_mode_aux_obj = \
 	${common_src}co2_span_wagner.o \
 	${common_src}co2_sw_rtsafe.o \
 	${common_src}eos_water.o \
+	${common_src}geometry.o \
 	${common_src}global_aux.o \
 	${common_src}material_aux.o \
 	${common_src}reactive_transport_aux.o 
@@ -340,7 +341,6 @@ misc_obj = \
 	${common_src}factory_pflotran.o \
 	${common_src}factory_subsurface.o \
 	${common_src}field.o \
-	${common_src}geometry.o \
 	${common_src}hydrostatic.o \
 	${common_src}hydrostatic_common.o \
 	${common_src}hydrostatic_multi_phase.o \
