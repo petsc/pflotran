@@ -37,7 +37,7 @@ function UnitsConvertToInternal(units,internal_units,option)
   character(len=MAXSTRINGLENGTH) :: internal_units_buff2
   character(len=MAXSTRINGLENGTH) :: error_msg
   PetscBool :: multi_option, successful, error
-  PetscInt :: length, ind_or, ind_dash, num_options
+  PetscInt :: length, ind_or, num_options
   PetscReal :: conversion_factor, UnitsConvertToInternal
 
   units_buff = trim(units)
@@ -209,7 +209,7 @@ subroutine UnitsConvert(units_user,units_internal,units_conversion, &
   character(len=MAXSTRINGLENGTH) :: unit_internal_buff
 
   PetscInt :: length, ind_dash
-  PetscInt :: k, j
+  PetscInt :: k
   PetscInt :: num_user_units, num_internal_units
   PetscReal :: conv_user_to_SI, conv_internal_to_SI
   PetscReal :: conversion_user, conversion_internal

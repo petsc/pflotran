@@ -215,6 +215,7 @@ mode_aux_obj = \
 mode_obj = \
 	${common_src}flash2.o \
 	${common_src}general.o \
+	${common_src}general_common.o \
 	${common_src}toil_ims.o \
 	${common_src}global.o \
 	${common_src}immis.o \
@@ -573,7 +574,7 @@ eos_database.o : input_aux.o lookup_table.o option.o pflotran_constants.o \
                  string.o utility.o
 eos_gas.o : eos_water.o pflotran_constants.o
 eos_oil.o : eos_database.o option.o pflotran_constants.o
-eos_water.o : pflotran_constants.o
+eos_water.o : geometry.o pflotran_constants.o
 factory_geomechanics.o : condition_control.o convergence.o discretization.o \
                          factory_subsurface.o geomech_grid.o \
                          geomech_grid_aux.o geomechanics_condition.o \
@@ -669,20 +670,22 @@ flash2_aux.o : co2_span_wagner.o co2_span_wagner_spline.o co2_sw.o co2eos.o \
 fluid.o : input_aux.o option.o pflotran_constants.o string.o units.o
 gas_eos_mod.o : pflotran_constants.o
 gauss.o : grid_unstructured_cell.o pflotran_constants.o utility.o
-general.o : connection.o coupler.o debug.o discretization.o eos_gas.o \
-            eos_water.o field.o fluid.o general_aux.o global_aux.o grid.o \
+general.o : connection.o coupler.o debug.o discretization.o eos_water.o \
+            field.o fluid.o general_aux.o general_common.o global_aux.o grid.o \
             material.o material_aux.o option.o output_aux.o output_tecplot.o \
             patch.o pflotran_constants.o realization_subsurface.o \
             saturation_function.o srcsink_sandbox.o srcsink_sandbox_base.o \
-            srcsink_sandbox_wipp_gas.o srcsink_sandbox_wipp_well.o variables.o \
-            wipp.o
+            srcsink_sandbox_wipp_gas.o srcsink_sandbox_wipp_well.o variables.o
 general_aux.o : characteristic_curves.o eos_gas.o eos_water.o global_aux.o \
                 material_aux.o option.o pflotran_constants.o string.o \
                 utility.o wipp.o
-geomech_grid.o : gauss.o geomech_grid_aux.o geomechanics_region.o \
+general_common.o : connection.o eos_gas.o eos_water.o general_aux.o \
+                   global_aux.o material_aux.o option.o pflotran_constants.o \
+                   wipp.o
+geomech_grid.o : gauss.o geomech_grid_aux.o geomechanics_region.o geometry.o \
                  grid_unstructured_aux.o grid_unstructured_cell.o input_aux.o \
                  logging.o option.o pflotran_constants.o utility.o
-geomech_grid_aux.o : gauss.o grid_unstructured_cell.o option.o \
+geomech_grid_aux.o : gauss.o geometry.o grid_unstructured_cell.o option.o \
                      pflotran_constants.o utility.o
 geomechanics_auxiliary.o : geomechanics_global_aux.o pflotran_constants.o
 geomechanics_condition.o : condition.o dataset.o dataset_ascii.o \
@@ -753,7 +756,7 @@ grid_unstructured.o : connection.o geometry.o grid_unstructured_aux.o \
                       pflotran_constants.o string.o utility.o
 grid_unstructured_aux.o : geometry.o grid_unstructured_cell.o option.o \
                           pflotran_constants.o utility.o
-grid_unstructured_cell.o : option.o pflotran_constants.o utility.o
+grid_unstructured_cell.o : geometry.o option.o pflotran_constants.o utility.o
 grid_unstructured_explicit.o : connection.o geometry.o grid_unstructured_aux.o \
                                input_aux.o option.o pflotran_constants.o \
                                string.o utility.o

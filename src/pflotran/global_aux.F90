@@ -383,7 +383,6 @@ subroutine GlobalAuxDestroy(aux)
   implicit none
 
   type(global_type), pointer :: aux
-  PetscInt :: iaux
   
   if (.not.associated(aux)) return
   

@@ -104,7 +104,7 @@ module General_Aux_module
   
   type, public :: general_derivative_auxvar_type
     PetscReal :: pc_satg
-    PetscReal :: por_pl
+    PetscReal :: por_p
     PetscReal :: denl_pl
     PetscReal :: denl_T
     PetscReal :: deng_pg
@@ -143,6 +143,8 @@ module General_Aux_module
     PetscReal :: dena 
     PetscReal :: denv_T 
     PetscReal :: dena_T 
+    PetscReal :: denv_pg
+    PetscReal :: dena_pg
     PetscReal :: Hc 
     
     PetscReal :: psat_p
@@ -159,6 +161,9 @@ module General_Aux_module
     PetscReal :: mobilityg_T
     PetscReal :: mobilityg_satg
     PetscReal :: mobilityg_pa
+    PetscReal :: mug
+    PetscReal :: mug_T
+    PetscReal :: mug_pg
     PetscReal :: xmol_p(2,2)
     PetscReal :: xmol_T(2,2)    
   end type general_derivative_auxvar_type
@@ -307,7 +312,7 @@ subroutine GeneralAuxVarInit(auxvar,allocate_derivative,option)
   if (allocate_derivative) then
     allocate(auxvar%d)
     auxvar%d%pc_satg = 0.d0
-    auxvar%d%por_pl = 0.d0
+    auxvar%d%por_p = 0.d0
     auxvar%d%denl_pl = 0.d0
     auxvar%d%denl_T = 0.d0
     auxvar%d%deng_pg = 0.d0
@@ -346,6 +351,8 @@ subroutine GeneralAuxVarInit(auxvar,allocate_derivative,option)
     auxvar%d%dena = 0.d0
     auxvar%d%denv_T = 0.d0
     auxvar%d%dena_T = 0.d0
+    auxvar%d%denv_pg = 0.d0
+    auxvar%d%dena_pg = 0.d0
     auxvar%d%Hc = 0.d0
         
     auxvar%d%psat_p = 0.d0
@@ -355,6 +362,9 @@ subroutine GeneralAuxVarInit(auxvar,allocate_derivative,option)
     auxvar%d%pv_T = 0.d0
     auxvar%d%Hc_p = 0.d0
     auxvar%d%Hc_T = 0.d0
+    auxvar%d%mug = 0.d0
+    auxvar%d%mug_T = 0.d0
+    auxvar%d%mug_pg = 0.d0
     auxvar%d%mobilityl_pl = 0.d0
     auxvar%d%mobilityl_T = 0.d0
     auxvar%d%mobilityl_satg = 0.d0
@@ -468,21 +478,18 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: cell_pressure, water_vapor_pressure
   PetscReal :: den_water_vapor, den_kg_water_vapor
   PetscReal :: u_water_vapor, h_water_vapor
-  PetscReal :: u_water_vapor_pv, h_water_vapor_pv
-  PetscReal :: u_water_vapor_T, h_water_vapor_T
   PetscReal :: den_air, h_air, u_air
-  PetscReal :: h_air_pv, u_air_pv
-  PetscReal :: h_air_T, u_air_T
   PetscReal :: xmol_air_in_gas, xmol_water_in_gas
-  PetscReal :: krl, visl, dkrl_dsat, dvis_dp, dvis_dT, dvis_dpa
-  PetscReal :: krg, visg, dkrg_dsat
+  PetscReal :: krl, visl, dvis_dp, dvis_dT, dvis_dpa
+  PetscReal :: dkrl_dsatl, dkrl_dsatg
+  PetscReal :: dkrg_dsatl, dkrg_dsatg
+  PetscReal :: krg, visg
   PetscReal :: K_H_tilde
   PetscReal :: guess, dummy
   PetscInt :: apid, cpid, vpid, spid
   PetscReal :: NaN
   PetscReal :: creep_closure_time
   PetscReal :: xmass_air_in_gas
-  PetscReal :: xmass_air_in_liquid
   PetscReal :: Ugas_J_kg, Hgas_J_kg
   PetscReal :: Uair_J_kg, Hair_J_kg
   PetscReal :: Uvapor_J_kg, Hvapor_J_kg
@@ -689,6 +696,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
         gen_auxvar%d%xmol_p(acid,gid) = -gen_auxvar%xmol(acid,gid)/gen_auxvar%pres(gid)
         gen_auxvar%d%xmol_p(wid,gid) = -gen_auxvar%d%xmol_p(acid,gid)
         ! we hijack the liquid phase for air pressure
+        ! this could be pushed to where it is used
         gen_auxvar%d%xmol_p(acid,lid) = 1.d0/gen_auxvar%pres(gid)
         gen_auxvar%d%xmol_p(wid,lid) = -gen_auxvar%d%xmol_p(acid,lid)
       endif                             
@@ -736,6 +744,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                                option)                             
       if (associated(gen_auxvar%d)) then
         ! for now, calculate derivative through finite differencing
+        !TODO(geh): make an analytical derivative
         tempreal = 1.d-6 * gen_auxvar%sat(lid)
         tempreal2 = gen_auxvar%sat(lid) + tempreal
         call characteristic_curves%saturation_function% &
@@ -827,7 +836,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
     endif
   endif
   if (associated(gen_auxvar%d)) then
-    gen_auxvar%d%por_pl = dpor_dp
+    gen_auxvar%d%por_p = dpor_dp
   endif
 
   ! ALWAYS UPDATE THERMODYNAMIC PROPERTIES FOR BOTH PHASES!!!
@@ -917,6 +926,9 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       ! add in partial w/respec to pv_T
       dden_water_vapor_dT = dden_water_vapor_dT + dden_water_vapor_dpv * gen_auxvar%d%pv_T  
       dh_water_vapor_dT = dh_water_vapor_dT + dh_water_vapor_dpv * gen_auxvar%d%pv_T
+      !geh: the numerical derivatives with respect to water vapor calculated 
+      !     through the chain rule can be very sensitive to the perturbation.
+      !     Try decreasing the perturbation to see the effect.
       du_water_vapor_dpv = dh_water_vapor_dpv - &
         (1.d0/den_water_vapor- &
          water_vapor_pressure/(den_water_vapor*den_water_vapor)*dden_water_vapor_dpv)
@@ -993,6 +1005,8 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       gen_auxvar%d%dena = den_air
       gen_auxvar%d%denv_T = dden_water_vapor_dT
       gen_auxvar%d%dena_T = dden_air_dT
+      gen_auxvar%d%denv_pg = dden_water_vapor_dpv * gen_auxvar%d%pv_p 
+      gen_auxvar%d%dena_pg = dden_air_dpa * dpair_dpgas
       
       gen_auxvar%d%deng_pg = dden_water_vapor_dpv * gen_auxvar%d%pv_p + &
                              dden_air_dpa * dpair_dpgas
@@ -1038,10 +1052,10 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for LIQUID_STATE (=1)
     call characteristic_curves%liq_rel_perm_function% &
-           RelativePermeability(gen_auxvar%sat(lid),krl,dkrl_dsat,option)
+           RelativePermeability(gen_auxvar%sat(lid),krl,dkrl_dsatl,option)
     ! dkrl_sat is with respect to liquid pressure, but the primary dependent
     ! variable is gas pressure.  therefore, negate
-    dkrl_dsat = -1.d0 * dkrl_dsat
+    dkrl_dsatg = -1.d0 * dkrl_dsatl
     ! use cell_pressure; cell_pressure - psat calculated internally
     if (.not.option%flow%density_depends_on_salinity) then
       if (associated(gen_auxvar%d)) then
@@ -1071,7 +1085,7 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       tempreal = -1.d0*krl/(visl*visl)
       gen_auxvar%d%mobilityl_pl = tempreal*dvis_dp
       gen_auxvar%d%mobilityl_T = tempreal*dvis_dT
-      gen_auxvar%d%mobilityl_satg = -1.d0*dkrl_dsat/visl
+      gen_auxvar%d%mobilityl_satg = dkrl_dsatg/visl
     endif
   endif
 
@@ -1079,10 +1093,10 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       global_auxvar%istate == TWO_PHASE_STATE) then
     ! this does not need to be calculated for GAS_STATE (=1)
     call characteristic_curves%gas_rel_perm_function% &
-           RelativePermeability(gen_auxvar%sat(lid),krg,dkrg_dsat,option)                            
+           RelativePermeability(gen_auxvar%sat(lid),krg,dkrg_dsatl,option)                            
     ! dkrl_sat is with respect to liquid pressure, but the primary dependent
     ! variable is gas pressure.  therefore, negate
-    dkrg_dsat = -1.d0 * dkrg_dsat
+    dkrg_dsatg = -1.d0 * dkrg_dsatl
     ! STOMP uses separate functions for calculating viscosity of vapor and
     ! and air (WATGSV,AIRGSV) and then uses GASVIS to calculate mixture 
     ! viscosity.
@@ -1104,8 +1118,11 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
       tempreal = -1.d0*krg/(visg*visg)
       gen_auxvar%d%mobilityg_pg = tempreal*dvis_dp
       gen_auxvar%d%mobilityg_T = tempreal*dvis_dT
-      gen_auxvar%d%mobilityg_satg = dkrg_dsat/visg
+      gen_auxvar%d%mobilityg_satg = dkrg_dsatg/visg
       gen_auxvar%d%mobilityg_pa = tempreal*dvis_dpa
+      gen_auxvar%d%mug = visg
+      gen_auxvar%d%mug_T = dvis_dT
+      gen_auxvar%d%mug_pg = dvis_dp
     endif    
   endif
 
@@ -1188,11 +1205,8 @@ subroutine GeneralAuxVarUpdateState(x,gen_auxvar,global_auxvar, &
   PetscReal :: x(option%nflowdof)
   PetscInt :: apid, cpid, vpid, spid
   PetscInt :: gid, lid, acid, wid, eid
-  PetscReal :: dummy, guess
-  PetscReal :: n_air, n_air_in_gas, n_air_in_liquid, RT, K_H_tilde, theta
   PetscBool :: flag
   character(len=MAXSTRINGLENGTH) :: state_change_string, string
-  PetscErrorCode :: ierr
 
   lid = option%liquid_phase
   gid = option%gas_phase
@@ -1429,7 +1443,6 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
   PetscReal :: x(option%nflowdof), x_pert(option%nflowdof), &
                pert(option%nflowdof), x_pert_save(option%nflowdof)
 
-  PetscReal :: res(option%nflowdof), res_pert(option%nflowdof)
   PetscReal :: tempreal
 !#define LEGACY_PERTURBATION
 #ifdef LEGACY_PERTURBATION
@@ -1444,7 +1457,6 @@ subroutine GeneralAuxVarPerturb(gen_auxvar,global_auxvar, &
   PetscInt :: idof
 
 #ifdef DEBUG_GENERAL
-  character(len=MAXWORDLENGTH) :: word
   type(global_auxvar_type) :: global_auxvar_debug
   type(general_auxvar_type) :: general_auxvar_debug
   call GlobalAuxVarInit(global_auxvar_debug,option)
@@ -2146,7 +2158,6 @@ subroutine GeneralAuxDestroy(aux)
   implicit none
 
   type(general_type), pointer :: aux
-  PetscInt :: iaux, idof
   
   if (.not.associated(aux)) return
   

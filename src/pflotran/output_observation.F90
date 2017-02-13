@@ -2590,7 +2590,8 @@ subroutine OutputMassBalance(realization_base)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_auxvars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
-            int_mpi = option%nphase
+!geh            int_mpi = option%nphase
+            int_mpi = 1
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                           option%io_rank,option%mycomm,ierr)
@@ -2612,7 +2613,8 @@ subroutine OutputMassBalance(realization_base)
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
 !           sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O ! <<---fix for multiphase!
 
-            int_mpi = option%nphase
+!geh            int_mpi = option%nphase
+            int_mpi = 1
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                           option%io_rank,option%mycomm,ierr)
@@ -2631,7 +2633,8 @@ subroutine OutputMassBalance(realization_base)
               sum_kg(icomp,1) = sum_kg(icomp,1) + &
                 global_auxvars_bc_or_ss(offset+iconn)%mass_balance(icomp,1)
             enddo
-            int_mpi = option%nphase
+!geh            int_mpi = option%nphase
+            int_mpi = 1
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                           option%io_rank,option%mycomm,ierr)
@@ -2653,7 +2656,8 @@ subroutine OutputMassBalance(realization_base)
           ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
 !           sum_kg(icomp,1) = sum_kg(icomp,1)*FMWH2O ! <<---fix for multiphase!
 
-            int_mpi = option%nphase
+!geh            int_mpi = option%nphase
+            int_mpi = 1
             call MPI_Reduce(sum_kg(icomp,1),sum_kg_global(icomp,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                           option%io_rank,option%mycomm,ierr)
@@ -2671,7 +2675,7 @@ subroutine OutputMassBalance(realization_base)
           enddo
 
           int_mpi = option%nphase
-          call MPI_Reduce(sum_kg,sum_kg_global, &
+          call MPI_Reduce(sum_kg(:,1),sum_kg_global(:,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                           option%io_rank,option%mycomm,ierr)
                               
@@ -2690,7 +2694,7 @@ subroutine OutputMassBalance(realization_base)
           sum_kg(2,1) = sum_kg(2,1)*FMWAIR
           
           int_mpi = option%nphase
-          call MPI_Reduce(sum_kg,sum_kg_global, &
+          call MPI_Reduce(sum_kg(:,1),sum_kg_global(:,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                           option%io_rank,option%mycomm,ierr)
                               
@@ -2706,7 +2710,7 @@ subroutine OutputMassBalance(realization_base)
           enddo
 
           int_mpi = option%nphase
-          call MPI_Reduce(sum_kg,sum_kg_global, &
+          call MPI_Reduce(sum_kg(:,1),sum_kg_global(:,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                           option%io_rank,option%mycomm,ierr)
                               
@@ -2725,7 +2729,7 @@ subroutine OutputMassBalance(realization_base)
           sum_kg(2,1) = sum_kg(2,1)*toil_ims_fmw_comp(2)
           
           int_mpi = option%nphase
-          call MPI_Reduce(sum_kg,sum_kg_global, &
+          call MPI_Reduce(sum_kg(:,1),sum_kg_global(:,1), &
                           int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                           option%io_rank,option%mycomm,ierr)
                               

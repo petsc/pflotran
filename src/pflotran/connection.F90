@@ -65,7 +65,6 @@ function ConnectionCreate(num_connections,connection_itype)
   implicit none
   
   PetscInt :: num_connections
-  PetscInt :: num_dof
   PetscInt :: connection_itype
   
   type(connection_set_type), pointer :: ConnectionCreate
@@ -209,7 +208,6 @@ subroutine ConnectionConvertListToArray(list)
   
   type(connection_set_list_type) :: list
     
-  PetscInt :: count
   type(connection_set_type), pointer :: cur_connection_set
   
   

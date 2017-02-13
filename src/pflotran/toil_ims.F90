@@ -844,7 +844,7 @@ end subroutine TOilImsZeroMassBalanceDelta
 
 subroutine TOilImsMapBCAuxVarsToGlobal(realization)
   ! 
-  ! Maps toil_ims BC Auxvars to global auxvars
+  ! Maps toil_ims BC AuxVars to global auxvars
   ! 
   ! Author: Paolo Orsini
   ! Date: 10/23/15

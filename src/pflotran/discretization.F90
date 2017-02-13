@@ -1473,23 +1473,22 @@ subroutine DiscretizationInputRecord(discretization)
       write(id,'(1p10e12.4)') grid%structured_grid%dy_global
       write(id,'(a29)',advance='no') 'delta-Z (m): '
       write(id,'(1p10e12.4)') grid%structured_grid%dz_global
+      write(id,'(a29)',advance='no') 'bounds X: '
+      write(word1,Format) grid%structured_grid%bounds(X_DIRECTION,LOWER)
+      write(word2,Format) grid%structured_grid%bounds(X_DIRECTION,UPPER)
+      write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
+      write(id,'(a29)',advance='no') 'bounds Y: '
+      write(word1,Format) grid%structured_grid%bounds(Y_DIRECTION,LOWER)
+      write(word2,Format) grid%structured_grid%bounds(Y_DIRECTION,UPPER)
+      write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
+      write(id,'(a29)',advance='no') 'bounds Z: '
+      write(word1,Format) grid%structured_grid%bounds(Z_DIRECTION,LOWER)
+      write(word2,Format) grid%structured_grid%bounds(Z_DIRECTION,UPPER)
+      write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
     case(EXPLICIT_UNSTRUCTURED_GRID,IMPLICIT_UNSTRUCTURED_GRID, &
          POLYHEDRA_UNSTRUCTURED_GRID)
       write(id,'(a)') trim(grid%ctype)
   end select
-
-  write(id,'(a29)',advance='no') 'bounds X: '
-  write(word1,Format) grid%structured_grid%bounds(X_DIRECTION,LOWER)
-  write(word2,Format) grid%structured_grid%bounds(X_DIRECTION,UPPER)
-  write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
-  write(id,'(a29)',advance='no') 'bounds Y: '
-  write(word1,Format) grid%structured_grid%bounds(Y_DIRECTION,LOWER)
-  write(word2,Format) grid%structured_grid%bounds(Y_DIRECTION,UPPER)
-  write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
-  write(id,'(a29)',advance='no') 'bounds Z: '
-  write(word1,Format) grid%structured_grid%bounds(Z_DIRECTION,LOWER)
-  write(word2,Format) grid%structured_grid%bounds(Z_DIRECTION,UPPER)
-  write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
 
   write(id,'(a29)',advance='no') 'global origin: '
   write(word,Format) discretization%origin_global(X_DIRECTION)

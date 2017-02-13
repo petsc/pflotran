@@ -1912,6 +1912,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   use Connection_module
   use Option_module
   use Utility_module, only : DotProduct, CrossProduct
+  use Geometry_module  
 
   implicit none
 
@@ -1957,9 +1958,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   PetscInt :: ivert
   
   type(plane_type) :: plane1, plane2
-  type(point_type) :: point1, point2, point3, point4
-  type(point_type) :: point_up, point_dn
-  type(point_type) :: intercept1, intercept2, intercept
+  type(point3d_type) :: point1, point2, point3, point4
+  type(point3d_type) :: point_up, point_dn
+  type(point3d_type) :: intercept1, intercept2, intercept
 
   character(len=MAXSTRINGLENGTH) :: string  
   
@@ -2348,7 +2349,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
             point4 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(4,face_id))
           endif
           
-          call UCellComputePlane(plane1,point1,point2,point3)
+          call GeometryComputePlaneWithPoints(plane1,point1,point2,point3)
          
           point_up%x = grid_x(local_id)
           point_up%y = grid_y(local_id)
@@ -2360,7 +2361,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           v1(2) = point_dn%y-point_up%y
           v1(3) = point_dn%z-point_up%z
           n_up_dn = v1 / sqrt(DotProduct(v1,v1))
-          call UCellGetPlaneIntercept(plane1,point_up,point_dn,intercept1)
+          call GeometryGetPlaneIntercept(plane1,point_up,point_dn,intercept1)
           
           v1(1) = point3%x-point2%x
           v1(2) = point3%y-point2%y
@@ -2380,8 +2381,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           !gehbug area1 = 0.5d0*sqrt(DotProduct(n1,n1))
           
           if (face_type == QUAD_FACE_TYPE) then
-            call UCellComputePlane(plane2,point3,point4,point1)
-            call UCellGetPlaneIntercept(plane2,point_up,point_dn,intercept2)
+            call GeometryComputePlaneWithPoints(plane2,point3,point4,point1)
+            call GeometryGetPlaneIntercept(plane2,point_up,point_dn,intercept2)
             v1(1) = point1%x-point4%x
             v1(2) = point1%y-point4%y
             v1(3) = point1%z-point4%z
@@ -2555,6 +2556,7 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
   use Utility_module, only : DotProduct
   use Option_module
   use Grid_Unstructured_Cell_module
+  use Geometry_module
   
   implicit none
   
@@ -2571,9 +2573,9 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
   PetscInt :: ivert,vert_id
   PetscInt :: face_type
   PetscReal :: v1(3),v2(3),n_dist(3), dist
-  type(point_type) :: vertex_8(8)
+  type(point3d_type) :: vertex_8(8)
   type(plane_type) :: plane
-  type(point_type) :: point, vertex1, vertex2, vertex3, intercept
+  type(point3d_type) :: point, vertex1, vertex2, vertex3, intercept
   character(len=MAXWORDLENGTH) :: word
   
   
@@ -2620,8 +2622,8 @@ subroutine UGridPopulateConnection(unstructured_grid, connection, iface_cell, &
         call UCellGetLineIntercept(vertex1,vertex2,point,intercept)
       else
         vertex3 = unstructured_grid%vertices(unstructured_grid%face_to_vertex(3,face_id))
-        call UCellComputePlane(plane,vertex1,vertex2,vertex3)
-        call UCellProjectPointOntoPlane(plane,point,intercept)
+        call GeometryComputePlaneWithPoints(plane,vertex1,vertex2,vertex3)
+        call GeometryProjectPointOntoPlane(plane,point,intercept)
       endif
       
       ! Compute distance vector: cell_center - face_centroid
@@ -2659,6 +2661,7 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
   ! 
 
   use Option_module
+  use Geometry_module  
   
   implicit none
 
@@ -2670,7 +2673,7 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
   PetscInt :: ghosted_id
   PetscInt :: ivertex
   PetscInt :: vertex_id
-  type(point_type) :: vertex_8(8)
+  type(point3d_type) :: vertex_8(8)
   PetscReal :: centroid(3)
   PetscErrorCode :: ierr 
 
@@ -2719,6 +2722,7 @@ subroutine UGridComputeVolumes(unstructured_grid,option,volume)
   ! 
 
   use Option_module
+  use Geometry_module  
   
   implicit none
 
@@ -2731,7 +2735,7 @@ subroutine UGridComputeVolumes(unstructured_grid,option,volume)
   PetscInt :: ghosted_id
   PetscInt :: ivertex
   PetscInt :: vertex_id
-  type(point_type) :: vertex_8(8)
+  type(point3d_type) :: vertex_8(8)
   PetscReal, pointer :: volume_p(:)
   PetscErrorCode :: ierr
 
@@ -2768,6 +2772,7 @@ subroutine UGridComputeAreas(unstructured_grid,option,area)
   ! 
 
   use Option_module
+  use Geometry_module  
   
   implicit none
 
@@ -2775,12 +2780,11 @@ subroutine UGridComputeAreas(unstructured_grid,option,area)
   type(option_type) :: option
   Vec :: area
   
-
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: ivertex
   PetscInt :: vertex_id
-  type(point_type) :: vertex_4(4)
+  type(point3d_type) :: vertex_4(4)
   PetscReal, pointer :: area_p(:)
   PetscErrorCode :: ierr
 
@@ -2825,6 +2829,7 @@ subroutine UGridComputeQuality(unstructured_grid,option)
   ! 
 
   use Option_module
+  use Geometry_module  
   
   implicit none
 
@@ -2835,7 +2840,7 @@ subroutine UGridComputeQuality(unstructured_grid,option)
   PetscInt :: ghosted_id
   PetscInt :: ivertex
   PetscInt :: vertex_id
-  type(point_type) :: vertex_8(8)
+  type(point3d_type) :: vertex_8(8)
   PetscReal :: quality, mean_quality, max_quality, min_quality
   PetscErrorCode :: ierr
 
@@ -2897,6 +2902,7 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
 
   use Option_module
   use Utility_module, only : DotProduct, CrossProduct
+  use Geometry_module  
   
   implicit none
 
@@ -2908,13 +2914,13 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
 
   PetscInt :: local_id
   PetscInt :: ghosted_id
-  type(point_type) :: point, point1, point2, point3
+  type(point3d_type) :: point, point1, point2, point3
   type(plane_type) :: plane1
   PetscReal :: v1(3),v2(3),vcross(3),magnitude
   PetscReal :: distance
   PetscInt :: cell_vertex_ids_before(8), cell_vertex_ids_after(8)
   PetscInt :: face_vertex_ids(4)
-  type(point_type) :: vertex_8(8)
+  type(point3d_type) :: vertex_8(8)
   PetscInt :: ivertex, vertex_id
   PetscInt :: num_vertices, iface, cell_type, num_faces, face_type, i
   PetscInt :: num_face_vertices
@@ -2953,8 +2959,8 @@ subroutine UGridEnsureRightHandRule(unstructured_grid,x,y,z,nG2A,nl2G,option)
           unstructured_grid%vertices(cell_vertex_ids_before(face_vertex_ids(3)))
       endif
 
-      call UCellComputePlane(plane1,point1,point2,point3)
-      distance = UCellComputeDistanceFromPlane(plane1,point)
+      call GeometryComputePlaneWithPoints(plane1,point1,point2,point3)
+      distance = GeomComputeDistanceFromPlane(plane1,point)
 
       if (distance > 0.d0) then
         ! need to swap so that distance is negative (point lies below plane)
@@ -3055,6 +3061,7 @@ subroutine UGridGetCellFromPoint(x,y,z,unstructured_grid,option,icell)
   ! 
 
   use Option_module
+  use Geometry_module  
 
   implicit none
   
@@ -3066,7 +3073,7 @@ subroutine UGridGetCellFromPoint(x,y,z,unstructured_grid,option,icell)
   PetscInt :: cell_type, num_faces, iface, face_type
   PetscInt :: vertex_ids(4)
   type(plane_type) :: plane1, plane2
-  type(point_type) :: point, point1, point2, point3, point4
+  type(point3d_type) :: point, point1, point2, point3, point4
   PetscInt :: local_id, ghosted_id
   PetscReal :: distance
   PetscBool :: inside
@@ -3094,16 +3101,16 @@ subroutine UGridGetCellFromPoint(x,y,z,unstructured_grid,option,icell)
       point1 = unstructured_grid%vertices(unstructured_grid%cell_vertices(vertex_ids(1),ghosted_id))
       point2 = unstructured_grid%vertices(unstructured_grid%cell_vertices(vertex_ids(2),ghosted_id))
       point3 = unstructured_grid%vertices(unstructured_grid%cell_vertices(vertex_ids(3),ghosted_id))
-      call UCellComputePlane(plane1,point1,point2,point3)
-      distance = UCellComputeDistanceFromPlane(plane1,point)
+      call GeometryComputePlaneWithPoints(plane1,point1,point2,point3)
+      distance = GeomComputeDistanceFromPlane(plane1,point)
       if (distance > 0.d0) then
         inside = PETSC_FALSE
         exit
       endif
       if (face_type == QUAD_FACE_TYPE) then
         point4 = unstructured_grid%vertices(unstructured_grid%cell_vertices(vertex_ids(4),ghosted_id))
-        call UCellComputePlane(plane2,point3,point4,point1)
-        distance = UCellComputeDistanceFromPlane(plane2,point)
+        call GeometryComputePlaneWithPoints(plane2,point3,point4,point1)
+        distance = GeomComputeDistanceFromPlane(plane2,point)
         if (distance > 0.d0) then
           inside = PETSC_FALSE
           exit
@@ -3133,6 +3140,7 @@ subroutine UGridGetCellsInRectangle(x_min,x_max,y_min,y_max,z_min,z_max, &
   ! 
   use Option_module
   use Utility_module, only : reallocateIntArray
+  use Geometry_module  
   
   implicit none
                   
@@ -3147,7 +3155,7 @@ subroutine UGridGetCellsInRectangle(x_min,x_max,y_min,y_max,z_min,z_max, &
   PetscInt :: vertex_ids(4)
   PetscInt :: num_vertices, ivertex
   PetscInt :: local_id, ghosted_id
-  type(point_type) :: point
+  type(point3d_type) :: point
   
   PetscReal :: x_min_adj, x_max_adj, y_min_adj, y_max_adj, z_min_adj, z_max_adj
   PetscReal :: pert
@@ -3568,7 +3576,7 @@ subroutine UGridMapBoundFacesInPolVol(unstructured_grid,polygonal_volume, &
   PetscInt :: nfaces
   PetscInt :: cell_id, cell_type
   PetscInt :: vertex_id
-  type(point_type) :: vertex
+  type(point3d_type) :: vertex
   PetscInt :: mapped_face_count
   PetscBool :: found
   PetscInt :: boundary_face_count

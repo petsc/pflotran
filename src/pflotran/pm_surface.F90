@@ -28,7 +28,7 @@ module PM_Surface_class
     procedure, public :: PostSolve => PMSurfacePostSolve
     procedure, public :: CheckpointBinary => PMSurfaceCheckpointBinary
     procedure, public :: RestartBinary => PMSurfaceRestartBinary
-    procedure, public :: UpdateAuxvars => PMSurfaceUpdateAuxvars
+    procedure, public :: UpdateAuxVars => PMSurfaceUpdateAuxVars
     procedure, public :: InputRecord => PMSurfaceInputRecord
   end type pm_surface_type
 

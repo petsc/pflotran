@@ -1271,8 +1271,6 @@ subroutine EOSOilInputRecord()
   
   implicit none
   
-  character(len=MAXWORDLENGTH) :: word1, word2
-  character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: id = INPUT_RECORD_UNIT
 
   write(id,'(a29)',advance='no') '---------------------------: '

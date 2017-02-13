@@ -25,28 +25,10 @@ module Grid_Unstructured_Cell_module
   PetscInt, parameter, public :: MAX_VERT_PER_FACE = 4
   PetscInt, parameter, public :: MAX_FACE_PER_CELL = 6
   PetscInt, parameter, public :: MAX_FACE_PER_CELL_SURF = 4
-
-  type, public :: point_type
-    PetscInt :: id
-    PetscReal :: x
-    PetscReal :: y
-    PetscReal :: z
-  end type point_type
-  
-  type, public :: plane_type
-    PetscReal :: A
-    PetscReal :: B
-    PetscReal :: C
-    PetscReal :: D
-  end type plane_type
   
   public :: UCellComputeCentroid, &
             UCellComputeVolume, &
             UCellComputeArea, &
-            UCellComputePlane, &
-            UCellGetPlaneIntercept, &
-            UCellProjectPointOntoPlane, &
-            UCellComputeDistanceFromPlane, &
             UCellGetLineIntercept, &
             UCellGetNVertices, &
             UCellGetNFaces, &
@@ -71,11 +53,12 @@ function UCellComputeCentroid(cell_type,vertices,option)
   ! 
 
   use Option_module
+  use Geometry_module
 
   implicit none
   
   PetscInt :: cell_type
-  type(point_type) :: vertices(*)
+  type(point3d_type) :: vertices(*)
   type(option_type) :: option
   
   PetscReal :: UCellComputeCentroid(3)
@@ -140,11 +123,12 @@ function UCellComputeVolume(cell_type,vertices,option)
 
   use Utility_module, only : DotProduct, CrossProduct
   use Option_module
+  use Geometry_module  
 
   implicit none
   
   PetscInt :: cell_type
-  type(point_type) :: vertices(*)
+  type(point3d_type) :: vertices(*)
   type(option_type) :: option
   
   PetscReal :: UCellComputeVolume
@@ -227,11 +211,12 @@ function UCellComputeArea(cell_type,vertices,option)
 
   use Utility_module, only : DotProduct, CrossProduct
   use Option_module
+  use Geometry_module  
 
   implicit none
   
   PetscInt :: cell_type
-  type(point_type) :: vertices(*)
+  type(point3d_type) :: vertices(*)
   type(option_type) :: option
   
   PetscReal :: UCellComputeArea
@@ -294,10 +279,11 @@ function UCellComputeVolumeOfTetrahedron(point1,point2,point3,point4)
   ! 
 
   use Utility_module, only : DotProduct, CrossProduct
+  use Geometry_module  
 
   implicit none
   
-  type(point_type) :: point1, point2, point3, point4
+  type(point3d_type) :: point1, point2, point3, point4
   
   PetscReal :: vv(3,4)
   PetscReal :: vv1_minus_vv4(3)
@@ -340,131 +326,6 @@ function UCellComputeVolumeOfTetrahedron(point1,point2,point3,point4)
                                     6.d0
 
 end function UCellComputeVolumeOfTetrahedron
-
-! ************************************************************************** !
-
-subroutine UCellComputePlane(plane,point1,point2,point3)
-  ! 
-  ! Calculates the plane intersected by 3 points
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 10/30/09
-  ! 
-
-  implicit none
-  
-  type(plane_type) :: plane
-  type(point_type) :: point1, point2, point3
-  
-  PetscReal :: x1,y1,z1
-  PetscReal :: x2,y2,z2
-  PetscReal :: x3,y3,z3
-  x1 = point1%x
-  y1 = point1%y
-  z1 = point1%z
-  x2 = point2%x
-  y2 = point2%y
-  z2 = point2%z
-  x3 = point3%x
-  y3 = point3%y
-  z3 = point3%z
-  
-  ! this grabbed from python script
-  plane%A = y1*(z2-z3)+y2*(z3-z1)+y3*(z1-z2)
-  plane%B = z1*(x2-x3)+z2*(x3-x1)+z3*(x1-x2)
-  plane%C = x1*(y2-y3)+x2*(y3-y1)+x3*(y1-y2)
-  plane%D = -1.*(x1*(y2*z3-y3*z2)+x2*(y3*z1-y1*z3)+x3*(y1*z2-y2*z1))
-
-end subroutine UCellComputePlane
-
-! ************************************************************************** !
-
-subroutine UCellProjectPointOntoPlane(plane,point,intercept)
-  ! 
-  ! Calculates the intercept of a point with a plane
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 11/22/11
-  ! 
-
-  implicit none
-  
-  type(plane_type) :: plane
-  type(point_type) :: point
-  type(point_type) :: intercept
-
-  PetscReal :: scalar
-  
-  ! plane equation:
-  !   A*x + B*y + C*z + D = 0
-
-  scalar = (plane%A*point%x + plane%B*point%y + plane%C*point%z + plane%D) / &
-           (plane%A*plane%A + plane%B*plane%B + plane%C*plane%C)
-  
-  intercept%x = point%x - plane%A * scalar
-  intercept%y = point%y - plane%B * scalar
-  intercept%z = point%z - plane%C * scalar
-
-end subroutine UCellProjectPointOntoPlane
-
-! ************************************************************************** !
-
-subroutine UCellGetPlaneIntercept(plane,point1,point2,intercept)
-  ! 
-  ! Calculates the intercept of a line with a plane
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 10/30/09
-  ! 
-
-  implicit none
-  
-  type(plane_type) :: plane
-  type(point_type) :: point1, point2
-  type(point_type) :: intercept
-
-  PetscReal :: x1,y1,z1
-  PetscReal :: x2,y2,z2
-  PetscReal :: u
-    
-  x1 = point1%x
-  y1 = point1%y
-  z1 = point1%z
-  x2 = point2%x
-  y2 = point2%y
-  z2 = point2%z
- 
- 
-  u = (plane%A*x1 + plane%B*y1 + plane%C*z1 + plane%D) / &
-      (plane%A*(x1-x2) + plane%B*(y1-y2) + plane%C*(z1-z2))
-
-  intercept%x = point1%x + u*(point2%x-point1%x)
-  intercept%y = point1%y + u*(point2%y-point1%y)
-  intercept%z = point1%z + u*(point2%z-point1%z)
-
-end subroutine UCellGetPlaneIntercept
-
-! ************************************************************************** !
-
-function UCellComputeDistanceFromPlane(plane,point)
-  ! 
-  ! Calculates the distance of a point from a plane
-  ! 
-  ! Author: Glenn Hammond
-  ! Date: 10/24/11
-  ! 
-
-  implicit none
-  
-  type(plane_type) :: plane
-  type(point_type) :: point
-  PetscReal :: UCellComputeDistanceFromPlane
-
-  UCellComputeDistanceFromPlane = &
-    (plane%A*point%x + plane%B*point%y + plane%C*point%z + plane%D) / &
-    sqrt(plane%A*plane%A+plane%B*plane%B+plane%C*plane%C)
-  
-end function UCellComputeDistanceFromPlane
 
 ! ************************************************************************** !
 
@@ -1103,12 +964,13 @@ function UCellGetEdgeLength(cell_type,iedge,vertices)
   ! Author: Glenn Hammond
   ! Date: 01/17/12
   ! 
-
+  use Geometry_module
+  
   implicit none
   
   PetscInt :: cell_type
   PetscInt :: iedge
-  type(point_type) :: vertices(*)
+  type(point3d_type) :: vertices(*)
   
   PetscReal :: UCellGetEdgeLength
   
@@ -1135,11 +997,12 @@ function UCellQuality(cell_type,vertices,option)
   ! 
 
   use Option_module
+  use Geometry_module  
 
   implicit none
   
   PetscInt :: cell_type
-  type(point_type) :: vertices(*)
+  type(point3d_type) :: vertices(*)
   type(option_type) :: option
   
   PetscReal :: UCellQuality
@@ -1169,12 +1032,13 @@ subroutine UCellGetLineIntercept(line_start,line_end,point,intercept)
   ! Author: Gautam Bisht
   ! Date: 02/26/12
   ! 
+  use Geometry_module
 
   implicit none
-  type(point_type) :: line_start
-  type(point_type) :: line_end
-  type(point_type) :: point
-  type(point_type) :: intercept
+  type(point3d_type) :: line_start
+  type(point3d_type) :: line_end
+  type(point3d_type) :: point
+  type(point3d_type) :: intercept
 
   PetscReal :: dx,dy,dz
   PetscReal :: u, line_mag

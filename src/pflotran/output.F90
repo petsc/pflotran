@@ -984,7 +984,7 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         name = 'Volume'
         output_variable => OutputVariableCreate(name,OUTPUT_GENERIC, &
                                                 units,VOLUME)
-        output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
+        !output_variable%plot_only = PETSC_TRUE ! toggle output off for observation
         output_variable%iformat = 0 ! double
         call OutputVariableAddToList(output_variable_list,output_variable)
       case ('MATERIAL_ID')

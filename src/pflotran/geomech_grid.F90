@@ -48,6 +48,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   use Geomechanics_Grid_Aux_module
   use Option_module
   use Gauss_module
+  use Geometry_module  
   
   implicit none
   
@@ -88,7 +89,7 @@ subroutine CopySubsurfaceGridtoGeomechGrid(ugrid,geomech_grid,option)
   AO :: ao_natural_to_petsc_nodes
   PetscInt :: nlmax_node
   PetscInt, pointer :: int_ptr(:)
-  type(point_type), pointer :: vertices(:)
+  type(point3d_type), pointer :: vertices(:)
   PetscInt, allocatable :: vertex_count_array(:)
   PetscInt, allocatable :: vertex_count_array2(:)
 

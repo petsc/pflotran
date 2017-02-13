@@ -47,7 +47,7 @@ subroutine AuxVarTOilImsInit(this,option)
   ! need to agree a standard filling for the pressure:
   ! nphases and capillaty pressure afterwards? (can be 2 for three phases) 
 
-  !the indended part below should go on AuxvarsFlowInit, however we need a
+  !the indended part below should go on AuxVarsFlowInit, however we need a
   !standard for the pressure array entry, e.g. 
   !nphases and capillaty pressure afterwards? (pcs be 2 for three phases)
   !otherwise define a pc array which is mode dependent
@@ -64,7 +64,7 @@ subroutine AuxVarTOilImsInit(this,option)
     this%mobility = 0.d0
 
 
-  !this could go on AuxvarsFlowEnergyInit
+  !this could go on AuxVarsFlowEnergyInit
     this%temp = 0.d0
     allocate(this%H(option%nphase))
     this%H = 0.d0

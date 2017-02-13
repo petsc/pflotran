@@ -57,8 +57,8 @@ module Grid_Unstructured_Aux_module
     PetscInt, pointer :: cell_to_face_ghosted(:,:)
     PetscInt, pointer :: vertex_ids_natural(:)
     PetscInt, pointer :: cell_neighbors_local_ghosted(:,:) ! local neighbors
-    type(point_type), pointer :: vertices(:)
-    type(point_type), pointer :: face_centroid(:)
+    type(point3d_type), pointer :: vertices(:)
+    type(point3d_type), pointer :: face_centroid(:)
     PetscReal, pointer :: face_area(:)
   end type grid_unstructured_type
   

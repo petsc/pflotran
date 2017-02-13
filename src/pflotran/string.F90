@@ -492,7 +492,7 @@ function StringSplit(string,chars)
 
   character(len=MAXSTRINGLENGTH), pointer :: strings(:), StringSplit(:)
   
-  character(len=MAXSTRINGLENGTH) :: string1, string2
+  character(len=MAXSTRINGLENGTH) :: string1
   PetscInt :: i, icount, istart, iend, length, length_chars
   PetscInt :: last_index
   
@@ -616,7 +616,6 @@ function StringIntegerDoubleOrWord(string)
   PetscReal :: d
   PetscInt :: i
   PetscBool :: double_syntax_found
-  character(len=MAXWORDLENGTH) :: word
   PetscErrorCode :: ierr
 
   StringIntegerDoubleOrWord = -999

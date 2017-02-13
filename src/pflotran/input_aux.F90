@@ -891,9 +891,8 @@ subroutine InputReadNChars1(input, option, chars, n, return_blank_error)
   PetscBool :: return_blank_error ! Return an error for a blank line
                                    ! Therefore, a blank line is not acceptable.
   
-  PetscInt :: i, n, begins, ends
+  PetscInt :: n, begins, ends
   character(len=n) :: chars
-  character(len=1) :: tab, backslash    
 
   if (InputError(input)) return
 
@@ -1163,7 +1162,7 @@ subroutine InputFindStringInFile2(input, option, string, print_warning)
   
   character(len=MAXWORDLENGTH) :: word
   PetscBool :: found = PETSC_FALSE
-  PetscInt :: length1, length2, i
+  PetscInt :: length1, length2
 
   input%ierr = 0
 
