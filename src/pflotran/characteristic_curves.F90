@@ -6525,25 +6525,25 @@ subroutine RPF_BRAGFLO_KRP11_Liq_RelPerm(this,liquid_saturation, &
   gas_saturation = 1.d0 - liquid_saturation
   
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP11_Liq_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
   
   tol = this%tolc * (1 - this%Sr - this%Srg)
   
   if (liquid_saturation <= this%Sr) then
     relative_permeability = 0.d0
+    dkr_sat = 0.d0
   else if (gas_saturation <= this%Srg) then
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   else if (liquid_saturation <= this%Sr+tol) then
     relative_permeability = (liquid_saturation - this%Sr)/tol
+    dkr_sat = 1.d0/tol
   else if (gas_saturation <= this%Srg+tol) then
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   else
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   endif
     
 end subroutine RPF_BRAGFLO_KRP11_Liq_RelPerm
@@ -6595,26 +6595,25 @@ subroutine RPF_BRAGFLO_KRP11_Gas_RelPerm(this,liquid_saturation, &
   gas_saturation = 1.d0 - liquid_saturation
   
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP11_Gas_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
-  
   
   tol = this%tolc * (1 - this%Sr - this%Srg)
   
   if (liquid_saturation <= this%Sr) then
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   else if (gas_saturation <= this%Srg) then
     relative_permeability = 0.d0
+    dkr_sat = 0.d0
   else if (liquid_saturation <= this%Sr+tol) then
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   else if (gas_saturation <= this%Srg+tol) then
     relative_permeability = (gas_saturation - this%Srg)/tol
+    dkr_sat = -1.d0/tol
   else
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   endif
   
   end subroutine RPF_BRAGFLO_KRP11_Gas_RelPerm
