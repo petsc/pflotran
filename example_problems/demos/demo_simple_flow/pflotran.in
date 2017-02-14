@@ -122,7 +122,7 @@ END
 
 #=========================== stratigraphy couplers ============================
 STRATA
-REGION all
-MATERIAL soil
-END
+  REGION all
+    MATERIAL soil
+  END
 END_SUBSURFACE
