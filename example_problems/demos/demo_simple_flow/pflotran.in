@@ -88,17 +88,17 @@ END
 
 #=========================== flow conditions ==================================
 FLOW_CONDITION top
-TYPE
-FLUX neumann
-/
-FLUX 3.171d-10  ! 1 cm/yr
+  TYPE
+    FLUX neumann
+  /
+  FLUX 3.171d-10  ! 1 cm/yr
 END
 
 FLOW_CONDITION initial
-TYPE
-PRESSURE hydrostatic
-/
-PRESSURE 101325.d0
+  TYPE
+    PRESSURE hydrostatic
+  /
+  PRESSURE 101325.d0
 END
 
 #=========================== condition couplers ===============================
