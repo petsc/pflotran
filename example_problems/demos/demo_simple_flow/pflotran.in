@@ -104,20 +104,20 @@ END
 #=========================== condition couplers ===============================
 # initial condition
 INITIAL_CONDITION
-FLOW_CONDITION initial
-REGION all
+  FLOW_CONDITION initial
+  REGION all
 END
 
 # top boundary condition
 BOUNDARY_CONDITION
-FLOW_CONDITION top
-REGION top
+  FLOW_CONDITION top
+  REGION top
 END
 
 # bottom boundary condition
 BOUNDARY_CONDITION
-FLOW_CONDITION initial
-REGION bottom
+  FLOW_CONDITION initial
+  REGION bottom
 END
 
 #=========================== stratigraphy couplers ============================
