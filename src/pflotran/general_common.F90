@@ -3847,9 +3847,11 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         ! derivative wrt temperature
         Jl(1,3) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_T
       case(GAS_STATE)
-        option%io_buffer = 'Water injection not set up for gas state in &
-          &GeneralSrcSink.'
-        call printErrMsg(option)
+        if (dabs(Res(wat_comp_id)) > 1.d-40) then      
+          option%io_buffer = 'Water injection not set up for gas state in &
+            &GeneralSrcSink.'
+          call printErrMsg(option)
+        endif
         ! derivative wrt gas pressure
         ! derivative wrt air pressure
         ! derivative wrt temperature
@@ -3858,7 +3860,7 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         Jl(1,1) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_pl
         ! derivative wrt gas saturation
         ! derivative wrt temperature
-        Jl(1,1) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_T
+        Jl(1,3) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_T
     end select
     J = J + Jl
   endif
@@ -3886,9 +3888,11 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
     Jg = 0.d0
     select case(global_auxvar%istate)
       case(LIQUID_STATE)
-        option%io_buffer = 'Air injection not set up for liquid state in &
-          &GeneralSrcSink.'
-        call printErrMsg(option)
+        if (dabs(Res(air_comp_id)) > 1.d-40) then      
+          option%io_buffer = 'Air injection not set up for liquid state in &
+            &GeneralSrcSink as there is no air density.'
+          call printErrMsg(option)
+        endif
         ! derivative wrt liquid pressure
         ! derivative wrt air mole fraction
         ! derivative wrt temperature
@@ -3991,10 +3995,10 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                                                         enthalpy
         if (analytical_derivatives) then
           Je = 0.d0
-          Je(3,1) = Jl(2,1) * enthalpy + &
+          Je(3,1) = Jg(2,1) * enthalpy + &
                     Res(TWO_INTEGER) * ha_dp
-          Je(3,2) = Jl(2,2) * enthalpy
-          Je(3,3) = Jl(2,3) * enthalpy + &
+          Je(3,2) = Jg(2,2) * enthalpy
+          Je(3,3) = Jg(2,3) * enthalpy + &
                     Res(TWO_INTEGER) * ha_dT
         endif
         J = J + Je

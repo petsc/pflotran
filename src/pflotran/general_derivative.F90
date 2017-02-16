@@ -79,9 +79,9 @@ subroutine GeneralDerivativeDriver(option)
 !  itype = BOUNDARY_FLUX
   itype = SRCSINK
   
-!  istate = LIQUID_STATE
+  istate = LIQUID_STATE
 !  istate = GAS_STATE
-  istate = TWO_PHASE_STATE
+!  istate = TWO_PHASE_STATE
   select case(istate)
     case(LIQUID_STATE)
       xx(1) = 1.d6
@@ -190,7 +190,7 @@ subroutine GeneralDerivativeDriver(option)
     case(SRCSINK)
       flow_src_sink_type = VOLUMETRIC_RATE_SS
       qsrc = 0.d0
-      qsrc(1) = 1.d-10
+      qsrc(1) = -1.d-10
       srcsink_scale = 1.d0
       call GeneralDerivativeSrcSink(pert,qsrc,flow_src_sink_type, &
                                     general_auxvar,global_auxvar, &
