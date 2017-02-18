@@ -79,9 +79,9 @@ subroutine GeneralDerivativeDriver(option)
 !  itype = BOUNDARY_FLUX
   itype = SRCSINK
   
-  istate = LIQUID_STATE
+!  istate = LIQUID_STATE
 !  istate = GAS_STATE
-!  istate = TWO_PHASE_STATE
+  istate = TWO_PHASE_STATE
   select case(istate)
     case(LIQUID_STATE)
       xx(1) = 1.d6
@@ -1040,7 +1040,7 @@ subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
             dsatl = -1.d0
             dsatg = 1.d0
             ddenl = 0.d0
-            dmobilityl = -1.d0*general_auxvar%d%mobilityl_satg
+            dmobilityl = general_auxvar%d%mobilityl_satg
             dmobilityg = general_auxvar%d%mobilityg_satg
           case(3) ! temperature
             dpl = 0.d0 ! pl = pg - pc
@@ -1321,11 +1321,11 @@ subroutine GeneralAuxVarPrintResult(string,numerical,analytical, &
   type(option_type) :: option
   
   character(len=8) :: word
+  character(len=2) :: precision
   PetscReal :: tempreal
   PetscReal, parameter :: tol = 1.d-5
-  PetscInt :: precision
           
-100 format(a24,': ',2(es13.5),2x,i2,x,a8,x,es16.8)
+100 format(a24,': ',2(es13.5),2x,a2,x,a8,x,es16.8)
 
   precision = GeneralDigitsOfAccuracy(numerical,analytical)
   word = ''
@@ -1374,7 +1374,7 @@ subroutine GeneralDiffJacobian(string,numerical_jacobian,analytical_jacobian, &
   
   PetscInt :: irow, icol
   
-100 format(2i2,2es13.5,i3,es16.8)
+100 format(2i2,2es13.5,x,a2,es16.8)
 
   if (len_trim(string) > 1) then
     write(*,'(x,a)') string
@@ -1417,29 +1417,35 @@ function GeneralDigitsOfAccuracy(num1,num2)
   PetscReal :: num1
   PetscReal :: num2
   
-  PetscInt :: GeneralDigitsOfAccuracy
+  character(len=2) :: GeneralDigitsOfAccuracy
   
   PetscReal :: tempreal
   PetscReal :: relative_difference
+  PetscInt :: tempint
   
-  GeneralDigitsOfAccuracy = 0
+  GeneralDigitsOfAccuracy = ' 0'
   if (dabs(num1) > 0.d0 .and. dabs(num2) > 0.d0) then
     relative_difference = dabs((num1-num2)/num2)
     if (relative_difference < 1.d-17) then
       ! accuracy is beyond double precision
-      GeneralDigitsOfAccuracy = 99
+      GeneralDigitsOfAccuracy = '99'
     else
       tempreal = 1.d0 / relative_difference
+      tempint = 0
       do
         if (tempreal < 10.d0) exit
         tempreal = tempreal / 10.d0
-        GeneralDigitsOfAccuracy = GeneralDigitsOfAccuracy + 1
+        tempint = tempint + 1
       enddo
+      write(GeneralDigitsOfAccuracy,'(i2)') tempint
     endif
+  else if (dabs(num1) > 0.d0 .or. dabs(num2) > 0.d0) then
+    ! change this value if you want to report something difference for
+    ! either one being zero.
   else
     ! change this value if you want to report something difference for
     ! double zeros.
-    GeneralDigitsOfAccuracy = 0
+    GeneralDigitsOfAccuracy = '  '
   endif
     
 end function GeneralDigitsOfAccuracy
