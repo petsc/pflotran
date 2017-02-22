@@ -20,6 +20,11 @@ module EOS_Water_module
   PetscReal :: exponent_reference_pressure
   PetscReal :: exponent_water_compressibility
 
+  ! quadratic
+  PetscReal :: quadratic_reference_density
+  PetscReal :: quadratic_reference_pressure
+  PetscReal :: quadratic_wat_compressibility
+
   ! In order to support generic EOS subroutines, we need the following:
   ! 1. An interface declaration that defines the argument list (best to have 
   !    "Dummy" appended.
@@ -227,6 +232,9 @@ subroutine EOSWaterInit()
   exponent_reference_density = UNINITIALIZED_DOUBLE
   exponent_reference_pressure = UNINITIALIZED_DOUBLE
   exponent_water_compressibility = UNINITIALIZED_DOUBLE
+  quadratic_reference_density = UNINITIALIZED_DOUBLE
+  quadratic_reference_pressure = UNINITIALIZED_DOUBLE
+  quadratic_wat_compressibility = UNINITIALIZED_DOUBLE
   
   ! standard versions  
   EOSWaterDensityPtr => EOSWaterDensityIFC67
@@ -331,7 +339,26 @@ subroutine EOSWaterSetDensity(keyword,aux)
       exponent_reference_density = aux(1)
       exponent_reference_pressure = aux(2)
       exponent_water_compressibility = aux(3)  
-      EOSWaterDensityPtr => EOSWaterDensityExponential    
+      EOSWaterDensityPtr => EOSWaterDensityExponential
+    case('QUADRATIC')
+      if (Initialized(aux(1))) then
+        quadratic_reference_density = 999.014d0 !kg/m3
+      else
+        quadratic_reference_density = aux(1)
+      end if
+      if (Initialized(aux(2))) then
+        quadratic_reference_pressure = 1.0d5 !Pa
+      else
+        quadratic_reference_pressure = aux(2)
+      end if
+      if (Initialized(aux(3))) then
+        quadratic_wat_compressibility = 3.94769306686405d-10 !1/Pa
+      else
+        quadratic_wat_compressibility = aux(3)
+      end if
+      EOSWaterDensityPtr => EOSWaterDensityQuadratic
+    case('TRANGENSTEIN')
+      EOSWaterDensityPtr => EOSWaterDensityTrangenstein
     case('PLANAR')
       EOSWaterDensityPtr => EOSWaterDensityTPPlanar
     case('TGDPB01')
@@ -1357,6 +1384,97 @@ subroutine EOSWaterDensityExponential(t,p,calculate_derivatives, &
   dwt = 0.d0
 
 end subroutine EOSWaterDensityExponential
+
+! ************************************************************************** !
+
+subroutine EOSWaterDensityQuadratic(t,p,calculate_derivatives, &
+                                      dw,dwmol,dwp,dwt,ierr)
+  !
+  ! Water density quadratic model
+  !
+  ! Author: Paolo Orsini
+  ! Date: 02/10/17
+
+  implicit none
+  
+  PetscReal, intent(in) :: t   ! Temperature in centigrade
+  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: dw,dwmol,dwp,dwt
+  PetscErrorCode, intent(out) :: ierr
+
+  PetscReal :: X_pr
+
+  ! [-] =                         1/Pa *  Pa                        
+  X_pr = quadratic_wat_compressibility * (p - quadratic_reference_pressure )
+
+  ! kg/m^3
+  dw = quadratic_reference_density * (1.0 + X_pr + (X_pr**2)/2.0d0 )
+
+  dwmol = dw/FMWH2O ! kmol/m^3
+  
+  if (calculate_derivatives) then
+          ! kg/m^3 * 1/Pa * [-] / (kg/kmol) = kmol/m^3/Pa
+    dwp = quadratic_reference_density * quadratic_wat_compressibility * &
+          (1.0 + X_pr) / FMWH2O
+  else
+    dwp = UNINITIALIZED_DOUBLE
+  endif
+  dwt = 0.d0
+
+end subroutine EOSWaterDensityQuadratic
+
+! ************************************************************************** !
+
+subroutine EOSWaterDensityTrangenstein(t,p,calculate_derivatives, &
+                                       dw,dwmol,dwp,dwt,ierr)
+  !
+  ! Water density model taken from Trangenstein
+  ! Trangenstein, J. A. “Analysis of a Model and Sequential Numerical Method
+  ! for Thermal Reservoir Simulation,” The Mathematics of Oil Recovery, 
+  ! King, P.R. (ed.), Oxford, UK, Clarendon Press (1992), 359.
+  !
+  ! Author: Paolo Orsini
+  ! Date: 02/22/17
+
+  implicit none
+  
+  PetscReal, intent(in) :: t   ! Temperature in centigrade
+  PetscReal, intent(in) :: p   ! Pressure in Pascals
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: dw,dwmol,dwp,dwt
+  PetscErrorCode, intent(out) :: ierr
+
+  PetscReal, parameter :: a0 = 9.99839520d+02
+  PetscReal, parameter :: a1 = 1.69551760d+01
+  PetscReal, parameter :: a2 = -7.98700000d-03
+  PetscReal, parameter :: a3 = -4.61704610d-05
+  PetscReal, parameter :: a4 = 1.05563020d-07
+  PetscReal, parameter :: a5 = -2.80543530d-10
+  PetscReal, parameter :: a6 = 1.68798500d-02
+  PetscReal, parameter :: a7 = -10.20
+
+  PetscReal, parameter :: cpw = 4.00d-005  !1/atm
+  ! conversion 1/atm -> 1/Pa         
+  ! cpw_Pa = cpw * 1.01325*1.0d-1
+  
+  dw = (a0 + a1*t + a2 * t**2.0 + a3 * t**3.0 + a4 * t**4.0 + a5 * t**5.0 ) / &
+       ( 1.0 + a6 * t ) * &           !Pa -> MPa
+       dexp( cpw * 1.01325*1.0d-1 * (p * 1.0d-6 - a7 ) )
+               !1/atm -> 1/MPa    
+
+  dwmol = dw/FMWH2O ! kmol/m^3
+  
+  if (calculate_derivatives) then
+    !PO TODO add derivatives
+    print *, 'Derivatives not set up in EOSWaterDensityTrangenstein.'
+    stop
+  else
+    dwp = UNINITIALIZED_DOUBLE
+    dwt = UNINITIALIZED_DOUBLE
+  endif
+
+end subroutine EOSWaterDensityTrangenstein
 
 ! ************************************************************************** !
 
@@ -2812,6 +2930,23 @@ subroutine EOSWaterInputRecord()
     write(id,'(a29)',advance='no') 'water density: '
     write(id,'(a)') 'Batzle and Wang'
   endif
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityQuadratic)) then
+    write(id,'(a29)',advance='no') 'water density: '
+    write(id,'(a)') 'Quadratic'
+    write(id,'(a29)',advance='no') 'quad. ref. density: '
+    write(word1,*) quadratic_reference_density
+    write(id,'(a)') adjustl(trim(word1)) // ' kg/m^3'
+    write(id,'(a29)',advance='no') 'quad. ref. pressure: '
+    write(word1,*) quadratic_reference_pressure
+    write(id,'(a)') adjustl(trim(word1)) // ' Pa'
+    write(id,'(a29)',advance='no') 'quad. water compressibility: '
+    write(word1,*) quadratic_wat_compressibility
+    write(id,'(a)') adjustl(trim(word1)) // ' 1/Pa'
+  end if
+  if (associated(EOSWaterDensityPtr,EOSWaterDensityTrangenstein)) then
+    write(id,'(a29)',advance='no') 'water density: '
+    write(id,'(a)') 'Trangenstein'
+  end if
   
   ! water viscosity [Pa-s]
   if (associated(EOSWaterViscosityPtr,EOSWaterViscosityConstant)) then
