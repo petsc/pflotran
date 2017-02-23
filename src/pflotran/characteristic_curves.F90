@@ -853,7 +853,7 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputErrorMsg(input,option,'Srg',error_string)
           case default
             call InputKeywordUnrecognized(keyword, &
-                   'BRAGFLO_KRP1 saturation function',option)
+                   'BRAGFLO_KRP5 saturation function',option)
         end select
       class is(sat_func_BF_KRP4_type)
         select case(keyword)
