@@ -1194,7 +1194,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
     call DiscretizationGlobalToNatural(discretization, field%flow_xx, &
                                        natural_vec, NFLOWDOF)
 
-    dataset_name = "Primary_Variable" // CHAR(0)
+    dataset_name = "Primary_Variables" // CHAR(0)
     call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
          pm_grp_id, H5T_NATIVE_DOUBLE)
     call VecDestroy(natural_vec, ierr);CHKERRQ(ierr)
@@ -1217,7 +1217,7 @@ subroutine CheckpointFlowProcessModelHDF5(pm_grp_id, realization)
         call DiscretizationGlobalToNatural(discretization, global_vec, &
                                            natural_vec, ONEDOF)
 
-        dataset_name = "Secondary_Variable" // CHAR(0)
+        dataset_name = "State" // CHAR(0)
         call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
             pm_grp_id, H5T_NATIVE_DOUBLE)
        case default
@@ -1324,7 +1324,7 @@ subroutine RestartFlowProcessModelHDF5(pm_grp_id, realization)
     call DiscretizationCreateVector(realization%discretization, NFLOWDOF, &
                                     natural_vec, NATURAL, option)
 
-    dataset_name = "Primary_Variable" // CHAR(0)
+    dataset_name = "Primary_Variables" // CHAR(0)
     call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
          pm_grp_id, H5T_NATIVE_DOUBLE)
 
@@ -1348,7 +1348,7 @@ subroutine RestartFlowProcessModelHDF5(pm_grp_id, realization)
       case(MPH_MODE,TH_MODE,RICHARDS_MODE,IMS_MODE,MIS_MODE, &
            FLASH2_MODE,G_MODE)
 
-        dataset_name = "Secondary_Variable" // CHAR(0)
+        dataset_name = "State" // CHAR(0)
         call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
              pm_grp_id, H5T_NATIVE_DOUBLE)
 

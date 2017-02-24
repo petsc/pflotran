@@ -1145,6 +1145,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
   PetscInt :: idof
   character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: temp_int
   
   if (.not.associated(coupler_list)) return
     
@@ -1175,14 +1176,23 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
             select case(option%iflowmode)
 
               case(RICHARDS_MODE)
-                allocate(coupler%flow_aux_real_var(2,num_connections))
+                temp_int = 1
+                if (coupler%flow_condition%pressure%itype == &
+                    CONDUCTANCE_BC) then
+                  temp_int = temp_int + 1
+                endif
+                allocate(coupler%flow_aux_real_var(temp_int,num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
                 coupler%flow_aux_int_var = 0
 
               case(TH_MODE)
-                allocate(coupler%flow_aux_real_var(option%nflowdof* &
-                                                 option%nphase,num_connections))
+                temp_int = 2
+                if (coupler%flow_condition%pressure%itype == &
+                    CONDUCTANCE_BC) then
+                  temp_int = temp_int + 1
+                endif
+                allocate(coupler%flow_aux_real_var(temp_int,num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
                 coupler%flow_aux_int_var = 0

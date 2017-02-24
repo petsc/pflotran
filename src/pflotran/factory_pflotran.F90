@@ -77,8 +77,6 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   character(len=MAXSTRINGLENGTH) :: filename
   PetscErrorCode :: ierr
 
-  ! must come after logging is created
-  call LoggingSetupComplete()
   call MultiSimulationIncrement(multisimulation,option)
   call OptionBeginTiming(option)
 
@@ -94,6 +92,10 @@ subroutine PFLOTRANInitializePostPetsc(simulation,multisimulation,option)
   endif
   
   call PFLOTRANReadSimulation(simulation,option)
+  ! Must come after simulation is initialized so that proper stages are setup
+  ! for process models.  This call sets flag that disables the creation of
+  ! new stages, which is necessary for multisimulation
+  call LoggingSetupComplete()
 
 end subroutine PFLOTRANInitializePostPetsc
 
@@ -139,7 +141,7 @@ subroutine PFLOTRANReadSimulation(simulation,option)
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: name
+  character(len=MAXWORDLENGTH) :: pm_name
   character(len=MAXWORDLENGTH) :: simulation_type
   character(len=MAXWORDLENGTH) :: internal_units  
   
@@ -188,8 +190,12 @@ subroutine PFLOTRANReadSimulation(simulation,option)
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'process_model', &
                              'SIMULATION,PROCESS_MODELS')
-          call InputReadWord(input,option,name,PETSC_TRUE)
-          call InputErrorMsg(input,option,'name','SIMULATION,PROCESS_MODEL')
+          call InputReadWord(input,option,pm_name,PETSC_TRUE)
+          if (InputError(input)) then
+            input%err_buf = 'Process Model Name'
+            call InputDefaultMsg(input,option)
+            pm_name = ''
+          endif
           call StringToUpper(word)
           select case(trim(word))
             case('SUBSURFACE_FLOW')
@@ -207,15 +213,21 @@ subroutine PFLOTRANReadSimulation(simulation,option)
               option%geomech_on = PETSC_TRUE
               new_pm => PMGeomechForceCreate()
             case('AUXILIARY')
+              if (len_trim(pm_name) < 1) then
+                option%io_buffer = 'AUXILIARY process models must have a name.'
+                call printErrMsg(option)
+              endif
               new_pm => PMAuxiliaryCreate()
-              input%buf = name
+              input%buf = pm_name
               call PMAuxiliaryRead(input,option,PMAuxiliaryCast(new_pm))
             case default
               call InputKeywordUnrecognized(word, &
                      'SIMULATION,PROCESS_MODELS',option)            
           end select
           if (.not.associated(new_pm%option)) new_pm%option => option
-          new_pm%name = name
+          if (len_trim(pm_name) > 0) then
+            new_pm%name = pm_name
+          endif
           if (associated(cur_pm)) then
             cur_pm%next => new_pm
           else

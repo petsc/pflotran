@@ -146,7 +146,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     pmc_subsurface%pm_ptr%pm => pm_flow
     pmc_subsurface%realization => realization
     ! set up logging stage
-    string = trim(pm_flow%name) // 'Flow'
+    string = pm_flow%name
     call LoggingCreateStage(string,pmc_subsurface%stage)
 !    timestepper => TimestepperBECreate()
 !    timestepper%solver => SolverCreate()
@@ -165,7 +165,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     pmc_subsurface%pm_ptr%pm => pm_rt
     pmc_subsurface%realization => realization
     ! set up logging stage
-    string = 'Reactive Transport'
+    string = pm_rt%name
     call LoggingCreateStage(string,pmc_subsurface%stage)
 !    timestepper => TimestepperBECreate()
 !    timestepper%solver => SolverCreate()
@@ -209,7 +209,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     pmc_third_party%pm_ptr%pm => pm_waste_form
     pmc_third_party%realization => realization
     ! set up logging stage
-    string = 'WASTE_FORM_GENERAL'
+    string = pm_waste_form%name
     call LoggingCreateStage(string,pmc_third_party%stage)
     if (associated(simulation%rt_process_model_coupler%child)) then
       simulation%rt_process_model_coupler%child%peer => pmc_third_party
@@ -233,7 +233,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     pmc_third_party%pm_ptr%pm => pm_ufd_decay
     pmc_third_party%realization => realization
     ! set up logging stage
-    string = 'UFD_DECAY'
+    string = pm_ufd_decay%name
     call LoggingCreateStage(string,pmc_third_party%stage)
     if (associated(simulation%rt_process_model_coupler%child)) then
       simulation%rt_process_model_coupler%child%peer => pmc_third_party
@@ -248,7 +248,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     if (StringCompareIgnoreCase(pm_auxiliary%ctype,string)) then
       if (associated(simulation%rt_process_model_coupler)) then
         auxiliary_process_model_coupler => PMCAuxiliaryCreate()
-        simulation%rt_process_model_coupler%peer => auxiliary_process_model_coupler
+        simulation%rt_process_model_coupler%peer => &
+          auxiliary_process_model_coupler
         pm_auxiliary%realization => realization
         auxiliary_process_model_coupler%pm_list => pm_auxiliary
         auxiliary_process_model_coupler%pm_aux => pm_auxiliary
@@ -259,6 +260,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
         call printErrMsg(option)
       endif
     endif
+    call LoggingCreateStage(string,auxiliary_process_model_coupler%stage)
   endif
   
   ! SubsurfaceInitSimulation() must be called after pmc linkages are set above.
@@ -2015,6 +2017,9 @@ subroutine SubsurfaceReadInput(simulation)
         characteristic_curves => CharacteristicCurvesCreate()
         call InputReadWord(input,option,characteristic_curves%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','CHARACTERISTIC_CURVES')
+        option%io_buffer = '  Name :: ' // &
+          trim(characteristic_curves%name)
+        call printMsg(option)
         call CharacteristicCurvesRead(characteristic_curves,input,option)
 !        call SatFunctionComputePolynomial(option,saturation_function)
 !        call PermFunctionComputePolynomial(option,saturation_function)
@@ -2029,6 +2034,8 @@ subroutine SubsurfaceReadInput(simulation)
         material_property => MaterialPropertyCreate()
         call InputReadWord(input,option,material_property%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','MATERIAL_PROPERTY')        
+        option%io_buffer = '  Name :: ' // trim(material_property%name)
+        call printMsg(option)
         call MaterialPropertyRead(material_property,input,option)
         call MaterialPropertyAddToList(material_property, &
              realization%material_properties)

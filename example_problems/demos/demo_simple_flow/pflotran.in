@@ -88,41 +88,41 @@ END
 
 #=========================== flow conditions ==================================
 FLOW_CONDITION top
-TYPE
-FLUX neumann
-/
-FLUX 3.171d-10  ! 1 cm/yr
+  TYPE
+    FLUX neumann
+  /
+  FLUX 3.171d-10  ! 1 cm/yr
 END
 
 FLOW_CONDITION initial
-TYPE
-PRESSURE hydrostatic
-/
-PRESSURE 101325.d0
+  TYPE
+    PRESSURE hydrostatic
+  /
+  PRESSURE 101325.d0
 END
 
 #=========================== condition couplers ===============================
 # initial condition
 INITIAL_CONDITION
-FLOW_CONDITION initial
-REGION all
+  FLOW_CONDITION initial
+  REGION all
 END
 
 # top boundary condition
 BOUNDARY_CONDITION
-FLOW_CONDITION top
-REGION top
+  FLOW_CONDITION top
+  REGION top
 END
 
 # bottom boundary condition
 BOUNDARY_CONDITION
-FLOW_CONDITION initial
-REGION bottom
+  FLOW_CONDITION initial
+  REGION bottom
 END
 
 #=========================== stratigraphy couplers ============================
 STRATA
-REGION all
-MATERIAL soil
-END
+  REGION all
+    MATERIAL soil
+  END
 END_SUBSURFACE
