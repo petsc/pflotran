@@ -5258,7 +5258,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                     den(option%oil_phase)
           case(OIL_MOBILITY)
             value = patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    mobility(option%gas_phase)
+                    mobility(option%oil_phase)
           case(EFFECTIVE_POROSITY)
             value = patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
                     effective_porosity
