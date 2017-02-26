@@ -158,7 +158,7 @@ subroutine EOSRead(input,option)
                                    'EOS,WATER,VISCOSITY,CONSTANT')
                 call InputReadAndConvertUnits(input,temparray(1), &
                               'Pa-s','EOS,WATER,VISCOSITY,CONSTANT',option)
-              case('DEFAULT','BATZLE_AND_WANG')
+              case('DEFAULT','BATZLE_AND_WANG','GRABOWSKI')
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,VISCOSITY', &
                                               option)

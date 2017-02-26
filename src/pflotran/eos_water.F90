@@ -422,6 +422,8 @@ subroutine EOSWaterSetViscosity(keyword,aux)
     case('BATZLE_AND_WANG')
       EOSWaterViscosityPtr => EOSWaterViscosityBatzleAndWang
       EOSWaterViscosityExtPtr => EOSWaterViscosityBatzleAndWangExt
+    case('GRABOWSKI')
+      EOSWaterViscosityPtr => EOSWaterViscosityGrabowski
     case default
       print *, 'Unknown pointer type "' // trim(keyword) // &
         '" in EOSWaterSetViscosity().'  
@@ -1475,6 +1477,55 @@ subroutine EOSWaterDensityTrangenstein(t,p,calculate_derivatives, &
   endif
 
 end subroutine EOSWaterDensityTrangenstein
+
+! ************************************************************************** !
+
+subroutine EOSWaterViscosityGrabowski(T, P, PS, dPS_dT, &
+                                      calculate_derivatives, VW, &
+                                      dVW_dT, dVW_dP, ierr)
+  ! 
+  ! Grabowski, J. W. and Rubin, B. “A Preliminary Numerical Simulation 
+  ! Study of In-situ Combustion in a Cold Lake Oil Sands Reservoir” 
+  ! Journal of Canadian Petroleum Technology, (1981) 20, No. 2, 79-89.
+  !
+  ! Author: Paolo Orsini
+  ! Date: 02/26/17
+  ! 
+  implicit none
+  PetscReal, intent(in) :: T       ! C
+  PetscReal, intent(in) :: P       ! Pa
+  PetscReal, intent(in) :: PS      ! Pa
+  PetscReal, intent(in) :: dPS_dT  ! Pa/C
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: VW     ! Pa-s
+  PetscReal, intent(out) :: dVW_dT, dVW_dP
+  PetscErrorCode, intent(out) :: ierr
+  
+  ! convert from centipoise to Pa-s (1 cP = 1.d-3 Pa-s)
+  PetscReal, parameter :: centipoise_to_Pa_s = 1.d-3
+  PetscReal, parameter :: a = 2.1850
+  PetscReal, parameter :: b = 0.04012
+  PetscReal, parameter :: c = 5.1547d-6
+
+  PetscReal :: t_F ! temperature in F
+  
+  t_F = T*(9.0/5.0)+32.0
+
+  VW = a / (-1.0  + b * t_F + c * t_F**2.0 )
+  VW = VW * centipoise_to_Pa_s
+       
+  if (calculate_derivatives) then
+    dVW_dP = 0.d0
+    !PO TODO add derivatives
+    print *, 'Derivatives not set up in EOSWaterViscosityGrabowski'
+    stop
+    !dVW_dT =
+  else
+    dVW_dP = UNINITIALIZED_DOUBLE
+    dVW_dT = UNINITIALIZED_DOUBLE
+  endif
+
+end subroutine EOSWaterViscosityGrabowski
 
 ! ************************************************************************** !
 
@@ -2962,6 +3013,10 @@ subroutine EOSWaterInputRecord()
     write(id,'(a29)',advance='no') 'water viscosity: '
     write(id,'(a)') 'Batzle and Wang'
   endif
+  if (associated(EOSWaterViscosityPtr,EOSWaterViscosityGrabowski)) then
+    write(id,'(a29)',advance='no') 'water viscosity: '
+    write(id,'(a)') 'Grabowski Batzle'
+  endif
   
   ! water enthalpy [J/kmol]
   if (associated(EOSWaterViscosityPtr,EOSWaterEnthalpyConstant)) then
@@ -3099,6 +3154,10 @@ subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
     eos_density_name = 'Painter'
   else if (associated(EOSWaterDensityPtr,EOSWaterDensityBatzleAndWang)) then
     eos_density_name = 'Batzle and Wang'
+  else if (associated(EOSWaterDensityPtr,EOSWaterDensityQuadratic)) then
+    eos_density_name = 'Quadratic'
+  else if (associated(EOSWaterDensityPtr,EOSWaterDensityTrangenstein)) then
+    eos_density_name = 'Trangenstein'
   else 
     eos_density_name = 'Unknown'
   endif
@@ -3121,6 +3180,8 @@ subroutine EOSWaterTest(temp_low,temp_high,pres_low,pres_high, &
     eos_viscosity_name = 'Default'
   else if (associated(EOSWaterViscosityPtr,EOSWaterViscosityBatzleAndWang)) then
     eos_viscosity_name = 'Batzle and Wang'
+  else if (associated(EOSWaterViscosityPtr,EOSWaterViscosityGrabowski)) then
+    eos_viscosity_name = 'Grabowski'
   else
     eos_viscosity_name = 'Unknown'
   endif
