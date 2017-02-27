@@ -1462,7 +1462,7 @@ subroutine EOSWaterDensityTrangenstein(t,p,calculate_derivatives, &
   
   dw = (a0 + a1*t + a2 * t**2.0 + a3 * t**3.0 + a4 * t**4.0 + a5 * t**5.0 ) / &
        ( 1.0 + a6 * t ) * &           !Pa -> MPa
-       dexp( cpw * 1.01325*1.0d-1 * (p * 1.0d-6 - a7 ) )
+       dexp( cpw / (1.01325*1.0d-1) * (p * 1.0d-6 - a7 ) )
                !1/atm -> 1/MPa    
 
   dwmol = dw/FMWH2O ! kmol/m^3
