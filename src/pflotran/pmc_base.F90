@@ -56,6 +56,7 @@ module PMC_Base_class
     procedure, public :: GetAuxData
     procedure, public :: SetAuxData
     procedure, public :: CheckNullPM => PMCBaseCheckNullPM
+    !procedure, public :: SetChildPeerPtr => PMCBaseSetChildPeerPtr
   end type pmc_base_type
   
   abstract interface
@@ -86,8 +87,10 @@ module PMC_Base_class
   public :: PMCBaseCreate, &
             PMCBaseInit, &
             PMCBaseInputRecord, &
+            PMCBaseSetChildPeerPtr, &
             PMCBaseStrip, &
-            SetOutputFlags
+            SetOutputFlags, &
+            PMCCastToBase
   
 contains
 
@@ -169,8 +172,8 @@ recursive subroutine PMCBaseInputRecord(this)
   implicit none
   
   class(pmc_base_type) :: this
+  
   class(pm_base_type), pointer :: cur_pm
-
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: id
 
@@ -202,6 +205,82 @@ recursive subroutine PMCBaseInputRecord(this)
   endif
   
 end subroutine PMCBaseInputRecord
+
+! ************************************************************************** !
+
+recursive subroutine PMCBaseSetChildPeerPtr(pmcA,relationship_to,pmcB, &
+                                            pmcB_parent,position_instruction)
+  ! 
+  ! Orders pmcA under pmcB relative to the specified relationship (child or 
+  ! peer) and insert/append instruction. If pmcB's parent is not relevant, a
+  ! null dummy pointer of pmc_base_type should be passed in.
+  ! 
+  ! Author: Jenn Frederick, SNL
+  ! Date: 02/15/2017
+  ! 
+
+  use PM_Base_class
+  use String_module
+  use Option_module
+  
+  implicit none
+  
+  class(pmc_base_type), pointer :: pmcA
+  character(len=MAXWORDLENGTH) :: relationship_to
+  class(pmc_base_type), pointer :: pmcB
+  class(pmc_base_type), pointer :: pmcB_parent
+  class(pmc_base_type), pointer :: pmcB_dummy
+  character(len=MAXWORDLENGTH) :: position_instruction
+  
+  character(len=MAXWORDLENGTH) :: new_relationship
+
+  nullify(pmcB_dummy)
+
+  call StringToUpper(relationship_to)
+  select case(adjustl(trim(relationship_to)))
+  !--------------------------------------------------------
+    case('CHILD')
+      if (associated(pmcB%child)) then
+        new_relationship = 'PEER'
+        call PMCBaseSetChildPeerPtr(pmcA,new_relationship,pmcB%child,pmcB, &
+                                  position_instruction)
+      else
+        pmcB%child => pmcA
+      endif
+  !--------------------------------------------------------
+    case('PEER')
+      call StringToUpper(position_instruction)
+      select case(adjustl(trim(position_instruction)))
+      !----------------------------------------------------
+        case('APPEND')
+          if (associated(pmcB%peer)) then
+            new_relationship = 'PEER'
+            call PMCBaseSetChildPeerPtr(pmcA,new_relationship,pmcB%peer, &
+                                        pmcB_dummy,position_instruction)
+          else
+            pmcB%peer => pmcA
+          endif
+      !----------------------------------------------------
+        case('INSERT')
+          pmcA%peer => pmcB
+          if (associated(pmcB_parent)) then
+            pmcB_parent%child => pmcA
+          else
+            pmcA%option%io_buffer = 'Null pointer for pmcB_parent passed into &
+                                     &PMCBaseOrder.'
+            call printErrMsg(pmcA%option)
+          endif
+      !----------------------------------------------------
+      end select
+  !--------------------------------------------------------
+    case default
+      pmcA%option%io_buffer = 'PMC relationship_to not understood in &
+                              &PMCBaseOrder.'
+      call printErrMsg(pmcA%option)
+  !--------------------------------------------------------
+  end select
+  
+end subroutine PMCBaseSetChildPeerPtr
 
 ! ************************************************************************** !
 
@@ -996,7 +1075,6 @@ recursive subroutine PMCBaseCheckpointHDF5(this,chk_grp_id,append_name)
   class(pmc_base_header_type), pointer :: header
   type(pmc_base_header_type) :: dummy_header
   character(len=1),pointer :: dummy_char(:)
-  PetscBag :: bag
   PetscSizeT :: bagsize
   PetscLogDouble :: tstart, tend
   PetscErrorCode :: ierr
@@ -1087,9 +1165,6 @@ recursive subroutine PMCBaseRestartHDF5(this,chk_grp_id)
   PetscInt :: chk_grp_id
 
   class(pm_base_type), pointer :: cur_pm
-  class(pmc_base_header_type), pointer :: header
-  type(pmc_base_header_type) :: dummy_header
-  character(len=1),pointer :: dummy_char(:)
   PetscLogDouble :: tstart, tend
   PetscErrorCode :: ierr
   PetscMPIInt :: hdf5_err

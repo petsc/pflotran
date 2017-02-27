@@ -32,7 +32,7 @@ module PM_Waste_Form_class
   end type rad_species_type
 
 ! --------------- waste form mechanism types ----------------------------------
-  type :: wf_mechanism_base_type
+  type, public :: wf_mechanism_base_type
     type(rad_species_type), pointer :: rad_species_list(:)
     PetscInt :: num_species
     PetscBool :: canister_degradation_model
@@ -1494,7 +1494,6 @@ subroutine PMWFAssociateRegion(this,region_list)
                            trim(cur_waste_form%region_name) // ' not found.'
         call printErrMsg(option)
       endif
-      !call PMWFSetRegionScaling(this,cur_waste_form)
     endif
     !
     cur_waste_form => cur_waste_form%next
@@ -1802,7 +1801,7 @@ end subroutine PMWFSetup
   
   IS :: is
   class(waste_form_base_type), pointer :: cur_waste_form
-  PetscInt :: num_waste_form_cells
+  PetscInt :: num_waste_forms
   PetscInt :: num_species
   PetscInt :: size_of_vec
   PetscInt :: i, j, k
@@ -1850,22 +1849,22 @@ end subroutine PMWFSetup
   call this%data_mediator%AddToList(this%realization%tran_data_mediator_list)
   ! create a Vec sized by # waste packages * # waste package cells in region *
   ! # primary dofs influenced by waste package
-  ! count of waste form cells
+  ! count of waste forms
   cur_waste_form => this%waste_form_list
-  num_waste_form_cells = 0
+  num_waste_forms = 0
   size_of_vec = 0
   do
     if (.not.associated(cur_waste_form)) exit
     size_of_vec = size_of_vec + (cur_waste_form%mechanism%num_species * &
                                  cur_waste_form%region%num_cells)
-    num_waste_form_cells = num_waste_form_cells + 1
+    num_waste_forms = num_waste_forms + 1
     cur_waste_form => cur_waste_form%next
   enddo
   call VecCreateSeq(PETSC_COMM_SELF,size_of_vec, &
                     this%data_mediator%vec,ierr);CHKERRQ(ierr)
   call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
 
-  if (num_waste_form_cells > 0) then
+  if (num_waste_forms > 0) then
     allocate(species_indices_in_residual(size_of_vec))
     species_indices_in_residual = 0
     cur_waste_form => this%waste_form_list
