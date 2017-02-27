@@ -156,6 +156,8 @@ subroutine PMFlash2PreSolve(this)
   implicit none
   
   class(pm_flash2_type) :: this
+
+  call PMSubsurfaceFlowPreSolve(this)
   
 end subroutine PMFlash2PreSolve
 

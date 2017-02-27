@@ -182,6 +182,9 @@ subroutine PMMphasePreSolve(this)
   
   reaction => this%realization%reaction
   option => this%realization%option
+
+  call PMSubsurfaceFlowPreSolve(this)
+
 #if 1
   if (associated(reaction)) then
     if (associated(reaction%species_idx)) then

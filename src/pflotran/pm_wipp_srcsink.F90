@@ -922,9 +922,10 @@ subroutine PMWSSInitializeRun(this)
   IS :: is
   PetscInt :: i, j, k
   PetscErrorCode :: ierr
-  PetscReal :: size_of_vec
+  PetscInt :: size_of_vec
   PetscInt, allocatable :: dofs_in_residual(:)
   type(srcsink_panel_type), pointer :: cur_waste_panel
+  PetscReal, pointer :: vec_p(:)
   
   ierr = 0
   
@@ -946,6 +947,8 @@ subroutine PMWSSInitializeRun(this)
   call VecCreateSeq(PETSC_COMM_SELF,size_of_vec, &
                     this%data_mediator%vec,ierr);CHKERRQ(ierr)
   call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
+  call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
+  call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   
   if (size_of_vec > 0) then
     allocate(dofs_in_residual(size_of_vec))
