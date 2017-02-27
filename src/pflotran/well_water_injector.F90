@@ -110,9 +110,16 @@ subroutine WatInjInitDensity(this,grid,option)
     call EOSWaterDensity(tw_ref_init,pw_ref_init, &
                           dw_h2o_kg,dw_h2o_mol,ierr) 
     this%dw_kg_ref(option%liquid_phase) = dw_h2o_kg
+
+    call EOSWaterDensity(option%reference_temperature, &
+                         option%reference_pressure, &
+                         this%den_kg_surf(option%liquid_phase),dw_h2o_mol,ierr)
   end if
 
   call MPI_Bcast ( this%dw_kg_ref(option%liquid_phase),1, &
+                   MPI_DOUBLE_PRECISION, this%cntr_rank, this%comm, ierr )
+
+  call MPI_Bcast ( this%den_kg_surf(option%liquid_phase),1, &
                    MPI_DOUBLE_PRECISION, this%cntr_rank, this%comm, ierr )
 
 

@@ -20,6 +20,7 @@ module Well_Flow_class
     PetscReal :: pw_ref                          ! [Pa] well pressure at reference elevation
     PetscInt :: hydrostatic_method               ! it defines the mthod used in the well hydrostatic computation
     PetscReal, pointer :: dw_kg_ref(:)           ! dw_kg_ref(iphase) [kg/m3] well fluid density of iphase at reference elevation
+    PetscReal, pointer :: den_kg_surf(:)         ! well fluid densities at surface [kg/sm3]
     PetscReal, pointer :: q_fld(:)               ! q_fld(iphase)  [m3/s] well fluid flow rates of iphase
     PetscReal, pointer :: mr_fld(:)              ! mr_fld(iphase) [kg/s] well fluid mass rates of iphase
     PetscReal, pointer :: conn_h(:)              ! connection hydrostatic pressure corrections (local)
@@ -94,6 +95,8 @@ subroutine WellFlowInit(this,option)
 
   allocate( this%dw_kg_ref(option%nphase) );
   this%dw_kg_ref = 0.0d0;
+  allocate( this%den_kg_surf(option%nphase) );
+  this%den_kg_surf = UNINITIALIZED_DOUBLE
   allocate( this%q_fld(option%nphase) );
   this%q_fld = 0.0d0;
   allocate( this%mr_fld(option%nphase) );
@@ -1182,6 +1185,7 @@ subroutine FlowWellStrip(well)
   class(well_flow_type) :: well
 
   call DeallocateArray(well%dw_kg_ref)
+  call DeallocateArray(well%den_kg_surf)
   call DeallocateArray(well%q_fld)
   call DeallocateArray(well%mr_fld)
   call DeallocateArray(well%conn_h)
