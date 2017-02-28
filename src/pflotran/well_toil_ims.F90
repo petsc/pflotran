@@ -87,7 +87,7 @@ subroutine TOilImsWatInjOutputHeader(this,output_option,file_unit)
   !      e.g. small loop to add well vars
   write(IUNIT_TEMP,*) " VARIABLES = " // &
       '"Time [' // trim(tunit) // ']", ' // &
-                '""Pw[Pa]"", ' // &
+                '"Pw[Pa]", ' // &
         '"Tw[C]", "dh2o[kg/m3]", ' // &
         '"Qwat[rm3/' // trim(tunit) // ']", ' // &
         '"Qwat_surf[sm3/' // trim(tunit) // ']", ' // &
