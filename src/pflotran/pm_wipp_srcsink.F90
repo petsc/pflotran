@@ -925,7 +925,6 @@ subroutine PMWSSInitializeRun(this)
   PetscInt :: size_of_vec
   PetscInt, allocatable :: dofs_in_residual(:)
   type(srcsink_panel_type), pointer :: cur_waste_panel
-  PetscReal, pointer :: vec_p(:)
   
   ierr = 0
   
@@ -947,8 +946,6 @@ subroutine PMWSSInitializeRun(this)
   call VecCreateSeq(PETSC_COMM_SELF,size_of_vec, &
                     this%data_mediator%vec,ierr);CHKERRQ(ierr)
   call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
-  call VecGetArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
-  call VecRestoreArrayF90(this%data_mediator%vec,vec_p,ierr);CHKERRQ(ierr)
   
   if (size_of_vec > 0) then
     allocate(dofs_in_residual(size_of_vec))
@@ -1011,7 +1008,7 @@ subroutine PMWSSInitializeTimestep(this)
 
   dt = this%option%flow_dt
   
-    if (this%option%print_screen_flag) then
+  if (this%option%print_screen_flag) then
     write(*,'(/,2("=")," WIPP SRC/SINK PANEL MODEL ",51("="))')
   endif
   
@@ -1282,13 +1279,15 @@ end subroutine UpdateChemSpecies
     !------source-term-calculation--------------------------------------------
       cell_id = grid%nL2G(cur_waste_panel%region%cell_ids(i))
       j = j + 1
-      ! liquid source term [mol/sec]
+      ! liquid source term [kmol/sec]
       vec_p(j) = cur_waste_panel%brine_generation_rate(i) * &  ! [mol/m3/sec]
-                 material_auxvars(cell_id)%volume              ! [m3] 
+                 material_auxvars(cell_id)%volume / &          ! [m3]
+                 1.d3                                          ! [mol -> kmol]
       j = j + 1
-      ! gas source term [mol/sec]
+      ! gas source term [kmol/sec]
       vec_p(j) = cur_waste_panel%gas_generation_rate(i) * &    ! [mol/m3/sec]
-                 material_auxvars(cell_id)%volume              ! [m3]
+                 material_auxvars(cell_id)%volume / &          ! [m3]
+                 1.d3                                          ! [mol -> kmol]
       j = j + 1
       ! energy source term [MJ/sec]; H from EOS [J/kmol]
       brine_energy = 0.d0
