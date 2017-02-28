@@ -192,28 +192,41 @@ contains
     PetscReal, parameter :: p4 = 0.99d0
     PetscReal :: calc_value
     PetscReal :: value
+    PetscReal :: derivative, num_derivative, calc_value2, ppert, pert
     PetscReal, parameter :: tolerance = 1.d-12
     character(len=128) :: string
   
     string = 'InverseNorm(p1) in Test_Utility_module'
-    calc_value = InverseNorm(p1)
+    call InverseNorm(p1,calc_value,PETSC_TRUE,derivative)
     value = -2.3263478743880279d0
     @assertEqual(value, calc_value, dabs(value)*tolerance, string)
+    string = 'Derivative of InverseNorm(p1) in Test_Utility_module'
+    value = 37.520436803844717d0
+    @assertEqual(value, derivative, dabs(value)*tolerance, string)
 
     string = 'InverseNorm(p2) in Test_Utility_module'
-    calc_value = InverseNorm(p2)
+    call InverseNorm(p2,calc_value,PETSC_TRUE,derivative)
     value = -0.67448975022342250d0
     @assertEqual(value, calc_value, dabs(value)*tolerance, string)
+    string = 'Derivative of InverseNorm(p2) in Test_Utility_module'
+    value = 3.1468650515211789d0
+    @assertEqual(value, derivative, dabs(value)*tolerance, string)
 
     string = 'InverseNorm(p3) in Test_Utility_module'
-    calc_value = InverseNorm(p3)
+    call InverseNorm(p3,calc_value,PETSC_TRUE,derivative)
     value = 0.67448975022342250d0
     @assertEqual(value, calc_value, dabs(value)*tolerance, string)
+    string = 'Derivative of InverseNorm(p3) in Test_Utility_module'
+    value = 3.1468650515211789d0
+    @assertEqual(value, derivative, dabs(value)*tolerance, string)
 
     string = 'InverseNorm(p4) in Test_Utility_module'
-    calc_value = InverseNorm(p4)
+    call InverseNorm(p4,calc_value,PETSC_TRUE,derivative)
     value = 2.3263478743880279d0
     @assertEqual(value, calc_value, dabs(value)*tolerance, string)
+    string = 'Derivative of InverseNorm(p4) in Test_Utility_module'
+    value = 37.520436803844689d0
+    @assertEqual(value, derivative, dabs(value)*tolerance, string)
 
   end subroutine testUtility_InverseNorm
 
