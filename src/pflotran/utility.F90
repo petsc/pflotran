@@ -75,7 +75,8 @@ module Utility_module
             InterfaceApproxWithDeriv, &
             InterfaceApproxWithoutDeriv, &
             PrintProgressBarInt, &
-            InverseNorm
+            InverseNorm, &
+            Erf_
             
 contains
 

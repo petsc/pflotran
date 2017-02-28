@@ -249,6 +249,7 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: kro, viso, dkro_Se
   PetscReal :: dummy
   PetscReal :: Uoil_J_kg, Hoil_J_kg
+  PetscReal :: dpc_dsatl
   PetscErrorCode :: ierr
 
   ! from SubsurfaceSetFlowMode
@@ -280,7 +281,7 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
       
   call characteristic_curves%saturation_function% &
              CapillaryPressure(toil_auxvar%sat(lid),toil_auxvar%pres(cpid), &
-                               option)                             
+                               dpc_dsatl,option)                             
 
   ! Testing zero capillary pressure
   !toil_auxvar%pres(cpid) = 0.d0
