@@ -114,14 +114,15 @@ subroutine RealizationGetVariable(realization_base,vec,ivar,isubvar,isubvar1)
   
   call PatchGetVariable(realization_base%patch,realization_base%field, &
                        realization_base%reaction,realization_base%option, &
-                       realization_base%output_option,vec,ivar,isubvar,isubvar1)
+                       realization_base%output_option,vec,ivar,isubvar, &
+                       isubvar1)
 
 end subroutine RealizationGetVariable
 
 ! ************************************************************************** !
 
-function RealizGetVariableValueAtCell(realization_base,ivar,isubvar,ghosted_id, &
-                                     isubvar1)
+function RealizGetVariableValueAtCell(realization_base,ivar,isubvar, &
+                                      ghosted_id,isubvar1)
   ! 
   ! Extracts variables indexed by ivar and isubvar
   ! from a realization
@@ -143,11 +144,12 @@ function RealizGetVariableValueAtCell(realization_base,ivar,isubvar,ghosted_id, 
   
   PetscReal :: value
   
-  value = PatchGetVariableValueAtCell(realization_base%patch,realization_base%field, &
-                                     realization_base%reaction, &
-                                     realization_base%option, &
-                                     realization_base%output_option, &
-                                     ivar,isubvar,ghosted_id,isubvar1)
+  value = PatchGetVariableValueAtCell(realization_base%patch, &
+                                      realization_base%field, &
+                                      realization_base%reaction, &
+                                      realization_base%option, &
+                                      realization_base%output_option, &
+                                      ivar,isubvar,ghosted_id,isubvar1)
   RealizGetVariableValueAtCell = value
 
 end function RealizGetVariableValueAtCell

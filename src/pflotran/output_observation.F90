@@ -1555,8 +1555,9 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
         case(MPH_MODE,TH_MODE)
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
-              RealizGetVariableValueAtCell(realization_base,SECONDARY_TEMPERATURE,i, &
-                                          ghosted_id)
+              RealizGetVariableValueAtCell(realization_base, &
+                                           SECONDARY_TEMPERATURE,i, &
+                                           ghosted_id)
           enddo
         end select
      endif
@@ -1566,8 +1567,9 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
         do naqcomp = 1, reaction%naqcomp
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
-              RealizGetVariableValueAtCell(realization_base,SECONDARY_CONCENTRATION,i, &
-                                          ghosted_id,naqcomp)
+              RealizGetVariableValueAtCell(realization_base, &
+                                           SECONDARY_CONCENTRATION,i, &
+                                           ghosted_id,naqcomp)
           enddo
         enddo 
       endif
@@ -1585,7 +1587,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
               RealizGetVariableValueAtCell(realization_base,SEC_MIN_RATE,i, &
-                                          ghosted_id,nkinmnrl)
+                                           ghosted_id,nkinmnrl)
           enddo
         enddo
       endif
@@ -1594,7 +1596,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
               RealizGetVariableValueAtCell(realization_base,SEC_MIN_SI,i, &
-                                          ghosted_id,nkinmnrl)
+                                           ghosted_id,nkinmnrl)
           enddo
         enddo
       endif           

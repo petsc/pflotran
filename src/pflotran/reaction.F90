@@ -3125,6 +3125,7 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_tot_conc_type = TOTAL_MOLALITY
       case('AGE')
         reaction%print_age = PETSC_TRUE
+        reaction%use_full_geochemistry = PETSC_TRUE
       case('AUXILIARY')
         reaction%print_auxiliary = PETSC_TRUE
       case ('SITE_DENSITY')
