@@ -89,7 +89,7 @@ subroutine TOilImsWatInjOutputHeader(this,output_option,file_unit)
       '"Time [' // trim(tunit) // ']", ' // &
                 '"Pw[Pa]", ' // &
         '"Tw[C]", "dh2o[kg/m3]", ' // &
-        '"Qwat[rm3/' // trim(tunit) // ']", ' // &
+        '"Qwat_res[rm3/' // trim(tunit) // ']", ' // &
         '"Qwat_surf[sm3/' // trim(tunit) // ']", ' // &
         '"Mwat[kg/' // trim(tunit) // ']" ' 
 
@@ -135,12 +135,12 @@ subroutine TOilImsOilProdOutputHeader(this,output_option,file_unit)
       '"Time [' // trim(tunit) // ']", ' // &
                 '"Pw[Pa]", ' // &
         '"Tw[C]", "den_well_fluid[kg/m3]", ' // &
-        '"Qwat[rm3/' // trim(tunit) // ']", ' // &
+        '"Qwat_res[rm3/' // trim(tunit) // ']", ' // &
         '"Qwat_surf[sm3/' // trim(tunit) // ']", ' // &
-        '"Mwat[kg/' // trim(tunit) // ']" '  // &
-        '"Qoil[rm3/' // trim(tunit) // ']", ' // &
+        '"Mwat[kg/' // trim(tunit) // ']", '  // &
+        '"Qoil_res[rm3/' // trim(tunit) // ']", ' // &
         '"Qoil_surf[sm3/' // trim(tunit) // ']", ' // &
-        '"Moil[kg/' // trim(tunit) // ']" '  // &
+        '"Moil[kg/' // trim(tunit) // ']", '  // &
         '"vol_WOR[-]" '
 
 end subroutine TOilImsOilProdOutputHeader
