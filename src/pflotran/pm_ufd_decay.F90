@@ -154,8 +154,9 @@ subroutine PMUFDDecayRead(this,input)
   type(daughter_type), pointer :: daughter, prev_daughter
   type(element_type), pointer :: element, prev_element
   PetscInt :: i
-  character(len=MAXWORDLENGTH) :: Kd_material_name(20)
-  PetscReal :: Kd(20)
+  PetscInt, parameter :: MAX_KD_SIZE = 100
+  character(len=MAXWORDLENGTH) :: Kd_material_name(MAX_KD_SIZE)
+  PetscReal :: Kd(MAX_KD_SIZE)
   PetscReal :: tempreal
 
   option => this%option
@@ -202,7 +203,7 @@ subroutine PMUFDDecayRead(this,input)
                 if (InputError(input)) exit
                 if (InputCheckExit(input,option)) exit
                 i = i + 1
-                if (i > 20) then
+                if (i > MAX_KD_SIZE) then
                   write(word,*) i-1
                   option%io_buffer = 'Kd array in PMUFDDecayRead() must be &
                     &allocated larger than ' // trim(adjustl(word)) // '.'

@@ -62,7 +62,7 @@ function PMImmisCreate()
   allocate(immis_pm)
 
   call PMSubsurfaceFlowCreate(immis_pm)
-  immis_pm%name = 'PMImmis'
+  immis_pm%name = 'Immisible Flow'
 
   PMImmisCreate => immis_pm
   

@@ -66,7 +66,7 @@ function PMMiscibleCreate()
   allocate(miscible_pm)
 
   call PMSubsurfaceFlowCreate(miscible_pm)
-  miscible_pm%name = 'PMMiscible'
+  miscible_pm%name = 'Miscible Flow'
 
   PMMiscibleCreate => miscible_pm
   

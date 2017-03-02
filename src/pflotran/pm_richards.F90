@@ -59,7 +59,7 @@ function PMRichardsCreate()
   
   allocate(richards_pm)
   call PMSubsurfaceFlowCreate(richards_pm)
-  richards_pm%name = 'PMRichards'
+  richards_pm%name = 'Richards Flow'
 
   PMRichardsCreate => richards_pm
   

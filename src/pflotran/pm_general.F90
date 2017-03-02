@@ -80,7 +80,7 @@ function PMGeneralCreate()
   general_pm%max_change_isubvar = [0,0,0,2,0,0]
   
   call PMSubsurfaceFlowCreate(general_pm)
-  general_pm%name = 'PMGeneral'
+  general_pm%name = 'General Multiphase Flow'
 
   PMGeneralCreate => general_pm
   
