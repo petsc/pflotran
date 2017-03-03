@@ -1356,7 +1356,8 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
   call h5close_f(hdf5_err)
 
 
-  if (option%myrank == option%io_rank) then
+  if (option%myrank == option%io_rank .and. &
+      output_option%print_explicit_primal_grid) then
     call OutputXMFFooter(OUTPUT_UNIT)
     close(OUTPUT_UNIT)
   endif
