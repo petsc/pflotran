@@ -46,7 +46,8 @@ module Output_module
             OutputPrintRegions, &
             OutputVariableRead, &
             OutputFileRead, &
-            OutputInputRecord
+            OutputInputRecord, &
+            OutputEnsureVariablesExist
 
 contains
 
@@ -2283,6 +2284,92 @@ subroutine OutputWell(realization_base)
 
 end subroutine OutputWell
 #endif
+
+! ************************************************************************** !
+
+subroutine OutputEnsureVariablesExist(output_option,option)
+  ! 
+  ! Loop over output variables to ensure that they exist in the simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/17
+  ! 
+  use Option_module
+
+  implicit none
+
+  type(output_option_type) :: output_option
+  type(option_type) :: option
+
+  call OutputListEnsureVariablesExist(output_option%output_variable_list, &
+                                      option)
+  call OutputListEnsureVariablesExist(output_option%output_snap_variable_list, &
+                                      option)
+  call OutputListEnsureVariablesExist(output_option%output_obs_variable_list, &
+                                      option)
+  call OutputListEnsureVariablesExist(output_option%aveg_output_variable_list, &
+                                      option)
+
+end subroutine OutputEnsureVariablesExist
+
+! ************************************************************************** !
+
+subroutine OutputListEnsureVariablesExist(output_variable_list,option)
+  ! 
+  ! Loop over output variables to ensure that they exist in the simulation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/17
+  ! 
+  use Option_module
+  use Material_Aux_class, only : soil_compressibility_index, &
+                                 soil_reference_pressure_index
+  use Variables_module
+
+  implicit none
+
+  type(output_variable_list_type), pointer :: output_variable_list
+  type(option_type) :: option
+
+  type(output_variable_type), pointer :: cur_variable
+  PetscBool :: error_flag
+  PetscInt :: error_count
+
+  cur_variable => output_variable_list%first
+  error_count =  0
+  do
+    if (.not.associated(cur_variable)) exit
+    error_flag = PETSC_FALSE
+    select case(cur_variable%ivar)
+      case(SOIL_COMPRESSIBILITY)
+        if (soil_compressibility_index == 0) error_flag = PETSC_TRUE
+      case(SOIL_REFERENCE_PRESSURE)
+        if (soil_reference_pressure_index == 0) error_flag = PETSC_TRUE
+    end select
+    if (error_flag) then
+      error_count = error_count + 1
+      if (error_count == 1) then
+        if (OptionPrintToScreen(option)) then
+          print *
+          print *, 'The following OUTPUT VARIABLES are undefined in this &
+            &simulation:'
+          print *
+        endif
+      endif
+      if (OptionPrintToScreen(option)) then
+        print *, '  ' // trim(cur_variable%name)
+      endif
+    endif
+    cur_variable => cur_variable%next
+  enddo
+  if (error_count > 0) then
+    option%io_buffer = 'Simulation was stopped due to undefined output &
+                       &variables.'
+    call printErrMsg(option)
+  endif
+
+end subroutine OutputListEnsureVariablesExist
+
 ! ************************************************************************** !
 
 end module Output_module
