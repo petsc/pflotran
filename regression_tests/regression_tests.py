@@ -28,6 +28,7 @@ import subprocess
 import textwrap
 import time
 import traceback
+import difflib
 
 if sys.version_info[0] == 2:
     from ConfigParser import SafeConfigParser as config_parser
@@ -107,9 +108,11 @@ class RegressionTest(object):
         self._compare_hdf5 = False
         self._timeout = 60.0
         self._skip_check_gold = False
+        self._skip_check_regression = False
         self._check_performance = False
         self._num_failed = 0
         self._test_name = None
+        self._ascii_output_filenames = None
         # assign default tolerances for different classes of variables
         # absolute min and max thresholds for determining whether to
         # compare to baseline, i.e. if (min_threshold <= abs(value) <=
@@ -381,73 +384,119 @@ class RegressionTest(object):
         manager can track how many tests succeeded and failed.
         """
         if self._skip_check_gold:
-            message = "    Skipping comparison to regression gold file (only test if model runs to completion)."
-            print("".join(['\n', message, '\n']), file=testlog)
-            return
-
-        gold_filename = self.name() + run_id + ".regression.gold"
-        if not os.path.isfile(gold_filename):
             message = self._txtwrap.fill(
-                "FAIL: could not find regression test gold file "
-                "'{0}'. If this is a new test, please create "
-                "it with '--new-test'.".format(gold_filename))
+                "Skipping comparison to regression gold file "
+                "(only test if model runs to completion).")
             print("".join(['\n', message, '\n']), file=testlog)
-            status.fail = 1
             return
-        else:
-            with open(gold_filename, 'rU') as gold_file:
-                gold_output = gold_file.readlines()
 
-        current_filename = self.name() + run_id + ".regression"
-        if not os.path.isfile(current_filename):
-            message = self._txtwrap.fill(
-                "FAIL: could not find regression test file '{0}'."
-                " Please check the standard output file for "
-                "errors.".format(current_filename))
-            print("".join(['\n', message, '\n']), file=testlog)
-            status.fail = 1
-            return
-        else:
-            with open(current_filename, 'rU') as current_file:
-                current_output = current_file.readlines()
+        if not self._skip_check_regression:
+            gold_filename = self.name() + run_id + ".regression.gold"
+            if not os.path.isfile(gold_filename):
+                message = self._txtwrap.fill(
+                    "FAIL: could not find regression test gold file "
+                    "'{0}'. If this is a new test, please create "
+                    "it with '--new-test'.".format(gold_filename))
+                print("".join(['\n', message, '\n']), file=testlog)
+                status.fail = 1
+                return
+            else:
+                with open(gold_filename, 'rU') as gold_file:
+                    gold_output = gold_file.readlines()
+    
+            current_filename = self.name() + run_id + ".regression"
+            if not os.path.isfile(current_filename):
+                message = self._txtwrap.fill(
+                    "FAIL: could not find regression test file '{0}'."
+                    " Please check the standard output file for "
+                    "errors.".format(current_filename))
+                print("".join(['\n', message, '\n']), file=testlog)
+                status.fail = 1
+                return
+            else:
+                with open(current_filename, 'rU') as current_file:
+                    current_output = current_file.readlines()
+    
+            print("    diff {0} {1}".format(gold_filename, current_filename),
+                  file=testlog)
 
-        print("    diff {0} {1}".format(gold_filename, current_filename), file=testlog)
-
-        gold_sections = self._get_sections(gold_output)
-        current_sections = self._get_sections(current_output)
-        if self._debug:
-            print("--- Gold sections:")
-            self._pprint.pprint(gold_sections)
-            print("--- Current sections:")
-            self._pprint.pprint(current_sections)
-
-        # look for sections that are in gold but not current
-        for section in gold_sections:
-            if section not in current_sections:
-                self._num_failed += 1
-                print("    FAIL: section '{0}' is in the gold output, but "
-                      "not the current output.".format(section), file=testlog)
-
-        # look for sections that are in current but not gold
-        for section in current_sections:
-            if section not in gold_sections:
-                self._num_failed += 1
-                print("    FAIL: section '{0}' is in the current output, "
-                      "but not the gold output.".format(section), file=testlog)
-
-        # compare common sections
-        for section in gold_sections:
-            if section in current_sections:
-                try:
-                    self._num_failed += self._compare_sections(
-                        gold_sections[section], current_sections[section],
-                        testlog)
-                except Exception as error:
+            gold_sections = self._get_sections(gold_output)
+            current_sections = self._get_sections(current_output)
+            if self._debug:
+                print("--- Gold sections:")
+                self._pprint.pprint(gold_sections)
+                print("--- Current sections:")
+                self._pprint.pprint(current_sections)
+    
+            # look for sections that are in gold but not current
+            for section in gold_sections:
+                if section not in current_sections:
                     self._num_failed += 1
-                    print(error, file=testlog)
+                    print("    FAIL: section '{0}' is in the gold output, but "
+                          "not the current output.".format(section), 
+                          file=testlog)
 
-        if self._num_failed > 0:
-            status.fail = 1
+            # look for sections that are in current but not gold
+            for section in current_sections:
+                if section not in gold_sections:
+                    self._num_failed += 1
+                    print("    FAIL: section '{0}' is in the current output, "
+                          "but not the gold output.".format(section), 
+                          file=testlog)
+    
+            # compare common sections
+            for section in gold_sections:
+                if section in current_sections:
+                    try:
+                        self._num_failed += self._compare_sections(
+                            gold_sections[section], current_sections[section],
+                            testlog)
+                    except Exception as error:
+                        self._num_failed += 1
+                        print(error, file=testlog)
+    
+            if self._num_failed > 0:
+                status.fail = 1
+
+        # Compare ascii output files
+        if self._ascii_output_filenames is not None:
+            if self._stochastic_realizations is not None:
+                print("Skipping comparison of ASCII output for stochastic run.",
+                      file=testlog)
+            else:
+                filenames = self._ascii_output_filenames.split()
+                for current_filename in filenames:
+                    if not os.path.isfile(current_filename):
+                        message = self._txtwrap.fill(
+                            "FAIL: could not find ASCII output test file '{0}'."
+                            " Please check the standard output file for "
+                            "errors.".format(current_filename))
+                        print("".join(['\n', message, '\n']), file=testlog)
+                        status.fail = 1
+                        return
+                    else:
+                        with open(current_filename, 'rU') as current_file:
+                            current_output = current_file.readlines()
+
+                    gold_filename = current_filename + ".gold"
+                    if not os.path.isfile(gold_filename):
+                        message = self._txtwrap.fill(
+                            "FAIL: could not find ASCII output gold file "
+                            "'{0}'.".format(gold_filename))
+                        print("".join(['\n', message, '\n']), file=testlog)
+                        status.fail = 1
+                        return
+                    else:
+                        with open(gold_filename, 'rU') as gold_file:
+                            gold_output = gold_file.readlines()
+
+                    print("    diff {0} {1}".format(gold_filename, 
+                          current_filename), file=testlog)
+                    self._compare_ascii_output(current_output, gold_output, 
+                                               status, testlog)
+                if status.fail == 0:
+                    print("    Passed ASCII output comparison check.", 
+                          file=testlog)
 
     def _check_restart(self, status, testlog):
         """Check that binary restart files are bit for bit after a restart.
@@ -578,6 +627,21 @@ class RegressionTest(object):
         if status.fail == 0:
             print("    Passed hdf5 check.", file=testlog)
 
+    def _compare_ascii_output(self, ascii_current, ascii_gold, status, testlog):
+        """Check that ascii file output has not changed from the baseline.
+        """
+        diff = difflib.ndiff(ascii_current,ascii_gold,
+                             charjunk=difflib.IS_CHARACTER_JUNK)
+        count = 0
+        for line in list(diff):
+            if line.startswith(('-','+')):
+                count += 1
+        if count > 0:
+            status.fail = 1
+            print("      FAIL: ASCII output does not match.", file=testlog)
+            diff_lines = difflib.context_diff(ascii_current,ascii_gold)
+            for line in list(diff_lines):
+                testlog.write('      '+line)
 
     def update(self, status, testlog):
         """
@@ -953,12 +1017,21 @@ class RegressionTest(object):
             if self._skip_check_gold[0] in ["T", "t", "Y", "y"]:
                 self._skip_check_gold = True
 
+        self._skip_check_regression = test_data.pop('skip_check_regression', 
+                                                    None)
+        if self._skip_check_regression is not None:
+            if self._skip_check_regression[0] in ["T", "t", "Y", "y"]:
+                self._skip_check_regression = True
+
         self._check_performance = check_performance
 
         # timeout : preference (1) command line (2) test data (3) class default
         self._timeout = float(test_data.pop('timeout', self._timeout))
         if timeout:
             self._timeout = float(timeout[0])
+
+        self._ascii_output_filenames = test_data.pop('compare_ascii_output', 
+                                                     None)
 
         self._set_criteria(self._TIME, cfg_criteria, test_data)
 
