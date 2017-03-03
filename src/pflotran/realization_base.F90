@@ -143,7 +143,7 @@ function RealizGetVariableValueAtCell(realization_base,ghosted_id, &
   
   PetscReal :: RealizGetVariableValueAtCell
   class(realization_base_type) :: realization_base
-  PetscBool :: ghosted_id
+  PetscInt :: ghosted_id
   PetscInt :: ivar
   PetscInt :: isubvar
   PetscInt, optional :: isubsubvar

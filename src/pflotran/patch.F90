@@ -4835,7 +4835,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   PetscInt :: tempint, tempint2
   PetscInt :: isubvar2
   PetscInt :: iphase
-  PetscBool :: ghosted_id
+  PetscInt :: ghosted_id
   PetscInt :: local_id
   PetscInt :: ivar_temp
 

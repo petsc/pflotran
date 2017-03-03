@@ -261,7 +261,7 @@ function OutputGetVariableAtCell(realization_base,ghosted_id,variable)
   
   PetscReal :: OutputGetVariableAtCell
   class(realization_base_type) :: realization_base
-  PetscBool :: ghosted_id
+  PetscInt :: ghosted_id
   type(output_variable_type) :: variable
  
   OutputGetVariableAtCell = &
@@ -297,7 +297,7 @@ function OutputGetVariableAtCoord(realization_base,variable,x,y,z, &
 
   type(grid_type), pointer :: grid
   PetscInt :: icell
-  PetscBool :: ghosted_id
+  PetscInt :: ghosted_id
   PetscInt :: ivar
   PetscInt :: isubvar
   PetscInt :: isubsubvar

@@ -957,7 +957,7 @@ subroutine OutputTecplotPoint(realization_base)
   type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
   PetscInt :: local_id
-  PetscBool :: ghosted_id
+  PetscInt :: ghosted_id
   PetscReal :: value
   Vec :: global_vec
   Vec :: natural_vec
@@ -1057,7 +1057,7 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: local_id
-  PetscBool :: ghosted_id
+  PetscInt :: ghosted_id
   PetscReal :: value  
   Vec :: global_vec_vlx, global_vec_vly, global_vec_vlz
   Vec :: global_vec_vgx, global_vec_vgy, global_vec_vgz
@@ -2322,7 +2322,7 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
   PetscInt :: ivar, isubvar, var_type
   PetscErrorCode :: ierr  
   PetscInt :: count, icell, sec_id
-  PetscBool :: ghosted_id
+  PetscInt :: ghosted_id
   PetscInt :: local_id
   PetscInt :: naqcomp, nkinmnrl
   PetscReal, pointer :: dist(:)

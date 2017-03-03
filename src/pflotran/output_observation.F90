@@ -869,7 +869,7 @@ subroutine WriteObservationDataForCell(fid,realization_base,local_id)
   class(realization_base_type) :: realization_base
   PetscInt :: local_id
   PetscReal :: temp_real
-  PetscBool :: ghosted_id
+  PetscInt :: ghosted_id
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -1528,7 +1528,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
   PetscInt :: fid,i,naqcomp,nkinmnrl
   class(realization_base_type) :: realization_base
   PetscInt :: local_id
-  PetscBool :: ghosted_id
+  PetscInt :: ghosted_id
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
