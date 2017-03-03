@@ -1586,7 +1586,7 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
   use Realization_Subsurface_class, only : realization_subsurface_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg
   use Output_Aux_module
-  use Output_Common_module, only : OutputGetVarFromArray  
+  use Output_Common_module, only : OutputGetVariableArray  
   use Surface_Field_module
 
   implicit none
@@ -1644,9 +1644,7 @@ subroutine OutputSurfaceAvegVars(surf_realization,realization)
     if (.not.associated(cur_variable)) exit
 
     ! Get the variable
-    call OutputGetVarFromArray(surf_realization,surf_field%work, &
-                               cur_variable%ivar, &
-                               cur_variable%isubvar)
+    call OutputGetVariableArray(surf_realization,surf_field%work,cur_variable)
 
     ! Cumulatively add the variable*dtime
     ivar = ivar + 1

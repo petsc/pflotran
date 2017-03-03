@@ -289,8 +289,7 @@ subroutine OutputTecplotBlock(realization_base)
   cur_variable => output_option%output_snap_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
-    call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
-                                cur_variable%isubvar)
+    call OutputGetVariableArray(realization_base,global_vec,cur_variable)
     call DiscretizationGlobalToNatural(discretization,global_vec, &
                                         natural_vec,ONEDOF)
     if (cur_variable%iformat == 0) then
@@ -406,7 +405,8 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
   ! Date: 10/25/07
   ! 
  
-  use Realization_Base_class, only : realization_base_type
+  use Realization_Base_class, only : realization_base_type, &
+                                     RealizationGetVariable
   use Discretization_module
   use Grid_module
   use Grid_Unstructured_Aux_module
@@ -431,6 +431,7 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
   Vec :: global_vec_vx, global_vec_vy, global_vec_vz
   Vec :: natural_vec
   PetscInt :: variable_count
+  type(output_variable_type) :: variable
   PetscErrorCode :: ierr
 
   PetscReal, pointer :: vec_ptr(:)
@@ -522,7 +523,7 @@ subroutine OutputVelocitiesTecplotBlock(realization_base)
   endif
 
   ! material id
-  call OutputGetVarFromArray(realization_base,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call RealizationGetVariable(realization_base,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_INTEGER)
   
@@ -956,7 +957,7 @@ subroutine OutputTecplotPoint(realization_base)
   type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:)
   PetscInt :: local_id
-  PetscInt :: ghosted_id
+  PetscBool :: ghosted_id
   PetscReal :: value
   Vec :: global_vec
   Vec :: natural_vec
@@ -1000,8 +1001,10 @@ subroutine OutputTecplotPoint(realization_base)
     cur_variable => output_option%output_snap_variable_list%first
     do
       if (.not.associated(cur_variable)) exit
-      value = RealizGetVariableValueAtCell(realization_base,cur_variable%ivar, &
-                                          cur_variable%isubvar,ghosted_id)
+      value = RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                           cur_variable%ivar, &
+                                           cur_variable%isubvar, &
+                                           cur_variable%isubsubvar)
       if (cur_variable%iformat == 0) then
         write(OUTPUT_UNIT,1000,advance='no') value
       else
@@ -1054,7 +1057,7 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: local_id
-  PetscInt :: ghosted_id
+  PetscBool :: ghosted_id
   PetscReal :: value  
   Vec :: global_vec_vlx, global_vec_vly, global_vec_vlz
   Vec :: global_vec_vgx, global_vec_vgy, global_vec_vgz
@@ -1163,8 +1166,8 @@ subroutine OutputVelocitiesTecplotPoint(realization_base)
     endif
 
     ! material id
-    value = RealizGetVariableValueAtCell(realization_base,MATERIAL_ID, &
-                                        ZERO_INTEGER,ghosted_id)
+    value = RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                         MATERIAL_ID,ZERO_INTEGER)
     write(OUTPUT_UNIT,1001,advance='no') int(value)
   
     write(OUTPUT_UNIT,1009)
@@ -1202,7 +1205,8 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
   ! Date: 10/25/07
   ! 
  
-  use Realization_Base_class, only : realization_base_type
+  use Realization_Base_class, only : realization_base_type, &
+                                     RealizationGetVariable
   use Discretization_module
   use Option_module
   use Field_module
@@ -1278,7 +1282,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization_base,vector)
   call DiscretizationGlobalToNatural(discretization,vector,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_REAL)
 
-  call OutputGetVarFromArray(realization_base,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call RealizationGetVariable(realization_base,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(OUTPUT_UNIT,realization_base,natural_vec,TECPLOT_INTEGER)
   
@@ -2318,7 +2322,8 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
   PetscInt :: ivar, isubvar, var_type
   PetscErrorCode :: ierr  
   PetscInt :: count, icell, sec_id
-  PetscInt :: ghosted_id, local_id
+  PetscBool :: ghosted_id
+  PetscInt :: local_id
   PetscInt :: naqcomp, nkinmnrl
   PetscReal, pointer :: dist(:)
   
@@ -2428,17 +2433,16 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
         ghosted_id = grid%nL2G(local_id)
         if (observation%print_secondary_data(1)) then
           write(OUTPUT_UNIT,1000,advance='no') &
-          RealizGetVariableValueAtCell(realization_base,SECONDARY_TEMPERATURE, &
-                                      sec_id,ghosted_id)        
+          RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                       SECONDARY_TEMPERATURE,sec_id)
         endif
         if (observation%print_secondary_data(2)) then
           if (associated(reaction)) then
             if (reaction%naqcomp > 0) then
               do naqcomp = 1, reaction%naqcomp
                 write(OUTPUT_UNIT,1000,advance='no') &
-                RealizGetVariableValueAtCell(realization_base, &
-                                             SECONDARY_CONCENTRATION, &
-                                             sec_id,ghosted_id,naqcomp)
+                RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                             SECONDARY_CONCENTRATION,sec_id)
                enddo
             endif
           endif
@@ -2449,8 +2453,8 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
               if (reaction%mineral%nkinmnrl > 0) then
                 do nkinmnrl = 1, reaction%mineral%nkinmnrl
                   write(OUTPUT_UNIT,1000,advance='no') &
-                  RealizGetVariableValueAtCell(realization_base,SEC_MIN_VOLFRAC, &
-                                               sec_id,ghosted_id,nkinmnrl) 
+                  RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                               SEC_MIN_VOLFRAC,sec_id,nkinmnrl) 
                 enddo
               endif
             endif
@@ -2462,8 +2466,8 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
               if (reaction%mineral%nkinmnrl > 0) then
                 do nkinmnrl = 1, reaction%mineral%nkinmnrl
                   write(OUTPUT_UNIT,1000,advance='no') &
-                  RealizGetVariableValueAtCell(realization_base,SEC_MIN_RATE, &
-                                               sec_id,ghosted_id,nkinmnrl) 
+                  RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                               SEC_MIN_RATE,sec_id,nkinmnrl) 
                 enddo
               endif
             endif
@@ -2475,8 +2479,8 @@ subroutine OutputSecondaryContinuumTecplot(realization_base)
               if (reaction%mineral%nkinmnrl > 0) then
                 do nkinmnrl = 1, reaction%mineral%nkinmnrl
                   write(OUTPUT_UNIT,1000,advance='no') &
-                  RealizGetVariableValueAtCell(realization_base,SEC_MIN_SI, &
-                                               sec_id,ghosted_id,nkinmnrl) 
+                  RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                               SEC_MIN_SI,sec_id,nkinmnrl) 
                 enddo
               endif
             endif

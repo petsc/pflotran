@@ -265,9 +265,7 @@ subroutine OutputHDF5(realization_base,var_list_type)
       cur_variable => output_option%output_snap_variable_list%first
       do
         if (.not.associated(cur_variable)) exit
-        call OutputGetVarFromArray(realization_base,global_vec, &
-                                   cur_variable%ivar, &
-                                   cur_variable%isubvar)
+        call OutputGetVariableArray(realization_base,global_vec,cur_variable)
         string = cur_variable%name
         call StringSwapChar(string," ","_")
         if (len_trim(cur_variable%units) > 0) then
@@ -835,9 +833,7 @@ subroutine OutputHDF5UGridXDMF(realization_base,var_list_type)
       cur_variable => output_option%output_snap_variable_list%first
       do
         if (.not.associated(cur_variable)) exit
-        call OutputGetVarFromArray(realization_base,global_vec, &
-                                   cur_variable%ivar, &
-                                   cur_variable%isubvar)
+        call OutputGetVariableArray(realization_base,global_vec,cur_variable)
         call DiscretizationGlobalToNatural(discretization,global_vec, &
                                            natural_vec,ONEDOF)
         string = cur_variable%name
@@ -1287,9 +1283,7 @@ subroutine OutputHDF5UGridXDMFExplicit(realization_base,var_list_type)
       cur_variable => output_option%output_snap_variable_list%first
       do
         if (.not.associated(cur_variable)) exit
-        call OutputGetVarFromArray(realization_base,global_vec, &
-                                   cur_variable%ivar, &
-                                   cur_variable%isubvar)
+        call OutputGetVariableArray(realization_base,global_vec,cur_variable)
         call DiscretizationGlobalToNatural(discretization,global_vec, &
                                            natural_vec,ONEDOF)
         string = cur_variable%name

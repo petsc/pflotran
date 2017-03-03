@@ -90,7 +90,8 @@ end subroutine RealizationBaseInit
 
 ! ************************************************************************** !
 
-subroutine RealizationGetVariable(realization_base,vec,ivar,isubvar,isubvar1)
+subroutine RealizationGetVariable(realization_base,vec,ivar,isubvar, &
+                                  isubsubvar)
   ! 
   ! Extracts variables indexed by ivar and isubvar from a
   ! realization
@@ -110,19 +111,24 @@ subroutine RealizationGetVariable(realization_base,vec,ivar,isubvar,isubvar1)
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
+  PetscInt, optional :: isubsubvar
+  
+  PetscInt :: isubsubvar_temp
+  
+  isubsubvar_temp = 0
+  if (present(isubsubvar)) isubsubvar_temp = isubsubvar
   
   call PatchGetVariable(realization_base%patch,realization_base%field, &
                        realization_base%reaction,realization_base%option, &
                        realization_base%output_option,vec,ivar,isubvar, &
-                       isubvar1)
+                       isubsubvar_temp)
 
 end subroutine RealizationGetVariable
 
 ! ************************************************************************** !
 
-function RealizGetVariableValueAtCell(realization_base,ivar,isubvar, &
-                                      ghosted_id,isubvar1)
+function RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                      ivar,isubvar,isubsubvar)
   ! 
   ! Extracts variables indexed by ivar and isubvar
   ! from a realization
@@ -137,19 +143,23 @@ function RealizGetVariableValueAtCell(realization_base,ivar,isubvar, &
   
   PetscReal :: RealizGetVariableValueAtCell
   class(realization_base_type) :: realization_base
+  PetscBool :: ghosted_id
   PetscInt :: ivar
   PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
-  PetscInt :: ghosted_id
+  PetscInt, optional :: isubsubvar
   
   PetscReal :: value
+  PetscInt :: isubsubvar_temp
+  
+  isubsubvar_temp = 0
+  if (present(isubsubvar)) isubsubvar_temp = isubsubvar
   
   value = PatchGetVariableValueAtCell(realization_base%patch, &
                                       realization_base%field, &
                                       realization_base%reaction, &
                                       realization_base%option, &
                                       realization_base%output_option, &
-                                      ivar,isubvar,ghosted_id,isubvar1)
+                                      ghosted_id,ivar,isubvar,isubsubvar_temp)
   RealizGetVariableValueAtCell = value
 
 end function RealizGetVariableValueAtCell

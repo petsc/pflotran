@@ -868,8 +868,8 @@ subroutine WriteObservationDataForCell(fid,realization_base,local_id)
   PetscInt :: fid, i
   class(realization_base_type) :: realization_base
   PetscInt :: local_id
-  PetscInt :: ghosted_id
   PetscReal :: temp_real
+  PetscBool :: ghosted_id
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -897,9 +897,8 @@ subroutine WriteObservationDataForCell(fid,realization_base,local_id)
       cur_variable => cur_variable%next
       cycle
     endif     
-    temp_real = RealizGetVariableValueAtCell(realization_base, &
-                                            cur_variable%ivar, &
-                                            cur_variable%isubvar,ghosted_id)
+    temp_real = OutputGetVariableAtCell(realization_base,ghosted_id, &
+                                        cur_variable)
     if (cur_variable%iformat == 0) then ! real
       write(fid,110,advance="no") temp_real
     else ! integer
@@ -1019,13 +1018,12 @@ subroutine WriteObservationDataForCoord(fid,realization_base,region)
       cur_variable => cur_variable%next
       cycle
     endif    
-    temp_real = OutputGetVarFromArrayAtCoord(realization_base, &
-                                           cur_variable%ivar, &
-                                           cur_variable%isubvar, &
-                                           region%coordinates(ONE_INTEGER)%x, &
-                                           region%coordinates(ONE_INTEGER)%y, &
-                                           region%coordinates(ONE_INTEGER)%z, &
-                                           count,ghosted_ids)
+    temp_real = OutputGetVariableAtCoord(realization_base, &
+                                         cur_variable, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
     if (cur_variable%iformat == 0) then ! real
       write(fid,110,advance="no") temp_real
     else ! integer
@@ -1530,7 +1528,7 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
   PetscInt :: fid,i,naqcomp,nkinmnrl
   class(realization_base_type) :: realization_base
   PetscInt :: local_id
-  PetscInt :: ghosted_id
+  PetscBool :: ghosted_id
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -1555,9 +1553,8 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
         case(MPH_MODE,TH_MODE)
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
-              RealizGetVariableValueAtCell(realization_base, &
-                                           SECONDARY_TEMPERATURE,i, &
-                                           ghosted_id)
+              RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                           SECONDARY_TEMPERATURE,i)
           enddo
         end select
      endif
@@ -1567,9 +1564,8 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
         do naqcomp = 1, reaction%naqcomp
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
-              RealizGetVariableValueAtCell(realization_base, &
-                                           SECONDARY_CONCENTRATION,i, &
-                                           ghosted_id,naqcomp)
+              RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                           SECONDARY_CONCENTRATION,i,naqcomp)
           enddo
         enddo 
       endif
@@ -1577,8 +1573,8 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
         do nkinmnrl = 1, reaction%mineral%nkinmnrl
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
-              RealizGetVariableValueAtCell(realization_base,SEC_MIN_VOLFRAC,i, &
-                                          ghosted_id,nkinmnrl)
+              RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                           SEC_MIN_VOLFRAC,i,nkinmnrl)
           enddo
         enddo
       endif
@@ -1586,8 +1582,8 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
         do nkinmnrl = 1, reaction%mineral%nkinmnrl
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
-              RealizGetVariableValueAtCell(realization_base,SEC_MIN_RATE,i, &
-                                           ghosted_id,nkinmnrl)
+              RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                           SEC_MIN_RATE,i,nkinmnrl)
           enddo
         enddo
       endif
@@ -1595,8 +1591,8 @@ subroutine WriteObservationSecondaryDataAtCell(fid,realization_base,local_id,iva
         do nkinmnrl = 1, reaction%mineral%nkinmnrl
           do i = 1, option%nsec_cells 
             write(fid,110,advance="no") &
-              RealizGetVariableValueAtCell(realization_base,SEC_MIN_SI,i, &
-                                           ghosted_id,nkinmnrl)
+              RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                           SEC_MIN_SI,i,nkinmnrl)
           enddo
         enddo
       endif           

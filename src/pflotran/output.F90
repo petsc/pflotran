@@ -1517,7 +1517,8 @@ subroutine OutputMAD(realization_base)
   ! Date: 10/25/07
   ! 
 
-  use Realization_Base_class, only : realization_base_type
+  use Realization_Base_class, only : realization_base_type, &
+                                     RealizationGetVariable
   use Discretization_module
   use Option_module
   use Grid_module
@@ -1525,7 +1526,7 @@ subroutine OutputMAD(realization_base)
   use Patch_module
   use Reaction_Aux_module
   use Variables_module
-  use Output_Common_module, only : OutputGetVarFromArray
+  use Output_Common_module, only : OutputGetVariableArray
  
 #if !defined(PETSC_HAVE_HDF5)
   implicit none
@@ -1637,13 +1638,15 @@ subroutine OutputMAD(realization_base)
                                   option)   
 
   ! pressure
-  call OutputGetVarFromArray(realization_base,global_vec,LIQUID_PRESSURE,ZERO_INTEGER)
+  call RealizationGetVariable(realization_base,global_vec,LIQUID_PRESSURE, &
+                              ZERO_INTEGER)
 #ifdef ALL
   string = 'Pressure' // trim(option%group_prefix)
 #else
   string = 'Pressure'
 #endif
-  call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec,file_id,H5T_NATIVE_DOUBLE)
+  call HDF5WriteStructDataSetFromVec(string,realization_base,global_vec, &
+                                     file_id,H5T_NATIVE_DOUBLE)
 
   call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
 
@@ -2124,7 +2127,7 @@ subroutine OutputAvegVars(realization_base)
   use Realization_Base_class, only : realization_base_type
   use Option_module, only : OptionCheckTouch, option_type, printMsg
   use Output_Aux_module
-  use Output_Common_module, only : OutputGetVarFromArray  
+  use Output_Common_module, only : OutputGetVariableArray  
   use Field_module
 
   implicit none
@@ -2181,9 +2184,7 @@ subroutine OutputAvegVars(realization_base)
     if (.not.associated(cur_variable)) exit
 
     ! Get the variable
-    call OutputGetVarFromArray(realization_base,field%work, &
-                               cur_variable%ivar, &
-                               cur_variable%isubvar)
+    call OutputGetVariableArray(realization_base,field%work,cur_variable)
 
     ! Cumulatively add the variable*dtime
     ivar = ivar + 1

@@ -24,8 +24,9 @@ module Output_Common_module
   PetscInt, parameter, public :: TECPLOT_REAL = 1  
   
   public :: OutputCommonInit, &
-            OutputGetVarFromArray, &
-            OutputGetVarFromArrayAtCoord, &
+            OutputGetVariableArray, &
+            OutputGetVariableAtCell, &
+            OutputGetVariableAtCoord, &
             OutputGetCellCenteredVelocities, &
             ConvertArrayToNatural, &
             GetCellCoordinates, &
@@ -157,7 +158,7 @@ end function OutputFilename
 
 ! ************************************************************************** !
 
-subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
+subroutine OutputGetVariableArray(realization_base,vec,variable)
   ! 
   ! Extracts variables indexed by ivar from a multivar array
   ! 
@@ -166,9 +167,6 @@ subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
   ! 
 
   use Realization_Base_class, only : RealizationGetVariable
-  use Grid_module
-  use Option_module
-  use Field_module
 
   implicit none
 
@@ -178,21 +176,20 @@ subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
 
   class(realization_base_type) :: realization_base
   Vec :: vec
-  PetscInt :: ivar
-  PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
+  type(output_variable_type) :: variable
   
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_output_get_var_from_array, &
                           ierr);CHKERRQ(ierr)
                         
-  call RealizationGetVariable(realization_base,vec,ivar,isubvar,isubvar1)
+  call RealizationGetVariable(realization_base,vec,variable%ivar, &
+                              variable%isubvar,variable%isubsubvar)
 
   call PetscLogEventEnd(logging%event_output_get_var_from_array, &
                         ierr);CHKERRQ(ierr)
   
-end subroutine OutputGetVarFromArray
+end subroutine OutputGetVariableArray
 
 ! ************************************************************************** !
 
@@ -248,8 +245,7 @@ end subroutine ConvertArrayToNatural
 
 ! ************************************************************************** !
 
-function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
-                                      num_cells,ghosted_ids,isubvar1)
+function OutputGetVariableAtCell(realization_base,ghosted_id,variable)
   ! 
   ! Extracts variables indexed by ivar from a multivar array
   ! 
@@ -263,17 +259,48 @@ function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
 
   implicit none
   
-  PetscReal :: OutputGetVarFromArrayAtCoord
+  PetscReal :: OutputGetVariableAtCell
   class(realization_base_type) :: realization_base
-  PetscInt :: ivar
-  PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
+  PetscBool :: ghosted_id
+  type(output_variable_type) :: variable
+ 
+  OutputGetVariableAtCell = &
+    RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                 variable%ivar,variable%isubvar, &
+                                 variable%isubsubvar)
+
+end function OutputGetVariableAtCell
+
+! ************************************************************************** !
+
+function OutputGetVariableAtCoord(realization_base,variable,x,y,z, &
+                                  num_cells,ghosted_ids)
+  ! 
+  ! Extracts variables indexed by ivar from a multivar array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
+
+  use Realization_Base_class, only : RealizGetVariableValueAtCell
+  use Grid_module
+  use Option_module
+
+  implicit none
+  
+  PetscReal :: OutputGetVariableAtCoord
+  class(realization_base_type) :: realization_base
+  type(output_variable_type) :: variable
   PetscReal :: x,y,z
   PetscInt :: num_cells
   PetscInt :: ghosted_ids(num_cells)
 
   type(grid_type), pointer :: grid
-  PetscInt :: icell, ghosted_id
+  PetscInt :: icell
+  PetscBool :: ghosted_id
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: isubsubvar
   PetscReal :: dx, dy, dz
   PetscReal :: value, sum_value
   PetscReal :: weight, sum_weight, sum_root
@@ -282,6 +309,10 @@ function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
   sum_weight = 0.d0
   
   grid => realization_base%patch%grid
+  
+  ivar = variable%ivar
+  isubvar = variable%isubvar
+  isubsubvar = variable%isubsubvar
 
   do icell=1, num_cells
     ghosted_id = ghosted_ids(icell)
@@ -290,8 +321,8 @@ function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
     dz = z-grid%z(ghosted_id)
     sum_root = sqrt(dx*dx+dy*dy+dz*dz)
     value = 0.d0
-    value = RealizGetVariableValueAtCell(realization_base,ivar,isubvar,ghosted_id, &
-      isubvar1)
+    value = RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                         ivar,isubvar,isubsubvar)
     if (sum_root < 1.d-40) then ! bail because it is right on this coordinate
       sum_weight = 1.d0
       sum_value = value
@@ -302,9 +333,9 @@ function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
     sum_value = sum_value + weight * value
   enddo
   
-  OutputGetVarFromArrayAtCoord = sum_value/sum_weight
+  OutputGetVariableAtCoord = sum_value/sum_weight
 
-end function OutputGetVarFromArrayAtCoord
+end function OutputGetVariableAtCoord
 
 ! ************************************************************************** !
 
