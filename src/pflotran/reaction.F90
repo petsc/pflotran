@@ -5658,7 +5658,7 @@ end subroutine RTPrintAuxVar
 
 ! ************************************************************************** !
 
-subroutine RTSetPlotVariables(list,reaction,option)
+subroutine RTSetPlotVariables(list,reaction,option,time_unit)
   ! 
   ! Adds variables to be printed to list
   ! 
@@ -5675,6 +5675,7 @@ subroutine RTSetPlotVariables(list,reaction,option)
   type(output_variable_list_type), pointer :: list
   type(reaction_type), pointer :: reaction
   type(option_type), pointer :: option
+  character(len=MAXWORDLENGTH) :: time_unit
   
   character(len=MAXWORDLENGTH) :: name,  units
   character(len=MAXSTRINGLENGTH) string
@@ -5974,7 +5975,7 @@ subroutine RTSetPlotVariables(list,reaction,option)
   if (reaction%print_age) then
     if (reaction%species_idx%tracer_age_id > 0) then
       name = 'Tracer Age'
-      units = 'sec-molar'
+      units = trim(time_unit) // '-molar'
       call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                    AGE,reaction%species_idx%tracer_age_id, &
                                    reaction%species_idx%tracer_aq_id)       
