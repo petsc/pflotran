@@ -28,7 +28,7 @@ module Output_Tecplot_module
             OutputFluxVelocitiesTecplotBlk, &
             OutputVelocitiesTecplotPoint, &
             OutputVectorTecplot, &
-            GetCellConnectionsTecplot, &
+            OutputGetCellVerticesTecplot, &
             WriteTecplotDatasetFromVec, &
             WriteTecplotDatasetNumPerLine, &
             WriteTecplotDataset, &
@@ -795,10 +795,10 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
       enddo
     enddo
   enddo
-  ! warning: adjusted size will be changed in ConvertArrayToNatural
+  ! warning: adjusted size will be changed in OutputConvertArrayToNatural
   ! thus, you cannot pass in local_size, since it is needed later
   adjusted_size = local_size
-  call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
+  call OutputConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
   call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL, &
                            adjusted_size)
   ! since the array has potentially been resized, must reallocate
@@ -823,7 +823,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
     enddo
   enddo
   adjusted_size = local_size
-  call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
+  call OutputConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
   call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL, &
                            adjusted_size)
   deallocate(array)
@@ -847,7 +847,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
     enddo
   enddo
   adjusted_size = local_size
-  call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
+  call OutputConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
   call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL, &
                            adjusted_size)
   deallocate(array)
@@ -904,7 +904,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization_base,iphase, &
   array(1:local_size) = array(1:local_size)*output_option%tconv 
   
   adjusted_size = local_size
-  call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
+  call OutputConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
   call WriteTecplotDataSet(OUTPUT_UNIT,realization_base,array,TECPLOT_REAL, &
                            adjusted_size)
   deallocate(array)
@@ -1469,7 +1469,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       grid%unstructured_grid%num_vertices_global, &
       global_vertex_vec,ierr);CHKERRQ(ierr)
       call VecGetLocalSize(global_vertex_vec,local_size,ierr);CHKERRQ(ierr)
-      call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
+      call OutputGetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
       if (option%myrank == option%io_rank) &
         write(fid,'(a)') '# vertex x-coordinate'
@@ -1477,7 +1477,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       local_size)
       call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
-      call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
+      call OutputGetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
       if (option%myrank == option%io_rank) &
         write(fid,'(a)') '# vertex y-coordinate'
@@ -1485,7 +1485,7 @@ subroutine WriteTecplotUGridVertices(fid,realization_base)
       local_size)
       call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
-      call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
+      call OutputGetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
       call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
       if (option%myrank == option%io_rank) &
         write(fid,'(a)') '# vertex z-coordinate'
@@ -1566,7 +1566,7 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch 
   PetscInt, pointer :: temp_int(:)
-  PetscInt :: iconn, num_elems, i, num_vertices
+  PetscInt :: icell, num_elems, i, num_vertices
   PetscErrorCode :: ierr
   
   patch => realization_base%patch
@@ -1577,47 +1577,47 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
  
   allocate(temp_int(grid%unstructured_grid%max_nvert_per_cell))
   
-  if (.not.associated(grid%unstructured_grid%explicit_grid%cell_connectivity)) return
+  if (.not.associated(grid%unstructured_grid%explicit_grid%cell_vertices)) return
 
   if (option%myrank == option%io_rank) then
-    do iconn = 1, num_elems
+    do icell = 1, num_elems
       num_vertices = grid%unstructured_grid%explicit_grid% &
-                       cell_connectivity(0,iconn)
+                       cell_vertices(0,icell)
       select case(num_vertices)
         case(EIGHT_INTEGER) ! Hex mesh
           temp_int = grid%unstructured_grid%explicit_grid% &
-                       cell_connectivity(1:num_vertices,iconn)
+                       cell_vertices(1:num_vertices,icell)
         case(SIX_INTEGER)   ! Wedge 
           temp_int(1) = grid%unstructured_grid%explicit_grid% &
-                          cell_connectivity(1,iconn)         
+                          cell_vertices(1,icell)         
           temp_int(2) = grid%unstructured_grid%explicit_grid% &
-                          cell_connectivity(1,iconn)  
+                          cell_vertices(1,icell)  
           temp_int(3) = grid%unstructured_grid%explicit_grid% &
-                          cell_connectivity(4,iconn) 
+                          cell_vertices(4,icell) 
           temp_int(4) = grid%unstructured_grid%explicit_grid% &
-                          cell_connectivity(4,iconn)
+                          cell_vertices(4,icell)
           temp_int(5) = grid%unstructured_grid%explicit_grid% &
-                          cell_connectivity(3,iconn) 
+                          cell_vertices(3,icell) 
           temp_int(6) = grid%unstructured_grid%explicit_grid% &
-                          cell_connectivity(2,iconn) 
+                          cell_vertices(2,icell) 
           temp_int(7) = grid%unstructured_grid%explicit_grid% &
-                          cell_connectivity(5,iconn) 
+                          cell_vertices(5,icell) 
           temp_int(8) = grid%unstructured_grid%explicit_grid% &
-                          cell_connectivity(6,iconn) 
+                          cell_vertices(6,icell) 
         case(FIVE_INTEGER)  ! Pyramid
           do i = 1, 4
             temp_int(i) = grid%unstructured_grid%explicit_grid% &
-                            cell_connectivity(i,iconn) 
+                            cell_vertices(i,icell) 
           enddo
           do i = 5, 8
             temp_int(i) = grid%unstructured_grid%explicit_grid% &
-                            cell_connectivity(5,iconn) 
+                            cell_vertices(5,icell) 
           enddo
         case(FOUR_INTEGER)
           if (grid%unstructured_grid%grid_type == TWO_DIM_GRID) then ! Quad
             do i = 1, 4
               temp_int(i) = grid%unstructured_grid%explicit_grid% &
-                              cell_connectivity(i,iconn) 
+                              cell_vertices(i,icell) 
             enddo
             do i = 5, 8
               temp_int(i) = temp_int(i-4)
@@ -1625,18 +1625,18 @@ subroutine WriteTecplotExpGridElements(fid,realization_base)
           else ! Tet
             do i = 1, 3
               temp_int(i) = grid%unstructured_grid%explicit_grid% &
-                             cell_connectivity(i,iconn) 
+                             cell_vertices(i,icell) 
             enddo
             temp_int(4) = temp_int(3)
             do i = 5, 8
               temp_int(i) = grid%unstructured_grid%explicit_grid% &
-                              cell_connectivity(4,iconn) 
+                              cell_vertices(4,icell) 
             enddo
           endif
         case(3) ! Tri
           do i = 1, 3
             temp_int(i) = grid%unstructured_grid%explicit_grid% &
-                            cell_connectivity(i,iconn) 
+                            cell_vertices(i,icell) 
           enddo
           temp_int(4) = temp_int(3)
           do i = 5, 8
@@ -1692,7 +1692,7 @@ subroutine WriteTecplotUGridElements(fid,realization_base)
                            GLOBAL,option) 
   call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
                            NATURAL,option) 
-  call GetCellConnectionsTecplot(grid,global_vec)
+  call OutputGetCellVerticesTecplot(grid,global_vec)
   call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
@@ -1711,9 +1711,9 @@ end subroutine WriteTecplotUGridElements
 
 ! ************************************************************************** !
 
-subroutine GetCellConnectionsTecplot(grid, vec)
+subroutine OutputGetCellVerticesTecplot(grid, vec)
   ! 
-  ! GetCellConnections: This routine returns a vector containing vertex ids
+  ! OutputGetCellVertices: This routine returns a vector containing vertex ids
   ! in natural order of local cells.
   ! 
   ! Author: Gautam Bisht
@@ -1817,7 +1817,7 @@ subroutine GetCellConnectionsTecplot(grid, vec)
 
   call VecRestoreArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
-end subroutine GetCellConnectionsTecplot
+end subroutine OutputGetCellVerticesTecplot
 
 ! ************************************************************************** !
 
@@ -2179,7 +2179,6 @@ subroutine OutputPrintExplicitFlowrates(realization_base)
   character(len=MAXSTRINGLENGTH) :: filename,string,filename2
 
   PetscErrorCode :: ierr  
-  PetscInt :: iconn
   PetscInt :: count
   PetscReal, pointer :: flowrates(:,:)
   PetscReal, pointer :: darcy(:), area(:)

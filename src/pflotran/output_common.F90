@@ -28,20 +28,19 @@ module Output_Common_module
             OutputGetVariableAtCell, &
             OutputGetVariableAtCoord, &
             OutputGetCellCenteredVelocities, &
-            ConvertArrayToNatural, &
-            GetCellCoordinates, &
-            GetVertexCoordinates, &
+            OutputConvertArrayToNatural, &
+            OutputGetCellCoordinates, &
+            OutputGetVertexCoordinates, &
             OutputFilenameID, &
             OutputFilename, &
-            GetCellConnections, &
+            OutputGetCellVertices, &
             OutputXMFHeader, &
             OutputXMFAttribute, &
             OutputXMFFooter, &
             OutputGetFaceVelUGrid, &
             OutputGetFaceFlowrateUGrid, &
-            ExplicitGetCellCoordinates, &
             OutputGetExplicitFlowrates, &
-            GetCellConnectionsExplicit, &
+            OutputGetCellVerticesExplicit, &
             OutputXMFHeaderExplicit, &
             OutputXMFAttributeExplicit, &
             OutputGetExplicitIDsFlowrates, &
@@ -193,7 +192,7 @@ end subroutine OutputGetVariableArray
 
 ! ************************************************************************** !
 
-subroutine ConvertArrayToNatural(indices,array,local_size,global_size,option)
+subroutine OutputConvertArrayToNatural(indices,array,local_size,global_size,option)
   ! 
   ! Converts an array  to natural ordering
   ! 
@@ -241,7 +240,7 @@ subroutine ConvertArrayToNatural(indices,array,local_size,global_size,option)
 
   call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
   
-end subroutine ConvertArrayToNatural
+end subroutine OutputConvertArrayToNatural
 
 ! ************************************************************************** !
 
@@ -393,7 +392,7 @@ end subroutine OutputGetCellCenteredVelocities
 
 ! ************************************************************************** !
 
-subroutine GetCellCoordinates(grid,vec,direction)
+subroutine OutputGetCellCoordinates(grid,vec,direction)
   ! 
   ! Extracts coordinates of cells into a PetscVec
   ! 
@@ -435,11 +434,11 @@ subroutine GetCellCoordinates(grid,vec,direction)
   
   call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
   
-end subroutine GetCellCoordinates
+end subroutine OutputGetCellCoordinates
 
 ! ************************************************************************** !
 
-subroutine GetVertexCoordinates(grid,vec,direction,option)
+subroutine OutputGetVertexCoordinates(grid,vec,direction,option)
   ! 
   ! Extracts vertex coordinates of cells into a PetscVec
   ! 
@@ -512,90 +511,11 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
     call VecAssemblyEnd(vec,ierr);CHKERRQ(ierr)
   endif
   
-end subroutine GetVertexCoordinates
+end subroutine OutputGetVertexCoordinates
 
 ! ************************************************************************** !
 
-subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
-  ! 
-  ! Extracts cell coordinates for explicit grid
-  ! into a PetscVec
-  ! 
-  ! Author: Satish Karra, LANL
-  ! Date: 12/11/12
-  ! 
-
-  use Grid_module
-  use Option_module
-  use Variables_module, only : X_COORDINATE, Y_COORDINATE, Z_COORDINATE
-  
-  implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-  
-  type(grid_type) :: grid
-  Vec :: vec
-  PetscInt :: direction
-  type(option_type) :: option
-  
-  PetscInt :: ivertex
-  PetscReal, pointer :: vec_ptr(:)
-  PetscInt, allocatable :: indices(:)
-  PetscReal, allocatable :: values(:)
-  PetscErrorCode :: ierr  
-  
-  if (option%mycommsize == 1) then
-    call VecGetArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
-    select case(direction)
-      case(X_COORDINATE)
-        do ivertex = 1,grid%ngmax
-          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
-        enddo
-      case(Y_COORDINATE)
-        do ivertex = 1,grid%ngmax
-          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
-        enddo
-      case(Z_COORDINATE)
-        do ivertex = 1,grid%ngmax
-          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
-        enddo
-    end select
-    call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
-  else
-    ! initialize to UNINITIALIZED_INTEGER to catch bugs
-    call VecSet(vec,UNINITIALIZED_DOUBLE,ierr);CHKERRQ(ierr)
-    allocate(values(grid%nlmax))
-    allocate(indices(grid%nlmax))
-    select case(direction)
-      case(X_COORDINATE)
-        do ivertex = 1,grid%nlmax
-          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
-        enddo
-      case(Y_COORDINATE)
-        do ivertex = 1,grid%nlmax
-          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
-        enddo
-      case(Z_COORDINATE)
-        do ivertex = 1,grid%nlmax
-          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
-        enddo
-    end select
-    indices(:) = grid%unstructured_grid%cell_ids_natural(:)-1
-    call VecSetValues(vec,grid%nlmax,indices,values,INSERT_VALUES, &
-                      ierr);CHKERRQ(ierr)
-    call VecAssemblyBegin(vec,ierr);CHKERRQ(ierr)
-    deallocate(values)
-    deallocate(indices)
-    call VecAssemblyEnd(vec,ierr);CHKERRQ(ierr)
-  endif
-  
-  
-end subroutine ExplicitGetCellCoordinates
-
-! ************************************************************************** !
-
-subroutine GetCellConnections(grid, vec)
+subroutine OutputGetCellVertices(grid, vec)
   ! 
   ! This routine returns a vector containing vertex ids in natural order of
   ! local cells for unstructured grid.
@@ -627,6 +547,7 @@ subroutine GetCellConnections(grid, vec)
   
   call VecGetArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
+  
   ! initialize
   vec_ptr = UNINITIALIZED_DOUBLE
   do local_id=1, ugrid%nlmax
@@ -683,11 +604,11 @@ subroutine GetCellConnections(grid, vec)
 
   call VecRestoreArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
-end subroutine GetCellConnections
+end subroutine OutputGetCellVertices
 
 ! ************************************************************************** !
 
-subroutine GetCellConnectionsExplicit(grid, vec)
+subroutine OutputGetCellVerticesExplicit(grid, vec)
   ! 
   ! returns a vector containing vertex ids in natural order of
   ! local cells for unstructured grid of explicit type
@@ -710,7 +631,7 @@ subroutine GetCellConnectionsExplicit(grid, vec)
   type(unstructured_explicit_type), pointer :: explicit_grid
   Vec :: vec
   PetscInt :: offset
-  PetscInt :: ivertex, iconn
+  PetscInt :: ivertex, icell
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
@@ -721,56 +642,56 @@ subroutine GetCellConnectionsExplicit(grid, vec)
 
   ! initialize
   vec_ptr = UNINITIALIZED_DOUBLE
-  do iconn = 1, explicit_grid%num_elems
-    select case(explicit_grid%cell_connectivity(0,iconn))
+  do icell = 1, explicit_grid%num_elems
+    select case(explicit_grid%cell_vertices(0,icell))
       case(8)
-        offset = (iconn-1)*8
+        offset = (icell-1)*8
         do ivertex = 1, 8
           vec_ptr(offset + ivertex) = &
-            explicit_grid%cell_connectivity(ivertex,iconn)
+            explicit_grid%cell_vertices(ivertex,icell)
         enddo
       case(6)
-        offset = (iconn-1)*8
+        offset = (icell-1)*8
         do ivertex = 1, 6
           vec_ptr(offset + ivertex) = &
-            explicit_grid%cell_connectivity(ivertex,iconn)
+            explicit_grid%cell_vertices(ivertex,icell)
         enddo
         vec_ptr(offset + 7) = 0
         vec_ptr(offset + 8) = 0
       case (5)
-        offset = (iconn-1)*8
+        offset = (icell-1)*8
         do ivertex = 1, 5
           vec_ptr(offset + ivertex) = &
-            explicit_grid%cell_connectivity(ivertex,iconn)
+            explicit_grid%cell_vertices(ivertex,icell)
         enddo
         do ivertex = 6, 8
           vec_ptr(offset + ivertex) = 0
         enddo
       case (4)
         if (grid%unstructured_grid%grid_type /= TWO_DIM_GRID) then
-          offset = (iconn-1)*8
+          offset = (icell-1)*8
           do ivertex = 1, 4
             vec_ptr(offset + ivertex) = &
-              explicit_grid%cell_connectivity(ivertex,iconn)
+              explicit_grid%cell_vertices(ivertex,icell)
           enddo
           do ivertex = 5, 8
             vec_ptr(offset + ivertex) = 0
           enddo
         else
-          offset = (iconn-1)*8
+          offset = (icell-1)*8
           do ivertex = 1, 4
             vec_ptr(offset + ivertex) = &
-              explicit_grid%cell_connectivity(ivertex,iconn)
+              explicit_grid%cell_vertices(ivertex,icell)
           enddo
           do ivertex = 5, 8
             vec_ptr(offset + ivertex) = 0
           enddo          
         endif
       case (3)
-        offset = (iconn-1)*8
+        offset = (icell-1)*8
         do ivertex = 1, 3
           vec_ptr(offset + ivertex) = &
-           explicit_grid%cell_connectivity(ivertex,iconn)
+           explicit_grid%cell_vertices(ivertex,icell)
         enddo
         do ivertex = 4, 8
           vec_ptr(offset + ivertex) = 0
@@ -780,7 +701,7 @@ subroutine GetCellConnectionsExplicit(grid, vec)
 
   call VecRestoreArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
-end subroutine GetCellConnectionsExplicit
+end subroutine OutputGetCellVerticesExplicit
 
 ! ************************************************************************** !
 

@@ -457,7 +457,7 @@ subroutine WriteTecplotUGridElements(fid, &
                            GLOBAL,option)
   call UGridDMCreateVector(grid%unstructured_grid,ugdm_element,natural_vec, &
                            NATURAL,option)
-  call GetCellConnectionsTecplot(grid,global_vec)
+  call OutputGetCellVerticesTecplot(grid,global_vec)
   call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
@@ -533,19 +533,19 @@ subroutine WriteTecplotUGridVertices(fid,surf_realization)
                     grid%unstructured_grid%num_vertices_global, &
                     global_vertex_vec,ierr);CHKERRQ(ierr)
   call VecGetLocalSize(global_vertex_vec,local_size,ierr);CHKERRQ(ierr)
-  call GetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
+  call OutputGetVertexCoordinates(grid, global_vertex_vec,X_COORDINATE,option)
   call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
   call WriteTecplotDataSet(fid,surf_realization,vec_ptr,TECPLOT_REAL, &
                            local_size)
   call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
-  call GetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
+  call OutputGetVertexCoordinates(grid,global_vertex_vec,Y_COORDINATE,option)
   call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
   call WriteTecplotDataSet(fid,surf_realization,vec_ptr,TECPLOT_REAL, &
                            local_size)
   call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
-  call GetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
+  call OutputGetVertexCoordinates(grid,global_vertex_vec, Z_COORDINATE,option)
   call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
   call WriteTecplotDataSet(fid,surf_realization,vec_ptr,TECPLOT_REAL, &
                            local_size)
@@ -1110,9 +1110,9 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   call VecGetLocalSize(global_y_vertex_vec,local_size,ierr);CHKERRQ(ierr)
   call VecGetLocalSize(global_z_vertex_vec,local_size,ierr);CHKERRQ(ierr)
 
-  call GetVertexCoordinates(subsurf_grid, global_x_vertex_vec,X_COORDINATE,option)
-  call GetVertexCoordinates(subsurf_grid, global_y_vertex_vec,Y_COORDINATE,option)
-  call GetVertexCoordinates(subsurf_grid, global_z_vertex_vec,Z_COORDINATE,option)
+  call OutputGetVertexCoordinates(subsurf_grid, global_x_vertex_vec,X_COORDINATE,option)
+  call OutputGetVertexCoordinates(subsurf_grid, global_y_vertex_vec,Y_COORDINATE,option)
+  call OutputGetVertexCoordinates(subsurf_grid, global_z_vertex_vec,Z_COORDINATE,option)
 
   call VecGetArrayF90(global_x_vertex_vec,vec_x_ptr,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr);CHKERRQ(ierr)
@@ -1203,7 +1203,7 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
                            GLOBAL,option)
   call UGridDMCreateVector(surf_grid%unstructured_grid,ugdm_element,natural_vec, &
                            NATURAL,option)
-  call GetCellConnections(surf_grid,global_vec)
+  call OutputGetCellVertices(surf_grid,global_vec)
   call VecScatterBegin(ugdm_element%scatter_gton,global_vec,natural_vec, &
                         INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(ugdm_element%scatter_gton,global_vec,natural_vec, &
@@ -1314,9 +1314,9 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
                     PETSC_DETERMINE, &
                     global_z_cell_vec,ierr);CHKERRQ(ierr)
 
-  call GetCellCoordinates(surf_grid, global_x_cell_vec,X_COORDINATE)
-  call GetCellCoordinates(surf_grid, global_y_cell_vec,Y_COORDINATE)
-  call GetCellCoordinates(surf_grid, global_z_cell_vec,Z_COORDINATE)
+  call OutputGetCellCoordinates(surf_grid, global_x_cell_vec,X_COORDINATE)
+  call OutputGetCellCoordinates(surf_grid, global_y_cell_vec,Y_COORDINATE)
+  call OutputGetCellCoordinates(surf_grid, global_z_cell_vec,Z_COORDINATE)
 
 
   call UGridCreateUGDM(surf_grid%unstructured_grid,ugdm_cell,ONE_INTEGER,option)
