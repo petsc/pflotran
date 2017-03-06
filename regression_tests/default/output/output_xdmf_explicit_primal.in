@@ -9,6 +9,7 @@ SUBSURFACE
 #=========================== output options ===================================
 OUTPUT
   FORMAT HDF5
+  PRINT_PRIMAL_GRID
   VARIABLES
     LIQUID_PRESSURE
     LIQUID_DENSITY
