@@ -886,7 +886,8 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
                          option%time/output_option%tconv, &
                          surf_grid%nmax, &
                          surf_realization%output_option%surf_xmf_vert_len, &
-                         subsurf_grid%unstructured_grid%num_vertices_global,filename)
+                         subsurf_grid%unstructured_grid%num_vertices_global, &
+                         filename,PETSC_TRUE)
 
   endif
 
@@ -937,7 +938,8 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
         endif
         att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
         if (option%myrank == option%io_rank) then
-          call OutputXMFAttribute(OUTPUT_UNIT,surf_grid%nmax,string,att_datasetname)
+          call OutputXMFAttribute(OUTPUT_UNIT,surf_grid%nmax,string, &
+                                  att_datasetname,CELL_CENTERED_OUTPUT_MESH)
         endif
         cur_variable => cur_variable%next
       enddo
@@ -958,7 +960,8 @@ subroutine OutputSurfaceHDF5UGridXDMF(surf_realization,realization, &
                                             natural_vec,grp_id,H5T_NATIVE_DOUBLE)
           att_datasetname = trim(filename) // ":/" // trim(group_name) // "/" // trim(string)
           if (option%myrank == option%io_rank) then
-            call OutputXMFAttribute(OUTPUT_UNIT,surf_grid%nmax,string,att_datasetname)
+            call OutputXMFAttribute(OUTPUT_UNIT,surf_grid%nmax,string, &
+                                    att_datasetname,CELL_CENTERED_OUTPUT_MESH)
           endif
           cur_variable => cur_variable%next
         enddo
@@ -1110,9 +1113,12 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
   call VecGetLocalSize(global_y_vertex_vec,local_size,ierr);CHKERRQ(ierr)
   call VecGetLocalSize(global_z_vertex_vec,local_size,ierr);CHKERRQ(ierr)
 
-  call OutputGetVertexCoordinates(subsurf_grid, global_x_vertex_vec,X_COORDINATE,option)
-  call OutputGetVertexCoordinates(subsurf_grid, global_y_vertex_vec,Y_COORDINATE,option)
-  call OutputGetVertexCoordinates(subsurf_grid, global_z_vertex_vec,Z_COORDINATE,option)
+  call OutputGetVertexCoordinates(subsurf_grid, global_x_vertex_vec, &
+                                  X_COORDINATE,option)
+  call OutputGetVertexCoordinates(subsurf_grid, global_y_vertex_vec, &
+                                  Y_COORDINATE,option)
+  call OutputGetVertexCoordinates(subsurf_grid, global_z_vertex_vec, &
+                                  Z_COORDINATE,option)
 
   call VecGetArrayF90(global_x_vertex_vec,vec_x_ptr,ierr);CHKERRQ(ierr)
   call VecGetArrayF90(global_y_vertex_vec,vec_y_ptr,ierr);CHKERRQ(ierr)

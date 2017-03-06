@@ -41,8 +41,8 @@ module Output_Common_module
             OutputGetFaceFlowrateUGrid, &
             OutputGetExplicitFlowrates, &
             OutputGetCellVerticesExplicit, &
-            OutputXMFHeaderExplicit, &
-            OutputXMFAttributeExplicit, &
+!            OutputXMFHeaderExplicit, &
+!            OutputXMFAttributeExplicit, &
             OutputGetExplicitIDsFlowrates, &
             OutputGetExplicitAuxVars, &
             OutputGetExplicitCellInfo
@@ -705,7 +705,8 @@ end subroutine OutputGetCellVerticesExplicit
 
 ! ************************************************************************** !
 
-subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename)
+subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename, &
+                           include_cell_centers)
   ! 
   ! This subroutine writes header to a .xmf file
   ! 
@@ -715,118 +716,106 @@ subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename)
 
   implicit none
 
-  PetscInt :: fid, vert_count
   PetscReal :: time
-  PetscInt :: nmax,xmf_vert_len,ngvert
+  PetscInt :: fid, nmax, xmf_vert_len, ngvert
   character(len=MAXSTRINGLENGTH) :: filename
+  PetscBool :: include_cell_centers
 
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word
+  PetscInt :: i
   
-  string="<?xml version=""1.0"" ?>"
+  string='<?xml version="1.0" ?>'
   write(fid,'(a)') trim(string)
   
-  string="<!DOCTYPE Xdmf SYSTEM ""Xdmf.dtd"" []>"
+  string='<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>'
   write(fid,'(a)') trim(string)
 
-  string="<Xdmf>"
+  string='<Xdmf>'
   write(fid,'(a)') trim(string)
 
-  string="  <Domain>"
+  string='  <Domain>'
   write(fid,'(a)') trim(string)
 
-  string="    <Grid Name=""Mesh"">"
+  string='    <Grid Name="Mesh">'
   write(fid,'(a)') trim(string)
 
   write(string2,'(es13.5)') time
-  string="      <Time Value = """ // trim(adjustl(string2)) // """ />"
+  string='      <Time Value = "' // trim(adjustl(string2)) // '" />'
   write(fid,'(a)') trim(string)
 
   write(string2,*) nmax
-  string="      <Topology Type=""Mixed"" NumberOfElements=""" // &
-    trim(adjustl(string2)) // """ >"
+  string='      <Topology Type="Mixed" NumberOfElements="' // &
+    trim(adjustl(string2)) // '">'
   write(fid,'(a)') trim(string)
 
   write(string2,*) xmf_vert_len
-  string="        <DataItem Format=""HDF"" DataType=""Int"" Dimensions=""" // &
-    trim(adjustl(string2)) // """>"
+  string='        <DataItem Format="HDF" DataType="Int" Dimensions="' // &
+    trim(adjustl(string2)) // '">'
   write(fid,'(a)') trim(string)
 
-  string="          "//trim(filename) //":/Domain/Cells"
+  string='          ' // trim(filename) // ':/Domain/Cells'
   write(fid,'(a)') trim(string)
 
-  string="        </DataItem>"
+  string='        </DataItem>'
   write(fid,'(a)') trim(string)
 
-  string="      </Topology>"
+  string='      </Topology>'
   write(fid,'(a)') trim(string)
 
-  string="      <Geometry GeometryType=""XYZ"">"
+  string='      <Geometry GeometryType="XYZ">'
   write(fid,'(a)') trim(string)
 
   write(string2,*) ngvert
-  string="        <DataItem Format=""HDF"" Dimensions=""" // trim(adjustl(string2)) // " 3"">"
+  string='        <DataItem Format="HDF" Dimensions="' // &
+         trim(adjustl(string2)) // ' 3">'
   write(fid,'(a)') trim(string)
 
-  string="          "//trim(filename) //":/Domain/Vertices"
+  string='          ' // trim(filename) // ':/Domain/Vertices'
   write(fid,'(a)') trim(string)
 
-  string="        </DataItem>"
+  string='        </DataItem>'
   write(fid,'(a)') trim(string)
 
   string="      </Geometry>"
   write(fid,'(a)') trim(string)
 
-  string="      <Attribute Name=""XC"" AttributeType=""Scalar""  Center=""Cell"">"
-  write(fid,'(a)') trim(string)
+  if (include_cell_centers) then
 
-  write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
-  write(fid,'(a)') trim(string)
+    do i = 1, 3
+      select case(i)
+        case(1)
+          word = 'XC'
+        case(2)
+          word = 'YC'
+        case(3)
+          word = 'ZC'
+      end select
+ 
+      string='      <Attribute Name="' // trim(word) // &
+             '" AttributeType="Scalar"  Center="Cell">'
+      write(fid,'(a)') trim(string)
+    
+      write(string2,*) nmax
+      string='        <DataItem Dimensions="' // trim(adjustl(string2)) // &
+             ' 1" Format="HDF"> '
+      write(fid,'(a)') trim(string)
+    
+      string='          ' // trim(filename) // ':/Domain/' // trim(word)
+      write(fid,'(a)') trim(string)
+    
+      string='        </DataItem> ' 
+      write(fid,'(a)') trim(string)
+    
+      string='      </Attribute>'
+      write(fid,'(a)') trim(string)
+    enddo
 
-  string="          "//trim(filename) //":/Domain/XC"
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem> " 
-  write(fid,'(a)') trim(string)
-
-  string="      </Attribute>"
-  write(fid,'(a)') trim(string)
-
-  string="      <Attribute Name=""YC"" AttributeType=""Scalar""  Center=""Cell"">"
-  write(fid,'(a)') trim(string)
-
-  write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
-  write(fid,'(a)') trim(string)
-
-  string="          "//trim(filename) //":/Domain/YC"
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem> " 
-  write(fid,'(a)') trim(string)
-
-  string="      </Attribute>"
-  write(fid,'(a)') trim(string)
-
-  string="      <Attribute Name=""ZC"" AttributeType=""Scalar""  Center=""Cell"">"
-  write(fid,'(a)') trim(string)
-
-  write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
-  write(fid,'(a)') trim(string)
-
-  string="          "//trim(filename) //":/Domain/ZC"
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem> " 
-  write(fid,'(a)') trim(string)
-
-  string="      </Attribute>"
-  write(fid,'(a)') trim(string)
-
+  endif
+    
 end subroutine OutputXMFHeader
 
+#if 0
 ! ************************************************************************** !
 
 subroutine OutputXMFHeaderExplicit(fid,time,nmax,xmf_vert_len,ngvert,filename)
@@ -839,7 +828,6 @@ subroutine OutputXMFHeaderExplicit(fid,time,nmax,xmf_vert_len,ngvert,filename)
 
   implicit none
 
-  PetscInt :: fid, vert_count
   PetscReal :: time
   PetscInt :: nmax,xmf_vert_len,ngvert
   character(len=MAXSTRINGLENGTH) :: filename
@@ -902,6 +890,7 @@ subroutine OutputXMFHeaderExplicit(fid,time,nmax,xmf_vert_len,ngvert,filename)
   write(fid,'(a)') trim(string)
 
 end subroutine OutputXMFHeaderExplicit
+#endif
 
 ! ************************************************************************** !
 
@@ -919,95 +908,59 @@ subroutine OutputXMFFooter(fid)
 
   character(len=MAXSTRINGLENGTH) :: string
 
-  string="    </Grid>"
+  string='    </Grid>'
   write(fid,'(a)') trim(string)
 
-  string="  </Domain>"
+  string='  </Domain>'
   write(fid,'(a)') trim(string)
 
-  string="</Xdmf>"
+  string='</Xdmf>'
   write(fid,'(a)') trim(string)
 
 end subroutine OutputXMFFooter
 
 ! ************************************************************************** !
 
-subroutine OutputXMFAttribute(fid,nmax,attname,att_datasetname)
-  ! 
-  ! This subroutine writes an attribute to a .xmf file
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 10/29/12
-  ! 
-
-  implicit none
-
-  PetscInt :: fid,nmax
-  
-  character(len=MAXSTRINGLENGTH) :: attname, att_datasetname
-  character(len=MAXSTRINGLENGTH) :: string,string2
-  string="      <Attribute Name=""" // trim(attname) // &
-    """ AttributeType=""Scalar""  Center=""Cell"">"
-  write(fid,'(a)') trim(string)
-
-!  write(string2,*) grid%nmax
-  write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
-  write(fid,'(a)') trim(string)
-
-  string="        " // trim(att_datasetname)
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem> " 
-  write(fid,'(a)') trim(string)
-
-  string="      </Attribute>"
-  write(fid,'(a)') trim(string)
-
-end subroutine OutputXMFAttribute
-
-! ************************************************************************** !
-
-subroutine OutputXMFAttributeExplicit(fid,nmax,mesh_type,attname,att_datasetname)
+subroutine OutputXMFAttribute(fid,nmax,attname,att_datasetname,mesh_type)
   ! 
   ! Header for xdmf attribute with explicit grid
   ! 
-  ! Author: Satish Karra
-  ! Date: 07/17/13
+  ! Author: Gautam Bisht, Satish Karra, Glenn Hammond
+  ! Date: 10/29/12, 07/17/13, 03/06/17
   ! 
-
   implicit none
 
-  PetscInt :: fid,nmax,mesh_type
-  
+  PetscInt :: fid, nmax, mesh_type
   character(len=MAXSTRINGLENGTH) :: attname, att_datasetname
+  
   character(len=MAXSTRINGLENGTH) :: string,string2
+  character(len=MAXWORDLENGTH) :: mesh_type_word
 
   if (mesh_type == VERTEX_CENTERED_OUTPUT_MESH) then
-    string="      <Attribute Name=""" // trim(attname) // &
-      """ AttributeType=""Scalar""  Center=""Node"">"
+    mesh_type_word = 'Node'
   else if (mesh_type == CELL_CENTERED_OUTPUT_MESH) then
-    string="      <Attribute Name=""" // trim(attname) // &
-      """ AttributeType=""Scalar""  Center=""Cell"">"
+    mesh_type_word = 'Cell'
   end if
 
+  string='      <Attribute Name="' // trim(attname) // &
+         '" AttributeType="Scalar"  Center="' // trim(mesh_type_word) // '">'
   write(fid,'(a)') trim(string)
 
-!  write(string2,*) grid%nmax
   write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  string='        <DataItem Dimensions="' // trim(adjustl(string2)) // &
+         ' 1" Format="HDF"> '
   write(fid,'(a)') trim(string)
 
-  string="        " // trim(att_datasetname)
+  string='        ' // trim(att_datasetname)
   write(fid,'(a)') trim(string)
 
-  string="        </DataItem> " 
+  string='        </DataItem> ' 
   write(fid,'(a)') trim(string)
 
-  string="      </Attribute>"
+  string='      </Attribute>'
   write(fid,'(a)') trim(string)
 
-end subroutine OutputXMFAttributeExplicit
+end subroutine OutputXMFAttribute
 
 ! ************************************************************************** !
 
