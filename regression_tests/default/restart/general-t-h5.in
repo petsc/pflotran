@@ -1,0 +1,13 @@
+#Description: 5-cell flow and tracer problem for verifying checkpoint/restart
+
+SIMULATION
+  EXTERNAL_FILE general_simulation_block.txt
+  CHECKPOINT
+    TIMES y 1.d-2
+    FORMAT HDF5
+  /
+END
+
+SUBSURFACE
+  EXTERNAL_FILE general_subsurface_block.txt
+END_SUBSURFACE

@@ -3527,7 +3527,7 @@ end subroutine PatchUpdateUniformVelocity
 ! ************************************************************************** !
 
 subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
-                             ivar,isubvar,isubvar1)
+                             ivar,isubvar,isubvar2)
   ! 
   ! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
   ! 
@@ -3566,7 +3566,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
+  PetscInt :: isubvar2
   PetscInt :: iphase
 
   PetscInt :: local_id, ghosted_id
@@ -4733,7 +4733,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
                 0.d0) then
               vec_ptr(local_id) = &
                 patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar) / &
-                patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar1) / &
+                patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar2) / &
                 output_option%tconv
             endif
           enddo        
@@ -4790,8 +4790,8 @@ end subroutine PatchGetVariable1
 ! ************************************************************************** !
 
 function PatchGetVariableValueAtCell(patch,field,reaction,option, &
-                                    output_option, &
-                                    ivar,isubvar,ghosted_id,isubvar1)
+                                     output_option,ghosted_id, &
+                                     ivar,isubvar,isubvar2)
   ! 
   ! Returns variables indexed by ivar,
   ! isubvar, local id from Reactive Transport type
@@ -4833,9 +4833,10 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   PetscInt :: ivar
   PetscInt :: isubvar
   PetscInt :: tempint, tempint2
-  PetscInt, optional :: isubvar1
+  PetscInt :: isubvar2
   PetscInt :: iphase
-  PetscInt :: ghosted_id, local_id
+  PetscInt :: ghosted_id
+  PetscInt :: local_id
   PetscInt :: ivar_temp
 
   PetscReal :: value, xmass, lnQKgas, tk, ehfac, eh0, pe0, ph0
@@ -5511,7 +5512,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           if (patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar) > &
               0.d0) then
             value = patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar) / &
-            patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar1) / &
+            patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar2) / &
             output_option%tconv
           endif
         case(REACTION_AUXILIARY)
@@ -5539,18 +5540,18 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       ! Note that the units are in mol/kg
       local_id = grid%nG2L(ghosted_id)
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
-              sec_rt_auxvar(isubvar)%pri_molal(isubvar1)
+              sec_rt_auxvar(isubvar)%pri_molal(isubvar2)
     case(SEC_MIN_VOLFRAC)
       local_id = grid%nG2L(ghosted_id)        
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
-              sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
+              sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar2)
     case(SEC_MIN_RATE)
       local_id = grid%nG2L(ghosted_id)        
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
-              sec_rt_auxvar(isubvar)%mnrl_rate(isubvar1)
+              sec_rt_auxvar(isubvar)%mnrl_rate(isubvar2)
     case(SEC_MIN_SI)
       local_id = grid%nG2L(ghosted_id)  
-      value = RMineralSaturationIndex(isubvar1,&
+      value = RMineralSaturationIndex(isubvar2,&
                                       patch%aux%SC_RT% &
                                       sec_transport_vars(local_id)% &
                                       sec_rt_auxvar(isubvar), &
@@ -6692,8 +6693,8 @@ end subroutine
 
 ! ************************************************************************** !
 
-subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
-                           isubvar,isubvar1)
+subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec, &
+                             ivar,isubvar,isubvar2)
   ! 
   ! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
   ! 
@@ -6720,7 +6721,7 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
+  PetscInt :: isubvar2
   PetscInt :: iphase
 
   PetscInt :: local_id, ghosted_id
