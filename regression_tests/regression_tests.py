@@ -104,7 +104,8 @@ class RegressionTest(object):
         self._np = None
         self._pflotran_args = None
         self._stochastic_realizations = None
-        self._restart_timestep = None
+        # restart_file is a tuple ['filename',format=(Binary,HDF5)]
+        self._restart_tuple = None
         self._compare_hdf5 = False
         self._timeout = 60.0
         self._skip_check_gold = False
@@ -177,28 +178,29 @@ class RegressionTest(object):
 
         self._run_test(mpiexec, executable, self.name(), dry_run, status,
                        testlog)
-
-        if self._restart_timestep is not None:
-            restart_file = "{0}-ts{1}.chk".format(self.name(),
-                                                self._restart_timestep)
-            if os.path.isfile(restart_file):
-                restart_name = "{0}-{1}".format(self._RESTART_PREFIX,
-                                                self.name())
-                shutil.copy("{0}.in".format(self.name()),
-                            "{0}.in".format(restart_name))
-                with open("{0}.in".format(restart_name), 'a') as tempfile:
-                    tempfile.write("RESTART {0}\n".format(restart_file))
-                self._run_test(mpiexec, executable, restart_name, dry_run,
-                               status, testlog)
-            elif not status.skipped:
-                status.fail = 1
-                message = self._txtwrap.fill(
-                    "ERROR: restart test '{0}' did not generate a checkpoint "
-                    "file at the specified step: '{1}' ('{2}'). This can "
-                    "occur if the checkpoint interval and restart step are "
-                    "not consistent or the run failed.".format(
-                        self.name(), self._restart_timestep, restart_file))
-                print("".join(['\n', message, '\n']), file=testlog)
+        if self._restart_tuple is not None:
+                if os.path.isfile(self._restart_tuple[0]):
+                    restart_name = "{0}-{1}".format(self._RESTART_PREFIX,
+                                                    self.name())
+                    infile = open(self.name()+'.in','r')
+                    tempfile = open(restart_name+'.in','w')
+                    for line in infile:
+                        tempfile.write(line)
+                        if line.startswith('SIMULATION'):
+                            tempfile.write("  RESTART {0}\n".format(
+                              self._restart_tuple[0]))
+                    infile.close()
+                    tempfile.close()
+                    self._run_test(mpiexec, executable, restart_name, 
+                                   dry_run, status, testlog)
+                elif not status.skipped:
+                    status.fail = 1
+                    message = self._txtwrap.fill(
+                        "ERROR: restart test '{0}' did not generate a "
+                        "required checkpoint file. This can occur if the "
+                        "checkpointing was not specified or the run "
+                        "failed.".format(self.name()))
+                    print("".join(['\n', message, '\n']), file=testlog)
 
     def _run_test(self, mpiexec, executable, test_name, dry_run, status, testlog):
         """
@@ -331,22 +333,30 @@ class RegressionTest(object):
                     if os.path.isfile(name):
                         os.rename(name, name + ".old")
 
+#geh: With the new format of specifying checkpoint file names, this is no 
+#     longer possible.  Also, .h5 checkpoint files cannot be separated from
+#     .h5 input/output files.
         # temp files from a restart run
-        if self._restart_timestep is not None:
-            suffixes.append("in")
-            for suffix in suffixes:
-                name = "{0}-{1}.{2}".format(self._RESTART_PREFIX, self.name(), suffix)
-                if os.path.isfile(name):
-                    os.rename(name, name + ".old")
-
-            # checkpoint/restart files, both from the original and restart run
-            cwd = os.getcwd()
-            for entry in os.listdir(cwd):
-                if os.path.isfile(entry):
-                    search_checkpoint = "^({0}-)?{1}-(ts[\d]+|restart).chk$".format(
-                        self._RESTART_PREFIX, self.name())
-                    if re.search(search_checkpoint, entry):
-                        os.rename(entry, entry + ".old")
+#        if self._restart_tuple is not None:
+#            suffixes.append("in")
+#            for suffix in suffixes:
+#                name = "{0}-{1}.{2}".format(self._RESTART_PREFIX, self.name(), suffix)
+#                if os.path.isfile(name):
+#                    os.rename(name, name + ".old")
+#            # checkpoint/restart files, both from the original and restart run
+#            cwd = os.getcwd()
+#            for entry in os.listdir(cwd):
+#                if os.path.isfile(entry):
+#                    if self.restart_tuple[1].lower().startswith('binary'):
+#                        search_checkpoint = 
+#                            "^({0}-)?{1}-(ts[\d]+|restart).chk$".format(
+#                            self._RESTART_PREFIX, self.name())
+#                    else:
+#                        search_checkpoint = 
+#                            "^({0}-)?{1}-(ts[\d]+|restart).h5$".format(
+#                            self._RESTART_PREFIX, self.name())
+#                    if re.search(search_checkpoint, entry):
+#                        os.rename(entry, entry + ".old")
 
     def check(self, status, testlog):
         """
@@ -366,7 +376,7 @@ class RegressionTest(object):
         else:
             self._check_gold(status, run_id, testlog)
 
-        if self._restart_timestep is not None:
+        if self._restart_tuple is not None:
             self._check_restart(status, testlog)
 
         if self._compare_hdf5:
@@ -392,6 +402,61 @@ class RegressionTest(object):
 
         if not self._skip_check_regression:
             gold_filename = self.name() + run_id + ".regression.gold"
+            current_filename = self.name() + run_id + ".regression"
+            # this routine is defined below
+            self._compare_regression_files(current_filename,gold_filename,
+                                           status,testlog)
+
+        # Compare ascii output files
+        if self._ascii_output_filenames is not None:
+            if self._stochastic_realizations is not None:
+                print("Skipping comparison of ASCII output for stochastic run.",
+                      file=testlog)
+            else:
+                filenames = self._ascii_output_filenames.split()
+                for current_filename in filenames:
+                    if not os.path.isfile(current_filename):
+                        message = self._txtwrap.fill(
+                            "FAIL: could not find ASCII output test file '{0}'."
+                            " Please check the standard output file for "
+                            "errors.".format(current_filename))
+                        print("".join(['\n', message, '\n']), file=testlog)
+                        status.fail = 1
+                        return
+                    else:
+                        with open(current_filename, 'rU') as current_file:
+                            current_output = current_file.readlines()
+
+                    gold_filename = current_filename + ".gold"
+                    if not os.path.isfile(gold_filename):
+                        message = self._txtwrap.fill(
+                            "FAIL: could not find ASCII output gold file "
+                            "'{0}'.".format(gold_filename))
+                        print("".join(['\n', message, '\n']), file=testlog)
+                        status.fail = 1
+                        return
+                    else:
+                        with open(gold_filename, 'rU') as gold_file:
+                            gold_output = gold_file.readlines()
+
+                    print("    diff {0} {1}".format(gold_filename, 
+                          current_filename), file=testlog)
+                    self._compare_ascii_output(current_output, gold_output, 
+                                               status, testlog)
+                if status.fail == 0:
+                    print("    Passed ASCII output comparison check.", 
+                          file=testlog)
+
+    def _compare_regression_files(self, current_filename, gold_filename, 
+                                  status, testlog):
+        """
+        Test the output from the run against the known "gold standard"
+        output and determine if the test succeeded or failed.
+
+        We return zero on success, one on failure so that the test
+        manager can track how many tests succeeded and failed.
+        """
+        if not self._skip_check_regression:
             if not os.path.isfile(gold_filename):
                 message = self._txtwrap.fill(
                     "FAIL: could not find regression test gold file "
@@ -404,7 +469,6 @@ class RegressionTest(object):
                 with open(gold_filename, 'rU') as gold_file:
                     gold_output = gold_file.readlines()
     
-            current_filename = self.name() + run_id + ".regression"
             if not os.path.isfile(current_filename):
                 message = self._txtwrap.fill(
                     "FAIL: could not find regression test file '{0}'."
@@ -458,45 +522,6 @@ class RegressionTest(object):
             if self._num_failed > 0:
                 status.fail = 1
 
-        # Compare ascii output files
-        if self._ascii_output_filenames is not None:
-            if self._stochastic_realizations is not None:
-                print("Skipping comparison of ASCII output for stochastic run.",
-                      file=testlog)
-            else:
-                filenames = self._ascii_output_filenames.split()
-                for current_filename in filenames:
-                    if not os.path.isfile(current_filename):
-                        message = self._txtwrap.fill(
-                            "FAIL: could not find ASCII output test file '{0}'."
-                            " Please check the standard output file for "
-                            "errors.".format(current_filename))
-                        print("".join(['\n', message, '\n']), file=testlog)
-                        status.fail = 1
-                        return
-                    else:
-                        with open(current_filename, 'rU') as current_file:
-                            current_output = current_file.readlines()
-
-                    gold_filename = current_filename + ".gold"
-                    if not os.path.isfile(gold_filename):
-                        message = self._txtwrap.fill(
-                            "FAIL: could not find ASCII output gold file "
-                            "'{0}'.".format(gold_filename))
-                        print("".join(['\n', message, '\n']), file=testlog)
-                        status.fail = 1
-                        return
-                    else:
-                        with open(gold_filename, 'rU') as gold_file:
-                            gold_output = gold_file.readlines()
-
-                    print("    diff {0} {1}".format(gold_filename, 
-                          current_filename), file=testlog)
-                    self._compare_ascii_output(current_output, gold_output, 
-                                               status, testlog)
-                if status.fail == 0:
-                    print("    Passed ASCII output comparison check.", 
-                          file=testlog)
 
     def _check_restart(self, status, testlog):
         """Check that binary restart files are bit for bit after a restart.
@@ -508,25 +533,39 @@ class RegressionTest(object):
         will need a more sophisticated way of diffing the files.
 
         """
+        # compare .regression from the restarted file with .regression.gold
+        # from original
+        gold_filename = self.name() + ".regression.gold"
+        restart_filename="{0}-{1}".format(self._RESTART_PREFIX, self.name())
+        restart_filename = restart_filename + ".regression"
+        self._compare_regression_files(restart_filename,gold_filename,
+                                       status,testlog)
 
-        orig_filename="{0}-restart.chk".format(self.name())
-        restart_filename="{0}-{1}".format(self._RESTART_PREFIX, orig_filename)
-
-        print("\n    comparing restart files:\n        {0}\n        {1}".format(
-            orig_filename, restart_filename), file=testlog)
-
-        orig_hash = self._get_binary_restart_hash(orig_filename,
-                                                  status, testlog)
-        restart_hash = self._get_binary_restart_hash(restart_filename,
-                                                     status, testlog)
-
-        if orig_hash is not False and restart_hash is not False:
-            if orig_hash != restart_hash:
-                print("    FAIL: final restart files are not bit for bit "
-                      "identical.", file=testlog)
-                status.fail = 1
-            else:
-                print("    bit for bit restart test passed.\n", file=testlog)
+        # we can only perform a bit for bit comparison on Binary format
+        if self._restart_tuple[1] == 'Binary':
+            orig_filename="{0}-restart.chk".format(self.name())
+            restart_file="{0}-{1}".format(self._RESTART_PREFIX, orig_filename)
+    
+            print("\n    Comparing restart files:\n"
+                  "        {0}\n        {1}".format(
+                  orig_filename, restart_file), file=testlog)
+    
+            orig_hash = self._get_binary_restart_hash(orig_filename,
+                                                      status, testlog)
+            restart_hash = self._get_binary_restart_hash(restart_file,
+                                                         status, testlog)
+    
+            if orig_hash is not False and restart_hash is not False:
+                if orig_hash != restart_hash:
+                    print("    FAIL: final restart files are not bit for bit "
+                          "identical.", file=testlog)
+                    status.fail = 1
+                else:
+                    print("    bit for bit restart test passed.\n", 
+                          file=testlog)
+        else:
+            print("\n    Cannot compare HDF5 formatted restart files"
+                  " at this time.", file=testlog)
 
     def _get_binary_restart_hash(self, filename, status, testlog):
         """Get the sha1 hash of a restart file. The hash should be different
@@ -997,13 +1036,17 @@ class RegressionTest(object):
                         "num_realizations flag as well. "
                         "test : {0}".format(self.name()))
 
-        self._restart_timestep = test_data.pop('restart_timestep', None)
-        if self._restart_timestep is not None:
-            try:
-                self._restart_timestep = int(self._restart_timestep)
-            except ValueError as error:
-                raise ValueError("ERROR: restart_timestep must be an integer value. "
-                                "test : {0}".format(self.name()))
+        self._restart_tuple = test_data.pop('restart_filename', None)
+        if self._restart_tuple is not None:
+            self._restart_tuple = self._restart_tuple.split()
+            if len(self._restart_tuple) != 2:
+                raise RuntimeError('ERROR : restart_filename requires (1) a '
+                                   'filename and (2) a format ("Binary" or '
+                                   '"HDF5").')
+            if not (self._restart_tuple[1].lower().startswith('binary') or 
+                    self._restart_tuple[1].lower().startswith('hdf5')):
+                raise RuntimeError('ERROR : restart_filename requires a '
+                                   'format ("Binary" or "HDF5").')
 
         self._compare_hdf5 = test_data.pop('compare_hdf5', None)
         if self._compare_hdf5 is not None:
