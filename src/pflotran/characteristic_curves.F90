@@ -22,6 +22,7 @@ module Characteristic_Curves_module
     type(polynomial_type), pointer :: pres_poly
     PetscReal :: Sr
     PetscReal :: pcmax
+    PetscBool :: analytical_derivative_available
   contains
     procedure, public :: Init => SFBaseInit
     procedure, public :: Verify => SFBaseVerify
@@ -146,6 +147,7 @@ module Characteristic_Curves_module
   type :: rel_perm_func_base_type
     type(polynomial_type), pointer :: poly
     PetscReal :: Sr
+    PetscBool :: analytical_derivative_available
   contains
     procedure, public :: Init => RPFBaseInit
     procedure, public :: Verify => RPFBaseVerify
@@ -2221,6 +2223,7 @@ subroutine SFBaseInit(this)
   nullify(this%pres_poly)
   this%Sr = UNINITIALIZED_DOUBLE
   this%pcmax = DEFAULT_PCMAX
+  this%analytical_derivative_available = PETSC_FALSE
   
 end subroutine SFBaseInit
 
@@ -2255,6 +2258,7 @@ subroutine RPFBaseInit(this)
   ! Cannot allocate here.  Allocation takes place in daughter class
   nullify(this%poly)
   this%Sr = UNINITIALIZED_DOUBLE
+  this%analytical_derivative_available = PETSC_FALSE
   
 end subroutine RPFBaseInit
 

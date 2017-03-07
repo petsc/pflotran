@@ -76,7 +76,8 @@ module Utility_module
             InterfaceApproxWithoutDeriv, &
             PrintProgressBarInt, &
             InverseNorm, &
-            Erf_
+            Erf_, &
+            DigitsOfAccuracy
             
 contains
 
@@ -2047,5 +2048,47 @@ subroutine PrintProgressBarInt(max,increment,current)
   endif
 
 end subroutine PrintProgressBarInt
+
+! ************************************************************************** !
+
+function DigitsOfAccuracy(num1,num2)
+
+  implicit none
+  
+  PetscReal :: num1
+  PetscReal :: num2
+  
+  character(len=2) :: DigitsOfAccuracy
+  
+  PetscReal :: tempreal
+  PetscReal :: relative_difference
+  PetscInt :: tempint
+  
+  DigitsOfAccuracy = ' 0'
+  if (dabs(num1) > 0.d0 .and. dabs(num2) > 0.d0) then
+    relative_difference = dabs((num1-num2)/num2)
+    if (relative_difference < 1.d-17) then
+      ! accuracy is beyond double precision
+      DigitsOfAccuracy = '99'
+    else
+      tempreal = 1.d0 / relative_difference
+      tempint = 0
+      do
+        if (tempreal < 10.d0) exit
+        tempreal = tempreal / 10.d0
+        tempint = tempint + 1
+      enddo
+      write(DigitsOfAccuracy,'(i2)') tempint
+    endif
+  else if (dabs(num1) > 0.d0 .or. dabs(num2) > 0.d0) then
+    ! change this value if you want to report something difference for
+    ! either one being zero.
+  else
+    ! change this value if you want to report something difference for
+    ! double zeros.
+    DigitsOfAccuracy = '  '
+  endif
+    
+end function DigitsOfAccuracy
 
 end module Utility_module
