@@ -1145,6 +1145,10 @@ contains
          &'function of saturation'
     value = 17707.010438883957d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
+    string = '3-parameter modified Kosugi derivative of capillary ' // &
+         'pressure as a function of saturation'
+    value = -24500.406539923177d0
+    @assertEqual(value, dpc_dsatl, dabs(value)*tolerance, string)
 
   end subroutine testcp_modified_kosugi_3param
 
@@ -1219,6 +1223,10 @@ contains
          &'function of saturation'
     value = 15671.942098006928d0
     @assertEqual(value, capillary_pressure, dabs(value)*tolerance, string)
+    string = 'r-parameter modified Kosugi derivative of capillary ' // &
+         'pressure as a function of saturation'
+    value = -19192.362637570313d0
+    @assertEqual(value, dpc_dsatl, dabs(value)*tolerance, string)
 
   end subroutine testcp_modified_kosugi_4param
 

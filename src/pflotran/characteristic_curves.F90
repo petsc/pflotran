@@ -4410,6 +4410,10 @@ subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
   PetscReal :: Se
   PetscReal :: inverse, exparg
   PetscReal :: hc, hmaxinv
+  PetscReal :: dinverse_dSe
+  PetscReal :: dSe_dsatl, dexparg_dinverse, dpc_dexparg
+  PetscReal :: one_over_pc
+  PetscReal :: tempreal
 
   dpc_dsatl = 0.d0
 
@@ -4421,18 +4425,33 @@ subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
     return
   endif
 
-  Se = (liquid_saturation - this%Sr)/(1.d0 - this%Sr)
-  inverse = -InverseNorm(Se)
+  dSe_dsatl = 1.d0/(1.d0 - this%Sr)
+  Se = (liquid_saturation - this%Sr)*dSe_dsatl
+!  inverse = -InverseNorm(Se)
+  call InverseNorm(Se,inverse,PETSC_TRUE,dinverse_dSe)
+  inverse = -1.d0*inverse
+  dinverse_dSe = -1.d0*dinverse_dSe
   exparg = this%sigmaz*inverse + LNKAP - this%muz
+  dexparg_dinverse = this%sigmaz
 
   hc = KAPPA/this%rmax
-  capillary_pressure = exp(exparg) + hc
+  dpc_dexparg = exp(exparg)
+  capillary_pressure = dpc_dexparg + hc
+  dpc_dsatl = dpc_dexparg*dexparg_dinverse*dinverse_dSe*dSe_dsatl
   if (this%nparam == 4) then
     hmaxinv = this%r0/KAPPA
-    capillary_pressure = 1.d0/(1.d0/capillary_pressure + hmaxinv)
+    one_over_pc = 1.d0/capillary_pressure
+    tempreal = 1.d0/(one_over_pc + hmaxinv)
+    capillary_pressure = tempreal
+    dpc_dsatl = capillary_pressure*tempreal*one_over_pc*one_over_pc*dpc_dsatl
   end if
 
-  capillary_pressure = min(capillary_pressure*UNIT_CONVERSION,this%pcmax)
+  capillary_pressure = capillary_pressure*UNIT_CONVERSION
+  dpc_dsatl = dpc_dsatl*UNIT_CONVERSION
+  if (capillary_pressure > this%pcmax) then
+    capillary_pressure = this%pcmax
+    dpc_dsatl = 0.d0
+  endif
 
 end subroutine SF_mK_CapillaryPressure
 
@@ -6960,6 +6979,7 @@ subroutine RPF_mK_Liq_RelPerm(this,liquid_saturation, &
   PetscReal :: erfcArg, erfcRes
   PetscReal :: invErfcRes
   PetscReal :: sqrtSe, expArg
+  PetscReal :: dinvErfcRes_dSe
 
   relative_permeability = 0.d0
   dkr_sat = 0.d0
@@ -6974,7 +6994,8 @@ subroutine RPF_mK_Liq_RelPerm(this,liquid_saturation, &
     return
   endif
 
-  invErfcRes = InverseNorm(Se)
+!  invErfcRes = InverseNorm(Se)
+  call InverseNorm(Se,invErfcRes,PETSC_TRUE,dinvErfcRes_dSe)
   erfcArg = (this%sigmaz - invErfcRes)/SQRT2
   erfcRes = erfc(erfcArg)
   sqrtSe = sqrt(Se)
@@ -7093,6 +7114,7 @@ subroutine RPF_mK_Gas_RelPerm(this,liquid_saturation, &
   PetscReal :: erfcArg, erfcRes
   PetscReal :: invErfcRes
   PetscReal :: sqrtSe, expArg
+  PetscReal :: dinvErfcRes_dSeg
 
   InvSatRange = 1.d0/(1.d0 - this%Sr - this%Srg)
   Se = (liquid_saturation - this%Sr)*InvSatRange
@@ -7109,7 +7131,8 @@ subroutine RPF_mK_Gas_RelPerm(this,liquid_saturation, &
 
   Seg = 1.d0 - Se
 
-  invErfcRes = InverseNorm(Seg)
+!  invErfcRes = InverseNorm(Seg)
+  call InverseNorm(Seg,invErfcRes,PETSC_TRUE,dinvErfcRes_dSeg)
   erfcArg = (this%sigmaz - invErfcRes)/SQRT2
   erfcRes = erfc(erfcArg)
   sqrtSe = sqrt(Seg)
