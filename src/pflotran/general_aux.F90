@@ -744,12 +744,16 @@ subroutine GeneralAuxVarCompute(x,gen_auxvar,global_auxvar,material_auxvar, &
                                dpc_dsatl,option)                             
       if (associated(gen_auxvar%d)) then
         ! for now, calculate derivative through finite differencing
-        !TODO(geh): make an analytical derivative
+#if 0
+      !TODO(geh): make an analytical derivative
         tempreal = 1.d-6 * gen_auxvar%sat(lid)
         tempreal2 = gen_auxvar%sat(lid) + tempreal
         call characteristic_curves%saturation_function% &
              CapillaryPressure(tempreal2,tempreal3,dpc_dsatl,option)
         gen_auxvar%d%pc_satg = -1.d0*(tempreal3-gen_auxvar%pres(cpid))/tempreal
+#else
+        gen_auxvar%d%pc_satg = -1.d0*dpc_dsatl
+#endif
       endif
 !      gen_auxvar%pres(cpid) = 0.d0
  
