@@ -39,6 +39,10 @@ TIMESTEPPER FLOW
 #  MAX_STEPS -1
 /
 
+NEWTON_SOLVER FLOW
+  MAXIT 15
+/
+
 #=========================== discretization ===================================
 GRID
   TYPE structured
