@@ -3847,9 +3847,9 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         ! derivative wrt temperature
         Jl(1,3) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_T
       case(GAS_STATE)
-        if (dabs(Res(wat_comp_id)) > 1.d-40) then      
-          option%io_buffer = 'Water injection not set up for gas state in &
-            &GeneralSrcSink.'
+        if (dabs(Res(wat_comp_id)) > 1.d-40 .and. dden_bool > 0.d0) then      
+          option%io_buffer = 'Volumetric water injection not set up &
+            &for gas state in GeneralSrcSink.'
           call printErrMsg(option)
         endif
         ! derivative wrt gas pressure
@@ -3888,9 +3888,9 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
     Jg = 0.d0
     select case(global_auxvar%istate)
       case(LIQUID_STATE)
-        if (dabs(Res(air_comp_id)) > 1.d-40) then      
-          option%io_buffer = 'Air injection not set up for liquid state in &
-            &GeneralSrcSink as there is no air density.'
+        if (dabs(Res(air_comp_id)) > 1.d-40 .and. dden_bool > 0.d0) then      
+          option%io_buffer = 'Volumetric air injection not set up for &
+            &liquid state in GeneralSrcSink as there is no air density.'
           call printErrMsg(option)
         endif
         ! derivative wrt liquid pressure
