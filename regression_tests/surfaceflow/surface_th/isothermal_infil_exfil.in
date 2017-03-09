@@ -44,11 +44,9 @@ REGION all
 END
 REGION top
   FILE ./mesh_simple1D.h5
-  GRID unstructured
 END
 REGION bottom
   FILE ./mesh_simple1D.h5
-  GRID unstructured
 END
 #=========================== solver ===================================
 TIME
@@ -189,7 +187,6 @@ SURF_REGION surf_all
 END
 SURF_REGION top
   FILE ./mesh_simple1D.h5
-  GRID unstructured
 END
 #=========================== flow conditions ==========================
 SURF_FLOW_CONDITION atm_rain_forcing
