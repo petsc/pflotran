@@ -259,7 +259,9 @@ subroutine FracturePoroEvaluate(auxvar,pressure,compressed_porosity, &
   PetscReal :: P0, Pa, Pi
   PetscReal :: phia, phi0
 
-  Ci = auxvar%soil_properties(soil_compressibility_index)
+       ! convert bulk compressibility to pore compressibility
+  Ci = auxvar%soil_properties(soil_compressibility_index) / &
+       auxvar%porosity_base
   P0 = auxvar%soil_properties(soil_reference_pressure_index)
   Pa = auxvar%fracture%properties(frac_alt_pres_index)
   Pi = auxvar%fracture%properties(frac_init_pres_index)
