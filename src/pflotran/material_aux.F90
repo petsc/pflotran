@@ -399,7 +399,9 @@ subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
   
   PetscReal :: compressibility
   
-  compressibility = auxvar%soil_properties(soil_compressibility_index)
+  ! convert to pore compressiblity by dividing by base porosity
+  compressibility = auxvar%soil_properties(soil_compressibility_index) / &
+                    auxvar%porosity_base
   compressed_porosity = auxvar%porosity_base * &
     exp(compressibility * &
         (pressure - auxvar%soil_properties(soil_reference_pressure_index)))
