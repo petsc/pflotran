@@ -329,7 +329,7 @@ end subroutine PMWSSSetRealization
 
 ! *************************************************************************** !
 
-subroutine PMWSSAssociateRegion(this,region_list)
+subroutine AssociateRegion(this,region_list)
   ! 
   ! Associates the waste panel to its assigned region via the REGION keyword.
   ! 
@@ -376,11 +376,11 @@ subroutine PMWSSAssociateRegion(this,region_list)
     cur_waste_panel => cur_waste_panel%next
   enddo
   
-end subroutine PMWSSAssociateRegion
+end subroutine AssociateRegion
 
 ! *************************************************************************** !
 
-subroutine PMWSSAssociateInventory(this)
+subroutine AssociateInventory(this)
   ! 
   ! Associates the waste panel to its assigned inventory via INVENTORY keyword.
   ! 
@@ -425,7 +425,7 @@ subroutine PMWSSAssociateInventory(this)
     cur_waste_panel => cur_waste_panel%next
   enddo
   
-end subroutine PMWSSAssociateInventory
+end subroutine AssociateInventory
 
 ! *************************************************************************** !
 
@@ -450,7 +450,7 @@ end subroutine CopyPreInvToInv
 
 ! *************************************************************************** !
 
-subroutine PMWSSSetRegionScaling(this,waste_panel)
+subroutine SetRegionScaling(this,waste_panel)
   ! 
   ! Calculates and sets the scaling factor vector for each of the waste panels
   ! that have assigned regions. It assumes the volume of the cells that make up
@@ -492,7 +492,7 @@ subroutine PMWSSSetRegionScaling(this,waste_panel)
   waste_panel%scaling_factor = waste_panel%scaling_factor/total_volume_global 
   waste_panel%volume = total_volume_global
   
-end subroutine PMWSSSetRegionScaling
+end subroutine SetRegionScaling
 
 ! *************************************************************************** !
 
@@ -941,7 +941,7 @@ subroutine PMWSSRead(this,input)
     call printErrMsg(option)
   endif
   
-  call PMWSSAssociateInventory(this)
+  call AssociateInventory(this)
   
 end subroutine PMWSSRead
 
@@ -1023,7 +1023,7 @@ subroutine PMWSSSetup(this)
   option => this%realization%option
   
   ! point the waste panel region to the desired region 
-  call PMWSSAssociateRegion(this,this%realization%patch%region_list)
+  call AssociateRegion(this,this%realization%patch%region_list)
   
   waste_panel_id = 0
   nullify(prev_waste_panel)
@@ -1051,7 +1051,7 @@ subroutine PMWSSSetup(this)
     endif
     cur_waste_panel%myMPIcomm = newcomm
     if (local) then
-      call PMWSSSetRegionScaling(this,cur_waste_panel)
+      call SetRegionScaling(this,cur_waste_panel)
       call InventoryAllocate(cur_waste_panel%inventory, &
                              cur_waste_panel%region%num_cells, &
                              cur_waste_panel%volume)
@@ -1249,11 +1249,6 @@ subroutine PMWSSInitializeTimestep(this)
   ! Author: Jenn Frederick
   ! Date: 01/31/2017
   !
-  
-  use Global_Aux_module
-  use Material_Aux_class
-  use Option_module
-  use Grid_module
   
   implicit none
 
@@ -1617,6 +1612,7 @@ subroutine PMWSSDestroy(this)
   ! 
   ! Author: Jenn Frederick
   ! Date: 01/31/2017
+  !
 
   implicit none
   
@@ -1633,7 +1629,7 @@ subroutine PMWSSStrip(this)
   ! Strips the WIPP source/sink process model.
   ! 
   ! Author: Jenn Frederick
-  ! Date: 03/28/2016
+  ! Date: 01/31/2017
   !
   use Utility_module, only : DeallocateArray
   

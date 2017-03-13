@@ -18,7 +18,8 @@ module Factory_Subsurface_module
             SubsurfaceReadRTPM, &
             SubsurfaceReadWasteFormPM, &
             SubsurfaceReadWIPPSrcSinkPM, &
-            SubsurfaceReadUFDDecayPM
+            SubsurfaceReadUFDDecayPM, &
+            SubsurfaceReadUFDBiospherePM
 
 contains
 
@@ -66,6 +67,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   use PM_Waste_Form_class
   use PM_WIPP_SrcSink_class
   use PM_UFD_Decay_class
+  use PM_UFD_Biosphere_class
   use PM_Auxiliary_class
   use PMC_Subsurface_class
   use PMC_Auxiliary_class
@@ -97,9 +99,11 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   class(pm_wipp_srcsink_type), pointer :: pm_wipp_srcsink
   class(pmc_third_party_type), pointer :: pmc_ufd_decay
   class(pm_ufd_decay_type), pointer :: pm_ufd_decay
+  class(pmc_third_party_type), pointer :: pmc_ufd_biosphere
+  class(pm_ufd_biosphere_type), pointer :: pm_ufd_biosphere
   class(pmc_auxiliary_type), pointer :: pmc_auxiliary
-  class(pmc_base_type), pointer :: pmc_dummy
   class(pm_auxiliary_type), pointer :: pm_auxiliary
+  class(pmc_base_type), pointer :: pmc_dummy
   class(pm_base_type), pointer :: cur_pm, prev_pm
   class(wf_mechanism_base_type), pointer :: cur_mechanism
   class(realization_subsurface_type), pointer :: realization
@@ -123,6 +127,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   nullify(pm_waste_form)
   nullify(pm_wipp_srcsink)
   nullify(pm_ufd_decay)
+  nullify(pm_ufd_biosphere)
   nullify(pm_auxiliary)
   cur_pm => simulation%process_model_list
   do
@@ -138,6 +143,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
         pm_wipp_srcsink => cur_pm
       class is(pm_ufd_decay_type)
         pm_ufd_decay => cur_pm
+      class is(pm_ufd_biosphere_type)
+        pm_ufd_biosphere => cur_pm
       class is(pm_auxiliary_type)
         pm_auxiliary => cur_pm
       class default
@@ -223,6 +230,12 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     call InputFindStringErrorMsg(realization%input,option,string)
     call pm_ufd_decay%Read(realization%input)
   endif
+  if (associated(pm_ufd_biosphere)) then
+    string = 'UFD_BIOSPHERE'
+    call InputFindStringInFile(realization%input,option,string)
+    call InputFindStringErrorMsg(realization%input,option,string)
+    !call pm_ufd_biosphere%Read(realization%input)
+  endif
   call InputDestroy(realization%input)
   
   if (associated(pm_waste_form)) then
@@ -287,8 +300,8 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   
   if (associated(pm_ufd_decay)) then
     if (.not.associated(simulation%rt_process_model_coupler)) then
-      option%io_buffer = 'The UFD Decay process model requires reactive ' // &
-        'transport.'
+      option%io_buffer = 'The UFD Decay process model requires reactive &
+                         &transport.'
       call printErrMsg(option)
     endif
     pmc_ufd_decay => PMCThirdPartyCreate()
@@ -305,6 +318,30 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     relationship = 'CHILD'
     position = 'APPEND'
     call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_ufd_decay),relationship, &
+                       PMCCastToBase(simulation%rt_process_model_coupler), &
+                       pmc_dummy,position)
+  endif 
+  
+  if (associated(pm_ufd_biosphere)) then
+    if (.not.associated(simulation%rt_process_model_coupler)) then
+      option%io_buffer = 'The UFD Biosphere process model requires reactive &
+                         &transport.'
+      call printErrMsg(option)
+    endif
+    pmc_ufd_biosphere => PMCThirdPartyCreate()
+    pmc_ufd_biosphere%name = 'UFD_BIOSPHERE'
+    pmc_ufd_biosphere%option => option
+    pmc_ufd_biosphere%checkpoint_option => simulation%checkpoint_option
+    pmc_ufd_biosphere%waypoint_list => simulation%waypoint_list_subsurface
+    pmc_ufd_biosphere%pm_list => pm_ufd_biosphere
+    pmc_ufd_biosphere%pm_ptr%pm => pm_ufd_biosphere
+    pmc_ufd_biosphere%realization => realization
+    ! set up logging stage
+    string = 'UFD_BIOSPHERE'
+    call LoggingCreateStage(string,pmc_ufd_biosphere%stage)
+    relationship = 'CHILD'
+    position = 'APPEND'
+    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_ufd_biosphere),relationship, &
                        PMCCastToBase(simulation%rt_process_model_coupler), &
                        pmc_dummy,position)
   endif 
@@ -780,6 +817,50 @@ end subroutine SubsurfaceReadUFDDecayPM
 
 ! ************************************************************************** !
 
+subroutine SubsurfaceReadUFDBiospherePM(input, option, pm)
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/13/2017
+  !
+  use Input_Aux_module
+  use Option_module
+  use String_module
+  
+  use PM_Base_class
+  use PM_UFD_Biosphere_class
+
+  implicit none
+  
+  type(input_type), pointer :: input
+  type(option_type), pointer :: option
+  class(pm_base_type), pointer :: pm
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  error_string = 'SIMULATION,PROCESS_MODELS,UFD_BIOSPHERE'
+
+  pm => PMUFDBCreate()
+  pm%option => option
+  
+  word = ''
+  do   
+    call InputReadPflotranString(input,option)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    call StringToUpper(word)
+    select case(word)
+      case default
+        option%io_buffer = 'Keyword ' // trim(word) // &
+              ' not recognized for the ' // trim(error_string) // ' block.' 
+        call printErrMsg(option)
+    end select
+  enddo
+  
+end subroutine SubsurfaceReadUFDBiospherePM
+
+! ************************************************************************** !
+
 subroutine SubsurfaceReadWIPPSrcSinkPM(input, option, pm)
   ! 
   ! Author: Jenn Frederick
@@ -989,6 +1070,7 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
   use PM_Waste_Form_class
   use PM_WIPP_SrcSink_class
   use PM_UFD_Decay_class
+  use PM_UFD_Biosphere_class
   use PM_TOilIms_class
   use Option_module
   use Simulation_Subsurface_class
@@ -1041,6 +1123,9 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
     !-----------------------------------
       class is(pm_ufd_decay_type)
         call cur_pm%PMUFDDecaySetRealization(realization)
+    !-----------------------------------
+      class is(pm_ufd_biosphere_type)
+        call cur_pm%PMUFDBSetRealization(realization)
     !-----------------------------------
     end select
     ! set time stepper
