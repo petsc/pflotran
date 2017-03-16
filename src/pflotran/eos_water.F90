@@ -1454,7 +1454,7 @@ subroutine EOSWaterDensityTrangenstein(t,p,calculate_derivatives, &
   PetscReal, parameter :: a4 = 1.05563020d-07
   PetscReal, parameter :: a5 = -2.80543530d-10
   PetscReal, parameter :: a6 = 1.68798500d-02
-  PetscReal, parameter :: a7 = -10.20
+  PetscReal, parameter :: a7 = 10.20
 
   PetscReal, parameter :: cpw = 4.00d-005  !1/atm
   ! conversion 1/atm -> 1/Pa         
