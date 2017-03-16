@@ -25,6 +25,7 @@ module TOilIms_module
 
 #define TOIL_CONVECTION
 #define TOIL_CONDUCTION
+!#define TOIL_DEN_UPWIND
 
 ! Cutoff parameters - no public
   PetscReal, parameter :: eps       = 1.d-8
@@ -1130,12 +1131,16 @@ subroutine TOilImsFluxPFL(toil_auxvar_up,global_auxvar_up, &
       mobility = toil_auxvar_up%mobility(iphase)
       H_ave = toil_auxvar_up%H(iphase)
       uH = H_ave
-      !density_ave = toil_auxvar_up%den(iphase)
+#ifdef TOIL_DEN_UPWIND
+      density_ave = toil_auxvar_up%den(iphase)
+#endif
     else
       mobility = toil_auxvar_dn%mobility(iphase)
       H_ave = toil_auxvar_dn%H(iphase)
       uH = H_ave
-      !density_ave = toil_auxvar_dn%den(iphase)
+#ifdef TOIL_DEN_UPWIND
+      density_ave = toil_auxvar_dn%den(iphase)
+#endif
     endif      
 
     if (mobility > floweps) then
@@ -1146,12 +1151,12 @@ subroutine TOilImsFluxPFL(toil_auxvar_up,global_auxvar_up, &
       ! if comments below, use upwinding value
       !density_ave = 0.5d0*( toil_auxvar_up%den(iphase) + &
       !                      toil_auxvar_dn%den(iphase))
-
+#ifndef TOIL_DEN_UPWIND
       density_ave = TOilImsAverageDensity(toil_auxvar_up%sat(iphase), &
                            toil_auxvar_dn%sat(iphase), &
                            toil_auxvar_up%den(iphase), &
                            toil_auxvar_dn%den(iphase))       
- 
+#endif 
       ! q[m^3 phase/sec] = v_darcy[m/sec] * area[m^2]
       q = v_darcy(iphase) * area  
       ! mole_flux[kmol phase/sec] = q[m^3 phase/sec] * 
@@ -1400,12 +1405,16 @@ subroutine TOilImsFluxDipc(toil_auxvar_up,global_auxvar_up, &
       mobility = toil_auxvar_up%mobility(iphase)
       H_ave = toil_auxvar_up%H(iphase)
       uH = H_ave
-      !density_ave = toil_auxvar_up%den(iphase)
+#ifdef TOIL_DEN_UPWIND
+      density_ave = toil_auxvar_up%den(iphase)
+#endif
     else
       mobility = toil_auxvar_dn%mobility(iphase)
       H_ave = toil_auxvar_dn%H(iphase)
       uH = H_ave
-      !density_ave = toil_auxvar_dn%den(iphase)
+#ifdef TOIL_DEN_UPWIND
+      density_ave = toil_auxvar_dn%den(iphase)
+#endif
     endif      
 
     if (mobility > floweps) then
@@ -1417,12 +1426,12 @@ subroutine TOilImsFluxDipc(toil_auxvar_up,global_auxvar_up, &
       ! if comments below, use upwinding value
       !density_ave = 0.5d0*( toil_auxvar_up%den(iphase) + &
       !                      toil_auxvar_dn%den(iphase))
-
+#ifndef TOIL_DEN_UPWIND
       density_ave = TOilImsAverageDensity(toil_auxvar_up%sat(iphase), &
                            toil_auxvar_dn%sat(iphase), &
                            toil_auxvar_up%den(iphase), &
                            toil_auxvar_dn%den(iphase))       
-
+#endif
       !ovewrite area computed as for OLDTRAN 
       !0.5 below assumes uniform grid in x and y, i.e. 2*dist 
       !should compute the half volumes of entire cell hrz extensions DXi & DXj
@@ -1665,11 +1674,15 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
           if (delta_pressure >= 0.D0) then
             mobility = toil_auxvar_up%mobility(iphase)
             uH = toil_auxvar_up%H(iphase)
-            !density_ave = toil_auxvar_up%den(iphase)
+#ifdef TOIL_DEN_UPWIND
+            density_ave = toil_auxvar_up%den(iphase)
+#endif
           else
             mobility = toil_auxvar_dn%mobility(iphase)
             uH = toil_auxvar_dn%H(iphase)
-            !density_ave = toil_auxvar_dn%den(iphase)
+#ifdef TOIL_DEN_UPWIND
+            density_ave = toil_auxvar_dn%den(iphase)
+#endif
           endif      
 
           if (mobility > floweps) then
@@ -1681,10 +1694,12 @@ subroutine TOilImsBCFlux(ibndtype,auxvar_mapping,auxvars, &
             ! when this is commented - using upwinding value
             !density_ave = 0.5d0 * (toil_auxvar_up%den(iphase) + &
             !                       toil_auxvar_dn%den(iphase) )
+#ifndef TOIL_DEN_UPWIND
             density_ave = TOilImsAverageDensity(toil_auxvar_up%sat(iphase), &
                            toil_auxvar_dn%sat(iphase), &
                            toil_auxvar_up%den(iphase), &
                            toil_auxvar_dn%den(iphase))
+#endif
           endif
 !#ifndef BAD_MOVE1        
         endif ! sat > eps
