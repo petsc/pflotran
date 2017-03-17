@@ -202,9 +202,15 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
   if (dabs(wat_press_grad(Z_DIRECTION)) >= 1.d-40) pw_hydrostatic = PETSC_FALSE
   if (dabs(oil_press_grad(Z_DIRECTION)) >= 1.d-40) po_hydrostatic = PETSC_FALSE
 
-  ! checks to tunr off unnecessary hydrostatic computations
-  if (owc(Z_DIRECTION) > max_z )  po_hydrostatic = PETSC_FALSE
-  if (owc(Z_DIRECTION) < min_z )  pw_hydrostatic = PETSC_FALSE
+  ! flag off unnecessary hydrostatic computations - ensure owc in one_d_grid%z
+  if (owc(Z_DIRECTION) > max_z ) then
+    owc(Z_DIRECTION) = max_z
+    po_hydrostatic = PETSC_FALSE
+  end if
+  if (owc(Z_DIRECTION) < min_z )  then
+    owc(Z_DIRECTION) = min_z
+    pw_hydrostatic = PETSC_FALSE
+  end if
 
   !if one of the phases requires automatic hydrostatic pressure 
   ! the 1D domain and discretisation is needed
@@ -388,19 +394,18 @@ subroutine TOIHydrostaticUpdateCoupler(coupler,option,grid, &
       po_cell = PressGrad(dist_x,dist_y,dist_z_owc,po_owc,oil_press_grad)
     end if 
     
-    !COMPUTE HERE SATURATION and adjust pressure if required
-    !at the moment pc = 0, above owc So=1, below owc Sw=1 
-    ! once this is tested include pc
-
-    if (owc(Z_DIRECTION) > max_z) then !owc above domain (water only)
+    !COMPUTE HERE SATURATION from pressure difference
+    if (owc(Z_DIRECTION) >= max_z) then !owc above domain (water only)
       coupler%flow_aux_real_var(1,iconn) = pw_cell
-      coupler%flow_aux_real_var(2,iconn) = 1.0d-6 !to avoid truncation erros
-    else if (owc(Z_DIRECTION) < min_z) then !owc below domain (oil only)
+      coupler%flow_aux_real_var(2,iconn) = &
+        coupler%flow_condition%toil_ims%saturation%dataset%rarray(1)
+        !to avoid truncation erros
+        if (coupler%flow_aux_real_var(2,iconn) < 1.0d-6 ) then
+          coupler%flow_aux_real_var(2,iconn) = 1.0d-6
+        end if
+    else if (owc(Z_DIRECTION) <= min_z) then !owc below domain (oil only)
       !OIL PRESSURE
       coupler%flow_aux_real_var(1,iconn) = po_cell 
-      !OIL SATURATION 
-      ! coupler%flow_aux_real_var(2,iconn) = 1.0d0 - sat_ir(1)
-      ! assign value read from input
       coupler%flow_aux_real_var(2,iconn) = &
                 coupler%flow_condition%toil_ims%saturation%dataset%rarray(1)
     else
