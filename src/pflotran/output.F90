@@ -682,6 +682,12 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      LIQUID_MOBILITY)
+      case ('LIQUID_VISCOSITY')
+        name = 'Liquid Viscosity'
+        units = 'Pa-s'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     LIQUID_VISCOSITY)
       case ('LIQUID_ENERGY')
         name = 'Liquid Energy'
         call InputReadWord(input,option,word,PETSC_TRUE)
@@ -792,6 +798,12 @@ subroutine OutputVariableRead(input,option,output_variable_list)
         call OutputVariableAddToList(output_variable_list,name, &
                                      OUTPUT_GENERIC,units, &
                                      OIL_MOBILITY)
+      case ('OIL_VISCOSITY')
+        name = 'Oil Viscosity'
+        units = 'Pa-s'
+        call OutputVariableAddToList(output_variable_list,name, &
+                                     OUTPUT_GENERIC,units, &
+                                     OIL_VISCOSITY)
       case ('OIL_ENERGY')
         name = 'Oil Energy'
         call InputReadWord(input,option,word,PETSC_TRUE)

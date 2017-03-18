@@ -333,12 +333,12 @@ subroutine TOilImsSetPlotVariables(list)
                                OIL_ENERGY)
 
   name = 'Liquid Viscosity'
-  units = 'Pa*s'
+  units = 'Pa-s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                LIQUID_VISCOSITY)
 
   name = 'Oil Viscosity'
-  units = 'Pa*s'
+  units = 'Pa-s'
   call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
                                OIL_VISCOSITY)
   
