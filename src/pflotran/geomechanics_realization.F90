@@ -371,6 +371,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   AO :: ao_geomech_to_subsurf_natural
+  AO :: ao_subsurf_natual_to_petsc
   PetscInt, allocatable :: int_array(:)
   PetscInt :: local_id
   VecScatter :: scatter
@@ -383,6 +384,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
   grid => realization%discretization%grid
     
   ! Convert from 1-based to 0-based  
+  ! Create IS for flow side cell ids
   call ISCreateGeneral(option%mycomm,geomech_grid%mapping_num_cells, &
                        geomech_grid%mapping_cell_ids_flow-1, &
                        PETSC_COPY_VALUES,is_subsurf,ierr);CHKERRQ(ierr)
@@ -394,7 +396,9 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
   call ISView(is_subsurf,viewer,ierr);CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif   
- 
+
+  ! Convert from 1-based to 0-based
+  ! Create IS for geomech side vertex ids
   call ISCreateGeneral(option%mycomm,geomech_grid%mapping_num_cells, &
                        geomech_grid%mapping_vertex_ids_geomech-1, &
                        PETSC_COPY_VALUES,is_geomech,ierr);CHKERRQ(ierr)
@@ -407,10 +411,9 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif   
 
+  ! Create an application ordering between flow cell ids and geomech vertex ids
   call AOCreateMappingIS(is_geomech,is_subsurf,ao_geomech_to_subsurf_natural, &
                          ierr);CHKERRQ(ierr)
-  call ISDestroy(is_geomech,ierr);CHKERRQ(ierr)
-  call ISDestroy(is_subsurf,ierr);CHKERRQ(ierr)
 
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
@@ -425,6 +428,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
     int_array(local_id) = grid%nG2A(grid%nL2G(local_id)) - 1
   enddo
 
+  ! Flow natural numbering IS
   call ISCreateGeneral(option%mycomm,grid%nlmax, &
                        int_array,PETSC_COPY_VALUES,is_subsurf_natural, &
                        ierr);CHKERRQ(ierr)
@@ -442,6 +446,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
     int_array(local_id) = (local_id-1) + grid%global_offset
   enddo
 
+  ! Flow petsc numbering IS
   call ISCreateGeneral(option%mycomm,grid%nlmax, &
                        int_array,PETSC_COPY_VALUES,is_subsurf_petsc, &
                        ierr);CHKERRQ(ierr)
@@ -453,21 +458,35 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
   call ISView(is_subsurf_natural,viewer,ierr);CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif  
-  
-  call ISDuplicate(is_subsurf_natural,is_geomech_petsc,ierr);CHKERRQ(ierr)
-  call ISCopy(is_subsurf_natural,is_geomech_petsc,ierr);CHKERRQ(ierr)
-  
-  call AOPetscToApplicationIS(ao_geomech_to_subsurf_natural,is_geomech_petsc, &
-                              ierr);CHKERRQ(ierr)
- 
+
+  ! AO for flow natural to petsc numbering
+  call AOCreateMappingIS(is_subsurf_natural,is_subsurf_petsc, &
+                         ao_subsurf_natual_to_petsc, &
+                         ierr);CHKERRQ(ierr)
+
 #if GEOMECH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm, &
-                            'geomech_is_subsurf_petsc_geomech_natural.out', &
+                            'geomech_ao_subsurf_natural_to_petsc.out', &
+                            viewer,ierr);CHKERRQ(ierr)
+  call AOView(ao_subsurf_natual_to_petsc,viewer,ierr);CHKERRQ(ierr)
+  call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
+#endif
+
+  call AOApplicationToPetscIS(ao_subsurf_natual_to_petsc, &
+                              is_subsurf,ierr);CHKERRQ(ierr)
+
+
+  call ISDuplicate(is_geomech,is_geomech_petsc,ierr);CHKERRQ(ierr)
+  call ISCopy(is_geomech,is_geomech_petsc,ierr);CHKERRQ(ierr)
+
+#if GEOMECH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'geomech_is_geomech_petsc.out', &
                             viewer,ierr);CHKERRQ(ierr)
   call ISView(is_geomech_petsc,viewer,ierr);CHKERRQ(ierr)
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
-#endif   
+#endif
 
+  ! Now calculate the petsc ordering of the mapped geomech nodes
   call AOApplicationToPetscIS(geomech_grid%ao_natural_to_petsc_nodes, &
                               is_geomech_petsc,ierr);CHKERRQ(ierr)
                               
@@ -479,7 +498,8 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif                              
 
-  call VecScatterCreate(realization%field%porosity0,is_subsurf_petsc, &
+  ! Create scatter context between flow and geomech
+  call VecScatterCreate(realization%field%porosity0,is_subsurf, &
                         geomech_realization%geomech_field%press, &
                         is_geomech_petsc,scatter,ierr);CHKERRQ(ierr)
                         
@@ -581,6 +601,7 @@ subroutine GeomechRealizMapSubsurfGeomechGrid(realization, &
   call ISDestroy(is_geomech_petsc,ierr);CHKERRQ(ierr)
   call ISDestroy(is_subsurf_petsc,ierr);CHKERRQ(ierr)
   call AODestroy(ao_geomech_to_subsurf_natural,ierr);CHKERRQ(ierr)
+  call AODestroy(ao_subsurf_natual_to_petsc,ierr);CHKERRQ(ierr)
   call ISDestroy(is_subsurf_petsc_block,ierr);CHKERRQ(ierr)
   call ISDestroy(is_geomech_petsc_block,ierr);CHKERRQ(ierr)
 

@@ -220,6 +220,7 @@ subroutine MaterialDiagPermTensorToScalar(material_auxvar,dist, &
   ! 
 
   use Option_module
+  use Utility_module, only : Equal
 
   implicit none
   
@@ -233,22 +234,17 @@ subroutine MaterialDiagPermTensorToScalar(material_auxvar,dist, &
   PetscReal, intent(out) :: scalar_permeability
 
   PetscReal :: kx, ky, kz
-  PetscReal :: ux, uy, uz
-  PetscReal :: theta, phi 
-#if 1
-  scalar_permeability = &
-            material_auxvar%permeability(perm_xx_index)*dabs(dist(1))+ &
-            material_auxvar%permeability(perm_yy_index)*dabs(dist(2))+ &
-            material_auxvar%permeability(perm_zz_index)*dabs(dist(3))
-#else
+
   kx = material_auxvar%permeability(perm_xx_index)
   ky = material_auxvar%permeability(perm_yy_index)
   kz = material_auxvar%permeability(perm_zz_index)
-  ux = dabs(dist(1))
-  uy = dabs(dist(2))
-  uz = dabs(dist(3))
-  scalar_permeability =  
+#if 0
+  if (Equal(kx,ky) .and. Equal(ky,kz)) then
+    scalar_permeability = kx
+    return
+  endif
 #endif
+  scalar_permeability = kx*dabs(dist(1))+ky*dabs(dist(2))+kz*dabs(dist(3))
 
 end subroutine MaterialDiagPermTensorToScalar
 
@@ -404,7 +400,9 @@ subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
   
   PetscReal :: compressibility
   
-  compressibility = auxvar%soil_properties(soil_compressibility_index)
+  ! convert to pore compressiblity by dividing by base porosity
+  compressibility = auxvar%soil_properties(soil_compressibility_index) / &
+                    auxvar%porosity_base
   compressed_porosity = auxvar%porosity_base * &
     exp(compressibility * &
         (pressure - auxvar%soil_properties(soil_reference_pressure_index)))

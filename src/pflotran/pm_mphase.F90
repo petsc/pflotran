@@ -62,7 +62,7 @@ function PMMphaseCreate()
   allocate(mphase_pm)
 
   call PMSubsurfaceFlowCreate(mphase_pm)
-  mphase_pm%name = 'PMMphase'
+  mphase_pm%name = 'Mphase CO2 Flow'
 
   PMMphaseCreate => mphase_pm
   

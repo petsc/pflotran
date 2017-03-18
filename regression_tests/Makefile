@@ -50,6 +50,8 @@ STANDARD_CFG = \
 	default/materials/mineral_volume/mineral_volume.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	default/numerical/numerical.cfg \
+	default/output/output.cfg \
+	default/restart/restart.cfg \
 	default/steady/steady.cfg \
 	default/condition/condition.cfg \
 	default/condition/dataset/dataset.cfg \
@@ -77,10 +79,11 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
 		default/discretization/discretization.cfg \
 		geomech/uniaxial_strain/uniaxial_strain.cfg \
-        geomech/uniaxial_loading/uniaxial_loading.cfg \
-        surfaceflow/surface_flow_only/surface_only.cfg \
-	surfaceflow/surface_th/surface_th.cfg \
-	surfaceflow/inlinesurface/inlinesurface.cfg
+	        geomech/uniaxial_loading/uniaxial_loading.cfg \
+        	geomech/uniaxial_loading_biot/uniaxial_loading_biot.cfg \
+	        surfaceflow/surface_flow_only/surface_only.cfg \
+		surfaceflow/surface_th/surface_th.cfg \
+		surfaceflow/inlinesurface/inlinesurface.cfg
 endif
 
 #
@@ -103,7 +106,8 @@ GEOCHEMISTRY_CFG = \
 
 GEOMECHANICS_CFG = \
 	geomech/uniaxial_strain/uniaxial_strain.cfg \
-	geomech/uniaxial_loading/uniaxial_loading.cfg
+	geomech/uniaxial_loading/uniaxial_loading.cfg \
+	geomech/uniaxial_loading_biot/uniaxial_loading_biot.cfg
 
 FLOW_CFG = \
 	default/543/543.cfg \
@@ -114,7 +118,7 @@ FLOW_CFG = \
 	default/scco2/mphase/mphase.cfg \
 	default/scco2/flash2/flash2.cfg \
 	general/general.cfg \
-        toil_ims/toil_ims.cfg \
+    	toil_ims/toil_ims.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
 	wipp/bragflo/bragflo.cfg
@@ -310,4 +314,5 @@ clean-tests :
 	-rm -f ufd/glass-*.vtk
 	-rm -f ufd/wf_doubles-*.vtk
 	-rm -f ufd/wf_region-*.vtk
+	-rm -f ufd/glass_full_geochem_np4-*.vtk
 

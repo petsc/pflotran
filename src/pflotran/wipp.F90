@@ -157,7 +157,7 @@ subroutine FractureRead(this,input,option)
   class(fracture_type) :: this
   type(input_type), pointer :: input
   type(option_type) :: option
-  character(len=MAXWORDLENGTH) :: keyword, word
+  character(len=MAXWORDLENGTH) :: word
   
   do
       call InputReadPflotranString(input,option)
@@ -259,7 +259,9 @@ subroutine FracturePoroEvaluate(auxvar,pressure,compressed_porosity, &
   PetscReal :: P0, Pa, Pi
   PetscReal :: phia, phi0
 
-  Ci = auxvar%soil_properties(soil_compressibility_index)
+       ! convert bulk compressibility to pore compressibility
+  Ci = auxvar%soil_properties(soil_compressibility_index) / &
+       auxvar%porosity_base
   P0 = auxvar%soil_properties(soil_reference_pressure_index)
   Pa = auxvar%fracture%properties(frac_alt_pres_index)
   Pi = auxvar%fracture%properties(frac_init_pres_index)
@@ -318,8 +320,7 @@ subroutine FracturePermEvaluate(auxvar,permeability,altered_perm, &
   PetscReal, intent(out) :: daltered_perm_dp
   PetscReal :: dist(-1:3)
 
-  PetscReal :: phii, dphii_dp, n
-  PetscReal :: Pi
+  PetscReal :: phii, n
   PetscReal :: phi
 
   if (dot_product(dist(1:3),auxvar%fracture%vector) < 1.d-40) return
@@ -426,8 +427,6 @@ subroutine CreepClosureInit()
   ! 
 
   implicit none
-  
-  class(creep_closure_type), pointer :: CreepClosureCreate
   
   if (associated(creep_closure)) then
     call CreepClosureDestroy(creep_closure)
@@ -632,8 +631,6 @@ subroutine CreepClosureTest(this,time,pressure)
   PetscReal :: time
   PetscReal :: pressure
   
-  PetscReal :: CreepClosureEvaluate
-  
   print *, time, pressure, this%Evaluate(time,pressure)
   
 end subroutine CreepClosureTest
@@ -725,8 +722,6 @@ subroutine KlinkenbergInit()
 
   implicit none
   
-  class(klinkenberg_type), pointer :: KlinkenbergCreate
-  
   if (associated(klinkenberg)) then
     call KlinkenbergDestroy(klinkenberg)
   endif
@@ -771,7 +766,6 @@ subroutine KlinkenbergRead(this,input,option)
   type(input_type), pointer :: input
   type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: keyword
   character(len=MAXSTRINGLENGTH) :: error_string = 'KLINKENBERG_EFFECT'
 
@@ -847,8 +841,6 @@ subroutine KlinkenbergTest(this,liquid_permeability,pressure)
   class(klinkenberg_type) :: this
   PetscReal :: liquid_permeability
   PetscReal :: pressure
-  
-  PetscReal :: KlinkenbergEvaluate
   
   print *, liquid_permeability, pressure, &
            this%Evaluate(liquid_permeability,pressure)
@@ -936,8 +928,6 @@ subroutine WIPPInit()
 
   implicit none
   
-  type(wipp_type), pointer :: WIPPCreate
-
   if (associated(wipp)) then
     call WIPPDestroy(wipp)
   endif

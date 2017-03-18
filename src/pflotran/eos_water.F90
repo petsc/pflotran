@@ -1,6 +1,7 @@
 module EOS_Water_module
  
   use PFLOTRAN_Constants_module
+  use Geometry_module
 
   implicit none
 
@@ -19,6 +20,13 @@ module EOS_Water_module
   PetscReal :: exponent_reference_density
   PetscReal :: exponent_reference_pressure
   PetscReal :: exponent_water_compressibility
+  
+  ! planes for planar eos
+  type(plane_type) :: water_density_tp_plane
+  type(plane_type) :: water_enthalpy_tp_plane
+  type(plane_type) :: steam_density_tp_plane
+  type(plane_type) :: steam_enthalpy_tp_plane
+  
 
   ! quadratic
   PetscReal :: quadratic_reference_density
@@ -361,6 +369,7 @@ subroutine EOSWaterSetDensity(keyword,aux)
       EOSWaterDensityPtr => EOSWaterDensityTrangenstein
     case('PLANAR')
       EOSWaterDensityPtr => EOSWaterDensityTPPlanar
+      call EOSWaterDensityTPPlanarSetup()
     case('TGDPB01')
       EOSWaterDensityPtr => EOSWaterDensityTGDPB01
     case('PAINTER')
@@ -393,6 +402,7 @@ subroutine EOSWaterSetEnthalpy(keyword,aux)
       EOSWaterEnthalpyPtr => EOSWaterEnthalpyIFC67
     case('PLANAR')
       EOSWaterEnthalpyPtr => EOSWaterEnthalpyTPPlanar  
+      call EOSWaterEnthalpyTPPlanarSetup()
     case('PAINTER')
       EOSWaterEnthalpyPtr => EOSWaterEnthalpyPainter      
     case default
@@ -448,6 +458,7 @@ subroutine EOSWaterSetSteamDensity(keyword,aux)
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDenEnthConstant
     case('PLANAR')
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDenEnthTPPlanar
+      call EOSWaterSteamDenEnthTPPlanarSetup()
     case('IFC67')
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDensityEnthalpyIFC67
     case default
@@ -473,6 +484,7 @@ subroutine EOSWaterSetSteamEnthalpy(keyword,aux)
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDenEnthConstant
     case('PLANAR')
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDenEnthTPPlanar
+      call EOSWaterSteamDenEnthTPPlanarSetup()
     case('DEFAULT','IFC67')
       EOSWaterSteamDensityEnthalpyPtr => EOSWaterSteamDensityEnthalpyIFC67
     case default
@@ -977,7 +989,7 @@ subroutine EOSWaterDensityIFC67(t,p,calculate_derivatives,dw,dwmol, &
   ierr = 0
 
   tc1 = H2O_CRITICAL_TEMPERATURE    ! K
-  pc1 = H2O_CRITICAL_PRESSURE     ! Pa 
+  pc1 = H2O_CRITICAL_PRESSURE       ! Pa 
   vc1 = 0.00317d0  ! m^3/kg
   utc1 = one/tc1   ! 1/C
   upc1 = one/pc1   ! 1/Pa
@@ -1529,6 +1541,31 @@ end subroutine EOSWaterViscosityGrabowski
 
 ! ************************************************************************** !
 
+subroutine EOSWaterDensityTPPlanarSetup()
+  ! 
+  ! Setups up plane for density of water as a function of temperature and 
+  ! pressure using a simple plane equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/31/17
+  ! 
+  implicit none
+  
+  PetscReal, parameter :: p0 = 1.d6
+  PetscReal, parameter :: t0 = 30.d0
+  PetscReal, parameter :: drho_dp = 4.42d-7
+  PetscReal, parameter :: drho_dT = -0.312d0
+  PetscReal, parameter :: rho_reference = 996.d0
+  
+  PetscReal :: dw
+  
+  call GeomComputePlaneWithGradients(water_density_tp_plane,p0,t0, &
+                                     rho_reference,drho_dp,drho_dT)
+
+end subroutine EOSWaterDensityTPPlanarSetup
+
+! ************************************************************************** !
+
 subroutine EOSWaterDensityTPPlanar(t,p,calculate_derivatives, &
                                    dw,dwmol,dwp,dwt,ierr)
   ! 
@@ -1546,23 +1583,43 @@ subroutine EOSWaterDensityTPPlanar(t,p,calculate_derivatives, &
   PetscReal, intent(out) :: dw,dwmol,dwp,dwt
   PetscErrorCode, intent(out) :: ierr
   
-  PetscReal, parameter :: drho_dp = 4.42d-7
-  PetscReal, parameter :: drho_dT = -0.312d0
-  PetscReal, parameter :: rho_reference = 996.d0
-  
   ! kg/m^3
-  dw = (t-30.d0)*drho_dT + (p-1.d6)*drho_dp + rho_reference
+  dw = GeometryGetPlaneZIntercept(water_density_tp_plane,p,t)
   dwmol = dw/FMWH2O ! kmol/m^3
   
   if (calculate_derivatives) then
-    dwp = drho_dp/FMWH2O
-    dwt = drho_dT/FMWH2O
+    call GeomGetPlaneGradientinXandY(water_density_tp_plane,dwp,dwt)
+    dwp = dwp/FMWH2O
+    dwt = dwt/FMWH2O
   else
     dwp = UNINITIALIZED_DOUBLE
     dwt = UNINITIALIZED_DOUBLE
   endif
 
 end subroutine EOSWaterDensityTPPlanar
+
+! ************************************************************************** !
+
+subroutine EOSWaterEnthalpyTPPlanarSetup()
+  ! 
+  ! Setups up plane for enthalpy of water as a function of temperature and 
+  ! pressure using a simple plane equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/31/17
+  ! 
+  implicit none
+  
+  PetscReal, parameter :: p0 = 1.d6
+  PetscReal, parameter :: t0 = 30.d0
+  PetscReal, parameter :: dh_dp = 1.65d-2
+  PetscReal, parameter :: dh_dT = 7.5d4 
+  PetscReal, parameter :: h_reference = 2.27d6 ! J/kmol
+  
+  call GeomComputePlaneWithGradients(water_enthalpy_tp_plane,p0,t0, &
+                                     h_reference,dh_dp,dh_dT)  
+
+end subroutine EOSWaterEnthalpyTPPlanarSetup
 
 ! ************************************************************************** !
 
@@ -1583,16 +1640,11 @@ subroutine EOSWaterEnthalpyTPPlanar(t,p,calculate_derivatives, &
   PetscReal, intent(out) :: hw,hwp,hwt
   PetscErrorCode, intent(out) :: ierr
   
-  PetscReal, parameter :: dh_dp = 1.65d-2
-  PetscReal, parameter :: dh_dT = 7.5d4 
-  PetscReal, parameter :: h_reference = 2.27d6 ! J/kmol
-    
   ! kg/m^3
-  hw = (t-30.d0)*dh_dT + (p-1.d6)*dh_dp + h_reference
+  hw = GeometryGetPlaneZIntercept(water_enthalpy_tp_plane,p,t)
   
   if (calculate_derivatives) then
-    hwp = dh_dp
-    hwt = dh_dT
+    call GeomGetPlaneGradientinXandY(water_enthalpy_tp_plane,hwp,hwt)
   else
     hwp = UNINITIALIZED_DOUBLE
     hwt = UNINITIALIZED_DOUBLE
@@ -1978,6 +2030,34 @@ end subroutine EOSWaterSteamDenEnthConstant
 
 ! ************************************************************************** !
 
+subroutine EOSWaterSteamDenEnthTPPlanarSetup()
+  ! 
+  ! Setups up plane for density adn enthalpy of steam as a function of 
+  ! temperature and pressure using a simple plane equation
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 1/31/17
+  ! 
+  implicit none
+  
+  PetscReal, parameter :: p0 = 1.d5
+  PetscReal, parameter :: t0 = 30.d0
+  PetscReal, parameter :: drho_dp = 7.8d-6
+  PetscReal, parameter :: drho_dT = -3.54d-3
+  PetscReal, parameter :: rho_reference = 0.846d0 ! kg/m^3
+  PetscReal, parameter :: dh_dp = -5.2d0
+  PetscReal, parameter :: dh_dT = 4.d4 
+  PetscReal, parameter :: h_reference = 4.54d7 ! J/kmol
+  
+  call GeomComputePlaneWithGradients(steam_density_tp_plane,p0,t0, &
+                                     rho_reference,drho_dp,drho_dT)  
+  call GeomComputePlaneWithGradients(steam_enthalpy_tp_plane,p0,t0, &
+                                     h_reference,dh_dp,dh_dT)  
+
+end subroutine EOSWaterSteamDenEnthTPPlanarSetup
+
+! ************************************************************************** !
+
 subroutine EOSWaterSteamDenEnthTPPlanar(t,pv,calculate_derivatives, &
                                         dv,dvmol,hv,dvp,dvt,hvp,hvt,ierr)
 ! t/C  p/Pa dgmol/(mol/m^3)  h/J/kmol
@@ -1997,30 +2077,19 @@ subroutine EOSWaterSteamDenEnthTPPlanar(t,pv,calculate_derivatives, &
   PetscReal, intent(out) :: hv,hvp,hvt       ! J/kmol
   PetscErrorCode, intent(out) :: ierr
   
-  PetscReal, parameter :: drho_dp = 7.8d-6
-  PetscReal, parameter :: drho_dT = -3.54d-3
-  PetscReal, parameter :: rho_reference = 0.846d0 ! kg/m^3
-  
-  PetscReal, parameter :: dh_dp = -5.2d0
-  PetscReal, parameter :: dh_dT = 4.d4
-  PetscReal, parameter :: h_reference = 4.54d7 ! J/kmol
-  
   ! FMWAIR = 28.96d0
-
   ierr = 0
 
   ! kg/m^3
-  dv = (t-30.d0)*drho_dT + (pv-1.d5)*drho_dp + rho_reference
+  dv = GeometryGetPlaneZIntercept(steam_density_tp_plane,pv,t)
   dvmol = dv/FMWH2O ! kmol/m^3
-  
-  ! J/kmol
-  hv = (t-30.d0)*dh_dT + (pv-1.d5)*dh_dp + h_reference
+  hv = GeometryGetPlaneZIntercept(steam_enthalpy_tp_plane,pv,t)
   
   if (calculate_derivatives) then
-    dvp = drho_dp/FMWH2O
-    dvt = drho_dT/FMWH2O
-    hvp = dh_dp
-    hvt = dh_dT    
+    call GeomGetPlaneGradientinXandY(steam_density_tp_plane,dvp,dvt)
+    dvp = dvp/FMWH2O
+    dvt = dvt/FMWH2O
+    call GeomGetPlaneGradientinXandY(steam_enthalpy_tp_plane,hvp,hvt)
   else
     dvp = UNINITIALIZED_DOUBLE
     dvt = UNINITIALIZED_DOUBLE

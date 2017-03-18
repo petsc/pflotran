@@ -1,0 +1,288 @@
+#Description: 2D problem for testing the waste form dissolution model with the
+#canister degradation model including isotope decay and ingrowth.
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+    WASTE_FORM general
+      TYPE GENERAL
+    /
+  /
+END
+
+SUBSURFACE
+#=========================== regression =======================================
+REGRESSION
+  CELLS
+    5 10 15 20 15 30
+  /
+END
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    I-129
+    Am-241        
+    Np-237
+    U-233  
+    Th-229 
+    Pu-240
+    Tc-99
+    C-tracer
+    H+
+    SiO2(aq)
+  /
+  
+  OUTPUT
+    TOTAL
+    I-129
+    Am-241        
+    Np-237
+    U-233  
+    Th-229
+    Pu-240
+    Tc-99
+    C-tracer
+    PH
+  /
+  
+  USE_FULL_GEOCHEMISTRY
+  DATABASE ./ufd-decay.dat
+  
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  TS_ACCELERATION 8
+END
+
+NEWTON_SOLVER FLOW
+END
+
+LINEAR_SOLVER FLOW
+#  KSP_TYPE PREONLY
+#  PC_TYPE LU
+END
+
+NEWTON_SOLVER TRANSPORT
+END
+
+LINEAR_SOLVER TRANSPORT
+#  KSP_TYPE PREONLY
+#  PC_TYPE LU
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 4 4 4
+  BOUNDS
+    0.d0 0.d0 0.d0
+    4.d0 4.d0 4.d0
+  END
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES sf1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.286
+    ALPHA  1.9401d-4
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.286
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  SNAPSHOT_FILE
+    PERIODIC TIME 50 day
+    FORMAT VTK
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 500.d0 day
+  INITIAL_TIMESTEP_SIZE 1.d-6 day
+  MAXIMUM_TIMESTEP_SIZE 5.d0 day
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    4.d0 4.d0 4.d0
+  /
+END
+
+REGION wf1
+  COORDINATES
+    0.d0 0.d0 0.d0
+    2.d0 4.d0 2.d0
+  /
+END
+
+REGION wf2
+  COORDINATES
+    2.d0 0.d0 0.d0
+    4.d0 4.d0 4.d0
+  /
+END
+
+#=========================== observation points ===============================
+OBSERVATION
+  REGION all
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE dirichlet
+  /
+  PRESSURE 201325 Pa
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION groundwater
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 groundwater
+  /
+END
+
+#=========================== transport constraints ============================
+CONSTRAINT groundwater
+  CONCENTRATIONS
+    I-129     1.e-20        F
+    Am-241    1.e-20        F    
+    Np-237    1.e-20        F
+    U-233     1.e-20        F
+    Th-229    1.e-20        F
+    Pu-240    1.e-20        F
+    Tc-99     1.e-20        F
+    C-tracer  1.e-20        F
+    H+        1.e-8         F
+    SiO2(aq)  1.e-9         F
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION groundwater
+  REGION all
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil1
+  REGION all
+END
+
+
+END_SUBSURFACE
+
+#=========================== waste forms ======================================
+WASTE_FORM_GENERAL
+
+  MECHANISM GLASS 
+    NAME glass01
+    SPECIFIC_SURFACE_AREA 2.78d-3 m^2/kg
+    MATRIX_DENSITY 2.46d3 kg/m^3
+    #KIENZLER_DISSOLUTION
+    K0 560.d0 kg/m^2-day
+    K_LONG 0.d0 kg/m^2-day
+    NU 1.d-2
+    EA 60211.58 J/mol
+    Q AS_CALCULATED
+    K 1.d0
+    V 1.d0
+    PH AS_CALCULATED
+    SPECIES
+     #name,   MW[g/mol],dcy[1/s], initMF, inst_rel_frac, daughter               
+      I-129   128.90d0  1.29d-15  2.18d-4   0.2d0
+      Am-241  241.06d0  5.08d-11  8.70d-4   0.0d0  Np-237
+      Np-237  237.05d0  1.03d-14  8.59d-4   0.2d0  U-233
+      U-233   233.04d0  1.38d-13  9.70d-9   0.0d0  Th-229
+      Th-229  229.03d0  2.78d-12  4.43d-12  0.0d0  
+    /  
+    CANISTER_DEGRADATION_MODEL
+      CANISTER_MATERIAL_CONSTANT 1500
+    /
+  /
+  
+  MECHANISM DSNF
+    NAME dsnf01
+    MATRIX_DENSITY 1.0d0 g/m^3  #fake number so wf mass is 1 gram
+    SPECIES
+     #name,   MW[g/mol],dcy[1/s], initMF, inst_rel_frac, daughter             
+      Pu-240  240.05d0  3.34d-12  2.84d-6  0.0d0
+      Tc-99   98.91d0   1.04d-12  8.87d-6  0.0d0
+    /  
+    CANISTER_DEGRADATION_MODEL
+      CANISTER_MATERIAL_CONSTANT 1500
+    /
+  /
+  
+  MECHANISM CUSTOM
+    NAME custom01
+    MATRIX_DENSITY 2.70d3 kg/m^3
+    FRACTIONAL_DISSOLUTION_RATE 2.5d-8 1/day
+    SPECIES
+     #name,    MW[g/mol],dcy[1/s], initMF, inst_rel_frac, daughter               
+      C-tracer 100.0d0   1.00d-9   5.00d-6  0.0d0
+    /  
+    CANISTER_DEGRADATION_MODEL
+      VITALITY_LOG10_MEAN -0.1
+      VITALITY_LOG10_STDEV 0.5
+      VITALITY_UPPER_TRUNCATION 0
+      CANISTER_MATERIAL_CONSTANT 1500
+    /
+  /
+
+  WASTE_FORM
+    #COORDINATE 1.0d0 1.0d0 1.5d0
+    REGION wf1
+    EXPOSURE_FACTOR 20.0d0
+    VOLUME 1.14d0 m^3
+    MECHANISM_NAME glass01
+    CANISTER_BREACH_TIME 1 yr
+  /
+  WASTE_FORM
+    REGION wf2
+    EXPOSURE_FACTOR 10.0d0
+    VOLUME 1.14d0 m^3
+    MECHANISM_NAME glass01
+    CANISTER_BREACH_TIME 1 yr
+  /
+  
+END_WASTE_FORM_GENERAL
+

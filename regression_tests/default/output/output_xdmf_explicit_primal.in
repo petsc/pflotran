@@ -1,0 +1,30 @@
+#Description: 3-cell flow and tracer problem for verifying formatted output.
+
+SIMULATION
+  EXTERNAL_FILE simulation_block.txt
+END
+
+SUBSURFACE
+
+#=========================== output options ===================================
+OUTPUT
+  FORMAT HDF5
+  PRINT_PRIMAL_GRID
+  VARIABLES
+    LIQUID_PRESSURE
+    LIQUID_DENSITY
+    POROSITY
+    TORTUOSITY
+    PERMEABILITY_X
+    PERMEABILITY_Y
+    PERMEABILITY_Z
+    VOLUME
+    NATURAL_ID
+    PROCESS_ID
+  /
+END
+
+EXTERNAL_FILE grid_unstructured_explicit_block.txt
+EXTERNAL_FILE subsurface_block.txt
+
+END_SUBSURFACE

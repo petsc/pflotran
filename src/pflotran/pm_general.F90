@@ -80,7 +80,7 @@ function PMGeneralCreate()
   general_pm%max_change_isubvar = [0,0,0,2,0,0]
   
   call PMSubsurfaceFlowCreate(general_pm)
-  general_pm%name = 'PMGeneral'
+  general_pm%name = 'General Multiphase Flow'
 
   PMGeneralCreate => general_pm
   
@@ -1469,9 +1469,6 @@ subroutine PMGeneralCheckpointBinary(this,viewer)
   class(pm_general_type) :: this
   PetscViewer :: viewer
   
-  call GlobalGetAuxVarVecLoc(this%realization, &
-                             this%realization%field%iphas_loc, &
-                             STATE,ZERO_INTEGER)
   call PMSubsurfaceFlowCheckpointBinary(this,viewer)
   
 end subroutine PMGeneralCheckpointBinary
@@ -1496,9 +1493,6 @@ subroutine PMGeneralRestartBinary(this,viewer)
   PetscViewer :: viewer
   
   call PMSubsurfaceFlowRestartBinary(this,viewer)
-  call GlobalSetAuxVarVecLoc(this%realization, &
-                             this%realization%field%iphas_loc, &
-                             STATE,ZERO_INTEGER)
   
 end subroutine PMGeneralRestartBinary
 ! ************************************************************************** !

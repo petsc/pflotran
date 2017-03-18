@@ -70,13 +70,13 @@ module Reaction_Aux_module
     character(len=MAXWORDLENGTH) :: mineral_name
     type(ion_exchange_cation_type), pointer :: cation_list
     PetscReal :: CEC
-    type (ion_exchange_rxn_type), pointer :: next
+    type(ion_exchange_rxn_type), pointer :: next
   end type ion_exchange_rxn_type
 
   type, public :: ion_exchange_cation_type
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: k
-    type (ion_exchange_cation_type), pointer :: next
+    type(ion_exchange_cation_type), pointer :: next
   end type ion_exchange_cation_type
 
   type, public :: kd_rxn_type
@@ -87,7 +87,7 @@ module Reaction_Aux_module
     PetscReal :: Kd
     PetscReal :: Langmuir_B
     PetscReal :: Freundlich_n
-    type (kd_rxn_type), pointer :: next
+    type(kd_rxn_type), pointer :: next
   end type kd_rxn_type    
 
   type, public :: radioactive_decay_rxn_type
@@ -338,6 +338,11 @@ module Reaction_Aux_module
     module procedure GetPrimarySpeciesIDFromName1
     module procedure GetPrimarySpeciesIDFromName2
   end interface
+  
+  interface GetSecondarySpeciesIDFromName
+    module procedure GetSecondarySpeciesIDFromName1
+    module procedure GetSecondarySpeciesIDFromName2
+  end interface  
 
   public :: ReactionCreate, &
             SpeciesIndexCreate, &
@@ -347,6 +352,7 @@ module Reaction_Aux_module
             GetPrimarySpeciesIDFromName, &
             GetSecondarySpeciesCount, &
             GetSecondarySpeciesNames, &
+            GetSecondarySpeciesIDFromName, &
             GetColloidCount, &
             GetColloidNames, &
             GetColloidIDFromName, &
@@ -1134,6 +1140,81 @@ function GetSecondarySpeciesCount(reaction)
   enddo
 
 end function GetSecondarySpeciesCount
+
+! ************************************************************************** !
+
+function GetSecondarySpeciesIDFromName1(name,reaction,option)
+  ! 
+  ! Returns the id of named secondary species
+  ! 
+  ! Author: Peter Rieke
+  ! Date: 09/16/2016
+  ! 
+  use Option_module
+  use String_module
+  implicit none
+  character(len=MAXWORDLENGTH) :: name
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+
+  PetscInt :: GetSecondarySpeciesIDFromName1
+  GetSecondarySpeciesIDFromName1 = &
+    GetSecondarySpeciesIDFromName2(name,reaction, PETSC_TRUE, option)
+    
+end function GetSecondarySpeciesIDFromName1
+
+! ************************************************************************** !
+
+function GetSecondarySpeciesIDFromName2(name,reaction,return_error,option)
+  ! 
+  ! Returns the id of named secondary species
+  ! 
+  ! Author: Peter Rieke
+  ! Date: 09/16/2016
+  ! 
+  use Option_module
+  use String_module
+  implicit none
+  character(len=MAXWORDLENGTH) :: name
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  PetscInt :: GetSecondarySpeciesIDFromName2
+  type(aq_species_type), pointer :: species
+  PetscInt :: i
+  PetscBool :: return_error
+
+  GetSecondarySpeciesIDFromName2 = UNINITIALIZED_INTEGER
+  
+  ! if the Secondary species name list exists
+  if (associated(reaction%Secondary_species_names)) then
+    do i = 1, size(reaction%Secondary_species_names)
+      if (StringCompare(name,reaction%Secondary_species_names(i), &
+                        MAXWORDLENGTH)) then
+        GetSecondarySpeciesIDFromName2 = i
+        exit
+      endif
+    enddo
+  else
+    species => reaction%Secondary_species_list
+    i = 0
+    do
+      if (.not.associated(species)) exit
+      i = i + 1
+      if (StringCompare(name,species%name,MAXWORDLENGTH)) then
+        GetSecondarySpeciesIDFromName2 = i
+        exit
+      endif
+      species => species%next
+    enddo
+  endif
+
+  if (return_error .and. GetSecondarySpeciesIDFromName2 <= 0) then
+    option%io_buffer = 'Species "' // trim(name) // &
+      '" not found among Secondary species in GetSecondarySpeciesIDFromName().'
+    call printErrMsg(option)
+  endif
+  
+end function GetSecondarySpeciesIDFromName2
 
 ! ************************************************************************** !
 

@@ -1230,12 +1230,10 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       call GeneralFlux(gen_auxvars(ZERO_INTEGER,ghosted_id_up), &
                        global_auxvars(ghosted_id_up), &
                        material_auxvars(ghosted_id_up), &
-                       material_parameter%soil_residual_saturation(:,icap_up), &
                        material_parameter%soil_thermal_conductivity(:,imat_up), &
                        gen_auxvars(ZERO_INTEGER,ghosted_id_dn), &
                        global_auxvars(ghosted_id_dn), &
                        material_auxvars(ghosted_id_dn), &
-                       material_parameter%soil_residual_saturation(:,icap_dn), &
                        material_parameter%soil_thermal_conductivity(:,imat_dn), &
                        cur_connection_set%area(iconn), &
                        cur_connection_set%dist(:,iconn), &
@@ -1298,12 +1296,12 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
                      gen_auxvars(ZERO_INTEGER,ghosted_id), &
                      global_auxvars(ghosted_id), &
                      material_auxvars(ghosted_id), &
-                     material_parameter%soil_residual_saturation(:,icap_dn), &
                      material_parameter%soil_thermal_conductivity(:,imat_dn), &
                      cur_connection_set%area(iconn), &
                      cur_connection_set%dist(:,iconn), &
                      general_parameter,option, &
-                     v_darcy,Res, &
+                     v_darcy,Res,Jac_dummy, &
+                     general_analytical_derivatives, &
                      local_id == general_debug_cell_id)
       patch%boundary_velocities(:,sum_connection) = v_darcy
       if (associated(patch%boundary_flow_fluxes)) then
@@ -1349,12 +1347,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
       
       call GeneralSrcSink(option,source_sink%flow_condition%general%rate% &
                                   dataset%rarray(:), &
-                        source_sink%flow_condition%general%rate%itype, &
-                        gen_auxvars(ZERO_INTEGER,ghosted_id), &
-                        global_auxvars(ghosted_id), &
-                        ss_flow_vol_flux, &
-                        scale,Res, &
-                        local_id == general_debug_cell_id)
+                          source_sink%flow_condition%general%rate%itype, &
+                          gen_auxvars(ZERO_INTEGER,ghosted_id), &
+                          global_auxvars(ghosted_id), &
+                          ss_flow_vol_flux, &
+                          scale,Res,Jac_dummy, &
+                          general_analytical_derivatives, &
+                          local_id == general_debug_cell_id)
 
       r_p(local_start:local_end) =  r_p(local_start:local_end) - Res(:)
 
@@ -1386,6 +1385,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   call GeneralSSSandbox(r,null_mat,PETSC_FALSE,grid,material_auxvars, &
                         gen_auxvars,option)
 
+  ! Mass Transfer
+  if (field%flow_mass_transfer /= 0) then
+    ! scale by -1.d0 for contribution to residual.  A negative contribution
+    ! indicates mass being added to system.
+    call VecAXPY(r,-1.d0,field%flow_mass_transfer,ierr);CHKERRQ(ierr)
+  endif                      
+                        
   if (Initialized(general_debug_cell_id)) then
     call VecGetArrayReadF90(r, r_p, ierr);CHKERRQ(ierr)
     do local_id = general_debug_cell_id-1, general_debug_cell_id+1
@@ -1623,12 +1629,10 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
       call GeneralFluxDerivative(gen_auxvars(:,ghosted_id_up), &
                      global_auxvars(ghosted_id_up), &
                      material_auxvars(ghosted_id_up), &
-                     material_parameter%soil_residual_saturation(:,icap_up), &
                      material_parameter%soil_thermal_conductivity(:,imat_up), &
                      gen_auxvars(:,ghosted_id_dn), &
                      global_auxvars(ghosted_id_dn), &
                      material_auxvars(ghosted_id_dn), &
-                     material_parameter%soil_residual_saturation(:,icap_dn), &
                      material_parameter%soil_thermal_conductivity(:,imat_dn), &
                      cur_connection_set%area(iconn), &
                      cur_connection_set%dist(:,iconn), &
@@ -1693,7 +1697,6 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
                       gen_auxvars(:,ghosted_id), &
                       global_auxvars(ghosted_id), &
                       material_auxvars(ghosted_id), &
-                      material_parameter%soil_residual_saturation(:,icap_dn), &
                       material_parameter%soil_thermal_conductivity(:,imat_dn), &
                       cur_connection_set%area(iconn), &
                       cur_connection_set%dist(:,iconn), &
@@ -2276,7 +2279,7 @@ end subroutine GeneralSSSandboxLoadAuxReal
 
 subroutine GeneralMapBCAuxVarsToGlobal(realization)
   ! 
-  ! Deallocates variables associated with Richard
+  ! Maps variables in general auxvar to global equivalent.
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/09/11
