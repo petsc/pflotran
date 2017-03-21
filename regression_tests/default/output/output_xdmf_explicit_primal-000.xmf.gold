@@ -1,0 +1,79 @@
+<?xml version="1.0" ?>
+<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
+<Xdmf>
+  <Domain>
+    <Grid Name="Mesh">
+      <Time Value = "0.00000E+00" />
+      <Topology Type="Mixed" NumberOfElements="3">
+        <DataItem Format="HDF" DataType="Int" Dimensions="27">
+          output_xdmf_explicit_primal-domain.h5:/Domain/Cells
+        </DataItem>
+      </Topology>
+      <Geometry GeometryType="XYZ">
+        <DataItem Format="HDF" Dimensions="16 3">
+          output_xdmf_explicit_primal-domain.h5:/Domain/Vertices
+        </DataItem>
+      </Geometry>
+      <Attribute Name="Liquid Pressure [Pa]" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Liquid Pressure [Pa]
+        </DataItem>
+      </Attribute>
+      <Attribute Name="Liquid Density [kg_m^3]" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Liquid Density [kg_m^3]
+        </DataItem>
+      </Attribute>
+      <Attribute Name="Porosity" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Porosity
+        </DataItem>
+      </Attribute>
+      <Attribute Name="Tortuosity" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Tortuosity
+        </DataItem>
+      </Attribute>
+      <Attribute Name="Permeability X [m^2]" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Permeability X [m^2]
+        </DataItem>
+      </Attribute>
+      <Attribute Name="Permeability Y [m^2]" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Permeability Y [m^2]
+        </DataItem>
+      </Attribute>
+      <Attribute Name="Permeability Z [m^2]" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Permeability Z [m^2]
+        </DataItem>
+      </Attribute>
+      <Attribute Name="Volume [m^3]" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Volume [m^3]
+        </DataItem>
+      </Attribute>
+      <Attribute Name="Natural ID" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Natural ID
+        </DataItem>
+      </Attribute>
+      <Attribute Name="Process ID" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Process ID
+        </DataItem>
+      </Attribute>
+      <Attribute Name="Free Tracer [M]" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Free Tracer [M]
+        </DataItem>
+      </Attribute>
+      <Attribute Name="Material ID" AttributeType="Scalar"  Center="Node">
+        <DataItem Dimensions="3 1" Format="HDF">
+        output_xdmf_explicit_primal.h5:/   0 Time  0.00000E+00 y/Material ID
+        </DataItem>
+      </Attribute>
+    </Grid>
+  </Domain>
+</Xdmf>

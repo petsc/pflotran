@@ -99,7 +99,7 @@ module Logging_module
     
     PetscLogEvent :: event_mass_balance
 
-    PetscBool :: setup_complete
+    PetscBool :: allow_new_stages
 
   end type logging_type
   
@@ -128,7 +128,7 @@ subroutine LoggingCreate()
   
   allocate(logging)
 
-  logging%setup_complete = PETSC_FALSE
+  logging%allow_new_stages = PETSC_TRUE
   logging%stage_count = FINAL_STAGE
   
   call PetscLogStageRegister('Init Stage',  & 
@@ -400,15 +400,40 @@ subroutine LoggingCreateStage(stage_name,stage_id)
   PetscInt :: stage_id
   
   character(len=MAXSTRINGLENGTH) :: full_stage_name
+  character(len=MAXSTRINGLENGTH) :: temp_stage_name
+  character(len=MAXWORDLENGTH) :: word
+  PetscLogStage :: temp_stage_id
+  PetscInt :: i
   PetscErrorCode :: ierr
 
   ! this conditional prevents duplicate stages that can be generated during
   ! multirealization simulations.
-  if (logging%setup_complete) return
+  if (.not. logging%allow_new_stages) return
   
   logging%stage_count = logging%stage_count + 1
   full_stage_name = trim(stage_name) // ' Stage'
+  !TODO(geh): fix after PETSc fixes bug in implementation.  PetscLogStageGetId
+  !           currently returns the number of stages, not -1, when one exists.
+  ! No two stages can have the same name
+#if 0
+  i = 0
+  temp_stage_name = full_stage_name
+  do
+    ! check if stage exists
+    call PetscLogStageGetId(temp_stage_name,temp_stage_id,ierr);CHKERRQ(ierr)
+    if (temp_stage_id > -1) then
+      i = i + 1
+      write(word,*) i
+      ! append count
+      temp_stage_name = trim(full_stage_name) // trim(adjustl(word))
+    else
+      full_stage_name = temp_stage_name
+      exit
+    endif
+  enddo
+#endif
   call PetscLogStageRegister(full_stage_name,stage_id,ierr);CHKERRQ(ierr)
+  
   stage_id = logging%stage_count
   
 end subroutine LoggingCreateStage
@@ -425,7 +450,7 @@ subroutine LoggingSetupComplete()
 
   implicit none
 
-  logging%setup_complete = PETSC_TRUE
+  logging%allow_new_stages = PETSC_FALSE
   
 end subroutine LoggingSetupComplete
 

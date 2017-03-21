@@ -1378,6 +1378,13 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
   call GeneralSSSandbox(r,null_mat,PETSC_FALSE,grid,material_auxvars, &
                         gen_auxvars,option)
 
+  ! Mass Transfer
+  if (field%flow_mass_transfer /= 0) then
+    ! scale by -1.d0 for contribution to residual.  A negative contribution
+    ! indicates mass being added to system.
+    call VecAXPY(r,-1.d0,field%flow_mass_transfer,ierr);CHKERRQ(ierr)
+  endif                      
+                        
   if (Initialized(general_debug_cell_id)) then
     call VecGetArrayReadF90(r, r_p, ierr);CHKERRQ(ierr)
     do local_id = general_debug_cell_id-1, general_debug_cell_id+1
@@ -2261,7 +2268,7 @@ end subroutine GeneralSSSandboxLoadAuxReal
 
 subroutine GeneralMapBCAuxVarsToGlobal(realization)
   ! 
-  ! Deallocates variables associated with Richard
+  ! Maps variables in general auxvar to global equivalent.
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/09/11

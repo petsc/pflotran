@@ -1145,6 +1145,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
   PetscInt :: idof
   character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: temp_int
   
   if (.not.associated(coupler_list)) return
     
@@ -1175,14 +1176,23 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
             select case(option%iflowmode)
 
               case(RICHARDS_MODE)
-                allocate(coupler%flow_aux_real_var(2,num_connections))
+                temp_int = 1
+                if (coupler%flow_condition%pressure%itype == &
+                    CONDUCTANCE_BC) then
+                  temp_int = temp_int + 1
+                endif
+                allocate(coupler%flow_aux_real_var(temp_int,num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
                 coupler%flow_aux_int_var = 0
 
               case(TH_MODE)
-                allocate(coupler%flow_aux_real_var(option%nflowdof* &
-                                                 option%nphase,num_connections))
+                temp_int = 2
+                if (coupler%flow_condition%pressure%itype == &
+                    CONDUCTANCE_BC) then
+                  temp_int = temp_int + 1
+                endif
+                allocate(coupler%flow_aux_real_var(temp_int,num_connections))
                 allocate(coupler%flow_aux_int_var(1,num_connections))
                 coupler%flow_aux_real_var = 0.d0
                 coupler%flow_aux_int_var = 0
@@ -3509,7 +3519,7 @@ end subroutine PatchUpdateUniformVelocity
 ! ************************************************************************** !
 
 subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
-                             ivar,isubvar,isubvar1)
+                             ivar,isubvar,isubvar2)
   ! 
   ! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
   ! 
@@ -3547,7 +3557,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
+  PetscInt :: isubvar2
   PetscInt :: iphase
 
   PetscInt :: local_id, ghosted_id
@@ -3578,7 +3588,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
          EFFECTIVE_POROSITY,LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE, &
          MAXIMUM_PRESSURE,LIQUID_MASS_FRACTION,GAS_MASS_FRACTION, &
          OIL_PRESSURE,OIL_SATURATION,OIL_DENSITY,OIL_DENSITY_MOL,OIL_ENERGY, &
-         OIL_MOBILITY)
+         OIL_MOBILITY,OIL_VISCOSITY)
 
       if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -4279,6 +4289,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
               vec_ptr(local_id) = patch%aux%TOil_ims%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%mobility(option%liquid_phase)
             enddo
+          case(LIQUID_VISCOSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOil_ims%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%viscosity(option%liquid_phase)
+            enddo
           case(OIL_SATURATION)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TOil_ims%auxvars(ZERO_INTEGER, &
@@ -4312,6 +4327,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TOil_ims%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%mobility(option%oil_phase)
+            enddo
+          case(OIL_VISCOSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOil_ims%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%viscosity(option%oil_phase)
             enddo
           case(EFFECTIVE_POROSITY)
             do local_id=1,grid%nlmax
@@ -4714,7 +4734,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
                 0.d0) then
               vec_ptr(local_id) = &
                 patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar) / &
-                patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar1) / &
+                patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar2) / &
                 output_option%tconv
             endif
           enddo        
@@ -4771,8 +4791,8 @@ end subroutine PatchGetVariable1
 ! ************************************************************************** !
 
 function PatchGetVariableValueAtCell(patch,field,reaction,option, &
-                                    output_option, &
-                                    ivar,isubvar,ghosted_id,isubvar1)
+                                     output_option,ghosted_id, &
+                                     ivar,isubvar,isubvar2)
   ! 
   ! Returns variables indexed by ivar,
   ! isubvar, local id from Reactive Transport type
@@ -4813,9 +4833,10 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
   PetscInt :: ivar
   PetscInt :: isubvar
   PetscInt :: tempint, tempint2
-  PetscInt, optional :: isubvar1
+  PetscInt :: isubvar2
   PetscInt :: iphase
-  PetscInt :: ghosted_id, local_id
+  PetscInt :: ghosted_id
+  PetscInt :: local_id
   PetscInt :: ivar_temp
 
   PetscReal :: value, xmass, lnQKgas, tk, ehfac, eh0, pe0, ph0
@@ -4851,7 +4872,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
          LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE,MAXIMUM_PRESSURE, &
          LIQUID_MASS_FRACTION,GAS_MASS_FRACTION, &
          OIL_PRESSURE,OIL_SATURATION,OIL_DENSITY,OIL_DENSITY_MOL,OIL_ENERGY, &
-         OIL_MOBILITY)
+         OIL_MOBILITY,OIL_VISCOSITY)
          
      if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -5226,6 +5247,10 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
               value = &
                 patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
                   mobility(option%liquid_phase)
+          case(LIQUID_VISCOSITY)
+              value = &
+                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                  viscosity(option%liquid_phase)
           case(OIL_SATURATION)
               value = &
                 patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
@@ -5248,7 +5273,10 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                     den(option%oil_phase)
           case(OIL_MOBILITY)
             value = patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    mobility(option%gas_phase)
+                    mobility(option%oil_phase)
+          case(OIL_VISCOSITY)
+            value = patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                    viscosity(option%oil_phase)
           case(EFFECTIVE_POROSITY)
             value = patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
                     effective_porosity
@@ -5491,7 +5519,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
           if (patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar) > &
               0.d0) then
             value = patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar) / &
-            patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar1) / &
+            patch%aux%RT%auxvars(ghosted_id)%pri_molal(isubvar2) / &
             output_option%tconv
           endif
         case(REACTION_AUXILIARY)
@@ -5519,18 +5547,18 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       ! Note that the units are in mol/kg
       local_id = grid%nG2L(ghosted_id)
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
-              sec_rt_auxvar(isubvar)%pri_molal(isubvar1)
+              sec_rt_auxvar(isubvar)%pri_molal(isubvar2)
     case(SEC_MIN_VOLFRAC)
       local_id = grid%nG2L(ghosted_id)        
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
-              sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar1)
+              sec_rt_auxvar(isubvar)%mnrl_volfrac(isubvar2)
     case(SEC_MIN_RATE)
       local_id = grid%nG2L(ghosted_id)        
       value = patch%aux%SC_RT%sec_transport_vars(local_id)% &
-              sec_rt_auxvar(isubvar)%mnrl_rate(isubvar1)
+              sec_rt_auxvar(isubvar)%mnrl_rate(isubvar2)
     case(SEC_MIN_SI)
       local_id = grid%nG2L(ghosted_id)  
-      value = RMineralSaturationIndex(isubvar1,&
+      value = RMineralSaturationIndex(isubvar2,&
                                       patch%aux%SC_RT% &
                                       sec_transport_vars(local_id)% &
                                       sec_rt_auxvar(isubvar), &
@@ -6670,8 +6698,8 @@ end subroutine
 
 ! ************************************************************************** !
 
-subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
-                           isubvar,isubvar1)
+subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec, &
+                             ivar,isubvar,isubvar2)
   ! 
   ! PatchGetVariable: Extracts variables indexed by ivar and isubvar from a patch
   ! 
@@ -6697,7 +6725,7 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec,ivar, &
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
+  PetscInt :: isubvar2
   PetscInt :: iphase
 
   PetscInt :: local_id, ghosted_id

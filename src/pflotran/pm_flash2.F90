@@ -55,7 +55,7 @@ function PMFlash2Create()
   
   allocate(flash2_pm)
   call PMSubsurfaceFlowCreate(flash2_pm)
-  flash2_pm%name = 'PMFlash2'
+  flash2_pm%name = 'Flash2 Flow'
 
   PMFlash2Create => flash2_pm
   

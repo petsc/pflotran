@@ -350,7 +350,7 @@ subroutine UGridExplicitRead(unstructured_grid,filename,option)
     call InputErrorMsg(input,option,'number of elements',card)
         explicit_grid%num_elems = num_elems
     unstructured_grid%max_nvert_per_cell = 8 ! Initial guess
-    allocate(explicit_grid%cell_connectivity(0:unstructured_grid% &
+    allocate(explicit_grid%cell_vertices(0:unstructured_grid% &
                                   max_nvert_per_cell,num_elems)) 
     do iconn = 1, num_elems
       call InputReadPflotranString(input,option)
@@ -372,9 +372,9 @@ subroutine UGridExplicitRead(unstructured_grid,filename,option)
         case('TRI')
           num_vertices = 3
       end select
-      explicit_grid%cell_connectivity(0,iconn) = num_vertices
+      explicit_grid%cell_vertices(0,iconn) = num_vertices
       do ivertex = 1, num_vertices
-        call InputReadInt(input,option,explicit_grid%cell_connectivity(ivertex,iconn))
+        call InputReadInt(input,option,explicit_grid%cell_vertices(ivertex,iconn))
         call InputErrorMsg(input,option,'vertex id',hint)
       enddo
     enddo

@@ -534,30 +534,26 @@ subroutine SurfaceInitReadRegionFiles(surf_realization)
     if (.not.associated(surf_region)) exit
     if (len_trim(surf_region%filename) > 1) then
       if (index(surf_region%filename,'.h5') > 0) then
-        if (surf_region%grid_type == STRUCTURED_GRID) then
-          !call HDF5ReadRegionFromFile(surf_realization,surf_region,surf_region%filename)
-        else
 #if defined(PETSC_HAVE_HDF5)
-          call HDF5QueryRegionDefinition(surf_region, surf_region%filename, &
-                                         surf_realization%option, &
-                                         cell_ids_exists, face_ids_exists, &
-                                         vert_ids_exists)
-          if ( (.not. cell_ids_exists) .and. &
-               (.not. face_ids_exists) .and. &
-               (.not. vert_ids_exists)) then
-            option%io_buffer = '"Regions/' // trim(surf_region%name) // &
-                ' is not defined by "Cell Ids" or "Face Ids" or "Vertex Ids".'
-            call printErrMsg(option)
-          end if
-          if (cell_ids_exists .or. face_ids_exists) then
-            call HDF5ReadRegionFromFile(surf_realization%patch%grid, &
-                                     surf_region, surf_region%filename, option)
-          else
-            call HDF5ReadRegionDefinedByVertex(option,surf_region, &
-                                               surf_region%filename)
-          end if
-#endif      
+        call HDF5QueryRegionDefinition(surf_region, surf_region%filename, &
+                                       surf_realization%option, &
+                                       cell_ids_exists, face_ids_exists, &
+                                       vert_ids_exists)
+        if ( (.not. cell_ids_exists) .and. &
+             (.not. face_ids_exists) .and. &
+             (.not. vert_ids_exists)) then
+          option%io_buffer = '"Regions/' // trim(surf_region%name) // &
+              ' is not defined by "Cell Ids" or "Face Ids" or "Vertex Ids".'
+          call printErrMsg(option)
+        end if
+        if (cell_ids_exists .or. face_ids_exists) then
+          call HDF5ReadRegionFromFile(surf_realization%patch%grid, &
+                                   surf_region, surf_region%filename, option)
+        else
+          call HDF5ReadRegionDefinedByVertex(option,surf_region, &
+                                             surf_region%filename)
         endif
+#endif      
       else if (index(surf_region%filename,'.ss') > 0) then
         surf_region%sideset => RegionCreateSideset()
         call RegionReadFromFile(surf_region%sideset,surf_region%filename, &

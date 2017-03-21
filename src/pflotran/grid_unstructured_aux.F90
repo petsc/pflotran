@@ -75,8 +75,9 @@ module Grid_Unstructured_Aux_module
     PetscInt :: num_vertices
     PetscInt :: num_vertices_local ! Number of vertices locally
     PetscInt :: output_mesh_type  ! Current options: VERTEX_CENTRED (default), CELL_CENTRED
-    PetscInt, pointer :: cell_connectivity(:,:)   
+    PetscInt, pointer :: cell_vertices(:,:)   
     type(point3d_type), pointer :: vertex_coordinates(:)
+    character(len=MAXWORDLENGTH) :: domain_filename
   end type unstructured_explicit_type
 
   type, public :: unstructured_polyhedra_type
@@ -293,7 +294,7 @@ function UGridExplicitCreate()
   nullify(explicit_grid%connections)
   nullify(explicit_grid%face_areas)
   nullify(explicit_grid%face_centroids)
-  nullify(explicit_grid%cell_connectivity)
+  nullify(explicit_grid%cell_vertices)
   nullify(explicit_grid%vertex_coordinates)
 
   explicit_grid%num_cells_global = 0
@@ -302,6 +303,7 @@ function UGridExplicitCreate()
   explicit_grid%num_vertices = 0
   explicit_grid%num_vertices_local = 0
   explicit_grid%output_mesh_type = VERTEX_CENTERED_OUTPUT_MESH
+  explicit_grid%domain_filename = ''
 
   UGridExplicitCreate => explicit_grid
   

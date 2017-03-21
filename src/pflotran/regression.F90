@@ -491,7 +491,7 @@ subroutine RegressionOutput(regression,realization,flow_timestepper, &
   use Output_module
   use Output_Aux_module
   use Output_Common_module, only : OutputGetCellCenteredVelocities, &
-                                   OutputGetVarFromArray
+                                   OutputGetVariableArray
   
   implicit none
   
@@ -506,7 +506,6 @@ subroutine RegressionOutput(regression,realization,flow_timestepper, &
   Vec :: global_vec_vx,global_vec_vy,global_vec_vz
   Vec :: x_vel_natural, y_vel_natural, z_vel_natural
   Vec :: x_vel_process, y_vel_process, z_vel_process
-  PetscInt :: ivar, isubvar
   type(option_type), pointer :: option
   type(output_variable_type), pointer :: cur_variable
   PetscReal, pointer :: vec_ptr(:), y_ptr(:), z_ptr(:)
@@ -539,10 +538,7 @@ subroutine RegressionOutput(regression,realization,flow_timestepper, &
   do 
     if (.not.associated(cur_variable)) exit
     
-    ivar = cur_variable%ivar
-    isubvar = cur_variable%isubvar
-  
-    call OutputGetVarFromArray(realization,global_vec,ivar,isubvar)
+    call OutputGetVariableArray(realization,global_vec,cur_variable)
     
     call VecMax(global_vec,PETSC_NULL_INTEGER,max,ierr);CHKERRQ(ierr)
     call VecMin(global_vec,PETSC_NULL_INTEGER,min,ierr);CHKERRQ(ierr)

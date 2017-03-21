@@ -137,6 +137,9 @@ subroutine SimulationBaseInitializeRun(this)
   call printMsg(this%option,'SimulationBaseInitializeRun()')
 #endif
   
+  ! the user may request output of variable that do not exist for the 
+  ! the requested process models; this routine should catch such issues.
+  call OutputEnsureVariablesExist(this%output_option,this%option)
   if (associated(this%process_model_coupler_list)) then
     if (this%option%restart_flag) then
       if (index(this%option%restart_filename,'.chk') > 0) then

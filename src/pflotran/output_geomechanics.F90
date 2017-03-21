@@ -270,7 +270,7 @@ subroutine WriteTecplotGeomechGridElements(fid,geomech_realization)
                             GLOBAL,option) 
   call GMGridDMCreateVectorElem(grid,gmdm_element,natural_vec, &
                             NATURAL,option) 
-  call GetCellConnectionsGeomech(grid,global_vec)
+  call OutputGetCellVerticesGeomech(grid,global_vec)
   call VecScatterBegin(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &
@@ -289,7 +289,7 @@ end subroutine WriteTecplotGeomechGridElements
 
 ! ************************************************************************** !
 
-subroutine GetCellConnectionsGeomech(grid,vec)
+subroutine OutputGetCellVerticesGeomech(grid,vec)
   ! 
   ! This routine returns a vector containing vertex ids
   ! in natural order of local cells for geomech grid
@@ -390,7 +390,7 @@ subroutine GetCellConnectionsGeomech(grid,vec)
 
   call GeomechGridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
 
-end subroutine GetCellConnectionsGeomech
+end subroutine OutputGetCellVerticesGeomech
 
 ! ************************************************************************** !
 
@@ -552,19 +552,19 @@ subroutine WriteTecplotGeomechGridVertices(fid,geomech_realization)
                     grid%nmax_node, &
                     global_vertex_vec,ierr);CHKERRQ(ierr)
   call VecGetLocalSize(global_vertex_vec,local_size,ierr);CHKERRQ(ierr)
-  call GetVertexCoordinatesGeomech(grid,global_vertex_vec,X_COORDINATE,option)
+  call OutputGetVertexCoordinatesGeomech(grid,global_vertex_vec,X_COORDINATE,option)
   call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
   call WriteTecplotDataSetGeomech(fid,geomech_realization,vec_ptr, &
                                   TECPLOT_REAL,local_size)
   call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
-  call GetVertexCoordinatesGeomech(grid,global_vertex_vec,Y_COORDINATE,option)
+  call OutputGetVertexCoordinatesGeomech(grid,global_vertex_vec,Y_COORDINATE,option)
   call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
   call WriteTecplotDataSetGeomech(fid,geomech_realization,vec_ptr, &
                                   TECPLOT_REAL,local_size)
   call VecRestoreArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
 
-  call GetVertexCoordinatesGeomech(grid,global_vertex_vec,Z_COORDINATE,option)
+  call OutputGetVertexCoordinatesGeomech(grid,global_vertex_vec,Z_COORDINATE,option)
   call VecGetArrayF90(global_vertex_vec,vec_ptr,ierr);CHKERRQ(ierr)
   call WriteTecplotDataSetGeomech(fid,geomech_realization,vec_ptr, &
                                   TECPLOT_REAL,local_size)
@@ -576,7 +576,7 @@ end subroutine WriteTecplotGeomechGridVertices
 
 ! ************************************************************************** !
 
-subroutine GetVertexCoordinatesGeomech(grid,vec,direction,option)
+subroutine OutputGetVertexCoordinatesGeomech(grid,vec,direction,option)
   ! 
   ! Extracts vertex coordinates of cells into
   ! a PetscVec
@@ -650,7 +650,7 @@ subroutine GetVertexCoordinatesGeomech(grid,vec,direction,option)
     call VecAssemblyEnd(vec,ierr);CHKERRQ(ierr)
   endif
   
-end subroutine GetVertexCoordinatesGeomech
+end subroutine OutputGetVertexCoordinatesGeomech
 
 ! ************************************************************************** !
 
@@ -1593,11 +1593,11 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
   call VecGetLocalSize(global_y_vertex_vec,local_size,ierr);CHKERRQ(ierr)
   call VecGetLocalSize(global_z_vertex_vec,local_size,ierr);CHKERRQ(ierr)
 
-  call GetVertexCoordinatesGeomech(grid,global_x_vertex_vec, &
+  call OutputGetVertexCoordinatesGeomech(grid,global_x_vertex_vec, &
                                    X_COORDINATE,option)
-  call GetVertexCoordinatesGeomech(grid,global_y_vertex_vec, &
+  call OutputGetVertexCoordinatesGeomech(grid,global_y_vertex_vec, &
                                    Y_COORDINATE,option)
-  call GetVertexCoordinatesGeomech(grid,global_z_vertex_vec, &
+  call OutputGetVertexCoordinatesGeomech(grid,global_z_vertex_vec, &
                                    Z_COORDINATE,option)
 
   call VecGetArrayF90(global_x_vertex_vec,vec_x_ptr,ierr);CHKERRQ(ierr)
@@ -1719,7 +1719,7 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
                             GLOBAL,option) 
   call GMGridDMCreateVectorElem(grid,gmdm_element,natural_vec, &
                             NATURAL,option) 
-  call GetCellConnectionsGeomech(grid,global_vec)
+  call OutputGetCellVerticesGeomech(grid,global_vec)
   call VecScatterBegin(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &
                        INSERT_VALUES,SCATTER_FORWARD,ierr);CHKERRQ(ierr)
   call VecScatterEnd(gmdm_element%scatter_gton_elem,global_vec,natural_vec, &

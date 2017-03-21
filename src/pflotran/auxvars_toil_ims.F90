@@ -62,7 +62,10 @@ subroutine AuxVarTOilImsInit(this,option)
     this%den_kg = 0.d0
     allocate(this%mobility(option%nphase))
     this%mobility = 0.d0
-
+    allocate(this%mobility(option%nphase))
+    this%mobility = 0.d0
+    allocate(this%viscosity(option%nphase))
+    this%viscosity = 0.d0
 
   !this could go on AuxVarsFlowEnergyInit
     this%temp = 0.d0

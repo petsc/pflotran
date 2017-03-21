@@ -111,7 +111,7 @@ function PMRTCreate()
   rt_pm%transient_porosity = PETSC_FALSE
 
   call PMBaseInit(rt_pm)
-  rt_pm%name = 'PMRT'
+  rt_pm%name = 'Reactive Transport'
   
   PMRTCreate => rt_pm
   

@@ -72,7 +72,7 @@ function PMTOilImsCreate()
   toil_ims_pm%max_change_isubvar = [0,0,0,0]
   
   call PMSubsurfaceFlowCreate(toil_ims_pm)
-  toil_ims_pm%name = 'PMTOilIms'
+  toil_ims_pm%name = 'TOilIms Flow'
 
   call TOilImsDefaultSetup()
 

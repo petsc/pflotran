@@ -882,6 +882,17 @@ recursive subroutine PMCBaseRestartBinary(this,viewer)
     !geh: this is a bit of a kludge.  Need to use the timestepper target time
     !     directly.  Time is needed to update boundary conditions within 
     !     this%UpdateSolution
+    ! check to ensure that simulation is not restarted beyond the end of the
+    ! prescribed final simulation time.
+    if (.not.associated(this%timestepper%cur_waypoint)) then
+      write(this%option%io_buffer,*) this%timestepper%target_time* &
+        this%pm_list%realization_base%output_option%tconv
+      this%option%io_buffer = 'Simulation is being restarted at a time that &
+        &is at or beyond the end of checkpointed simulation (' // &
+        trim(adjustl(this%option%io_buffer)) // &
+        trim(this%pm_list%realization_base%output_option%tunit) // ').'
+      call printErrMsg(this%option)
+    endif
     this%option%time = this%timestepper%target_time
   endif
   
@@ -1155,6 +1166,17 @@ recursive subroutine PMCBaseRestartHDF5(this,chk_grp_id)
     !geh: this is a bit of a kludge.  Need to use the timestepper target time
     !     directly.  Time is needed to update boundary conditions within
     !     this%UpdateSolution
+    ! check to ensure that simulation is not restarted beyond the end of the
+    ! prescribed final simulation time.
+    if (.not.associated(this%timestepper%cur_waypoint)) then
+      write(this%option%io_buffer,*) this%timestepper%target_time/ &
+        this%pm_list%realization_base%output_option%tconv
+      this%option%io_buffer = 'Simulation is being restarted at a time that &
+        &is at or beyond the end of checkpointed simulation (' // &
+        trim(adjustl(this%option%io_buffer)) // &
+        trim(this%pm_list%realization_base%output_option%tunit) // ').'
+      call printErrMsg(this%option)
+    endif
     this%option%time = this%timestepper%target_time
   endif
 

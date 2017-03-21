@@ -51,7 +51,7 @@ function PMSurfaceTHCreate()
 
   allocate(surface_th_pm)
   call PMSurfaceCreate(surface_th_pm)
-  surface_th_pm%name = 'PMSurfaceTH'
+  surface_th_pm%name = 'Surface+TH Flow'
 
   PMSurfaceTHCreate => surface_th_pm
 

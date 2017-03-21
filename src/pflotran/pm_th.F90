@@ -67,7 +67,7 @@ function PMTHCreate()
   nullify(th_pm%commN)
 
   call PMSubsurfaceFlowCreate(th_pm)
-  th_pm%name = 'PMTH'
+  th_pm%name = 'TH Flow'
 
   PMTHCreate => th_pm
   

@@ -1,0 +1,6 @@
+#=========================== discretization ===================================
+GRID
+  TYPE unstructured_explicit ./3.uge
+  DOMAIN_FILENAME output_xdmf.h5
+END
+

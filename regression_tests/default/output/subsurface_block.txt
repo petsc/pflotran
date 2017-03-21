@@ -1,0 +1,207 @@
+#=========================== regression =======================================
+REGRESSION
+  CELLS
+    1
+    2
+    3
+  /
+END
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Tracer
+  /
+  OUTPUT
+    FREE_ION
+    all
+  /
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  # end simulation without taking a time step
+  MAX_STEPS 0
+END
+
+NEWTON_SOLVER FLOW
+  ITOL_UPDATE 1.d4
+END
+
+LINEAR_SOLVER FLOW
+  SOLVER ITERATIVE
+END
+
+LINEAR_SOLVER TRANSPORT
+  SOLVER ITERATIVE
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+EOS WATER
+  DENSITY CONSTANT 1.d3
+  ENTHALPY CONSTANT 1.8890d0
+  VISCOSITY CONSTANT 8.904156d-4
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY top
+  ID 1
+  CHARACTERISTIC_CURVES cc1
+  POROSITY 0.1d0
+  TORTUOSITY 0.1d0
+  PERMEABILITY
+    PERM_ISO 1.d-12
+  /
+/
+
+MATERIAL_PROPERTY middle
+  ID 2
+  CHARACTERISTIC_CURVES cc1
+  POROSITY 0.2d0
+  TORTUOSITY 0.2d0
+  PERMEABILITY
+    PERM_ISO 2.d-12
+  /
+/
+
+MATERIAL_PROPERTY bottom
+  ID 3
+  CHARACTERISTIC_CURVES cc1
+  POROSITY 0.3d0
+  TORTUOSITY 0.3d0
+  PERMEABILITY
+    PERM_ISO 3.d-12
+  /
+/
+
+#=========================== saturation functions =============================
+CHARACTERISTIC_CURVES cc1
+  DEFAULT
+/
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 1.d-6 y
+  INITIAL_TIMESTEP_SIZE 1.d-6 y
+  MAXIMUM_TIMESTEP_SIZE 1.d-6 y
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    -1.d20 -1.d20 -1.d20
+    1.d20 1.d20 1.d20
+  /
+END
+
+REGION top
+  COORDINATES
+    -1.d20 -1.d20 3.65d0
+    1.d20 1.d20 4.02d0
+  /
+END
+
+REGION middle
+  FACE EAST
+  COORDINATES
+    -1.d20 -1.d20 3.3d0
+    1.d20 1.d20 3.65d0
+  /
+END
+
+REGION bottom
+  COORDINATES
+    -1.d20 -1.d20 3.d0
+    1.d20 1.d20 3.3d0
+  /
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION top
+  TYPE
+    PRESSURE dirichlet
+  /
+  PRESSURE 200001.d0
+/
+
+FLOW_CONDITION middle
+  TYPE
+    PRESSURE dirichlet
+  /
+  PRESSURE 200002.d0
+/
+
+FLOW_CONDITION bottom
+  TYPE
+    PRESSURE dirichlet
+  /
+  PRESSURE 200003.d0
+/
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION top
+  TYPE zero_gradient
+  CONSTRAINT top
+    CONCENTRATIONS
+      Tracer 1.d-3  F
+    /
+  /
+END
+
+TRANSPORT_CONDITION middle
+  TYPE zero_gradient
+  CONSTRAINT middle
+    CONCENTRATIONS
+      Tracer 2.d-3  F
+    /
+  /
+END
+TRANSPORT_CONDITION bottom
+  TYPE zero_gradient
+  CONSTRAINT bottom
+    CONCENTRATIONS
+      Tracer 3.d-3  F
+    /
+  /
+END
+#=========================== constraints ======================================
+
+#=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION top
+  TRANSPORT_CONDITION top
+  REGION top
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION middle
+  TRANSPORT_CONDITION middle
+  REGION middle
+END
+
+INITIAL_CONDITION
+  FLOW_CONDITION bottom
+  TRANSPORT_CONDITION bottom
+  REGION bottom
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION top
+  MATERIAL top
+END
+
+STRATA
+  REGION middle
+  MATERIAL middle
+END
+
+STRATA
+  REGION bottom
+  MATERIAL bottom
+END
+
