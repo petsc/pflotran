@@ -1685,12 +1685,11 @@ subroutine PMWFSetup(this)
         cur_waste_form%rank_list(j) = (i - 1)
       endif
     enddo
+    call MPI_Group_incl(option%mygroup,newcomm_size,cur_waste_form%rank_list, &
+                        cur_waste_form%myMPIgroup,ierr)
+    call MPI_Comm_create(option%mycomm,cur_waste_form%myMPIgroup, &
+                         cur_waste_form%myMPIcomm,ierr)
     if (local) then
-      call MPI_Group_incl(option%mygroup,newcomm_size,cur_waste_form%rank_list, &
-                          cur_waste_form%myMPIgroup,ierr)
-      call MPI_Comm_create_group(option%mycomm,cur_waste_form%myMPIgroup, &
-                                 cur_waste_form%myMPIgroup_id, &
-                                 cur_waste_form%myMPIcomm,ierr)
       call PMWFSetRegionScaling(this,cur_waste_form)
       prev_waste_form => cur_waste_form
       cur_waste_form => cur_waste_form%next
