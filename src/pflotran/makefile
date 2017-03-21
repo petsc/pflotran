@@ -203,7 +203,7 @@ FPPFLAGS = ${MYFLAGS}
 # PetSc (${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/petscrules) defines
 # the default rule for compiling .F90 files:
 #.F.o .F90.o .F95.o: 
-#	${FC} ${FC_FLAGS} ${FFLAGS} ${FCPPFLAGS} -o $@ -c $<
+#	${FC} -c ${FC_FLAGS} ${FFLAGS} ${FCPPFLAGS} -o $@ $<
 #
 # FC_FLAGS is defined in ${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/petscvariables
 
@@ -543,14 +543,14 @@ endif
 #test: functions.o test.o
 #	${FLINKER} -o test test.o functions.o $(LIBS) $(PETSC_LIB)
 
-## Unnecessary 
+# Unnecessary - # Should add this to default PETSc targets as well?
 #%.mod : %.F90
-#	${FC} -c ${FC_FLAGS} ${FFLAGS} -o $@ $<
+#	${FC} -c ${FC_FLAGS} ${FFLAGS} ${FCPPFLAGS} $<
 
 # PetSc (${PETSC_DIR}/${PETSC_ARCH}/lib/petsc/conf/petscrules) defines
 # the default rule for compiling .F90 files:
 #.F.o .F90.o .F95.o: 
-#	${FC} -c ${FC_FLAGS} ${FFLAGS} -o $@ $<
+#	${PETSC_MAKE_STOP_ON_ERROR}${FC} -c ${FC_FLAGS} ${FFLAGS} ${FCPPFLAGS} -o $@ $<
 #
 
 ########################################################################
