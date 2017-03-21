@@ -114,8 +114,10 @@ module PM_Waste_Form_class
 ! --------------- waste form types --------------------------------------------
   type :: waste_form_base_type
     PetscInt :: id
+    PetscInt, pointer :: rank_list(:)
     PetscMPIInt :: myMPIgroup_id
     PetscMPIInt :: myMPIcomm
+    PetscMPIInt :: myMPIgroup
     type(point3d_type) :: coordinate
     character(len=MAXWORDLENGTH) :: region_name
     type(region_type), pointer :: region
@@ -389,8 +391,10 @@ function WasteFormCreate()
 
   allocate(WasteFormCreate)
   WasteFormCreate%id = UNINITIALIZED_INTEGER
+  nullify(WasteFormCreate%rank_list)
   WasteFormCreate%myMPIgroup_id = 0
   WasteFormCreate%myMPIcomm = 0
+  WasteFormCreate%myMPIgroup = 0
   WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
@@ -1599,16 +1603,19 @@ subroutine PMWFSetup(this)
   class(waste_form_base_type), pointer :: next_waste_form
   class(wf_mechanism_base_type), pointer :: cur_mechanism
   PetscInt :: waste_form_id
-  PetscInt :: i
+  PetscInt :: i, j
   PetscBool :: local, found
   PetscErrorCode :: ierr
-  PetscMPIInt :: newcomm
+  PetscMPIInt :: newcomm_size
+  PetscInt, pointer :: ranks(:)
   
   option => this%realization%option
   reaction => this%realization%reaction
   
   ! point the waste form region to the desired region 
   call PMWFAssociateRegion(this,this%realization%patch%region_list)
+  
+  allocate(ranks(option%mycommsize))
   
   waste_form_id = 0
   nullify(prev_waste_form)
@@ -1656,20 +1663,34 @@ subroutine PMWFSetup(this)
           local = PETSC_TRUE
       endif
     endif
+    ranks(:) = 0
+    newcomm_size = 0
     if (local) then
-      ! assign the waste form ID number and MPI communicator
       cur_waste_form%id = waste_form_id
       cur_waste_form%myMPIgroup_id = waste_form_id
-      call MPI_Comm_split(option%mycomm,cur_waste_form%myMPIgroup_id, &
-                          option%myrank,newcomm,ierr)
+      ranks(option%myrank+1) = 1
     else
       cur_waste_form%id = 0
       cur_waste_form%myMPIgroup_id = 0
-      call MPI_Comm_split(option%mycomm,MPI_UNDEFINED,option%myrank, &
-                          newcomm,ierr)
+      ranks(option%myrank+1) = 0
     endif
-    cur_waste_form%myMPIcomm = newcomm
+    call MPI_Allreduce(MPI_IN_PLACE,ranks,option%mycommsize,MPI_INTEGER, &
+                       MPI_SUM,option%mycomm,ierr)
+    newcomm_size = sum(ranks)
+    allocate(cur_waste_form%rank_list(newcomm_size))
+    j = 0
+    do i = 1,option%mycommsize
+      if (ranks(i) == 1) then
+        j = j + 1
+        cur_waste_form%rank_list(j) = (i - 1)
+      endif
+    enddo
     if (local) then
+      call MPI_Group_incl(option%mygroup,newcomm_size,cur_waste_form%rank_list, &
+                          cur_waste_form%myMPIgroup,ierr)
+      call MPI_Comm_create_group(option%mycomm,cur_waste_form%myMPIgroup, &
+                                 cur_waste_form%myMPIgroup_id, &
+                                 cur_waste_form%myMPIcomm,ierr)
       call PMWFSetRegionScaling(this,cur_waste_form)
       prev_waste_form => cur_waste_form
       cur_waste_form => cur_waste_form%next
@@ -1685,6 +1706,8 @@ subroutine PMWFSetup(this)
       cur_waste_form => next_waste_form
     endif
   enddo
+  
+  deallocate(ranks)
   
   ! check if the mechanism list includes fmdm or glass mechanisms:
   cur_mechanism => this%mechanism_list
@@ -3147,6 +3170,8 @@ subroutine PMWFStrip(this)
     call DeallocateArray(prev_waste_form%scaling_factor)
     nullify(prev_waste_form%mechanism)
     nullify(prev_waste_form%region)
+    !call MPI_Group_free(prev_waste_form%myMPIgroup)
+    !call MPI_Comm_free(prev_waste_form%myMPIcomm)
     deallocate(prev_waste_form)
     nullify(prev_waste_form)
   enddo
