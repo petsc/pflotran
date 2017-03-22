@@ -11,6 +11,17 @@ module PM_UFD_Biosphere_class
 
 #include "petsc/finclude/petscsys.h"
 
+  type, public :: unsupported_rad_type
+    character(len=MAXWORDLENGTH) :: name
+    character(len=MAXWORDLENGTH) :: supported_parent
+    character(len=MAXWORDLENGTH) :: element
+    PetscReal :: dcf
+    PetscReal :: emanation_factor
+    PetscReal :: kd
+    PetscReal :: kd_supp_parent
+    type(unsupported_rad_type), pointer :: next
+  end type unsupported_rad_type
+
   type, public :: ERB_base_type
     class(ERB_base_type), pointer :: next
     character(len=MAXWORDLENGTH) :: name
@@ -33,6 +44,7 @@ module PM_UFD_Biosphere_class
   type, public, extends(pm_base_type) :: pm_ufd_biosphere_type
     class(realization_subsurface_type), pointer :: realization
     class(ERB_base_type), pointer :: ERB_list
+    type(unsupported_rad_type), pointer :: unsupported_rad_list
   contains
     procedure, public :: PMUFDBSetRealization
     procedure, public :: Setup => PMUFDBSetup
@@ -48,7 +60,8 @@ module PM_UFD_Biosphere_class
 
   public :: PMUFDBCreate, &
             ERB_1A_Create, &
-            ERB_1B_Create
+            ERB_1B_Create, &
+            UnsuppRadCreate
   
 contains
 
@@ -138,6 +151,33 @@ function ERB_1B_Create()
   call ERBInit(ERB_1B_Create)
   
 end function ERB_1B_Create
+
+! *************************************************************************** !
+
+function UnsuppRadCreate()
+  !
+  ! Creates and initializes an unsupported radionuclide type.
+  !
+  ! Author: Jenn Frederick
+  ! Date: 03/22/2017
+  !
+  
+  implicit none
+  
+  type(unsupported_rad_type), pointer :: UnsuppRadCreate
+  
+  allocate(UnsuppRadCreate)
+  
+  UnsuppRadCreate%name = ''
+  UnsuppRadCreate%supported_parent = ''
+  UnsuppRadCreate%element = ''
+  UnsuppRadCreate%dcf = UNINITIALIZED_DOUBLE  ! Sv/Bq
+  UnsuppRadCreate%emanation_factor = 1.d0     ! default value
+  UnsuppRadCreate%kd = UNINITIALIZED_DOUBLE
+  UnsuppRadCreate%kd_supp_parent = UNINITIALIZED_DOUBLE
+  nullify(UnsuppRadCreate%next)
+  
+end function UnsuppRadCreate
 
 ! *************************************************************************** !
 
@@ -261,8 +301,13 @@ subroutine PMUFDBRead(this,input)
         nullify(new_ERB1B)
     !-----------------------------------------
     !-----------------------------------------
+      case('UNSUPPORTED_RADIONUCLIDES')
+        error_string = trim(error_string) // ',UNSUPPORTED_RADIONUCLIDES'
+        call ReadUnsuppRad(this,input,option,error_string)      
+    !-----------------------------------------
+    !-----------------------------------------
       case default
-        call InputKeywordUnrecognized(word,'WIPP_SOURCE_SINK',option)
+        call InputKeywordUnrecognized(word,'UFD_BIOSPHERE',option)
     !-----------------------------------------
     end select  
   enddo
@@ -362,6 +407,123 @@ end subroutine ReadERBmodel
 
 ! *************************************************************************** !
 
+subroutine ReadUnsuppRad(this,input,option,error_string)
+  !
+  ! Reads input file parameters for the UFD Biosphere process model.
+  !
+  ! Author: Jenn Frederick
+  ! Date: 03/13/2017
+  !
+
+  use Input_Aux_module
+  use Option_module
+  use String_module
+
+  implicit none
+  
+  class(pm_ufd_biosphere_type) :: this
+  type(input_type), pointer :: input
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  type(unsupported_rad_type), pointer :: new_unsupp_rad
+  type(unsupported_rad_type), pointer :: cur_unsupp_rad
+  character(len=MAXWORDLENGTH) :: word
+  PetscBool :: added
+  
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+    select case(trim(word))
+    !-----------------------------------
+      case('RADIONUCLIDE')
+        error_string = trim(error_string) // ',RADIONUCLIDE'
+        allocate(new_unsupp_rad)
+        new_unsupp_rad => UnsuppRadCreate()
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'radionuclide name',error_string)
+        new_unsupp_rad%name = adjustl(trim(word))
+        error_string = trim(error_string) // ' ' // trim(new_unsupp_rad%name)
+        do
+          call InputReadPflotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword',error_string)
+          call StringToUpper(word)
+          select case(trim(word))
+          !-----------------------------------
+            case('ELEMENT_KD')
+              call InputReadDouble(input,option,new_unsupp_rad%kd)
+              call InputErrorMsg(input,option,'ELEMENT_KD',error_string)
+          !-----------------------------------
+            case('SUPPORTED_PARENT')
+              call InputReadWord(input,option,new_unsupp_rad%supported_parent, &
+                                 PETSC_TRUE)
+              call InputErrorMsg(input,option,'SUPPORTED_PARENT',error_string)
+          !-----------------------------------
+            case('INGESTION_DOSE_COEF')
+              call InputReadDouble(input,option,new_unsupp_rad%dcf)
+              call InputErrorMsg(input,option,'INGESTION_DOSE_COEF', &
+                                 error_string)
+          !-----------------------------------
+            case('EMANATION_FACTOR')
+              call InputReadDouble(input,option,new_unsupp_rad%emanation_factor)
+              call InputErrorMsg(input,option,'EMANATION_FACTOR',error_string)
+          !-----------------------------------  
+            case default
+              call InputKeywordUnrecognized(word,error_string,option)
+          !----------------------------------- 
+          end select
+        enddo
+        ! error messages
+        if (uninitialized(new_unsupp_rad%kd)) then
+          option%io_buffer = 'ELEMENT_KD must be specified in the ' // &
+                             trim(error_string) // ' block.'
+          call printErrMsg(option)
+        endif
+        if (uninitialized(new_unsupp_rad%dcf)) then
+          option%io_buffer = 'INGESTION_DOSE_COEF must be specified in the ' &
+                             // trim(error_string) // ' block.'
+          call printErrMsg(option)
+        endif
+        if (new_unsupp_rad%supported_parent == '') then
+          option%io_buffer = 'SUPPORTED_PARENT must be specified in the ' // &
+                             trim(error_string) // ' block.'
+          call printErrMsg(option)
+        endif
+        ! add new unsupported radionuclide to list
+        added = PETSC_FALSE
+        if (.not.associated(this%unsupported_rad_list)) then
+          this%unsupported_rad_list => new_unsupp_rad
+        else
+          cur_unsupp_rad => this%unsupported_rad_list
+          do
+            if (.not.associated(cur_unsupp_rad)) exit
+            if (.not.associated(cur_unsupp_rad%next)) then
+              cur_unsupp_rad%next => new_unsupp_rad
+              added = PETSC_TRUE
+            endif
+            if (added) exit
+            cur_unsupp_rad => cur_unsupp_rad%next
+          enddo
+        endif
+        nullify(new_unsupp_rad)
+    !-----------------------------------
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    !-----------------------------------
+    end select
+  enddo
+  
+end subroutine ReadUnsuppRad
+
+! *************************************************************************** !
+
 subroutine AssociateRegion(this,region_list)
   ! 
   ! Associates the ERB model to its assigned region via the REGION keyword.
@@ -428,6 +590,8 @@ subroutine PMUFDBSetup(this)
   
   ! point the ERB model's regions to the desired regions 
   call AssociateRegion(this,this%realization%patch%region_list)
+  
+  ! check if all unsupported rads have KDs
   
 end subroutine PMUFDBSetup
 
