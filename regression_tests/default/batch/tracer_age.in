@@ -1,0 +1,131 @@
+#Description: 1D microbial degradation problem without biomass
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+      ITOL_RELATIVE_UPDATE 1.d-12
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS
+    1
+  /
+END
+
+#=========================== flow mode ========================================
+# Uniform velocity (see below). No flow mode specified.
+
+#=========================== useful tranport parameters ==================
+UNIFORM_VELOCITY 0.d0 0.d0 0.d0 m/yr
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Tracer
+    Tracer_Age
+  /
+  DATABASE ../../../database/hanford.dat
+  ACTIVITY_COEFFICIENTS OFF
+  OUTPUT
+    all
+    AGE
+    TOTAL
+  /
+END
+
+#=========================== solver options ===================================
+NEWTON_SOLVER TRANSPORT
+  ATOL 1.d-50
+  RTOL 1.d-50
+  STOL 1.d-50
+#  ITOL_RELATIVE_UPDATE 1.d-12
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 1 1 1
+  BOUNDS
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+END
+
+#=========================== output options ===================================
+OUTPUT
+#  TIMES y 5. 10. 15. 20.
+#  FORMAT TECPLOT POINT
+   PERIODIC_OBSERVATION TIMESTEP 1
+END
+
+#=========================== times ============================================
+TIME
+  ! Tracer age should be 4.35 y-molar
+  FINAL_TIME 4.35d0 y           
+  INITIAL_TIMESTEP_SIZE 1.d0 h
+  MAXIMUM_TIMESTEP_SIZE 2.5d-1 y
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1.d0 1.d0 1.d0
+  /
+END
+
+#=========================== observation points ===============================
+OBSERVATION
+  REGION all
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+#=========================== constraints ======================================
+CONSTRAINT initial
+  CONCENTRATIONS
+    Tracer 1.d-4  T
+    Tracer_Age 1.d-12 T
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+
+END_SUBSURFACE

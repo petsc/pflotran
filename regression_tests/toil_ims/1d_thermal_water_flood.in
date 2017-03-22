@@ -1,0 +1,284 @@
+# thermal water flood problem 
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  !SIMULATION_TYPE GEOMECHANICS_SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW Flow
+      MODE TOIL_IMS
+      OPTIONS
+       !ISOTHERMAL
+       !TOUGH2_ITOL_SCALED_RESIDUAL 1.d-5 1.d0
+      /
+    / ! end of subsurface_flow
+    !GEOMECHANICS_SUBSURFACE geomech ! geomech not currenlty used
+    !GEOMECHANICS_SUBSURFACE xxx ! at least one "x" to avoid input error 
+  / ! end of process models
+END  !! end simulation 
+
+SUBSURFACE
+
+#=========================== regression =======================================
+REGRESSION
+  CELLS
+    1
+    2
+    3
+    30
+  /
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 30 1 1 
+  BOUNDS
+    0.d0 0.0 0.0 
+    900.d0 10.d0 10.d0
+  /
+END
+
+#=========================== solver options ===================================
+TIMESTEPPER FLOW
+  TS_ACCELERATION 8
+/
+
+NEWTON_SOLVER FLOW
+  ATOL 1D-12
+  RTOL 1D-8
+  STOL 1D-30
+  DTOL 1D15
+  ITOL 1D-6
+  !ITOL 1D-7
+  !ITOL 1D-9 
+  MAXIT 25
+  MAXF 100
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 2000.0d0 d
+  !FINAL_TIME 10000.0d0 d
+  INITIAL_TIMESTEP_SIZE 1.0d-6 d
+  MAXIMUM_TIMESTEP_SIZE 0.5d0 d at 0. d
+  MAXIMUM_TIMESTEP_SIZE 20.d0 d at 20. d
+/
+
+#=========================== output options ===================================
+OUTPUT
+ skip
+  TIMES d 0.0 0.1 0.9 1.0 5.0 20.0 27.0 100.0 200.0 300.0 500.0 730.0 1095.0 \
+          1460.0 1825.0 2000. 3000. 5000. 6000. 7000. 8000.0 9000.0 10000. 
+  VARIABLES
+    TEMPERATURE
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+    LIQUID_DENSITY
+    LIQUID_MOBILITY
+    LIQUID_ENERGY
+    LIQUID_VISCOSITY
+    OIL_PRESSURE
+    OIL_SATURATION
+    OIL_DENSITY
+    OIL_MOBILITY
+    OIL_ENERGY
+    OIL_VISCOSITY
+    CAPILLARY_PRESSURE
+    POROSITY
+    PERMEABILITY_X
+    PERMEABILITY_Y
+    PERMEABILITY_Z
+  END
+  FORMAT HDF5
+  MASS_BALANCE
+ noskip 
+END
+
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY formation
+  ID 1
+  POROSITY 0.33d0
+  TORTUOSITY 1.d0
+  ROCK_DENSITY 2.350d3
+  SPECIFIC_HEAT 1.0d3
+  THERMAL_CONDUCTIVITY_DRY 1.541d0
+  THERMAL_CONDUCTIVITY_WET 1.541d0 
+  !SOIL_COMPRESSIBILITY_FUNCTION DEFAULT
+  !SOIL_COMPRESSIBILITY_FUNCTION BRAGFLO
+  SOIL_COMPRESSIBILITY_FUNCTION QUADRATIC
+  SOIL_COMPRESSIBILITY 4.934d-10 ! 1/Pa
+  SOIL_REFERENCE_PRESSURE 1.0132D5
+  CHARACTERISTIC_CURVES ch1
+  PERMEABILITY
+    PERM_X 3.35553922d-12
+    PERM_Y 3.35553922d-12
+    PERM_Z 6.71107844d-13
+  /
+/
+
+#=========================== saturation functions =============================
+CHARACTERISTIC_CURVES ch1
+  SATURATION_FUNCTION BROOKS_COREY
+    !LAMBDA 2.5d0
+    LAMBDA 0.4d0
+    ALPHA 0.5e-03
+    !ALPHA 0.5e-02
+    LIQUID_RESIDUAL_SATURATION 0.45d0
+    MAX_CAPILLARY_PRESSURE 5.d5
+    !MAX_CAPILLARY_PRESSURE 0.d0 ! neglect capillary pressure effects 
+    !SMOOTH !when using smoothing option
+  /
+  !PERMEABILITY_FUNCTION MOD_BC_LIQ
+  !  M 2.5d0
+  !  LIQUID_RESIDUAL_SATURATION 0.45d0 
+  !  OIL_RESIDUAL_SATURATION 0.0d0
+  !  GAS_RESIDUAL_SATURATION 0.0d0
+  !  LIQUID_MAX_REL_PERM 1.0d0 !if not included defaulted to 1
+  !  SMOOTH !when using smoothing option
+  !/
+  PERMEABILITY_FUNCTION BURDINE_VG_LIQ
+   M 3.0
+   LIQUID_RESIDUAL_SATURATION 0.45
+  END
+  PERMEABILITY_FUNCTION MOD_BC_OIL
+    !M 2.0d0 
+    M 1.0d0
+    LIQUID_RESIDUAL_SATURATION 0.45d0 
+    OIL_RESIDUAL_SATURATION 0.3d0
+    GAS_RESIDUAL_SATURATION 0.0d0
+    OIL_MAX_REL_PERM 0.28d0 !if not included defaulted to 1
+    SMOOTH !when using smoothing option
+  /
+  !TEST
+/
+
+
+#=========================== EOSs =============================================
+! if all commented, initialised IFC67 for density, enthaplty and viscosity  
+EOS WATER
+  !if ref_den and wat_compress not specified default values are used
+  !DENSITY QUADRATIC  !e300 quadratic model
+  !  !REFERENCE_DENSITY 999.014d0 !kg/m3
+  !  !REFERENCE_PRESSURE 1.0d5    !Pa
+  !  !WATER_COMPRESSIBILITY 3.94769306686405d-10 !1/Pa
+  !END
+  DENSITY TRANGENSTEIN !E300 thermal default model 
+  VISCOSITY GRABOWSKI
+END
+
+EOS OIL
+  !heavy oil
+  FORMULA_WEIGHT 508.0d0
+  DENSITY INVERSE_LINEAR ! den = den0 / [1- C(p-p1)] [1 + E(t-t1)]
+    REFERENCE_VALUE 995.98d0            !den0 [kg/m3]  
+    PRES_REF_VALUE 1.013d5              !p1 [Pa]
+    TEMP_REF_VALUE 15.6d0               !t1 [°C]
+    COMPRESS_COEFF 5.63d-10            !C [1/Pa]
+    THERMAL_EXPANSION_COEFF 8.480d-4   !E [1/°C]
+  END
+  ENTHALPY QUADRATIC_TEMP ! h = c1*(t-t1) + 0.5*c2*(t-t2)
+    TEMP_REF_VALUES 15.6d0  15.6d0     !t1, t2 [°C]
+    TEMP_COEFFICIENTS 2.224D3 0.0d0  !c1, c2 [J/kg/°C]
+  END
+  ! vis = vis0 + a1(p-p1) + a2(p-p2)^2 + b1(t-t1) + b2(t-t2)^2 
+  VISCOSITY QUADRATIC 
+    REFERENCE_VALUE 0.267627d0    !vis0  [Pa.s]
+    PRES_REF_VALUES 1.d5 0.0      !p1, p2 [Pa]
+    TEMP_REF_VALUES 80.0  0.0    !t1, t2 [°C]
+    PRES_COEFFICIENTS 0.0d0 0.0d0        !a1,a2 [kg/m3/Pa], a2 [..]
+    TEMP_COEFFICIENTS -1.83989d-3 0.0d0  !b1,b2 [kg/m3/°C], b2 [..]
+  END
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    900.d0 10.d0 10.d0
+  /
+END
+
+REGION west_inj
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 10.d0 10.d0
+  /
+END
+
+REGION east_prod
+  FACE EAST
+  COORDINATES
+    900.d0 0.d0 0.d0
+    900.d0 10.d0 19.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial_press
+  !UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE dirichlet
+    OIL_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  PRESSURE 17.0D6 !170bars 
+  OIL_SATURATION 0.85d0 !With this accounts for connate water 
+  TEMPERATURE 80.0d0 C  !up to here it refers to primary vars
+/
+
+FLOW_CONDITION inject_press
+  !UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE dirichlet
+    OIL_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  PRESSURE 30.0D6 !300bars 
+  OIL_SATURATION 0.15d0 !model a water injector
+  TEMPERATURE 200.0d0 C  !up to here it refers to primary vars
+/
+
+FLOW_CONDITION prod_press
+  !UNITS Pa,C,M,yr
+  TYPE
+    PRESSURE dirichlet
+    OIL_SATURATION dirichlet
+    TEMPERATURE dirichlet
+  /
+  PRESSURE 10.0D6 !100bars 
+  OIL_SATURATION 0.65d0 !model a well with water and oil  both mobile
+  TEMPERATURE 80.0d0 C  !up to here it refers to primary vars
+/
+
+
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial_press
+  REGION all
+END
+
+!note the water breakthrough cannot be modeled - well needed
+BOUNDARY_CONDITION outlet
+  !FLOW_CONDITION initial_press
+  FLOW_CONDITION prod_press
+  REGION east_prod
+END
+
+# water injector
+BOUNDARY_CONDITION press_wat_inj
+  FLOW_CONDITION inject_press
+  REGION west_inj
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL formation
+END
+
+END_SUBSURFACE
+

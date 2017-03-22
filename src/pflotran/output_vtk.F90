@@ -99,8 +99,7 @@ subroutine OutputVTK(realization_base)
   cur_variable => output_option%output_snap_variable_list%first
   do
     if (.not.associated(cur_variable)) exit
-    call OutputGetVarFromArray(realization_base,global_vec,cur_variable%ivar, &
-                                cur_variable%isubvar)
+    call OutputGetVariableArray(realization_base,global_vec,cur_variable)
     call DiscretizationGlobalToNatural(discretization,global_vec, &
                                         natural_vec,ONEDOF)
     word=trim(cur_variable%name)
@@ -169,7 +168,8 @@ subroutine OutputVelocitiesVTK(realization_base)
   ! Print velocities to Tecplot file in BLOCK format
   ! 
  
-  use Realization_Base_class, only : realization_base_type
+  use Realization_Base_class, only : realization_base_type, &
+                                     RealizationGetVariable
   use Discretization_module
   use Grid_module
   use Option_module
@@ -275,7 +275,7 @@ subroutine OutputVelocitiesVTK(realization_base)
 
   ! material id
   word = 'Material_ID'
-  call OutputGetVarFromArray(realization_base,global_vec,MATERIAL_ID,ZERO_INTEGER)
+  call RealizationGetVariable(realization_base,global_vec,MATERIAL_ID,ZERO_INTEGER)
   call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteVTKDataSetFromVec(OUTPUT_UNIT,realization_base,word,natural_vec,VTK_INTEGER)
   

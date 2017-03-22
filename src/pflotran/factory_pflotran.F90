@@ -253,8 +253,6 @@ subroutine PFLOTRANReadSimulation(simulation,option)
         call CheckpointRead(input,option,checkpoint_option, &
                             checkpoint_waypoint_list)
       case ('RESTART')
-        option%io_buffer = 'The RESTART card within SUBSURFACE block has &
-                           &been deprecated.'
         option%restart_flag = PETSC_TRUE
         call InputReadNChars(input,option,option%restart_filename, &
                              MAXSTRINGLENGTH,PETSC_TRUE)

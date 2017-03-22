@@ -2282,7 +2282,7 @@ end subroutine GeneralSSSandboxLoadAuxReal
 
 subroutine GeneralMapBCAuxVarsToGlobal(realization)
   ! 
-  ! Deallocates variables associated with Richard
+  ! Maps variables in general auxvar to global equivalent.
   ! 
   ! Author: Glenn Hammond
   ! Date: 03/09/11

@@ -1823,7 +1823,7 @@ end subroutine PMWFSetup
   
   IS :: is
   class(waste_form_base_type), pointer :: cur_waste_form
-  PetscInt :: num_waste_forms
+  PetscInt :: num_waste_form_cells
   PetscInt :: num_species
   PetscInt :: size_of_vec
   PetscInt :: i, j, k
@@ -1871,22 +1871,22 @@ end subroutine PMWFSetup
   call this%data_mediator%AddToList(this%realization%tran_data_mediator_list)
   ! create a Vec sized by # waste packages * # waste package cells in region *
   ! # primary dofs influenced by waste package
-  ! count of waste forms
+  ! count of waste form cells
   cur_waste_form => this%waste_form_list
-  num_waste_forms = 0
+  num_waste_form_cells = 0
   size_of_vec = 0
   do
     if (.not.associated(cur_waste_form)) exit
     size_of_vec = size_of_vec + (cur_waste_form%mechanism%num_species * &
                                  cur_waste_form%region%num_cells)
-    num_waste_forms = num_waste_forms + 1
+    num_waste_form_cells = num_waste_form_cells + 1
     cur_waste_form => cur_waste_form%next
   enddo
   call VecCreateSeq(PETSC_COMM_SELF,size_of_vec, &
                     this%data_mediator%vec,ierr);CHKERRQ(ierr)
   call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
 
-  if (num_waste_forms > 0) then
+  if (num_waste_form_cells > 0) then
     allocate(species_indices_in_residual(size_of_vec))
     species_indices_in_residual = 0
     cur_waste_form => this%waste_form_list
@@ -3169,8 +3169,6 @@ subroutine PMWFStrip(this)
     call DeallocateArray(prev_waste_form%scaling_factor)
     nullify(prev_waste_form%mechanism)
     nullify(prev_waste_form%region)
-    !call MPI_Group_free(prev_waste_form%myMPIgroup)
-    !call MPI_Comm_free(prev_waste_form%myMPIcomm)
     deallocate(prev_waste_form)
     nullify(prev_waste_form)
   enddo

@@ -155,6 +155,7 @@ module Output_Aux_module
   public :: OutputOptionCreate, &
             OutputOptionDuplicate, &
             OutputVariableCreate, &
+            OutputVariableInit, &
             OutputMassBalRegionCreate, &
             OutputVariableListCreate, &
             OutputVariableListDuplicate, &
@@ -390,15 +391,7 @@ function OutputVariableCreate1()
   type(output_variable_type), pointer :: output_variable
   
   allocate(output_variable)
-  output_variable%name = ''
-  output_variable%units = ''
-  output_variable%plot_only = PETSC_FALSE
-  output_variable%iformat = 0
-  output_variable%icategory = OUTPUT_GENERIC
-  output_variable%ivar = 0
-  output_variable%isubvar = 0
-  output_variable%isubsubvar = 0
-  nullify(output_variable%next)
+  call OutputVariableInit(output_variable)
   
   OutputVariableCreate1 => output_variable
   
@@ -464,7 +457,7 @@ function OutputVariableCreate3(output_variable)
   
   type(output_variable_type), pointer :: new_output_variable
   
-  allocate(new_output_variable)
+  new_output_variable => OutputVariableCreate()
   new_output_variable%name = output_variable%name
   new_output_variable%units = output_variable%units
   new_output_variable%plot_only = output_variable%plot_only
@@ -478,6 +471,31 @@ function OutputVariableCreate3(output_variable)
   OutputVariableCreate3 => new_output_variable
   
 end function OutputVariableCreate3
+
+! ************************************************************************** !
+
+subroutine OutputVariableInit(output_variable)
+  ! 
+  ! initializes output variable object
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 03/02/17
+  ! 
+  implicit none
+  
+  type(output_variable_type) :: output_variable
+  
+  output_variable%name = ''
+  output_variable%units = ''
+  output_variable%plot_only = PETSC_FALSE
+  output_variable%iformat = 0
+  output_variable%icategory = OUTPUT_GENERIC
+  output_variable%ivar = 0
+  output_variable%isubvar = 0
+  output_variable%isubsubvar = 0
+  nullify(output_variable%next)
+  
+end subroutine OutputVariableInit
 
 ! ************************************************************************** !
 

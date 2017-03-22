@@ -858,8 +858,8 @@ option.o : logging.o option_flow.o option_transport.o pflotran_constants.o
 option_flow.o : pflotran_constants.o
 option_transport.o : pflotran_constants.o
 output.o : connection.o coupler.o debug.o discretization.o field.o \
-           general_aux.o grid.o hdf5.o input_aux.o logging.o option.o \
-           output_aux.o output_common.o output_ekg.o output_hdf5.o \
+           general_aux.o grid.o hdf5.o input_aux.o logging.o material_aux.o \
+           option.o output_aux.o output_common.o output_ekg.o output_hdf5.o \
            output_observation.o output_tecplot.o output_vtk.o patch.o \
            pflotran_constants.o reaction_aux.o realization_base.o \
            realization_subsurface.o region.o string.o units.o utility.o \
@@ -1377,7 +1377,7 @@ well_flow.o : auxvars_flow.o condition.o grid.o hydrostatic_common.o option.o \
 well_flow_energy.o : auxvars_flow_energy.o grid.o hydrostatic_common.o \
                      material_aux.o option.o output_aux.o pflotran_constants.o \
                      utility.o well_base.o well_flow.o
-well_oil_producer.o : eos_water.o grid.o option.o output_aux.o \
+well_oil_producer.o : eos_oil.o eos_water.o grid.o option.o output_aux.o \
                       pflotran_constants.o well_base.o well_flow.o \
                       well_flow_energy.o well_spec_base.o
 well_spec_base.o : input_aux.o option.o pflotran_constants.o string.o units.o \
