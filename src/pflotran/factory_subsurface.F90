@@ -234,7 +234,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     string = 'UFD_BIOSPHERE'
     call InputFindStringInFile(realization%input,option,string)
     call InputFindStringErrorMsg(realization%input,option,string)
-    !call pm_ufd_biosphere%Read(realization%input)
+    call pm_ufd_biosphere%Read(realization%input)
   endif
   call InputDestroy(realization%input)
   
@@ -300,7 +300,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   
   if (associated(pm_ufd_decay)) then
     if (.not.associated(simulation%rt_process_model_coupler)) then
-      option%io_buffer = 'The UFD Decay process model requires reactive &
+      option%io_buffer = 'The UFD_DECAY process model requires reactive &
                          &transport.'
       call printErrMsg(option)
     endif
@@ -324,8 +324,13 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   
   if (associated(pm_ufd_biosphere)) then
     if (.not.associated(simulation%rt_process_model_coupler)) then
-      option%io_buffer = 'The UFD Biosphere process model requires reactive &
+      option%io_buffer = 'The UFD_BIOSPHERE process model requires reactive &
                          &transport.'
+      call printErrMsg(option)
+    endif
+    if (.not.associated(pm_ufd_decay)) then
+      option%io_buffer = 'The UFD_BIOSPHERE process model requires the &
+                         &UFD_DECAY process model.'
       call printErrMsg(option)
     endif
     pmc_ufd_biosphere => PMCThirdPartyCreate()

@@ -1,6 +1,7 @@
 module PM_UFD_Biosphere_class
 
   use PM_Base_class
+  use Region_module
   use Realization_Subsurface_class
   use PFLOTRAN_Constants_module
 
@@ -13,6 +14,10 @@ module PM_UFD_Biosphere_class
   type, public :: ERB_base_type
     class(ERB_base_type), pointer :: next
     character(len=MAXWORDLENGTH) :: name
+    type(region_type), pointer :: region
+    character(len=MAXWORDLENGTH) :: region_name
+    PetscReal :: indv_consumption_rate
+    PetscBool :: incl_unsupported_rads
   contains
   end type ERB_base_type
   
@@ -21,6 +26,7 @@ module PM_UFD_Biosphere_class
   end type ERB_1A_type
   
   type, public, extends(ERB_base_type) :: ERB_1B_type
+    PetscReal :: dilution_factor
   contains
   end type ERB_1B_type
 
@@ -83,6 +89,10 @@ subroutine ERBInit(ERB_model)
   class(ERB_base_type) :: ERB_model
   
   ERB_model%name = ''
+  ERB_model%region_name = ''
+  ERB_model%indv_consumption_rate = UNINITIALIZED_DOUBLE
+  ERB_model%incl_unsupported_rads = PETSC_FALSE
+  nullify(ERB_model%region)
   nullify(ERB_model%next)
 
 end subroutine ERBInit
@@ -122,7 +132,9 @@ function ERB_1B_Create()
   type(ERB_1B_type), pointer :: ERB_1B_Create
   
   allocate(ERB_1B_Create)
-
+  
+  ERB_1B_Create%dilution_factor = UNINITIALIZED_DOUBLE
+  
   call ERBInit(ERB_1B_Create)
   
 end function ERB_1B_Create
@@ -174,6 +186,7 @@ subroutine PMUFDBRead(this,input)
   type(ERB_1A_type), pointer :: new_ERB1A
   class(ERB_base_type), pointer :: cur_ERB
   PetscBool :: added
+
   
   option => this%option
   input%ierr = 0
@@ -193,6 +206,31 @@ subroutine PMUFDBRead(this,input)
     !-----------------------------------------
     !-----------------------------------------
       case('ERB_1A')
+        error_string = trim(error_string) // ',ERB_1A'
+        allocate(new_ERB1A)
+        new_ERB1A => ERB_1A_Create()
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'name',error_string)
+        new_ERB1A%name = adjustl(trim(word))
+        error_string = trim(error_string) // ' ' // trim(new_ERB1A%name)
+        call ReadERBmodel(this,input,option,new_ERB1A,error_string)
+        ! add new ERB_1A model to ERB_list
+        added = PETSC_FALSE
+        if (.not.associated(this%ERB_list)) then
+          this%ERB_list => new_ERB1A
+        else
+          cur_ERB => this%ERB_list
+          do
+            if (.not.associated(cur_ERB)) exit
+            if (.not.associated(cur_ERB%next)) then
+              cur_ERB%next => new_ERB1A
+              added = PETSC_TRUE
+            endif
+            if (added) exit
+            cur_ERB => cur_ERB%next
+          enddo
+        endif
+        nullify(new_ERB1A)
     !-----------------------------------------
     !-----------------------------------------
       case('ERB_1B')
@@ -203,27 +241,8 @@ subroutine PMUFDBRead(this,input)
         call InputErrorMsg(input,option,'name',error_string)
         new_ERB1B%name = adjustl(trim(word))
         error_string = trim(error_string) // ' ' // trim(new_ERB1B%name)
-        do
-          call InputReadPflotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword',error_string)
-          call StringToUpper(word)
-          select case(trim(word))
-          !-----------------------------------
-            case('a')
-
-          !-----------------------------------
-            case('b')
-
-          !-----------------------------------    
-            case default
-              call InputKeywordUnrecognized(word,error_string,option)
-          !----------------------------------- 
-          end select
-        enddo
-        ! error messages ---------------------
+        call ReadERBmodel(this,input,option,new_ERB1B,error_string)
+        ! add new ERB_1B model to ERB_list
         added = PETSC_FALSE
         if (.not.associated(this%ERB_list)) then
           this%ERB_list => new_ERB1B
@@ -252,6 +271,149 @@ end subroutine PMUFDBRead
 
 ! *************************************************************************** !
 
+subroutine ReadERBmodel(this,input,option,ERB_model,error_string)
+  !
+  ! Reads input file parameters for the UFD Biosphere process model.
+  !
+  ! Author: Jenn Frederick
+  ! Date: 03/13/2017
+  !
+
+  use Input_Aux_module
+  use Option_module
+  use String_module
+
+  implicit none
+  
+  class(pm_ufd_biosphere_type) :: this
+  type(input_type), pointer :: input
+  type(option_type), pointer :: option
+  class(ERB_base_type) :: ERB_model
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  character(len=MAXWORDLENGTH) :: word
+  PetscReal :: double
+  
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+    select case(trim(word))
+    !-----------------------------------
+      case('REGION')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'region assignment',error_string)
+        ERB_model%region_name = trim(word)
+    !-----------------------------------
+      case('DILUTION_FACTOR')
+        select type(ERB_model)
+          type is(ERB_1A_type)
+            option%io_buffer = 'DILUTION_FACTOR cannot be specified for ' &
+                               // trim(error_string)
+            call printErrMsg(option)
+          type is(ERB_1B_type)
+            call InputReadDouble(input,option,ERB_model%dilution_factor)
+            call InputErrorMsg(input,option,'DILUTION_FACTOR',error_string)
+        end select
+    !-----------------------------------
+      case('INDIVIDUAL_CONSUMPTION_RATE')
+          call InputReadDouble(input,option,double)
+          call InputErrorMsg(input,option,'INDIVIDUAL_CONSUMPTION_RATE', &
+                             error_string)
+          call InputReadAndConvertUnits(input,double,'L/day', &
+               trim(error_string) // ',INDIVIDUAL_CONSUMPTION_RATE units', &
+               option)
+          ERB_model%indv_consumption_rate = double
+    !-----------------------------------
+      case('INCLUDE_UNSUPPORTED_RADS')
+        ERB_model%incl_unsupported_rads = PETSC_TRUE
+    !-----------------------------------    
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    !----------------------------------- 
+    end select
+  enddo
+
+  ! error messages
+  select type(ERB_model)
+    type is(ERB_1B_type)
+      if (uninitialized(ERB_model%dilution_factor)) then
+        option%io_buffer = 'DILUTION_FACTOR must be specified in the ' // &
+                           trim(error_string) // ' block.'
+        call printErrMsg(option)
+      endif
+  end select
+  
+  if (ERB_model%region_name == '') then
+    option%io_buffer = 'REGION must be specified in the ' // &
+                       trim(error_string) // ' block.'
+    call printErrMsg(option)
+  endif
+  if (uninitialized(ERB_model%indv_consumption_rate)) then
+    option%io_buffer = 'INDIVIDUAL_CONSUMPTION_RATE must be specified &
+                       &in the ' // trim(error_string) // ' block.'
+    call printErrMsg(option)
+  endif
+  
+end subroutine ReadERBmodel
+
+! *************************************************************************** !
+
+subroutine AssociateRegion(this,region_list)
+  ! 
+  ! Associates the ERB model to its assigned region via the REGION keyword.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/22/2017
+  !
+
+  use Region_module
+  use Option_module
+  use String_module
+  
+  implicit none
+  
+  class(pm_ufd_biosphere_type) :: this
+  type(region_list_type), pointer :: region_list
+  
+  type(region_type), pointer :: cur_region
+  class(ERB_base_type), pointer :: cur_ERB
+  type(option_type), pointer :: option
+  PetscBool :: matched
+  
+  option => this%option
+  
+  cur_ERB => this%ERB_list
+  do
+    if (.not.associated(cur_ERB)) exit
+      cur_region => region_list%first     
+      do
+        if (.not.associated(cur_region)) exit
+        matched = PETSC_FALSE
+        if (StringCompare(trim(cur_region%name), &
+                          trim(cur_ERB%region_name))) then
+          cur_ERB%region => cur_region
+          matched = PETSC_TRUE
+        endif
+        if (matched) exit
+        cur_region => cur_region%next
+      enddo      
+      if (.not.associated(cur_ERB%region)) then
+        option%io_buffer = 'ERB model (' // trim(cur_ERB%name) // ') REGION ' &
+                           // trim(cur_ERB%region_name) // ' not found among &
+                           &defined regions.'
+        call printErrMsg(option)
+      endif
+    cur_ERB => cur_ERB%next
+  enddo
+  
+end subroutine AssociateRegion
+
+! *************************************************************************** !
+
 subroutine PMUFDBSetup(this)
   !
   ! 
@@ -263,6 +425,9 @@ subroutine PMUFDBSetup(this)
   implicit none
   
   class(pm_ufd_biosphere_type) :: this
+  
+  ! point the ERB model's regions to the desired regions 
+  call AssociateRegion(this,this%realization%patch%region_list)
   
 end subroutine PMUFDBSetup
 
@@ -301,7 +466,7 @@ subroutine PMUFDBInitializeTimestep(this)
   dt = this%option%flow_dt
   
   if (this%option%print_screen_flag) then
-    write(*,'(/,2("=")," UFD BIOSPHERE MODEL ",45("="))')
+    write(*,'(/,2("=")," UFD BIOSPHERE MODEL ",57("="))')
   endif
 
   
