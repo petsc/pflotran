@@ -69,8 +69,9 @@ module PM_WIPP_SrcSink_class
     PetscReal :: humid_biodeg_rate
     PetscReal :: volume
     PetscInt :: id
-    PetscMPIInt :: myMPIgroup_id
     PetscMPIInt :: myMPIcomm
+    PetscMPIInt :: myMPIgroup
+    PetscInt, pointer :: rank_list(:)
     type(srcsink_panel_type), pointer :: next
   end type srcsink_panel_type
 
@@ -172,6 +173,7 @@ function WastePanelCreate()
   nullify(WastePanelCreate%scaling_factor)
   nullify(WastePanelCreate%gas_generation_rate)
   nullify(WastePanelCreate%brine_generation_rate)
+  nullify(WastePanelCreate%rank_list)
   call InventoryInit(WastePanelCreate%inventory)
   WastePanelCreate%name = ''
   WastePanelCreate%region_name = ''
@@ -182,7 +184,7 @@ function WastePanelCreate()
   WastePanelCreate%inundated_biodeg_rate = UNINITIALIZED_DOUBLE
   WastePanelCreate%humid_biodeg_rate = UNINITIALIZED_DOUBLE
   WastePanelCreate%id = 0
-  WastePanelCreate%myMPIgroup_id = 0
+  WastePanelCreate%myMPIgroup = 0
   WastePanelCreate%myMPIcomm = 0
 
 end function WastePanelCreate
@@ -1016,14 +1018,18 @@ subroutine PMWSSSetup(this)
   type(srcsink_panel_type), pointer :: cur_waste_panel, prev_waste_panel
   type(srcsink_panel_type), pointer :: next_waste_panel
   PetscInt :: waste_panel_id
+  PetscInt :: i, j
   PetscBool :: local
   PetscErrorCode :: ierr
-  PetscMPIInt :: newcomm
+  PetscMPIInt :: newcomm_size
+  PetscInt, pointer :: ranks(:)
   
   option => this%realization%option
   
   ! point the waste panel region to the desired region 
   call AssociateRegion(this,this%realization%patch%region_list)
+  
+  allocate(ranks(option%mycommsize))
   
   waste_panel_id = 0
   nullify(prev_waste_panel)
@@ -1037,19 +1043,32 @@ subroutine PMWSSSetup(this)
           local = PETSC_TRUE
       endif
     endif
+    ranks(:) = 0
+    newcomm_size = 0
     if (local) then
-      ! assign the waste panel ID number and MPI communicator
       cur_waste_panel%id = waste_panel_id
-      cur_waste_panel%myMPIgroup_id = waste_panel_id
-      call MPI_Comm_split(option%mycomm,cur_waste_panel%myMPIgroup_id, &
-                          option%myrank,newcomm,ierr)
+      ranks(option%myrank+1) = 1
     else
       cur_waste_panel%id = 0
-      cur_waste_panel%myMPIgroup_id = 0
-      call MPI_Comm_split(option%mycomm,MPI_UNDEFINED,option%myrank, &
-                          newcomm,ierr)
+      ranks(option%myrank+1) = 0
     endif
-    cur_waste_panel%myMPIcomm = newcomm
+    ! count the number of processes that own the waste panel
+    call MPI_Allreduce(MPI_IN_PLACE,ranks,option%mycommsize,MPI_INTEGER, &
+                       MPI_SUM,option%mycomm,ierr)
+    newcomm_size = sum(ranks)
+    allocate(cur_waste_panel%rank_list(newcomm_size))
+    j = 0
+    do i = 1,option%mycommsize
+      if (ranks(i) == 1) then
+        j = j + 1
+        cur_waste_panel%rank_list(j) = (i - 1)
+      endif
+    enddo
+    ! create an MPI group and communicator for each waste panel
+    call MPI_Group_incl(option%mygroup,newcomm_size,cur_waste_panel%rank_list, &
+                        cur_waste_panel%myMPIgroup,ierr)
+    call MPI_Comm_create(option%mycomm,cur_waste_panel%myMPIgroup, &
+                         cur_waste_panel%myMPIcomm,ierr)
     if (local) then
       call SetRegionScaling(this,cur_waste_panel)
       call InventoryAllocate(cur_waste_panel%inventory, &
@@ -1075,6 +1094,8 @@ subroutine PMWSSSetup(this)
       cur_waste_panel => next_waste_panel
     endif
   enddo
+  
+  deallocate(ranks)
   
 end subroutine PMWSSSetup
 
