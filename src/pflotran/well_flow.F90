@@ -20,6 +20,7 @@ module Well_Flow_class
     PetscReal :: pw_ref                          ! [Pa] well pressure at reference elevation
     PetscInt :: hydrostatic_method               ! it defines the mthod used in the well hydrostatic computation
     PetscReal, pointer :: dw_kg_ref(:)           ! dw_kg_ref(iphase) [kg/m3] well fluid density of iphase at reference elevation
+    PetscReal, pointer :: den_kg_surf(:)         ! well fluid densities at surface [kg/sm3]
     PetscReal, pointer :: q_fld(:)               ! q_fld(iphase)  [m3/s] well fluid flow rates of iphase
     PetscReal, pointer :: mr_fld(:)              ! mr_fld(iphase) [kg/s] well fluid mass rates of iphase
     PetscReal, pointer :: conn_h(:)              ! connection hydrostatic pressure corrections (local)
@@ -94,6 +95,8 @@ subroutine WellFlowInit(this,option)
 
   allocate( this%dw_kg_ref(option%nphase) );
   this%dw_kg_ref = 0.0d0;
+  allocate( this%den_kg_surf(option%nphase) );
+  this%den_kg_surf = UNINITIALIZED_DOUBLE
   allocate( this%q_fld(option%nphase) );
   this%q_fld = 0.0d0;
   allocate( this%mr_fld(option%nphase) );
@@ -271,7 +274,7 @@ subroutine FlowPressRef(this,grid,phase,option)
       local_id = this%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
-                         phase)
+                         phase,ZERO_INTEGER,ghosted_id)
       select case(this%spec%cntrl_var)
         case(CNTRL_VAR_VOL_RATE)
           press_div_loc = press_div_loc + this%conn_factors(iconn) * mob  
@@ -290,7 +293,7 @@ subroutine FlowPressRef(this,grid,phase,option)
       local_id = this%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
-                         phase)
+                         phase,ZERO_INTEGER,ghosted_id)
       if(this%conn_status(iconn) == CONN_STATUS_OPEN ) then
         ! vol_rate > 0 for fluid entering the well  
 #ifdef WELL_DEBUG
@@ -372,7 +375,7 @@ subroutine FlowPressRefQ(this,grid,phase,option)
       local_id = this%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
-                         phase)
+                         phase,ZERO_INTEGER,ghosted_id)
 
       press_div_loc = press_div_loc + this%conn_factors(iconn) * mob  
 
@@ -387,7 +390,7 @@ subroutine FlowPressRefQ(this,grid,phase,option)
       local_id = this%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
-                         phase)
+                         phase,ZERO_INTEGER,ghosted_id)
       if(this%conn_status(iconn) == CONN_STATUS_OPEN ) then
         ! vol_rate > 0 for fluid entering the well  
         conn_loc = conn_loc + this%conn_factors(iconn) * mob * &
@@ -455,7 +458,7 @@ subroutine FlowPressRefMRInj(this,grid,phase,option)
       local_id = this%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
-                         phase)
+                         phase,ZERO_INTEGER,ghosted_id)
 
       press_div_loc = press_div_loc + this%conn_factors(iconn) * mob 
 
@@ -471,7 +474,7 @@ subroutine FlowPressRefMRInj(this,grid,phase,option)
       local_id = this%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
-                         phase)
+                         phase,ZERO_INTEGER,ghosted_id)
       if(this%conn_status(iconn) == CONN_STATUS_OPEN ) then
         ! vol_rate > 0 for fluid entering the well  
         conn_loc = conn_loc + this%conn_factors(iconn) * mob * &
@@ -545,7 +548,7 @@ subroutine FlowPressRefMRProd(this,grid,phase,option)
       local_id = this%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
-                         phase)
+                         phase,ZERO_INTEGER,ghosted_id)
 
       press_div_loc = press_div_loc + this%conn_factors(iconn) * mob * &
                   this%flow_auxvars(ZERO_INTEGER,ghosted_id)%den_kg(phase)
@@ -561,7 +564,7 @@ subroutine FlowPressRefMRProd(this,grid,phase,option)
       local_id = this%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
-                         phase)
+                         phase,ZERO_INTEGER,ghosted_id)
       if(this%conn_status(iconn) == CONN_STATUS_OPEN ) then
         ! vol_rate > 0 for fluid entering the well  
          conn_loc = conn_loc + this%conn_factors(iconn) * mob * &
@@ -618,7 +621,7 @@ subroutine FlowQPhase(this,grid,phase,option)
       local_id = this%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
-                         phase)
+                         phase,ZERO_INTEGER,ghosted_id)
       if(this%conn_status(iconn) == CONN_STATUS_OPEN ) then
         ! vol_rate > 0 for fluid entering the well  
         vol_rate_lc = vol_rate_lc + this%conn_factors(iconn) * mob * &
@@ -675,7 +678,7 @@ subroutine FlowMRPhase(this,grid,phase,option)
       local_id = this%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       mob = this%ConnMob(this%flow_auxvars(ZERO_INTEGER,ghosted_id)%mobility, &
-                         phase)
+                         phase,ZERO_INTEGER,ghosted_id)
       if(this%conn_status(iconn) == CONN_STATUS_OPEN ) then
         ! mass_rate > 0 for fluid entering the well  
         mass_rate_lc = mass_rate_lc + this%conn_factors(iconn) * mob * &
@@ -1037,7 +1040,7 @@ end subroutine WellFlowInitDensity
 
 !*****************************************************************************!
 
-function WellFlowConnMob(this,mobility,iphase)
+function WellFlowConnMob(this,mobility,iphase,dof,ghosted_id)
 
   ! mobilty computation for producers
   ! to be overwritten (or replaced) for injectors
@@ -1049,8 +1052,10 @@ function WellFlowConnMob(this,mobility,iphase)
   implicit none
 
   class(well_flow_type) :: this 
-  PetscInt :: iphase  !not required for this WellWatInjConnMob extension
+  PetscInt :: iphase
   PetscReal :: mobility(:)
+  PetscInt :: ghosted_id !not used in this function
+  PetscInt :: dof        !not used in this function 
 
   PetscReal :: WellFlowConnMob
 
@@ -1180,6 +1185,7 @@ subroutine FlowWellStrip(well)
   class(well_flow_type) :: well
 
   call DeallocateArray(well%dw_kg_ref)
+  call DeallocateArray(well%den_kg_surf)
   call DeallocateArray(well%q_fld)
   call DeallocateArray(well%mr_fld)
   call DeallocateArray(well%conn_h)

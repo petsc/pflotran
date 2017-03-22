@@ -362,7 +362,7 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
   call EOSWaterViscosity(toil_auxvar%temp,cell_pressure,wat_sat_pres,visl,ierr)
 
   toil_auxvar%mobility(lid) = krl/visl
-
+  toil_auxvar%viscosity(lid) = visl
 
   ! compute oil mobility (rel. perm / viscostiy)
   call characteristic_curves%oil_rel_perm_function% &
@@ -372,7 +372,7 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
                        toil_auxvar%den(oid), viso, ierr)
 
   toil_auxvar%mobility(oid) = kro/viso
-
+  toil_auxvar%viscosity(oid) = viso
 
 end subroutine TOilImsAuxVarCompute
 

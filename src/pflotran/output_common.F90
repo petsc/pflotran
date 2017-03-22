@@ -24,25 +24,25 @@ module Output_Common_module
   PetscInt, parameter, public :: TECPLOT_REAL = 1  
   
   public :: OutputCommonInit, &
-            OutputGetVarFromArray, &
-            OutputGetVarFromArrayAtCoord, &
+            OutputGetVariableArray, &
+            OutputGetVariableAtCell, &
+            OutputGetVariableAtCoord, &
             OutputGetCellCenteredVelocities, &
-            ConvertArrayToNatural, &
-            GetCellCoordinates, &
-            GetVertexCoordinates, &
+            OutputConvertArrayToNatural, &
+            OutputGetCellCoordinates, &
+            OutputGetVertexCoordinates, &
             OutputFilenameID, &
             OutputFilename, &
-            GetCellConnections, &
+            OutputGetCellVertices, &
             OutputXMFHeader, &
             OutputXMFAttribute, &
             OutputXMFFooter, &
             OutputGetFaceVelUGrid, &
             OutputGetFaceFlowrateUGrid, &
-            ExplicitGetCellCoordinates, &
             OutputGetExplicitFlowrates, &
-            GetCellConnectionsExplicit, &
-            OutputXMFHeaderExplicit, &
-            OutputXMFAttributeExplicit, &
+            OutputGetCellVerticesExplicit, &
+!            OutputXMFHeaderExplicit, &
+!            OutputXMFAttributeExplicit, &
             OutputGetExplicitIDsFlowrates, &
             OutputGetExplicitAuxVars, &
             OutputGetExplicitCellInfo
@@ -157,7 +157,7 @@ end function OutputFilename
 
 ! ************************************************************************** !
 
-subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
+subroutine OutputGetVariableArray(realization_base,vec,variable)
   ! 
   ! Extracts variables indexed by ivar from a multivar array
   ! 
@@ -166,9 +166,6 @@ subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
   ! 
 
   use Realization_Base_class, only : RealizationGetVariable
-  use Grid_module
-  use Option_module
-  use Field_module
 
   implicit none
 
@@ -178,25 +175,24 @@ subroutine OutputGetVarFromArray(realization_base,vec,ivar,isubvar,isubvar1)
 
   class(realization_base_type) :: realization_base
   Vec :: vec
-  PetscInt :: ivar
-  PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
+  type(output_variable_type) :: variable
   
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_output_get_var_from_array, &
                           ierr);CHKERRQ(ierr)
                         
-  call RealizationGetVariable(realization_base,vec,ivar,isubvar,isubvar1)
+  call RealizationGetVariable(realization_base,vec,variable%ivar, &
+                              variable%isubvar,variable%isubsubvar)
 
   call PetscLogEventEnd(logging%event_output_get_var_from_array, &
                         ierr);CHKERRQ(ierr)
   
-end subroutine OutputGetVarFromArray
+end subroutine OutputGetVariableArray
 
 ! ************************************************************************** !
 
-subroutine ConvertArrayToNatural(indices,array,local_size,global_size,option)
+subroutine OutputConvertArrayToNatural(indices,array,local_size,global_size,option)
   ! 
   ! Converts an array  to natural ordering
   ! 
@@ -244,12 +240,11 @@ subroutine ConvertArrayToNatural(indices,array,local_size,global_size,option)
 
   call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
   
-end subroutine ConvertArrayToNatural
+end subroutine OutputConvertArrayToNatural
 
 ! ************************************************************************** !
 
-function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
-                                      num_cells,ghosted_ids,isubvar1)
+function OutputGetVariableAtCell(realization_base,ghosted_id,variable)
   ! 
   ! Extracts variables indexed by ivar from a multivar array
   ! 
@@ -263,17 +258,48 @@ function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
 
   implicit none
   
-  PetscReal :: OutputGetVarFromArrayAtCoord
+  PetscReal :: OutputGetVariableAtCell
   class(realization_base_type) :: realization_base
-  PetscInt :: ivar
-  PetscInt :: isubvar
-  PetscInt, optional :: isubvar1
+  PetscInt :: ghosted_id
+  type(output_variable_type) :: variable
+ 
+  OutputGetVariableAtCell = &
+    RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                 variable%ivar,variable%isubvar, &
+                                 variable%isubsubvar)
+
+end function OutputGetVariableAtCell
+
+! ************************************************************************** !
+
+function OutputGetVariableAtCoord(realization_base,variable,x,y,z, &
+                                  num_cells,ghosted_ids)
+  ! 
+  ! Extracts variables indexed by ivar from a multivar array
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 02/11/08
+  ! 
+
+  use Realization_Base_class, only : RealizGetVariableValueAtCell
+  use Grid_module
+  use Option_module
+
+  implicit none
+  
+  PetscReal :: OutputGetVariableAtCoord
+  class(realization_base_type) :: realization_base
+  type(output_variable_type) :: variable
   PetscReal :: x,y,z
   PetscInt :: num_cells
   PetscInt :: ghosted_ids(num_cells)
 
   type(grid_type), pointer :: grid
-  PetscInt :: icell, ghosted_id
+  PetscInt :: icell
+  PetscInt :: ghosted_id
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: isubsubvar
   PetscReal :: dx, dy, dz
   PetscReal :: value, sum_value
   PetscReal :: weight, sum_weight, sum_root
@@ -282,6 +308,10 @@ function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
   sum_weight = 0.d0
   
   grid => realization_base%patch%grid
+  
+  ivar = variable%ivar
+  isubvar = variable%isubvar
+  isubsubvar = variable%isubsubvar
 
   do icell=1, num_cells
     ghosted_id = ghosted_ids(icell)
@@ -290,8 +320,8 @@ function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
     dz = z-grid%z(ghosted_id)
     sum_root = sqrt(dx*dx+dy*dy+dz*dz)
     value = 0.d0
-    value = RealizGetVariableValueAtCell(realization_base,ivar,isubvar,ghosted_id, &
-      isubvar1)
+    value = RealizGetVariableValueAtCell(realization_base,ghosted_id, &
+                                         ivar,isubvar,isubsubvar)
     if (sum_root < 1.d-40) then ! bail because it is right on this coordinate
       sum_weight = 1.d0
       sum_value = value
@@ -302,9 +332,9 @@ function OutputGetVarFromArrayAtCoord(realization_base,ivar,isubvar,x,y,z, &
     sum_value = sum_value + weight * value
   enddo
   
-  OutputGetVarFromArrayAtCoord = sum_value/sum_weight
+  OutputGetVariableAtCoord = sum_value/sum_weight
 
-end function OutputGetVarFromArrayAtCoord
+end function OutputGetVariableAtCoord
 
 ! ************************************************************************** !
 
@@ -362,7 +392,7 @@ end subroutine OutputGetCellCenteredVelocities
 
 ! ************************************************************************** !
 
-subroutine GetCellCoordinates(grid,vec,direction)
+subroutine OutputGetCellCoordinates(grid,vec,direction)
   ! 
   ! Extracts coordinates of cells into a PetscVec
   ! 
@@ -404,11 +434,11 @@ subroutine GetCellCoordinates(grid,vec,direction)
   
   call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
   
-end subroutine GetCellCoordinates
+end subroutine OutputGetCellCoordinates
 
 ! ************************************************************************** !
 
-subroutine GetVertexCoordinates(grid,vec,direction,option)
+subroutine OutputGetVertexCoordinates(grid,vec,direction,option)
   ! 
   ! Extracts vertex coordinates of cells into a PetscVec
   ! 
@@ -481,90 +511,11 @@ subroutine GetVertexCoordinates(grid,vec,direction,option)
     call VecAssemblyEnd(vec,ierr);CHKERRQ(ierr)
   endif
   
-end subroutine GetVertexCoordinates
+end subroutine OutputGetVertexCoordinates
 
 ! ************************************************************************** !
 
-subroutine ExplicitGetCellCoordinates(grid,vec,direction,option)
-  ! 
-  ! Extracts cell coordinates for explicit grid
-  ! into a PetscVec
-  ! 
-  ! Author: Satish Karra, LANL
-  ! Date: 12/11/12
-  ! 
-
-  use Grid_module
-  use Option_module
-  use Variables_module, only : X_COORDINATE, Y_COORDINATE, Z_COORDINATE
-  
-  implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-  
-  type(grid_type) :: grid
-  Vec :: vec
-  PetscInt :: direction
-  type(option_type) :: option
-  
-  PetscInt :: ivertex
-  PetscReal, pointer :: vec_ptr(:)
-  PetscInt, allocatable :: indices(:)
-  PetscReal, allocatable :: values(:)
-  PetscErrorCode :: ierr  
-  
-  if (option%mycommsize == 1) then
-    call VecGetArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
-    select case(direction)
-      case(X_COORDINATE)
-        do ivertex = 1,grid%ngmax
-          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
-        enddo
-      case(Y_COORDINATE)
-        do ivertex = 1,grid%ngmax
-          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
-        enddo
-      case(Z_COORDINATE)
-        do ivertex = 1,grid%ngmax
-          vec_ptr(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
-        enddo
-    end select
-    call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
-  else
-    ! initialize to UNINITIALIZED_INTEGER to catch bugs
-    call VecSet(vec,UNINITIALIZED_DOUBLE,ierr);CHKERRQ(ierr)
-    allocate(values(grid%nlmax))
-    allocate(indices(grid%nlmax))
-    select case(direction)
-      case(X_COORDINATE)
-        do ivertex = 1,grid%nlmax
-          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%x
-        enddo
-      case(Y_COORDINATE)
-        do ivertex = 1,grid%nlmax
-          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%y
-        enddo
-      case(Z_COORDINATE)
-        do ivertex = 1,grid%nlmax
-          values(ivertex) = grid%unstructured_grid%explicit_grid%vertex_coordinates(ivertex)%z
-        enddo
-    end select
-    indices(:) = grid%unstructured_grid%cell_ids_natural(:)-1
-    call VecSetValues(vec,grid%nlmax,indices,values,INSERT_VALUES, &
-                      ierr);CHKERRQ(ierr)
-    call VecAssemblyBegin(vec,ierr);CHKERRQ(ierr)
-    deallocate(values)
-    deallocate(indices)
-    call VecAssemblyEnd(vec,ierr);CHKERRQ(ierr)
-  endif
-  
-  
-end subroutine ExplicitGetCellCoordinates
-
-! ************************************************************************** !
-
-subroutine GetCellConnections(grid, vec)
+subroutine OutputGetCellVertices(grid, vec)
   ! 
   ! This routine returns a vector containing vertex ids in natural order of
   ! local cells for unstructured grid.
@@ -596,6 +547,7 @@ subroutine GetCellConnections(grid, vec)
   
   call VecGetArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
+  
   ! initialize
   vec_ptr = UNINITIALIZED_DOUBLE
   do local_id=1, ugrid%nlmax
@@ -652,11 +604,11 @@ subroutine GetCellConnections(grid, vec)
 
   call VecRestoreArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
-end subroutine GetCellConnections
+end subroutine OutputGetCellVertices
 
 ! ************************************************************************** !
 
-subroutine GetCellConnectionsExplicit(grid, vec)
+subroutine OutputGetCellVerticesExplicit(grid, vec)
   ! 
   ! returns a vector containing vertex ids in natural order of
   ! local cells for unstructured grid of explicit type
@@ -679,7 +631,7 @@ subroutine GetCellConnectionsExplicit(grid, vec)
   type(unstructured_explicit_type), pointer :: explicit_grid
   Vec :: vec
   PetscInt :: offset
-  PetscInt :: ivertex, iconn
+  PetscInt :: ivertex, icell
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
@@ -690,56 +642,56 @@ subroutine GetCellConnectionsExplicit(grid, vec)
 
   ! initialize
   vec_ptr = UNINITIALIZED_DOUBLE
-  do iconn = 1, explicit_grid%num_elems
-    select case(explicit_grid%cell_connectivity(0,iconn))
+  do icell = 1, explicit_grid%num_elems
+    select case(explicit_grid%cell_vertices(0,icell))
       case(8)
-        offset = (iconn-1)*8
+        offset = (icell-1)*8
         do ivertex = 1, 8
           vec_ptr(offset + ivertex) = &
-            explicit_grid%cell_connectivity(ivertex,iconn)
+            explicit_grid%cell_vertices(ivertex,icell)
         enddo
       case(6)
-        offset = (iconn-1)*8
+        offset = (icell-1)*8
         do ivertex = 1, 6
           vec_ptr(offset + ivertex) = &
-            explicit_grid%cell_connectivity(ivertex,iconn)
+            explicit_grid%cell_vertices(ivertex,icell)
         enddo
         vec_ptr(offset + 7) = 0
         vec_ptr(offset + 8) = 0
       case (5)
-        offset = (iconn-1)*8
+        offset = (icell-1)*8
         do ivertex = 1, 5
           vec_ptr(offset + ivertex) = &
-            explicit_grid%cell_connectivity(ivertex,iconn)
+            explicit_grid%cell_vertices(ivertex,icell)
         enddo
         do ivertex = 6, 8
           vec_ptr(offset + ivertex) = 0
         enddo
       case (4)
         if (grid%unstructured_grid%grid_type /= TWO_DIM_GRID) then
-          offset = (iconn-1)*8
+          offset = (icell-1)*8
           do ivertex = 1, 4
             vec_ptr(offset + ivertex) = &
-              explicit_grid%cell_connectivity(ivertex,iconn)
+              explicit_grid%cell_vertices(ivertex,icell)
           enddo
           do ivertex = 5, 8
             vec_ptr(offset + ivertex) = 0
           enddo
         else
-          offset = (iconn-1)*8
+          offset = (icell-1)*8
           do ivertex = 1, 4
             vec_ptr(offset + ivertex) = &
-              explicit_grid%cell_connectivity(ivertex,iconn)
+              explicit_grid%cell_vertices(ivertex,icell)
           enddo
           do ivertex = 5, 8
             vec_ptr(offset + ivertex) = 0
           enddo          
         endif
       case (3)
-        offset = (iconn-1)*8
+        offset = (icell-1)*8
         do ivertex = 1, 3
           vec_ptr(offset + ivertex) = &
-           explicit_grid%cell_connectivity(ivertex,iconn)
+           explicit_grid%cell_vertices(ivertex,icell)
         enddo
         do ivertex = 4, 8
           vec_ptr(offset + ivertex) = 0
@@ -749,11 +701,12 @@ subroutine GetCellConnectionsExplicit(grid, vec)
 
   call VecRestoreArrayF90( vec, vec_ptr, ierr);CHKERRQ(ierr)
 
-end subroutine GetCellConnectionsExplicit
+end subroutine OutputGetCellVerticesExplicit
 
 ! ************************************************************************** !
 
-subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename)
+subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename, &
+                           include_cell_centers)
   ! 
   ! This subroutine writes header to a .xmf file
   ! 
@@ -763,193 +716,104 @@ subroutine OutputXMFHeader(fid,time,nmax,xmf_vert_len,ngvert,filename)
 
   implicit none
 
-  PetscInt :: fid, vert_count
   PetscReal :: time
-  PetscInt :: nmax,xmf_vert_len,ngvert
+  PetscInt :: fid, nmax, xmf_vert_len, ngvert
   character(len=MAXSTRINGLENGTH) :: filename
+  PetscBool :: include_cell_centers
 
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word
+  PetscInt :: i
   
-  string="<?xml version=""1.0"" ?>"
+  string='<?xml version="1.0" ?>'
   write(fid,'(a)') trim(string)
   
-  string="<!DOCTYPE Xdmf SYSTEM ""Xdmf.dtd"" []>"
+  string='<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>'
   write(fid,'(a)') trim(string)
 
-  string="<Xdmf>"
+  string='<Xdmf>'
   write(fid,'(a)') trim(string)
 
-  string="  <Domain>"
+  string='  <Domain>'
   write(fid,'(a)') trim(string)
 
-  string="    <Grid Name=""Mesh"">"
+  string='    <Grid Name="Mesh">'
   write(fid,'(a)') trim(string)
 
   write(string2,'(es13.5)') time
-  string="      <Time Value = """ // trim(adjustl(string2)) // """ />"
+  string='      <Time Value = "' // trim(adjustl(string2)) // '" />'
   write(fid,'(a)') trim(string)
 
   write(string2,*) nmax
-  string="      <Topology Type=""Mixed"" NumberOfElements=""" // &
-    trim(adjustl(string2)) // """ >"
+  string='      <Topology Type="Mixed" NumberOfElements="' // &
+    trim(adjustl(string2)) // '">'
   write(fid,'(a)') trim(string)
 
   write(string2,*) xmf_vert_len
-  string="        <DataItem Format=""HDF"" DataType=""Int"" Dimensions=""" // &
-    trim(adjustl(string2)) // """>"
+  string='        <DataItem Format="HDF" DataType="Int" Dimensions="' // &
+    trim(adjustl(string2)) // '">'
   write(fid,'(a)') trim(string)
 
-  string="          "//trim(filename) //":/Domain/Cells"
+  string='          ' // trim(filename) // ':/Domain/Cells'
   write(fid,'(a)') trim(string)
 
-  string="        </DataItem>"
+  string='        </DataItem>'
   write(fid,'(a)') trim(string)
 
-  string="      </Topology>"
+  string='      </Topology>'
   write(fid,'(a)') trim(string)
 
-  string="      <Geometry GeometryType=""XYZ"">"
+  string='      <Geometry GeometryType="XYZ">'
   write(fid,'(a)') trim(string)
 
   write(string2,*) ngvert
-  string="        <DataItem Format=""HDF"" Dimensions=""" // trim(adjustl(string2)) // " 3"">"
+  string='        <DataItem Format="HDF" Dimensions="' // &
+         trim(adjustl(string2)) // ' 3">'
   write(fid,'(a)') trim(string)
 
-  string="          "//trim(filename) //":/Domain/Vertices"
+  string='          ' // trim(filename) // ':/Domain/Vertices'
   write(fid,'(a)') trim(string)
 
-  string="        </DataItem>"
+  string='        </DataItem>'
   write(fid,'(a)') trim(string)
 
   string="      </Geometry>"
   write(fid,'(a)') trim(string)
 
-  string="      <Attribute Name=""XC"" AttributeType=""Scalar""  Center=""Cell"">"
-  write(fid,'(a)') trim(string)
+  if (include_cell_centers) then
 
-  write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
-  write(fid,'(a)') trim(string)
+    do i = 1, 3
+      select case(i)
+        case(1)
+          word = 'XC'
+        case(2)
+          word = 'YC'
+        case(3)
+          word = 'ZC'
+      end select
+ 
+      string='      <Attribute Name="' // trim(word) // &
+             '" AttributeType="Scalar"  Center="Cell">'
+      write(fid,'(a)') trim(string)
+    
+      write(string2,*) nmax
+      string='        <DataItem Dimensions="' // trim(adjustl(string2)) // &
+             ' 1" Format="HDF"> '
+      write(fid,'(a)') trim(string)
+    
+      string='          ' // trim(filename) // ':/Domain/' // trim(word)
+      write(fid,'(a)') trim(string)
+    
+      string='        </DataItem> ' 
+      write(fid,'(a)') trim(string)
+    
+      string='      </Attribute>'
+      write(fid,'(a)') trim(string)
+    enddo
 
-  string="          "//trim(filename) //":/Domain/XC"
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem> " 
-  write(fid,'(a)') trim(string)
-
-  string="      </Attribute>"
-  write(fid,'(a)') trim(string)
-
-  string="      <Attribute Name=""YC"" AttributeType=""Scalar""  Center=""Cell"">"
-  write(fid,'(a)') trim(string)
-
-  write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
-  write(fid,'(a)') trim(string)
-
-  string="          "//trim(filename) //":/Domain/YC"
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem> " 
-  write(fid,'(a)') trim(string)
-
-  string="      </Attribute>"
-  write(fid,'(a)') trim(string)
-
-  string="      <Attribute Name=""ZC"" AttributeType=""Scalar""  Center=""Cell"">"
-  write(fid,'(a)') trim(string)
-
-  write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
-  write(fid,'(a)') trim(string)
-
-  string="          "//trim(filename) //":/Domain/ZC"
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem> " 
-  write(fid,'(a)') trim(string)
-
-  string="      </Attribute>"
-  write(fid,'(a)') trim(string)
-
+  endif
+    
 end subroutine OutputXMFHeader
-
-! ************************************************************************** !
-
-subroutine OutputXMFHeaderExplicit(fid,time,nmax,xmf_vert_len,ngvert,filename)
-  ! 
-  ! Header for xdmf output with explicit grid
-  ! 
-  ! Author: Satish Karra
-  ! Date: 07/17/13
-  ! 
-
-  implicit none
-
-  PetscInt :: fid, vert_count
-  PetscReal :: time
-  PetscInt :: nmax,xmf_vert_len,ngvert
-  character(len=MAXSTRINGLENGTH) :: filename
-
-  character(len=MAXSTRINGLENGTH) :: string, string2
-  character(len=MAXWORDLENGTH) :: word
-  
-  string="<?xml version=""1.0"" ?>"
-  write(fid,'(a)') trim(string)
-  
-  string="<!DOCTYPE Xdmf SYSTEM ""Xdmf.dtd"" []>"
-  write(fid,'(a)') trim(string)
-
-  string="<Xdmf>"
-  write(fid,'(a)') trim(string)
-
-  string="  <Domain>"
-  write(fid,'(a)') trim(string)
-
-  string="    <Grid Name=""Mesh"">"
-  write(fid,'(a)') trim(string)
-
-  write(string2,'(es13.5)') time
-  string="      <Time Value = """ // trim(adjustl(string2)) // """ />"
-  write(fid,'(a)') trim(string)
-
-  write(string2,*) nmax
-  string="      <Topology Type=""Mixed"" NumberOfElements=""" // &
-    trim(adjustl(string2)) // """ >"
-  write(fid,'(a)') trim(string)
-
-  write(string2,*) xmf_vert_len
-  string="        <DataItem Format=""HDF"" DataType=""Int"" Dimensions=""" // &
-    trim(adjustl(string2)) // """>"
-  write(fid,'(a)') trim(string)
-
-  string="          "//trim(filename) //":/Domain/Cells"
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem>"
-  write(fid,'(a)') trim(string)
-
-  string="      </Topology>"
-  write(fid,'(a)') trim(string)
-
-  string="      <Geometry GeometryType=""XYZ"">"
-  write(fid,'(a)') trim(string)
-
-  write(string2,*) ngvert
-  string="        <DataItem Format=""HDF"" Dimensions=""" // trim(adjustl(string2)) // " 3"">"
-  write(fid,'(a)') trim(string)
-
-  string="          "//trim(filename) //":/Domain/Vertices"
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem>"
-  write(fid,'(a)') trim(string)
-
-  string="      </Geometry>"
-  write(fid,'(a)') trim(string)
-
-end subroutine OutputXMFHeaderExplicit
 
 ! ************************************************************************** !
 
@@ -967,95 +831,59 @@ subroutine OutputXMFFooter(fid)
 
   character(len=MAXSTRINGLENGTH) :: string
 
-  string="    </Grid>"
+  string='    </Grid>'
   write(fid,'(a)') trim(string)
 
-  string="  </Domain>"
+  string='  </Domain>'
   write(fid,'(a)') trim(string)
 
-  string="</Xdmf>"
+  string='</Xdmf>'
   write(fid,'(a)') trim(string)
 
 end subroutine OutputXMFFooter
 
 ! ************************************************************************** !
 
-subroutine OutputXMFAttribute(fid,nmax,attname,att_datasetname)
-  ! 
-  ! This subroutine writes an attribute to a .xmf file
-  ! 
-  ! Author: Gautam Bisht, LBNL
-  ! Date: 10/29/12
-  ! 
-
-  implicit none
-
-  PetscInt :: fid,nmax
-  
-  character(len=MAXSTRINGLENGTH) :: attname, att_datasetname
-  character(len=MAXSTRINGLENGTH) :: string,string2
-  string="      <Attribute Name=""" // trim(attname) // &
-    """ AttributeType=""Scalar""  Center=""Cell"">"
-  write(fid,'(a)') trim(string)
-
-!  write(string2,*) grid%nmax
-  write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
-  write(fid,'(a)') trim(string)
-
-  string="        " // trim(att_datasetname)
-  write(fid,'(a)') trim(string)
-
-  string="        </DataItem> " 
-  write(fid,'(a)') trim(string)
-
-  string="      </Attribute>"
-  write(fid,'(a)') trim(string)
-
-end subroutine OutputXMFAttribute
-
-! ************************************************************************** !
-
-subroutine OutputXMFAttributeExplicit(fid,nmax,mesh_type,attname,att_datasetname)
+subroutine OutputXMFAttribute(fid,nmax,attname,att_datasetname,mesh_type)
   ! 
   ! Header for xdmf attribute with explicit grid
   ! 
-  ! Author: Satish Karra
-  ! Date: 07/17/13
+  ! Author: Gautam Bisht, Satish Karra, Glenn Hammond
+  ! Date: 10/29/12, 07/17/13, 03/06/17
   ! 
-
   implicit none
 
-  PetscInt :: fid,nmax,mesh_type
-  
+  PetscInt :: fid, nmax, mesh_type
   character(len=MAXSTRINGLENGTH) :: attname, att_datasetname
+  
   character(len=MAXSTRINGLENGTH) :: string,string2
+  character(len=MAXWORDLENGTH) :: mesh_type_word
 
   if (mesh_type == VERTEX_CENTERED_OUTPUT_MESH) then
-    string="      <Attribute Name=""" // trim(attname) // &
-      """ AttributeType=""Scalar""  Center=""Node"">"
+    mesh_type_word = 'Node'
   else if (mesh_type == CELL_CENTERED_OUTPUT_MESH) then
-    string="      <Attribute Name=""" // trim(attname) // &
-      """ AttributeType=""Scalar""  Center=""Cell"">"
+    mesh_type_word = 'Cell'
   end if
 
+  string='      <Attribute Name="' // trim(attname) // &
+         '" AttributeType="Scalar"  Center="' // trim(mesh_type_word) // '">'
   write(fid,'(a)') trim(string)
 
-!  write(string2,*) grid%nmax
   write(string2,*) nmax
-  string="        <DataItem Dimensions=""" // trim(adjustl(string2)) // " 1"" Format=""HDF""> "
+  string='        <DataItem Dimensions="' // trim(adjustl(string2)) // &
+         ' 1" Format="HDF"> '
   write(fid,'(a)') trim(string)
 
-  string="        " // trim(att_datasetname)
+  string='        ' // trim(att_datasetname)
   write(fid,'(a)') trim(string)
 
-  string="        </DataItem> " 
+  string='        </DataItem> ' 
   write(fid,'(a)') trim(string)
 
-  string="      </Attribute>"
+  string='      </Attribute>'
   write(fid,'(a)') trim(string)
 
-end subroutine OutputXMFAttributeExplicit
+end subroutine OutputXMFAttribute
 
 ! ************************************************************************** !
 

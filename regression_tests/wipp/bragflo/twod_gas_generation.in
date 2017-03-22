@@ -92,7 +92,7 @@ MATERIAL_PROPERTY soil
   THERMAL_CONDUCTIVITY_WET 2.    ! thermal parameter. isothermal ignores this.
   HEAT_CAPACITY 830.             ! thermal parameter. isothermal ignores this.
   SOIL_COMPRESSIBILITY_FUNCTION BRAGFLO  !Function used in BF
-  SOIL_COMPRESSIBILITY 1.d-8     ! COMPRES in BF
+  BULK_COMPRESSIBILITY 1.d-8     ! COMPRES in BF
   SOIL_REFERENCE_PRESSURE 4e6 ! 101320.d0 ! REFERENCE TEMPERATURE AND PRESSURE FOR DENSITY CALCULATIONS in BF
   PERMEABILITY
     PERM_ISO 1.d-17         ! PERMX, PERMY, PERMZ in BF. use PERM_ISO when uniform.

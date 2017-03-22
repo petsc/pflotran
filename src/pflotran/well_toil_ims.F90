@@ -87,9 +87,10 @@ subroutine TOilImsWatInjOutputHeader(this,output_option,file_unit)
   !      e.g. small loop to add well vars
   write(IUNIT_TEMP,*) " VARIABLES = " // &
       '"Time [' // trim(tunit) // ']", ' // &
-                '""Pw[Pa]"", ' // &
+                '"Pw[Pa]", ' // &
         '"Tw[C]", "dh2o[kg/m3]", ' // &
-        '"Qwat[m3/' // trim(tunit) // ']", ' // &
+        '"Qwat_res[rm3/' // trim(tunit) // ']", ' // &
+        '"Qwat_surf[sm3/' // trim(tunit) // ']", ' // &
         '"Mwat[kg/' // trim(tunit) // ']" ' 
 
 !below to print all vars - 
@@ -134,10 +135,12 @@ subroutine TOilImsOilProdOutputHeader(this,output_option,file_unit)
       '"Time [' // trim(tunit) // ']", ' // &
                 '"Pw[Pa]", ' // &
         '"Tw[C]", "den_well_fluid[kg/m3]", ' // &
-        '"Qwat[m3/' // trim(tunit) // ']", ' // &
-        '"Mwat[kg/' // trim(tunit) // ']" '  // &
-        '"Qoil[m3/' // trim(tunit) // ']", ' // &
-        '"Moil[kg/' // trim(tunit) // ']" '  // &
+        '"Qwat_res[rm3/' // trim(tunit) // ']", ' // &
+        '"Qwat_surf[sm3/' // trim(tunit) // ']", ' // &
+        '"Mwat[kg/' // trim(tunit) // ']", '  // &
+        '"Qoil_res[rm3/' // trim(tunit) // ']", ' // &
+        '"Qoil_surf[sm3/' // trim(tunit) // ']", ' // &
+        '"Moil[kg/' // trim(tunit) // ']", '  // &
         '"vol_WOR[-]" '
 
 end subroutine TOilImsOilProdOutputHeader
@@ -162,32 +165,19 @@ subroutine TOilImsWatInjOutput(this,output_file_unit,output_option,option)
   type(output_option_type), intent(in) :: output_option
   type(option_type) :: option
 
-  !character(len=MAXWORDLENGTH) :: src_name
-  !type(output_option_type), intent(in) :: output_option
+  !write(output_file_unit,"(9(E10.4,1x))") option%time/output_option%tconv , &
+  write(output_file_unit,"(10(1es14.6))") option%time/output_option%tconv , &
+                                       this%pw_ref, &
+                                       this%tw_ref, &
+                                       this%dw_kg_ref(option%liquid_phase), &
+                                       this%q_fld(option%liquid_phase) * &
+                                       output_option%tconv, &
+                                       this%mr_fld(option%liquid_phase) * &
+                                       output_option%tconv / &
+                                       this%den_kg_surf(option%liquid_phase),&
+                                       this%mr_fld(option%liquid_phase) * &
+                                       output_option%tconv
 
-  !character(len=MAXWORDLENGTH) :: wfile_name
-  !PetscMPIInt :: cur_w_myrank
-  !PetscInt :: ios, ierr
-
-  !if( this%connection_set%num_connections > 0 ) then
-  !  call MPI_Comm_rank(this%comm, cur_w_myrank, ierr )  
-  !  if(this%cntr_rank == cur_w_myrank ) then
-  !    wfile_name = trim(option%global_prefix) // "_" // &
-  !                      trim(src_name) // ".tec" 
-  !    open(unit=IUNIT_TEMP,file=wfile_name,action="write", &
-  !         position="append",status="old",iostat=ios)
-
-  write(output_file_unit,"(9(E10.4,1x))") option%time/output_option%tconv , &
-                                          this%pw_ref, &
-                                          this%tw_ref, &
-                                          this%dw_kg_ref(LIQUID_PHASE), &
-                                          this%q_fld(LIQUID_PHASE) * &
-                                          output_option%tconv, &
-                                          this%mr_fld(LIQUID_PHASE) * &
-                                          output_option%tconv
-
-  !  end if
-  !end if 
 
 end subroutine TOilImsWatInjOutput
 
@@ -202,6 +192,8 @@ subroutine TOilImsOilProdOutput(this,output_file_unit,output_option,option)
   ! 
   use Option_module
   use Output_Aux_module
+  use EOS_Oil_module
+  use EOS_Water_module
 
   implicit none
 
@@ -211,24 +203,31 @@ subroutine TOilImsOilProdOutput(this,output_file_unit,output_option,option)
   type(option_type) :: option
 
   PetscReal :: vol_WOR
+  PetscReal :: surf_wat_rate, surf_oil_rate
 
   vol_WOR = this%q_fld(option%liquid_phase) / &
             ( this%q_fld(option%liquid_phase) + this%q_fld(option%oil_phase) )
 
-  write(output_file_unit,"(9(E10.4,1x))") option%time/output_option%tconv , &
+  !write(output_file_unit,"(9(E10.4,1x))") option%time/output_option%tconv , &
+  write(output_file_unit,"(11(1es14.6))") option%time/output_option%tconv , &
                                           this%pw_ref, &
                                           this%tw_ref, &
-                                          this%dw_kg_ref(option%liquid_phase),&
-                                          this%q_fld(option%liquid_phase) * &
-                                          output_option%tconv, &
-                                          this%mr_fld(option%liquid_phase) * &
-                                          output_option%tconv, &
-                                          this%q_fld(option%oil_phase) * &
-                                          output_option%tconv, &
-                                          this%mr_fld(option%oil_phase) * &
-                                          output_option%tconv, &
-                                          vol_WOR 
-
+                                       this%dw_kg_ref(option%liquid_phase),&
+                                       this%q_fld(option%liquid_phase) * &
+                                       output_option%tconv, &
+                                       this%mr_fld(option%liquid_phase) * &
+                                       output_option%tconv / &
+                                       this%den_kg_surf(option%liquid_phase),&
+                                       this%mr_fld(option%liquid_phase) * &
+                                       output_option%tconv, &
+                                       this%q_fld(option%oil_phase) * &
+                                       output_option%tconv, &
+                                       this%mr_fld(option%oil_phase) * &
+                                       output_option%tconv / &
+                                       this%den_kg_surf(option%oil_phase), &
+                                       this%mr_fld(option%oil_phase) * &
+                                       output_option%tconv, &
+                                       vol_WOR 
 
 end subroutine TOilImsOilProdOutput
 
@@ -316,9 +315,9 @@ subroutine TOilImsWatInjExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
 
   hc = this%conn_h(iconn)
   cfact = this%conn_factors(iconn)
-
+ 
   mob = this%ConnMob(this%flow_auxvars(dof,ghosted_id)%mobility, &
-                                       option%liquid_phase)
+                                       option%liquid_phase,dof,ghosted_id)
   !mob = 1754.0d0
   dphi = this%pw_ref + hc - & 
             this%flow_auxvars(dof,ghosted_id)%pres(option%liquid_phase)
@@ -490,7 +489,8 @@ subroutine TOilImsProducerExplRes(this,iconn,ss_flow_vol_flux,isothermal, &
       end if 
     end if
     
-    mob = this%ConnMob(this%flow_auxvars(dof,ghosted_id)%mobility,i_ph)
+    mob = this%ConnMob(this%flow_auxvars(dof,ghosted_id)%mobility,i_ph, &
+                       dof,ghosted_id)
 
     !if ( dabs(dphi) < 1.d-5 ) dphi = 0.0d0 !cut off noise (Pa)
     !if ( dphi < 0.0d0 ) &

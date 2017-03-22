@@ -1471,9 +1471,6 @@ subroutine PMGeneralCheckpointBinary(this,viewer)
   class(pm_general_type) :: this
   PetscViewer :: viewer
   
-  call GlobalGetAuxVarVecLoc(this%realization, &
-                             this%realization%field%iphas_loc, &
-                             STATE,ZERO_INTEGER)
   call PMSubsurfaceFlowCheckpointBinary(this,viewer)
   
 end subroutine PMGeneralCheckpointBinary
@@ -1498,9 +1495,6 @@ subroutine PMGeneralRestartBinary(this,viewer)
   PetscViewer :: viewer
   
   call PMSubsurfaceFlowRestartBinary(this,viewer)
-  call GlobalSetAuxVarVecLoc(this%realization, &
-                             this%realization%field%iphas_loc, &
-                             STATE,ZERO_INTEGER)
   
 end subroutine PMGeneralRestartBinary
 ! ************************************************************************** !

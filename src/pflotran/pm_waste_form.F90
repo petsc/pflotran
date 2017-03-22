@@ -114,8 +114,10 @@ module PM_Waste_Form_class
 ! --------------- waste form types --------------------------------------------
   type :: waste_form_base_type
     PetscInt :: id
+    PetscInt, pointer :: rank_list(:)
     PetscMPIInt :: myMPIgroup_id
     PetscMPIInt :: myMPIcomm
+    PetscMPIInt :: myMPIgroup
     type(point3d_type) :: coordinate
     character(len=MAXWORDLENGTH) :: region_name
     type(region_type), pointer :: region
@@ -389,8 +391,10 @@ function WasteFormCreate()
 
   allocate(WasteFormCreate)
   WasteFormCreate%id = UNINITIALIZED_INTEGER
+  nullify(WasteFormCreate%rank_list)
   WasteFormCreate%myMPIgroup_id = 0
   WasteFormCreate%myMPIcomm = 0
+  WasteFormCreate%myMPIgroup = 0
   WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
@@ -1599,16 +1603,19 @@ subroutine PMWFSetup(this)
   class(waste_form_base_type), pointer :: next_waste_form
   class(wf_mechanism_base_type), pointer :: cur_mechanism
   PetscInt :: waste_form_id
-  PetscInt :: i
+  PetscInt :: i, j
   PetscBool :: local, found
   PetscErrorCode :: ierr
-  PetscMPIInt :: newcomm
+  PetscMPIInt :: newcomm_size
+  PetscInt, pointer :: ranks(:)
   
   option => this%realization%option
   reaction => this%realization%reaction
   
   ! point the waste form region to the desired region 
   call PMWFAssociateRegion(this,this%realization%patch%region_list)
+  
+  allocate(ranks(option%mycommsize))
   
   waste_form_id = 0
   nullify(prev_waste_form)
@@ -1656,19 +1663,32 @@ subroutine PMWFSetup(this)
           local = PETSC_TRUE
       endif
     endif
+    ranks(:) = 0
+    newcomm_size = 0
     if (local) then
-      ! assign the waste form ID number and MPI communicator
       cur_waste_form%id = waste_form_id
       cur_waste_form%myMPIgroup_id = waste_form_id
-      call MPI_Comm_split(option%mycomm,cur_waste_form%myMPIgroup_id, &
-                          option%myrank,newcomm,ierr)
+      ranks(option%myrank+1) = 1
     else
       cur_waste_form%id = 0
       cur_waste_form%myMPIgroup_id = 0
-      call MPI_Comm_split(option%mycomm,MPI_UNDEFINED,option%myrank, &
-                          newcomm,ierr)
+      ranks(option%myrank+1) = 0
     endif
-    cur_waste_form%myMPIcomm = newcomm
+    call MPI_Allreduce(MPI_IN_PLACE,ranks,option%mycommsize,MPI_INTEGER, &
+                       MPI_SUM,option%mycomm,ierr)
+    newcomm_size = sum(ranks)
+    allocate(cur_waste_form%rank_list(newcomm_size))
+    j = 0
+    do i = 1,option%mycommsize
+      if (ranks(i) == 1) then
+        j = j + 1
+        cur_waste_form%rank_list(j) = (i - 1)
+      endif
+    enddo
+    call MPI_Group_incl(option%mygroup,newcomm_size,cur_waste_form%rank_list, &
+                        cur_waste_form%myMPIgroup,ierr)
+    call MPI_Comm_create(option%mycomm,cur_waste_form%myMPIgroup, &
+                         cur_waste_form%myMPIcomm,ierr)
     if (local) then
       call PMWFSetRegionScaling(this,cur_waste_form)
       prev_waste_form => cur_waste_form
@@ -1685,6 +1705,8 @@ subroutine PMWFSetup(this)
       cur_waste_form => next_waste_form
     endif
   enddo
+  
+  deallocate(ranks)
   
   ! check if the mechanism list includes fmdm or glass mechanisms:
   cur_mechanism => this%mechanism_list
@@ -1801,7 +1823,7 @@ end subroutine PMWFSetup
   
   IS :: is
   class(waste_form_base_type), pointer :: cur_waste_form
-  PetscInt :: num_waste_forms
+  PetscInt :: num_waste_form_cells
   PetscInt :: num_species
   PetscInt :: size_of_vec
   PetscInt :: i, j, k
@@ -1849,22 +1871,22 @@ end subroutine PMWFSetup
   call this%data_mediator%AddToList(this%realization%tran_data_mediator_list)
   ! create a Vec sized by # waste packages * # waste package cells in region *
   ! # primary dofs influenced by waste package
-  ! count of waste forms
+  ! count of waste form cells
   cur_waste_form => this%waste_form_list
-  num_waste_forms = 0
+  num_waste_form_cells = 0
   size_of_vec = 0
   do
     if (.not.associated(cur_waste_form)) exit
     size_of_vec = size_of_vec + (cur_waste_form%mechanism%num_species * &
                                  cur_waste_form%region%num_cells)
-    num_waste_forms = num_waste_forms + 1
+    num_waste_form_cells = num_waste_form_cells + 1
     cur_waste_form => cur_waste_form%next
   enddo
   call VecCreateSeq(PETSC_COMM_SELF,size_of_vec, &
                     this%data_mediator%vec,ierr);CHKERRQ(ierr)
   call VecSetFromOptions(this%data_mediator%vec,ierr);CHKERRQ(ierr)
 
-  if (num_waste_forms > 0) then
+  if (num_waste_form_cells > 0) then
     allocate(species_indices_in_residual(size_of_vec))
     species_indices_in_residual = 0
     cur_waste_form => this%waste_form_list

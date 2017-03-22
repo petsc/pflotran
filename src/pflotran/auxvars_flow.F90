@@ -16,6 +16,7 @@ module AuxVars_Flow_module
     PetscReal, pointer :: den(:)    ! (iphase) kmol/m^3 phase
     PetscReal, pointer :: den_kg(:) ! (iphase) kg/m^3 phase
     PetscReal, pointer :: mobility(:) ! relative perm / dynamic viscosity
+    PetscReal, pointer :: viscosity(:) ! dynamic viscosity
     !PetscReal, pointer :: dsat_dp(:,:)
     !PetscReal, pointer :: dden_dp(:,:)
     !PetscReal, pointer :: dsat_dt(:)
@@ -73,6 +74,7 @@ subroutine AuxVarFlowStrip(this)
   call DeallocateArray(this%den)  
   call DeallocateArray(this%den_kg)  
   call DeallocateArray(this%mobility)  
+  call DeallocateArray(this%viscosity)
 
 end subroutine AuxVarFlowStrip
 ! ************************************************************************** !
