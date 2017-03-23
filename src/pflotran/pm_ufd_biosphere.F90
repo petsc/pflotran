@@ -11,14 +11,21 @@ module PM_UFD_Biosphere_class
 
 #include "petsc/finclude/petscsys.h"
 
+  type, public :: supported_rad_type
+    character(len=MAXWORDLENGTH) :: name
+    PetscReal :: decay_rate
+    PetscReal :: dcf
+    PetscReal :: kd
+    type(supported_rad_type), pointer :: next
+  end type supported_rad_type
+
   type, public :: unsupported_rad_type
     character(len=MAXWORDLENGTH) :: name
-    character(len=MAXWORDLENGTH) :: supported_parent
-    character(len=MAXWORDLENGTH) :: element
+    character(len=MAXWORDLENGTH) :: supported_parent_name
+    type(supported_rad_type), pointer :: supported_parent
     PetscReal :: dcf
     PetscReal :: emanation_factor
     PetscReal :: kd
-    PetscReal :: kd_supp_parent
     type(unsupported_rad_type), pointer :: next
   end type unsupported_rad_type
 
@@ -27,6 +34,7 @@ module PM_UFD_Biosphere_class
     character(len=MAXWORDLENGTH) :: name
     type(region_type), pointer :: region
     character(len=MAXWORDLENGTH) :: region_name
+    PetscReal, pointer :: region_scaling_factor(:)
     PetscReal :: indv_consumption_rate
     PetscBool :: incl_unsupported_rads
   contains
@@ -44,7 +52,10 @@ module PM_UFD_Biosphere_class
   type, public, extends(pm_base_type) :: pm_ufd_biosphere_type
     class(realization_subsurface_type), pointer :: realization
     class(ERB_base_type), pointer :: ERB_list
+    type(supported_rad_type), pointer :: supported_rad_list
     type(unsupported_rad_type), pointer :: unsupported_rad_list
+    PetscReal :: output_start_time
+    PetscBool :: unsupp_rads_needed
   contains
     procedure, public :: PMUFDBSetRealization
     procedure, public :: Setup => PMUFDBSetup
@@ -81,6 +92,11 @@ function PMUFDBCreate()
   
   allocate(PMUFDBCreate)
   nullify(PMUFDBCreate%realization)
+  nullify(PMUFDBCreate%ERB_list)
+  nullify(PMUFDBCreate%unsupported_rad_list)
+  nullify(PMUFDBCreate%supported_rad_list)
+  PMUFDBCreate%output_start_time = 0.d0  ! [sec] default value
+  PMUFDBCreate%unsupp_rads_needed = PETSC_FALSE
   PMUFDBCreate%name = 'ufd biosphere'
 
   call PMBaseInit(PMUFDBCreate)
@@ -154,6 +170,30 @@ end function ERB_1B_Create
 
 ! *************************************************************************** !
 
+function SupportedRadCreate()
+  !
+  ! Creates and initializes a supported radionuclide type.
+  !
+  ! Author: Jenn Frederick
+  ! Date: 03/22/2017
+  !
+  
+  implicit none
+  
+  type(supported_rad_type), pointer :: SupportedRadCreate
+  
+  allocate(SupportedRadCreate)
+  
+  SupportedRadCreate%name = ''
+  SupportedRadCreate%decay_rate = UNINITIALIZED_DOUBLE  ! 1/sec
+  SupportedRadCreate%dcf = UNINITIALIZED_DOUBLE  ! Sv/Bq
+  SupportedRadCreate%kd = UNINITIALIZED_DOUBLE   ! kg-water/m^3-bulk
+  nullify(SupportedRadCreate%next)
+  
+end function SupportedRadCreate
+
+! *************************************************************************** !
+
 function UnsuppRadCreate()
   !
   ! Creates and initializes an unsupported radionuclide type.
@@ -169,12 +209,11 @@ function UnsuppRadCreate()
   allocate(UnsuppRadCreate)
   
   UnsuppRadCreate%name = ''
-  UnsuppRadCreate%supported_parent = ''
-  UnsuppRadCreate%element = ''
+  UnsuppRadCreate%supported_parent_name = ''
   UnsuppRadCreate%dcf = UNINITIALIZED_DOUBLE  ! Sv/Bq
   UnsuppRadCreate%emanation_factor = 1.d0     ! default value
-  UnsuppRadCreate%kd = UNINITIALIZED_DOUBLE
-  UnsuppRadCreate%kd_supp_parent = UNINITIALIZED_DOUBLE
+  UnsuppRadCreate%kd = UNINITIALIZED_DOUBLE   ! kg-water/m^3-bulk
+  nullify(UnsuppRadCreate%supported_parent)
   nullify(UnsuppRadCreate%next)
   
 end function UnsuppRadCreate
@@ -301,9 +340,22 @@ subroutine PMUFDBRead(this,input)
         nullify(new_ERB1B)
     !-----------------------------------------
     !-----------------------------------------
+      case('SUPPORTED_RADIONUCLIDES')
+        error_string = trim(error_string) // ',SUPPORTED_RADIONUCLIDES'
+        call ReadSupportedRad(this,input,option,error_string)  
+    !-----------------------------------------
+    !-----------------------------------------
       case('UNSUPPORTED_RADIONUCLIDES')
         error_string = trim(error_string) // ',UNSUPPORTED_RADIONUCLIDES'
         call ReadUnsuppRad(this,input,option,error_string)      
+    !-----------------------------------------
+    !-----------------------------------------
+      case('OUTPUT_START_TIME')
+        call InputReadDouble(input,option,double)
+        call InputErrorMsg(input,option,'OUTPUT_START_TIME',error_string)
+        call InputReadAndConvertUnits(input,double,'sec',trim(error_string) &
+                                      // ',OUTPUT_START_TIME units',option)
+        this%output_start_time = double
     !-----------------------------------------
     !-----------------------------------------
       case default
@@ -311,6 +363,30 @@ subroutine PMUFDBRead(this,input)
     !-----------------------------------------
     end select  
   enddo
+  
+  ! error messages
+  if (.not.associated(this%ERB_list)) then
+    option%io_buffer = 'At least one ERB model must be specified &
+                       &in the ' // trim(error_string) // ' block, with the &
+                       &keyword ERB_1A or ERB_1B.'
+    call printErrMsg(option)
+  endif
+  if (.not.associated(this%supported_rad_list)) then
+    option%io_buffer = 'At least one supported radionuclide must be specified &
+                       &in the ' // trim(error_string) // ' block, with the &
+                       &keyword SUPPORTED_RADIONUCLIDES.'
+    call printErrMsg(option)
+  endif
+  if (this%unsupp_rads_needed .and. &
+     (.not.associated(this%unsupported_rad_list))) then
+    option%io_buffer = 'At least one ERB model indicates that unsupported &
+                       &radionuclides should be included, but no unsupported &
+                       &radionuclides were specified. You must specify all &
+                       &unsupported radionuclides using the keyword &
+                       &UNSUPPORTED_RADIONUCLIDES block.'
+    call printErrMsg(option)
+  endif
+  
   
 end subroutine PMUFDBRead
 
@@ -375,6 +451,7 @@ subroutine ReadERBmodel(this,input,option,ERB_model,error_string)
     !-----------------------------------
       case('INCLUDE_UNSUPPORTED_RADS')
         ERB_model%incl_unsupported_rads = PETSC_TRUE
+        this%unsupp_rads_needed = PETSC_TRUE
     !-----------------------------------    
       case default
         call InputKeywordUnrecognized(word,error_string,option)
@@ -404,6 +481,113 @@ subroutine ReadERBmodel(this,input,option,ERB_model,error_string)
   endif
   
 end subroutine ReadERBmodel
+
+! *************************************************************************** !
+
+subroutine ReadSupportedRad(this,input,option,error_string)
+  !
+  ! Reads input file parameters for the UFD Biosphere process model.
+  !
+  ! Author: Jenn Frederick
+  ! Date: 03/13/2017
+  !
+
+  use Input_Aux_module
+  use Option_module
+  use String_module
+
+  implicit none
+  
+  class(pm_ufd_biosphere_type) :: this
+  type(input_type), pointer :: input
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  type(supported_rad_type), pointer :: new_supp_rad
+  type(supported_rad_type), pointer :: cur_supp_rad
+  character(len=MAXWORDLENGTH) :: word
+  PetscReal :: double
+  PetscBool :: added
+  
+  do
+    call InputReadPflotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword',error_string)
+    call StringToUpper(word)
+    select case(trim(word))
+    !-----------------------------------
+      case('RADIONUCLIDE')
+        error_string = trim(error_string) // ',RADIONUCLIDE'
+        allocate(new_supp_rad)
+        new_supp_rad => SupportedRadCreate()
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'radionuclide name',error_string)
+        new_supp_rad%name = adjustl(trim(word))
+        error_string = trim(error_string) // ' ' // trim(new_supp_rad%name)
+        do
+          call InputReadPflotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword',error_string)
+          call StringToUpper(word)
+          select case(trim(word))
+          !-----------------------------------
+            case('ELEMENT_KD')
+              call InputReadDouble(input,option,new_supp_rad%kd)
+              call InputErrorMsg(input,option,'ELEMENT_KD',error_string)
+          !-----------------------------------
+            case('INGESTION_DOSE_COEF')
+              call InputReadDouble(input,option,new_supp_rad%dcf)
+              call InputErrorMsg(input,option,'INGESTION_DOSE_COEF', &
+                                 error_string)
+          !-----------------------------------
+            case('DECAY_RATE')
+              call InputReadDouble(input,option,double)
+              call InputErrorMsg(input,option,'DECAY_RATE',error_string)
+              call InputReadAndConvertUnits(input,double,'1/sec', &
+                     trim(error_string) // ',DECAY_RATE units',option)
+              new_supp_rad%decay_rate = double
+          !-----------------------------------  
+            case default
+              call InputKeywordUnrecognized(word,error_string,option)
+          !----------------------------------- 
+          end select
+        enddo
+        ! error messages
+        if (uninitialized(new_supp_rad%dcf)) then
+          option%io_buffer = 'INGESTION_DOSE_COEF must be specified in the ' &
+                             // trim(error_string) // ' block.'
+          call printErrMsg(option)
+        endif
+        ! add new supported radionuclide to list
+        added = PETSC_FALSE
+        if (.not.associated(this%supported_rad_list)) then
+          this%supported_rad_list => new_supp_rad
+        else
+          cur_supp_rad => this%supported_rad_list
+          do
+            if (.not.associated(cur_supp_rad)) exit
+            if (.not.associated(cur_supp_rad%next)) then
+              cur_supp_rad%next => new_supp_rad
+              added = PETSC_TRUE
+            endif
+            if (added) exit
+            cur_supp_rad => cur_supp_rad%next
+          enddo
+        endif
+        nullify(new_supp_rad)
+    !-----------------------------------
+      case default
+        call InputKeywordUnrecognized(word,error_string,option)
+    !-----------------------------------
+    end select
+  enddo
+  
+end subroutine ReadSupportedRad
+
 
 ! *************************************************************************** !
 
@@ -462,8 +646,8 @@ subroutine ReadUnsuppRad(this,input,option,error_string)
               call InputErrorMsg(input,option,'ELEMENT_KD',error_string)
           !-----------------------------------
             case('SUPPORTED_PARENT')
-              call InputReadWord(input,option,new_unsupp_rad%supported_parent, &
-                                 PETSC_TRUE)
+              call InputReadWord(input,option, &
+                              new_unsupp_rad%supported_parent_name,PETSC_TRUE)
               call InputErrorMsg(input,option,'SUPPORTED_PARENT',error_string)
           !-----------------------------------
             case('INGESTION_DOSE_COEF')
@@ -491,7 +675,7 @@ subroutine ReadUnsuppRad(this,input,option,error_string)
                              // trim(error_string) // ' block.'
           call printErrMsg(option)
         endif
-        if (new_unsupp_rad%supported_parent == '') then
+        if (new_unsupp_rad%supported_parent_name == '') then
           option%io_buffer = 'SUPPORTED_PARENT must be specified in the ' // &
                              trim(error_string) // ' block.'
           call printErrMsg(option)
@@ -527,6 +711,7 @@ end subroutine ReadUnsuppRad
 subroutine AssociateRegion(this,region_list)
   ! 
   ! Associates the ERB model to its assigned region via the REGION keyword.
+  ! And calculates the scaling factor by volume.
   ! 
   ! Author: Jenn Frederick
   ! Date: 03/22/2017
@@ -535,6 +720,8 @@ subroutine AssociateRegion(this,region_list)
   use Region_module
   use Option_module
   use String_module
+  use Material_Aux_class
+  use Grid_module
   
   implicit none
   
@@ -545,8 +732,15 @@ subroutine AssociateRegion(this,region_list)
   class(ERB_base_type), pointer :: cur_ERB
   type(option_type), pointer :: option
   PetscBool :: matched
+  class(material_auxvar_type), pointer :: material_auxvars(:)
+  type(grid_type), pointer :: grid
+  PetscInt :: k, cell_id
+  PetscReal :: total_volume_local, total_volume_global
+  PetscErrorCode :: ierr
   
   option => this%option
+  material_auxvars => this%realization%patch%aux%Material%auxvars
+  grid => this%realization%patch%grid
   
   cur_ERB => this%ERB_list
   do
@@ -559,6 +753,22 @@ subroutine AssociateRegion(this,region_list)
                           trim(cur_ERB%region_name))) then
           cur_ERB%region => cur_region
           matched = PETSC_TRUE
+          ! calculate scaling factor by cell volumes in region
+          allocate(cur_ERB%region_scaling_factor(cur_ERB%region%num_cells))
+          total_volume_global = 0.d0
+          total_volume_local = 0.d0
+          do k = 1,cur_ERB%region%num_cells
+            cell_id = grid%nL2G(cur_ERB%region%cell_ids(k))
+            cur_ERB%region_scaling_factor(k) = &
+                                      material_auxvars(cell_id)%volume ! [m^3]
+            total_volume_local = total_volume_local &
+                                    + material_auxvars(cell_id)%volume ! [m^3]
+          enddo
+          call MPI_Allreduce(total_volume_local,total_volume_global, &
+                             ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                             option%mycomm,ierr)
+          cur_ERB%region_scaling_factor = cur_ERB%region_scaling_factor / &
+                                          total_volume_global
         endif
         if (matched) exit
         cur_region => cur_region%next
@@ -578,7 +788,7 @@ end subroutine AssociateRegion
 
 subroutine PMUFDBSetup(this)
   !
-  ! 
+  ! Sets up the process model with external information.
   !
   ! Author: Jenn Frederick
   ! Date: 03/13/2017
@@ -588,12 +798,133 @@ subroutine PMUFDBSetup(this)
   
   class(pm_ufd_biosphere_type) :: this
   
-  ! point the ERB model's regions to the desired regions 
   call AssociateRegion(this,this%realization%patch%region_list)
   
-  ! check if all unsupported rads have KDs
+  ! check to see if all supported radionuclides are primary or secondary species
+  ! look at line 1747 of pm_waste_form
+  call SupportedRadCheckRT(this)
+
+  call AssociateUnsuppRadWithSuppRad(this)
   
 end subroutine PMUFDBSetup
+
+! *************************************************************************** !
+
+subroutine SupportedRadCheckRT(this)
+  ! 
+  ! Associates the unsupported radionuclide with its support parent 
+  ! radionuclide.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/22/2017
+  !
+
+  use Option_module
+  use String_module
+  use Reaction_Aux_module
+  
+  implicit none
+  
+  type(pm_ufd_biosphere_type) :: this
+  
+  type(option_type), pointer :: option
+  character(len=MAXWORDLENGTH), pointer :: pri_names(:)
+  character(len=MAXWORDLENGTH), pointer :: sec_names(:)
+  type(supported_rad_type), pointer :: cur_supp_rad
+  character(len=MAXWORDLENGTH) :: rad_name
+  PetscBool :: found
+  PetscInt :: i
+  
+  option => this%option
+  
+  if (associated(this%realization%reaction)) then
+    allocate(pri_names(GetPrimarySpeciesCount(this%realization%reaction)))
+    pri_names => GetPrimarySpeciesNames(this%realization%reaction)
+    allocate(sec_names(GetSecondarySpeciesCount(this%realization%reaction)))
+    sec_names => GetSecondarySpeciesNames(this%realization%reaction)
+  else
+    option%io_buffer = 'The UFD_BIOSPHERE process model requires reactive &
+                       &transport.'
+    call printErrMsg(option)
+  endif
+  
+  cur_supp_rad => this%supported_rad_list
+  do
+    if (.not.associated(cur_supp_rad)) exit
+    cur_supp_rad%name = rad_name
+    found = PETSC_FALSE
+    do i = 1,len(pri_names)
+      if (adjustl(trim(rad_name)) == adjustl(trim(pri_names(i)))) then
+        found = PETSC_TRUE
+      endif
+      if (found) exit
+    enddo
+    if (.not.found) then
+      ! search sec_names
+    endif
+    if (.not.found) then
+      ! throw error
+    endif
+    
+    cur_supp_rad => cur_supp_rad%next
+  enddo
+  
+  deallocate(pri_names)
+  deallocate(sec_names)
+  
+end subroutine SupportedRadCheckRT
+
+! *************************************************************************** !
+
+subroutine AssociateUnsuppRadWithSuppRad(this)
+  ! 
+  ! Associates the unsupported radionuclide with its support parent 
+  ! radionuclide.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/22/2017
+  !
+
+  use Option_module
+  use String_module
+  
+  implicit none
+  
+  type(pm_ufd_biosphere_type) :: this
+  
+  type(supported_rad_type), pointer :: cur_supp_rad
+  type(unsupported_rad_type), pointer :: cur_unsupp_rad
+  type(option_type), pointer :: option
+  PetscBool :: matched
+  
+  option => this%option
+  
+  cur_unsupp_rad => this%unsupported_rad_list
+  do
+    if (.not.associated(cur_unsupp_rad)) exit
+      cur_supp_rad => this%supported_rad_list     
+      do
+        if (.not.associated(cur_supp_rad)) exit
+        matched = PETSC_FALSE
+        if (StringCompare(trim(cur_supp_rad%name), &
+                          trim(cur_unsupp_rad%supported_parent_name))) then
+          cur_unsupp_rad%supported_parent => cur_supp_rad
+          matched = PETSC_TRUE
+        endif
+        if (matched) exit
+        cur_supp_rad => cur_supp_rad%next
+      enddo      
+      if (.not.associated(cur_unsupp_rad%supported_parent)) then
+        option%io_buffer = 'Unsupported radionuclide ' // &
+          trim(cur_unsupp_rad%name) // "'s supported parent " &
+          // trim(cur_unsupp_rad%supported_parent_name) // ' not found among &
+          &defined supported radionuclides.'
+        call printErrMsg(option)
+      endif
+    cur_unsupp_rad => cur_unsupp_rad%next
+  enddo
+  
+end subroutine AssociateUnsuppRadWithSuppRad
 
 ! ************************************************************************** !
 
