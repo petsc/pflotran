@@ -3762,7 +3762,8 @@ subroutine UGridMapSideSet2(unstructured_grid,face_vertices,n_ss_faces, &
   call PetscViewerDestroy(viewer,ierr);CHKERRQ(ierr)
 #endif
 
-  call MatTranspose(Mat_region_vert_to_face, MAT_INITIAL_MATRIX, Mat_region_face_to_vert, ierr);CHKERRQ(ierr)
+  call MatTranspose(Mat_region_vert_to_face, MAT_INITIAL_MATRIX, &
+                    Mat_region_face_to_vert, ierr); CHKERRQ(ierr)
 
 #if UGRID_DEBUG
   write(string,*) option%myrank
