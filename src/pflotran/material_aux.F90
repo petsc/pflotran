@@ -86,7 +86,8 @@ module Material_Aux_class
             MaterialCompressSoilPtr, &
             MaterialCompressSoil, &
             MaterialCompressSoilBragflo, &
-            MaterialCompressSoilLeijnse
+            MaterialCompressSoilLeijnse, &
+            MaterialCompressSoilQuadratic
   
   public :: MaterialAuxCreate, &
             MaterialAuxVarInit, &
@@ -408,6 +409,42 @@ subroutine MaterialCompressSoilBRAGFLO(auxvar,pressure, &
   dcompressed_porosity_dp = compressibility * compressed_porosity
   
 end subroutine MaterialCompressSoilBRAGFLO
+
+! ************************************************************************** !
+
+subroutine MaterialCompressSoilQuadratic(auxvar,pressure, &
+                                         compressed_porosity, &
+                                         dcompressed_porosity_dp)
+  ! 
+  ! Calculates soil matrix compression based on a quadratic model
+  ! This is thedefaul model adopted in ECLIPSE 
+  !
+  ! Author: Paolo Orsini
+  ! Date: 02/27/17
+  ! 
+
+  implicit none
+
+  class(material_auxvar_type), intent(in) :: auxvar
+  PetscReal, intent(in) :: pressure
+  PetscReal, intent(out) :: compressed_porosity
+  PetscReal, intent(out) :: dcompressed_porosity_dp
+  
+  PetscReal :: compressibility
+  PetscReal :: compress_factor
+
+  compressibility = auxvar%soil_properties(soil_compressibility_index)
+
+  compress_factor = compressibility * &
+          (pressure - auxvar%soil_properties(soil_reference_pressure_index))
+
+  compressed_porosity = auxvar%porosity_base * &
+          ( 1.0 + compress_factor + (compress_factor**2)/2.0 )
+  
+  dcompressed_porosity_dp = auxvar%porosity_base * &
+          ( 1.0 + compress_factor) * compressibility  
+  
+end subroutine MaterialCompressSoilQuadratic
 
 ! ************************************************************************** !
 

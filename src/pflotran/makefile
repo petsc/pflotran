@@ -1367,7 +1367,7 @@ well_flow.o : auxvars_flow.o condition.o grid.o hydrostatic_common.o option.o \
 well_flow_energy.o : auxvars_flow_energy.o grid.o hydrostatic_common.o \
                      material_aux.o option.o output_aux.o pflotran_constants.o \
                      utility.o well_base.o well_flow.o
-well_oil_producer.o : eos_water.o grid.o option.o output_aux.o \
+well_oil_producer.o : eos_oil.o eos_water.o grid.o option.o output_aux.o \
                       pflotran_constants.o well_base.o well_flow.o \
                       well_flow_energy.o well_spec_base.o
 well_spec_base.o : input_aux.o option.o pflotran_constants.o string.o units.o \

@@ -139,4 +139,6 @@ module Variables_module
   PetscInt, parameter, public :: NATURAL_ID              = 114
   PetscInt, parameter, public :: REACTION_AUXILIARY      = 115
 
+  PetscInt, parameter, public :: OIL_VISCOSITY           = 116
+
 end module Variables_module

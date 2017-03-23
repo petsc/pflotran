@@ -56,7 +56,7 @@ end subroutine WellOilProdPrintOutputHeader
 
 subroutine OilProdInitDensity(this,grid,option)
   !
-  ! DOES NOTHING - eneable called to well%InitDensity 
+  ! Currenlty only initializes the surface densities
   !
   ! Include commented implementation of init well fluid density
   ! computed as phase density avergage weighted 
@@ -71,6 +71,7 @@ subroutine OilProdInitDensity(this,grid,option)
   use Grid_module
   use Option_module
   use EOS_Water_module
+  use EOS_Oil_module
 
   implicit none
 
@@ -78,10 +79,13 @@ subroutine OilProdInitDensity(this,grid,option)
   type(grid_type), pointer :: grid  
   type(option_type) :: option
 
-  !PetscMPIInt :: cur_w_myrank
+  PetscMPIInt :: cur_w_myrank
   !PetscInt :: ghost_cntrl_id,ierr
 
   !PetscInt :: iphase
+
+  PetscReal :: den_mol
+  PetscInt :: ierr
 
   !THIS ROUTINE DOE NOTHING BECAUSE THE WELL FLUID DENSITY IS INITIALISE
   !IN WellFlowConnDenUpdate, called by FlowHydroCorrUpdate
@@ -90,9 +94,18 @@ subroutine OilProdInitDensity(this,grid,option)
   !BELOW AN ALTERNATIVE TO INITALISE THE WELL FLUID DENSITY USING THE WELL
   ! CONTROL GRID BLOCK 
 
-  !call MPI_Comm_rank(this%comm, cur_w_myrank, ierr )  
+  call MPI_Comm_rank(this%comm, cur_w_myrank, ierr )  
 
-  !if(this%cntr_rank == cur_w_myrank ) then
+  if(this%cntr_rank == cur_w_myrank ) then
+
+    call EOSWaterDensity(option%reference_temperature, &
+                         option%reference_pressure, &
+                         this%den_kg_surf(option%liquid_phase),den_mol,ierr)
+
+    call EOSOilDensity(option%reference_temperature, &
+                       option%reference_pressure,den_mol,ierr)
+    this%den_kg_surf(option%oil_phase) = den_mol * EOSOilGetFMW()
+
   !  ghost_cntrl_id = grid%nL2G(this%cntrl_lcell_id); 
   !
   !  !Avergae on generic number of phases 
@@ -106,10 +119,13 @@ subroutine OilProdInitDensity(this,grid,option)
   !  !assuming perfect mixture both phase have the same densities
   !  this%dw_kg_ref(option%liquid_phase) = this%dw_kg_ref(option%oil_phase)
   !
-  !end if
+  end if
   !
   !call MPI_Bcast ( this%dw_kg_ref(option%oil_phase),1, &
   !                 MPI_DOUBLE_PRECISION, this%cntr_rank, this%comm, ierr )
+
+  call MPI_Bcast ( this%den_kg_surf(1:option%nphase), option%nphase, &
+                   MPI_DOUBLE_PRECISION, this%cntr_rank, this%comm, ierr )
 
 
 end subroutine OilProdInitDensity

@@ -97,7 +97,36 @@ subroutine EOSRead(input,option)
                 call InputReadDouble(input,option,temparray(3))
                 call InputErrorMsg(input,option,'WATER_COMPRESSIBILITY', &
                                    'EOS,WATER,DENSITY,EXPONENTIAL')
-              case('IFC67','DEFAULT','BATZLE_AND_WANG','TGDPB01','PLANAR')
+              case('QUADRATIC')
+                do
+                  call InputReadPflotranString(input,option)
+                  call InputReadStringErrorMsg(input,option, &
+                                               'EOS,WATER,DENSITY,QUADRATIC')
+                  if (InputCheckExit(input,option)) exit
+                  if (InputError(input)) exit
+                  call InputReadWord(input,option,subkeyword,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'subkeyword', &
+                                       'EOS,WATER,DENSITY,QUADRATIC')
+                  select case(trim(subkeyword))
+                    case('REFERENCE_DENSITY')
+                      call InputReadDouble(input,option,temparray(1))
+                      call InputErrorMsg(input,option,'REFERENCE_DENSITY', &
+                                         'EOS,WATER,DENSITY,QUADRATIC')
+                    case('REFERENCE_PRESSURE')
+                      call InputReadDouble(input,option,temparray(2))
+                      call InputErrorMsg(input,option,'REFERENCE_PRESSURE', &
+                                         'EOS,WATER,DENSITY,QUADRATIC')
+                    case('WATER_COMPRESSIBILITY')
+                      call InputReadDouble(input,option,temparray(3))
+                      call InputErrorMsg(input,option,'WATER_COMPRESSIBILITY', &
+                                         'EOS,WATER,DENSITY,QUADRATIC')
+                    case default
+                      call InputKeywordUnrecognized(subkeyword, &
+                                'EOS,WATER,DENSITY,QUADRATIC',option)
+                  end select
+                enddo
+              case('IFC67','DEFAULT','BATZLE_AND_WANG','TGDPB01','PLANAR', &
+                   'TRANGENSTEIN')
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,DENSITY',option)
             end select
@@ -129,7 +158,7 @@ subroutine EOSRead(input,option)
                                    'EOS,WATER,VISCOSITY,CONSTANT')
                 call InputReadAndConvertUnits(input,temparray(1), &
                               'Pa-s','EOS,WATER,VISCOSITY,CONSTANT',option)
-              case('DEFAULT','BATZLE_AND_WANG')
+              case('DEFAULT','BATZLE_AND_WANG','GRABOWSKI')
               case default
                 call InputKeywordUnrecognized(word,'EOS,WATER,VISCOSITY', &
                                               option)

@@ -1292,6 +1292,8 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
       select case(material_property_ptrs(i)%ptr%soil_compressibility_function)
         case('BRAGFLO','WIPP')
           MaterialCompressSoilPtrTmp => MaterialCompressSoilBRAGFLO
+        case('QUADRATIC')
+          MaterialCompressSoilPtrTmp => MaterialCompressSoilQuadratic
         case('LEIJNSE','DEFAULT')
           MaterialCompressSoilPtrTmp => MaterialCompressSoilLeijnse
         case default
