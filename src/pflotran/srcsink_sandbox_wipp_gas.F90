@@ -251,9 +251,9 @@ subroutine WIPPGasGenerationSrcSink(this,Residual,Jacobian, &
   Residual(THREE_INTEGER) = H * 1.d-6 * gas_generation_rate
   
   if (compute_derivative) then
-    
-    ! jacobian something
-
+    option%io_buffer = 'GeneralSSSandbox is not configured for &
+      &analytical derivatives.'
+    call printErrMsg(option)
   endif
   
 end subroutine WIPPGasGenerationSrcSink

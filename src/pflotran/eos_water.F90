@@ -426,6 +426,7 @@ subroutine EOSWaterSetViscosity(keyword,aux)
     case('CONSTANT')
       constant_viscosity = aux(1)  
       EOSWaterViscosityPtr => EOSWaterViscosityConstant
+      EOSWaterViscosityExtPtr => EOSWaterViscosityConstantExt
     case('DEFAULT')
       EOSWaterViscosityPtr => EOSWaterViscosity1
       EOSWaterViscosityExtPtr => EOSWaterViscosityKestinExt
@@ -797,6 +798,32 @@ subroutine EOSWaterViscosityConstant(T, P, PS, dPS_dT, &
   dVW_dP = 0.d0
   
 end subroutine EOSWaterViscosityConstant
+
+! ************************************************************************** !
+
+subroutine EOSWaterViscosityConstantExt(T, P, PS, dPS_dT, aux,&
+                                        calculate_derivatives, &
+                                        VW, dVW_dT, dVW_dP, ierr)
+
+! Calculates the viscosity of water and derivatives as a function of 
+! temperature, pressure, and saturation pressure.
+
+  implicit none
+    
+  PetscReal, intent(in) :: T, P, PS ! temperature, pressure, saturation_press
+  PetscReal, intent(in) :: dPS_dT ! derivative of PS with respect to temp
+  PetscReal, intent(in) :: aux(*)
+  PetscBool, intent(in) :: calculate_derivatives
+  PetscReal, intent(out) :: VW ! water viscosity
+  PetscReal, intent(out) :: dVW_dT, dVW_dP ! derivatives
+  PetscErrorCode, intent(out) :: ierr
+  
+  VW = constant_viscosity
+  
+  dVW_dT = 0.d0
+  dVW_dP = 0.d0
+  
+end subroutine EOSWaterViscosityConstantExt
 
 ! ************************************************************************** !
 

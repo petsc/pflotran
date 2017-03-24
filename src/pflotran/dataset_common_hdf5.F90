@@ -152,6 +152,12 @@ subroutine DatasetCommonHDF5Read(this,input,option)
   character(len=MAXWORDLENGTH) :: keyword
   PetscBool :: found
 
+#if !defined(PETSC_HAVE_HDF5)
+  option%io_buffer = 'HDF5 formatted datasets not supported &
+    &unless PFLOTRAN is compiled with HDF5 libraries enabled.'
+  call printErrMsg(option)
+#endif
+
   input%ierr = 0
   do
   

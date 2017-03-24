@@ -60,7 +60,7 @@ subroutine GeneralSetup(realization)
   type(material_parameter_type), pointer :: material_parameter
 
   PetscInt :: ghosted_id, iconn, sum_connection, local_id
-  PetscInt :: i, idof, count
+  PetscInt :: i, idof, count, ndof
   PetscBool :: error_found
   PetscInt :: flag(10)
                                                 ! extra index for derivatives
@@ -138,12 +138,17 @@ subroutine GeneralSetup(realization)
   endif
   
   ! allocate auxvar data structures for all grid cells  
-  allocate(gen_auxvars(0:option%nflowdof,grid%ngmax))
+  if (general_analytical_derivatives) then
+    ndof = 0
+  else
+    ndof = option%nflowdof
+  endif
+  allocate(gen_auxvars(0:ndof,grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    do idof = 0, option%nflowdof
+    do idof = 0, ndof
       call GeneralAuxVarInit(gen_auxvars(idof,ghosted_id), &
-                             (general_analytical_derivatives .and. idof==0), &
-                             option)
+                         (general_analytical_derivatives .and. idof==0), &
+                          option)
     enddo
   enddo
   patch%aux%General%auxvars => gen_auxvars
@@ -1555,17 +1560,19 @@ subroutine GeneralJacobian(snes,xx,A,B,realization,ierr)
   endif
 #endif
 
-  ! Perturb aux vars
-  do ghosted_id = 1, grid%ngmax  ! For each local node do...
-    if (patch%imat(ghosted_id) <= 0) cycle
-    natural_id = grid%nG2A(ghosted_id)
-    call GeneralAuxVarPerturb(gen_auxvars(:,ghosted_id), &
-                              global_auxvars(ghosted_id), &
-                              material_auxvars(ghosted_id), &
-                              patch%characteristic_curves_array( &
-                                patch%sat_func_id(ghosted_id))%ptr, &
-                              natural_id,option)
-  enddo
+  if (.not.general_analytical_derivatives) then
+    ! Perturb aux vars
+    do ghosted_id = 1, grid%ngmax  ! For each local node do...
+      if (patch%imat(ghosted_id) <= 0) cycle
+      natural_id = grid%nG2A(ghosted_id)
+      call GeneralAuxVarPerturb(gen_auxvars(:,ghosted_id), &
+                                global_auxvars(ghosted_id), &
+                                material_auxvars(ghosted_id), &
+                                patch%characteristic_curves_array( &
+                                  patch%sat_func_id(ghosted_id))%ptr, &
+                                natural_id,option)
+    enddo
+  endif
   
 #ifdef DEBUG_GENERAL_LOCAL
   call GeneralOutputAuxVars(gen_auxvars,global_auxvars,option)

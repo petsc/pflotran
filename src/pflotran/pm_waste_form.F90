@@ -32,7 +32,7 @@ module PM_Waste_Form_class
   end type rad_species_type
 
 ! --------------- waste form mechanism types ----------------------------------
-  type :: wf_mechanism_base_type
+  type, public :: wf_mechanism_base_type
     type(rad_species_type), pointer :: rad_species_list(:)
     PetscInt :: num_species
     PetscBool :: canister_degradation_model
@@ -114,8 +114,7 @@ module PM_Waste_Form_class
 ! --------------- waste form types --------------------------------------------
   type :: waste_form_base_type
     PetscInt :: id
-    PetscMPIInt :: myMPIgroup_id
-    PetscMPIInt :: myMPIcomm
+    PetscInt, pointer :: rank_list(:)
     type(point3d_type) :: coordinate
     character(len=MAXWORDLENGTH) :: region_name
     type(region_type), pointer :: region
@@ -389,8 +388,7 @@ function WasteFormCreate()
 
   allocate(WasteFormCreate)
   WasteFormCreate%id = UNINITIALIZED_INTEGER
-  WasteFormCreate%myMPIgroup_id = 0
-  WasteFormCreate%myMPIcomm = 0
+  nullify(WasteFormCreate%rank_list)
   WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
   WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
@@ -1494,7 +1492,6 @@ subroutine PMWFAssociateRegion(this,region_list)
                            trim(cur_waste_form%region_name) // ' not found.'
         call printErrMsg(option)
       endif
-      !call PMWFSetRegionScaling(this,cur_waste_form)
     endif
     !
     cur_waste_form => cur_waste_form%next
@@ -1542,8 +1539,8 @@ subroutine PMWFSetRegionScaling(this,waste_form)
     total_volume_local = total_volume_local &
                          + material_auxvars(cell_id)%volume  ! [m^3]
   enddo
-  call MPI_Allreduce(total_volume_local,total_volume_global,ONE_INTEGER_MPI, &
-              MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+  call CalcParallelSUM(this%option,waste_form,total_volume_local, &
+                       total_volume_global)
   waste_form%scaling_factor = waste_form%scaling_factor/total_volume_global 
   
 end subroutine PMWFSetRegionScaling
@@ -1600,16 +1597,19 @@ subroutine PMWFSetup(this)
   class(waste_form_base_type), pointer :: next_waste_form
   class(wf_mechanism_base_type), pointer :: cur_mechanism
   PetscInt :: waste_form_id
-  PetscInt :: i
+  PetscInt :: i, j
   PetscBool :: local, found
   PetscErrorCode :: ierr
-  PetscMPIInt :: newcomm
+  PetscMPIInt :: newcomm_size
+  PetscInt, pointer :: ranks(:)
   
   option => this%realization%option
   reaction => this%realization%reaction
   
   ! point the waste form region to the desired region 
   call PMWFAssociateRegion(this,this%realization%patch%region_list)
+  
+  allocate(ranks(option%mycommsize))
   
   waste_form_id = 0
   nullify(prev_waste_form)
@@ -1657,19 +1657,26 @@ subroutine PMWFSetup(this)
           local = PETSC_TRUE
       endif
     endif
+    ranks(:) = 0
+    newcomm_size = 0
     if (local) then
-      ! assign the waste form ID number and MPI communicator
       cur_waste_form%id = waste_form_id
-      cur_waste_form%myMPIgroup_id = waste_form_id
-      call MPI_Comm_split(option%mycomm,cur_waste_form%myMPIgroup_id, &
-                          option%myrank,newcomm,ierr)
+      ranks(option%myrank+1) = 1
     else
       cur_waste_form%id = 0
-      cur_waste_form%myMPIgroup_id = 0
-      call MPI_Comm_split(option%mycomm,MPI_UNDEFINED,option%myrank, &
-                          newcomm,ierr)
+      ranks(option%myrank+1) = 0
     endif
-    cur_waste_form%myMPIcomm = newcomm
+    call MPI_Allreduce(MPI_IN_PLACE,ranks,option%mycommsize,MPI_INTEGER, &
+                       MPI_SUM,option%mycomm,ierr)
+    newcomm_size = sum(ranks)
+    allocate(cur_waste_form%rank_list(newcomm_size))
+    j = 0
+    do i = 1,option%mycommsize
+      if (ranks(i) == 1) then
+        j = j + 1
+        cur_waste_form%rank_list(j) = (i - 1)  ! (world ranks)
+      endif
+    enddo
     if (local) then
       call PMWFSetRegionScaling(this,cur_waste_form)
       prev_waste_form => cur_waste_form
@@ -1686,6 +1693,8 @@ subroutine PMWFSetup(this)
       cur_waste_form => next_waste_form
     endif
   enddo
+  
+  deallocate(ranks)
   
   ! check if the mechanism list includes fmdm or glass mechanisms:
   cur_mechanism => this%mechanism_list
@@ -1929,7 +1938,7 @@ subroutine PMWFInitializeTimestep(this)
   PetscReal :: rate
   PetscReal :: dV
   PetscReal :: dt
-  PetscReal :: avg_temp
+  PetscReal :: avg_temp_local, avg_temp_global
   PetscInt :: i, k, p, g, d, f
   PetscInt :: num_species
   PetscErrorCode :: ierr
@@ -2007,20 +2016,20 @@ subroutine PMWFInitializeTimestep(this)
           cur_waste_form%eff_canister_vit_rate   
       else
         i = 0
-        avg_temp = 0.d0
+        avg_temp_local = 0.d0
         do while (i < cur_waste_form%region%num_cells)
           i = i + 1
-          avg_temp = avg_temp + &  ! Celcius
+          avg_temp_local = avg_temp_local + &  ! Celcius
             global_auxvars(grid%nL2G(cur_waste_form%region%cell_ids(i)))%temp* &
             cur_waste_form%scaling_factor(i)
         enddo
-        call MPI_Allreduce(MPI_IN_PLACE,avg_temp,ONE_INTEGER_MPI, &
-                     MPI_DOUBLE_PRECISION,MPI_SUM,cur_waste_form%myMPIcomm,ierr)
-        avg_temp = avg_temp+273.15d0   ! Kelvin
+        call CalcParallelSUM(option,cur_waste_form,avg_temp_local, &
+                             avg_temp_global)
+        avg_temp_global = avg_temp_global+273.15d0   ! Kelvin
         cur_waste_form%eff_canister_vit_rate = &
           cur_waste_form%canister_vitality_rate * &
           exp( cwfm%canister_material_constant * ( (1.d0/333.15d0) - &
-          (1.d0/(avg_temp))) )
+          (1.d0/(avg_temp_global))) )
       endif
       cur_waste_form%canister_vitality = cur_waste_form%canister_vitality &
                                  - (cur_waste_form%eff_canister_vit_rate*dt)
@@ -2376,9 +2385,11 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
                                             ! 1/day -> 1/sec
   PetscReal, parameter :: time_conversion = 1.d0/(24.d0*3600.d0)
-  PetscReal :: avg_temp
-  PetscReal :: avg_pri_molal, avg_sec_molal
-  PetscReal :: avg_pri_act_coef, avg_sec_act_coef
+  PetscReal :: avg_temp_local, avg_temp_global
+  PetscReal :: avg_pri_molal_local, avg_pri_molal_global
+  PetscReal :: avg_sec_molal_local, avg_sec_molal_global
+  PetscReal :: avg_pri_act_coef_local, avg_pri_act_coef_global
+  PetscReal :: avg_sec_act_coef_local, avg_sec_act_coef_global
   PetscInt :: i
 
   grid => pm%realization%patch%grid
@@ -2396,118 +2407,117 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   ! Yucca Mountain Repository SAR, Section 2.3.7, DOE/RW-0573 Rev.0
   
   i = 0
-  avg_temp = 0.d0
+  avg_temp_local = 0.d0
   do while (i < waste_form%region%num_cells)
     i = i + 1
-    avg_temp = avg_temp + &  ! Celcius
+    avg_temp_local = avg_temp_local + &  ! Celcius
                global_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))%temp * &
                waste_form%scaling_factor(i)
   enddo
-  call MPI_Allreduce(MPI_IN_PLACE,avg_temp,ONE_INTEGER_MPI, &
-                     MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
-  avg_temp = avg_temp+273.15d0   ! Kelvin
+  call CalcParallelSUM(pm%option,waste_form,avg_temp_local,avg_temp_global)
+  avg_temp_global = avg_temp_global+273.15d0   ! Kelvin
               
   if (this%use_pH) then
     if (this%h_ion_id > 0) then   ! primary species
       i = 0
-      avg_pri_molal = 0.d0
+      avg_pri_molal_local = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
-        avg_pri_molal = avg_pri_molal + &
+        avg_pri_molal_local = avg_pri_molal_local + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         pri_molal(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_molal,ONE_INTEGER_MPI, &
-                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      call CalcParallelSUM(pm%option,waste_form,avg_pri_molal_local, &
+                           avg_pri_molal_global)
       i = 0
-      avg_pri_act_coef = 0.d0
+      avg_pri_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
-        avg_pri_act_coef = avg_pri_act_coef + &
+        avg_pri_act_coef_local = avg_pri_act_coef_local + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         pri_act_coef(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_act_coef,ONE_INTEGER_MPI, &
-                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
-      this%pH = -log10(avg_pri_molal*avg_pri_act_coef)
+      call CalcParallelSUM(pm%option,waste_form,avg_pri_act_coef_local, &
+                           avg_pri_act_coef_global)
+      this%pH = -log10(avg_pri_molal_global*avg_pri_act_coef_global)
     elseif (this%h_ion_id < 0) then   ! secondary species
       i = 0
-      avg_sec_molal = 0.d0
+      avg_sec_molal_local = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
-        avg_sec_molal = avg_sec_molal + &
+        avg_sec_molal_local = avg_sec_molal_local + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         sec_molal(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_molal,ONE_INTEGER_MPI, &
-                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      call CalcParallelSUM(pm%option,waste_form,avg_sec_molal_local, &
+                           avg_sec_molal_global)
       i = 0
-      avg_sec_act_coef = 0.d0
+      avg_sec_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
-        avg_sec_act_coef = avg_sec_act_coef + &
+        avg_sec_act_coef_local = avg_sec_act_coef_local + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         sec_act_coef(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_act_coef,ONE_INTEGER_MPI, &
-                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
-      this%pH = -log10(avg_sec_molal*avg_sec_act_coef)
+      call CalcParallelSUM(pm%option,waste_form,avg_sec_act_coef_local, &
+                           avg_sec_act_coef_global)
+      this%pH = -log10(avg_sec_molal_global*avg_sec_act_coef_global)
     endif
   endif
   
   if (this%use_Q) then
     if (this%SiO2_id > 0) then   ! primary species
       i = 0
-      avg_pri_molal = 0.d0
+      avg_pri_molal_local = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
-        avg_pri_molal = avg_pri_molal + &
+        avg_pri_molal_local = avg_pri_molal_local + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         pri_molal(this%SiO2_id)*waste_form%scaling_factor(i)
       enddo
-      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_molal,ONE_INTEGER_MPI, &
-                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      call CalcParallelSUM(pm%option,waste_form,avg_pri_molal_local, &
+                           avg_pri_molal_global)
       i = 0
-      avg_pri_act_coef = 0.d0
+      avg_pri_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
-        avg_pri_act_coef = avg_pri_act_coef + &
+        avg_pri_act_coef_local = avg_pri_act_coef_local + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         pri_act_coef(this%SiO2_id)*waste_form%scaling_factor(i)
       enddo
-      call MPI_Allreduce(MPI_IN_PLACE,avg_pri_act_coef,ONE_INTEGER_MPI, &
-                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
-      this%Q = avg_pri_molal*avg_pri_act_coef
+      call CalcParallelSUM(pm%option,waste_form,avg_pri_act_coef_local, &
+                           avg_pri_act_coef_global)
+      this%Q = avg_pri_molal_global*avg_pri_act_coef_global
     elseif (this%SiO2_id < 0) then   ! secondary species
       i = 0
-      avg_sec_molal = 0.d0
+      avg_sec_molal_local = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
-        avg_sec_molal = avg_sec_molal + &
+        avg_sec_molal_local = avg_sec_molal_local + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         sec_molal(abs(this%SiO2_id))* &
                         waste_form%scaling_factor(i)
       enddo
-      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_molal,ONE_INTEGER_MPI, &
-                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
+      call CalcParallelSUM(pm%option,waste_form,avg_sec_molal_local, &
+                           avg_sec_molal_global)
       i = 0
-      avg_sec_act_coef = 0.d0
+      avg_sec_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
         i = i + 1
-        avg_sec_act_coef = avg_sec_act_coef + &
+        avg_sec_act_coef_local = avg_sec_act_coef_local + &
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         sec_act_coef(abs(this%SiO2_id))* &
                         waste_form%scaling_factor(i)
       enddo
-      call MPI_Allreduce(MPI_IN_PLACE,avg_sec_act_coef,ONE_INTEGER_MPI, &
-                         MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
-      this%Q = avg_sec_molal*avg_sec_act_coef
+      call CalcParallelSUM(pm%option,waste_form,avg_sec_act_coef_local, &
+                           avg_sec_act_coef_global)
+      this%Q = avg_sec_molal_global*avg_sec_act_coef_global
     endif
   endif
   
   ! kg-glass/m^2/sec
   this%dissolution_rate = this%k0 * (10.d0**(this%nu*this%pH)) * &
-                          exp(-this%Ea/(8.314d0*avg_temp)) * &
+                          exp(-this%Ea/(8.314d0*avg_temp_global)) * &
                           (1.d0 - (this%Q/this%K)**(1/this%v)) + this%k_long
 
   ! kg-glass/sec
@@ -2630,6 +2640,7 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   PetscInt :: icomp_fmdm
   PetscInt :: icomp_pflotran
   PetscInt :: ghosted_id
+  PetscReal :: avg_temp_local
   
  ! FMDM model: 
  !=======================================================
@@ -2637,7 +2648,7 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   logical ( kind = 4) :: initialRun
   PetscReal :: time
   PetscReal :: Usource
-  PetscReal :: avg_temp
+  PetscReal :: avg_temp_global
   type(global_auxvar_type), pointer :: global_auxvars(:)
   type(option_type), pointer :: option
  !========================================================
@@ -2675,16 +2686,15 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
   time = option%time
   
   i = 0
-  avg_temp = 0.d0
+  avg_temp_local = 0.d0
   do while (i < waste_form%region%num_cells)
     i = i + 1
-    avg_temp = avg_temp + &  ! Celcius
+    avg_temp_local = avg_temp_local + &  ! Celcius
                global_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))%temp * &
                waste_form%scaling_factor(i)
   enddo
-  call MPI_Allreduce(MPI_IN_PLACE,avg_temp,ONE_INTEGER_MPI, &
-                     MPI_DOUBLE_PRECISION,MPI_SUM,waste_form%myMPIcomm,ierr)
-  call AMP_step(this%burnup, time, avg_temp, this%concentration, &
+  call CalcParallelSUM(option,waste_form,avg_temp_local,avg_temp_global)
+  call AMP_step(this%burnup, time, avg_temp_global, this%concentration, &
                 initialRun, this%dissolution_rate, Usource, success) 
   write(*,*) this%dissolution_rate
   ! convert total component concentration from mol/m3 back to mol/L (/1.d3)
@@ -2816,6 +2826,71 @@ recursive subroutine PMWFFinalizeRun(this)
   endif  
   
 end subroutine PMWFFinalizeRun
+
+! ************************************************************************** !
+
+subroutine CalcParallelSUM(option,waste_form,local_val,global_sum)
+  ! 
+  ! Calculates global sum for a MPI_DOUBLE_PRECISION number over a
+  ! waste form region. This function uses only MPI_Send and MPI_Recv functions
+  ! and does not need a communicator object. It reduces communication to the
+  ! processes that are in the waste form's rank_list object rather than using
+  ! a call to MPI_Allreduce.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/23/17
+  
+  implicit none
+  
+  type(option_type), pointer :: option
+  type(waste_form_base_type) :: waste_form
+  PetscReal :: local_val
+  PetscReal :: global_sum
+
+  PetscReal, pointer :: temp_array(:)
+  PetscInt :: num_ranks
+  PetscInt :: m
+  PetscInt :: TAG
+  PetscErrorCode :: ierr
+  
+  num_ranks = size(waste_form%rank_list)
+  allocate(temp_array(num_ranks))
+  temp_array = 0.d0
+  TAG = 0
+  
+  if (num_ranks .gt. 1) then
+  !------------------------------------------
+    if (option%myrank .ne. waste_form%rank_list(1)) then
+      call MPI_Send(local_val,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                    waste_form%rank_list(1),TAG,option%mycomm,ierr)
+    else
+      temp_array(1) = local_val
+      do m = 2,num_ranks
+        call MPI_Recv(local_val,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                      waste_form%rank_list(m),TAG,option%mycomm, &
+                      MPI_STATUS_IGNORE,ierr)
+        temp_array(m) = local_val
+      enddo
+      global_sum = sum(temp_array)
+    endif
+    if (option%myrank == waste_form%rank_list(1)) then
+      do m = 2,num_ranks
+        call MPI_Send(global_sum,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                      waste_form%rank_list(m),TAG,option%mycomm,ierr)
+      enddo
+    else
+      call MPI_Recv(global_sum,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                    waste_form%rank_list(1),TAG,option%mycomm, &
+                    MPI_STATUS_IGNORE,ierr)
+    endif             
+  !------------------------------------------        
+  else 
+    global_sum = local_val
+  endif
+  
+  deallocate(temp_array)
+
+end subroutine CalcParallelSUM
 
 ! ************************************************************************** !
 
