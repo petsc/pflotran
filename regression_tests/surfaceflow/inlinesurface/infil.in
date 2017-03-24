@@ -46,22 +46,18 @@ SUBSURFACE
 
   REGION all
     FILE ./simple.h5
-    GRID unstructured
   END
 
   REGION top 
     FILE ./simple.h5
-    GRID unstructured
   END
 
   REGION bottom 
     FILE ./simple.h5
-    GRID unstructured
   END
 
   REGION top_cells
     FILE ./simple.h5
-    GRID unstructured
   END
 
   ! Initial condition -----------------------------------------------

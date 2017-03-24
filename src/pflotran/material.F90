@@ -51,7 +51,6 @@ module Material_module
     PetscReal :: thermal_conductivity_frozen
     PetscReal :: alpha_fr
 
-    PetscReal :: pore_compressibility
     PetscReal :: thermal_expansitivity   
     PetscReal :: dispersivity(3)
     PetscReal :: tortuosity_pwr
@@ -176,7 +175,6 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_frozen = 0.d0
   material_property%alpha_fr = 0.95d0
 
-  material_property%pore_compressibility = UNINITIALIZED_DOUBLE
   material_property%thermal_expansitivity = 0.d0  
   material_property%dispersivity = 0.d0
   material_property%min_pressure = 0.d0
@@ -235,9 +233,13 @@ subroutine MaterialPropertyRead(material_property,input,option)
   PetscBool :: therm_k_frz
   PetscBool :: therm_k_exp_frz
   PetscReal :: tempreal
+  PetscInt, parameter :: TMP_SOIL_COMPRESSIBILITY = 1
+  PetscInt, parameter :: TMP_BULK_COMPRESSIBILITY = 2
+  PetscInt :: soil_or_bulk_compressibility
 
   therm_k_frz = PETSC_FALSE
   therm_k_exp_frz = PETSC_FALSE
+  soil_or_bulk_compressibility = UNINITIALIZED_INTEGER
 
   input%ierr = 0
   do
@@ -333,18 +335,19 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputErrorMsg(input,option, &
                            'thermal conductivity frozen exponent', &
                            'MATERIAL_PROPERTY')
-      !case('PORE_COMPRESSIBILITY')
-      !  call InputReadDouble(input,option, &
-      !                       material_property%pore_compressibility)
-      !  call InputErrorMsg(input,option,'pore compressibility', &
-      !                     'MATERIAL_PROPERTY')
       case('SOIL_COMPRESSIBILITY_FUNCTION')
         call InputReadWord(input,option, &
                            material_property%soil_compressibility_function, &
                            PETSC_TRUE)
         call InputErrorMsg(input,option,'soil compressibility function', &
                            'MATERIAL_PROPERTY')
-      case('SOIL_COMPRESSIBILITY') 
+      case('SOIL_COMPRESSIBILITY','BULK_COMPRESSIBILITY') 
+        select case(keyword)
+          case('SOIL_COMPRESSIBILITY') 
+            soil_or_bulk_compressibility = TMP_SOIL_COMPRESSIBILITY
+          case('BULK_COMPRESSIBILITY') 
+            soil_or_bulk_compressibility = TMP_BULK_COMPRESSIBILITY
+        end select
         call DatasetReadDoubleOrDataset(input,material_property% &
                                           soil_compressibility, &
                                    material_property%compressibility_dataset, &
@@ -721,13 +724,35 @@ subroutine MaterialPropertyRead(material_property,input,option)
   endif
 
   if (len_trim(material_property%soil_compressibility_function) > 0) then
+    word = material_property%soil_compressibility_function
+    select case(word)
+      case('BRAGFLO','WIPP')
+        if (soil_or_bulk_compressibility /= TMP_BULK_COMPRESSIBILITY) then
+          option%io_buffer = 'A BULK_COMPRESSIBILITY should be entered &
+            &instead of a SOIL_COMPRESSIBILITY in MATERIAL_PROPERTY "' // &
+            trim(material_property%name) // '" since a BRAGFLO or WIPP &
+            &SOIL_COMPRESSIBILITY function is defined.'
+          call printErrMsg(option)
+        endif
+        word = 'BULK_COMPRESSIBILITY'
+      case('LEIJNSE','DEFAULT')
+        if (soil_or_bulk_compressibility /= TMP_SOIL_COMPRESSIBILITY) then
+          option%io_buffer = 'A SOIL_COMPRESSIBILITY should be entered &
+            &instead of a BULK_COMPRESSIBILITY in MATERIAL_PROPERTY "' // &
+            trim(material_property%name) // '" since a LEIJNSE or DEFAULT &
+            &SOIL_COMPRESSIBILITY function is defined.'
+          call printErrMsg(option)
+        endif
+        word = 'SOIL_COMPRESSIBILITY'
+      case default
+    end select
     option%flow%transient_porosity = PETSC_TRUE
     if (Uninitialized(material_property%soil_compressibility) .and. &
         .not.associated(material_property%compressibility_dataset)) then
       option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in &
         &inputdeck for MATERIAL_PROPERTY "' // &
         trim(material_property%name) // &
-        '", but SOIL_COMPRESSIBILITY is not defined.'
+        '", but a ' // trim(word) // ' is not defined.'
       call printErrMsg(option)
     endif
     if (Uninitialized(material_property%soil_reference_pressure) .and. &
@@ -1267,6 +1292,8 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
       select case(material_property_ptrs(i)%ptr%soil_compressibility_function)
         case('BRAGFLO','WIPP')
           MaterialCompressSoilPtrTmp => MaterialCompressSoilBRAGFLO
+        case('QUADRATIC')
+          MaterialCompressSoilPtrTmp => MaterialCompressSoilQuadratic
         case('LEIJNSE','DEFAULT')
           MaterialCompressSoilPtrTmp => MaterialCompressSoilLeijnse
         case default

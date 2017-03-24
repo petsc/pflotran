@@ -3597,7 +3597,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
          EFFECTIVE_POROSITY,LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE, &
          MAXIMUM_PRESSURE,LIQUID_MASS_FRACTION,GAS_MASS_FRACTION, &
          OIL_PRESSURE,OIL_SATURATION,OIL_DENSITY,OIL_DENSITY_MOL,OIL_ENERGY, &
-         OIL_MOBILITY)
+         OIL_MOBILITY,OIL_VISCOSITY)
 
       if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -4298,6 +4298,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
               vec_ptr(local_id) = patch%aux%TOil_ims%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%mobility(option%liquid_phase)
             enddo
+          case(LIQUID_VISCOSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOil_ims%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%viscosity(option%liquid_phase)
+            enddo
           case(OIL_SATURATION)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TOil_ims%auxvars(ZERO_INTEGER, &
@@ -4331,6 +4336,11 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%TOil_ims%auxvars(ZERO_INTEGER, &
                   grid%nL2G(local_id))%mobility(option%oil_phase)
+            enddo
+          case(OIL_VISCOSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOil_ims%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%viscosity(option%oil_phase)
             enddo
           case(EFFECTIVE_POROSITY)
             do local_id=1,grid%nlmax
@@ -4872,7 +4882,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
          LIQUID_HEAD,VAPOR_PRESSURE,SATURATION_PRESSURE,MAXIMUM_PRESSURE, &
          LIQUID_MASS_FRACTION,GAS_MASS_FRACTION, &
          OIL_PRESSURE,OIL_SATURATION,OIL_DENSITY,OIL_DENSITY_MOL,OIL_ENERGY, &
-         OIL_MOBILITY)
+         OIL_MOBILITY,OIL_VISCOSITY)
          
      if (associated(patch%aux%TH)) then
         select case(ivar)
@@ -5247,6 +5257,10 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
               value = &
                 patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
                   mobility(option%liquid_phase)
+          case(LIQUID_VISCOSITY)
+              value = &
+                patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                  viscosity(option%liquid_phase)
           case(OIL_SATURATION)
               value = &
                 patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
@@ -5269,7 +5283,10 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
                     den(option%oil_phase)
           case(OIL_MOBILITY)
             value = patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
-                    mobility(option%gas_phase)
+                    mobility(option%oil_phase)
+          case(OIL_VISCOSITY)
+            value = patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
+                    viscosity(option%oil_phase)
           case(EFFECTIVE_POROSITY)
             value = patch%aux%TOil_ims%auxvars(ZERO_INTEGER,ghosted_id)% &
                     effective_porosity

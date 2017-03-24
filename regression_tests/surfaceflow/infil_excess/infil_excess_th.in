@@ -64,7 +64,6 @@ END
 
 REGION top
   FILE ../surface_flow_only/sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
-  GRID unstructured
 END
 
 #=========================== flow conditions ==================================
@@ -165,7 +164,6 @@ END
 
 SURF_REGION surf_east
   FILE ../surface_flow_only/sloping_plane_400X_320Y_80dx_80dy_0.2000dz_0.0005slope.h5
-  GRID unstructured
 END
 
 #=========================== flow conditions ==========================================
