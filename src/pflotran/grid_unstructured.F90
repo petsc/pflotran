@@ -3559,14 +3559,11 @@ subroutine UGridMapSideSet2(unstructured_grid,face_vertices,n_ss_faces, &
   ! Date: 03/21/17
   ! 
 
+#include "petsc/finclude/petscmat.h"
+  use petscmat
   use Option_module
 
   implicit none
-
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
 
   type(grid_unstructured_type) :: unstructured_grid
   PetscInt :: face_vertices(:,:)
