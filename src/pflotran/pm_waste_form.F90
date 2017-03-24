@@ -2863,7 +2863,7 @@ subroutine CalcParallelSUM(option,waste_form,local_val,global_sum)
   temp_array = 0.d0
   TAG = 0
   
-  if (num_ranks .gt. 1) then
+  if (num_ranks > 1) then
   !------------------------------------------
     if (option%myrank .ne. waste_form%rank_list(1)) then
       call MPI_Send(local_val,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
