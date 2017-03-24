@@ -192,9 +192,9 @@ subroutine WIPPWellSrcSink(this,Residual,Jacobian,compute_derivative, &
   endif
                             
   if (compute_derivative) then
-    
-    ! jacobian something
-
+    option%io_buffer = 'GeneralSSSandbox is not configured for &
+      &analytical derivatives.'
+    call printErrMsg(option)
   endif
   
 end subroutine WIPPWellSrcSink

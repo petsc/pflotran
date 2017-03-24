@@ -1,0 +1,129 @@
+# Problem contributed by Aitor Iraola (aitor.iraola@amphos21.com)
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+  /
+END
+
+SUBSURFACE
+
+  #=========================== regression =======================================
+  REGRESSION
+    CELLS_PER_PROCESS 4
+  END
+
+  #=========================== discretization ===================================
+  GRID
+    TYPE unstructured ./ugrid_sideset_mesh.h5
+    MAX_CELLS_SHARING_A_VERTEX 100
+  END
+
+  #=========================== fluid properties =================================
+  FLUID_PROPERTY
+    DIFFUSION_COEFFICIENT 1.d-9
+  END
+
+  #=========================== material properties ==============================
+  MATERIAL_PROPERTY oxide-ore
+    ID 1
+    POROSITY 0.05d0
+    TORTUOSITY 1.d0
+    PERMEABILITY
+      PERM_ISO 1.5d-13
+    /
+    CHARACTERISTIC_CURVES default
+  END
+
+  #=========================== saturation functions =============================
+  CHARACTERISTIC_CURVES default
+    SATURATION_FUNCTION VAN_GENUCHTEN
+      M 0.286
+      ALPHA  1.9401d-4
+      LIQUID_RESIDUAL_SATURATION 0.115
+    /
+    PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+      M 0.286
+      LIQUID_RESIDUAL_SATURATION 0.115
+    /
+  END
+
+  #=========================== times ============================================
+  TIME
+    FINAL_TIME 10 s
+    INITIAL_TIMESTEP_SIZE 1.d0 s
+    MAXIMUM_TIMESTEP_SIZE 1.d0 s
+  END
+
+  #=========================== regions ==========================================
+  REGION all
+    FILE ./ugrid_sideset_mesh.h5
+  END
+
+  REGION ConditionA
+    FILE reg_A.ss
+  END
+
+  REGION ConditionB
+    FILE reg_B.ss
+  END
+
+  #=========================== flow conditions ==================================
+  FLOW_CONDITION initial
+    TYPE
+      PRESSURE hydrostatic
+    /
+    PRESSURE 101293
+    DATUM 0.d0 0.d0 0.0d0
+  END
+
+  FLOW_CONDITION ConditionA
+    TYPE
+      PRESSURE Dirichlet
+    /
+    PRESSURE 101293
+  /
+  FLOW_CONDITION ConditionB
+    TYPE
+      PRESSURE Dirichlet
+    /
+    PRESSURE 101293
+  /
+
+  #=========================== condition couplers ===============================
+  # default initial condition
+  INITIAL_CONDITION
+    FLOW_CONDITION initial
+    REGION all
+  END
+
+  INITIAL_CONDITION ConditionB
+    FLOW_CONDITION ConditionB
+    REGION ConditionB
+  END
+
+  INITIAL_CONDITION ConditionA
+    FLOW_CONDITION ConditionA
+    REGION ConditionA
+  END
+
+  BOUNDARY_CONDITION ConditionA
+    FLOW_CONDITION ConditionA
+    REGION ConditionA
+  END
+
+  BOUNDARY_CONDITION ConditionB
+    FLOW_CONDITION ConditionB
+    REGION ConditionB
+  END
+
+  #=========================== stratigraphy couplers ============================
+  STRATA
+    REGION all
+    MATERIAL oxide-ore
+  END
+
+END_SUBSURFACE

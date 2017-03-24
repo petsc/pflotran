@@ -683,7 +683,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           'for unstructured region DEFINED_BY_VERTEX_IDS'
         call printErrMsg(option)
       case (DEFINED_BY_SIDESET_UGRID)
-        call UGridMapSideSet(grid%unstructured_grid, &
+        call UGridMapSideSet2(grid%unstructured_grid, &
                              region%sideset%face_vertices, &
                              region%sideset%nfaces,region%name, &
                              option,region%cell_ids,region%faces)

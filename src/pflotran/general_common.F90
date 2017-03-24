@@ -48,6 +48,9 @@ module General_Common_module
             GeneralFluxDerivative, &
             GeneralBCFluxDerivative, &
             GeneralSrcSinkDerivative
+            
+  public :: GeneralDiffJacobian, &
+            GeneralAuxVarDiff
 
 contains
 
@@ -3847,9 +3850,11 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         ! derivative wrt temperature
         Jl(1,3) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_T
       case(GAS_STATE)
-        option%io_buffer = 'Water injection not set up for gas state in &
-          &GeneralSrcSink.'
-        call printErrMsg(option)
+        if (dabs(Res(wat_comp_id)) > 1.d-40 .and. dden_bool > 0.d0) then      
+          option%io_buffer = 'Volumetric water injection not set up &
+            &for gas state in GeneralSrcSink.'
+          call printErrMsg(option)
+        endif
         ! derivative wrt gas pressure
         ! derivative wrt air pressure
         ! derivative wrt temperature
@@ -3858,7 +3863,7 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
         Jl(1,1) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_pl
         ! derivative wrt gas saturation
         ! derivative wrt temperature
-        Jl(1,1) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_T
+        Jl(1,3) = dden_bool * qsrc(wat_comp_id) * gen_auxvar%d%denl_T
     end select
     J = J + Jl
   endif
@@ -3886,9 +3891,11 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
     Jg = 0.d0
     select case(global_auxvar%istate)
       case(LIQUID_STATE)
-        option%io_buffer = 'Air injection not set up for liquid state in &
-          &GeneralSrcSink.'
-        call printErrMsg(option)
+        if (dabs(Res(air_comp_id)) > 1.d-40 .and. dden_bool > 0.d0) then      
+          option%io_buffer = 'Volumetric air injection not set up for &
+            &liquid state in GeneralSrcSink as there is no air density.'
+          call printErrMsg(option)
+        endif
         ! derivative wrt liquid pressure
         ! derivative wrt air mole fraction
         ! derivative wrt temperature
@@ -3991,10 +3998,10 @@ subroutine GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                                                         enthalpy
         if (analytical_derivatives) then
           Je = 0.d0
-          Je(3,1) = Jl(2,1) * enthalpy + &
+          Je(3,1) = Jg(2,1) * enthalpy + &
                     Res(TWO_INTEGER) * ha_dp
-          Je(3,2) = Jl(2,2) * enthalpy
-          Je(3,3) = Jl(2,3) * enthalpy + &
+          Je(3,2) = Jg(2,2) * enthalpy
+          Je(3,3) = Jg(2,3) * enthalpy + &
                     Res(TWO_INTEGER) * ha_dT
         endif
         J = J + Je
@@ -4044,19 +4051,18 @@ subroutine GeneralAccumDerivative(gen_auxvar,global_auxvar,material_auxvar, &
                            res,jac,general_analytical_derivatives, &
                            PETSC_FALSE)
                            
-  do idof = 1, option%nflowdof
-    call GeneralAccumulation(gen_auxvar(idof), &
-                             global_auxvar, &
-                             material_auxvar,soil_heat_capacity, &
-                             option,res_pert,jac_pert,PETSC_FALSE,PETSC_FALSE)
-    do irow = 1, option%nflowdof
-      J(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar(idof)%pert
-!geh:print *, irow, idof, J(irow,idof), gen_auxvar(idof)%pert
-    enddo !irow
-  enddo ! idof
-
   if (general_analytical_derivatives) then
     J = jac
+  else
+    do idof = 1, option%nflowdof
+      call GeneralAccumulation(gen_auxvar(idof), &
+                               global_auxvar, &
+                               material_auxvar,soil_heat_capacity, &
+                               option,res_pert,jac_pert,PETSC_FALSE,PETSC_FALSE)
+      do irow = 1, option%nflowdof
+        J(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar(idof)%pert
+      enddo !irow
+    enddo ! idof
   endif
 
   if (general_isothermal) then
@@ -4133,40 +4139,45 @@ subroutine GeneralFluxDerivative(gen_auxvar_up,global_auxvar_up, &
                    area,dist,general_parameter, &
                    option,v_darcy,res,Janal_up,Janal_dn,&
                    general_analytical_derivatives,PETSC_FALSE)
-                           
-  ! upgradient derivatives
-  do idof = 1, option%nflowdof
-    call GeneralFlux(gen_auxvar_up(idof),global_auxvar_up, &
-                     material_auxvar_up, &
-                     thermal_conductivity_up, &
-                     gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
-                     material_auxvar_dn, &
-                     thermal_conductivity_dn, &
-                     area,dist,general_parameter, &
-                     option,v_darcy,res_pert,Jdummy,Jdummy, &
-                     PETSC_FALSE,PETSC_FALSE)
-    do irow = 1, option%nflowdof
-      Jup(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_up(idof)%pert
-!geh:print *, 'up: ', irow, idof, Jup(irow,idof), gen_auxvar_up(idof)%pert
-    enddo !irow
-  enddo ! idof
+ 
+  if (general_analytical_derivatives) then
+    Jup = Janal_up
+    Jdn = Janal_dn
+  else
+    ! upgradient derivatives
+    do idof = 1, option%nflowdof
+      call GeneralFlux(gen_auxvar_up(idof),global_auxvar_up, &
+                       material_auxvar_up, &
+                       thermal_conductivity_up, &
+                       gen_auxvar_dn(ZERO_INTEGER),global_auxvar_dn, &
+                       material_auxvar_dn, &
+                       thermal_conductivity_dn, &
+                       area,dist,general_parameter, &
+                       option,v_darcy,res_pert,Jdummy,Jdummy, &
+                       PETSC_FALSE,PETSC_FALSE)
+      do irow = 1, option%nflowdof
+        Jup(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_up(idof)%pert
+  !geh:print *, 'up: ', irow, idof, Jup(irow,idof), gen_auxvar_up(idof)%pert
+      enddo !irow
+    enddo ! idof
 
-  ! downgradient derivatives
-  do idof = 1, option%nflowdof
-    call GeneralFlux(gen_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
-                     material_auxvar_up, &
-                     thermal_conductivity_up, &
-                     gen_auxvar_dn(idof),global_auxvar_dn, &
-                     material_auxvar_dn, &
-                     thermal_conductivity_dn, &
-                     area,dist,general_parameter, &
-                     option,v_darcy,res_pert,Jdummy,Jdummy, &
-                     PETSC_FALSE,PETSC_FALSE)
-    do irow = 1, option%nflowdof
-      Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
-!geh:print *, 'dn: ', irow, idof, Jdn(irow,idof), gen_auxvar_dn(idof)%pert
-    enddo !irow
-  enddo ! idof
+    ! downgradient derivatives
+    do idof = 1, option%nflowdof
+      call GeneralFlux(gen_auxvar_up(ZERO_INTEGER),global_auxvar_up, &
+                       material_auxvar_up, &
+                       thermal_conductivity_up, &
+                       gen_auxvar_dn(idof),global_auxvar_dn, &
+                       material_auxvar_dn, &
+                       thermal_conductivity_dn, &
+                       area,dist,general_parameter, &
+                       option,v_darcy,res_pert,Jdummy,Jdummy, &
+                       PETSC_FALSE,PETSC_FALSE)
+      do irow = 1, option%nflowdof
+        Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
+  !geh:print *, 'dn: ', irow, idof, Jdn(irow,idof), gen_auxvar_dn(idof)%pert
+      enddo !irow
+    enddo ! idof
+  endif
 
   if (general_isothermal) then
     Jup(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
@@ -4242,22 +4253,26 @@ subroutine GeneralBCFluxDerivative(ibndtype,auxvar_mapping,auxvars, &
                      thermal_conductivity_dn, &
                      area,dist,general_parameter, &
                      option,v_darcy,res,Jdum, &
-                     PETSC_FALSE,PETSC_FALSE)                     
-  ! downgradient derivatives
-  do idof = 1, option%nflowdof
-    call GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
-                       gen_auxvar_up,global_auxvar_up, &
-                       gen_auxvar_dn(idof),global_auxvar_dn, &
-                       material_auxvar_dn, &
-                       thermal_conductivity_dn, &
-                       area,dist,general_parameter, &
-                       option,v_darcy,res_pert,Jdum, &
-                       PETSC_FALSE,PETSC_FALSE)   
-    do irow = 1, option%nflowdof
-      Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
-!print *, 'bc: ', irow, idof, Jdn(irow,idof), gen_auxvar_dn(idof)%pert
-    enddo !irow
-  enddo ! idof
+                     general_analytical_derivatives,PETSC_FALSE)
+
+  if (general_analytical_derivatives) then
+    Jdn = Jdum
+  else
+    ! downgradient derivatives
+    do idof = 1, option%nflowdof
+      call GeneralBCFlux(ibndtype,auxvar_mapping,auxvars, &
+                         gen_auxvar_up,global_auxvar_up, &
+                         gen_auxvar_dn(idof),global_auxvar_dn, &
+                         material_auxvar_dn, &
+                         thermal_conductivity_dn, &
+                         area,dist,general_parameter, &
+                         option,v_darcy,res_pert,Jdum, &
+                         PETSC_FALSE,PETSC_FALSE)   
+      do irow = 1, option%nflowdof
+        Jdn(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvar_dn(idof)%pert
+      enddo !irow
+    enddo ! idof
+  endif
 
   if (general_isothermal) then
     Jdn(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
@@ -4308,16 +4323,22 @@ subroutine GeneralSrcSinkDerivative(option,qsrc,flow_src_sink_type, &
   option%iflag = -3
   call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
                       gen_auxvars(ZERO_INTEGER),global_auxvar,dummy_real, &
-                      scale,res,Jdum,PETSC_FALSE,PETSC_FALSE)
-  ! downgradient derivatives
-  do idof = 1, option%nflowdof
-    call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
-                        gen_auxvars(idof),global_auxvar,dummy_real, &
-                        scale,res_pert,Jdum,PETSC_FALSE,PETSC_FALSE)            
-    do irow = 1, option%nflowdof
-      Jac(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvars(idof)%pert
-    enddo !irow
-  enddo ! idof
+                      scale,res,Jdum,general_analytical_derivatives, &
+                      PETSC_FALSE)
+                      
+  if (general_analytical_derivatives) then
+    Jac = Jdum
+  else                      
+    ! downgradient derivatives
+    do idof = 1, option%nflowdof
+      call GeneralSrcSink(option,qsrc,flow_src_sink_type, &
+                          gen_auxvars(idof),global_auxvar,dummy_real, &
+                          scale,res_pert,Jdum,PETSC_FALSE,PETSC_FALSE)            
+      do irow = 1, option%nflowdof
+        Jac(irow,idof) = (res_pert(irow)-res(irow))/gen_auxvars(idof)%pert
+      enddo !irow
+    enddo ! idof
+  endif
   
   if (general_isothermal) then
     Jac(GENERAL_ENERGY_EQUATION_INDEX,:) = 0.d0
@@ -4386,5 +4407,636 @@ function GeneralAverageDensity(iphase,istate_up,istate_dn, &
   endif
 
 end function GeneralAverageDensity
+
+! ************************************************************************** !
+
+subroutine GeneralAuxVarDiff(idof,general_auxvar,global_auxvar, &
+                             material_auxvar, &
+                             general_auxvar_pert,global_auxvar_pert, &
+                             material_auxvar_pert, &
+                             pert,string,compare_analytical_derivative, &
+                             option)
+
+  use Option_module
+  use General_Aux_module
+  use Global_Aux_module
+  use Material_Aux_class  
+
+  implicit none
+  
+  type(option_type) :: option
+  PetscInt :: idof
+  type(general_auxvar_type) :: general_auxvar, general_auxvar_pert
+  type(global_auxvar_type) :: global_auxvar, global_auxvar_pert
+  class(material_auxvar_type) :: material_auxvar, material_auxvar_pert
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscBool :: compare_analytical_derivative
+  PetscReal :: pert
+
+  
+  PetscInt :: apid, cpid, vpid, spid
+  PetscInt :: gid, lid, acid, wid, eid
+  PetscReal :: liquid_mass, gas_mass
+  PetscReal :: liquid_density, gas_density
+  PetscReal :: liquid_energy, gas_energy
+  PetscReal :: liquid_saturation, gas_saturation
+  PetscReal :: liquid_mass_pert, gas_mass_pert
+  PetscReal :: liquid_density_pert, gas_density_pert
+  PetscReal :: liquid_energy_pert, gas_energy_pert
+  PetscReal :: liquid_saturation_pert, gas_saturation_pert
+  
+  PetscReal :: dpl 
+  PetscReal :: dpg 
+  PetscReal :: dpa 
+  PetscReal :: dpc 
+  PetscReal :: dpv 
+  PetscReal :: dps 
+  PetscReal :: dsatl
+  PetscReal :: dsatg
+  PetscReal :: ddenl  
+  PetscReal :: ddeng  
+  PetscReal :: ddenlkg
+  PetscReal :: ddengkg
+  PetscReal :: dUl 
+  PetscReal :: dHl  
+  PetscReal :: dUg  
+  PetscReal :: dHg  
+  PetscReal :: dUv
+  PetscReal :: dHv  
+  PetscReal :: dUa  
+  PetscReal :: dHa  
+  PetscReal :: dpsat  
+  PetscReal :: dmobilityl  
+  PetscReal :: dmobilityg  
+  PetscReal :: dxmolwl
+  PetscReal :: dxmolal
+  PetscReal :: dxmolwg
+  PetscReal :: dxmolag
+  PetscReal :: denv
+  PetscReal :: dena
+  PetscReal :: dHc
+  PetscReal :: dmug
+  
+  PetscReal, parameter :: uninitialized_value = -999.d0
+  
+  dpl = uninitialized_value
+  dpg = uninitialized_value
+  dpa = uninitialized_value
+  dpc = uninitialized_value
+  dpv = uninitialized_value
+  dps = uninitialized_value
+  dsatl = uninitialized_value
+  dsatg = uninitialized_value
+  ddenl = uninitialized_value
+  ddeng = uninitialized_value
+  ddenlkg = uninitialized_value
+  ddengkg = uninitialized_value
+  dUl = uninitialized_value
+  dHl = uninitialized_value
+  dUg = uninitialized_value
+  dHg = uninitialized_value
+  dUv = uninitialized_value
+  dHv = uninitialized_value
+  dUa = uninitialized_value
+  dHa = uninitialized_value
+  dpsat = uninitialized_value
+  dmobilityl = uninitialized_value
+  dmobilityg = uninitialized_value
+  dxmolwl = uninitialized_value
+  dxmolal = uninitialized_value
+  dxmolwg = uninitialized_value
+  dxmolag = uninitialized_value
+  denv = uninitialized_value
+  dena = uninitialized_value
+  dHc = uninitialized_value
+  dmug = uninitialized_value
+
+  lid = option%liquid_phase
+  gid = option%gas_phase
+  apid = option%air_pressure_id
+  cpid = option%capillary_pressure_id
+  vpid = option%vapor_pressure_id
+  spid = option%saturation_pressure_id
+
+  acid = option%air_id ! air component id
+  wid = option%water_id
+  eid = option%energy_id
+
+  liquid_density = 0.d0
+  gas_density = 0.d0
+  liquid_energy = 0.d0
+  gas_energy = 0.d0
+  liquid_saturation = 0.d0
+  gas_saturation = 0.d0
+    
+  if (compare_analytical_derivative) then
+    select case(global_auxvar%istate)
+      case(LIQUID_STATE)
+        select case(idof)
+          case(1) ! liquid pressure pl
+            dpl = 1.d0
+            dpv = 0.d0
+            dpa = general_auxvar%d%Hc_p*general_auxvar%xmol(acid,lid)
+            dps = 0.d0
+            dpv = general_auxvar%d%pv_p
+            ddenl = general_auxvar%d%denl_pl
+            dUl = general_auxvar%d%Ul_pl
+            dHl = general_auxvar%d%Hl_pl
+            dmobilityl = general_auxvar%d%mobilityl_pl
+          case(2) ! xmole air in liquid
+            dxmolwl = -1.d0
+            dxmolal = 1.d0
+          case(3) ! temperature
+            dpl = 0.d0 ! pl = pg - pc
+            dpg = 0.d0 ! pg = pg
+            dpa = general_auxvar%d%Hc_T*general_auxvar%xmol(acid,lid)
+            dps = general_auxvar%d%psat_T
+            dHc = general_auxvar%d%Hc_T            
+            dsatl = 0.d0
+            dsatg = 0.d0            
+            ddenl = general_auxvar%d%denl_T
+            ddeng = general_auxvar%d%deng_T
+            ddenlkg = ddenl*fmw_comp(1)
+            ddengkg = general_auxvar%d%dengkg_T
+            dUl = general_auxvar%d%Ul_T
+            dHl = general_auxvar%d%Hl_T
+            
+            dpv = general_auxvar%d%pv_T
+            dmobilityl = general_auxvar%d%mobilityl_T
+            dxmolwl = general_auxvar%d%xmol_T(wid,lid)
+            dxmolal = general_auxvar%d%xmol_T(acid,lid)
+        end select
+      case(GAS_STATE)
+        select case(idof)
+          case(1)
+            dpg = 1.d0 ! pg = pg
+            dpv = general_auxvar%d%pv_p
+            dps = 0.d0
+            dHc = general_auxvar%d%Hc_p
+            ddeng = general_auxvar%d%deng_pg
+            ddengkg = general_auxvar%d%dengkg_pg
+            dUg = general_auxvar%d%Ug_pg
+            dHg = general_auxvar%d%Hg_pg
+            
+            dHv = general_auxvar%d%Hv_pg
+            dUv = general_auxvar%d%Uv_pg
+            dHa = general_auxvar%d%Ha_pg
+            dUa = general_auxvar%d%Ua_pg
+            
+            dmug = general_auxvar%d%mug_pg
+            dmobilityg = general_auxvar%d%mobilityg_pg
+            dxmolwg = general_auxvar%d%xmol_p(wid,gid)
+            dxmolag = general_auxvar%d%xmol_p(acid,gid)          
+          case(2)
+            dpg = 0.d0
+            dpa = 1.d0
+            ddeng = general_auxvar%d%deng_pa
+            dpv = general_auxvar%d%pv_pa
+            dUg = general_auxvar%d%Ug_pa
+            dHg = general_auxvar%d%Hg_pa
+            dHv = general_auxvar%d%Hv_pa
+            dUv = general_auxvar%d%Uv_pa
+            dHa = general_auxvar%d%Ha_pa
+            dUa = general_auxvar%d%Ua_pa
+            ! for gas state, derivative wrt air pressure is under lid
+            dxmolwg = general_auxvar%d%xmol_p(wid,lid)
+            dxmolag = general_auxvar%d%xmol_p(acid,lid)          
+            dmobilityg = general_auxvar%d%mobilityg_pa
+          case(3)
+            dpg = 0.d0
+            dpa = 0.d0
+            dpv = 0.d0
+            dps = general_auxvar%d%psat_T
+            dHc = general_auxvar%d%Hc_T            
+            ddeng = general_auxvar%d%deng_T
+            ddengkg = general_auxvar%d%dengkg_T
+            dUg = general_auxvar%d%Ug_T
+            dHg = general_auxvar%d%Hg_T
+            
+            dHv = general_auxvar%d%Hv_T
+            dUv = general_auxvar%d%Uv_T
+            dHa = general_auxvar%d%Ha_T
+            dUa = general_auxvar%d%Ua_T
+            denv = general_auxvar%d%denv_T
+            dena = general_auxvar%d%dena_T
+            
+            dmug = general_auxvar%d%mug_T
+            dmobilityg = general_auxvar%d%mobilityg_T
+            dxmolwg = general_auxvar%d%xmol_T(wid,gid)
+            dxmolag = general_auxvar%d%xmol_T(acid,gid)          
+        end select
+      case(TWO_PHASE_STATE)
+        select case(idof)
+          case(1) ! gas pressure pg
+            dpl = 1.d0 ! pl = pg - pc
+            dpg = 1.d0 ! pg = pg
+            dpa = 1.d0 ! pa = pg - pv
+            dpv = 0.d0
+            dps = 0.d0
+            dsatl = 0.d0
+            dsatg = 0.d0
+            dHc = general_auxvar%d%Hc_p
+            ddenl = general_auxvar%d%denl_pl*dpl
+            ddeng = general_auxvar%d%deng_pg
+            ddenlkg = ddenl*fmw_comp(1)
+            ddengkg = general_auxvar%d%dengkg_pg
+            dUl = general_auxvar%d%Ul_pl
+            dHl = general_auxvar%d%Hl_pl
+            dUg = general_auxvar%d%Ug_pg
+            dHg = general_auxvar%d%Hg_pg
+            
+            denv = general_auxvar%d%denv_pg
+            dena = general_auxvar%d%dena_pg
+            dHv = general_auxvar%d%Hv_pg
+            dUv = general_auxvar%d%Uv_pg
+            dHa = general_auxvar%d%Ha_pg
+            dUa = general_auxvar%d%Ua_pg
+            
+            dmug = general_auxvar%d%mug_pg
+            dmobilityl = general_auxvar%d%mobilityl_pl
+            dmobilityg = general_auxvar%d%mobilityg_pg
+            dxmolwl = general_auxvar%d%xmol_p(wid,lid)
+            dxmolal = general_auxvar%d%xmol_p(acid,lid)
+            dxmolwg = general_auxvar%d%xmol_p(wid,gid)
+            dxmolag = general_auxvar%d%xmol_p(acid,gid)
+          case(2) ! gas saturation
+            dpl = -1.d0*general_auxvar%d%pc_satg ! pl = pg - pc
+            dpg = 0.d0
+            dpa = 0.d0
+            dpc = general_auxvar%d%pc_satg
+            dpv = 0.d0 
+            dps = 0.d0
+            dsatl = -1.d0
+            dsatg = 1.d0
+            ddenl = 0.d0
+            dmobilityl = general_auxvar%d%mobilityl_satg
+            dmobilityg = general_auxvar%d%mobilityg_satg
+          case(3) ! temperature
+            dpl = 0.d0 ! pl = pg - pc
+            dpg = 0.d0 ! pg = pg
+            dpa = -1.d0*general_auxvar%d%psat_T ! pa = pg - pv
+            dpv = general_auxvar%d%psat_T
+            dps = general_auxvar%d%psat_T
+            dHc = general_auxvar%d%Hc_T            
+            dsatl = 0.d0
+            dsatg = 0.d0            
+            ddenl = general_auxvar%d%denl_T
+            ddeng = general_auxvar%d%deng_T
+            ddenlkg = ddenl*fmw_comp(1)
+            ddengkg = general_auxvar%d%dengkg_T
+            dUl = general_auxvar%d%Ul_T
+            dHl = general_auxvar%d%Hl_T
+            dUg = general_auxvar%d%Ug_T
+            dHg = general_auxvar%d%Hg_T
+            
+            dHv = general_auxvar%d%Hv_T
+            dUv = general_auxvar%d%Uv_T
+            dHa = general_auxvar%d%Ha_T
+            dUa = general_auxvar%d%Ua_T
+            denv = general_auxvar%d%denv_T
+            dena = general_auxvar%d%dena_T
+            
+            dmug = general_auxvar%d%mug_T
+            dmobilityl = general_auxvar%d%mobilityl_T
+            dmobilityg = general_auxvar%d%mobilityg_T
+            dxmolwl = general_auxvar%d%xmol_T(wid,lid)
+            dxmolal = general_auxvar%d%xmol_T(acid,lid)
+            dxmolwg = general_auxvar%d%xmol_T(wid,gid)
+            dxmolag = general_auxvar%d%xmol_T(acid,gid)
+        end select
+      end select
+    endif
+
+  print *, '--------------------------------------------------------'
+  print *, 'Derivative with respect to ' // trim(string)
+  select case(global_auxvar%istate)
+    case(LIQUID_STATE)
+      print *, '     Thermodynamic state: Liquid phase'
+      liquid_density = general_auxvar%den(lid)
+      liquid_energy = general_auxvar%U(lid)
+      liquid_saturation = general_auxvar%sat(lid)
+    case(GAS_STATE)
+      print *, '     Thermodynamic state: Gas phase'
+      gas_density = general_auxvar%den(gid)
+      gas_energy = general_auxvar%U(gid)
+      gas_saturation = general_auxvar%sat(gid)
+    case(TWO_PHASE_STATE)
+      print *, '     Thermodynamic state: Two phase'
+      liquid_density = general_auxvar%den(lid)
+      gas_density = general_auxvar%den(gid)
+      liquid_energy = general_auxvar%U(lid)
+      gas_energy = general_auxvar%U(gid)
+      liquid_saturation = general_auxvar%sat(lid)
+      gas_saturation = general_auxvar%sat(gid)
+  end select
+  liquid_mass = (liquid_density*general_auxvar%xmol(lid,lid)* & 
+                 liquid_saturation+ &
+                 gas_density*general_auxvar%xmol(lid,gid)* & 
+                 gas_saturation)* & 
+                 general_auxvar%effective_porosity*material_auxvar%volume
+  gas_mass = (liquid_density*general_auxvar%xmol(gid,lid)* & 
+              liquid_saturation+ &
+              gas_density*general_auxvar%xmol(gid,gid)* & 
+              gas_saturation)* & 
+              general_auxvar%effective_porosity*material_auxvar%volume
+  select case(global_auxvar_pert%istate)
+    case(LIQUID_STATE)
+      print *, '     Thermodynamic state (pert): Liquid phase'
+      liquid_density_pert = general_auxvar_pert%den(lid)
+      liquid_energy_pert = general_auxvar_pert%U(lid)
+      liquid_saturation_pert = general_auxvar_pert%sat(lid)
+      gas_density_pert = 0.d0
+      gas_energy_pert = 0.d0
+      gas_saturation_pert = 0.d0
+    case(GAS_STATE)
+      print *, '     Thermodynamic state (pert): Gas phase'
+      liquid_density_pert = 0.d0
+      liquid_energy_pert = 0.d0
+      liquid_saturation_pert = 0.d0
+      gas_density_pert = general_auxvar_pert%den(gid)
+      gas_energy_pert = general_auxvar_pert%U(gid)
+      gas_saturation_pert = general_auxvar_pert%sat(gid)
+    case(TWO_PHASE_STATE)
+      print *, '     Thermodynamic state (pert): Two phase'
+      liquid_density_pert = general_auxvar_pert%den(lid)
+      gas_density_pert = general_auxvar_pert%den(gid)
+      liquid_energy_pert = general_auxvar_pert%U(lid)
+      gas_energy_pert = general_auxvar_pert%U(gid)
+      liquid_saturation_pert = general_auxvar_pert%sat(lid)
+      gas_saturation_pert = general_auxvar_pert%sat(gid)
+  end select  
+  liquid_mass_pert = (liquid_density_pert*general_auxvar_pert%xmol(lid,lid)* & 
+                 liquid_saturation_pert+ &
+                 gas_density_pert*general_auxvar_pert%xmol(lid,gid)* & 
+                 gas_saturation_pert)* & 
+                 general_auxvar_pert%effective_porosity*material_auxvar_pert%volume
+  gas_mass_pert = (liquid_density_pert*general_auxvar_pert%xmol(gid,lid)* & 
+              liquid_saturation_pert+ &
+              gas_density_pert*general_auxvar_pert%xmol(gid,gid)* & 
+              gas_saturation_pert)* & 
+              general_auxvar_pert%effective_porosity*material_auxvar_pert%volume 
+              
+              
+  call GeneralAuxVarPrintResult('tot liq comp mass [kmol]', &
+                                (liquid_mass_pert-liquid_mass)/pert, &
+                                uninitialized_value,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('tot gas comp mass [kmol]', &
+                                (gas_mass_pert-gas_mass)/pert, &
+                                uninitialized_value,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('             energy [MJ]', &
+                                ((liquid_mass_pert*liquid_energy_pert + &
+                                  gas_mass_pert*gas_energy_pert)- &
+                                 (liquid_mass*liquid_energy + &
+                                  gas_mass*gas_energy))/pert, &
+                                uninitialized_value,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('         liquid pressure', &
+                                (general_auxvar_pert%pres(lid)-general_auxvar%pres(lid))/pert, &
+                                dpl,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('            gas pressure', &
+                                (general_auxvar_pert%pres(gid)-general_auxvar%pres(gid))/pert, &
+                                dpg,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('            air pressure', &
+                                (general_auxvar_pert%pres(apid)-general_auxvar%pres(apid))/pert, &
+                                dpa,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('      capillary pressure', &
+                                (general_auxvar_pert%pres(cpid)-general_auxvar%pres(cpid))/pert, &
+                                dpc,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('          vapor pressure', &
+                                (general_auxvar_pert%pres(vpid)-general_auxvar%pres(vpid))/pert, &
+                                dpv,uninitialized_value,option)
+  call GeneralAuxVarPrintResult("        Henry's constant", &
+                                (general_auxvar_pert%d%Hc-general_auxvar%d%Hc)/pert, &
+                                dHc,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('     saturation pressure', &
+                                (general_auxvar_pert%pres(spid)-general_auxvar%pres(spid))/pert, &
+                                dps,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('       liquid saturation', &
+                                (general_auxvar_pert%sat(lid)-general_auxvar%sat(lid))/pert, &
+                                dsatl,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('          gas saturation', &
+                                (general_auxvar_pert%sat(gid)-general_auxvar%sat(gid))/pert, &
+                                dsatg,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('   liquid density [kmol]', &
+                                (general_auxvar_pert%den(lid)-general_auxvar%den(lid))/pert, &
+                                ddenl,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('      gas density [kmol]', &
+                                (general_auxvar_pert%den(gid)-general_auxvar%den(gid))/pert, &
+                                ddeng,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('     liquid density [kg]', &
+                                (general_auxvar_pert%den_kg(lid)-general_auxvar%den_kg(lid))/pert, &
+                                ddenlkg,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('        gas density [kg]', &
+                                (general_auxvar_pert%den_kg(gid)-general_auxvar%den_kg(gid))/pert, &
+                                ddengkg,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('         temperature [C]', &
+                                (general_auxvar_pert%temp-general_auxvar%temp)/pert, &
+                                uninitialized_value,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('      liquid H [MJ/kmol]', &
+                                (general_auxvar_pert%H(lid)-general_auxvar%H(lid))/pert, &
+                                dHl,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('         gas H [MJ/kmol]', &
+                                (general_auxvar_pert%H(gid)-general_auxvar%H(gid))/pert, &
+                                dHg,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('      liquid U [MJ/kmol]', &
+                                (general_auxvar_pert%U(lid)-general_auxvar%U(lid))/pert, &
+                                dUl,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('         gas U [MJ/kmol]', &
+                                (general_auxvar_pert%U(gid)-general_auxvar%U(gid))/pert, &
+                                dUg,uninitialized_value,option)
+  !------------------------------
+  call GeneralAuxVarPrintResult('       vapor H [MJ/kmol]', &
+                                (general_auxvar_pert%d%Hv-general_auxvar%d%Hv)/pert, &
+                                dHv,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('         air H [MJ/kmol]', &
+                                (general_auxvar_pert%d%Ha-general_auxvar%d%Ha)/pert, &
+                                dHa,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('       vapor U [MJ/kmol]', &
+                                (general_auxvar_pert%d%Uv-general_auxvar%d%Uv)/pert, &
+                                dUv,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('         air U [MJ/kmol]', &
+                                (general_auxvar_pert%d%Ua-general_auxvar%d%Ua)/pert, &
+                                dUa,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('    vapor density [kmol]', &
+                                (general_auxvar_pert%d%denv-general_auxvar%d%denv)/pert, &
+                                denv,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('      air density [kmol]', &
+                                (general_auxvar_pert%d%dena-general_auxvar%d%dena)/pert, &
+                                dena,uninitialized_value,option)
+  !------------------------------                                
+  call GeneralAuxVarPrintResult('     X (water in liquid)', &
+                                (general_auxvar_pert%xmol(wid,lid)-general_auxvar%xmol(wid,lid))/pert, &
+                                dxmolwl,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('       X (air in liquid)', &
+                                (general_auxvar_pert%xmol(acid,lid)-general_auxvar%xmol(acid,lid))/pert, &
+                                dxmolal,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('        X (water in gas)', &
+                                (general_auxvar_pert%xmol(wid,gid)-general_auxvar%xmol(wid,gid))/pert, &
+                                dxmolwg,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('          X (air in gas)', &
+                                (general_auxvar_pert%xmol(acid,gid)-general_auxvar%xmol(acid,gid))/pert, &
+                                dxmolag,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('         liquid mobility', &
+                                (general_auxvar_pert%mobility(lid)-general_auxvar%mobility(lid))/pert, &
+                                dmobilityl,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('            gas mobility', &
+                                (general_auxvar_pert%mobility(gid)-general_auxvar%mobility(gid))/pert, &
+                                dmobilityg,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('           gas viscosity', &
+                                (general_auxvar_pert%d%mug-general_auxvar%d%mug)/pert, &
+                                dmug,uninitialized_value,option)
+  call GeneralAuxVarPrintResult('      effective porosity', &
+                                (general_auxvar_pert%effective_porosity-general_auxvar%effective_porosity)/pert, &
+                                uninitialized_value,uninitialized_value,option)
+#if 0                                
+100 format(a,2(es13.5),es16.8)  
+  write(*,100) 'tot liq comp mass [kmol]: ', (liquid_mass_pert-liquid_mass)/pert
+  write(*,100) 'tot gas comp mass [kmol]: ', (gas_mass_pert-gas_mass)/pert
+  write(*,100) '             energy [MJ]: ', ((liquid_mass_pert*liquid_energy_pert + &
+                                           gas_mass_pert*gas_energy_pert)- &
+                                          (liquid_mass*liquid_energy + &
+                                           gas_mass*gas_energy))/pert
+  write(*,100) '         liquid pressure: ', (general_auxvar_pert%pres(lid)-general_auxvar%pres(lid))/pert,dpl
+  write(*,100) '            gas pressure: ', (general_auxvar_pert%pres(gid)-general_auxvar%pres(gid))/pert,dpg
+  write(*,100) '            air pressure: ', (general_auxvar_pert%pres(apid)-general_auxvar%pres(apid))/pert,dpa !,general_auxvar_pert%pres(apid)-general_auxvar%pres(apid)
+  write(*,100) '      capillary pressure: ', (general_auxvar_pert%pres(cpid)-general_auxvar%pres(cpid))/pert,dpc
+  write(*,100) '          vapor pressure: ', (general_auxvar_pert%pres(vpid)-general_auxvar%pres(vpid))/pert,dpv !,general_auxvar_pert%pres(vpid)-general_auxvar%pres(vpid)
+  write(*,100) "        Henry's constant: ", (general_auxvar_pert%d%Hc-general_auxvar%d%Hc)/pert,dHc
+  write(*,100) '     saturation pressure: ', (general_auxvar_pert%pres(spid)-general_auxvar%pres(spid))/pert,dps
+  write(*,100) '       liquid saturation: ', (general_auxvar_pert%sat(lid)-general_auxvar%sat(lid))/pert,dsatl
+  write(*,100) '          gas saturation: ', (general_auxvar_pert%sat(gid)-general_auxvar%sat(gid))/pert,dsatg
+  write(*,100) '   liquid density [kmol]: ', (general_auxvar_pert%den(lid)-general_auxvar%den(lid))/pert,ddenl
+  write(*,100) '      gas density [kmol]: ', (general_auxvar_pert%den(gid)-general_auxvar%den(gid))/pert,ddeng
+  write(*,100) '     liquid density [kg]: ', (general_auxvar_pert%den_kg(lid)-general_auxvar%den_kg(lid))/pert,ddenl*fmw_comp(1)
+  write(*,100) '        gas density [kg]: ', (general_auxvar_pert%den_kg(gid)-general_auxvar%den_kg(gid))/pert,ddengkg
+  write(*,100) '         temperature [C]: ', (general_auxvar_pert%temp-general_auxvar%temp)/pert
+  write(*,100) '      liquid H [MJ/kmol]: ', (general_auxvar_pert%H(lid)-general_auxvar%H(lid))/pert,dHl
+  write(*,100) '         gas H [MJ/kmol]: ', (general_auxvar_pert%H(gid)-general_auxvar%H(gid))/pert,dHg
+  write(*,100) '      liquid U [MJ/kmol]: ', (general_auxvar_pert%U(lid)-general_auxvar%U(lid))/pert,dUl
+  write(*,100) '         gas U [MJ/kmol]: ', (general_auxvar_pert%U(gid)-general_auxvar%U(gid))/pert,dUg
+
+  write(*,100) '       vapor H [MJ/kmol]: ', (general_auxvar_pert%d%Hv-general_auxvar%d%Hv)/pert,dHv
+  write(*,100) '         air H [MJ/kmol]: ', (general_auxvar_pert%d%Ha-general_auxvar%d%Ha)/pert,dHa
+  write(*,100) '       vapor U [MJ/kmol]: ', (general_auxvar_pert%d%Uv-general_auxvar%d%Uv)/pert,dUv
+
+  write(*,100) '         air U [MJ/kmol]: ', (general_auxvar_pert%d%Ua-general_auxvar%d%Ua)/pert,dUa
+  write(*,100) '    vapor density [kmol]: ', (general_auxvar_pert%d%denv-general_auxvar%d%denv)/pert,denv
+  write(*,100) '      air density [kmol]: ', (general_auxvar_pert%d%dena-general_auxvar%d%dena)/pert,dena
+
+  write(*,100) '     X (water in liquid): ', (general_auxvar_pert%xmol(wid,lid)-general_auxvar%xmol(wid,lid))/pert,dxmolwl
+  write(*,100) '       X (air in liquid): ', (general_auxvar_pert%xmol(acid,lid)-general_auxvar%xmol(acid,lid))/pert,dxmolal
+  write(*,100) '        X (water in gas): ', (general_auxvar_pert%xmol(wid,gid)-general_auxvar%xmol(wid,gid))/pert,dxmolwg
+  write(*,100) '          X (air in gas): ', (general_auxvar_pert%xmol(acid,gid)-general_auxvar%xmol(acid,gid))/pert,dxmolag
+  write(*,100) '         liquid mobility: ', (general_auxvar_pert%mobility(lid)-general_auxvar%mobility(lid))/pert,dmobilityl
+  write(*,100) '            gas mobility: ', (general_auxvar_pert%mobility(gid)-general_auxvar%mobility(gid))/pert,dmobilityg
+  write(*,100) '      effective porosity: ', (general_auxvar_pert%effective_porosity-general_auxvar%effective_porosity)/pert
+#endif
+  write(*,*) '--------------------------------------------------------'  
+  
+end subroutine GeneralAuxVarDiff
+
+! ************************************************************************** !
+
+subroutine GeneralAuxVarPrintResult(string,numerical,analytical, &
+                                    uninitialized_value,option)
+
+  use Option_module
+  use Utility_module
+  
+  implicit none
+  
+  character(len=*) :: string
+  PetscReal :: numerical
+  PetscReal :: analytical
+  PetscReal :: uninitialized_value
+  type(option_type) :: option
+  
+  character(len=8) :: word
+  character(len=2) :: precision
+  PetscReal :: tempreal
+  PetscReal, parameter :: tol = 1.d-5
+          
+100 format(a24,': ',2(es13.5),2x,a2,x,a8,x,es16.8)
+
+  precision = DigitsOfAccuracy(numerical,analytical)
+  word = ''
+  if (dabs(analytical-uninitialized_value) > 1.d-20) then
+    if (dabs(analytical) > 0.d0) then
+      tempreal = dabs((numerical-analytical)/analytical)
+      if (tempreal < tol) then
+        word = ' PASS'
+      else
+        word = '-FAIL-'
+        if (tempreal < 1.d1*tol) word = trim(word) // ' *'
+      endif
+    else
+      if (dabs(numerical) > 1.d-20) then
+        word = '-FAIL-'
+      else
+        word = ' PASS'
+      endif
+    endif
+    write(*,100) trim(string), numerical, analytical, precision, word
+  else
+    write(*,100) trim(string), numerical
+  endif
+  
+
+end subroutine GeneralAuxVarPrintResult
+
+! ************************************************************************** !
+
+subroutine GeneralDiffJacobian(string,numerical_jacobian,analytical_jacobian, &
+                               residual,residual_pert,perturbation, &
+                               perturbation_tolerance,general_auxvar,option)
+
+  use Option_module
+  use Utility_module
+  
+  implicit none
+  
+  character(len=*) :: string
+  PetscReal :: numerical_jacobian(3,3)
+  PetscReal :: analytical_jacobian(3,3)
+  PetscReal :: residual(3)
+  PetscReal :: residual_pert(3,3)
+  PetscReal :: perturbation(3)
+  PetscReal :: perturbation_tolerance
+  type(general_auxvar_type) :: general_auxvar(0:)
+  type(option_type) :: option
+  
+  PetscInt :: irow, icol
+  
+100 format(2i2,2es13.5,x,a2,es16.8)
+
+  if (len_trim(string) > 1) then
+    write(*,'(x,a)') string
+  endif
+  write(*,'(" Perturbation tolerance: ",es12.4)') perturbation_tolerance
+  write(*,'(" r c  numerical    analytical   digits of accuracy")')
+  do icol = 1, 3
+    do irow = 1, 3
+      write(*,100) irow, icol, numerical_jacobian(irow,icol), &
+                   analytical_jacobian(irow,icol), &
+                   DigitsOfAccuracy(numerical_jacobian(irow,icol), &
+                                    analytical_jacobian(irow,icol))
+    enddo
+  enddo
+
+200 format(2es20.12)
+300 format(a24,10es20.12)
+
+#if 0
+  do icol = 1, 3
+    write(*,'(/," dof = ",i1,"  perturbation = ",es13.5)') icol, perturbation(icol)
+!    write(*,300) 'density', general_auxvar(icol)%den(:), general_auxvar(0)%den(:)
+!    write(*,300) 'energy', general_auxvar(icol)%U(:), general_auxvar(0)%U(:)
+    write(*,'("  residual_pert       residual")')
+    do irow = 1, 3
+      write(*,200) residual_pert(irow,icol), residual(irow)
+    enddo
+  enddo
+#endif  
+  
+end subroutine GeneralDiffJacobian
 
 end module General_Common_module
