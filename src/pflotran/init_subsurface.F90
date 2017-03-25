@@ -996,6 +996,14 @@ subroutine InitSubsurfaceSetupZeroArrays(realization)
                       realization%patch%aux%TOil_ims%n_inactive_rows, &
                       realization%patch%aux%TOil_ims%inactive_cells_exist, &
                       option)
+      case(TOWG_MODE)
+        !PO: same for all pm_XXX_aux - can be defined in PM_Base_Aux_module
+        call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
+                      realization%patch%aux%TOWG%inactive_rows_local, &
+                   realization%patch%aux%TOWG%inactive_rows_local_ghosted, &
+                      realization%patch%aux%TOWG%n_inactive_rows, &
+                      realization%patch%aux%TOWG%inactive_cells_exist, &
+                      option)
       case(IMS_MODE)
         call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
                       realization%patch%aux%Immis%zero_rows_local, &
