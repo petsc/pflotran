@@ -69,6 +69,7 @@ STANDARD_CFG = \
 	shortcourse/regional_doublet/regional_doublet.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
 	toil_ims/toil_ims.cfg \
+	towg/towg.cfg \
 	ufd/ufd.cfg \
 	wipp/nuts/nuts.cfg \
 	wipp/bragflo/bragflo.cfg
@@ -115,6 +116,7 @@ FLOW_CFG = \
 	default/scco2/flash2/flash2.cfg \
 	general/general.cfg \
         toil_ims/toil_ims.cfg \
+	towg/towg.cfg \
 	shortcourse/1D_variably_saturated_flow/vsat_flow.cfg \
 	shortcourse/copper_leaching/cu_leaching.cfg \
 	wipp/bragflo/bragflo.cfg
