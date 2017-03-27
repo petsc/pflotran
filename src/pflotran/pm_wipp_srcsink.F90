@@ -789,56 +789,56 @@ subroutine PMWSSRead(this,input)
           end select
         enddo
         ! error messages ---------------------
-        if (uninitialized(new_inventory%Fe_in_panel)) then
+        if (Uninitialized(new_inventory%Fe_in_panel)) then
           option%io_buffer = 'Initial Fe (solid) inventory must be specified &
                         &using the SOLIDS,WTFETOT keyword in the &
                         &WIPP_SOURCE_SINK block. Inventory name "' // &
                         trim(new_inventory%name) // '".'
           call printErrMsg(option)
         endif
-        if (uninitialized(new_inventory%MgO_in_panel)) then
+        if (Uninitialized(new_inventory%MgO_in_panel)) then
           option%io_buffer = 'Initial MgO (solid) inventory must be specified &
                         &using the SOLIDS,WTMGOTOT keyword in the &
                         &WIPP_SOURCE_SINK block. Inventory name "' // &
                         trim(new_inventory%name) // '".'
           call printErrMsg(option)
         endif
-        if (uninitialized(new_inventory%Cellulose_in_panel)) then
+        if (Uninitialized(new_inventory%Cellulose_in_panel)) then
           option%io_buffer = 'Initial cellulose (solid) inventory must be &
                         &specified using the SOLIDS,WTCELTOT keyword in the &
                         &WIPP_SOURCE_SINK block. Inventory name "' // &
                         trim(new_inventory%name) // '".'
           call printErrMsg(option)
         endif
-        if (uninitialized(new_inventory%RubberPlas_in_panel)) then
+        if (Uninitialized(new_inventory%RubberPlas_in_panel)) then
           option%io_buffer = 'Initial rubber/plastic (solid) inventory must be &
                         &specified using the SOLIDS,WTRPLTOT keyword in &
                         &the WIPP_SOURCE_SINK block. Inventory name "' // &
                         trim(new_inventory%name) // '".'
           call printErrMsg(option)
         endif
-        if (uninitialized(new_inventory%H_ion_in_panel)) then
+        if (Uninitialized(new_inventory%H_ion_in_panel)) then
           option%io_buffer = 'Initial H+ (aqueous) inventory must be specified &
                         &using the AQUEOUS,H+ keyword in the WIPP_SOURCE_SINK &
                         &block. Inventory name "' // trim(new_inventory%name) &
                          // '".'
           call printErrMsg(option)
         endif
-        if (uninitialized(new_inventory%Nitrate_in_panel)) then
+        if (Uninitialized(new_inventory%Nitrate_in_panel)) then
           option%io_buffer = 'Initial nitrate (aqueous) inventory must be &
                         &specified using the AQUEOUS,NITRATE keyword in the &
                         &WIPP_SOURCE_SINK block. Inventory name "' // &
                         trim(new_inventory%name) // '".'
           call printErrMsg(option)
         endif
-        if (uninitialized(new_inventory%Sulfate_in_panel)) then
+        if (Uninitialized(new_inventory%Sulfate_in_panel)) then
           option%io_buffer = 'Initial sulfate (aqueous) inventory must be &
                         &specified using the AQUEOUS,SULFATE keyword in the &
                         &WIPP_SOURCE_SINK block. Inventory name "' // &
                         trim(new_inventory%name) // '".'
           call printErrMsg(option)
         endif
-        if (uninitialized(new_inventory%num_drums_packing)) then
+        if (Uninitialized(new_inventory%num_drums_packing)) then
           option%io_buffer = 'Number of metal drums must be specified in the &
                         &specified using the SOLIDS,DRROOM keyword in the &
                         &WIPP_SOURCE_SINK block. Inventory name "' // &
@@ -878,61 +878,61 @@ subroutine PMWSSRead(this,input)
                        &WIPP_SOURCE_SINK block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%alpharxn)) then
+  if (Uninitialized(this%alpharxn)) then
     option%io_buffer = 'ALPHARXN must be specified in the WIPP_SOURCE_SINK &
                        &block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%smin)) then
+  if (Uninitialized(this%smin)) then
     option%io_buffer = 'SOCMIN must be specified in the WIPP_SOURCE_SINK block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%satwick)) then
+  if (Uninitialized(this%satwick)) then
     option%io_buffer = 'SAT_WICK (wicking saturation parameter) must be &
                        &specified in the WIPP_SOURCE_SINK block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%gratmici)) then
+  if (Uninitialized(this%gratmici)) then
     option%io_buffer = 'GRATMICI (inundated biodegradation rate for cellulose) &
                        &must be specified in the WIPP_SOURCE_SINK block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%brucitei)) then
+  if (Uninitialized(this%brucitei)) then
     option%io_buffer = 'BRUCITEI (MgO inundated hydration rate in brine) must &
                        &be specified in the WIPP_SOURCE_SINK block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%corrmco2)) then
+  if (Uninitialized(this%corrmco2)) then
     option%io_buffer = 'CORRMCO2 (inundated steel corrosion rate) must be &
                        &specified in the WIPP_SOURCE_SINK block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%gratmich)) then
+  if (Uninitialized(this%gratmich)) then
     option%io_buffer = 'GRATMICH (humid biodegradation rate for cellulose) &
                        &must be specified in the WIPP_SOURCE_SINK block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%bruciteh)) then
+  if (Uninitialized(this%bruciteh)) then
     option%io_buffer = 'BRUCITEH (MgO humid hydration rate) must be specified &
                        &in the WIPP_SOURCE_SINK block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%humcorr)) then
+  if (Uninitialized(this%humcorr)) then
     option%io_buffer = 'HUMCORR (humid steel corrosion rate) must be specified &
                        &in the WIPP_SOURCE_SINK block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%hymagcon_rate)) then
+  if (Uninitialized(this%hymagcon_rate)) then
     option%io_buffer = 'HYMAGCON (hydromagnesite to magnesite conversion rate) &
                        &must be specified in the WIPP_SOURCE_SINK block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%drum_surface_area)) then
+  if (Uninitialized(this%drum_surface_area)) then
     option%io_buffer = 'ASDRUM (metal drum surface area) &
                        &must be specified in the WIPP_SOURCE_SINK block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(this%biogenfc)) then
+  if (Uninitialized(this%biogenfc)) then
     option%io_buffer = 'BIOGENFC (microbial gas generation probability) &
                        &must be specified in the WIPP_SOURCE_SINK block.'
     call printErrMsg(option)

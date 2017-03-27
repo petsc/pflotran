@@ -568,11 +568,11 @@ subroutine PMWFRead(this,input)
     ! the parameters provided:
     if (cur_waste_form%mechanism%canister_degradation_model) then 
       ! all parameters are missing:
-      if ( (uninitialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
-            uninitialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
-            uninitialized(cur_waste_form%mechanism%vitality_rate_trunc) ) .and. &
-          uninitialized(cur_waste_form%canister_vitality_rate) .and. &
-          uninitialized(cur_waste_form%breach_time)                 )  then 
+      if ( (Uninitialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
+            Uninitialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
+            Uninitialized(cur_waste_form%mechanism%vitality_rate_trunc) ) .and. &
+          Uninitialized(cur_waste_form%canister_vitality_rate) .and. &
+          Uninitialized(cur_waste_form%breach_time)                 )  then 
         option%io_buffer = 'CANISTER_VITALITY_RATE within the WASTE_FORM &
           &blocks -or- CANISTER_BREACH_TIME within the WASTE_FORM blocks &
           &-or- the VITALITY_LOG10_MEAN, VITALITY_LOG10_STDEV, and &
@@ -1092,62 +1092,62 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
       endif
       select type(new_mechanism)
         type is(wf_mechanism_glass_type)
-          if (uninitialized(new_mechanism%specific_surface_area)) then
+          if (Uninitialized(new_mechanism%specific_surface_area)) then
             option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block.'
             call printErrMsg(option)
           endif
-          if (uninitialized(new_mechanism%k0)) then
+          if (Uninitialized(new_mechanism%k0)) then
             option%io_buffer = 'K0 must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
             call printErrMsg(option)
           endif
-          if (uninitialized(new_mechanism%k_long)) then
+          if (Uninitialized(new_mechanism%k_long)) then
             option%io_buffer = 'K_LONG must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
             call printErrMsg(option)
           endif
-          if (uninitialized(new_mechanism%nu)) then
+          if (Uninitialized(new_mechanism%nu)) then
             option%io_buffer = 'NU must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
             call printErrMsg(option)
           endif
-          if (uninitialized(new_mechanism%Ea)) then
+          if (Uninitialized(new_mechanism%Ea)) then
             option%io_buffer = 'EA must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
             call printErrMsg(option)
           endif
-          if (uninitialized(new_mechanism%Q)) then
+          if (Uninitialized(new_mechanism%Q)) then
             option%io_buffer = 'Q must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
             call printErrMsg(option)
           endif
-          if (uninitialized(new_mechanism%K)) then
+          if (Uninitialized(new_mechanism%K)) then
             option%io_buffer = 'K must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
             call printErrMsg(option)
           endif
-          if (uninitialized(new_mechanism%pH)) then
+          if (Uninitialized(new_mechanism%pH)) then
             option%io_buffer = 'PH must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
             call printErrMsg(option)
           endif
-          if (uninitialized(new_mechanism%v)) then
+          if (Uninitialized(new_mechanism%v)) then
             option%io_buffer = 'V must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
@@ -1155,9 +1155,9 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             call printErrMsg(option)
           endif
         type is(wf_mechanism_custom_type)
-          if (uninitialized(new_mechanism%specific_surface_area) .and. &
-              uninitialized(new_mechanism%dissolution_rate) .and. &
-              uninitialized(new_mechanism%frac_dissolution_rate)) then
+          if (Uninitialized(new_mechanism%specific_surface_area) .and. &
+              Uninitialized(new_mechanism%dissolution_rate) .and. &
+              Uninitialized(new_mechanism%frac_dissolution_rate)) then
             option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE or &
                                &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
                                &must be specified in ' // trim(error_string) &
@@ -1166,8 +1166,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
           endif
           if ( (initialized(new_mechanism%frac_dissolution_rate) .and. &
                 initialized(new_mechanism%dissolution_rate)    ) .or. &
-               (uninitialized(new_mechanism%frac_dissolution_rate) .and. &
-                uninitialized(new_mechanism%dissolution_rate)    ) ) then
+               (Uninitialized(new_mechanism%frac_dissolution_rate) .and. &
+                Uninitialized(new_mechanism%dissolution_rate)    ) ) then
             option%io_buffer = 'Either FRACTIONAL_DISSOLUTION_RATE or &
                                &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
                                &must be specified in ' // trim(error_string) &
@@ -1177,8 +1177,8 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             call printErrMsg(option)
           endif
           if ( (initialized(new_mechanism%specific_surface_area) .and. &
-                uninitialized(new_mechanism%dissolution_rate)  ) .or. &
-               (uninitialized(new_mechanism%specific_surface_area) .and. &
+                Uninitialized(new_mechanism%dissolution_rate)  ) .or. &
+               (Uninitialized(new_mechanism%specific_surface_area) .and. &
                 initialized(new_mechanism%dissolution_rate)      ) ) then
             option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE or &
                                &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
@@ -1187,20 +1187,20 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             call printErrMsg(option)
           endif
         type is(wf_mechanism_fmdm_type)
-          if (uninitialized(new_mechanism%burnup)) then
+          if (Uninitialized(new_mechanism%burnup)) then
             option%io_buffer = 'BURNUP must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block.'
             call printErrMsg(option)
           endif
-          if (uninitialized(new_mechanism%specific_surface_area)) then
+          if (Uninitialized(new_mechanism%specific_surface_area)) then
             option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block.'
             call printErrMsg(option)
           endif
       end select
-      if (uninitialized(new_mechanism%matrix_density)) then
+      if (Uninitialized(new_mechanism%matrix_density)) then
         option%io_buffer = 'MATRIX_DENSITY must be specified in ' // &
                            trim(error_string) // ' ' // &
                            trim(new_mechanism%name) // ' block.'
@@ -1208,7 +1208,7 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
       endif
 
       if (new_mechanism%canister_degradation_model .and. &
-          uninitialized(new_mechanism%canister_material_constant)) then
+          Uninitialized(new_mechanism%canister_material_constant)) then
         option%io_buffer = 'CANISTER_MATERIAL_CONSTANT must be given in the '&
                            // trim(error_string) // ' ' // &
                            trim(new_mechanism%name) // &
@@ -1624,12 +1624,12 @@ subroutine PMWFSetup(this)
       cur_waste_form%canister_vitality = 1.d0
       ! waste form breach time specified:
       if (initialized(cur_waste_form%breach_time) .and. &
-          uninitialized(cur_waste_form%canister_vitality_rate)) then
+          Uninitialized(cur_waste_form%canister_vitality_rate)) then
         cur_waste_form%eff_canister_vit_rate = &
           (1.d0/cur_waste_form%breach_time)
       ! distribution for canister degradation rate specified:
-      elseif (uninitialized(cur_waste_form%canister_vitality_rate) .and. &
-              uninitialized(cur_waste_form%breach_time)) then
+      elseif (Uninitialized(cur_waste_form%canister_vitality_rate) .and. &
+              Uninitialized(cur_waste_form%breach_time)) then
         ! call to random number generator must be done while each processor
         ! knows about every other processor's waste forms, otherwise the
         ! memory of the random number generator will not be global
@@ -2762,7 +2762,7 @@ subroutine WFMechCustomDissolution(this,waste_form,pm,ierr)
   
   ierr = 0
 
-  if (uninitialized(this%frac_dissolution_rate)) then
+  if (Uninitialized(this%frac_dissolution_rate)) then
     ! kg-matrix / sec
     waste_form%eff_dissolution_rate = &
        this%dissolution_rate * &         ! kg-matrix/m^2/sec
