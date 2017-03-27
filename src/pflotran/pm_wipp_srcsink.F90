@@ -110,14 +110,14 @@ module PM_WIPP_SrcSink_class
     procedure, public :: Destroy => PMWSSDestroy
   end type pm_wipp_srcsink_type
   
-  interface TaperRxnrate
-    module procedure TaperRxnrate1
-    module procedure TaperRxnrate2
+  interface PMWSSTaperRxnrate
+    module procedure PMWSSTaperRxnrate1
+    module procedure PMWSSTaperRxnrate2
   end interface
 
   public :: PMWSSCreate, &
-            WastePanelCreate, &
-            PreInventoryCreate
+            PMWSSWastePanelCreate, &
+            PMWSSPreInventoryCreate
 
 contains
 
@@ -161,7 +161,7 @@ end function PMWSSCreate
 
 ! *************************************************************************** !
 
-function WastePanelCreate()
+function PMWSSWastePanelCreate()
   !
   ! Creates and initializes a waste panel type.
   !
@@ -171,37 +171,37 @@ function WastePanelCreate()
   
   implicit none
   
-  type(srcsink_panel_type), pointer :: WastePanelCreate
+  type(srcsink_panel_type), pointer :: PMWSSWastePanelCreate
   
-  allocate(WastePanelCreate)
+  allocate(PMWSSWastePanelCreate)
   
-  nullify(WastePanelCreate%next)
-  nullify(WastePanelCreate%region)
-  nullify(WastePanelCreate%scaling_factor)
-  nullify(WastePanelCreate%gas_generation_rate)
-  nullify(WastePanelCreate%brine_generation_rate)
-  nullify(WastePanelCreate%rank_list)
-  call InventoryInit(WastePanelCreate%inventory)
-  WastePanelCreate%name = ''
-  WastePanelCreate%region_name = ''
-  WastePanelCreate%inventory_name = ''
-  WastePanelCreate%volume = UNINITIALIZED_DOUBLE
-  WastePanelCreate%inundated_corrosion_rate = UNINITIALIZED_DOUBLE
-  WastePanelCreate%humid_corrosion_rate = UNINITIALIZED_DOUBLE
-  WastePanelCreate%inundated_biodeg_rate = UNINITIALIZED_DOUBLE
-  WastePanelCreate%humid_biodeg_rate = UNINITIALIZED_DOUBLE
-  WastePanelCreate%inundated_brucite_rate = UNINITIALIZED_DOUBLE
-  WastePanelCreate%humid_brucite_rate = UNINITIALIZED_DOUBLE
-  WastePanelCreate%RXH2S_factor = UNINITIALIZED_DOUBLE
-  WastePanelCreate%id = 0
-  WastePanelCreate%myMPIgroup = 0
-  WastePanelCreate%myMPIcomm = 0
+  nullify(PMWSSWastePanelCreate%next)
+  nullify(PMWSSPMWSSWastePanelCreate%region)
+  nullify(PMWSSWastePanelCreate%scaling_factor)
+  nullify(PMWSSWastePanelCreate%gas_generation_rate)
+  nullify(PMWSSWastePanelCreate%brine_generation_rate)
+  nullify(PMWSSWastePanelCreate%rank_list)
+  call PMWSSInventoryInit(PMWSSWastePanelCreate%inventory)
+  PMWSSWastePanelCreate%name = ''
+  PMWSSWastePanelCreate%region_name = ''
+  PMWSSWastePanelCreate%inventory_name = ''
+  PMWSSWastePanelCreate%volume = UNINITIALIZED_DOUBLE
+  PMWSSWastePanelCreate%inundated_corrosion_rate = UNINITIALIZED_DOUBLE
+  PMWSSWastePanelCreate%humid_corrosion_rate = UNINITIALIZED_DOUBLE
+  PMWSSWastePanelCreate%inundated_biodeg_rate = UNINITIALIZED_DOUBLE
+  PMWSSWastePanelCreate%humid_biodeg_rate = UNINITIALIZED_DOUBLE
+  PMWSSWastePanelCreate%inundated_brucite_rate = UNINITIALIZED_DOUBLE
+  PMWSSWastePanelCreate%humid_brucite_rate = UNINITIALIZED_DOUBLE
+  PMWSSWastePanelCreate%RXH2S_factor = UNINITIALIZED_DOUBLE
+  PMWSSWastePanelCreate%id = 0
+  PMWSSWastePanelCreate%myMPIgroup = 0
+  PMWSSWastePanelCreate%myMPIcomm = 0
 
-end function WastePanelCreate
+end function PMWSSWastePanelCreate
 
 ! *************************************************************************** !
 
-function PreInventoryCreate()
+function PMWSSPreInventoryCreate()
   !
   ! Creates and initializes a waste panel pre-inventory.
   !
@@ -211,26 +211,26 @@ function PreInventoryCreate()
   
   implicit none
   
-  type(pre_inventory_type), pointer :: PreInventoryCreate
+  type(pre_inventory_type), pointer :: PMWSSPreInventoryCreate
   
-  allocate(PreInventoryCreate)
-  nullify(PreInventoryCreate%next)
+  allocate(PMWSSPreInventoryCreate)
+  nullify(PMWSSPreInventoryCreate%next)
 
-  PreInventoryCreate%name = ''
-  PreInventoryCreate%Fe_in_panel = UNINITIALIZED_DOUBLE
-  PreInventoryCreate%MgO_in_panel = UNINITIALIZED_DOUBLE
-  PreInventoryCreate%Cellulose_in_panel = UNINITIALIZED_DOUBLE
-  PreInventoryCreate%RubberPlas_in_panel = UNINITIALIZED_DOUBLE
-  PreInventoryCreate%H_ion_in_panel = UNINITIALIZED_DOUBLE
-  PreInventoryCreate%Nitrate_in_panel = UNINITIALIZED_DOUBLE
-  PreInventoryCreate%Sulfate_in_panel = UNINITIALIZED_DOUBLE
-  PreInventoryCreate%num_drums_packing = UNINITIALIZED_DOUBLE
+  PMWSSPreInventoryCreate%name = ''
+  PMWSSPreInventoryCreate%Fe_in_panel = UNINITIALIZED_DOUBLE
+  PMWSSPreInventoryCreate%MgO_in_panel = UNINITIALIZED_DOUBLE
+  PMWSSPreInventoryCreate%Cellulose_in_panel = UNINITIALIZED_DOUBLE
+  PMWSSPreInventoryCreate%RubberPlas_in_panel = UNINITIALIZED_DOUBLE
+  PMWSSPreInventoryCreate%H_ion_in_panel = UNINITIALIZED_DOUBLE
+  PMWSSPreInventoryCreate%Nitrate_in_panel = UNINITIALIZED_DOUBLE
+  PMWSSPreInventoryCreate%Sulfate_in_panel = UNINITIALIZED_DOUBLE
+  PMWSSPreInventoryCreate%num_drums_packing = UNINITIALIZED_DOUBLE
 
-end function PreInventoryCreate
+end function PMWSSPreInventoryCreate
 
 ! *************************************************************************** !
 
-subroutine InventoryInit(inventory)
+subroutine PMWSSInventoryInit(inventory)
   !
   ! Initializes a waste panel inventory object.
   !
@@ -247,58 +247,58 @@ subroutine InventoryInit(inventory)
   nullify(inventory%preinventory)
   inventory%name = ''
   
-  molar_mass = (0.055847) ! [kg/mol MW_FE]
-  call InitChemSpecies(inventory%Fe_s,molar_mass)  ! iron
+  molar_mass = (0.055847d0) ! [kg/mol MW_FE]
+  call PMWSSInitChemSpecies(inventory%Fe_s,molar_mass)  ! iron
   
-  molar_mass = (0.08986) ! [kg/mol MW_FEOH2]
-  call InitChemSpecies(inventory%FeOH2_s,molar_mass) ! iron hydroxide
+  molar_mass = (0.08986d0) ! [kg/mol MW_FEOH2]
+  call PMWSSInitChemSpecies(inventory%FeOH2_s,molar_mass) ! iron hydroxide
   
-  molar_mass = (0.027023) ! [kg/mol MW_CELL]
-  call InitChemSpecies(inventory%C6H10O5_s,molar_mass)  ! cellulose
+  molar_mass = (0.027023d0) ! [kg/mol MW_CELL]
+  call PMWSSInitChemSpecies(inventory%C6H10O5_s,molar_mass)  ! cellulose
   
-  molar_mass = (0.027023) ! [rubber/plastic kg/mol, same as MW_CELL]
-  call InitChemSpecies(inventory%RuPl_s,molar_mass)  ! rubber/plastics
+  molar_mass = (0.027023d0) ! [rubber/plastic kg/mol, same as MW_CELL]
+  call PMWSSInitChemSpecies(inventory%RuPl_s,molar_mass)  ! rubber/plastics
   
   molar_mass = (1.01d-3) ! [H+ kg/mol] 
-  call InitChemSpecies(inventory%H_ion_aq,molar_mass)  ! h+
+  call PMWSSInitChemSpecies(inventory%H_ion_aq,molar_mass)  ! h+
   
   molar_mass = (14.0067d-3 + 3.d0*15.9994d-3) ! [NO3- kg/mol]
-  call InitChemSpecies(inventory%NO3_minus_aq,molar_mass)  ! nitrate
+  call PMWSSInitChemSpecies(inventory%NO3_minus_aq,molar_mass)  ! nitrate
   
-  molar_mass = (0.0440098) ! [kg/mol MW_CO2]
-  call InitChemSpecies(inventory%CO2_g,molar_mass)  ! carbon dioxide gas 
+  molar_mass = (0.0440098d0) ! [kg/mol MW_CO2]
+  call PMWSSInitChemSpecies(inventory%CO2_g,molar_mass)  ! carbon dioxide gas 
   
-  molar_mass = (0.02801348) ! [kg/mol MW_N2]
-  call InitChemSpecies(inventory%N2_g,molar_mass)  ! nitrogen gas  
+  molar_mass = (0.02801348d0) ! [kg/mol MW_N2]
+  call PMWSSInitChemSpecies(inventory%N2_g,molar_mass)  ! nitrogen gas  
   
   molar_mass = (32.065d-3 + 4.d0*15.9994d-3) ! [SO42- kg/mol]
-  call InitChemSpecies(inventory%SO42_minus_aq,molar_mass)  ! sulfate
+  call PMWSSInitChemSpecies(inventory%SO42_minus_aq,molar_mass)  ! sulfate
   
-  molar_mass = (0.03408188) ! [kg/mol MW_H2S]
-  call InitChemSpecies(inventory%H2S_g,molar_mass)  
+  molar_mass = (0.03408188d0) ! [kg/mol MW_H2S]
+  call PMWSSInitChemSpecies(inventory%H2S_g,molar_mass)  
   
-  molar_mass = (0.087911) ! [kg/mol MW_FES]
-  call InitChemSpecies(inventory%FeS_s,molar_mass)  ! iron sulfide 
+  molar_mass = (0.087911d0) ! [kg/mol MW_FES]
+  call PMWSSInitChemSpecies(inventory%FeS_s,molar_mass)  ! iron sulfide 
   
-  molar_mass = (0.040304) ! [kg/mol MW_MGO]
-  call InitChemSpecies(inventory%MgO_s,molar_mass)  ! magnesium oxide
+  molar_mass = (0.040304d0) ! [kg/mol MW_MGO]
+  call PMWSSInitChemSpecies(inventory%MgO_s,molar_mass)  ! magnesium oxide
   
-  molar_mass = (0.05832) ! [kg/mol MW_MGOH2]
-  call InitChemSpecies(inventory%MgOH2_s,molar_mass)  ! magnesium hydroxide              
+  molar_mass = (0.05832d0) ! [kg/mol MW_MGOH2]
+  call PMWSSInitChemSpecies(inventory%MgOH2_s,molar_mass)  ! magnesium hydroxide              
   
   molar_mass = (5.d0*24.305d-3 + 4.d0*12.0107d-3 + 4.d0*3.d0*15.9994d-3 + &
                 2.d0*15.9994d-3 + 2.d0*1.01d-3 + 8.d0*1.01d-3 + &
                 4.d0*15.9994d-3) ! [Mg5CO34OH24H2 kg/mol]
-  call InitChemSpecies(inventory%Mg5CO34OH24H2_s,molar_mass)  ! hydromagnesite
+  call PMWSSInitChemSpecies(inventory%Mg5CO34OH24H2_s,molar_mass)  ! hydromagnesite
   
-  molar_mass = (0.084314) ! [kg/mol MW_MGCO3]
-  call InitChemSpecies(inventory%MgCO3_s,molar_mass)  ! magnesium carbonate
+  molar_mass = (0.084314d0) ! [kg/mol MW_MGCO3]
+  call PMWSSInitChemSpecies(inventory%MgCO3_s,molar_mass)  ! magnesium carbonate
 
-end subroutine InventoryInit
+end subroutine PMWSSInventoryInit
 
 ! *************************************************************************** !
 
-subroutine InitChemSpecies(chem_species,molar_mass)
+subroutine PMWSSInitChemSpecies(chem_species,molar_mass)
   !
   ! Initializes a waste panel inventory's chemical species.
   !
@@ -318,7 +318,7 @@ subroutine InitChemSpecies(chem_species,molar_mass)
   chem_species%molar_mass = molar_mass          ! [kg/mol]
   chem_species%tot_mass_in_panel = 0.d0         ! [kg/panel-volume]
   
-end subroutine InitChemSpecies
+end subroutine PMWSSInitChemSpecies
 
 ! *************************************************************************** !
 
@@ -342,7 +342,7 @@ end subroutine PMWSSSetRealization
 
 ! *************************************************************************** !
 
-subroutine AssociateRegion(this,region_list)
+subroutine PMWSSAssociateRegion(this,region_list)
   ! 
   ! Associates the waste panel to its assigned region via the REGION keyword.
   ! 
@@ -389,11 +389,11 @@ subroutine AssociateRegion(this,region_list)
     cur_waste_panel => cur_waste_panel%next
   enddo
   
-end subroutine AssociateRegion
+end subroutine PMWSSAssociateRegion
 
 ! *************************************************************************** !
 
-subroutine AssociateInventory(this)
+subroutine PMWSSAssociateInventory(this)
   ! 
   ! Associates the waste panel to its assigned inventory via INVENTORY keyword.
   ! 
@@ -424,7 +424,7 @@ subroutine AssociateInventory(this)
         matched = PETSC_FALSE
         if (StringCompare(trim(cur_preinventory%name), &
                           trim(cur_waste_panel%inventory_name))) then
-          call CopyPreInvToInv(cur_preinventory,cur_waste_panel%inventory)
+          call PMWSSCopyPreInvToInv(cur_preinventory,cur_waste_panel%inventory)
           matched = PETSC_TRUE
         endif
         if (matched) exit
@@ -438,11 +438,11 @@ subroutine AssociateInventory(this)
     cur_waste_panel => cur_waste_panel%next
   enddo
   
-end subroutine AssociateInventory
+end subroutine PMWSSAssociateInventory
 
 ! *************************************************************************** !
 
-subroutine CopyPreInvToInv(preinventory,inventory)
+subroutine PMWSSCopyPreInvToInv(preinventory,inventory)
   ! 
   ! Copies information from a pre-inventory to an inventory object.
   ! 
@@ -459,11 +459,11 @@ subroutine CopyPreInvToInv(preinventory,inventory)
   inventory%num_drums_packing = preinventory%num_drums_packing
   inventory%preinventory => preinventory
   
-end subroutine CopyPreInvToInv
+end subroutine PMWSSCopyPreInvToInv
 
 ! *************************************************************************** !
 
-subroutine SetRegionScaling(this,waste_panel)
+subroutine PMWSSSetRegionScaling(this,waste_panel)
   ! 
   ! Calculates and sets the scaling factor vector for each of the waste panels
   ! that have assigned regions. It assumes the volume of the cells that make up
@@ -505,7 +505,7 @@ subroutine SetRegionScaling(this,waste_panel)
   waste_panel%scaling_factor = waste_panel%scaling_factor/total_volume_global 
   waste_panel%volume = total_volume_global
   
-end subroutine SetRegionScaling
+end subroutine PMWSSSetRegionScaling
 
 ! *************************************************************************** !
 
@@ -604,7 +604,7 @@ subroutine PMWSSRead(this,input)
       case('WASTE_PANEL')
         error_string = trim(error_string) // ',WASTE_PANEL'
         allocate(new_waste_panel)
-        new_waste_panel => WastePanelCreate()
+        new_waste_panel => PMWSSWastePanelCreate()
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'name',error_string)
         new_waste_panel%name = adjustl(trim(word))
@@ -667,7 +667,7 @@ subroutine PMWSSRead(this,input)
       case('INVENTORY')
         error_string = trim(error_string) // ',INVENTORY'
         allocate(new_inventory)
-        new_inventory => PreInventoryCreate()
+        new_inventory => PMWSSPreInventoryCreate()
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'name',error_string)
         new_inventory%name = adjustl(trim(word))
@@ -938,13 +938,13 @@ subroutine PMWSSRead(this,input)
     call printErrMsg(option)
   endif
   
-  call AssociateInventory(this)
+  call PMWSSAssociateInventory(this)
   
 end subroutine PMWSSRead
 
 ! *************************************************************************** !
 
-subroutine ProcessAfterRead(this)
+subroutine PMWSSProcessAfterRead(this)
   !
   ! After reading input parameters, ALGEBRA processing is done to get final 
   ! input parameters required.
@@ -1024,7 +1024,7 @@ subroutine ProcessAfterRead(this)
     cur_waste_panel => cur_waste_panel%next
   enddo
 
-end subroutine ProcessAfterRead
+end subroutine PMWSSProcessAfterRead
 
 ! *************************************************************************** !
 
@@ -1057,7 +1057,7 @@ subroutine PMWSSSetup(this)
   option => this%realization%option
   
   ! point the waste panel region to the desired region 
-  call AssociateRegion(this,this%realization%patch%region_list)
+  call PMWSSAssociateRegion(this,this%realization%patch%region_list)
   
   allocate(ranks(option%mycommsize))
   
@@ -1100,8 +1100,8 @@ subroutine PMWSSSetup(this)
     call MPI_Comm_create(option%mycomm,cur_waste_panel%myMPIgroup, &
                          cur_waste_panel%myMPIcomm,ierr)
     if (local) then
-      call SetRegionScaling(this,cur_waste_panel)
-      call InventoryAllocate(cur_waste_panel%inventory, &
+      call PMWSSSetRegionScaling(this,cur_waste_panel)
+      call PMWSSInventoryAllocate(cur_waste_panel%inventory, &
                              cur_waste_panel%region%num_cells, &
                              cur_waste_panel%volume)
       allocate(cur_waste_panel%gas_generation_rate( &
@@ -1131,7 +1131,7 @@ end subroutine PMWSSSetup
 
 ! ************************************************************************** !
 
-subroutine InventoryAllocate(inventory,num_cells,volume)
+subroutine PMWSSInventoryAllocate(inventory,num_cells,volume)
   ! 
   ! Allocates the size of the chemical species arrays within the inventory to 
   ! the number of cells in the waste panel region, and assigns the initial
@@ -1147,34 +1147,34 @@ subroutine InventoryAllocate(inventory,num_cells,volume)
   PetscInt :: num_cells
   PetscReal :: volume
   
-  call ChemSpeciesAllocate(num_cells,inventory%Fe_s, &
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%Fe_s, &
                            inventory%preinventory%Fe_in_panel,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%MgO_s, &
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%MgO_s, &
                            inventory%preinventory%MgO_in_panel,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%RuPl_s, &
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%RuPl_s, &
                            inventory%preinventory%RubberPlas_in_panel,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%C6H10O5_s, &
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%C6H10O5_s, &
                            inventory%preinventory%Cellulose_in_panel,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%SO42_minus_aq, &
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%SO42_minus_aq, &
                            inventory%preinventory%Sulfate_in_panel,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%NO3_minus_aq, &
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%NO3_minus_aq, &
                            inventory%preinventory%Nitrate_in_panel,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%H_ion_aq, &
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%H_ion_aq, &
                            inventory%preinventory%H_ion_in_panel,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%FeOH2_s,0.d0,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%CO2_g,0.d0,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%N2_g,0.d0,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%H2S_g,0.d0,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%FeS_s,0.d0,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%MgOH2_s,0.d0,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%Mg5CO34OH24H2_s,0.d0,volume)
-  call ChemSpeciesAllocate(num_cells,inventory%MgCO3_s,0.d0,volume)
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%FeOH2_s,0.d0,volume)
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%CO2_g,0.d0,volume)
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%N2_g,0.d0,volume)
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%H2S_g,0.d0,volume)
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%FeS_s,0.d0,volume)
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%MgOH2_s,0.d0,volume)
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%Mg5CO34OH24H2_s,0.d0,volume)
+  call PMWSSChemSpeciesAllocate(num_cells,inventory%MgCO3_s,0.d0,volume)
   
-end subroutine InventoryAllocate
+end subroutine PMWSSInventoryAllocate
 
 ! ************************************************************************** !
 
-subroutine ChemSpeciesAllocate(num_cells,chem_species,initial_mass,volume)
+subroutine PMWSSChemSpeciesAllocate(num_cells,chem_species,initial_mass,volume)
   ! 
   ! Allocates the size of the chemical species arrays within the inventory to 
   ! the number of cells in the waste panel region.
@@ -1202,7 +1202,7 @@ subroutine ChemSpeciesAllocate(num_cells,chem_species,initial_mass,volume)
   chem_species%inst_rate(:) = 0.d0        
   chem_species%tot_mass_in_panel = initial_mass
   
-end subroutine ChemSpeciesAllocate
+end subroutine PMWSSChemSpeciesAllocate
 
 ! ************************************************************************** !
 
@@ -1287,7 +1287,7 @@ subroutine PMWSSInitializeRun(this)
                         this%data_mediator%scatter_ctx,ierr);CHKERRQ(ierr)
   call ISDestroy(is,ierr);CHKERRQ(ierr)
   
-  call ProcessAfterRead(this)
+  call PMWSSProcessAfterRead(this)
   
   if (.not.this%option%restart_flag) then
     call PMWSSOutputHeader(this)
@@ -1324,7 +1324,7 @@ subroutine PMWSSInitializeTimestep(this)
   cur_waste_panel => this%waste_panel_list
   do
     if (.not.associated(cur_waste_panel)) exit
-    call UpdateInventory(cur_waste_panel,dt,this%option)
+    call PMWSSUpdateInventory(cur_waste_panel,dt,this%option)
     cur_waste_panel => cur_waste_panel%next
   enddo
   
@@ -1334,7 +1334,7 @@ end subroutine PMWSSInitializeTimestep
 
 ! *************************************************************************** !
 
-subroutine UpdateInventory(waste_panel,dt,option)
+subroutine PMWSSUpdateInventory(waste_panel,dt,option)
   !
   ! Updates the waste panel tracked species inventory concentrations.
   !
@@ -1350,30 +1350,36 @@ subroutine UpdateInventory(waste_panel,dt,option)
   PetscReal :: dt ! [sec; flow_dt]
   type(option_type) :: option
  
-  call UpdateChemSpecies(waste_panel%inventory%Fe_s,waste_panel,dt,option)
-  call UpdateChemSpecies(waste_panel%inventory%FeOH2_s,waste_panel,dt,option)
-  call UpdateChemSpecies(waste_panel%inventory%C6H10O5_s,waste_panel,dt,option)
-  call UpdateChemSpecies(waste_panel%inventory%RuPl_s,waste_panel,dt,option)
-  call UpdateChemSpecies(waste_panel%inventory%H_ion_aq,waste_panel,dt,option)
-  call UpdateChemSpecies(waste_panel%inventory%NO3_minus_aq,waste_panel,dt, &
-                         option)
-  call UpdateChemSpecies(waste_panel%inventory%N2_g,waste_panel,dt,option)
-  call UpdateChemSpecies(waste_panel%inventory%CO2_g,waste_panel,dt,option)
-  call UpdateChemSpecies(waste_panel%inventory%SO42_minus_aq,waste_panel,dt, &
-                         option)
-  call UpdateChemSpecies(waste_panel%inventory%H2S_g,waste_panel,dt,option)
-  call UpdateChemSpecies(waste_panel%inventory%FeS_s,waste_panel,dt,option)
-  call UpdateChemSpecies(waste_panel%inventory%MgO_s,waste_panel,dt,option)
-  call UpdateChemSpecies(waste_panel%inventory%MgOH2_s,waste_panel,dt,option)
-  call UpdateChemSpecies(waste_panel%inventory%Mg5CO34OH24H2_s,waste_panel,dt, &
-                         option)
-  call UpdateChemSpecies(waste_panel%inventory%MgCO3_s,waste_panel,dt,option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%Fe_s,waste_panel,dt,option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%FeOH2_s,waste_panel,dt,&
+                              option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%C6H10O5_s,waste_panel,dt, &
+                              option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%RuPl_s,waste_panel,dt, &
+                              option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%H_ion_aq,waste_panel,dt, &
+                              option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%NO3_minus_aq,waste_panel, &
+                              dt,option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%N2_g,waste_panel,dt,option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%CO2_g,waste_panel,dt,option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%SO42_minus_aq,waste_panel, &
+                              dt,option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%H2S_g,waste_panel,dt,option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%FeS_s,waste_panel,dt,option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%MgO_s,waste_panel,dt,option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%MgOH2_s,waste_panel,dt, &
+                              option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%Mg5CO34OH24H2_s, &
+                              waste_panel,dt,option)
+  call PMWSSUpdateChemSpecies(waste_panel%inventory%MgCO3_s,waste_panel,dt, &
+                              option)
                                       
- end subroutine UpdateInventory
+ end subroutine PMWSSUpdateInventory
  
 ! *************************************************************************** !
 
-subroutine UpdateChemSpecies(chem_species,waste_panel,dt,option)
+subroutine PMWSSUpdateChemSpecies(chem_species,waste_panel,dt,option)
   !
   ! Updates the waste panel tracked species inventory concentrations.
   !
@@ -1411,11 +1417,11 @@ subroutine UpdateChemSpecies(chem_species,waste_panel,dt,option)
                 (chem_species%current_conc_kg(k)*waste_panel%scaling_factor(k))
   enddo
   ! [kg]
-  call CalcParallelSUM(option,waste_panel,local_conc_kg,global_conc_kg)
+  call PMWSSCalcParallelSUM(option,waste_panel,local_conc_kg,global_conc_kg)
   chem_species%tot_mass_in_panel = global_conc_kg * &   ! [kg/m3]
                                    waste_panel%volume   ! [m3]
                                    
-end subroutine UpdateChemSpecies
+end subroutine PMWSSUpdateChemSpecies
 
 ! *************************************************************************** !
 
@@ -1515,56 +1521,57 @@ end subroutine UpdateChemSpecies
     !-----anoxic-iron-corrosion-[mol-Fe/m3/sec]-------------------------------
       rxnrate_corrosion = (cur_waste_panel%inundated_corrosion_rate*s_eff) + &
                           (cur_waste_panel%humid_corrosion_rate*(1.d0-s_eff))
-      call SmoothRxnrate(rxnrate_corrosion,i,cur_waste_panel%inventory%Fe_s, &
-                         this%alpharxn) 
-      call TaperRxnrate(rxnrate_corrosion,i,cur_waste_panel%inventory%Fe_s)
+      call PMWSSSmoothRxnrate(rxnrate_corrosion,i, &
+                              cur_waste_panel%inventory%Fe_s,this%alpharxn) 
+      call PMWSSTaperRxnrate(rxnrate_corrosion,i,cur_waste_panel%inventory%Fe_s)
     !-----biodegradation-[mol-cell/m3/sec]------------------------------------
       rxnrate_biodeg_nitrate = (cur_waste_panel%inundated_biodeg_rate*s_eff) + &
                                (cur_waste_panel%humid_biodeg_rate*(1.d0-s_eff))
       rxnrate_biodeg_sulfate = (cur_waste_panel%inundated_biodeg_rate*s_eff) + &
                                (cur_waste_panel%humid_biodeg_rate*(1.d0-s_eff))
-      call SmoothRxnrate(rxnrate_biodeg_nitrate,i, &
-                         cur_waste_panel%inventory%C6H10O5_s,this%alpharxn)
-      call SmoothRxnrate(rxnrate_biodeg_sulfate,i, &
-                         cur_waste_panel%inventory%C6H10O5_s,this%alpharxn)
-      call TaperRxnrate(rxnrate_biodeg_nitrate,i, &
-                        cur_waste_panel%inventory%C6H10O5_s, &
-                        cur_waste_panel%inventory%NO3_minus_aq)
-      call TaperRxnrate(rxnrate_biodeg_sulfate,i, &
-                        cur_waste_panel%inventory%C6H10O5_s, &
-                        cur_waste_panel%inventory%SO42_minus_aq)
+      call PMWSSSmoothRxnrate(rxnrate_biodeg_nitrate,i, &
+                              cur_waste_panel%inventory%C6H10O5_s,this%alpharxn)
+      call PMWSSSmoothRxnrate(rxnrate_biodeg_sulfate,i, &
+                              cur_waste_panel%inventory%C6H10O5_s,this%alpharxn)
+      call PMWSSTaperRxnrate(rxnrate_biodeg_nitrate,i, &
+                             cur_waste_panel%inventory%C6H10O5_s, &
+                             cur_waste_panel%inventory%NO3_minus_aq)
+      call PMWSSTaperRxnrate(rxnrate_biodeg_sulfate,i, &
+                             cur_waste_panel%inventory%C6H10O5_s, &
+                             cur_waste_panel%inventory%SO42_minus_aq)
     !-----iron-sulfidation-[mol-H2S/m3/sec]-----------------------------------
       rxnrate_FeS_Fe = rxnrate_biodeg_sulfate*cur_waste_panel%RXH2S_factor
       rxnrate_FeS_FeOH2 = rxnrate_biodeg_sulfate*cur_waste_panel%RXH2S_factor
-      call SmoothRxnrate(rxnrate_FeS_Fe,i,cur_waste_panel%inventory%Fe_s, &
-                         this%alpharxn) 
-      call SmoothRxnrate(rxnrate_FeS_FeOH2,i,cur_waste_panel%inventory%Fe_s, &
-                         this%alpharxn)
-      call TaperRxnrate(rxnrate_FeS_Fe,i, &
-                        cur_waste_panel%inventory%Fe_s, &
-                        cur_waste_panel%inventory%H2S_g)
-      call TaperRxnrate(rxnrate_FeS_FeOH2,i, &
-                        cur_waste_panel%inventory%FeOH2_s, &
-                        cur_waste_panel%inventory%H2S_g)
+      call PMWSSSmoothRxnrate(rxnrate_FeS_Fe,i,cur_waste_panel%inventory%Fe_s, &
+                              this%alpharxn) 
+      call PMWSSSmoothRxnrate(rxnrate_FeS_FeOH2,i, &
+                              cur_waste_panel%inventory%Fe_s,this%alpharxn)
+      call PMWSSTaperRxnrate(rxnrate_FeS_Fe,i, &
+                             cur_waste_panel%inventory%Fe_s, &
+                             cur_waste_panel%inventory%H2S_g)
+      call PMWSSTaperRxnrate(rxnrate_FeS_FeOH2,i, &
+                             cur_waste_panel%inventory%FeOH2_s, &
+                             cur_waste_panel%inventory%H2S_g)
     !-----MgO-hydration-[mol-MgO/m3/sec]--------------------------------------
       rxnrate_mgoh2 = (cur_waste_panel%inundated_brucite_rate*s_eff) + &
                       ((cur_waste_panel%humid_brucite_rate)*(1.d0-s_eff))
-      call SmoothRxnrate(rxnrate_mgoh2,i,cur_waste_panel%inventory%MgO_s, &
-                         this%alpharxn)
-      call TaperRxnrate(rxnrate_mgoh2,i,cur_waste_panel%inventory%MgO_s)
+      call PMWSSSmoothRxnrate(rxnrate_mgoh2,i,cur_waste_panel%inventory%MgO_s, &
+                              this%alpharxn)
+      call PMWSSTaperRxnrate(rxnrate_mgoh2,i,cur_waste_panel%inventory%MgO_s)
     !-----hydromagnesite-[mol/m3-bulk/sec]------------------------------------
       rxnrate_hydromag = max(rxnrate_biodeg_nitrate,rxnrate_biodeg_sulfate) * &
                          this%RXCO2_factor
-      call SmoothRxnrate(rxnrate_hydromag,i,cur_waste_panel%inventory%MgO_s, &
-                         this%alpharxn)
-      call TaperRxnrate(rxnrate_hydromag,i,cur_waste_panel%inventory%MgOH2_s)
+      call PMWSSSmoothRxnrate(rxnrate_hydromag,i, &
+                              cur_waste_panel%inventory%MgO_s,this%alpharxn)
+      call PMWSSTaperRxnrate(rxnrate_hydromag,i, &
+                             cur_waste_panel%inventory%MgOH2_s)
     !-----hydromagnesite-conversion-[mol/m3-bulk/sec]-------------------------
       rxnrate_hymagcon = this%hymagcon_rate* &
                   cur_waste_panel%inventory%Mg5CO34OH24H2_s%current_conc_kg(i)
-      call SmoothRxnrate(rxnrate_hymagcon,i,cur_waste_panel%inventory%MgO_s, &
-                         this%alpharxn)
-      call TaperRxnrate(rxnrate_hydromag,i, &
-                        cur_waste_panel%inventory%Mg5CO34OH24H2_s)
+      call PMWSSSmoothRxnrate(rxnrate_hymagcon,i, &
+                              cur_waste_panel%inventory%MgO_s,this%alpharxn)
+      call PMWSSTaperRxnrate(rxnrate_hydromag,i, &
+                             cur_waste_panel%inventory%Mg5CO34OH24H2_s)
     !-----tracked-species-[mol-species/m3-bulk/sec]---------------------------
       cur_waste_panel%inventory%FeOH2_s%inst_rate(i) = &
           1.d0*rxnrate_corrosion + (-1.d0*rxnrate_FeS_FeOH2)
@@ -1674,7 +1681,7 @@ end subroutine PMWSSSolve
 
 ! ************************************************************************** !
 
-subroutine SmoothRxnrate(rxnrate,cell_num,limiting_species,alpharxn)
+subroutine PMWSSSmoothRxnrate(rxnrate,cell_num,limiting_species,alpharxn)
   !
   ! Smooths the reaction rate near the point where the reaction runs out of a
   ! limiting relevant reactant/species. This implements Eq. 158 in the BRAGFLO
@@ -1698,11 +1705,11 @@ subroutine SmoothRxnrate(rxnrate,cell_num,limiting_species,alpharxn)
   ! K_smoothed = K * (1.0 - exp(A*C/Ci)  BRAGFLO User's Manual Eq. 158
   rxnrate = rxnrate * (1.d0 - exp(alpharxn*conc_ratio))
   
-end subroutine SmoothRxnrate
+end subroutine PMWSSSmoothRxnrate
 
 ! ************************************************************************** !
 
-subroutine TaperRxnrate1(rxnrate,cell_num,limiting_species1)
+subroutine PMWSSTaperRxnrate1(rxnrate,cell_num,limiting_species1)
   !
   ! Tapers the reaction rate if the reaction runs out of a single
   ! limiting relevant reactant/species. The limiting reactant/species is
@@ -1725,11 +1732,12 @@ subroutine TaperRxnrate1(rxnrate,cell_num,limiting_species1)
     rxnrate = rxnrate
   endif
   
-end subroutine TaperRxnrate1
+end subroutine PMWSSTaperRxnrate1
 
 ! ************************************************************************** !
 
-subroutine TaperRxnrate2(rxnrate,cell_num,limiting_species1,limiting_species2)
+subroutine PMWSSTaperRxnrate2(rxnrate,cell_num,limiting_species1, &
+                              limiting_species2)
   !
   ! Tapers the reaction rate if the reaction runs out of one of two possible
   ! limiting relevant reactants/species. The limiting reactants/species are
@@ -1762,7 +1770,7 @@ subroutine TaperRxnrate2(rxnrate,cell_num,limiting_species1,limiting_species2)
   endif
   rxnrate = min(rxnrate1,rxnrate2)
   
-end subroutine TaperRxnrate2
+end subroutine PMWSSTaperRxnrate2
 
 ! ************************************************************************** !
 
@@ -1780,7 +1788,7 @@ end subroutine PMWSSFinalizeTimestep
 
 ! ************************************************************************** !
 
-subroutine CalcParallelSUM(option,waste_panel,local_val,global_sum)
+subroutine PMWSSCalcParallelSUM(option,waste_panel,local_val,global_sum)
   ! 
   ! Calculates global sum for a MPI_DOUBLE_PRECISION number over a
   ! waste panel region. This function uses only MPI_Send and MPI_Recv functions
@@ -1843,7 +1851,7 @@ subroutine CalcParallelSUM(option,waste_panel,local_val,global_sum)
   
   deallocate(temp_array)
 
-end subroutine CalcParallelSUM
+end subroutine PMWSSCalcParallelSUM
 
 ! *************************************************************************** !
 
@@ -1900,9 +1908,10 @@ end subroutine CalcParallelSUM
                    (cur_waste_panel%brine_generation_rate(i) * &
                     cur_waste_panel%scaling_factor(i))
     enddo
-    call CalcParallelSUM(option,cur_waste_panel,local_gas_rate,global_gas_rate)
-    call CalcParallelSUM(option,cur_waste_panel,local_brine_rate, &
-                         global_brine_rate)
+    call PMWSSCalcParallelSUM(option,cur_waste_panel,local_gas_rate, &
+                              global_gas_rate)
+    call PMWSSCalcParallelSUM(option,cur_waste_panel,local_brine_rate, &
+                              global_brine_rate)
     write(fid,101,advance="no") cur_waste_panel%id
     write(fid,100,advance="no") &
       cur_waste_panel%inventory%Fe_s%tot_mass_in_panel, &
@@ -2089,7 +2098,7 @@ subroutine PMWSSStrip(this)
     if (.not.associated(cur_waste_panel)) exit
     prev_waste_panel => cur_waste_panel
     cur_waste_panel => cur_waste_panel%next
-    call InventoryDeallocate(prev_waste_panel%inventory)
+    call PMWSSInvDeallocate(prev_waste_panel%inventory)
     call DeallocateArray(prev_waste_panel%scaling_factor)
     call DeallocateArray(prev_waste_panel%gas_generation_rate)
     call DeallocateArray(prev_waste_panel%brine_generation_rate)
@@ -2113,7 +2122,7 @@ end subroutine PMWSSStrip
 
 ! ************************************************************************** !
 
-subroutine InventoryDeallocate(inventory)
+subroutine PMWSSInvDeallocate(inventory)
   ! 
   ! Deallocates the inventory's chemical species.
   ! 
@@ -2125,28 +2134,28 @@ subroutine InventoryDeallocate(inventory)
   
   type(inventory_type) :: inventory
   
-  call ChemSpeciesDeallocate(inventory%Fe_s)
-  call ChemSpeciesDeallocate(inventory%FeOH2_s)
-  call ChemSpeciesDeallocate(inventory%C6H10O5_s)
-  call ChemSpeciesDeallocate(inventory%RuPl_s)
-  call ChemSpeciesDeallocate(inventory%H_ion_aq)
-  call ChemSpeciesDeallocate(inventory%NO3_minus_aq)
-  call ChemSpeciesDeallocate(inventory%CO2_g)
-  call ChemSpeciesDeallocate(inventory%N2_g)
-  call ChemSpeciesDeallocate(inventory%SO42_minus_aq)
-  call ChemSpeciesDeallocate(inventory%H2S_g)
-  call ChemSpeciesDeallocate(inventory%FeS_s)
-  call ChemSpeciesDeallocate(inventory%MgO_s)
-  call ChemSpeciesDeallocate(inventory%MgOH2_s)
-  call ChemSpeciesDeallocate(inventory%Mg5CO34OH24H2_s)
-  call ChemSpeciesDeallocate(inventory%MgCO3_s)
+  call PMWSSChemSpeciesDeallocate(inventory%Fe_s)
+  call PMWSSChemSpeciesDeallocate(inventory%FeOH2_s)
+  call PMWSSChemSpeciesDeallocate(inventory%C6H10O5_s)
+  call PMWSSChemSpeciesDeallocate(inventory%RuPl_s)
+  call PMWSSChemSpeciesDeallocate(inventory%H_ion_aq)
+  call PMWSSChemSpeciesDeallocate(inventory%NO3_minus_aq)
+  call PMWSSChemSpeciesDeallocate(inventory%CO2_g)
+  call PMWSSChemSpeciesDeallocate(inventory%N2_g)
+  call PMWSSChemSpeciesDeallocate(inventory%SO42_minus_aq)
+  call PMWSSChemSpeciesDeallocate(inventory%H2S_g)
+  call PMWSSChemSpeciesDeallocate(inventory%FeS_s)
+  call PMWSSChemSpeciesDeallocate(inventory%MgO_s)
+  call PMWSSChemSpeciesDeallocate(inventory%MgOH2_s)
+  call PMWSSChemSpeciesDeallocate(inventory%Mg5CO34OH24H2_s)
+  call PMWSSChemSpeciesDeallocate(inventory%MgCO3_s)
   nullify(inventory%preinventory)
   
-end subroutine InventoryDeallocate
+end subroutine PMWSSInvDeallocate
 
 ! ************************************************************************** !
 
-subroutine ChemSpeciesDeallocate(chem_species)
+subroutine PMWSSChemSpeciesDeallocate(chem_species)
   ! 
   ! Deallocates the inventory's chemical species.
   ! 
@@ -2164,7 +2173,7 @@ subroutine ChemSpeciesDeallocate(chem_species)
   call DeallocateArray(chem_species%current_conc_kg)
   call DeallocateArray(chem_species%inst_rate)
   
-end subroutine ChemSpeciesDeallocate
+end subroutine PMWSSChemSpeciesDeallocate
 
 ! *************************************************************************** !
 
