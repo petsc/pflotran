@@ -18,6 +18,11 @@ module PMC_Base_class
   
   private
   
+  PetscInt, parameter, public :: PM_CHILD = 0
+  PetscInt, parameter, public :: PM_PEER = 1
+  PetscInt, parameter, public :: PM_APPEND = 0
+  PetscInt, parameter, public :: PM_INSERT = 1
+  
   ! process model coupler type
   type, public :: pmc_base_type
     character(len=MAXWORDLENGTH) :: name
@@ -220,19 +225,18 @@ recursive subroutine PMCBaseSetChildPeerPtr(pmcA,relationship_to,pmcB, &
   ! 
 
   use PM_Base_class
-  use String_module
   use Option_module
   
   implicit none
   
   class(pmc_base_type), pointer :: pmcA
-  character(len=MAXWORDLENGTH) :: relationship_to
+  PetscInt :: relationship_to
   class(pmc_base_type), pointer :: pmcB
   class(pmc_base_type), pointer :: pmcB_parent
   class(pmc_base_type), pointer :: pmcB_dummy
-  character(len=MAXWORDLENGTH) :: position_instruction
+  PetscInt :: position_instruction
   
-  character(len=MAXWORDLENGTH) :: new_relationship
+  PetscInt :: new_relationship
 
   nullify(pmcB_dummy)
   
@@ -242,12 +246,11 @@ recursive subroutine PMCBaseSetChildPeerPtr(pmcA,relationship_to,pmcB, &
     call printErrMsg(pmcA%option)
   endif
 
-  call StringToUpper(relationship_to)
-  select case(adjustl(trim(relationship_to)))
+  select case(relationship_to)
   !--------------------------------------------------------
-    case('CHILD')
+    case(PM_CHILD)
       if (associated(pmcB%child)) then
-        new_relationship = 'PEER'
+        new_relationship = PM_PEER
         call PMCBaseSetChildPeerPtr(pmcA,new_relationship,pmcB%child,pmcB, &
                                     position_instruction)
       else
@@ -259,13 +262,12 @@ recursive subroutine PMCBaseSetChildPeerPtr(pmcA,relationship_to,pmcB, &
 #endif
       endif
   !--------------------------------------------------------
-    case('PEER')
-      call StringToUpper(position_instruction)
-      select case(adjustl(trim(position_instruction)))
+    case(PM_PEER)
+      select case(position_instruction)
       !----------------------------------------------------
-        case('APPEND')
+        case(PM_APPEND)
           if (associated(pmcB%peer)) then
-            new_relationship = 'PEER'
+            new_relationship = PM_PEER
             call PMCBaseSetChildPeerPtr(pmcA,new_relationship,pmcB%peer, &
                                         pmcB_dummy,position_instruction)
           else
@@ -277,7 +279,7 @@ recursive subroutine PMCBaseSetChildPeerPtr(pmcA,relationship_to,pmcB, &
 #endif
           endif
       !----------------------------------------------------
-        case('INSERT')
+        case(PM_INSERT)
           pmcA%peer => pmcB
           if (associated(pmcB_parent)) then
             pmcB_parent%child => pmcA

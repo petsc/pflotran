@@ -176,7 +176,7 @@ function PMWSSWastePanelCreate()
   allocate(PMWSSWastePanelCreate)
   
   nullify(PMWSSWastePanelCreate%next)
-  nullify(PMWSSPMWSSWastePanelCreate%region)
+  nullify(PMWSSWastePanelCreate%region)
   nullify(PMWSSWastePanelCreate%scaling_factor)
   nullify(PMWSSWastePanelCreate%gas_generation_rate)
   nullify(PMWSSWastePanelCreate%brine_generation_rate)
@@ -1461,7 +1461,6 @@ end subroutine PMWSSUpdateChemSpecies
   PetscInt :: i, j
   PetscInt :: cell_id
   PetscInt :: num_cells
-  PetscReal :: conc_ratio
   ! brine/gas generation variable
   PetscReal :: water_saturation
   PetscReal :: s_eff
@@ -1473,7 +1472,6 @@ end subroutine PMWSSUpdateChemSpecies
   PetscReal :: rxnrate_mgoh2
   PetscReal :: rxnrate_hydromag
   PetscReal :: rxnrate_hymagcon
-  PetscReal :: rxnrate1, rxnrate2, rxnrate3, rxnrate4
   ! enthalpy calculation variables
   PetscReal :: temperature
   PetscReal :: pressure_liq

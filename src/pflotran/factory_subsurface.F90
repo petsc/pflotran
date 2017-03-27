@@ -110,8 +110,6 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   class(timestepper_BE_type), pointer :: timestepper
   type(waypoint_list_type), pointer :: sync_waypoint_list
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: relationship
-  character(len=MAXWORDLENGTH) :: position
   
   option => simulation%option
   ! process command line arguments specific to subsurface
@@ -200,11 +198,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     if (.not.associated(simulation%process_model_coupler_list)) then
       simulation%process_model_coupler_list => pmc_subsurface
     else
-      relationship = 'CHILD'
-      position = 'INSERT'
-      call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_subsurface),relationship, &
+      call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_subsurface),PM_CHILD, &
                         PMCCastToBase(simulation%flow_process_model_coupler), &
-                        pmc_dummy,position)
+                        pmc_dummy,PM_INSERT)
     endif
     nullify(pmc_subsurface)
   endif
@@ -267,11 +263,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     ! set up logging stage
     string = 'WASTE_FORM_GENERAL'
     call LoggingCreateStage(string,pmc_waste_form%stage)
-    relationship = 'CHILD'
-    position = 'APPEND'
-    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_waste_form),relationship, &
+    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_waste_form),PM_CHILD, &
                         PMCCastToBase(simulation%rt_process_model_coupler), &
-                        pmc_dummy,position)
+                        pmc_dummy,PM_APPEND)
   endif
   
   if (associated(pm_wipp_srcsink)) then
@@ -291,11 +285,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     ! set up logging stage
     string = 'WIPP_SOURCE_SINK'
     call LoggingCreateStage(string,pmc_wipp_srcsink%stage)
-    relationship = 'CHILD'
-    position = 'APPEND'
-    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_wipp_srcsink),relationship, &
+    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_wipp_srcsink),PM_CHILD, &
                         PMCCastToBase(simulation%flow_process_model_coupler), &
-                        pmc_dummy,position)
+                        pmc_dummy,PM_APPEND)
   endif
   
   if (associated(pm_ufd_decay)) then
@@ -315,11 +307,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     ! set up logging stage
     string = 'UFD_DECAY'
     call LoggingCreateStage(string,pmc_ufd_decay%stage)
-    relationship = 'CHILD'
-    position = 'APPEND'
-    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_ufd_decay),relationship, &
+    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_ufd_decay),PM_CHILD, &
                        PMCCastToBase(simulation%rt_process_model_coupler), &
-                       pmc_dummy,position)
+                       pmc_dummy,PM_APPEND)
   endif 
   
   if (associated(pm_ufd_biosphere)) then
@@ -344,11 +334,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     ! set up logging stage
     string = 'UFD_BIOSPHERE'
     call LoggingCreateStage(string,pmc_ufd_biosphere%stage)
-    relationship = 'CHILD'
-    position = 'APPEND'
-    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_ufd_biosphere),relationship, &
+    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_ufd_biosphere),PM_CHILD, &
                        PMCCastToBase(simulation%rt_process_model_coupler), &
-                       pmc_dummy,position)
+                       pmc_dummy,PM_APPEND)
   endif 
   
   if (associated(pm_auxiliary)) then
@@ -356,11 +344,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     if (StringCompareIgnoreCase(pm_auxiliary%ctype,string)) then
       if (associated(simulation%rt_process_model_coupler)) then
         pmc_auxiliary => PMCAuxiliaryCreate()
-        relationship = 'PEER'
-        position = 'APPEND'
-        call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_auxiliary),relationship, &
+        call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_auxiliary),PM_PEER, &
                            PMCCastToBase(simulation%rt_process_model_coupler), &
-                           pmc_dummy,position)
+                           pmc_dummy,PM_APPEND)
         pm_auxiliary%realization => realization
         pmc_auxiliary%pm_list => pm_auxiliary
         pmc_auxiliary%pm_aux => pm_auxiliary
