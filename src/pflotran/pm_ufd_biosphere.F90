@@ -70,9 +70,10 @@ module PM_UFD_Biosphere_class
   end type pm_ufd_biosphere_type
 
   public :: PMUFDBCreate, &
-            ERB_1A_Create, &
-            ERB_1B_Create, &
-            UnsuppRadCreate
+            PMUFDB_ERB1ACreate, &
+            PMUFDB_ERB1BCreate, &
+            PMUFDBUnsuppRadCreate, &
+            PMUFDBSupportedRadCreate
   
 contains
 
@@ -105,7 +106,7 @@ end function PMUFDBCreate
 
 ! *************************************************************************** !
 
-subroutine ERBInit(ERB_model)
+subroutine PMUFDB_ERBInit(ERB_model)
   !
   ! Initializes an ERB type model.
   !
@@ -124,11 +125,11 @@ subroutine ERBInit(ERB_model)
   nullify(ERB_model%region)
   nullify(ERB_model%next)
 
-end subroutine ERBInit
+end subroutine PMUFDB_ERBInit
 
 ! *************************************************************************** !
 
-function ERB_1A_Create()
+function PMUFDB_ERB1ACreate()
   !
   ! Creates and initializes an ERB_1A model.
   !
@@ -138,17 +139,17 @@ function ERB_1A_Create()
   
   implicit none
   
-  type(ERB_1A_type), pointer :: ERB_1A_Create
+  type(ERB_1A_type), pointer :: PMUFDB_ERB1ACreate
   
-  allocate(ERB_1A_Create)
+  allocate(PMUFDB_ERB1ACreate)
 
-  call ERBInit(ERB_1A_Create)
+  call PMUFDB_ERBInit(PMUFDB_ERB1ACreate)
   
-end function ERB_1A_Create
+end function PMUFDB_ERB1ACreate
 
 ! *************************************************************************** !
 
-function ERB_1B_Create()
+function PMUFDB_ERB1BCreate()
   !
   ! Creates and initializes an ERB_1B model.
   !
@@ -158,19 +159,19 @@ function ERB_1B_Create()
   
   implicit none
   
-  type(ERB_1B_type), pointer :: ERB_1B_Create
+  type(ERB_1B_type), pointer :: PMUFDB_ERB1BCreate
   
-  allocate(ERB_1B_Create)
+  allocate(PMUFDB_ERB1BCreate)
   
-  ERB_1B_Create%dilution_factor = UNINITIALIZED_DOUBLE
+  PMUFDB_ERB1BCreate%dilution_factor = UNINITIALIZED_DOUBLE
   
-  call ERBInit(ERB_1B_Create)
+  call PMUFDB_ERBInit(PMUFDB_ERB1BCreate)
   
-end function ERB_1B_Create
+end function PMUFDB_ERB1BCreate
 
 ! *************************************************************************** !
 
-function SupportedRadCreate()
+function PMUFDBSupportedRadCreate()
   !
   ! Creates and initializes a supported radionuclide type.
   !
@@ -180,21 +181,21 @@ function SupportedRadCreate()
   
   implicit none
   
-  type(supported_rad_type), pointer :: SupportedRadCreate
+  type(supported_rad_type), pointer :: PMUFDBSupportedRadCreate
   
-  allocate(SupportedRadCreate)
+  allocate(PMUFDBSupportedRadCreate)
   
-  SupportedRadCreate%name = ''
-  SupportedRadCreate%decay_rate = UNINITIALIZED_DOUBLE  ! 1/sec
-  SupportedRadCreate%dcf = UNINITIALIZED_DOUBLE  ! Sv/Bq
-  SupportedRadCreate%kd = UNINITIALIZED_DOUBLE   ! kg-water/m^3-bulk
-  nullify(SupportedRadCreate%next)
+  PMUFDBSupportedRadCreate%name = ''
+  PMUFDBSupportedRadCreate%decay_rate = UNINITIALIZED_DOUBLE  ! 1/sec
+  PMUFDBSupportedRadCreate%dcf = UNINITIALIZED_DOUBLE  ! Sv/Bq
+  PMUFDBSupportedRadCreate%kd = UNINITIALIZED_DOUBLE   ! kg-water/m^3-bulk
+  nullify(PMUFDBSupportedRadCreate%next)
   
-end function SupportedRadCreate
+end function PMUFDBSupportedRadCreate
 
 ! *************************************************************************** !
 
-function UnsuppRadCreate()
+function PMUFDBUnsuppRadCreate()
   !
   ! Creates and initializes an unsupported radionuclide type.
   !
@@ -204,19 +205,19 @@ function UnsuppRadCreate()
   
   implicit none
   
-  type(unsupported_rad_type), pointer :: UnsuppRadCreate
+  type(unsupported_rad_type), pointer :: PMUFDBUnsuppRadCreate
   
-  allocate(UnsuppRadCreate)
+  allocate(PMUFDBUnsuppRadCreate)
   
-  UnsuppRadCreate%name = ''
-  UnsuppRadCreate%supported_parent_name = ''
-  UnsuppRadCreate%dcf = UNINITIALIZED_DOUBLE  ! Sv/Bq
-  UnsuppRadCreate%emanation_factor = 1.d0     ! default value
-  UnsuppRadCreate%kd = UNINITIALIZED_DOUBLE   ! kg-water/m^3-bulk
-  nullify(UnsuppRadCreate%supported_parent)
-  nullify(UnsuppRadCreate%next)
+  PMUFDBUnsuppRadCreate%name = ''
+  PMUFDBUnsuppRadCreate%supported_parent_name = ''
+  PMUFDBUnsuppRadCreate%dcf = UNINITIALIZED_DOUBLE  ! Sv/Bq
+  PMUFDBUnsuppRadCreate%emanation_factor = 1.d0     ! default value
+  PMUFDBUnsuppRadCreate%kd = UNINITIALIZED_DOUBLE   ! kg-water/m^3-bulk
+  nullify(PMUFDBUnsuppRadCreate%supported_parent)
+  nullify(PMUFDBUnsuppRadCreate%next)
   
-end function UnsuppRadCreate
+end function PMUFDBUnsuppRadCreate
 
 ! *************************************************************************** !
 
@@ -287,12 +288,12 @@ subroutine PMUFDBRead(this,input)
       case('ERB_1A')
         error_string = trim(error_string) // ',ERB_1A'
         allocate(new_ERB1A)
-        new_ERB1A => ERB_1A_Create()
+        new_ERB1A => PMUFDB_ERB1ACreate()
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'name',error_string)
         new_ERB1A%name = adjustl(trim(word))
         error_string = trim(error_string) // ' ' // trim(new_ERB1A%name)
-        call ReadERBmodel(this,input,option,new_ERB1A,error_string)
+        call PMUFDBReadERBmodel(this,input,option,new_ERB1A,error_string)
         ! add new ERB_1A model to ERB_list
         added = PETSC_FALSE
         if (.not.associated(this%ERB_list)) then
@@ -315,12 +316,12 @@ subroutine PMUFDBRead(this,input)
       case('ERB_1B')
         error_string = trim(error_string) // ',ERB_1B'
         allocate(new_ERB1B)
-        new_ERB1B => ERB_1B_Create()
+        new_ERB1B => PMUFDB_ERB1BCreate()
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'name',error_string)
         new_ERB1B%name = adjustl(trim(word))
         error_string = trim(error_string) // ' ' // trim(new_ERB1B%name)
-        call ReadERBmodel(this,input,option,new_ERB1B,error_string)
+        call PMUFDBReadERBmodel(this,input,option,new_ERB1B,error_string)
         ! add new ERB_1B model to ERB_list
         added = PETSC_FALSE
         if (.not.associated(this%ERB_list)) then
@@ -342,12 +343,12 @@ subroutine PMUFDBRead(this,input)
     !-----------------------------------------
       case('SUPPORTED_RADIONUCLIDES')
         error_string = trim(error_string) // ',SUPPORTED_RADIONUCLIDES'
-        call ReadSupportedRad(this,input,option,error_string)  
+        call PMUFDBReadSupportedRad(this,input,option,error_string)  
     !-----------------------------------------
     !-----------------------------------------
       case('UNSUPPORTED_RADIONUCLIDES')
         error_string = trim(error_string) // ',UNSUPPORTED_RADIONUCLIDES'
-        call ReadUnsuppRad(this,input,option,error_string)      
+        call PMUFDBReadUnsuppRad(this,input,option,error_string)      
     !-----------------------------------------
     !-----------------------------------------
       case('OUTPUT_START_TIME')
@@ -392,7 +393,7 @@ end subroutine PMUFDBRead
 
 ! *************************************************************************** !
 
-subroutine ReadERBmodel(this,input,option,ERB_model,error_string)
+subroutine PMUFDBReadERBmodel(this,input,option,ERB_model,error_string)
   !
   ! Reads input file parameters for the UFD Biosphere process model.
   !
@@ -480,11 +481,11 @@ subroutine ReadERBmodel(this,input,option,ERB_model,error_string)
     call printErrMsg(option)
   endif
   
-end subroutine ReadERBmodel
+end subroutine PMUFDBReadERBmodel
 
 ! *************************************************************************** !
 
-subroutine ReadSupportedRad(this,input,option,error_string)
+subroutine PMUFDBReadSupportedRad(this,input,option,error_string)
   !
   ! Reads input file parameters for the UFD Biosphere process model.
   !
@@ -521,7 +522,7 @@ subroutine ReadSupportedRad(this,input,option,error_string)
       case('RADIONUCLIDE')
         error_string = trim(error_string) // ',RADIONUCLIDE'
         allocate(new_supp_rad)
-        new_supp_rad => SupportedRadCreate()
+        new_supp_rad => PMUFDBSupportedRadCreate()
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'radionuclide name',error_string)
         new_supp_rad%name = adjustl(trim(word))
@@ -586,12 +587,12 @@ subroutine ReadSupportedRad(this,input,option,error_string)
     end select
   enddo
   
-end subroutine ReadSupportedRad
+end subroutine PMUFDBReadSupportedRad
 
 
 ! *************************************************************************** !
 
-subroutine ReadUnsuppRad(this,input,option,error_string)
+subroutine PMUFDBReadUnsuppRad(this,input,option,error_string)
   !
   ! Reads input file parameters for the UFD Biosphere process model.
   !
@@ -627,7 +628,7 @@ subroutine ReadUnsuppRad(this,input,option,error_string)
       case('RADIONUCLIDE')
         error_string = trim(error_string) // ',RADIONUCLIDE'
         allocate(new_unsupp_rad)
-        new_unsupp_rad => UnsuppRadCreate()
+        new_unsupp_rad => PMUFDBUnsuppRadCreate()
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputErrorMsg(input,option,'radionuclide name',error_string)
         new_unsupp_rad%name = adjustl(trim(word))
@@ -704,11 +705,11 @@ subroutine ReadUnsuppRad(this,input,option,error_string)
     end select
   enddo
   
-end subroutine ReadUnsuppRad
+end subroutine PMUFDBReadUnsuppRad
 
 ! *************************************************************************** !
 
-subroutine AssociateRegion(this,region_list)
+subroutine PMUFDBAssociateRegion(this,region_list)
   ! 
   ! Associates the ERB model to its assigned region via the REGION keyword.
   ! And calculates the scaling factor by volume.
@@ -782,7 +783,7 @@ subroutine AssociateRegion(this,region_list)
     cur_ERB => cur_ERB%next
   enddo
   
-end subroutine AssociateRegion
+end subroutine PMUFDBAssociateRegion
 
 ! *************************************************************************** !
 
@@ -798,19 +799,19 @@ subroutine PMUFDBSetup(this)
   
   class(pm_ufd_biosphere_type) :: this
   
-  call AssociateRegion(this,this%realization%patch%region_list)
+  call PMUFDBAssociateRegion(this,this%realization%patch%region_list)
   
   ! check to see if all supported radionuclides are primary or secondary species
   ! look at line 1747 of pm_waste_form
-  call SupportedRadCheckRT(this)
+  call PMUFDBSupportedRadCheckRT(this)
 
-  call AssociateUnsuppRadWithSuppRad(this)
+  call PMUFDBAscUnsuppRadWithSuppRad(this)
   
 end subroutine PMUFDBSetup
 
 ! *************************************************************************** !
 
-subroutine SupportedRadCheckRT(this)
+subroutine PMUFDBSupportedRadCheckRT(this)
   ! 
   ! Associates the unsupported radionuclide with its support parent 
   ! radionuclide.
@@ -872,11 +873,11 @@ subroutine SupportedRadCheckRT(this)
   deallocate(pri_names)
   deallocate(sec_names)
   
-end subroutine SupportedRadCheckRT
+end subroutine PMUFDBSupportedRadCheckRT
 
 ! *************************************************************************** !
 
-subroutine AssociateUnsuppRadWithSuppRad(this)
+subroutine PMUFDBAscUnsuppRadWithSuppRad(this)
   ! 
   ! Associates the unsupported radionuclide with its support parent 
   ! radionuclide.
@@ -924,7 +925,7 @@ subroutine AssociateUnsuppRadWithSuppRad(this)
     cur_unsupp_rad => cur_unsupp_rad%next
   enddo
   
-end subroutine AssociateUnsuppRadWithSuppRad
+end subroutine PMUFDBAscUnsuppRadWithSuppRad
 
 ! ************************************************************************** !
 
