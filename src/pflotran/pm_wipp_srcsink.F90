@@ -109,6 +109,11 @@ module PM_WIPP_SrcSink_class
     procedure, public :: InputRecord => PMWSSInputRecord
     procedure, public :: Destroy => PMWSSDestroy
   end type pm_wipp_srcsink_type
+  
+  interface TaperRxnrate
+    module procedure TaperRxnrate1
+    module procedure TaperRxnrate2
+  end interface
 
   public :: PMWSSCreate, &
             WastePanelCreate, &
@@ -1510,63 +1515,56 @@ end subroutine UpdateChemSpecies
     !-----anoxic-iron-corrosion-[mol-Fe/m3/sec]-------------------------------
       rxnrate_corrosion = (cur_waste_panel%inundated_corrosion_rate*s_eff) + &
                           (cur_waste_panel%humid_corrosion_rate*(1.d0-s_eff))
-      conc_ratio = (cur_waste_panel%inventory%Fe_s%initial_conc_mol(i) / &
-                    cur_waste_panel%inventory%Fe_s%current_conc_mol(i))
-      rxnrate_corrosion = rxnrate_corrosion*exp(-1.d0*conc_ratio) ! Fe limited
+      call SmoothRxnrate(rxnrate_corrosion,i,cur_waste_panel%inventory%Fe_s, &
+                         this%alpharxn) 
+      call TaperRxnrate(rxnrate_corrosion,i,cur_waste_panel%inventory%Fe_s)
     !-----biodegradation-[mol-cell/m3/sec]------------------------------------
       rxnrate_biodeg_nitrate = (cur_waste_panel%inundated_biodeg_rate*s_eff) + &
                                (cur_waste_panel%humid_biodeg_rate*(1.d0-s_eff))
       rxnrate_biodeg_sulfate = (cur_waste_panel%inundated_biodeg_rate*s_eff) + &
                                (cur_waste_panel%humid_biodeg_rate*(1.d0-s_eff))
-      conc_ratio = (cur_waste_panel%inventory%C6H10O5_s%initial_conc_mol(i) / &
-                    cur_waste_panel%inventory%C6H10O5_s%current_conc_mol(i)) + &
-                   (cur_waste_panel%inventory%RuPl_s%initial_conc_mol(i) / &
-                    cur_waste_panel%inventory%RuPl_s%current_conc_mol(i))
-      rxnrate1 = rxnrate_biodeg_nitrate*exp(-1.d0*conc_ratio) ! cellulosics limited
-      rxnrate2 = rxnrate_biodeg_sulfate*exp(-1.d0*conc_ratio) ! cellulosics limited
-      conc_ratio = (cur_waste_panel%inventory%NO3_minus_aq%initial_conc_mol(i)/&
-                    cur_waste_panel%inventory%NO3_minus_aq%current_conc_mol(i))
-      rxnrate3 = rxnrate_biodeg_nitrate*exp(-1.d0*conc_ratio) ! nitrate limited
-      conc_ratio = (cur_waste_panel%inventory%SO42_minus_aq%initial_conc_mol(i)/&
-                    cur_waste_panel%inventory%SO42_minus_aq%current_conc_mol(i))
-      rxnrate4 = rxnrate_biodeg_sulfate*exp(-1.d0*conc_ratio) ! sulfate limited
-      rxnrate_biodeg_nitrate = min(rxnrate1,rxnrate3) ! cell. vs nitrate
-      rxnrate_biodeg_sulfate = min(rxnrate2,rxnrate4) ! cell. vs sulfate
+      call SmoothRxnrate(rxnrate_biodeg_nitrate,i, &
+                         cur_waste_panel%inventory%C6H10O5_s,this%alpharxn)
+      call SmoothRxnrate(rxnrate_biodeg_sulfate,i, &
+                         cur_waste_panel%inventory%C6H10O5_s,this%alpharxn)
+      call TaperRxnrate(rxnrate_biodeg_nitrate,i, &
+                        cur_waste_panel%inventory%C6H10O5_s, &
+                        cur_waste_panel%inventory%NO3_minus_aq)
+      call TaperRxnrate(rxnrate_biodeg_sulfate,i, &
+                        cur_waste_panel%inventory%C6H10O5_s, &
+                        cur_waste_panel%inventory%SO42_minus_aq)
     !-----iron-sulfidation-[mol-H2S/m3/sec]-----------------------------------
       rxnrate_FeS_Fe = rxnrate_biodeg_sulfate*cur_waste_panel%RXH2S_factor
       rxnrate_FeS_FeOH2 = rxnrate_biodeg_sulfate*cur_waste_panel%RXH2S_factor
-      if (cur_waste_panel%inventory%H2S_g%current_conc_mol(i) <= 0.d0) then
-        rxnrate1 = rxnrate_FeS_Fe*0.d0    ! H2S limited
-        rxnrate2 = rxnrate_FeS_FeOH2*0.d0 ! H2S limited
-      else
-        rxnrate1 = rxnrate_FeS_Fe
-        rxnrate2 = rxnrate_FeS_FeOH2
-      endif
-      conc_ratio = (cur_waste_panel%inventory%Fe_s%initial_conc_mol(i) / &
-                    cur_waste_panel%inventory%Fe_s%current_conc_mol(i))
-      rxnrate3 = rxnrate_FeS_Fe*exp(-1.d0*conc_ratio) ! Fe limited
-      if (cur_waste_panel%inventory%FeOH2_s%current_conc_mol(i) <= 0.d0) then
-        rxnrate4 = rxnrate_FeS_FeOH2*0.d0 ! FeOH2 limited
-      else 
-        rxnrate4 = rxnrate_FeS_FeOH2
-      endif
-      rxnrate_FeS_Fe = min(rxnrate1,rxnrate3)    ! H2S vs Fe
-      rxnrate_FeS_FeOH2 = min(rxnrate2,rxnrate4) ! H2S vs FeOH2
+      call SmoothRxnrate(rxnrate_FeS_Fe,i,cur_waste_panel%inventory%Fe_s, &
+                         this%alpharxn) 
+      call SmoothRxnrate(rxnrate_FeS_FeOH2,i,cur_waste_panel%inventory%Fe_s, &
+                         this%alpharxn)
+      call TaperRxnrate(rxnrate_FeS_Fe,i, &
+                        cur_waste_panel%inventory%Fe_s, &
+                        cur_waste_panel%inventory%H2S_g)
+      call TaperRxnrate(rxnrate_FeS_FeOH2,i, &
+                        cur_waste_panel%inventory%FeOH2_s, &
+                        cur_waste_panel%inventory%H2S_g)
     !-----MgO-hydration-[mol-MgO/m3/sec]--------------------------------------
       rxnrate_mgoh2 = (cur_waste_panel%inundated_brucite_rate*s_eff) + &
                       ((cur_waste_panel%humid_brucite_rate)*(1.d0-s_eff))
-      conc_ratio = (cur_waste_panel%inventory%MgO_s%initial_conc_mol(i) / &
-                    cur_waste_panel%inventory%MgO_s%current_conc_mol(i))
-      rxnrate_mgoh2 = rxnrate_mgoh2*exp(-1.d0*conc_ratio) ! MgO limited
-    !-----hydromagnesite------------------------------------------------------
+      call SmoothRxnrate(rxnrate_mgoh2,i,cur_waste_panel%inventory%MgO_s, &
+                         this%alpharxn)
+      call TaperRxnrate(rxnrate_mgoh2,i,cur_waste_panel%inventory%MgO_s)
+    !-----hydromagnesite-[mol/m3-bulk/sec]------------------------------------
       rxnrate_hydromag = max(rxnrate_biodeg_nitrate,rxnrate_biodeg_sulfate) * &
                          this%RXCO2_factor
-      if (cur_waste_panel%inventory%MgOH2_s%current_conc_mol(i) <= 0.d0) then
-        rxnrate_hydromag = rxnrate_hydromag*0.d0 ! MgOH2 limited
-      endif
-    !-----hydromagnesite-conversion-------------------------------------------
+      call SmoothRxnrate(rxnrate_hydromag,i,cur_waste_panel%inventory%MgO_s, &
+                         this%alpharxn)
+      call TaperRxnrate(rxnrate_hydromag,i,cur_waste_panel%inventory%MgOH2_s)
+    !-----hydromagnesite-conversion-[mol/m3-bulk/sec]-------------------------
       rxnrate_hymagcon = this%hymagcon_rate* &
                   cur_waste_panel%inventory%Mg5CO34OH24H2_s%current_conc_kg(i)
+      call SmoothRxnrate(rxnrate_hymagcon,i,cur_waste_panel%inventory%MgO_s, &
+                         this%alpharxn)
+      call TaperRxnrate(rxnrate_hydromag,i, &
+                        cur_waste_panel%inventory%Mg5CO34OH24H2_s)
     !-----tracked-species-[mol-species/m3-bulk/sec]---------------------------
       cur_waste_panel%inventory%FeOH2_s%inst_rate(i) = &
           1.d0*rxnrate_corrosion + (-1.d0*rxnrate_FeS_FeOH2)
@@ -1676,10 +1674,103 @@ end subroutine PMWSSSolve
 
 ! ************************************************************************** !
 
+subroutine SmoothRxnrate(rxnrate,cell_num,limiting_species,alpharxn)
+  !
+  ! Smooths the reaction rate near the point where the reaction runs out of a
+  ! limiting relevant reactant/species. This implements Eq. 158 in the BRAGFLO
+  ! User's Manual.
+  !
+  ! Author: Jennifer Frederick
+  ! Date: 03/27/3017
+  !
+  
+  implicit none
+  
+  PetscReal :: rxnrate
+  PetscInt :: cell_num
+  type(chem_species_type) :: limiting_species
+  PetscReal :: alpharxn
+  
+  PetscReal :: conc_ratio
+  
+  conc_ratio = ( limiting_species%initial_conc_mol(cell_num) / &
+                 limiting_species%current_conc_mol(cell_num) ) 
+  ! K_smoothed = K * (1.0 - exp(A*C/Ci)  BRAGFLO User's Manual Eq. 158
+  rxnrate = rxnrate * (1.d0 - exp(alpharxn*conc_ratio))
+  
+end subroutine SmoothRxnrate
+
+! ************************************************************************** !
+
+subroutine TaperRxnrate1(rxnrate,cell_num,limiting_species1)
+  !
+  ! Tapers the reaction rate if the reaction runs out of a single
+  ! limiting relevant reactant/species. The limiting reactant/species is
+  ! chosen according to the equations in the BRAGFLO User's Manual, 
+  ! Section 14.13.
+  !
+  ! Author: Jennifer Frederick
+  ! Date: 03/27/3017
+  !
+  
+  implicit none
+  
+  PetscReal :: rxnrate
+  PetscInt :: cell_num
+  type(chem_species_type) :: limiting_species1
+  
+  if (limiting_species1%current_conc_mol(cell_num) <= 0.d0) then
+    rxnrate = 0.d0
+  else
+    rxnrate = rxnrate
+  endif
+  
+end subroutine TaperRxnrate1
+
+! ************************************************************************** !
+
+subroutine TaperRxnrate2(rxnrate,cell_num,limiting_species1,limiting_species2)
+  !
+  ! Tapers the reaction rate if the reaction runs out of one of two possible
+  ! limiting relevant reactants/species. The limiting reactants/species are
+  ! chosen according to the equations in the BRAGFLO User's Manual, 
+  ! Section 14.13.
+  !
+  ! Author: Jennifer Frederick
+  ! Date: 03/27/3017
+  !
+  
+  implicit none
+  
+  PetscReal :: rxnrate
+  PetscInt :: cell_num
+  type(chem_species_type) :: limiting_species1
+  type(chem_species_type) :: limiting_species2
+  
+  PetscReal :: rxnrate1
+  PetscReal :: rxnrate2
+  
+  if (limiting_species1%current_conc_mol(cell_num) <= 0.d0) then
+    rxnrate1 = 0.d0
+  else
+    rxnrate1 = rxnrate
+  endif
+  if (limiting_species2%current_conc_mol(cell_num) <= 0.d0) then
+    rxnrate2 = 0.d0
+  else
+    rxnrate2 = rxnrate
+  endif
+  rxnrate = min(rxnrate1,rxnrate2)
+  
+end subroutine TaperRxnrate2
+
+! ************************************************************************** !
+
 subroutine PMWSSFinalizeTimestep(this)
   ! 
   ! Author: Jenn Frederick
   ! Date: 02/22/2017
+  !
 
   implicit none
   
