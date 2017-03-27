@@ -462,7 +462,7 @@ subroutine ReadERBmodel(this,input,option,ERB_model,error_string)
   ! error messages
   select type(ERB_model)
     type is(ERB_1B_type)
-      if (uninitialized(ERB_model%dilution_factor)) then
+      if (Uninitialized(ERB_model%dilution_factor)) then
         option%io_buffer = 'DILUTION_FACTOR must be specified in the ' // &
                            trim(error_string) // ' block.'
         call printErrMsg(option)
@@ -474,7 +474,7 @@ subroutine ReadERBmodel(this,input,option,ERB_model,error_string)
                        trim(error_string) // ' block.'
     call printErrMsg(option)
   endif
-  if (uninitialized(ERB_model%indv_consumption_rate)) then
+  if (Uninitialized(ERB_model%indv_consumption_rate)) then
     option%io_buffer = 'INDIVIDUAL_CONSUMPTION_RATE must be specified &
                        &in the ' // trim(error_string) // ' block.'
     call printErrMsg(option)
@@ -557,7 +557,7 @@ subroutine ReadSupportedRad(this,input,option,error_string)
           end select
         enddo
         ! error messages
-        if (uninitialized(new_supp_rad%dcf)) then
+        if (Uninitialized(new_supp_rad%dcf)) then
           option%io_buffer = 'INGESTION_DOSE_COEF must be specified in the ' &
                              // trim(error_string) // ' block.'
           call printErrMsg(option)
@@ -665,12 +665,12 @@ subroutine ReadUnsuppRad(this,input,option,error_string)
           end select
         enddo
         ! error messages
-        if (uninitialized(new_unsupp_rad%kd)) then
+        if (Uninitialized(new_unsupp_rad%kd)) then
           option%io_buffer = 'ELEMENT_KD must be specified in the ' // &
                              trim(error_string) // ' block.'
           call printErrMsg(option)
         endif
-        if (uninitialized(new_unsupp_rad%dcf)) then
+        if (Uninitialized(new_unsupp_rad%dcf)) then
           option%io_buffer = 'INGESTION_DOSE_COEF must be specified in the ' &
                              // trim(error_string) // ' block.'
           call printErrMsg(option)
