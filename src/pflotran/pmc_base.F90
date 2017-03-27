@@ -235,6 +235,12 @@ recursive subroutine PMCBaseSetChildPeerPtr(pmcA,relationship_to,pmcB, &
   character(len=MAXWORDLENGTH) :: new_relationship
 
   nullify(pmcB_dummy)
+  
+  if (.not.associated(pmcB)) then
+    pmcA%option%io_buffer = 'pmcB passed PMCBaseSetChildPeerPtr is not &
+                            &associated.'
+    call printErrMsg(pmcA%option)
+  endif
 
   call StringToUpper(relationship_to)
   select case(adjustl(trim(relationship_to)))
@@ -243,9 +249,14 @@ recursive subroutine PMCBaseSetChildPeerPtr(pmcA,relationship_to,pmcB, &
       if (associated(pmcB%child)) then
         new_relationship = 'PEER'
         call PMCBaseSetChildPeerPtr(pmcA,new_relationship,pmcB%child,pmcB, &
-                                  position_instruction)
+                                    position_instruction)
       else
         pmcB%child => pmcA
+#ifdef DEBUG
+        option%io_buffer = trim(pmcA%name)// ' assigned as first child of ' // &
+                           trim(pmcB%name) // '.'
+        call printMsg(option)
+#endif
       endif
   !--------------------------------------------------------
     case('PEER')
@@ -259,15 +270,25 @@ recursive subroutine PMCBaseSetChildPeerPtr(pmcA,relationship_to,pmcB, &
                                         pmcB_dummy,position_instruction)
           else
             pmcB%peer => pmcA
+#ifdef DEBUG
+        option%io_buffer = trim(pmcA%name) // ' assigned as peer of ' // &
+                           trim(pmcB%name) // ' via "append".'
+        call printMsg(option)
+#endif
           endif
       !----------------------------------------------------
         case('INSERT')
           pmcA%peer => pmcB
           if (associated(pmcB_parent)) then
             pmcB_parent%child => pmcA
+#ifdef DEBUG
+        option%io_buffer = trim(pmcA%name)// ' assigned as first child of ' // &
+                           trim(pmcB%name) // ' via "insert".'
+        call printMsg(option)
+#endif
           else
             pmcA%option%io_buffer = 'Null pointer for pmcB_parent passed into &
-                                     &PMCBaseOrder.'
+                                     &PMCBaseSetChildPeerPtr.'
             call printErrMsg(pmcA%option)
           endif
       !----------------------------------------------------
@@ -275,7 +296,7 @@ recursive subroutine PMCBaseSetChildPeerPtr(pmcA,relationship_to,pmcB, &
   !--------------------------------------------------------
     case default
       pmcA%option%io_buffer = 'PMC relationship_to not understood in &
-                              &PMCBaseOrder.'
+                              &PMCBaseSetChildPeerPtr.'
       call printErrMsg(pmcA%option)
   !--------------------------------------------------------
   end select
