@@ -712,8 +712,8 @@ factory_subsurface.o : characteristic_curves.o checkpoint.o condition.o \
                        pm_base_pointer.o pm_flash2.o pm_general.o pm_immis.o \
                        pm_miscible.o pm_mphase.o pm_richards.o pm_rt.o \
                        pm_subsurface_flow.o pm_th.o pm_toil_ims.o \
-                       pm_towg.o pm_towg_aux.o \ 
-                       pm_ufd_biosphere.o pm_ufd_decay.o pm_waste_form.o \
+                       pm_towg.o pm_towg_aux.o \ pm_ufd_biosphere.o \
+                       pm_ufd_decay.o pm_waste_form.o \
                        pm_wipp_srcsink.o pmc_auxiliary.o pmc_base.o \
                        pmc_subsurface.o pmc_third_party.o reaction.o \
                        reaction_aux.o reaction_database.o reaction_mineral.o \
@@ -1111,7 +1111,7 @@ pm_ufd_biosphere.o : input_aux.o option.o pflotran_constants.o pm_base.o \
                      realization_subsurface.o string.o utility.o
 pm_ufd_decay.o : field.o global.o global_aux.o grid.o input_aux.o material.o \
                  material_aux.o option.o patch.o pflotran_constants.o \
-                 pm_base.o reaction_aux.o reaction_mineral_aux.o \
+                 pm_base.o reaction_aux.o reaction_mineral_aux.o 
 pm_ufd_biosphere.o : input_aux.o option.o pflotran_constants.o pm_base.o \
                      realization_subsurface.o string.o utility.o
 pm_ufd_decay.o : field.o global.o global_aux.o grid.o input_aux.o material.o \
