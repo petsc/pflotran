@@ -1002,7 +1002,7 @@ subroutine ProcessAfterRead(this)
           D_c * &                                         ! [kg/m3]
           this%biogenfc                                   ! [-]            
     !-----iron-sulfidation----------------------------------------------------
-    cur_waste_panel%RXH2S_factor = 1.11d-9  ! fill in later
+    cur_waste_panel%RXH2S_factor = 1.11d-2  ! fill in later
            ! its 1 - (some ratio of initial nitrate to carbon loss via biodeg)
     !-----MgO-hydration-------------------------------------units-------------
     cur_waste_panel%inundated_brucite_rate = &            ! [mol-bruc/m3/sec]
@@ -1012,7 +1012,8 @@ subroutine ProcessAfterRead(this)
           this%bruciteh * &                               ! [mol-bruc/kg/sec]
           D_m                                             ! [kg/m3]
     !-------------------------------------------------------------------------
-    this%RXCO2_factor = 1.d-9  ! fill in later
+    this%RXCO2_factor = 1.d0  ! BRAGFLO User's Manual Eq. 155, based on
+                              ! Eqs. 145 & 146 stoichiometry 
     !-------------------------------------------------------------------------
     !-------------------------------------------------------------------------
     cur_waste_panel => cur_waste_panel%next
@@ -1282,6 +1283,12 @@ subroutine PMWSSInitializeRun(this)
   call ISDestroy(is,ierr);CHKERRQ(ierr)
   
   call ProcessAfterRead(this)
+  
+  if (.not.this%option%restart_flag) then
+    call PMWSSOutputHeader(this)
+    call PMWSSOutput(this)
+  endif
+  
   call PMWSSSolve(this,0.d0,ierr)
   
 end subroutine PMWSSInitializeRun
@@ -1315,6 +1322,8 @@ subroutine PMWSSInitializeTimestep(this)
     call UpdateInventory(cur_waste_panel,dt,this%option)
     cur_waste_panel => cur_waste_panel%next
   enddo
+  
+  call PMWSSOutput(this)
   
 end subroutine PMWSSInitializeTimestep
 
@@ -1558,7 +1567,7 @@ end subroutine UpdateChemSpecies
     !-----hydromagnesite-conversion-------------------------------------------
       rxnrate_hymagcon = this%hymagcon_rate* &
                   cur_waste_panel%inventory%Mg5CO34OH24H2_s%current_conc_kg(i)
-    !-----tracked-species-[mol-species/m3/sec]--------------------------------
+    !-----tracked-species-[mol-species/m3-bulk/sec]---------------------------
       cur_waste_panel%inventory%FeOH2_s%inst_rate(i) = &
           1.d0*rxnrate_corrosion + (-1.d0*rxnrate_FeS_FeOH2)
       cur_waste_panel%inventory%Fe_s%inst_rate(i) = &
@@ -1591,11 +1600,11 @@ end subroutine UpdateChemSpecies
           1.d0*rxnrate_hydromag + (-1.d0*rxnrate_hymagcon) 
       cur_waste_panel%inventory%MgCO3_s%inst_rate(i) = &
           4.d0*rxnrate_hymagcon 
-    !-----gas-generation-[mol-H2/m3/sec]--------------------------------------
+    !-----gas-generation-[mol-H2/m3-bulk/sec]---------------------------------
       cur_waste_panel%gas_generation_rate(i) = &
           1.d0*rxnrate_corrosion + 1.d0*rxnrate_FeS_Fe + &
           2.4d0*rxnrate_biodeg_nitrate
-    !-----brine-generation-[mol-H2O/m3/sec]-----------------------------------
+    !-----brine-generation-[mol-H2O/m3-bulk/sec]------------------------------
       cur_waste_panel%brine_generation_rate(i) = &
           (-2.d0*rxnrate_corrosion) + 7.4d0*rxnrate_biodeg_nitrate + &
           5.d0*rxnrate_biodeg_sulfate + 2.d0*rxnrate_FeS_FeOH2 + &
@@ -1605,12 +1614,12 @@ end subroutine UpdateChemSpecies
       j = j + 1
       ! liquid source term [kmol/sec]
       vec_p(j) = cur_waste_panel%brine_generation_rate(i) * &  ! [mol/m3/sec]
-                 material_auxvars(cell_id)%volume / &          ! [m3]
+                 material_auxvars(cell_id)%volume / &          ! [m3-bulk]
                  1.d3                                          ! [mol -> kmol]
       j = j + 1
       ! gas source term [kmol/sec]
       vec_p(j) = cur_waste_panel%gas_generation_rate(i) * &    ! [mol/m3/sec]
-                 material_auxvars(cell_id)%volume / &          ! [m3]
+                 material_auxvars(cell_id)%volume / &          ! [m3-bulk]
                  1.d3                                          ! [mol -> kmol]
       j = j + 1
       ! energy source term [MJ/sec]; H from EOS [J/kmol]
@@ -1626,7 +1635,7 @@ end subroutine UpdateChemSpecies
           call EOSGasEnergy(temperature,pressure_gas,H_gas,U_gas,ierr)
           gas_energy = &
               cur_waste_panel%gas_generation_rate(i) * &    ! [mol/m3/sec]
-              material_auxvars(cell_id)%volume * &          ! [m3] 
+              material_auxvars(cell_id)%volume * &          ! [m3-bulk] 
               H_gas * 1.d-3 * 1.d-6                         ! [MJ/mol]
         case(LIQUID_STATE) !---------------------------------------------------
           pressure_liq = gen_auxvar(ZERO_INTEGER, &
@@ -1635,7 +1644,7 @@ end subroutine UpdateChemSpecies
           call EOSWaterEnthalpy(temperature,pressure_liq,H_liq,ierr)
           brine_energy = &
               cur_waste_panel%brine_generation_rate(i) * &  ! [mol/m3/sec]
-              material_auxvars(cell_id)%volume * &          ! [m3] 
+              material_auxvars(cell_id)%volume * &          ! [m3-bulk] 
               H_liq * 1.d-3 * 1.d-6                         ! [MJ/mol]
         case(TWO_PHASE_STATE) !------------------------------------------------
           pressure_liq = gen_auxvar(ZERO_INTEGER, &
@@ -1648,11 +1657,11 @@ end subroutine UpdateChemSpecies
           call EOSGasEnergy(temperature,pressure_gas,H_gas,U_gas,ierr)
           brine_energy = &
               cur_waste_panel%brine_generation_rate(i) * &  ! [mol/m3/sec]
-              material_auxvars(cell_id)%volume * &          ! [m3] 
+              material_auxvars(cell_id)%volume * &          ! [m3-bulk] 
               H_liq * 1.d-3 * 1.d-6                         ! [MJ/mol]
           gas_energy = &
               cur_waste_panel%gas_generation_rate(i) * &    ! [mol/m3/sec]
-              material_auxvars(cell_id)%volume * &          ! [m3] 
+              material_auxvars(cell_id)%volume * &          ! [m3-bulk] 
               H_gas * 1.d-3 * 1.d-6                         ! [MJ/mol]
       end select
       vec_p(j) = brine_energy + gas_energy
@@ -1752,14 +1761,177 @@ end subroutine CalcParallelSUM
   ! Sets up output for the process model.
   ! 
   ! Author: Jenn Frederick
-  ! Date: 01/31/2017
+  ! Date: 03/27/2017
   !
+  
+  use Option_module
+  use Output_Aux_module
   
   implicit none
 
   class(pm_wipp_srcsink_type) :: this
   
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
+  class(srcsink_panel_type), pointer :: cur_waste_panel
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscInt :: fid
+  PetscInt :: i
+  PetscReal :: local_gas_rate, global_gas_rate
+  PetscReal :: local_brine_rate, global_brine_rate
+  
+  if (.not.associated(this%waste_panel_list)) return
+  
+100 format(100es18.8)
+101 format(1I6.1)
+
+  option => this%realization%option
+  output_option => this%realization%output_option
+  
+  fid = 88
+  filename = PMWSSOutputFilename(option)
+  open(unit=fid,file=filename,action="write",status="old", &
+       position="append")
+       
+  write(fid,100,advance="no") option%time / output_option%tconv
+  
+  cur_waste_panel => this%waste_panel_list
+  do
+    if (.not.associated(cur_waste_panel)) exit
+    ! pre-calculations
+    local_gas_rate = 0.d0 
+    local_brine_rate = 0.d0
+    do i = 1,cur_waste_panel%region%num_cells            
+      local_gas_rate = local_gas_rate + &    ! [mol/m3-bulk/sec]
+                   (cur_waste_panel%gas_generation_rate(i) * &
+                    cur_waste_panel%scaling_factor(i))
+      local_brine_rate = local_brine_rate + &    ! [mol/m3-bulk/sec]
+                   (cur_waste_panel%brine_generation_rate(i) * &
+                    cur_waste_panel%scaling_factor(i))
+    enddo
+    call CalcParallelSUM(option,cur_waste_panel,local_gas_rate,global_gas_rate)
+    call CalcParallelSUM(option,cur_waste_panel,local_brine_rate, &
+                         global_brine_rate)
+    write(fid,101,advance="no") cur_waste_panel%id
+    write(fid,100,advance="no") &
+      cur_waste_panel%inventory%Fe_s%tot_mass_in_panel, &
+      cur_waste_panel%inventory%MgO_s%tot_mass_in_panel, &
+      cur_waste_panel%inventory%C6H10O5_s%tot_mass_in_panel, &
+      cur_waste_panel%inventory%RuPl_s%tot_mass_in_panel, &
+      global_gas_rate, &
+      global_brine_rate
+  !----------------------------------------
+    cur_waste_panel => cur_waste_panel%next
+  enddo
+  
+  close(fid)
+  
 end subroutine PMWSSOutput
+
+! ************************************************************************** !
+
+function PMWSSOutputFilename(option)
+  ! 
+  ! Generates filename for waste panel output.
+  ! 
+  ! Author: Jennifer Frederick
+  ! Date: 03/27/17
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: PMWSSOutputFilename
+  character(len=MAXWORDLENGTH) :: word
+
+  write(word,'(i6)') option%myrank
+  PMWSSOutputFilename = trim(option%global_prefix) // &
+                       trim(option%group_prefix) // &
+                       '-' // trim(adjustl(word)) // '.pnl'
+  
+end function PMWSSOutputFilename  
+
+! ************************************************************************** !
+
+subroutine PMWSSOutputHeader(this)
+  ! 
+  ! Writes header for waste panel output file.
+  ! 
+  ! Author: Jennifer Frederick
+  ! Date: 03/27/17
+
+  use Output_Aux_module
+    
+  implicit none
+  
+  class(pm_wipp_srcsink_type) :: this
+  
+  type(output_option_type), pointer :: output_option
+  
+  class(srcsink_panel_type), pointer :: cur_waste_panel
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: units_string 
+  character(len=MAXWORDLENGTH) :: variable_string
+  character(len=MAXWORDLENGTH) :: cell_string
+  PetscInt :: fid
+  PetscInt :: icolumn
+  
+  if (.not.associated(this%waste_panel_list)) return
+  
+  output_option => this%realization%output_option
+  
+  fid = 88
+  filename = PMWSSOutputFilename(this%option)
+  open(unit=fid,file=filename,action="write",status="replace")
+  
+  if (output_option%print_column_ids) then
+    icolumn = 1
+  else
+    icolumn = -1
+  endif
+  
+  write(fid,'(a)',advance="no") ' "Time [' // trim(output_option%tunit) // ']"'
+  
+  cur_waste_panel => this%waste_panel_list
+  do
+    if (.not.associated(cur_waste_panel)) exit
+    cell_string = trim(cur_waste_panel%region_name)
+    variable_string = 'WP ID#'
+    units_string = ''
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
+    variable_string = 'Fe(s) mass'
+    units_string = 'kg'
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
+    variable_string = 'MgO(s) mass'
+    units_string = 'kg'
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
+    variable_string = 'Cellulosics(s) mass'
+    units_string = 'kg'
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
+    variable_string = 'Rubber/Plastics(s) mass'
+    units_string = 'kg'
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
+    variable_string = 'Avg. gas gen. rate'
+    units_string = 'mol/m3-bulk/sec'
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
+    variable_string = 'Avg. brine gen. rate'
+    units_string = 'mol/m3-bulk/sec'
+    call OutputWriteToHeader(fid,variable_string,units_string,cell_string, &
+                             icolumn)
+  !----------------------------------------
+    cur_waste_panel => cur_waste_panel%next
+  enddo
+  
+  close(fid)
+  
+end subroutine PMWSSOutputHeader
 
 ! *************************************************************************** !
 
