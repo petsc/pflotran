@@ -23,7 +23,7 @@ CHEMISTRY
 END
 
 #=========================== solver options ===================================
-TIMESTEPPER
+TIMESTEPPER FLOW
 END
 
 NEWTON_SOLVER FLOW
@@ -58,6 +58,7 @@ END
 #=========================== data sets ========================================
 DATASET perm_field
   FILENAME ./perm_fields.h5
+  HDF5_DATASET_NAME Permeability
   REALIZATION_DEPENDENT
 /
 
@@ -318,14 +319,14 @@ END
 
 FLOW_CONDITION injection
   TYPE
-    RATE SCALED_VOLUMETRIC_RATE
+    RATE SCALED_VOLUMETRIC_RATE NEIGHBOR_PERM
   /
   RATE 1.d5 m^3/day
 END
 
 FLOW_CONDITION extraction
   TYPE
-    RATE SCALED_VOLUMETRIC_RATE
+    RATE SCALED_VOLUMETRIC_RATE NEIGHBOR_PERM
   /
   RATE -1.d5 m^3/day
 END
