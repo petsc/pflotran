@@ -435,7 +435,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
   PetscInt,pointer ::int_array(:)
   PetscInt :: offset
   PetscInt :: int_array4(4)
-  PetscInt :: int_array4_0(4,1)
+  PetscInt :: int_array4_0(4)
   PetscInt :: nvertices
   PetscInt :: iface
   PetscInt :: local_id,ii,jj
@@ -526,7 +526,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
     do ivertex = 1,nvertices
       vertex_id_local = &
         subsurf_grid%cell_vertices(int_array4(ivertex),local_id)
-      int_array4_0(ivertex,1) = &
+      int_array4_0(ivertex) = &
         subsurf_grid%vertex_ids_natural(vertex_id_local)-1
     enddo
     call MatSetValues(Mat_vert_to_face_subsurf, &
@@ -608,7 +608,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScats(realization, surf_realization, &
     nvertices = surf_grid%cell_vertices(0,local_id)
     do ivertex = 1,nvertices
       vertex_id_local = surf_grid%cell_vertices(ivertex,local_id)
-      int_array4_0(ivertex,1) = &
+      int_array4_0(ivertex) = &
         surf_grid%vertex_ids_natural(vertex_id_local)-1
     enddo
     call MatSetValues(Mat_vert_to_face_surf, &
@@ -755,7 +755,7 @@ subroutine SurfSubsurfCreateSurfSubSurfVScat( &
   PetscInt,pointer ::int_array(:)
   PetscInt :: offset
   PetscInt :: int_array4(4)
-  PetscInt :: int_array4_0(4,1)
+  PetscInt :: int_array4_0(4)
   PetscReal :: real_array4(4)
   PetscInt :: ii,jj
   PetscReal,pointer :: vec_ptr(:)

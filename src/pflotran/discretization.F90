@@ -246,7 +246,7 @@ subroutine DiscretizationReadRequiredCards(discretization,input,option)
                              discretization%origin_global(Z_DIRECTION))
         call InputErrorMsg(input,option,'Z direction','Origin')        
       case('FILE','GRAVITY','INVERT_Z','MAX_CELLS_SHARING_A_VERTEX',&
-           'STENCIL_WIDTH','STENCIL_TYPE','FLUX_METHOD')
+           'STENCIL_WIDTH','STENCIL_TYPE','FLUX_METHOD','DOMAIN_FILENAME')
       case('DXYZ','BOUNDS')
         call InputSkipToEND(input,option,word) 
       case default
@@ -500,7 +500,7 @@ subroutine DiscretizationRead(discretization,input,option)
                            'GRID')
       case ('STENCIL_TYPE')
         call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'keyword','GRID')
+        call InputErrorMsg(input,option,'stencil type','GRID')
         call StringToUpper(word)
         select case(trim(word))
           case ('BOX')
@@ -510,6 +510,18 @@ subroutine DiscretizationRead(discretization,input,option)
           case default
             call InputKeywordUnrecognized(word, &
                    'DISCRETIZATION,stencil type',option)
+        end select
+      case('DOMAIN_FILENAME')
+        select case(discretization%grid%itype)
+          case(EXPLICIT_UNSTRUCTURED_GRID)
+            call InputReadWord(input,option,word,PETSC_TRUE)
+            call InputErrorMsg(input,option,'DOMAIN_FILENAME','GRID')  
+            discretization%grid%unstructured_grid% &
+              explicit_grid%domain_filename = word
+          case default
+            option%io_buffer = 'DOMAIN_FILENAME only supported for explicit &
+                               &unstructured grids.'
+            call printErrMsg(option)
         end select
       case default
         call InputKeywordUnrecognized(word,'GRID',option)
@@ -1496,23 +1508,22 @@ subroutine DiscretizationInputRecord(discretization)
       write(id,'(1p10e12.4)') grid%structured_grid%dy_global
       write(id,'(a29)',advance='no') 'delta-Z (m): '
       write(id,'(1p10e12.4)') grid%structured_grid%dz_global
+      write(id,'(a29)',advance='no') 'bounds X: '
+      write(word1,Format) grid%structured_grid%bounds(X_DIRECTION,LOWER)
+      write(word2,Format) grid%structured_grid%bounds(X_DIRECTION,UPPER)
+      write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
+      write(id,'(a29)',advance='no') 'bounds Y: '
+      write(word1,Format) grid%structured_grid%bounds(Y_DIRECTION,LOWER)
+      write(word2,Format) grid%structured_grid%bounds(Y_DIRECTION,UPPER)
+      write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
+      write(id,'(a29)',advance='no') 'bounds Z: '
+      write(word1,Format) grid%structured_grid%bounds(Z_DIRECTION,LOWER)
+      write(word2,Format) grid%structured_grid%bounds(Z_DIRECTION,UPPER)
+      write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
     case(EXPLICIT_UNSTRUCTURED_GRID,IMPLICIT_UNSTRUCTURED_GRID, &
          POLYHEDRA_UNSTRUCTURED_GRID)
       write(id,'(a)') trim(grid%ctype)
   end select
-
-  write(id,'(a29)',advance='no') 'bounds X: '
-  write(word1,Format) grid%structured_grid%bounds(X_DIRECTION,LOWER)
-  write(word2,Format) grid%structured_grid%bounds(X_DIRECTION,UPPER)
-  write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
-  write(id,'(a29)',advance='no') 'bounds Y: '
-  write(word1,Format) grid%structured_grid%bounds(Y_DIRECTION,LOWER)
-  write(word2,Format) grid%structured_grid%bounds(Y_DIRECTION,UPPER)
-  write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
-  write(id,'(a29)',advance='no') 'bounds Z: '
-  write(word1,Format) grid%structured_grid%bounds(Z_DIRECTION,LOWER)
-  write(word2,Format) grid%structured_grid%bounds(Z_DIRECTION,UPPER)
-  write(id,'(a)') adjustl(trim(word1)) // ' ,' // adjustl(trim(word2)) // ' m'
 
   write(id,'(a29)',advance='no') 'global origin: '
   write(word,Format) discretization%origin_global(X_DIRECTION)

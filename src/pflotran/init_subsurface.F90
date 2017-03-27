@@ -313,7 +313,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
     if (material_id > 0) then
       material_property => &
         patch%material_property_array(material_id)%ptr
-      call FractureAuxvarInit(material_property%fracture, &
+      call FractureAuxVarInit(material_property%fracture, &
         patch%aux%Material%auxvars(ghosted_id))
     endif
   enddo
@@ -407,6 +407,22 @@ subroutine InitSubsurfAssignMatProperties(realization)
         call SubsurfReadDatasetToVecWithMask(realization, &
                material_property%porosity_dataset, &
                material_property%internal_id,PETSC_FALSE,field%porosity0)
+        ! if tortuosity is a function of porosity, we must calculate the
+        ! the tortuosity on a cell to cell basis.
+        if (field%tortuosity0 /= 0 .and. &
+            material_property%tortuosity_function_of_porosity) then
+          call VecGetArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
+          call VecGetArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
+          do local_id = 1, grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            if (patch%imat(ghosted_id) == material_property%internal_id) then
+              tor0_p(local_id) = por0_p(local_id)** &
+                material_property%tortuosity_func_porosity_pwr
+            endif
+          enddo
+          call VecRestoreArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
+          call VecRestoreArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)
+        endif
       endif
       if (associated(material_property%tortuosity_dataset)) then
         call SubsurfReadDatasetToVecWithMask(realization, &

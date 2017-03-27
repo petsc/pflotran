@@ -675,9 +675,9 @@ subroutine PMTOWGCheckpointBinary(this,viewer)
   class(pm_towg_type) :: this
   PetscViewer :: viewer
   
-  call GlobalGetAuxVarVecLoc(this%realization, &
-                             this%realization%field%iphas_loc, &
-                             STATE,ZERO_INTEGER)
+  !call GlobalGetAuxVarVecLoc(this%realization, &
+  !                           this%realization%field%iphas_loc, &
+  !                           STATE,ZERO_INTEGER)
   call PMSubsurfaceFlowCheckpointBinary(this,viewer)
   
 end subroutine PMTOWGCheckpointBinary

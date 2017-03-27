@@ -10,7 +10,7 @@
         1:   1.0000000000000E+00
 -- CONCENTRATION: Total I-129 --
       Max:   1.0000041662420E-20
-      Min:   9.9999572228154E-21
+      Min:   9.9999572228153E-21
      Mean:   9.9999994427200E-21
         1:   1.0000041662420E-20
 -- CONCENTRATION: Total Am-241 --
@@ -24,10 +24,10 @@
      Mean:   1.0347738586218E-20
         1:   1.0375587099025E-20
 -- CONCENTRATION: Total U-233 --
-      Max:   9.9999870676435E-21
-      Min:   9.9998996322135E-21
-     Mean:   9.9999432285363E-21
-        1:   9.9999870676435E-21
+      Max:   9.9999870681185E-21
+      Min:   9.9998996326885E-21
+     Mean:   9.9999432290112E-21
+        1:   9.9999870681185E-21
 -- CONCENTRATION: Total Th-229 --
       Max:   9.9988577397582E-21
       Min:   9.9987695839770E-21
@@ -54,7 +54,7 @@
      Mean:   1.3333333333333E+00
         1:         1
 -- SOLUTION: Flow --
-   Time (seconds):   7.4682712554932E-02
+   Time (seconds):   7.1777820587158E-02
    Time Steps:          122
    Newton Iterations:          128
    Solver Iterations:          126
@@ -62,10 +62,10 @@
    Solution 2-Norm:   3.4897940597421E+05
    Residual 2-Norm:   1.1495307539241E-18
 -- SOLUTION: Transport --
-   Time (seconds):   7.4372529983521E-02
+   Time (seconds):   7.0342540740967E-02
    Time Steps:          122
    Newton Iterations:          122
    Solver Iterations:          122
    Time Step Cuts:            0
    Solution 2-Norm:   1.5924503205899E-10
-   Residual 2-Norm:   1.0930786030578E-29
+   Residual 2-Norm:   1.0930779080981E-29

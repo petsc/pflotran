@@ -36,12 +36,12 @@ subroutine HydrogeophysicsWrapperInit(option, &
   
   use Option_module
 
-  use vars, only : E4D_COMM, my_rank, n_rank, PFE4D_MASTER_COMM, &
-                   pflotran_tracer_vec_mpi, pflotran_tracer_vec_seq, &
-                   pflotran_saturation_vec_mpi, pflotran_saturation_vec_seq, &
-                   pflotran_temperature_vec_mpi, pflotran_temperature_vec_seq, &
-                   pflotran_scatter, pflotran_vec_size, &
-                   pflotran_group_prefix
+  use e4d_vars, only : E4D_COMM, my_rank, n_rank, PFE4D_MASTER_COMM, &
+               pflotran_tracer_vec_mpi, pflotran_tracer_vec_seq, &
+               pflotran_saturation_vec_mpi, pflotran_saturation_vec_seq, &
+               pflotran_temperature_vec_mpi, pflotran_temperature_vec_seq, &
+               pflotran_scatter, pflotran_vec_size, &
+               pflotran_group_prefix
   use e4d_setup, only : setup_e4d, destroy_e4d
   use e4d_run, only: run_e4D
   

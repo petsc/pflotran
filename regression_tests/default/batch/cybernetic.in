@@ -12,10 +12,6 @@ END
 
 SUBSURFACE
 
-DEBUG
-  PRINT_JACOBIAN
-/
-
 #=========================== regression =======================================
 REGRESSION
   CELLS
@@ -49,21 +45,28 @@ CHEMISTRY
   /
   REACTION_SANDBOX 
     CYBERNETIC
-      F1    0.497d0
-      F2    0.999d0
-      F3    0.066d0
-      K1    25.04d0 1/d
+      F1    0.65
+      F2    0.99d0
+      F3    0.2167d0
+#      F1    1.d0
+#      F2    1.d0
+#      F3    1.d0
+      K1    28.26d0 1/d
       Ka1   0.001d0 mM
       Kd1   0.25d0 mM
-      K2    17.82d0 1/d
+      K2    23.28d0 1/d
       Ka2   0.004d0 mM
       Kd2   0.25d0 mM
-      K3    75.12d0 1/d
+      K3    84.78d0 1/d
       Ka3   0.001d0 mM
       Kd3   0.25d0 mM
-      Kdeg  0.532d0 1/d
-      F_act 0.126d0
+      Kdeg  0.242d0 1/d
+#      Kdeg  0.d0
+#      F_act 0.126d0
+#      F_act 1.d0
+      REFERENCE_TEMPERATURE 25.d0 ! degrees C
       ACTIVATION_ENERGY 89.d-3 kJ/mol  ! 89.d0 J/mol
+      STORE_CONSUMPTION_PRODUCTION
       CARBON_CONSUMPTION_SPECIES C_consumption
     /
   /
@@ -74,6 +77,7 @@ CHEMISTRY
   OUTPUT
     all
     TOTAL
+    AUXILIARY
   /
 END
 
@@ -112,12 +116,13 @@ END
 OUTPUT
 #  TIMES y 5. 10. 15. 20.
 #  FORMAT TECPLOT POINT
-#  PERIODIC_OBSERVATION TIMESTEP 1
+  PERIODIC_OBSERVATION TIMESTEP 1
 END
 
 #=========================== times ============================================
 TIME
-#  FINAL_TIME 20.d0 d 
+#  To match Hyun's model, must run to 10 years
+#  FINAL_TIME 10.d0 d 
   FINAL_TIME 1.d0 d 
 #  INITIAL_TIMESTEP_SIZE 1.d0 h
   INITIAL_TIMESTEP_SIZE 1.d0 s

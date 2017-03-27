@@ -1,0 +1,222 @@
+#Description: 2D problem for testing the waste form dissolution model with the
+#canister degradation with REGION defined for the waste form rather than
+#COORDINATE. The source term gets spread over the REGION.
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      GLOBAL_IMPLICIT
+    /
+    WASTE_FORM general
+      TYPE GENERAL
+    /
+  /
+END
+
+SUBSURFACE
+#=========================== regression =======================================
+REGRESSION
+  CELLS
+    5 19 32 49
+  /
+END
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    tracer
+    tracer2
+  /
+  OUTPUT
+    TOTAL
+    tracer
+    tracer2
+  /
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 10 10 1
+  BOUNDS
+    0.d0  0.d0  0.d0
+    10.d0 10.d0 1.d0
+  END
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9
+END
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY domain
+  ID 1
+  POROSITY 0.25d0
+  TORTUOSITY 1.d0
+  CHARACTERISTIC_CURVES sf1
+  PERMEABILITY
+    PERM_X 1.d-12
+    PERM_Y 1.d-12
+    PERM_Z 1.d-12
+  /
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES sf1
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    M 0.286
+    ALPHA  1.9401d-4
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.286
+    LIQUID_RESIDUAL_SATURATION 0.115
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  SNAPSHOT_FILE
+    PERIODIC TIME 10 yr
+    FORMAT VTK
+  /
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 500.d0 yr
+  INITIAL_TIMESTEP_SIZE 1.d-6 day
+  MAXIMUM_TIMESTEP_SIZE 5.d0 yr
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0  0.d0  0.d0
+    10.d0 10.d0 1.d0
+  /
+END
+
+REGION WFa
+  COORDINATES
+    1.d0 6.d0 0.d0
+    2.d0 9.d0 1.d0
+  /
+END
+
+REGION WFb
+  COORDINATES
+    8.d0 1.d0 0.d0
+    9.d0 8.d0 1.d0
+  /
+END
+
+#=========================== observation points ===============================
+OBSERVATION
+  REGION all
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE dirichlet
+  /
+  PRESSURE 201325 Pa
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION groundwater
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 groundwater
+  /
+END
+
+#=========================== transport constraints ============================
+CONSTRAINT groundwater
+  CONCENTRATIONS
+    tracer  1.e-20        F
+    tracer2 1.e-20        F
+  /
+END
+
+#=========================== condition couplers ===============================
+# initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION groundwater
+  REGION all
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL domain
+  REGION all
+END
+
+
+END_SUBSURFACE
+
+#=========================== waste forms ======================================
+WASTE_FORM_GENERAL
+
+  MECHANISM GLASS 
+    NAME glass01
+    SPECIFIC_SURFACE_AREA 2.78d-3 m^2/kg
+    MATRIX_DENSITY 2.46d3 kg/m^3
+    KIENZLER_DISSOLUTION
+    SPECIES
+     #name,   MW[g/mol],dcy[1/s], initMF, inst_rel_frac, daughter               
+      tracer  128.90d0  1.29d-15  2.18d-1   0.0d0 
+      tracer2 128.90d0  1.29d-15  1.20d-7   0.0d0 
+    /  
+    CANISTER_DEGRADATION_MODEL
+      CANISTER_MATERIAL_CONSTANT 1500
+    /
+  /
+  
+  MECHANISM DSNF
+    NAME dsnf01
+    MATRIX_DENSITY 2.46d3 kg/m^3
+    SPECIES
+     #name,   MW[g/mol],dcy[1/s], initMF, inst_rel_frac, daughter               
+      tracer  128.90d0  1.29d-15  1.20d-7   0.0d0 
+    / 
+    CANISTER_DEGRADATION_MODEL
+      CANISTER_MATERIAL_CONSTANT 1500
+    /
+  /
+  
+  WASTE_FORM
+    #COORDINATE 1.5d0 6.0d0 0.5d0
+    VOLUME 1.00d0 m^3
+    MECHANISM_NAME glass01
+    REGION WFa
+    CANISTER_BREACH_TIME 50 yr
+  /
+
+  WASTE_FORM
+    #COORDINATE 8.5d0 6.0d0 0.5d0
+    VOLUME 1.00d0 m^3
+    MECHANISM_NAME dsnf01
+    REGION WFb
+    CANISTER_BREACH_TIME 100 yr
+  /
+  
+  WASTE_FORM
+    COORDINATE 5.0d0 6.0d0 0.5d0
+    VOLUME 1.00d0 m^3
+    MECHANISM_NAME glass01
+    CANISTER_BREACH_TIME 200 yr
+  /
+
+  
+  PRINT_MASS_BALANCE
+  
+END_WASTE_FORM_GENERAL
+

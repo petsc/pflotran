@@ -249,6 +249,7 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
   PetscReal :: kro, viso, dkro_Se
   PetscReal :: dummy
   PetscReal :: Uoil_J_kg, Hoil_J_kg
+  PetscReal :: dpc_dsatl
   PetscErrorCode :: ierr
 
   ! from SubsurfaceSetFlowMode
@@ -280,7 +281,7 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
       
   call characteristic_curves%saturation_function% &
              CapillaryPressure(toil_auxvar%sat(lid),toil_auxvar%pres(cpid), &
-                               option)                             
+                               dpc_dsatl,option)                             
 
   ! Testing zero capillary pressure
   !toil_auxvar%pres(cpid) = 0.d0
@@ -362,7 +363,7 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
   call EOSWaterViscosity(toil_auxvar%temp,cell_pressure,wat_sat_pres,visl,ierr)
 
   toil_auxvar%mobility(lid) = krl/visl
-
+  toil_auxvar%viscosity(lid) = visl
 
   ! compute oil mobility (rel. perm / viscostiy)
   call characteristic_curves%oil_rel_perm_function% &
@@ -372,7 +373,7 @@ subroutine TOilImsAuxVarCompute(x,toil_auxvar,global_auxvar,material_auxvar, &
                        toil_auxvar%den(oid), viso, ierr)
 
   toil_auxvar%mobility(oid) = kro/viso
-
+  toil_auxvar%viscosity(oid) = viso
 
 end subroutine TOilImsAuxVarCompute
 

@@ -692,8 +692,13 @@ subroutine InitCommonAddOutputWaypoints(option,output_option,waypoint_list)
   PetscReal :: final_time
   PetscReal :: num_waypoints, warning_num_waypoints
   PetscInt :: k
-  
+
+  !geh: The repetitive summation of a time increment can result in slight 
+  !     error.   The perturbation is designed to allow for a slight shift 
+  !     beyond the final time.
   final_time = WaypointListGetFinalTime(waypoint_list)
+  temp_real = final_time * 1.d-10
+  final_time = final_time + temp_real
   warning_num_waypoints = 15000.0
   
   ! Add waypoints for periodic snapshot output

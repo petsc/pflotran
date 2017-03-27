@@ -1,4 +1,4 @@
-module vars
+module e4d_vars
 
   implicit none
 #include "petsc/finclude/petscsys.h"
@@ -11,11 +11,13 @@ module vars
 #include "petsc/finclude/petscksp.h"
 #include "petsc/finclude/petscksp.h90"
 
+
+  logical :: tank_flag = .false.
+
   integer, dimension(:), allocatable :: e4d_ranks,pf_e4d_ranks
-  integer :: mpi_comm_grp,mpi_e4d_grp,mpi_pfe4d_grp,i
+  integer :: mpi_comm_grp,mpi_e4d_grp,mpi_pfe4d_grp
   integer :: my_wrank,my_pfe4d_rank,n_pfe4drank             !!my mpi rank
   integer :: tn_rank                                        !!number of processes 
-
 
   character*40 :: mshfile                                  !!file containing the mesh options
   character*40 :: efile                                    !!survey configuration file
@@ -25,6 +27,7 @@ module vars
   character*40 :: csrv_file                                !!survey file
   character*40 :: ccond_file                               !!conductivity file
   character*40 :: log_file                                 !!e4d_log file
+  character*40 :: fmn_file                                 !!archies parameters file name
 
   integer :: my_rank                                       !!my mpi rank
   integer :: ierr                                          !!generall error
@@ -42,6 +45,8 @@ module vars
   integer :: nmy_drows                                     !!number of data in my assembly vector
   integer :: nmap
   integer :: ntime                                         !!number of e4d simulation times
+  integer :: mode
+  integer, dimension(1) :: i_zpot                          !!ghost node index for tank sims 
 
   integer :: pfnx                                          !!number of pf cells in x dim
   integer :: pfny                                          !!number of pf cells in y dim
@@ -70,6 +75,7 @@ module vars
   real, dimension(:,:), allocatable :: e_pos
   real, dimension(:,:), allocatable :: nodes               !!node positions
   real, dimension(:,:), allocatable :: poles               !!pole solutions
+  real, dimension(:,:), allocatable :: FMN                 !!static Archie's parameters
   real, dimension(:), allocatable :: pf_porosity           !!pflotran porosity
   real, dimension(:), allocatable :: pf_tracer             !!pflotran tracer solution
   real, dimension(:), allocatable :: pf_saturation         !!pflotran saturation solution
@@ -96,7 +102,6 @@ module vars
   PetscErrorCode :: perr
   MatType :: tp
   PetscInt :: prn(1),pcn(1)
-  PetscReal :: val(1)
   PetscInt :: d_nz,o_nz
   Vec :: psol
   Vec :: X
@@ -203,19 +208,19 @@ subroutine elog(com,i1,i2)
         close(13)
         return
 
-     case(4)
+    case(4)
         open(13,file=trim(log_file),status='old',action='write', &
              position='append')
         if (i1 .ne. 0) then
-           write(13,*) "There was a problem reading the map file name in e4d.inp"
+           write(13,*) "There was a problem reading the FMN file name in e4d.inp"
            write(13,*) "Aborting E4D"
            i2=-1
         else
            i2=0
-           write(13,*) "The specified conductivity list file is: ",trim(mapfile)
-           inquire(file=trim(mapfile),exist=exst)
+           write(13,*) "The specified FMN (Archies parameter) file is: ",trim(fmn_file)
+           inquire(file=trim(fmn_file),exist=exst)
            if (.not. exst) then
-              write(13,*) "Cannot find the survey file: ",trim(mapfile)
+              write(13,*) "Cannot find the FMN file: ",trim(fmn_file)
               write(*,*) "Aborting E4D"
               i2=-1
            end if
@@ -297,11 +302,7 @@ subroutine elog(com,i1,i2)
            write(13,*) 'Aborting E4D'
  
         else
-           write(13,*) 'Number of conductivity values: ',i2
-           write(13,*) 'Formation Factor: ',FF
-           write(13,*) 'Surface water conductivity: ',sw_sig
-           write(13,*) 'Groundwater conductivity: ',gw_sig
-         
+           write(13,*) 'Number of conductivity values: ',i2    
         end if
         close(13)
         return
@@ -433,15 +434,12 @@ subroutine elog(com,i1,i2)
              position='append')
         if (i1 .ne. 0) then
            write(13,*) 'There was a problem reading the first line of the list file.'
-           write(13,*) 'The first line of the list file must contain the following: '
-           write(13,*) 'Number_of_E4D_times FF sw_conductivity gw_conductivity'
+           write(13,*) 'The first line of the list file must contain the '
+           write(13,*) 'Number_of_E4D_times. '
            write(13,*) 'Aborting E4D'
            i2=-1
         else
            write(13,*) "Number of E4D Times: ",ntime
-           write(13,*) "Formation Factor: ",FF
-           write(13,*) "Surface Water Conductivity ", sw_sig
-           write(13,*) "Groundwater Conductivty ",gw_sig
            i2=0
         end if
         close(13)
@@ -602,6 +600,53 @@ subroutine elog(com,i1,i2)
            return
         end if
            
+
+     case(38)
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
+           write(13,*) 'There was a problem reading the first line of the '
+           write(13,*) 'FMN file :',trim(fmn_file)
+           write(13,*) 'The first line of the FMN file must contain the '
+           write(13,*) 'number of FMN values, which must be the number of mesh elements.'
+           write(13,*) 'Aborting E4D'
+ 
+        else
+           write(13,*) 'Number of FMN values: ',i2
+        end if
+        !if(i2 .ne. nelem) then
+        !   write(13,*) 'The number of FMN values must equal the number of elements'
+        !   write(13,*) 'Aborting ...'
+        !   i1=-1
+        !end if
+        close(13)
+        return
+
+     case(39)
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        write(13,*) 'There was a problem reading row number: ',i2
+        write(13,*) 'in the FMN file: ',trim(fmn_file)
+        write(13,*) 'Aborting E4D'
+        close(13)
+        return
+
+     case(40)
+        open(13,file=trim(log_file),status='old',action='write', &
+             position='append')
+        if (i1 .ne. 0) then
+           write(13,*) "There was a problem reading the mode in e4d.inp"
+           write(13,*) "Aborting E4D"
+           i2=-1
+        else
+           if(mode==33) then
+              write(13,*) "Running in tank simulation mode"
+           end if
+           i2 = 0
+        end if
+        close(13)
+        return
+
      end select
 
 
@@ -609,4 +654,4 @@ subroutine elog(com,i1,i2)
 end subroutine elog
 !_________________________________________________________________	
  
-end module vars
+end module e4d_vars

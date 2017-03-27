@@ -1,29 +1,3 @@
-27 10 0.015 0.045
-3600 	   e4d.srv e4d_mesh.sig
-10800 	   e4d.srv e4d_mesh.sig
-25200 	   e4d.srv e4d_mesh.sig
-54000 	   e4d.srv e4d_mesh.sig
-111600 	   e4d.srv e4d_mesh.sig
-198000 	   e4d.srv e4d_mesh.sig
-284400	   e4d.srv e4d_mesh.sig
-6246000	   e4d.srv e4d_mesh.sig
-6332400	   e4d.srv e4d_mesh.sig
-6418800	   e4d.srv e4d_mesh.sig
-6505200	   e4d.srv e4d_mesh.sig
-6591600	   e4d.srv e4d_mesh.sig
-6678000	   e4d.srv e4d_mesh.sig
-6764400	   e4d.srv e4d_mesh.sig
-6850800	   e4d.srv e4d_mesh.sig
-6937200    e4d.srv e4d_mesh.sig
-7023600    e4d.srv e4d_mesh.sig
-7110000    e4d.srv e4d_mesh.sig
-7196400	   e4d.srv e4d_mesh.sig
-7282800	e4d.srv	e4d_mesh.sig
-7369200	e4d.srv	e4d_mesh.sig
-7455600	e4d.srv	e4d_mesh.sig
-7542000	e4d.srv	e4d_mesh.sig
-7628400	e4d.srv	e4d_mesh.sig
-7714800	e4d.srv	e4d_mesh.sig
-7801200	e4d.srv	e4d_mesh.sig
-7884000	e4d.srv	e4d_mesh.sig
+1                                  #number of survey times to simulate
+3600 	   e4d.srv e4d_smesh.sig     #pflotran output time, e4d survey to simulate, default conductivity file
 

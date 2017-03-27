@@ -43,7 +43,6 @@ subroutine AuxVarTOilImsInit(this,option)
   this%effective_porosity = 0.d0
   this%pert = 0.d0
 
-
   !PO to do: 
   !allign TOIL_IMS AuxVarCompute to new pc array (see AuxVarFlowInit), 
   !then remove the following iniitlisation block, and replace with a call to 
@@ -60,6 +59,11 @@ subroutine AuxVarTOilImsInit(this,option)
     this%den_kg = 0.d0
     allocate(this%mobility(option%nphase))
     this%mobility = 0.d0
+    !if visc needed only for toil_ims, use AuxVarFlowInit to allocate sat, 
+    !den, den_kg, mobility then allocate viscosity in here
+    !more likley to allocate viscosity for all flow module though
+    allocate(this%viscosity(option%nphase))
+    this%viscosity = 0.d0
   ! end block to replace with AuxVarFlowInit
 
   !PO to do:

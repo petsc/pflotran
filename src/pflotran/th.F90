@@ -739,7 +739,8 @@ subroutine THUpdateAuxVarsPatch(realization)
 
       do idof=1,option%nflowdof
         select case(boundary_condition%flow_condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,HET_DIRICHLET,HET_SURF_SEEPAGE_BC)
+          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC, &
+               HET_DIRICHLET,HET_SURF_SEEPAGE_BC)
             xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
@@ -747,7 +748,7 @@ subroutine THUpdateAuxVarsPatch(realization)
       enddo
       
       select case(boundary_condition%flow_condition%itype(TH_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
           iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
@@ -1704,13 +1705,15 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
   endif
 
   ! Flow term
-  if (global_auxvar_up%sat(1) > sir_up .or. global_auxvar_dn%sat(1) > sir_dn) then
+  if (global_auxvar_up%sat(1) > sir_up .or.  &
+      global_auxvar_dn%sat(1) > sir_dn) then
     if (global_auxvar_up%sat(1) <eps) then
       upweight=0.d0
     else if (global_auxvar_dn%sat(1) <eps) then 
       upweight=1.d0
     endif
-    density_ave = upweight*global_auxvar_up%den(1)+(1.D0-upweight)*global_auxvar_dn%den(1)
+    density_ave = upweight*global_auxvar_up%den(1)+ &
+                  (1.D0-upweight)*global_auxvar_dn%den(1)
     dden_ave_dp_up = upweight*auxvar_up%dden_dp
     dden_ave_dp_dn = (1.D0-upweight)*auxvar_dn%dden_dp
     dden_ave_dt_up = upweight*auxvar_up%dden_dt
@@ -1730,10 +1733,14 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
       dphi_dt_dn = dgravity_dden_dn*auxvar_dn%dden_dt
     else
       dphi = auxvar_up%ice%pres_fh2o - auxvar_dn%ice%pres_fh2o + gravity
-      dphi_dp_up =  auxvar_up%ice%dpres_fh2o_dp + dgravity_dden_up*auxvar_up%dden_dp
-      dphi_dp_dn = -auxvar_dn%ice%dpres_fh2o_dp + dgravity_dden_dn*auxvar_dn%dden_dp
-      dphi_dt_up =  auxvar_up%ice%dpres_fh2o_dt + dgravity_dden_up*auxvar_up%dden_dt
-      dphi_dt_dn = -auxvar_dn%ice%dpres_fh2o_dt + dgravity_dden_dn*auxvar_dn%dden_dt
+      dphi_dp_up =  auxvar_up%ice%dpres_fh2o_dp + &
+                    dgravity_dden_up*auxvar_up%dden_dp
+      dphi_dp_dn = -auxvar_dn%ice%dpres_fh2o_dp + &
+                    dgravity_dden_dn*auxvar_dn%dden_dp
+      dphi_dt_up =  auxvar_up%ice%dpres_fh2o_dt + &
+                    dgravity_dden_up*auxvar_up%dden_dt
+      dphi_dt_dn = -auxvar_dn%ice%dpres_fh2o_dt + &
+                    dgravity_dden_dn*auxvar_dn%dden_dt
     endif
 
     if (dphi>=0.D0) then
@@ -1803,11 +1810,14 @@ subroutine THFluxDerivative(auxvar_up,global_auxvar_up, &
       Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)
 
       ! based on flux = q*density_ave*uh
-      Jup(option%nflowdof,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uh+q*density_ave*duh_dp_up
-      Jup(option%nflowdof,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uh+q*density_ave*duh_dt_up
-
-      Jdn(option%nflowdof,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn
-      Jdn(option%nflowdof,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn
+      Jup(option%nflowdof,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uh+ &
+                               q*density_ave*duh_dp_up
+      Jup(option%nflowdof,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uh+ &
+                               q*density_ave*duh_dt_up
+      Jdn(option%nflowdof,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+ &
+                               q*density_ave*duh_dp_dn
+      Jdn(option%nflowdof,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+ &
+                               q*density_ave*duh_dt_dn
 
     endif
   endif 
@@ -2509,10 +2519,15 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
   diffdp = por_dn*tor_dn/dd_dn*area
   select case(ibndtype(TH_PRESSURE_DOF))
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-      Dq = perm_dn / dd_dn
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+      if (ibndtype(TH_PRESSURE_DOF) == CONDUCTANCE_BC) then
+        Dq = auxvars(TH_CONDUCTANCE_DOF)
+      else
+        Dq = perm_dn / dd_dn
+      endif
       ! Flow term
-      if (global_auxvar_up%sat(1) > sir_dn .or. global_auxvar_dn%sat(1) > sir_dn) then
+      if (global_auxvar_up%sat(1) > sir_dn .or. &
+          global_auxvar_dn%sat(1) > sir_dn) then
         upweight=1.D0
         if (global_auxvar_up%sat(1) < eps) then
           upweight=0.d0
@@ -2520,7 +2535,8 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
           upweight=1.d0
         endif
         
-        density_ave = upweight*global_auxvar_up%den(1)+(1.D0-upweight)*global_auxvar_dn%den(1)
+        density_ave = upweight*global_auxvar_up%den(1)+ &
+                      (1.D0-upweight)*global_auxvar_dn%den(1)
         dden_ave_dp_dn = (1.D0-upweight)*auxvar_dn%dden_dp
         dden_ave_dt_dn = (1.D0-upweight)*auxvar_dn%dden_dt
 
@@ -2539,11 +2555,14 @@ subroutine THBCFluxDerivative(ibndtype,auxvars, &
           dphi_dt_dn = dgravity_dden_dn*auxvar_dn%dden_dt
         else
           dphi = auxvar_up%ice%pres_fh2o - auxvar_dn%ice%pres_fh2o + gravity
-          dphi_dp_dn = -auxvar_dn%ice%dpres_fh2o_dp + dgravity_dden_dn*auxvar_dn%dden_dp
-          dphi_dt_dn = -auxvar_dn%ice%dpres_fh2o_dt + dgravity_dden_dn*auxvar_dn%dden_dt
+          dphi_dp_dn = -auxvar_dn%ice%dpres_fh2o_dp + &
+                        dgravity_dden_dn*auxvar_dn%dden_dp
+          dphi_dt_dn = -auxvar_dn%ice%dpres_fh2o_dt + &
+                        dgravity_dden_dn*auxvar_dn%dden_dt
         endif
 
-        if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC) then
+        if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC .or. &
+            ibndtype(TH_PRESSURE_DOF) == CONDUCTANCE_BC) then
           ! boundary cell is <= pref 
           if (global_auxvar_up%pres(1)-option%reference_pressure < eps) then
             ! skip thermal conduction whenever water table is lower than cell
@@ -3194,10 +3213,16 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
   ! Flow
   diffdp = por_dn*tor_dn/dd_dn*area
   select case(ibndtype(TH_PRESSURE_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-      Dq = perm_dn / dd_dn
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+      if (ibndtype(TH_PRESSURE_DOF) == CONDUCTANCE_BC) then
+        Dq = auxvars(TH_CONDUCTANCE_DOF)
+      else
+        Dq = perm_dn / dd_dn
+      endif
+
       ! Flow term
-      if (global_auxvar_up%sat(1) > sir_dn .or. global_auxvar_dn%sat(1) > sir_dn) then
+      if (global_auxvar_up%sat(1) > sir_dn .or. &
+          global_auxvar_dn%sat(1) > sir_dn) then
         upweight=1.D0
         if (global_auxvar_up%sat(1) < eps) then 
           upweight=0.d0
@@ -3216,7 +3241,8 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
           dphi = auxvar_up%ice%pres_fh2o - auxvar_dn%ice%pres_fh2o + gravity
         endif
 
-        if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC) then
+        if (ibndtype(TH_PRESSURE_DOF) == SEEPAGE_BC .or. &
+            ibndtype(TH_PRESSURE_DOF) == CONDUCTANCE_BC) then
           ! boundary cell is <= pref 
           if (global_auxvar_up%pres(1)-option%reference_pressure < eps) then
             ! skip thermal conduction whenever water table is lower than cell
@@ -3362,7 +3388,8 @@ subroutine THBCFlux(ibndtype,auxvars,auxvar_up,global_auxvar_up, &
       ! do nothing needed to bypass default case
 
     case default
-      option%io_buffer = 'BC type "' // trim(GetSubConditionName(ibndtype(TH_PRESSURE_DOF))) // &
+      option%io_buffer = 'BC type "' // &
+        trim(GetSubConditionName(ibndtype(TH_PRESSURE_DOF))) // &
         '" not implemented in TH mode.'
       call printErrMsg(option)
 

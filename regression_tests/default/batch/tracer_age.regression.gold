@@ -1,0 +1,28 @@
+-- CONCENTRATION: Total Tracer --
+      Max:   1.0000000000000E-04
+      Min:   1.0000000000000E-04
+     Mean:   1.0000000000000E-04
+        1:   1.0000000000000E-04
+-- CONCENTRATION: Total Tracer_Age --
+      Max:   1.3718160000000E+04
+      Min:   1.3718160000000E+04
+     Mean:   1.3718160000000E+04
+        1:   1.3718160000000E+04
+-- GENERIC: Tracer Age --
+      Max:   4.3500000000000E+00
+      Min:   4.3500000000000E+00
+     Mean:   4.3500000000000E+00
+        1:   4.3500000000000E+00
+-- DISCRETE: Material ID --
+      Max:         1
+      Min:         1
+     Mean:   1.0000000000000E+00
+        1:         1
+-- SOLUTION: Transport --
+   Time (seconds):   4.7100782394409E-02
+   Time Steps:           28
+   Newton Iterations:           55
+   Solver Iterations:           55
+   Time Step Cuts:            0
+   Solution 2-Norm:   1.3757224929690E+04
+   Residual 2-Norm:   2.0816681711722E-17

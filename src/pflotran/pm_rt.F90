@@ -118,7 +118,7 @@ function PMRTCreate()
   rt_pm%transient_porosity = PETSC_FALSE
 
   call PMBaseInit(rt_pm)
-  rt_pm%name = 'PMRT'
+  rt_pm%name = 'Reactive Transport'
   
   PMRTCreate => rt_pm
   
@@ -332,6 +332,9 @@ recursive subroutine PMRTInitializeRun(this)
     call CondControlAssignTranInitCond(this%realization)  
   endif
   
+  ! update boundary concentrations so that activity coefficients can be 
+  ! calculated at first time step
+  call RTUpdateAuxVars(this%realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
   ! pass PETSC_FALSE to turn off update of kinetic state variables
   call PMRTUpdateSolution2(this,PETSC_FALSE)
   
@@ -362,7 +365,8 @@ subroutine PMRTInitializeTimestep(this)
   ! 
 
   use Reactive_Transport_module, only : RTInitializeTimestep, &
-                                        RTUpdateTransportCoefs
+                                        RTUpdateActivityCoefficients
+  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_TIMESTEP
   use Global_module
   use Material_module
 
@@ -403,26 +407,10 @@ subroutine PMRTInitializeTimestep(this)
 
   call RTInitializeTimestep(this%realization)
 
-  !geh: this is a bug and should be moved to PreSolve()
-#if 0
-  ! set densities and saturations to t+dt
-  if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
-    if (this%option%flow%transient_porosity) then
-      ! weight material properties (e.g. porosity)
-      call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
-                                 this%tran_weight_t1, &
-                                 this%realization%field,this%comm1)
-    endif
-    call GlobalWeightAuxVars(this%realization,this%tran_weight_t1)
-  else if (this%transient_porosity) then
-    this%tran_weight_t1 = 1.d0
-    call MaterialWeightAuxVars(this%realization%patch%aux%Material, &
-                               this%tran_weight_t1, &
-                               this%realization%field,this%comm1)
+  if (this%realization%reaction%act_coef_update_frequency == &
+      ACT_COEF_FREQUENCY_TIMESTEP) then
+    call RTUpdateActivityCoefficients(this%realization,PETSC_TRUE,PETSC_TRUE)
   endif
-
-  call RTUpdateTransportCoefs(this%realization)
-#endif  
 
 end subroutine PMRTInitializeTimestep
 
@@ -434,9 +422,7 @@ subroutine PMRTPreSolve(this)
   ! Date: 03/14/13
   ! 
 
-  use Reactive_Transport_module, only : RTUpdateTransportCoefs, &
-                                        RTUpdateAuxVars
-  use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
+  use Reactive_Transport_module, only : RTUpdateTransportCoefs
   use Global_module  
   use Material_module
   use Data_Mediator_module
@@ -451,8 +437,6 @@ subroutine PMRTPreSolve(this)
   call printMsg(this%option,'PMRT%UpdatePreSolve()')
 #endif
   
-#if 1
-  call RTUpdateTransportCoefs(this%realization)
   ! set densities and saturations to t+dt
   if (this%option%nflowdof > 0 .and. .not. this%steady_flow) then
     if (this%option%flow%transient_porosity) then
@@ -470,15 +454,19 @@ subroutine PMRTPreSolve(this)
   endif
 
   call RTUpdateTransportCoefs(this%realization)
-#endif  
   
+#if 0
+  ! the problem here is that activity coefficients will be updated every time
+  ! presolve is called, regardless of TS vs NI.  We need to split this out.
   if (this%realization%reaction%act_coef_update_frequency /= &
       ACT_COEF_FREQUENCY_OFF) then
-      call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
+    call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
 !       The below is set within RTUpdateAuxVarsPatch() when 
 !         PETSC_TRUE,PETSC_TRUE,* are passed
 !       patch%aux%RT%auxvars_up_to_date = PETSC_TRUE 
   endif
+#endif
+
   if (this%realization%reaction%use_log_formulation) then
     call VecCopy(this%realization%field%tran_xx, &
                  this%realization%field%tran_log_xx,ierr);CHKERRQ(ierr)
@@ -1081,7 +1069,7 @@ subroutine PMRTUpdateAuxVars(this)
   implicit none
   
   class(pm_rt_type) :: this
-                                      ! cells      bcs         act. coefs.
+                                      ! cells      bcs         act coefs
   call RTUpdateAuxVars(this%realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
 
 end subroutine PMRTUpdateAuxVars  
@@ -1186,7 +1174,8 @@ subroutine PMRTCheckpointBinary(this,viewer)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
-                               MINERAL_VOLUME_FRACTION
+                               MINERAL_VOLUME_FRACTION, &
+                               REACTION_AUXILIARY
   
   implicit none
 
@@ -1296,6 +1285,14 @@ subroutine PMRTCheckpointBinary(this,viewer)
       ! PETSC_TRUE flag indicates write to file
       call RTCheckpointKineticSorptionBinary(realization,viewer,PETSC_TRUE)
     endif
+    ! auxiliary data for reactions (e.g. cumulative mass)
+    if (realization%reaction%nauxiliary> 0) then
+      do i = 1, realization%reaction%nauxiliary
+        call RealizationGetVariable(realization,global_vec, &
+                                    REACTION_AUXILIARY,i)
+        call VecView(global_vec,viewer,ierr);CHKERRQ(ierr)
+      enddo
+    endif
   endif
 
   if (global_vec /= 0) then
@@ -1325,7 +1322,8 @@ subroutine PMRTRestartBinary(this,viewer)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
-                               MINERAL_VOLUME_FRACTION
+                               MINERAL_VOLUME_FRACTION, &
+                               REACTION_AUXILIARY
   
   implicit none
 
@@ -1434,6 +1432,14 @@ subroutine PMRTRestartBinary(this,viewer)
     ! PETSC_FALSE flag indicates read from file
     call RTCheckpointKineticSorptionBinary(realization,viewer,PETSC_FALSE)
   endif
+  ! auxiliary data for reactions (e.g. cumulative mass)
+  if (realization%reaction%nauxiliary> 0) then
+    do i = 1, realization%reaction%nauxiliary
+      call VecLoad(global_vec,viewer,ierr);CHKERRQ(ierr)
+      call RealizationSetVariable(realization,global_vec,GLOBAL, &
+                                  REACTION_AUXILIARY,i)
+    enddo
+  endif
     
   ! We are finished, so clean up.
   if (global_vec /= 0) then
@@ -1484,7 +1490,8 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
-                               MINERAL_VOLUME_FRACTION
+                               MINERAL_VOLUME_FRACTION, &
+                               REACTION_AUXILIARY
   use hdf5
   use Checkpoint_module, only: CheckPointWriteIntDatasetHDF5
   use HDF5_module, only : HDF5WriteDataSetFromVec
@@ -1618,8 +1625,8 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
       do i = 1, realization%reaction%mineral%nkinmnrl
         call RealizationGetVariable(realization,global_vec, &
                                    MINERAL_VOLUME_FRACTION,i)
-        call DiscretizationGlobalToNatural(realization%discretization, global_vec, &
-                                        natural_vec, ONEDOF)
+        call DiscretizationGlobalToNatural(realization%discretization, &
+                                           global_vec,natural_vec,ONEDOF)
         write(dataset_name,*) i
         dataset_name = 'Kinetic_mineral_' // trim(adjustl(dataset_name))
         call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
@@ -1633,6 +1640,19 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
       call RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, PETSC_TRUE)
     endif
 
+    ! auxiliary data for reactions (e.g. cumulative mass)
+    if (realization%reaction%nauxiliary> 0) then
+      do i = 1, realization%reaction%nauxiliary
+        call RealizationGetVariable(realization,global_vec, &
+                                    REACTION_AUXILIARY,i)
+        call DiscretizationGlobalToNatural(realization%discretization, &
+                                           global_vec, natural_vec, ONEDOF)
+        write(dataset_name,*) i
+        dataset_name = 'Reaction_auxiliary_' // trim(adjustl(dataset_name))
+        call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
+           pm_grp_id, H5T_NATIVE_DOUBLE)
+      enddo
+    endif
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)
     call VecDestroy(natural_vec,ierr);CHKERRQ(ierr)
 
@@ -1672,7 +1692,8 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
   use Reaction_Aux_module, only : ACT_COEF_FREQUENCY_OFF
   use Variables_module, only : PRIMARY_ACTIVITY_COEF, &
                                SECONDARY_ACTIVITY_COEF, &
-                               MINERAL_VOLUME_FRACTION
+                               MINERAL_VOLUME_FRACTION, &
+                               REACTION_AUXILIARY
   use hdf5
   use Checkpoint_module, only: CheckPointReadIntDatasetHDF5
   use HDF5_module, only : HDF5ReadDataSetInVec
@@ -1823,6 +1844,23 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
         .not.option%transport%no_checkpoint_kinetic_sorption) then
       ! PETSC_TRUE flag indicates write to file
       call RTCheckpointKineticSorptionHDF5(realization, pm_grp_id, PETSC_TRUE)
+    endif
+
+    ! auxiliary data for reactions (e.g. cumulative mass)
+    if (realization%reaction%nauxiliary> 0) then
+      do i = 1, realization%reaction%nauxiliary
+        write(dataset_name,*) i
+        dataset_name = 'Reaction_auxiliary_' // trim(adjustl(dataset_name))
+        call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
+           pm_grp_id, H5T_NATIVE_DOUBLE)
+
+        call DiscretizationNaturalToGlobal(discretization, natural_vec, &
+                                           global_vec, ONEDOF)
+        call DiscretizationGlobalToLocal(discretization, global_vec, &
+                                         local_vec, ONEDOF)
+        call RealizationSetVariable(realization,local_vec,LOCAL, &
+                                    REACTION_AUXILIARY,i)
+      enddo
     endif
 
     call VecDestroy(global_vec,ierr);CHKERRQ(ierr)

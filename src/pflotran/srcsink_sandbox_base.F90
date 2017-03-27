@@ -11,6 +11,7 @@ module SrcSink_Sandbox_Base_class
 
   type, abstract, public :: srcsink_sandbox_base_type
     PetscInt :: local_cell_id
+    PetscInt :: natural_cell_id
     type(point3d_type) :: coordinate    
     PetscReal, pointer :: instantaneous_mass_rate(:)
     PetscReal, pointer :: cumulative_mass(:)
@@ -43,6 +44,7 @@ subroutine SSSandboxBaseInit(this)
   this%coordinate%y = UNINITIALIZED_DOUBLE
   this%coordinate%z = UNINITIALIZED_DOUBLE
   this%local_cell_id = UNINITIALIZED_INTEGER
+  this%natural_cell_id = UNINITIALIZED_INTEGER
   nullify(this%instantaneous_mass_rate)
   nullify(this%cumulative_mass)
   nullify(this%next)
@@ -62,32 +64,41 @@ subroutine SSSandboxBaseSetup(this,grid,option)
   type(grid_type) :: grid
   type(option_type) :: option
   
-  PetscInt :: local_id
+  PetscInt :: local_id, ghosted_id
   PetscInt :: i, iflag
   PetscErrorCode :: ierr
 
+  local_id = 0
   if (Initialized(this%coordinate%x)) then
     call GridGetLocalIDFromCoordinate(grid,this%coordinate,option,local_id)
-    iflag = 0
-    if (local_id > 0) then
-      this%local_cell_id = local_id
-      iflag = 1
-    endif
-    call MPI_Allreduce(iflag,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
-                       option%mycomm,ierr)
-    iflag = i
-    if (iflag > 1) then
-      option%io_buffer = 'More than one grid cell mapped in SSSandboxBaseSetup.'
-      call printErrMsg(option)
-    else if (iflag == 0) then
-      option%io_buffer = 'No grid cells mapped in SSSandboxBaseSetup.'
-      call printErrMsg(option)
-    endif
+  else if (Initialized(this%natural_cell_id)) then
+    do ghosted_id = 1, grid%ngmax
+      if (grid%nG2A(ghosted_id) == this%natural_cell_id) then
+        local_id = grid%nG2L(ghosted_id)
+        if (local_id > 0) exit
+      endif
+    enddo
   else
     option%io_buffer = 'Source/sink in SSSandbox not associate with the &
-      &domain thorugh either a REGION or COORDINATE.'
+      &domain through either a CELL_ID or COORDINATE.'
     call printErrMsg(option)
   endif  
+
+  ! check to ensure that only one grid cell is mapped
+  iflag = 0
+  if (local_id > 0) then
+    iflag = 1
+    this%local_cell_id = local_id
+  endif
+  call MPI_Allreduce(MPI_IN_PLACE,iflag,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                     MPI_SUM,option%mycomm,ierr)
+  if (iflag > 1) then
+    option%io_buffer = 'More than one grid cell mapped in SSSandboxBaseSetup.'
+    call printErrMsg(option)
+  else if (iflag == 0) then
+    option%io_buffer = 'No grid cells mapped in SSSandboxBaseSetup.'
+    call printErrMsg(option)
+  endif
   
 end subroutine SSSandboxBaseSetup 
 
@@ -135,6 +146,9 @@ subroutine SSSandboxBaseSelectCase(this,input,option,keyword,found)
       call printErrMsg(option)
     case('COORDINATE')
       call GeometryReadCoordinate(input,option,this%coordinate,error_string)
+    case('CELL_ID')
+      call InputReadInt(input,option,this%natural_cell_id)
+      call InputErrorMsg(input,option,'cell id',error_string)
     case default
       found = PETSC_FALSE
   end select   

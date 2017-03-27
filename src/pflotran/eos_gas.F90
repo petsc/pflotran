@@ -51,13 +51,20 @@ module EOS_Gas_module
   
   ! interface blocks
   interface
-    subroutine EOSGasViscosityDummy(T, P_comp, P_gas, Rho_comp, V_mix, ierr)
+    subroutine EOSGasViscosityDummy(T, P_comp, P_gas, Rho_comp, V_mix, &
+                                    calculate_derivative, dV_dT, dV_dPcomp, &
+                                    dV_dPgas, dV_dRhocomp, ierr)
       implicit none
       PetscReal, intent(in) :: T        ! temperature [C]
       PetscReal, intent(in) :: P_comp   ! air pressure [Pa]
       PetscReal, intent(in) :: P_gas    ! gas pressure [Pa]
       PetscReal, intent(in) :: Rho_comp ! air density [C]
       PetscReal, intent(out) :: V_mix   ! mixture viscosity
+      PetscBool, intent(in) :: calculate_derivative
+      PetscReal, intent(out) :: dV_dT       ! derivative wrt temperature
+      PetscReal, intent(out) :: dV_dPcomp   ! derivative wrt component pressure
+      PetscReal, intent(out) :: dV_dPgas    ! derivative wrt gas pressure
+      PetscReal, intent(out) :: dV_dRhocomp ! derivative wrt component density      
       PetscErrorCode, intent(out) :: ierr
     end subroutine EOSGasViscosityDummy
     subroutine EOSGasDensityDummy(T,P,Rho_gas,dRho_dT,dRho_dP,ierr)
@@ -97,11 +104,17 @@ module EOS_Gas_module
       PetscReal, intent(out) :: dU_dP   ! deriv. internal energy wrt pressure
       PetscErrorCode, intent(out) :: ierr
     end subroutine EOSGasDensityEnergyDummy
-    subroutine EOSGasHenryDummy(T,Psat,Hc)
+    subroutine EOSGasHenryDummy(T,Psat,Hc,calculate_derivative, &
+                                Psat_p,Psat_T,Hc_P,Hc_T)
       implicit none
       PetscReal, intent(in) :: T        ! temperature [C]
       PetscReal, intent(in) :: Psat     ! saturation pressure
       PetscReal, intent(out) :: Hc      ! Henry's constant
+      PetscBool, intent(in) :: calculate_derivative
+      PetscReal, intent(in) :: Psat_P   ! derivative Psat wrt pressure
+      PetscReal, intent(in) :: Psat_T   ! derivative Psat wrt temperature
+      PetscReal, intent(out) :: Hc_P    ! derivative Henry's constant wrt pressure
+      PetscReal, intent(out) :: Hc_T    ! derivative Henry's constant wrt temperature
     end subroutine EOSGasHenryDummy
   end interface
   
@@ -109,7 +122,7 @@ module EOS_Gas_module
   ! the module.
   interface EOSGasViscosity
     procedure EOSGasViscosityNoDerive
-!    procedure EOSGasViscosityDerive
+    procedure EOSGasViscosityDerive
   end interface
   interface EOSGasDensity
     procedure EOSGasDensityNoDerive
@@ -125,7 +138,7 @@ module EOS_Gas_module
   end interface
   interface EOSGasHenry
     procedure EOSGasHenryNoDerive
-!    procedure EOSGasHenryDerive
+    procedure EOSGasHenryDerive
   end interface
 
   ! the "public" definition that makes subroutines visible outside.
@@ -170,7 +183,7 @@ subroutine EOSGasInit()
   EOSGasDensityPtr => EOSGasDensityIdeal
   EOSGasEnergyPtr => EOSGasEnergyIdeal
   EOSGasViscosityPtr => EOSGasViscosity1
-  EOSGasHenryPtr => EOSGasHenry_air_noderiv
+  EOSGasHenryPtr => EOSGasHenry_air
   
 end subroutine EOSGasInit
 
@@ -409,7 +422,7 @@ subroutine EOSGasSetHenry()
 
   implicit none
   
-  EOSGasHenryPtr => EOSGasHenry_air_noderiv
+  EOSGasHenryPtr => EOSGasHenry_air
   
 end subroutine EOSGasSetHenry
 
@@ -439,41 +452,124 @@ subroutine EOSGasViscosityNoDerive(T, P_comp, P_gas, Rho_comp, V_mix, ierr)
   PetscReal, intent(out) :: V_mix   ! mixture viscosity
   PetscErrorCode, intent(out) :: ierr
   
-  call EOSGasViscosityPtr(T, P_comp, P_gas, Rho_comp, V_mix, ierr)
+  PetscReal :: dum1, dum2, dum3, dum4
+  
+  call EOSGasViscosityPtr(T, P_comp, P_gas, Rho_comp, V_mix, PETSC_FALSE, &
+                          dum1,dum2,dum3,dum4,ierr)
   
 end subroutine EOSGasViscosityNoDerive
 
 ! ************************************************************************** !
-#if 0
-subroutine EOSGasViscosityDerive(T, P_comp, P_gas, Rho_comp, V_mix, ierr)
 
+subroutine EOSGasViscosityDerive(T, P_comp, P_gas, Rho_comp, &
+                                 dRho_dT, dRho_dPcomp, dRho_dPgas, &
+                                 dPcomp_dT, dPcomp_dPgas, &
+                                 V_mix, dV_dT, dV_dPcomp, dV_dPgas, ierr)
   implicit none
 
-  PetscReal, intent(in) :: T        ! temperature [C]
-  PetscReal, intent(in) :: P_comp   ! air pressure [Pa]
-  PetscReal, intent(in) :: P_gas    ! gas pressure [Pa]
-  PetscReal, intent(in) :: Rho_comp ! air density [C]
-  PetscReal, intent(out) :: V_mix   ! mixture viscosity
+  PetscReal, intent(in) :: T             ! temperature [C]
+  PetscReal, intent(in) :: P_comp        ! air pressure [Pa]
+  PetscReal, intent(in) :: P_gas         ! gas pressure [Pa]
+  PetscReal, intent(in) :: Rho_comp      ! air density [C]
+  PetscReal, intent(in) :: dRho_dT       ! derivative of density wrt temperature
+  PetscReal, intent(in) :: dRho_dPcomp   ! derivative of density wrt gas comp pressure
+  PetscReal, intent(in) :: dRho_dPgas    ! derivative of density wrt gas pressure
+  PetscReal, intent(in) :: dPcomp_dT     ! derivative of gas comp pressure wrt temperature
+  PetscReal, intent(in) :: dPcomp_dPgas  ! derivative of gas comp pressure wrt gas pressure
+  PetscReal, intent(out) :: V_mix        ! mixture viscosity
+  PetscReal, intent(out) :: dV_dT        ! derivative gas viscosity wrt temperature
+  PetscReal, intent(out) :: dV_dPcomp    ! derivative gas viscosity wrt gas comp press
+  PetscReal, intent(out) :: dV_dPgas     ! derivative gas viscosity wrt gas press
   PetscErrorCode, intent(out) :: ierr
- 
-  ! not yet supported
-  print *, 'EOSGasViscosityDerive() not yet supported.'
-  stop
   
-end subroutine EOSGasViscosityDerive
+  !geh: at very low temperatures, the derivative wrt Rhocomp is very sensitive to
+  !     the perturbation.  Need a value as large as 1.d-3 at 2C to match analtyical.
+  PetscReal, parameter :: pert_tol = 1.d-8
+  PetscReal :: pert
+    
+  PetscReal :: T_pert
+  PetscReal :: P_comp_pert
+  PetscReal :: P_gas_pert
+  PetscReal :: Rho_comp_pert
+  PetscReal :: V_mix_pert
+  PetscReal :: dV_dRhocomp
+  PetscReal :: dV_dT_, dV_dPcomp_, dV_dPgas_, dV_dRhocomp_
+  PetscReal :: dum1, dum2, dum3, dum4
+  
+  dV_dT = 0.d0
+  dV_dPgas = 0.d0
+  dV_dPcomp = 0.d0
+  dV_dRhocomp = 0.d0
+  
+!#define NUMERICAL_DERIVATIVE_VISCOSITY
+#define PARTIALS
+    
+  ! We have to calcualte the derivative numerically
+  call EOSGasViscosityPtr(T, P_comp, P_gas, Rho_comp, V_mix, PETSC_TRUE, &
+                          dV_dT_, dV_dPcomp_, dV_dPgas_, dV_dRhocomp_, ierr)
+#if defined(PARTIALS)
+  dV_dT_ = dV_dT_ + dV_dRhocomp_*dRho_dT + dV_dPcomp_*dPcomp_dT
+  dV_dPgas_ = dV_dPgas_ + dV_dPcomp_*dPcomp_dPgas + dV_dRhocomp_*dRho_dPgas
+  ! put dv_dPcomp last to avoid double counting for partials above
+  dV_dPcomp_ = dV_dPcomp_ + dV_dRhocomp_*dRho_dPcomp
 #endif
+
+#if defined(NUMERICAL_DERIVATIVE_VISCOSITY)                          
+  ! temperature
+  pert = pert_tol * T
+  T_pert = T + pert
+  call EOSGasViscosityPtr(T_pert, P_comp, P_gas, Rho_comp, V_mix_pert, &
+                          PETSC_FALSE,dum1,dum2,dum3,dum4,ierr)
+  dV_dT = dV_dT + (V_mix_pert - V_mix)/pert
+  ! gas component pressure
+  pert = pert_tol * P_comp
+  P_comp_pert = P_comp + pert
+  call EOSGasViscosityPtr(T, P_comp_pert, P_gas, Rho_comp, V_mix_pert, &
+                          PETSC_FALSE,dum1,dum2,dum3,dum4,ierr)
+  dV_dPcomp = (V_mix_pert - V_mix)/pert
+  ! gas pressure
+  pert = pert_tol * P_gas
+  P_gas_pert = P_gas + pert
+  call EOSGasViscosityPtr(T, P_comp, P_gas_pert, Rho_comp, V_mix_pert, &
+                          PETSC_FALSE,dum1,dum2,dum3,dum4,ierr)
+  dV_dPgas = (V_mix_pert - V_mix)/pert
+  ! component density
+  pert = pert_tol * Rho_comp
+  Rho_comp_pert = Rho_comp + pert
+  call EOSGasViscosityPtr(T, P_comp, P_gas, Rho_comp_pert, V_mix_pert, &
+                          PETSC_FALSE,dum1,dum2,dum3,dum4,ierr)
+  dV_dRhocomp = (V_mix_pert - V_mix)/pert
+#if defined(PARTIALS)
+  dV_dT = dV_dT + dV_dRhocomp * dRho_dT + dV_dPcomp * dPcomp_dT
+  dV_dPgas = dV_dPgas + dV_dPcomp * dPcomp_dPgas + dV_dRhocomp * dRho_dPgas
+  dV_dPcomp = dV_dPcomp + dV_dRhocomp * dRho_dPcomp
+#endif
+#else
+  dV_dPcomp = dV_dPcomp_
+  dV_dT = dV_dT_
+  dV_dPgas = dV_dPgas_
+#endif
+
+end subroutine EOSGasViscosityDerive
 
 ! ************************************************************************** !
 
-subroutine EOSGasViscosity1(T, P_comp, P_gas, Rho_comp, V_mix, ierr)
+subroutine EOSGasViscosity1(T, P_comp, P_gas, Rho_comp, V_mix, &
+                            calculate_derivative, dV_dT, dV_dPcomp, &
+                            dV_dPgas, dV_dRhocomp, ierr)
 
   implicit none
 
-  PetscReal, intent(in) :: T        ! temperature [C]
-  PetscReal, intent(in) :: P_comp   ! air pressure [Pa]
-  PetscReal, intent(in) :: P_gas    ! gas pressure [Pa]
-  PetscReal, intent(in) :: Rho_comp ! air density [C]
-  PetscReal, intent(out) :: V_mix   ! mixture viscosity
+  PetscReal, intent(in) :: T            ! temperature [C]
+  PetscReal, intent(in) :: P_comp       ! air pressure [Pa]
+  PetscReal, intent(in) :: P_gas        ! gas pressure [Pa]
+  PetscReal, intent(in) :: Rho_comp     ! air density [C]
+  PetscReal, intent(out) :: V_mix       ! mixture viscosity
+  PetscBool, intent(in) :: calculate_derivative
+  PetscReal, intent(out) :: dV_dT       ! derivative wrt temperature
+  PetscReal, intent(out) :: dV_dPcomp   ! derivative wrt component pressure
+  PetscReal, intent(out) :: dV_dPgas    ! derivative wrt gas pressure
+  PetscReal, intent(out) :: dV_dRhocomp ! derivative wrt component density
   PetscErrorCode, intent(out) :: ierr
   
   !geh: copied from gas_eos_mod.F90
@@ -504,10 +600,37 @@ subroutine EOSGasViscosity1(T, P_comp, P_gas, Rho_comp, V_mix, ierr)
   data  fair,   fwat,    cair,  cwat &
         /97.d0, 363.d0, 3.617d0, 2.655d0/
  
-  PetscReal fmix,cmix,d,xga,xg1,tk,trd1,trd3,ome1,ome3,ard,fmw3,vis1, &
-          v1,vs,vis2,vis3,z1,g,h,e,z2,z3
-
-
+  PetscReal :: fmix,cmix,d,xga,xg1,tk,trd1,trd3,ome1,ome3,ard,fmw3,vis1, &
+               v1,vs,vis2,vis3,z1,g,h,e,z2,z3
+               
+  PetscReal :: dtrd1_dT, dtrd3_dT
+  PetscReal :: dome1_dtrd1, dome1_dT
+  PetscReal :: dome3_dtrd3, dome3_dT
+  PetscReal :: dard_dtrd3, dard_dT
+  PetscReal :: dvis1_dtrd1, dvis1_dome1, dvis1_dT
+  PetscReal :: dvis2_dvs, dvis2_dT, dvis2_dRhocomp
+  PetscReal :: dvis3_dtrd3, dvis3_dome3, dvis3_dT
+  PetscReal :: dv1_dT
+  PetscReal :: dvs_dT, dvs_dd, dvs_dRhocomp
+  PetscReal :: dd_dRhocomp
+  PetscReal :: dxga_dPcomp, dxga_dPgas
+  PetscReal :: dxg1_dPcomp, dxg1_dPgas
+  PetscReal :: dg_dxga, dg_dPcomp, dg_dPgas
+  PetscReal :: de_dxga, de_dxg1, de_dvis1, de_dvis2, de_dvis3, &
+               de_dT, de_dRhocomp, de_dPcomp, de_dPgas
+  PetscReal :: dh_dxg1, dh_dPcomp, dh_dPgas
+  PetscReal :: dz1_dxga, dz1_dxg1, dz1_dvis1, dz1_dvis2, dz1_dvis3, &
+               dz1_dT, dz1_dRhocomp, dz1_dPcomp, dz1_dPgas
+  PetscReal :: dz2_dard, dz2_de, dz2_dg, dz2_dh, dz2_dvis1, dz2_dvis2, &
+               dz2_dvis3, dz2_dT, dz2_dRhocomp, dz2_dPcomp, dz2_dPgas
+  PetscReal :: dz3_dard, dz3_de, dz3_dg, dz3_dh, dz3_dvis1, dz3_dvis2, &
+               dz3_dvis3, dz3_dT, dz3_dRhocomp, dz3_dPcomp, dz3_dPgas, &
+               dz3_dxga, dz3_dxg1
+  PetscReal :: dvisg_dz1, dvisg_dz2, dvisg_dz3
+  PetscReal :: ard_0point6, one_over_vis1sq, one_over_vis2sq, z1pz2
+  PetscReal :: one_over_trd3
+  PetscReal :: tempreal
+  
 !c======================================================================
 
   p_air = P_comp
@@ -519,46 +642,203 @@ subroutine EOSGasViscosity1(T, P_comp, P_gas, Rho_comp, V_mix, ierr)
 !      do k = 1,nb
 !       if (iphas(k).eq.2 .or. iphas(k).eq.0) then
 
-      d   = d_air *FMWAIR       
-      xga = p_air / p_gas ! for debug, set x constant
+      d = d_air * FMWAIR   
+      xga = p_air / P_gas
       xg1 = 1.D0 - xga
-      tk  = t +273.15d0
-
+      tk  = t + 273.15d0
       trd1 = tk/fair
       trd3 = tk/fmix
-      ome1 = (1.188d0-0.051d0*trd1)/trd1
-      ome3 = (1.480d0-0.412d0*log(trd3))/trd3
-      ard  = 1.095d0/trd3
+      one_over_trd3 = 1.d0/trd3
+      ome1 = 1.188d0/trd1-0.051d0
+      ome3 = (1.480d0-0.412d0*log(trd3))*one_over_trd3
+      ard  = 1.095d0*one_over_trd3
       fmw3 = 2.d0*FMWAIR*FMWH2O/(FMWAIR+FMWH2O)
       vis1 = 266.93d-7*sqrt(FMWAIR*trd1*fair)/(cair*cair*ome1*trd1)
- 
       v1 = .407d0*t +80.4d0
-      if (t .le.350.d0) then
+      if (t <= 350.d0) then
         vs = 1.d-7*(v1-d*(1858.d0-5.9d0*t )*1.d-3)
       else
-!             if (t .gt.350.d0) 
 !cpcl .      vs = 1.d-7*(v1 + 0.353d0*d + 676.5d-6*d**2 + 102.1d-9*d**3)
         vs = 1.d-7*(v1 + (0.353d0 + (676.5d-6 + 102.1d-9*d)*d)*d)
       endif
-
       vis2 = 10.d0*vs
       vis3 = 266.93d-7*sqrt(fmw3*trd3*fmix)/(cmix*cmix*ome3*trd3)
-      z1   = xga*xga/vis1+2.d0*xg1*xga/vis3+xg1*xg1/vis2
-      g    = xga*xga*FMWAIR/FMWH2O
-      h    = xg1*xg1*FMWH2O/FMWAIR
-      e    = (2.d0*xga*xg1*FMWAIR*FMWH2O/fmw3**2)*vis3/(vis1*vis2)
-      z2   = 0.6d0*ard*(g/vis1+e+h/vis2)
-      z3   = 0.6d0*ard*(g+e*(vis1+vis2)-2.d0*xga*xg1+h)
+      z1 = xga*xga/vis1+2.d0*xg1*xga/vis3+xg1*xg1/vis2
+      g = xga*xga*FMWAIR/FMWH2O
+      h = xg1*xg1*FMWH2O/FMWAIR
+      e = (2.d0*xga*xg1*FMWAIR*FMWH2O/fmw3**2.d0)*vis3/(vis1*vis2)
+      z2 = 0.6d0*ard*(g/vis1+e+h/vis2)
+      z3 = 0.6d0*ard*(g+e*(vis1+vis2)-2.d0*xga*xg1+h)
       visg  = (1.d0+z3)/(z1+z2)*.1d0 
       
   V_mix = visg
+  
+  if (calculate_derivative) then
+  
+    ! air density (kg)
+    ! d = d_air * FMWAIR   
+    dd_dRhocomp = FMWAIR
+  
+    ! xga
+    ! xga = p_air / P_gas
+    dxga_dPcomp = 1.d0 / P_gas
+    dxga_dPgas = -1.d0 * p_air / (P_gas*P_gas)
+  
+    ! xg1
+    ! xg1 = 1.D0 - xga
+    dxg1_dPcomp = -1.d0*dxga_dPcomp
+    dxg1_dPgas = -1.d0*dxga_dPgas
+  
+    ! trd3 wrt t
+    ! trd1 = tk/fair
+    dtrd1_dT = 1.d0/fair
+
+    ! trd3 wrt t
+    ! trd3 = tk/fmix
+    dtrd3_dT = 1.d0/fmix
+  
+    ! ome1 wrt trd1
+    ! ome1 = 1.188d0/trd1-0.051d0
+    dome1_dtrd1 = -1.188d0/(trd1*trd1)
+    dome1_dT = dome1_dtrd1*dtrd1_dT
+  
+    ! ome3 wrt trd3
+    ! ome3 = (1.480d0-0.412d0*log(trd3))/trd3
+    dome3_dtrd3 = (-0.412d0*one_over_trd3 - ome3)*one_over_trd3 ! dlnx / dx = 1/x dx
+    dome3_dT = dome3_dtrd3*dtrd3_dT
+  
+    ! ard wrt trd3
+    ! ard = 1.095d0/trd3
+    dard_dtrd3 = -1.095d0*one_over_trd3*one_over_trd3
+    dard_dT = dard_dtrd3*dtrd3_dT
+  
+    ! vis1 wrt trd1, dome1
+    ! vis1 = 266.93d-7*sqrt(FMWAIR*trd1*fair)/(cair*cair*ome1*trd1)
+    tempreal = FMWAIR*trd1*fair
+    dvis1_dtrd1 = (0.5d0*vis1 - vis1)/trd1
+    dvis1_dome1 = -1.d0*vis1/ome1
+    dvis1_dT = dvis1_dtrd1*dtrd1_dT + &
+               dvis1_dome1*dome1_dT
+  
+    ! v1 wrt t
+    ! v1 = .407d0*t +80.4d0
+    dv1_dT = 0.407d0
+  
+    ! vs wrt v1, d, t
+    if (t .le.350.d0) then
+      ! vs = 1.d-7*(v1-d*(1858.d0-5.9d0*t )*1.d-3)
+      dvs_dT = 1.d-7*(dv1_dT-d*(-5.9d0)*1.d-3)
+      dvs_dd = 1.d-7*(-1.d0*(1858.d0-5.9d0*t )*1.d-3)
+      dvs_dRhocomp = dvs_dd*dd_dRhocomp
+    else
+      ! vs = 1.d-7*(v1 + (0.353d0 + (676.5d-6 + 102.1d-9*d)*d)*d)
+      dvs_dT = 1.d-7*(dv1_dT)
+      dvs_dd = 1.d-7*(0.353d0 + 2.d0*676.5d-6*d + 3.d0*102.1d-9*d*d)
+      dvs_dRhocomp = dvs_dd*dd_dRhocomp
+    endif  
+  
+    ! vis2 wrt vs
+    ! vis2 = 10.d0*vs
+    dvis2_dvs = 10.d0
+    dvis2_dT = dvis2_dvs*dvs_dT
+    dvis2_dRhocomp = dvis2_dvs*dvs_dRhocomp
+        
+    ! vis3 wrt trd3, dome3
+    ! vis3 = 266.93d-7*sqrt(fmw3*trd3*fmix)/(cmix*cmix*ome3*trd3)
+    tempreal = fmw3*trd3*fmix
+    dvis3_dtrd3 = (0.5d0*vis3 - vis3)*one_over_trd3
+    dvis3_dome3 = -1.d0*vis3/ome3      
+    dvis3_dT = dvis3_dtrd3*dtrd3_dT + dvis3_dome3*dome3_dT
+        
+    one_over_vis1sq = 1.d0/(vis1*vis1)
+    one_over_vis2sq = 1.d0/(vis2*vis2)
+    ! z1 wrt vis#,xg#
+    ! z1 = xga*xga/vis1+2.d0*xg1*xga/vis3+xg1*xg1/vis2
+    dz1_dxga = 2.d0*xga/vis1 + 2.d0*xg1/vis3
+    dz1_dxg1 = 2.d0*xga/vis3 + 2.d0*xg1/vis2
+    dz1_dvis1 = -1.d0*xga*xga*one_over_vis1sq
+    dz1_dvis2 = -1.d0*xg1*xg1*one_over_vis2sq
+    dz1_dvis3 = -2.d0*xg1*xga/(vis3*vis3)
+    dz1_dT = dz1_dvis1*dvis1_dT + dz1_dvis2*dvis2_dT + dz1_dvis3*dvis3_dT
+    dz1_dRhocomp = dz1_dvis2*dvis2_dRhocomp
+    dz1_dPcomp = dz1_dxga*dxga_dPcomp + dz1_dxg1*dxg1_dPcomp
+    dz1_dPgas = dz1_dxga*dxga_dPgas + dz1_dxg1*dxg1_dPgas
+  
+    ! g wrt xga
+    ! g = xga*xga*FMWAIR/FMWH2O
+    dg_dxga = 2.d0*g/xga
+    dg_dPcomp = dg_dxga*dxga_dPcomp
+    dg_dPgas = dg_dxga*dxga_dPgas
+
+    ! h wrt xg1
+    ! h = xg1*xg1*FMWH2O/FMWAIR
+    dh_dxg1 = 2.d0*h/xg1
+    dh_dPcomp = dh_dxg1*dxg1_dPcomp
+    dh_dPgas = dh_dxg1*dxg1_dPgas
+  
+    ! e wrt xg#, vis#
+    ! e = (2.d0*xga*xg1*FMWAIR*FMWH2O/fmw3**2.d0)*vis3/(vis1*vis2)
+    de_dxga = e/xga
+    de_dxg1 = e/xg1
+    de_dvis1 = -1.d0*e/vis1
+    de_dvis2 = -1.d0*e/vis2
+    de_dvis3 = e/vis3
+    de_dT = de_dvis1*dvis1_dT + de_dvis2*dvis2_dT + de_dvis3*dvis3_dT
+    de_dRhocomp = de_dvis2*dvis2_dRhocomp
+    de_dPcomp = de_dxga*dxga_dPcomp + de_dxg1*dxg1_dPcomp
+    de_dPgas = de_dxga*dxga_dPgas + de_dxg1*dxg1_dPgas
+      
+    ard_0point6 = 0.6d0*ard
+    ! z2 wrt ard,e,g,h,vis#,xg#
+    ! z2 = 0.6d0*ard*(g/vis1+e+h/vis2)
+    dz2_dard = 0.6d0*(g/vis1+e+h/vis2)
+    dz2_dg = ard_0point6*(1.d0/vis1)
+    dz2_dvis1 = -ard_0point6*(g*one_over_vis1sq)
+    dz2_de = ard_0point6
+    dz2_dh = ard_0point6*(1.d0/vis2)
+    dz2_dvis2 = -ard_0point6*(h*one_over_vis2sq)
+    dz2_dT = dz2_dard*dard_dT + dz2_dvis1*dvis1_dT + &
+             dz2_de*de_dT + dz2_dvis2*dvis2_dT
+    dz2_dRhocomp = dz2_de*de_dRhocomp + dz2_dvis2*dvis2_dRhocomp
+    dz2_dPcomp = dz2_dg*dg_dPcomp + dz2_de*de_dPcomp + dz2_dh*dh_dPcomp
+    dz2_dPgas = dz2_dg*dg_dPgas + dz2_de*de_dPgas + dz2_dh*dh_dPgas
+  
+    ! z3 wrt ard,e,g,h,vis#,xg#
+    ! z3 = 0.6d0*ard*(g+e*(vis1+vis2)-2.d0*xga*xg1+h)
+    dz3_dard = 0.6d0*(g+e*(vis1+vis2)-2.d0*xga*xg1+h)
+    dz3_dg = ard_0point6
+    dz3_de = ard_0point6*((vis1+vis2))
+    dz3_dvis1 = ard_0point6*(e)
+    dz3_dvis2 = ard_0point6*(e)
+    dz3_dxga = ard_0point6*(-2.d0*xg1)
+    dz3_dxg1 = ard_0point6*(-2.d0*xga)
+    dz3_dh = ard_0point6
+        
+    dz3_dT = dz3_dard*dard_dT + dz3_de*de_dT + dz3_dvis1*dvis1_dT + dz3_dvis2*dvis2_dT
+    dz3_dRhocomp = dz3_de*de_dRhocomp + dz3_dvis2*dvis2_dRhocomp
+    dz3_dPcomp = dz3_dxga*dxga_dPcomp + dz3_dxg1*dxg1_dPcomp + dz3_dg*dg_dPcomp + dz3_de*de_dPcomp + dz3_dh*dh_dPcomp
+    dz3_dPgas = dz3_dxga*dxga_dPgas + dz3_dxg1*dxg1_dPgas + dz3_dg*dg_dPgas + dz3_de*de_dPgas + dz3_dh*dh_dPgas
+  
+    ! visg wrt z#
+    ! visg  = (1.d0+z3)/(z1+z2)*.1d0 
+    z1pz2 = z1+z2
+    dvisg_dz3 = 1.d0/z1pz2*.1d0 
+    dvisg_dz1 = -1.d0*(1.d0+z3)/(z1pz2*z1pz2)*.1d0 
+    dvisg_dz2 = -1.d0*(1.d0+z3)/(z1pz2*z1pz2)*.1d0 
+    
+    dV_dT = dvisg_dz1*dz1_dT + dvisg_dz2*dz2_dT + dvisg_dz3*dz3_dT
+    dV_dRhocomp = dvisg_dz1*dz1_dRhocomp + dvisg_dz2*dz2_dRhocomp + dvisg_dz3*dz3_dRhocomp
+    dV_dPcomp = dvisg_dz1*dz1_dPcomp + dvisg_dz2*dz2_dPcomp + dvisg_dz3*dz3_dPcomp
+    dV_dPgas = dvisg_dz1*dz1_dPgas + dvisg_dz2*dz2_dPgas + dvisg_dz3*dz3_dPgas
+  endif
   
 end subroutine EOSGasViscosity1
 
 ! ************************************************************************** !
 
-subroutine EOSGasViscosityConstant(T, P_comp, P_gas, Rho_comp, V_mix, ierr)
-
+subroutine EOSGasViscosityConstant(T, P_comp, P_gas, Rho_comp, V_mix, &
+                                   calculate_derivative, dV_dT, dV_dPcomp, &
+                                   dV_dPgas, dV_dRhocomp, ierr)
   implicit none
 
   PetscReal, intent(in) :: T        ! temperature [C]
@@ -566,9 +846,19 @@ subroutine EOSGasViscosityConstant(T, P_comp, P_gas, Rho_comp, V_mix, ierr)
   PetscReal, intent(in) :: P_gas    ! gas pressure [Pa]
   PetscReal, intent(in) :: Rho_comp ! air density [C]
   PetscReal, intent(out) :: V_mix   ! mixture viscosity
+  PetscBool, intent(in) :: calculate_derivative
+  PetscReal, intent(out) :: dV_dT       ! derivative wrt temperature
+  PetscReal, intent(out) :: dV_dPcomp   ! derivative wrt component pressure
+  PetscReal, intent(out) :: dV_dPgas    ! derivative wrt gas pressure
+  PetscReal, intent(out) :: dV_dRhocomp ! derivative wrt component density    
   PetscErrorCode, intent(out) :: ierr
 
   V_mix = constant_viscosity
+  
+  dV_dT = 0.d0
+  dV_dPcomp = 0.d0
+  dV_dPgas = 0.d0
+  dV_dRhocomp = 0.d0
   
 end subroutine EOSGasViscosityConstant
 
@@ -1069,7 +1359,6 @@ subroutine EOSGasEnergyConstant(T,P,H,dH_dT,dH_dP,U,dU_dT,dU_dP,ierr)
   
 end subroutine EOSGasEnergyConstant
 
-
 ! ************************************************************************** !
 
 subroutine EOSGasHenryNoDerive(T,Psat,Hc)
@@ -1080,10 +1369,38 @@ subroutine EOSGasHenryNoDerive(T,Psat,Hc)
   PetscReal, intent(in) :: Psat     ! saturation pressure
   PetscReal, intent(out) :: Hc      ! Henry's constant
   
-  call EOSGasHenryPtr(T,Psat,Hc)
+  PetscReal :: dum1, dum2, dum3, dum4
+  
+  call EOSGasHenryPtr(T,Psat,Hc,PETSC_FALSE,dum1,dum2,dum3,dum4)
                           
 end subroutine EOSGasHenryNoDerive
 
+! ************************************************************************** !
+
+subroutine EOSGasHenryDerive(T,Psat,Psat_P,Psat_T,Hc,Hc_P,Hc_T)
+
+  implicit none
+
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: Psat     ! saturation pressure
+  PetscReal, intent(in) :: Psat_P   ! derivative Psat wrt pressure
+  PetscReal, intent(in) :: Psat_T   ! derivative Psat wrt temperature
+  PetscReal, intent(out) :: Hc      ! Henry's constant
+  PetscReal, intent(out) :: Hc_P    ! derivative Henry's constant wrt pressure
+  PetscReal, intent(out) :: Hc_T    ! derivative Henry's constant wrt temperature
+  
+!  PetscReal :: pert, T_pert, Hc_pert, dum1, dum2
+  
+  call EOSGasHenryPtr(T,Psat,Hc,PETSC_TRUE,Psat_P,Psat_T,Hc_P,Hc_T)
+!  pert = 1.d-8 * T
+!  T_pert = T + pert
+!  call EOSGasHenryPtr(T_pert,Psat,Hc_pert,PETSC_FALSE,Psat_P,Psat_T,dum1,dum2)
+!  T_pert = (Hc_pert - Hc)/pert
+                          
+end subroutine EOSGasHenryDerive
+
+#if 0
+!TODO(geh): remove if derivative version matching
 ! ************************************************************************** !
 
 subroutine EOSGasHenry_air_noderiv(tc,ps,Henry)
@@ -1113,10 +1430,11 @@ subroutine EOSGasHenry_air_noderiv(tc,ps,Henry)
     Henry = exp(tmp)*ps
 
 end subroutine EOSGasHenry_air_noderiv
-
+#endif
 ! ************************************************************************** !
 
-subroutine EOSGasHenry_air(tc,ps,ps_p,ps_t,Henry,Henry_p,Henry_t)
+subroutine EOSGasHenry_air(T,Psat,Hc,calculate_derivative, &
+                           Psat_P,Psat_T,Hc_P,Hc_T)
 ! 
 !   Calculates Henry's constant as a function of temperature [C], 
 !   and saturation pressure [Pa].  
@@ -1128,37 +1446,63 @@ subroutine EOSGasHenry_air(tc,ps,ps_p,ps_t,Henry,Henry_p,Henry_t)
 
     implicit none
     
-    PetscReal, intent(in) :: tc       ! [C]
-    PetscReal, intent(in) :: ps       ! [Pa]
-    PetscReal, intent(in) :: ps_p,ps_t
-    PetscReal,intent(out) :: Henry,Henry_p,Henry_t
+    PetscReal, intent(in) :: T        ! temperature [C]
+    PetscReal, intent(in) :: Psat     ! saturation pressure
+    PetscReal, intent(out) :: Hc      ! Henry's constant
+    PetscBool, intent(in) :: calculate_derivative
+    PetscReal, intent(in) :: Psat_P   ! derivative Psat wrt pressure
+    PetscReal, intent(in) :: Psat_T   ! derivative Psat wrt temperature
+    PetscReal, intent(out) :: Hc_P    ! derivative Henry's constant wrt pressure
+    PetscReal, intent(out) :: Hc_T    ! derivative Henry's constant wrt temperature
 
-    PetscReal  Tr,tao,tmp,t
-    PetscReal, parameter :: a=-9.67578d0, b=4.72162d0, c=11.70585d0
-    PetscReal, parameter :: Tcl=647.096d0 ! H2O critical temp from IAPWS(1995b)
+    PetscReal :: Tr,tau,TK
+    PetscReal :: tmp, tmpA, tmpB, tmpC
+    PetscReal :: dTr_dT, dtau_dT, dtmp_dTr, dtmp_dtau
+    PetscReal, parameter :: a=-9.67578d0, b=4.72162d0, c=11.70585d0 ! for N2
+    PetscReal, parameter :: Tcw=647.096d0 ! H2O critical temp from IAPWS(1995b)
 
-    t = tc+273.15D0
-    Tr = t/Tcl
-    tao = 1.D0-Tr
-    tmp = a/Tr + b * tao**0.355d0/Tr + c * (Tr**(-0.41d0)) * exp(tao)
-    Henry = exp(tmp)*ps
-
-    tmp = ((-a/Tr+b*(-0.355d0*tao**(-0.645d0)-tao**0.355d0/Tr))/Tr - &
-         c*exp(tao)*(tao**(-0.41d0))*(0.41d0/Tr-1.d0))/Tcl
-    Henry_t = Henry*(tmp+ps_t/ps)
-    Henry_p = ps_p*Henry/ps
+    TK = T+273.15D0
+    Tr = TK/Tcw
+    tau = 1.D0-Tr
+    !tmp = a/Tr + b * tau**0.355d0/Tr + c * (Tr**(-0.41d0)) * exp(tau)
+    tmpA = a/Tr
+    tmpB = b*(tau**0.355d0)/Tr
+    tmpC = c*(Tr**-0.41d0)*exp(tau)
+    tmp = tmpA+tmpB+tmpC
+    Hc = exp(tmp)*Psat
+    if (calculate_derivative) then
+      dTr_dT = 1.d0/Tcw
+      dtau_dT = -1.d0*dTr_dT
+      dtmp_dTr = (-tmpA-tmpB-0.41d0*tmpC)/Tr
+      dtmp_dtau = 0.355d0*tmpB/tau+tmpC
+      Hc_T = Hc*((dtmp_dTr*dTr_dT+dtmp_dtau*dtau_dT)+Psat_T/Psat)
+!      tmp = ((-a/Tr+b*(-0.355d0*tau**(-0.645d0)-tau**0.355d0/Tr))/Tr - &
+!             c*exp(tau)*(tau**(-0.41d0))*(0.41d0/Tr-1.d0))/Tcw
+!      Hc_T = Hc*(tmp+Psat_T/Psat)
+      Hc_P = Psat_P*Hc/Psat
+    endif
 
 end subroutine EOSGasHenry_air
 
 ! ************************************************************************** !
 
-subroutine EOSGasHenryConstant(T,Psat,Hc)
-   implicit none
-    PetscReal, intent(in) :: T    ! temperature [C]
-    PetscReal, intent(in) :: Psat ! saturation pressure [Pa]
-    PetscReal, intent(out) :: Hc   ! Henry's constant [Pa]
+subroutine EOSGasHenryConstant(T,Psat,Hc,calculate_derivative, &
+                               Psat_P,Psat_T,Hc_P,Hc_T)
 
-    Hc = constant_henry
+  implicit none
+
+  PetscReal, intent(in) :: T        ! temperature [C]
+  PetscReal, intent(in) :: Psat     ! saturation pressure
+  PetscReal, intent(out) :: Hc      ! Henry's constant
+  PetscBool, intent(in) :: calculate_derivative
+  PetscReal, intent(in) :: Psat_P   ! derivative Psat wrt pressure
+  PetscReal, intent(in) :: Psat_T   ! derivative Psat wrt temperature
+  PetscReal, intent(out) :: Hc_P    ! derivative Henry's constant wrt pressure
+  PetscReal, intent(out) :: Hc_T    ! derivative Henry's constant wrt temperature
+
+  Hc = constant_henry
+  Hc_P = 0.d0
+  Hc_T = 0.d0
     
 end subroutine EOSGasHenryConstant
 
@@ -1256,7 +1600,7 @@ subroutine EOSGasInputRecord()
     write(word1,*) constant_henry
     write(id,'(a)') 'constant, ' // trim(word1) 
   endif
-  if (associated(EOSGasHenryPtr,EOSGasHenry_air_noderiv)) then
+  if (associated(EOSGasHenryPtr,EOSGasHenry_air)) then
     write(id,'(a29)',advance='no') "henry's constant: "
     write(id,'(a)') 'default, air'
   endif
@@ -1304,7 +1648,7 @@ subroutine EOSGasTest(temp_low,temp_high,pres_low,pres_high, &
   character(len=MAXWORDLENGTH) :: eos_viscosity_name
   character(len=MAXWORDLENGTH) :: eos_saturation_pressure_name
   character(len=MAXWORDLENGTH) :: eos_henry_name
-  character(len=MAXSTRINGLENGTH) :: header
+  character(len=MAXSTRINGLENGTH) :: header, string
 
   PetscErrorCode :: ierr
 
@@ -1389,7 +1733,7 @@ subroutine EOSGasTest(temp_low,temp_high,pres_low,pres_high, &
   ! Henry's constant
   if (associated(EOSGasHenryPtr,EOSGasHenryConstant)) then
     eos_henry_name = 'Constant'
-  else if (associated(EOSGasHenryPtr,EOSGasHenry_air_noderiv)) then
+  else if (associated(EOSGasHenryPtr,EOSGasHenry_air)) then
     eos_henry_name = 'Default'
   else
     eos_henry_name = 'Unknown'
@@ -1402,7 +1746,7 @@ subroutine EOSGasTest(temp_low,temp_high,pres_low,pres_high, &
     ! Need saturation pressure to calculate air partial pressure
     call EOSWaterSaturationPressure(temp(itemp),saturation_pressure,ierr)
     saturation_pressure_array(itemp) = saturation_pressure
-    call EOSGasHenryPtr(temp(itemp),saturation_pressure,henry(itemp))
+    call EOSGasHenry(temp(itemp),saturation_pressure,henry(itemp))
     do ipres = 1, npres
       call EOSGasDensityPtr(temp(itemp),pres(ipres), &
                             density_kg(ipres,itemp), &
@@ -1414,7 +1758,8 @@ subroutine EOSGasTest(temp_low,temp_high,pres_low,pres_high, &
       if (air_pressure > 0.d0) then
         call EOSGasViscosityPtr(temp(itemp),air_pressure,pres(ipres), &
                                 density_kg(ipres,itemp), &
-                                viscosity(ipres,itemp),ierr)
+                                viscosity(ipres,itemp),PETSC_FALSE, &
+                                dum1,dum2,dum3,dum4,ierr)
       else
         viscosity(ipres,itemp) = NaN
       endif
@@ -1422,8 +1767,12 @@ subroutine EOSGasTest(temp_low,temp_high,pres_low,pres_high, &
   enddo
 
 100 format(100es16.8)
-  if (len_trim(filename) == 0) filename = 'eos_gas_test.txt'
-  open(unit=IUNIT_TEMP,file=filename)
+  if (len_trim(filename) == 0) then
+    string = 'eos_gas_test.txt'
+  else
+    string = filename
+  endif
+  open(unit=IUNIT_TEMP,file=string)
   header = 'T[C], P[Pa], &
     &Density (' // trim(eos_density_name) // ') [kg/m^3], &
     &Enthalpy (' // trim(eos_energy_name) // ') [J/kmol], &

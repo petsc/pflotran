@@ -137,6 +137,9 @@ module Variables_module
   PetscInt, parameter, public :: OIL_MOBILITY            = 113
 
   PetscInt, parameter, public :: NATURAL_ID              = 114
+  PetscInt, parameter, public :: REACTION_AUXILIARY      = 115
+
+  PetscInt, parameter, public :: OIL_VISCOSITY           = 116
 
   PetscInt, parameter, public :: OIL_MOLE_FRACTION       = 115
   PetscInt, parameter, public :: SOLVENT_SATURATION      = 116

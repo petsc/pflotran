@@ -10,9 +10,6 @@ module Region_module
 
 #include "petsc/finclude/petscsys.h"
 
-  PetscInt, parameter, public :: STRUCTURED_GRID_REGION = 1
-  PetscInt, parameter, public :: UNSTRUCTURED_GRID_REGION = 2
-
   PetscInt, parameter, public :: DEFINED_BY_BLOCK = 1
   PetscInt, parameter, public :: DEFINED_BY_COORD = 2
   PetscInt, parameter, public :: DEFINED_BY_CELL_IDS = 3
@@ -44,7 +41,6 @@ module Region_module
     !           than cell id ane face id out of region.
     PetscInt, pointer :: vertex_ids(:,:) ! For Unstructured mesh
     PetscInt :: num_verts              ! For Unstructured mesh
-    PetscInt :: grid_type  ! To identify whether region is applicable to a Structured or Unstructred mesh
     type(region_sideset_type), pointer :: sideset
     type(region_explicit_face_type), pointer :: explicit_faceset
     type(polygonal_volume_type), pointer :: polygonal_volume
@@ -131,7 +127,6 @@ function RegionCreateWithNothing()
   region%num_cells = 0
   ! By default it is assumed that the region is applicable to strucutred grid,
   ! unless explicitly stated in pflotran input file
-  region%grid_type = STRUCTURED_GRID_REGION
   region%num_verts = 0
   nullify(region%coordinates)
   nullify(region%cell_ids)
@@ -288,7 +283,6 @@ function RegionCreateWithRegion(region)
   new_region%iface = region%iface
   new_region%num_cells = region%num_cells
   new_region%num_verts = region%num_verts
-  new_region%grid_type = region%grid_type
   if (associated(region%coordinates)) then
     call GeometryCopyCoordinates(region%coordinates, &
                                  new_region%coordinates)
@@ -565,19 +559,6 @@ subroutine RegionRead(region,input,option)
             option%io_buffer = 'FACE "' // trim(word) // &
               '" not recognized.'
             call printErrMsg(option)
-        end select
-      case('GRID','SURF_GRID')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'GRID','REGION')
-        call StringToUpper(word)
-        select case(trim(word))
-          case('STRUCTURED')
-            region%grid_type = STRUCTURED_GRID_REGION
-          case('UNSTRUCTURED')
-            region%grid_type = UNSTRUCTURED_GRID_REGION
-          case default
-            option%io_buffer = 'REGION keyword: GRID = '//trim(word)//'not supported yet'
-          call printErrMsg(option)
         end select
       case default
         call InputKeywordUnrecognized(keyword,'REGION',option)
@@ -1122,7 +1103,8 @@ subroutine RegionReadExplicitFaceSet(explicit_faceset,cell_ids,filename,option)
   
     select case(word)
       case('CONNECTIONS')
-        hint = 'Explicit Unstructured Grid CONNECTIONS'
+        hint = 'Explicit Unstructured Grid CONNECTIONS in file: ' // &
+          trim(adjustl(filename))
         call InputReadInt(input,option,num_connections)
         call InputErrorMsg(input,option,'number of connections',hint)
         

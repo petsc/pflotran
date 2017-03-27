@@ -50,6 +50,8 @@ STANDARD_CFG = \
 	default/materials/mineral_volume/mineral_volume.cfg \
 	default/infiltrometer/infiltrometer.cfg \
 	default/numerical/numerical.cfg \
+	default/output/output.cfg \
+	default/restart/restart.cfg \
 	default/steady/steady.cfg \
 	default/condition/condition.cfg \
 	default/condition/dataset/dataset.cfg \
@@ -78,10 +80,11 @@ ifneq ($(strip $(PARMETIS_LIB)),)
 	STANDARD_CFG += \
 		default/discretization/discretization.cfg \
 		geomech/uniaxial_strain/uniaxial_strain.cfg \
-        geomech/uniaxial_loading/uniaxial_loading.cfg \
-        surfaceflow/surface_flow_only/surface_only.cfg \
-	surfaceflow/surface_th/surface_th.cfg \
-	surfaceflow/inlinesurface/inlinesurface.cfg
+	        geomech/uniaxial_loading/uniaxial_loading.cfg \
+        	geomech/uniaxial_loading_biot/uniaxial_loading_biot.cfg \
+	        surfaceflow/surface_flow_only/surface_only.cfg \
+		surfaceflow/surface_th/surface_th.cfg \
+		surfaceflow/inlinesurface/inlinesurface.cfg
 endif
 
 #
@@ -104,7 +107,8 @@ GEOCHEMISTRY_CFG = \
 
 GEOMECHANICS_CFG = \
 	geomech/uniaxial_strain/uniaxial_strain.cfg \
-	geomech/uniaxial_loading/uniaxial_loading.cfg
+	geomech/uniaxial_loading/uniaxial_loading.cfg \
+	geomech/uniaxial_loading_biot/uniaxial_loading_biot.cfg
 
 FLOW_CFG = \
 	default/543/543.cfg \
@@ -306,6 +310,11 @@ clean-tests :
 	-rm -f hydrogeophysics/sigma__000000000111600.txt
 	-rm -f ufd/glass-wf_mass-0.dat
 	-rm -f ufd/fmdm_dummy-wf_mass-0.dat
+	-rm -f ufd/wf_doubles-wf_mass-0.dat
+	-rm -f ufd/wf_region-wf_mass-*.dat
 	-rm -f wipp/bragflo/well_production2-ss_mass-0.dat
 	-rm -f ufd/glass-*.vtk
+	-rm -f ufd/wf_doubles-*.vtk
+	-rm -f ufd/wf_region-*.vtk
+	-rm -f ufd/glass_full_geochem_np4-*.vtk
 

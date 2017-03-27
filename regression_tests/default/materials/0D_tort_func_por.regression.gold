@@ -1,0 +1,31 @@
+-- GENERIC: Porosity --
+      Max:   2.5000000000000E-01
+      Min:   2.5000000000000E-01
+     Mean:   2.5000000000000E-01
+        1:   2.5000000000000E-01
+-- GENERIC: Tortuosity --
+      Max:   5.0000000000000E-01
+      Min:   5.0000000000000E-01
+     Mean:   5.0000000000000E-01
+        1:   5.0000000000000E-01
+-- DISCRETE: Material ID --
+      Max:         1
+      Min:         1
+     Mean:   1.0000000000000E+00
+        1:         1
+-- SOLUTION: Flow --
+   Time (seconds):   0.0000000000000E+00
+   Time Steps:            0
+   Newton Iterations:            0
+   Solver Iterations:            0
+   Time Step Cuts:            0
+   Solution 2-Norm:   1.0132500000000E+05
+   Residual 2-Norm:   0.0000000000000E+00
+-- SOLUTION: Transport --
+   Time (seconds):   0.0000000000000E+00
+   Time Steps:            0
+   Newton Iterations:            0
+   Solver Iterations:            0
+   Time Step Cuts:            0
+   Solution 2-Norm:   1.0028476799870E-10
+   Residual 2-Norm:   0.0000000000000E+00

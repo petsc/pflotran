@@ -18,12 +18,6 @@ module PM_TOilIms_class
 #include "petsc/finclude/petscsnes.h"
 
   type, public, extends(pm_subsurface_flow_type) :: pm_toil_ims_type
-    !PetscReal :: dPmax
-    !PetscReal :: dTmax
-    !PetscReal :: dSmax
-    !PetscReal :: dPmax_allowable
-    !PetscReal :: dTmax_allowable
-    !PetscReal :: dSmax_allowable
     PetscInt, pointer :: max_change_ivar(:)
     PetscInt, pointer :: max_change_isubvar(:)
   contains
@@ -64,6 +58,7 @@ function PMTOilImsCreate()
   ! 
   use Variables_module, only : LIQUID_PRESSURE, OIL_PRESSURE, OIL_SATURATION, &
                                TEMPERATURE
+  use TOilIms_module, only : TOilImsDefaultSetup
   implicit none
   
   class(pm_toil_ims_type), pointer :: PMToilImsCreate
@@ -76,12 +71,6 @@ function PMTOilImsCreate()
 
   allocate(toil_ims_pm)
 
-  !toil_ims_pm%dPmax = 0.d0
-  !toil_ims_pm%dTmax = 0.d0
-  !toil_ims_pm%dSmax = 0.d0
-  !toil_ims_pm%dPmax_allowable = 5.d5 !Pa
-  !toil_ims_pm%dTmax_allowable = 5.d0
-  !toil_ims_pm%dSmax_allowable = 1.d0
   allocate(toil_ims_pm%max_change_ivar(4))
   toil_ims_pm%max_change_ivar = [LIQUID_PRESSURE, OIL_PRESSURE, &
                                 OIL_SATURATION, TEMPERATURE]
@@ -89,7 +78,9 @@ function PMTOilImsCreate()
   toil_ims_pm%max_change_isubvar = [0,0,0,0]
   
   call PMSubsurfaceFlowCreate(toil_ims_pm)
-  toil_ims_pm%name = 'PMTOilIms'
+  toil_ims_pm%name = 'TOilIms Flow'
+
+  call TOilImsDefaultSetup()
 
   PMTOilImsCreate => toil_ims_pm
   
@@ -104,8 +95,6 @@ subroutine PMTOilImsRead(this,input)
   ! Author: Paolo Orsini (OGS)
   ! Date: Date: 9/9/15
   !
-  ! use TOilIms_module ! shouldn't need this... 
-  !use TOilIms_Aux_module
   use PM_TOilIms_Aux_module 
   use Input_Aux_module
   use String_module
@@ -163,12 +152,6 @@ subroutine PMTOilImsRead(this,input)
       case('WINDOW_EPSILON') 
         call InputReadDouble(input,option,toil_ims_window_epsilon)
         call InputErrorMsg(input,option,'window epsilon',error_string)
-      ! consider to move in this in eos_oil, since this is an eos property
-      !case('OIL_COMPONENT_FORMULA_WEIGHT')
-      !  !assuming oil component is index 2, H2O ois index 1
-      !  call InputReadDouble(input,option,toil_ims_fmw_comp(2))
-      !  call InputErrorMsg(input,option,'oil component formula wt.', &
-      !                     'TOIL_IMS_MODE')
       case('ISOTHERMAL')
         toil_ims_isothermal = PETSC_TRUE
       case('MAXIMUM_PRESSURE_CHANGE')
@@ -182,6 +165,7 @@ subroutine PMTOilImsRead(this,input)
       case('DAMPING_FACTOR')
         call InputReadDouble(input,option,toil_ims_damping_factor)
         call InputErrorMsg(input,option,'damping factor',error_string)
+#if 0
       case('GOVERN_MAXIMUM_PRESSURE_CHANGE')
         call InputReadDouble(input,option,this%pressure_change_governor)
         call InputErrorMsg(input,option,'maximum allowable pressure change', &
@@ -195,6 +179,7 @@ subroutine PMTOilImsRead(this,input)
         call InputReadDouble(input,option,this%saturation_change_governor)
         call InputErrorMsg(input,option,'maximum allowable saturation change', &
                            error_string)
+#endif
       case('DEBUG_CELL')
         call InputReadInt(input,option,toil_ims_debug_cell_id)
         call InputErrorMsg(input,option,'debug cell id',error_string)

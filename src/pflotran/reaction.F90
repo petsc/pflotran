@@ -61,6 +61,7 @@ module Reaction_module
             RTAccumulation, &
             RTAccumulationDerivative, &
             RTPrintAuxVar, &
+            RTSetPlotVariables, &
             ReactionInterpolateLogK_hpt, &
             ReactionInitializeLogK_hpt, &
             RUpdateKineticState, &
@@ -857,6 +858,8 @@ subroutine ReactionReadPass1(reaction,input,option)
       case('MINIMUM_POROSITY')
         call InputReadDouble(input,option,reaction%minimum_porosity)
         call InputErrorMsg(input,option,'minimim porosity','CHEMISTRY')
+      case('USE_FULL_GEOCHEMISTRY')
+        reaction%use_full_geochemistry = PETSC_TRUE
       case default
         call InputKeywordUnrecognized(word,'CHEMISTRY',option)
     end select
@@ -1037,7 +1040,7 @@ subroutine ReactionReadPass2(reaction,input,option)
       case('MOLAL','MOLALITY', &
             'UPDATE_POROSITY','UPDATE_TORTUOSITY', &
             'UPDATE_PERMEABILITY','UPDATE_MINERAL_SURFACE_AREA', &
-            'NO_RESTART_MINERAL_VOL_FRAC')
+            'NO_RESTART_MINERAL_VOL_FRAC','USE_FULL_GEOCHEMISTRY')
         ! dummy placeholder
     end select
   enddo  
@@ -1546,6 +1549,16 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   
   do
 
+    ! there are cases (e.g. in a linear update) where components constrained by
+    ! a free ion concentration can change a bit.  This reset hopefullly eliminates
+    ! this issue.
+    do icomp = 1, reaction%naqcomp
+      select case(constraint_type(icomp))
+        case(CONSTRAINT_FREE,CONSTRAINT_LOG)
+          rt_auxvar%pri_molal(icomp) = free_conc(icomp)
+      end select
+    enddo          
+  
     if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF .and. &
         compute_activity_coefs) then
       call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
@@ -1916,6 +1929,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     if (mod(num_iterations,1000) == 0) then
 100   format('Constraint iteration count has exceeded: ',i5)
       write(option%io_buffer,100) num_iterations
+      call printMsg(option)
+      option%io_buffer = 'species_name  prev_free_ion  residual'
       call printMsg(option)
       do icomp=1,reaction%naqcomp
         write(option%io_buffer,200) reaction%primary_species_names(icomp), &
@@ -3110,6 +3125,9 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_tot_conc_type = TOTAL_MOLALITY
       case('AGE')
         reaction%print_age = PETSC_TRUE
+        reaction%use_full_geochemistry = PETSC_TRUE
+      case('AUXILIARY')
+        reaction%print_auxiliary = PETSC_TRUE
       case ('SITE_DENSITY')
         call InputReadWord(input,option,name,PETSC_TRUE)  
         call InputErrorMsg(input,option,'Site Name', &
@@ -4539,13 +4557,13 @@ subroutine RAccumulationSorb(rt_auxvar,global_auxvar,material_auxvar, &
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
   
-  PetscReal :: v_t
+!  PetscReal :: v_t
   
   ! units = (mol solute/m^3 bulk)*(m^3 bulk)/(sec) = mol/sec
   ! all residual entries should be in mol/sec
-  v_t = material_auxvar%volume/option%tran_dt
+!  v_t = material_auxvar%volume/option%tran_dt
   Res(1:reaction%naqcomp) = Res(1:reaction%naqcomp) + &
-    rt_auxvar%total_sorb_eq(:)*v_t
+    rt_auxvar%total_sorb_eq(:)*material_auxvar%volume
 
 end subroutine RAccumulationSorb
 
@@ -5090,7 +5108,8 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
   psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
-          material_auxvar%volume / option%tran_dt  
+!          material_auxvar%volume / option%tran_dt  
+          material_auxvar%volume
   istart = 1
   iend = reaction%naqcomp
   Res(istart:iend) = psv_t*rt_auxvar%total(:,iphase) 
@@ -5099,7 +5118,8 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
     do iimob = 1, reaction%immobile%nimmobile
       idof = reaction%offset_immobile + iimob
       Res(idof) = Res(idof) + rt_auxvar%immobile(iimob)* &
-                              material_auxvar%volume/option%tran_dt 
+!                              material_auxvar%volume/option%tran_dt 
+                              material_auxvar%volume
     enddo
   endif
   if (reaction%ncoll > 0) then
@@ -5118,7 +5138,8 @@ subroutine RTAccumulation(rt_auxvar,global_auxvar,material_auxvar, &
   if (reaction%gas%nactive_gas > 0) then
     iphase = 2
     psv_t = material_auxvar%porosity*global_auxvar%sat(iphase)*1000.d0* &
-            material_auxvar%volume / option%tran_dt  
+!            material_auxvar%volume / option%tran_dt  
+            material_auxvar%volume
     istart = 1
     iend = reaction%naqcomp
     Res(istart:iend) = Res(istart:iend) + psv_t*rt_auxvar%total(:,iphase)     
@@ -5634,5 +5655,337 @@ subroutine RTPrintAuxVar(rt_auxvar,reaction,option)
   endif
 
 end subroutine RTPrintAuxVar
+
+! ************************************************************************** !
+
+subroutine RTSetPlotVariables(list,reaction,option,time_unit)
+  ! 
+  ! Adds variables to be printed to list
+  ! 
+  ! Author: Glenn Hammond
+  ! Date: 10/15/12
+  ! 
+  
+  use Option_module
+  use Output_Aux_module
+  use Variables_module
+    
+  implicit none
+  
+  type(output_variable_list_type), pointer :: list
+  type(reaction_type), pointer :: reaction
+  type(option_type), pointer :: option
+  character(len=MAXWORDLENGTH) :: time_unit
+  
+  character(len=MAXWORDLENGTH) :: name,  units
+  character(len=MAXSTRINGLENGTH) string
+  character(len=2) :: free_mol_char, tot_mol_char, sec_mol_char
+  PetscInt :: i
+  
+  if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
+    free_mol_char = 'm'
+  else
+    free_mol_char = 'M'
+  endif
+  
+  if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+    tot_mol_char = 'm'
+  else
+    tot_mol_char = 'M'
+  endif
+  
+  if (reaction%print_secondary_conc_type == SECONDARY_MOLALITY) then
+    sec_mol_char = 'm'
+  else
+    sec_mol_char = 'M'
+  endif
+  
+  if (reaction%print_pH .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%h_ion_id /= 0) then
+      name = 'pH'
+      units = ''
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PH, &
+                                   reaction%species_idx%h_ion_id)
+    else
+      option%io_buffer = 'pH may not be printed when H+ is not ' // &
+        'defined as a species.'
+      call printErrMsg(option)
+    endif
+  endif  
+  
+  if (reaction%print_EH .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%o2_gas_id > 0) then
+      name = 'Eh'
+      units = 'V'
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,EH, &
+                                   reaction%species_idx%h_ion_id)
+    else
+      option%io_buffer = 'Eh may not be printed when O2(g) is not ' // &
+        'defined as a species.'
+      call printErrMsg(option)
+    endif
+  endif  
+  
+  if (reaction%print_pe .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%o2_gas_id > 0) then
+      name = 'pe'
+      units = ''
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,PE, &
+                                   reaction%species_idx%h_ion_id)
+    else
+      option%io_buffer = 'pe may not be printed when O2(g) is not ' // &
+        'defined as a species.'
+      call printErrMsg(option)   
+    endif
+  endif  
+  
+  if (reaction%print_O2 .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%o2_gas_id > 0) then
+      name = 'logfO2'
+      units = 'bars'
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units,O2, &
+                                   reaction%species_idx%o2_gas_id)
+    else
+      option%io_buffer = 'logfO2 may not be printed when O2(g) is not ' // &
+        'defined as a species.'
+      call printErrMsg(option)
+    endif
+  endif  
+  
+  if (reaction%print_total_component) then
+    do i=1,reaction%naqcomp
+      if (reaction%primary_species_print(i)) then
+        name = 'Total ' // trim(reaction%primary_species_names(i))
+        units = trim(tot_mol_char)
+        call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                     reaction%print_tot_conc_type,i)
+      endif
+    enddo
+  endif  
+  
+  if (reaction%print_free_ion) then
+    do i=1,reaction%naqcomp
+      if (reaction%primary_species_print(i)) then
+        name = 'Free ' // trim(reaction%primary_species_names(i)) 
+        units = trim(free_mol_char)
+        call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                      reaction%print_free_conc_type,i)
+      endif
+    enddo
+  endif  
+  
+#if 0
+!geh: not yet supported as we have no function set up to calculate the
+!     passive gas partial pressures at this point.  They are calculated
+!     in the CONSTRAINT output.
+  do i=1,reaction%gas%npassive_gas
+    if (reaction%gas%passive_print_me(i)) then
+      name = 'Passive Gas ' // trim(reaction%gas%passive_names(i))
+      units = trim('Pa')
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+          GAS_CONCENTRATION,i)
+    endif
+  enddo
+#endif
+
+  do i=1,reaction%gas%nactive_gas
+    if (reaction%gas%active_print_me(i)) then
+      name = 'Active Gas ' // trim(reaction%gas%active_names(i))
+      units = trim('Pa')
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+          GAS_CONCENTRATION,i)
+    endif
+  enddo
+
+  if (reaction%print_total_bulk) then
+    do i=1,reaction%naqcomp
+      if (reaction%primary_species_print(i)) then
+        name = 'Total Bulk ' // trim(reaction%primary_species_names(i))
+        units = 'mol/m^3 bulk'
+        call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                     TOTAL_BULK,i)   
+      endif
+    enddo
+  endif
+  
+  if (reaction%print_act_coefs) then
+    do i=1,reaction%naqcomp
+      if (reaction%primary_species_print(i)) then
+        name = 'Gamma ' // trim(reaction%primary_species_names(i))
+        units = ''
+        call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                                     PRIMARY_ACTIVITY_COEF,i) 
+      endif
+    enddo
+  endif
+  
+  do i=1,reaction%neqcplx
+    if (reaction%secondary_species_print(i)) then
+      name = trim(reaction%secondary_species_names(i))
+      units = trim(sec_mol_char)
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                   reaction%print_secondary_conc_type,i) 
+    endif
+  enddo   
+
+  do i=1,reaction%mineral%nkinmnrl
+    if (reaction%mineral%kinmnrl_print(i)) then
+      name = trim(reaction%mineral%kinmnrl_names(i)) // ' VF'
+      units = ''
+      call OutputVariableAddToList(list,name,OUTPUT_VOLUME_FRACTION,units, &
+                                   MINERAL_VOLUME_FRACTION,i)     
+    endif
+  enddo
+  
+  do i=1,reaction%mineral%nkinmnrl
+    if (reaction%mineral%kinmnrl_print(i)) then
+      name = trim(reaction%mineral%kinmnrl_names(i)) // ' Rate'
+      units = 'mol/m^3/sec'
+      call OutputVariableAddToList(list,name,OUTPUT_RATE,units, &
+                                   MINERAL_RATE,i)      
+    endif
+  enddo  
+  
+  if (reaction%mineral%print_saturation_index) then
+    do i=1,reaction%mineral%nmnrl
+      if (reaction%mineral%mnrl_print(i)) then
+        name = trim(reaction%mineral%mineral_names(i)) // ' SI'
+        units = ''
+        call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                                     MINERAL_SATURATION_INDEX,i)    
+      endif
+    enddo
+  endif
+  
+  do i=1,reaction%immobile%nimmobile
+    if (reaction%immobile%print_me(i)) then
+      name = trim(reaction%immobile%names(i)) 
+      units = 'mol/m^3'
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                   IMMOBILE_SPECIES,i)
+    endif
+  enddo
+  
+  do i=1,reaction%surface_complexation%nsrfcplxrxn
+    if (reaction%surface_complexation%srfcplxrxn_site_density_print(i)) then
+      name = trim(reaction%surface_complexation%srfcplxrxn_site_names(i)) // &
+             ' Site Density'
+      units = 'mol/m^3 bulk'
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                   SURFACE_SITE_DENSITY,i)
+    endif
+  enddo  
+
+  do i=1,reaction%surface_complexation%nsrfcplxrxn
+    if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+      name = 'Free ' // &
+             trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
+      units = 'mol/m^3 bulk'
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                   SURFACE_CMPLX_FREE,i)
+    endif
+  enddo
+  
+  
+  do i=1,reaction%surface_complexation%nsrfcplx
+    if (reaction%surface_complexation%srfcplx_print(i)) then
+      name = reaction%surface_complexation%srfcplx_names(i)
+      units = 'mol/m^3 bulk'
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                   SURFACE_CMPLX,i)
+    endif
+  enddo
+
+  do i=1,reaction%surface_complexation%nkinsrfcplxrxn
+    if (reaction%surface_complexation%srfcplxrxn_site_print(i)) then
+      option%io_buffer = 'Printing of kinetic surface complexes needs to be fixed'
+      call printErrMsg(option)
+      name = 'Free ' // &
+             trim(reaction%surface_complexation%srfcplxrxn_site_names(i))
+      units = 'mol/m^3 bulk'
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                   KIN_SURFACE_CMPLX_FREE,i)
+    endif
+  enddo  
+  
+  do i=1,reaction%surface_complexation%nkinsrfcplx
+    if (reaction%surface_complexation%srfcplx_print(i)) then
+      option%io_buffer = 'Printing of kinetic surface complexes needs to be fixed'
+      call printErrMsg(option)
+      name = reaction%surface_complexation%srfcplx_names(i)
+      units = 'mol/m^3 bulk'
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                   KIN_SURFACE_CMPLX,i)
+    endif
+  enddo  
+
+  if (associated(reaction%kd_print)) then
+    do i=1,reaction%naqcomp
+      if (reaction%kd_print(i)) then
+      name = trim(reaction%primary_species_names(i)) // ' KD'
+      units = '-'
+      call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                   PRIMARY_KD,i)
+      endif
+    enddo
+  endif
+  
+  if (associated(reaction%total_sorb_print)) then
+    do i=1,reaction%naqcomp
+      if (reaction%total_sorb_print(i)) then
+        name = 'Total Sorbed ' // trim(reaction%primary_species_names(i))
+        units = 'mol/m^3'
+        call  OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                      TOTAL_SORBED,i)        
+      endif
+    enddo
+  endif
+  
+  if (associated(reaction%total_sorb_mobile_print)) then
+    do i=1,reaction%ncollcomp
+      if (reaction%total_sorb_mobile_print(i)) then
+        name = 'Total Sorbed Mobile ' // &
+               trim(reaction%colloid_species_names(i))
+        units = trim(tot_mol_char)
+        call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                     TOTAL_SORBED_MOBILE,i)  
+      endif
+    enddo
+  endif  
+  
+  if (reaction%print_colloid) then
+    do i=1,reaction%ncoll
+      if (reaction%colloid_print(i)) then
+        name = 'Mobile Colloidal ' // trim(reaction%colloid_names(i)) 
+        units = trim(tot_mol_char)
+        call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                     COLLOID_MOBILE,i)         
+      endif
+    enddo
+    do i=1,reaction%ncoll
+      if (reaction%colloid_print(i)) then
+        name = 'Mobile Colloidal ' // trim(reaction%colloid_names(i))
+        units = trim(tot_mol_char)
+        call OutputVariableAddToList(list,name,OUTPUT_CONCENTRATION,units, &
+                                     COLLOID_IMMOBILE,i)         
+      endif
+    enddo
+  endif
+
+  if (reaction%print_age) then
+    if (reaction%species_idx%tracer_age_id > 0) then
+      name = 'Tracer Age'
+      units = trim(time_unit) // '-molar'
+      call OutputVariableAddToList(list,name,OUTPUT_GENERIC,units, &
+                                   AGE,reaction%species_idx%tracer_age_id, &
+                                   reaction%species_idx%tracer_aq_id)       
+    endif
+  endif  
+
+  if (reaction%print_auxiliary) then
+    call RSandboxAuxiliaryPlotVariables(list,reaction,option)
+  endif
+  
+end subroutine RTSetPlotVariables
 
 end module Reaction_module

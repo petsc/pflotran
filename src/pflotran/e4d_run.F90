@@ -1,6 +1,6 @@
 module e4d_run
 
-  use vars
+  use e4d_vars
   integer :: pf_com
   logical :: first_sol = .true.
   logical :: sim_e4d = .false.
@@ -19,8 +19,8 @@ contains
        call cleanup
        return
     end if
-   
-    if (.not. allocated(pf_porosity)) allocate(pf_porosity(pflotran_vec_size))
+
+    if (.not. allocated(pf_porosity)) allocate(pf_porosity(pflotran_vec_size))  
     if (.not. allocated(pf_tracer)) allocate(pf_tracer(pflotran_vec_size))
     if (.not. allocated(pf_saturation)) &
       allocate(pf_saturation(pflotran_vec_size))
@@ -36,8 +36,10 @@ contains
     call get_mcomm
     call cpu_time(Cbeg)
     call get_pf_porosity       !!get the pflotran porosity
+  
     do while (mcomm==1)
 
+     
        call get_pf_time      !!get the pflotran solution time
        call get_pf_sol       !!get the pflotran solution
       
@@ -46,8 +48,6 @@ contains
        call check_e4d_sim    !!see if we should do an e4d sim for this time
        
        if (sim_e4d) then
-
-          
 
           if (first_flag) then
              pf_saturation_0 = pf_saturation
@@ -83,7 +83,7 @@ contains
    
 
     open(13,file=trim(log_file),status='old',action='write',position='append')
-    write(13,*) "Min/Max Tracer Value: ",minval(pf_tracer),maxval(pf_tracer)
+    write(13,*) "Min/Max Fluid Cond. Value: ",minval(pf_tracer),maxval(pf_tracer)
     close(13)
     sim_e4d = .false.
     
@@ -91,7 +91,7 @@ contains
     read(10,*) tmp
     do i=1,ntime
        read(10,*) e4d_time,csrv_file,ccond_file
-       if (e4d_time .eq. pf_time) then
+       if (real(e4d_time) .eq. real(pf_time)) then
           call elog(35,i,tmp)
           close(10)
           
@@ -228,34 +228,38 @@ contains
 
   !____________________________________________________________________
   subroutine map_pf_e4d
-
-    implicit none
-    integer :: i,cnt 
-    character*40 :: filename, word
-    real :: K,St,C,parSat,delSigb,Sigf,delSigb_min
-    real, parameter :: m=2.0      !!m is the saturation exponent ... assumed to be 2    
-    !real, dimension(nelem) :: pftrac
-    !pftrac=0
-    !sigma=0.001 !sigma_base
-    !do i=1,nmap
-    !   sigma(map_inds(i,1)) = sigma(map_inds(i,1))+map(i)*pf_tracer(map_inds(i,2))
-    !   pftrac(map_inds(i,1))=  pftrac(map_inds(i,1)) +map(i)*pf_tracer(map_inds(i,2))
-    !end do
- 
-    do i=1,nmap 
-
-       Sigf = gw_sig + (sw_sig-gw_sig)*pf_tracer(map_inds(i,2))           !pore water conductivity
-       delSigb = (Sigf*pf_saturation(map_inds(i,2))**(m))/FF-sigma(map_inds(i,1)) 
-       sigma(map_inds(i,1)) = sigma(map_inds(i,1)) + map(i)*delSigb
-
-    end do
     
+    implicit none
+    integer :: i,cnt,pi,ei
+    character*40 :: filename, word
+    real :: a,m,n,tc,delSigb
+    logical :: tcorr_flag = .false.   
+   
+    !set the conductivity values that are mapped to zero
+    sigma(map_inds(:,1)) = 0
+    
+    !set the temperature correction flag
+    if(pflotran_temperature_vec_mpi .ne. 0) tcorr_flag = .true.
+
+    do i=1,nmap 
+       ei=map_inds(i,1)
+       pi=map_inds(i,2)
+       a=FMN(ei,1)
+       m=FMN(ei,2)
+       n=FMN(ei,3)
+       delsigb = (pf_tracer(pi)*pf_porosity(pi)**m)*(pf_saturation(pi)**n)/a
+    
+       if(tcorr_flag) delsigb = delsigb*(1+FMN(ei,4)*(pf_temperature(pi)-25))
+       sigma(ei)= sigma(ei) + map(i)*delsigb
+     
+    end do
+  
     do i=1,nelem
        if (sigma(i)<1e-6) sigma(i)=1e-6
     end do
  
     !write(*,*) pf_time
-    write(word,'(i15.15)') int(pf_time)
+    write(word,'(F25.10)') (pf_time)
     filename = 'sigma_' // &
                trim(adjustl(pflotran_group_prefix)) // &
                '_' // &
@@ -272,24 +276,6 @@ contains
   end subroutine map_pf_e4d
   !____________________________________________________________________
 
-  !____________________________________________________________________
-  !subroutine compute_FF
-  !  implicit none
-  !  integer :: i
-  !  real, parameter :: m = 2
-  !  allocate(ffac(nelem))
-  !  ffac = 0
-  !  do i=1,nmap
-  !      ffac(map_inds(i,1)) = ffac(map_inds(i,1)) + map(i)*(gw_sig*pf_saturation_0(map_inds(i,2))**(m))/sigma(map_inds(i,1))
-  !  end do
-  !  open(13,file='FF_Derived.txt',status='replace',action='write')
-  !  write(13,*) nelem
-  !  do i=1,nelem
-  !     write(13,*) ffac(i)
-  !  end do
-  !  close(13)
-  !end subroutine compute_FF
-  !____________________________________________________________________
 
   !____________________________________________________________________
   subroutine send_sigma
@@ -337,7 +323,7 @@ contains
 
       
     
-    write(word,'(i15.15)') int(pf_time)
+    write(word,'(F25.10)') (pf_time)
     filename = 'e4d_' // &
                trim(adjustl(pflotran_group_prefix)) // &
                '_' // &
@@ -347,7 +333,7 @@ contains
     open(unit=86,file=trim(filename),status='replace',action='write')
     write(86,*) nm
     do i = 1, nm
-       write(86,'(I6,4I6,4F15.8)') i,s_conf(i,1:4),dpred(i),dobs(i),dpred(i)/sd(i),dobs(i)/sd(i)
+       write(86,'(I6,4I5,4E20.8)') i,s_conf(i,1:4),dpred(i),dobs(i),dpred(i)/sd(i),dobs(i)/sd(i)
     enddo
     close(86)
     
@@ -418,20 +404,7 @@ contains
     integer :: i
     integer, save :: num_calls = 0
     call MPI_BCAST(sigma, nelem,MPI_REAL,0,E4D_COMM,ierr)   
-!geh
 
-!write(filename,*) num_calls
-!write(word,*) my_rank
-!filename = 'sigma_' // trim(adjustl(word)) // '_' // &
-!           trim(adjustl(filename)) // '.txt'
-!open(unit=86,file=filename,status='replace',action='write')
-!do i = 1, nelem
-!  write(86,*) sigma(i)
-!enddo
-!close(86)
-
-!num_calls = num_calls + 1
-!    print *, 'sigma received by slave', sigma(16)
   end subroutine receive_sigma
   !__________________________________________________________________
 
@@ -448,6 +421,7 @@ contains
     integer :: rw   
     integer :: ncls 
     integer :: cls(50) 
+    PetscReal :: val(1)
     
     
     !zero A
@@ -460,13 +434,11 @@ contains
        cbv=nbounds(col)
        
        !lower triangle
-       if ((rbv>=2 .and. rbv<=6) .or. (cbv>=2 .and. cbv<=6)) then
+       if (((rbv>=2 .and. rbv<=6) .or. (cbv>=2 .and. cbv<=6)) .and. .not. tank_flag ) then
           !one or both nodes are on a boundary so set to zero for bc's
           val(1) = 1e-30
        else
-          
           val(1) = sigma(S_map(i))*delA(i)
-    
        end if
        
        prn(1) = row-1
@@ -479,11 +451,23 @@ contains
        end if
        
     end do
-     
+    
+    !!fill in the diagonal for the zero potential bc's
+    do i=1,nnodes
+       !I own this node
+       
+       if((nbounds(i).eq.2) .and. .not. tank_flag) then
+          !this node is on a boundary, set val to 1.0 for bc
+          prn(1)=i-1;
+          pcn(1)=i-1;
+          val(1)=1;
+          call MatSetValues(A,1,prn,1,pcn,val,ADD_VALUES,perr)
+          
+       end if
+    end do
+    
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,perr);CHKERRQ(perr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,perr);CHKERRQ(perr)
-    
-    
     
   end subroutine build_A
   !__________________________________________________________________
@@ -504,19 +488,11 @@ contains
 !    call KSPSetOperators(KS,A,A,SAME_PRECONDITIONER,perr)
     call KSPSetOperators(KS,A,A,perr);CHKERRQ(perr)
     call KSPGetPC(KS,P,perr);CHKERRQ(perr)
-!geh - begin
-    call KSPSetErrorIfNotConverged(KS,PETSC_TRUE,perr);CHKERRQ(perr)
-!geh - end
     !call KSPSetType(KS,KSPGMRES,perr) !use default
     !call KSPGMRESSetRestart(KS,1000,perr);
     !call KSPGetTolerances(KS,rtol,atol,dtol,maxints,perr);CHKERRQ(perr)
     call KSPSetTolerances(KS,rtol,atol,dtol,maxints,perr);CHKERRQ(perr)
     call KSPSetFromOptions(KS,perr);CHKERRQ(perr)
-!geh - begin
-    ! this must come after KSPSetFromOptions (or PCSetFromOptions) as it is
-    ! overwritten by the defaults otherwise.
-    call PCFactorSetZeroPivot(P,1.d-40,perr);CHKERRQ(perr)
-!geh - end
     
   end subroutine build_ksp
   !__________________________________________________________________
@@ -524,7 +500,7 @@ contains
   subroutine forward_run
     implicit none
     integer :: i,m,n,niter,j,enum
-    integer, dimension(1) :: eindx
+    integer :: eindx
     real, dimension(2) :: pck
     PetscScalar :: val
     real :: tstart, tend
@@ -544,12 +520,13 @@ contains
        !   call Add_Jpp(i)
        !end if
        
-       eindx(1)=e_nods(enum)
+       eindx=e_nods(enum)
        val=1.0
        call VecSetValues(B,1,eindx-1,val,ADD_VALUES,perr);CHKERRQ(perr)
 
-       !if (tank_flag) call VecSetValues(B,1,i_zpot-1,-val,ADD_VALUES,perr);CHKERRQ(perr)
-           
+       if (tank_flag) then
+          call VecSetValues(B,1,i_zpot-1,-val,ADD_VALUES,perr);CHKERRQ(perr)
+       end if
        call VecAssemblyBegin(B,perr);CHKERRQ(perr)
        call VecAssemblyEnd(B,perr);CHKERRQ(perr)
        
@@ -558,10 +535,12 @@ contains
 
        call VecGetArrayF90(psol,vloc,perr);CHKERRQ(perr)
        poles(:,i)= real(vloc(1:nnodes))
+     
        call VecRestoreArrayF90(psol,vloc,perr);CHKERRQ(perr)
       
        call KSPGetIterationNumber(KS,niter,perr);CHKERRQ(perr)
-       !write(*,*) my_rank,niter
+
+       !write(*,*) my_rank,niter,maxval(poles(:,i)),minval(poles(:,i))
        !call cpu_time(tend)
        !pck(1)=tend-tstart
        !pck(2)=real(niter)

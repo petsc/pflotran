@@ -30,6 +30,7 @@ module Material_module
     class(dataset_base_type), pointer :: porosity_dataset
     class(dataset_base_type), pointer :: tortuosity_dataset
     PetscReal :: tortuosity
+    PetscBool :: tortuosity_function_of_porosity
     PetscInt :: saturation_function_id
     character(len=MAXWORDLENGTH) :: saturation_function_name
     PetscReal :: rock_density ! kg/m^3
@@ -51,10 +52,10 @@ module Material_module
     PetscReal :: thermal_conductivity_frozen
     PetscReal :: alpha_fr
 
-    PetscReal :: pore_compressibility
     PetscReal :: thermal_expansitivity   
     PetscReal :: dispersivity(3)
     PetscReal :: tortuosity_pwr
+    PetscReal :: tortuosity_func_porosity_pwr
     PetscReal :: min_pressure
     PetscReal :: max_pressure
     PetscReal :: max_permfactor
@@ -154,8 +155,10 @@ function MaterialPropertyCreate()
 !  material_property%porosity_dataset_name = ''
   nullify(material_property%porosity_dataset)
   nullify(material_property%tortuosity_dataset)
+  material_property%tortuosity_function_of_porosity = PETSC_FALSE
   material_property%tortuosity = 1.d0
   material_property%tortuosity_pwr = 0.d0
+  material_property%tortuosity_func_porosity_pwr = UNINITIALIZED_DOUBLE
   material_property%saturation_function_id = 0
   material_property%saturation_function_name = ''
   material_property%rock_density = UNINITIALIZED_DOUBLE
@@ -176,7 +179,6 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_frozen = 0.d0
   material_property%alpha_fr = 0.95d0
 
-  material_property%pore_compressibility = UNINITIALIZED_DOUBLE
   material_property%thermal_expansitivity = 0.d0  
   material_property%dispersivity = 0.d0
   material_property%min_pressure = 0.d0
@@ -235,9 +237,13 @@ subroutine MaterialPropertyRead(material_property,input,option)
   PetscBool :: therm_k_frz
   PetscBool :: therm_k_exp_frz
   PetscReal :: tempreal
+  PetscInt, parameter :: TMP_SOIL_COMPRESSIBILITY = 1
+  PetscInt, parameter :: TMP_BULK_COMPRESSIBILITY = 2
+  PetscInt :: soil_or_bulk_compressibility
 
   therm_k_frz = PETSC_FALSE
   therm_k_exp_frz = PETSC_FALSE
+  soil_or_bulk_compressibility = UNINITIALIZED_INTEGER
 
   input%ierr = 0
   do
@@ -333,18 +339,19 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputErrorMsg(input,option, &
                            'thermal conductivity frozen exponent', &
                            'MATERIAL_PROPERTY')
-      !case('PORE_COMPRESSIBILITY')
-      !  call InputReadDouble(input,option, &
-      !                       material_property%pore_compressibility)
-      !  call InputErrorMsg(input,option,'pore compressibility', &
-      !                     'MATERIAL_PROPERTY')
       case('SOIL_COMPRESSIBILITY_FUNCTION')
         call InputReadWord(input,option, &
                            material_property%soil_compressibility_function, &
                            PETSC_TRUE)
         call InputErrorMsg(input,option,'soil compressibility function', &
                            'MATERIAL_PROPERTY')
-      case('SOIL_COMPRESSIBILITY') 
+      case('SOIL_COMPRESSIBILITY','BULK_COMPRESSIBILITY') 
+        select case(keyword)
+          case('SOIL_COMPRESSIBILITY') 
+            soil_or_bulk_compressibility = TMP_SOIL_COMPRESSIBILITY
+          case('BULK_COMPRESSIBILITY') 
+            soil_or_bulk_compressibility = TMP_BULK_COMPRESSIBILITY
+        end select
         call DatasetReadDoubleOrDataset(input,material_property% &
                                           soil_compressibility, &
                                    material_property%compressibility_dataset, &
@@ -382,6 +389,13 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call DatasetReadDoubleOrDataset(input,material_property%tortuosity, &
                                         material_property%tortuosity_dataset, &
                                         'tortuosity','MATERIAL_PROPERTY',option)
+      case('TORTUOSITY_FUNCTION_OF_POROSITY')
+        material_property%tortuosity_function_of_porosity = PETSC_TRUE
+        material_property%tortuosity = UNINITIALIZED_DOUBLE
+        call InputReadDouble(input,option, &
+                             material_property%tortuosity_func_porosity_pwr)
+        call InputErrorMsg(input,option,'tortuosity power as a function of &
+                           &porosity','MATERIAL_PROPERTY')
       case('WIPP-FRACTURE')
         ! Calculates permeability and porosity induced by fracture,
         ! which is described by pressure within certain range of pressure
@@ -691,6 +705,18 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputKeywordUnrecognized(keyword,'MATERIAL_PROPERTY',option)
     end select 
   enddo
+  
+  if (material_property%tortuosity_function_of_porosity) then
+    if (associated(material_property%tortuosity_dataset)) then
+      option%io_buffer = 'A TORTUOSITY dataset may not be assigned in &
+        &combination with TORTUOSITY_FUNCTION_OF_POROSITY.'
+      call printErrMsg(option)
+    endif
+    if (.not.associated(material_property%porosity_dataset)) then
+      material_property%tortuosity = material_property%porosity** &
+        material_property%tortuosity_func_porosity_pwr
+    endif
+  endif
 
   if (associated(material_property%permeability_dataset) .and. &
       .not.material_property%isotropic_permeability .and. &
@@ -721,13 +747,35 @@ subroutine MaterialPropertyRead(material_property,input,option)
   endif
 
   if (len_trim(material_property%soil_compressibility_function) > 0) then
+    word = material_property%soil_compressibility_function
+    select case(word)
+      case('BRAGFLO','WIPP')
+        if (soil_or_bulk_compressibility /= TMP_BULK_COMPRESSIBILITY) then
+          option%io_buffer = 'A BULK_COMPRESSIBILITY should be entered &
+            &instead of a SOIL_COMPRESSIBILITY in MATERIAL_PROPERTY "' // &
+            trim(material_property%name) // '" since a BRAGFLO or WIPP &
+            &SOIL_COMPRESSIBILITY function is defined.'
+          call printErrMsg(option)
+        endif
+        word = 'BULK_COMPRESSIBILITY'
+      case('LEIJNSE','DEFAULT')
+        if (soil_or_bulk_compressibility /= TMP_SOIL_COMPRESSIBILITY) then
+          option%io_buffer = 'A SOIL_COMPRESSIBILITY should be entered &
+            &instead of a BULK_COMPRESSIBILITY in MATERIAL_PROPERTY "' // &
+            trim(material_property%name) // '" since a LEIJNSE or DEFAULT &
+            &SOIL_COMPRESSIBILITY function is defined.'
+          call printErrMsg(option)
+        endif
+        word = 'SOIL_COMPRESSIBILITY'
+      case default
+    end select
     option%flow%transient_porosity = PETSC_TRUE
     if (Uninitialized(material_property%soil_compressibility) .and. &
         .not.associated(material_property%compressibility_dataset)) then
       option%io_buffer = 'SOIL_COMPRESSIBILITY_FUNCTION is specified in &
         &inputdeck for MATERIAL_PROPERTY "' // &
         trim(material_property%name) // &
-        '", but SOIL_COMPRESSIBILITY is not defined.'
+        '", but a ' // trim(word) // ' is not defined.'
       call printErrMsg(option)
     endif
     if (Uninitialized(material_property%soil_reference_pressure) .and. &
@@ -1267,6 +1315,8 @@ subroutine MaterialInitAuxIndices(material_property_ptrs,option)
       select case(material_property_ptrs(i)%ptr%soil_compressibility_function)
         case('BRAGFLO','WIPP')
           MaterialCompressSoilPtrTmp => MaterialCompressSoilBRAGFLO
+        case('QUADRATIC')
+          MaterialCompressSoilPtrTmp => MaterialCompressSoilQuadratic
         case('LEIJNSE','DEFAULT')
           MaterialCompressSoilPtrTmp => MaterialCompressSoilLeijnse
         case default

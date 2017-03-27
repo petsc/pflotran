@@ -475,7 +475,7 @@ end function GetMineralIDFromName1
 
 ! ************************************************************************** !
 
-function GetMineralIDFromName2(name,mineral,must_be_kinetic,return_error, &
+function GetMineralIDFromName2(name,mineral,must_be_kinetic,throw_error, &
                                option)
   ! 
   ! Returns the id of mineral with the corresponding name
@@ -491,7 +491,7 @@ function GetMineralIDFromName2(name,mineral,must_be_kinetic,return_error, &
   type(mineral_type) :: mineral
   character(len=MAXWORDLENGTH) :: name
   PetscBool :: must_be_kinetic
-  PetscBool :: return_error
+  PetscBool :: throw_error
   type(option_type) :: option
 
   PetscInt :: GetMineralIDFromName2
@@ -519,7 +519,7 @@ function GetMineralIDFromName2(name,mineral,must_be_kinetic,return_error, &
     cur_mineral => cur_mineral%next
   enddo
 
-  if (return_error .and. GetMineralIDFromName2 <= 0) then
+  if (throw_error .and. GetMineralIDFromName2 <= 0) then
     option%io_buffer = 'Mineral "' // trim(name) // &
       '" not found among minerals in GetMineralIDFromName().'
     call printErrMsg(option)
@@ -549,7 +549,13 @@ function GetKineticMineralIDFromName(name,mineral,option)
   PetscInt :: GetKineticMineralIDFromName
 
   GetKineticMineralIDFromName = &
-    GetMineralIDFromName(name,mineral,PETSC_TRUE,PETSC_TRUE,option)
+    GetMineralIDFromName(name,mineral,PETSC_TRUE,PETSC_FALSE,option)
+
+  if (GetKineticMineralIDFromName <= 0) then
+    option%io_buffer = 'Mineral "' // trim(name) // &
+      '" not found among kinetic minerals in GetKineticMineralIDFromName().'
+    call printErrMsg(option)
+  endif
 
 end function GetKineticMineralIDFromName
 

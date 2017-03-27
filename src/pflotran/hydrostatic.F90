@@ -421,10 +421,19 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         coupler%flow_aux_real_var(1,iconn) = pressure
       case default
         if (condition%pressure%itype == SEEPAGE_BC) then
-          coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
+          coupler%flow_aux_real_var(1,iconn) = &
+            max(pressure,option%reference_pressure)
         else if (condition%pressure%itype == CONDUCTANCE_BC) then
-          coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
-          coupler%flow_aux_real_var(2,iconn) = condition%pressure%aux_real(1)
+          coupler%flow_aux_real_var(1,iconn) = &
+            max(pressure,option%reference_pressure)
+          select case(option%iflowmode)
+            case(RICHARDS_MODE)
+              coupler%flow_aux_real_var(RICHARDS_CONDUCTANCE_DOF,iconn) = &
+                condition%pressure%aux_real(1)
+            case(TH_MODE)
+              coupler%flow_aux_real_var(TH_CONDUCTANCE_DOF,iconn) = &
+                condition%pressure%aux_real(1)
+          end select
         else
           coupler%flow_aux_real_var(1,iconn) = pressure
         endif

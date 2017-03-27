@@ -22,6 +22,7 @@ module Characteristic_Curves_module
     type(polynomial_type), pointer :: pres_poly
     PetscReal :: Sr
     PetscReal :: pcmax
+    PetscBool :: analytical_derivative_available
   contains
     procedure, public :: Init => SFBaseInit
     procedure, public :: Verify => SFBaseVerify
@@ -37,6 +38,14 @@ module Characteristic_Curves_module
     procedure, public :: CapillaryPressure => SFDefaultCapillaryPressure
     procedure, public :: Saturation => SFDefaultSaturation
   end type sat_func_default_type  
+  type, public, extends(sat_func_base_type) :: sat_func_constant_type
+    PetscReal :: constant_capillary_pressure
+    PetscReal :: constant_saturation
+  contains
+    procedure, public :: Verify => SFConstantVerify
+    procedure, public :: CapillaryPressure => SFConstantCapillaryPressure
+    procedure, public :: Saturation => SFConstantSaturation
+  end type sat_func_constant_type  
   type, public, extends(sat_func_base_type) :: sat_func_VG_type
     PetscReal :: alpha
     PetscReal :: m
@@ -64,6 +73,29 @@ module Characteristic_Curves_module
     procedure, public :: CapillaryPressure => SF_Linear_CapillaryPressure
     procedure, public :: Saturation => SF_Linear_Saturation
   end type sat_func_Linear_type
+  ! BRAGFLO KRP1 modified van Genuchten-Parker Model
+  ! very similar to van Genuchten-Mualem, but includes Sgr
+  type, public, extends(sat_func_base_type) :: sat_func_BF_KRP1_type
+    PetscReal :: Srg
+    PetscReal :: alpha
+    PetscReal :: m
+  contains
+    procedure, public :: Init => SF_BF_KRP1_Init
+    procedure, public :: Verify => SF_BF_KRP1_Verify
+    procedure, public :: CapillaryPressure => SF_BF_KRP1_CapillaryPressure
+    procedure, public :: Saturation => SF_BF_KRP1_Saturation
+  end type sat_func_BF_KRP1_type
+  ! BRAGFLO KRP5 modified Linear Model
+  ! very similar to Linear-Burdine, but includes Sgr
+  type, public, extends(sat_func_base_type) :: sat_func_BF_KRP5_type
+    PetscReal :: alpha
+    PetscReal :: Srg
+  contains
+    procedure, public :: Init => SF_BF_KRP5_Init
+    procedure, public :: Verify => SF_BF_KRP5_Verify
+    procedure, public :: CapillaryPressure => SF_BF_KRP5_CapillaryPressure
+    procedure, public :: Saturation => SF_BF_KRP5_Saturation
+  end type sat_func_BF_KRP5_type
   ! BRAGFLO KRP9 modified Brooks-Corey Model
   type, public, extends(sat_func_base_type) :: sat_func_BF_KRP9_type
   contains
@@ -81,7 +113,7 @@ module Characteristic_Curves_module
     procedure, public :: CapillaryPressure => SF_BF_KRP4_CapillaryPressure
     procedure, public :: Saturation => SF_BF_KRP4_Saturation
   end type sat_func_BF_KRP4_type
-  ! BRAGFLO KRP11 modified Brooks-Corey Model
+  ! BRAGFLO KRP11 
   type, public, extends(sat_func_base_type) :: sat_func_BF_KRP11_type
   contains
     procedure, public :: Init => SF_BF_KRP11_Init
@@ -97,13 +129,25 @@ module Characteristic_Curves_module
   contains
     procedure, public :: Verify => SF_BF_KRP12_Verify
     procedure, public :: CapillaryPressure => SF_BF_KRP12_CapillaryPressure
-  end type sat_func_BF_KRP12_type 
+  end type sat_func_BF_KRP12_type
+  ! modified Kosugi Model (Malama & Kuhlman, 2015)
+  type, public, extends(sat_func_base_type) :: sat_func_mK_type
+    PetscReal :: sigmaz, muz
+    PetscReal :: rmax, r0
+    PetscInt :: nparam
+  contains
+    procedure, public :: Init => SF_mK_Init
+    procedure, public :: Verify => SF_mK_Verify
+    procedure, public :: CapillaryPressure => SF_mK_CapillaryPressure
+    procedure, public :: Saturation => SF_mK_Saturation
+  end type sat_func_mK_type
   ! End Saturation Functions --------------------------------------------------
 
   ! Begin Relative Permeability Functions -------------------------------------
   type :: rel_perm_func_base_type
     type(polynomial_type), pointer :: poly
     PetscReal :: Sr
+    PetscBool :: analytical_derivative_available
   contains
     procedure, public :: Init => RPFBaseInit
     procedure, public :: Verify => RPFBaseVerify
@@ -226,6 +270,25 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPF_Burdine_Linear_Gas_Verify
     procedure, public :: RelativePermeability => RPF_Burdine_Linear_Gas_RelPerm
   end type rpf_Burdine_Linear_gas_type
+  ! BRAGFLO KRP1 modified van Genuchten Model
+  ! relperm equations for KRP1 is identical to Mualem van Genuchten formulation
+  type, public, extends(rpf_Mualem_VG_liq_type) :: rpf_BRAGFLO_KRP1_liq_type
+  contains
+  end type rpf_BRAGFLO_KRP1_liq_type
+  type, public, extends(rpf_Mualem_VG_gas_type) :: rpf_BRAGFLO_KRP1_gas_type
+  contains
+  end type rpf_BRAGFLO_KRP1_gas_type
+  ! Burdine-Linear
+  type, public, extends(rel_perm_func_base_type) :: rpf_BRAGFLO_KRP5_liq_type
+    PetscReal :: Srg
+  contains
+    procedure, public :: Init => RPF_BRAGFLO_KRP5_Liq_Init
+    procedure, public :: Verify => RPF_BRAGFLO_KRP5_Liq_Verify
+    procedure, public :: RelativePermeability => RPF_BRAGFLO_KRP5_Liq_RelPerm
+  end type rpf_BRAGFLO_KRP5_liq_type
+  type, public, extends(rpf_Burdine_Linear_gas_type) :: rpf_BRAGFLO_KRP5_gas_type
+  contains
+  end type rpf_BRAGFLO_KRP5_gas_type
   ! BRAGFLO KRP9
   type, public, extends(rel_perm_func_base_type) :: rpf_BRAGFLO_KRP9_liq_type
   contains
@@ -243,12 +306,11 @@ module Characteristic_Curves_module
   end type rpf_BRAGFLO_KRP9_gas_type
   ! BRAGFLO KRP4 modified Brooks-Corey Model
   ! relperm equations for KRP4 is identical to Burdine Brooks Corey
-  ! formulation, but with different conditions
+  ! formulation, but with different conditions in Gas RelPerm
   type, public, extends(rpf_Burdine_BC_liq_type) :: rpf_BRAGFLO_KRP4_liq_type
   contains
   end type rpf_BRAGFLO_KRP4_liq_type
-  type, public, extends(rpf_Burdine_BC_gas_type) :: & 
-                        rpf_BRAGFLO_KRP4_gas_type
+  type, public, extends(rpf_Burdine_BC_gas_type) :: rpf_BRAGFLO_KRP4_gas_type
   contains
     procedure, public :: RelativePermeability => RPF_BRAGFLO_KRP4_Gas_RelPerm
   end type rpf_BRAGFLO_KRP4_gas_type
@@ -310,6 +372,21 @@ module Characteristic_Curves_module
     procedure, public :: Verify => RPFConstantVerify
     procedure, public :: RelativePermeability => RPF_ConstantRelPerm
   end type rel_perm_func_constant_type
+  ! modified Kosugi (Malama & Kuhlman, 2015) for liquid and gas
+  type, public, extends(rel_perm_func_base_type) :: rpf_mK_liq_type
+    PetscReal :: sigmaz
+  contains
+    procedure, public :: Init => RPF_mK_Liq_Init
+    procedure, public :: Verify => RPF_mK_Liq_Verify
+    procedure, public :: RelativePermeability => RPF_mK_Liq_RelPerm
+  end type rpf_mK_liq_type
+  type, public, extends(rel_perm_func_base_type) :: rpf_mK_gas_type
+    PetscReal :: Srg
+    PetscReal :: sigmaz
+  contains
+    procedure, public :: Verify => RPF_mK_Gas_Verify
+    procedure, public :: RelativePermeability => RPF_mK_Gas_RelPerm
+  end type rpf_mK_gas_type
   ! End Relative Permeability Functions ---------------------------------------
  
   type, public :: characteristic_curves_type
@@ -336,13 +413,17 @@ module Characteristic_Curves_module
             CharacteristicCurvesDestroy, &
             CharCurvesInputRecord, &
   ! required to be public for unit tests - Heeho Park
+            SF_Constant_Create, &
             SF_VG_Create, &
             SF_BC_Create, &
             SF_Linear_Create, &
+            SF_BF_KRP1_Create, &
+            SF_BF_KRP5_Create, &
             SF_BF_KRP9_Create, &
             SF_BF_KRP4_Create, &
             SF_BF_KRP11_Create, &
             SF_BF_KRP12_Create, &
+            SF_mK_Create, &
             RPF_Mualem_VG_Liq_Create, &
             RPF_Mualem_VG_Gas_Create, &
             RPF_Burdine_BC_Liq_Create, &
@@ -356,6 +437,10 @@ module Characteristic_Curves_module
             RPF_Mualem_Linear_Gas_Create, &
             RPF_Burdine_Linear_Liq_Create, &
             RPF_Burdine_Linear_Gas_Create, &
+            RPF_BRAGFLO_KRP1_Liq_Create, &
+            RPF_BRAGFLO_KRP1_Gas_Create, &
+            RPF_BRAGFLO_KRP5_Liq_Create, &
+            RPF_BRAGFLO_KRP5_Gas_Create, &
             RPF_BRAGFLO_KRP9_Liq_Create, &
             RPF_BRAGFLO_KRP9_Gas_Create, &
             RPF_BRAGFLO_KRP4_Liq_Create, &
@@ -364,6 +449,8 @@ module Characteristic_Curves_module
             RPF_BRAGFLO_KRP11_Gas_Create, &
             RPF_BRAGFLO_KRP12_Liq_Create, &
             RPF_BRAGFLO_KRP12_Gas_Create, &
+            RPF_mK_Liq_Create, &
+            RPF_mK_Gas_Create, &
             PolynomialCreate
 
 contains
@@ -420,7 +507,6 @@ subroutine CharacteristicCurvesRead(this,input,option)
   class(characteristic_curves_type) :: this
   type(input_type), pointer :: input
   type(option_type) :: option
-  PetscInt :: iphase
   
   character(len=MAXWORDLENGTH) :: keyword, word, phase_keyword
   character(len=MAXSTRINGLENGTH) :: error_string
@@ -447,20 +533,28 @@ subroutine CharacteristicCurvesRead(this,input,option)
                            error_string)
         call StringToUpper(word)
         select case(word)
+          case('CONSTANT')
+            this%saturation_function => SF_Constant_Create()
           case('VAN_GENUCHTEN')
             this%saturation_function => SF_VG_Create()
           case('BROOKS_COREY')
             this%saturation_function => SF_BC_Create()
           case('LINEAR')
             this%saturation_function => SF_Linear_Create()
-          case('BRAGFLO_KRP9')
-            this%saturation_function => SF_BF_KRP9_Create()
+          case('BRAGFLO_KRP1')
+            this%saturation_function => SF_BF_KRP1_Create()
           case('BRAGFLO_KRP4')
             this%saturation_function => SF_BF_KRP4_Create()
+          case('BRAGFLO_KRP5')
+            this%saturation_function => SF_BF_KRP5_Create()
+          case('BRAGFLO_KRP9')
+            this%saturation_function => SF_BF_KRP9_Create()
           case('BRAGFLO_KRP11')
             this%saturation_function => SF_BF_KRP11_Create()
           case('BRAGFLO_KRP12')
             this%saturation_function => SF_BF_KRP12_Create()
+          case('MODIFIED_KOSUGI')
+            this%saturation_function => SF_mK_Create()
           case default
             call InputKeywordUnrecognized(word,'SATURATION_FUNCTION',option)
         end select
@@ -517,16 +611,29 @@ subroutine CharacteristicCurvesRead(this,input,option)
           case('BURDINE_LINEAR_GAS')
             rel_perm_function_ptr => RPF_Burdine_Linear_Gas_Create()
             phase_keyword = 'GAS'
-          case('BRAGFLO_KRP9_LIQ')
-            rel_perm_function_ptr => RPF_BRAGFLO_KRP9_Liq_Create()
+          case('BRAGFLO_KRP1_LIQ')
+            rel_perm_function_ptr => RPF_BRAGFLO_KRP1_Liq_Create()
             phase_keyword = 'LIQUID'
-          case('BRAGFLO_KRP9_GAS')
-            rel_perm_function_ptr => RPF_BRAGFLO_KRP9_Gas_Create()
+          case('BRAGFLO_KRP1_GAS')
+            rel_perm_function_ptr => RPF_BRAGFLO_KRP1_Gas_Create()
+            phase_keyword = 'GAS'
           case('BRAGFLO_KRP4_LIQ')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP4_Liq_Create()
             phase_keyword = 'LIQUID'
           case('BRAGFLO_KRP4_GAS')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP4_Gas_Create()
+            phase_keyword = 'GAS'
+          case('BRAGFLO_KRP5_LIQ')
+            rel_perm_function_ptr => RPF_BRAGFLO_KRP5_Liq_Create()
+            phase_keyword = 'LIQUID'
+          case('BRAGFLO_KRP5_GAS')
+            rel_perm_function_ptr => RPF_BRAGFLO_KRP5_Gas_Create()
+            phase_keyword = 'GAS'
+          case('BRAGFLO_KRP9_LIQ')
+            rel_perm_function_ptr => RPF_BRAGFLO_KRP9_Liq_Create()
+            phase_keyword = 'LIQUID'
+          case('BRAGFLO_KRP9_GAS')
+            rel_perm_function_ptr => RPF_BRAGFLO_KRP9_Gas_Create()
             phase_keyword = 'GAS'
           case('BRAGFLO_KRP11_LIQ')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP11_Liq_Create()
@@ -539,6 +646,12 @@ subroutine CharacteristicCurvesRead(this,input,option)
             phase_keyword = 'LIQUID'
           case('BRAGFLO_KRP12_GAS')
             rel_perm_function_ptr => RPF_BRAGFLO_KRP12_Gas_Create()
+            phase_keyword = 'GAS'
+          case('MODIFIED_KOSUGI_LIQ')
+            rel_perm_function_ptr => RPF_mK_Liq_Create()
+            phase_keyword = 'LIQUID'
+          case('MODIFIED_KOSUGI_GAS')
+            rel_perm_function_ptr => RPF_mK_Gas_Create()
             phase_keyword = 'GAS'
           case('TOUGH2_LINEAR_OIL')
             rel_perm_function_ptr => RPF_TOUGH2_Linear_Oil_Create()
@@ -621,12 +734,28 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   smooth = PETSC_FALSE
   error_string = 'CHARACTERISTIC_CURVES,SATURATION_FUNCTION,'
   select type(sf => saturation_function)
+    class is(sat_func_constant_type)
+      error_string = trim(error_string) // 'CONSTANT'
     class is(sat_func_VG_type)
       error_string = trim(error_string) // 'VAN_GENUCHTEN'
     class is(sat_func_BC_type)
       error_string = trim(error_string) // 'BROOKS_COREY'
     class is(sat_func_Linear_type)
       error_string = trim(error_string) // 'LINEAR'
+    class is(sat_func_BF_KRP1_type)
+      error_string = trim(error_string) // 'BRAGFLO_KRP1'
+    class is(sat_func_BF_KRP4_type)
+      error_string = trim(error_string) // 'BRAGFLO_KRP4'
+    class is(sat_func_BF_KRP5_type)
+      error_string = trim(error_string) // 'BRAGFLO_KRP5'
+    class is(sat_func_BF_KRP9_type)
+      error_string = trim(error_string) // 'BRAGFLO_KRP9'
+    class is(sat_func_BF_KRP11_type)
+      error_string = trim(error_string) // 'BRAGFLO_KRP11'
+    class is(sat_func_BF_KRP12_type)
+      error_string = trim(error_string) // 'BRAGFLO_KRP12'
+    class is(sat_func_mK_type)
+      error_string = trim(error_string) // 'MODIFIED_KOSUGI'
   end select
   do
     call InputReadPflotranString(input,option)
@@ -641,11 +770,11 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
     select case(keyword)
       case('LIQUID_RESIDUAL_SATURATION') 
         call InputReadDouble(input,option,saturation_function%Sr)
-        call InputErrorMsg(input,option,'liquid residual saturation', &
+        call InputErrorMsg(input,option,'LIQUID_RESIDUAL_SATURATION', &
                            error_string)
       case('MAX_CAPILLARY_PRESSURE') 
         call InputReadDouble(input,option,saturation_function%pcmax)
-        call InputErrorMsg(input,option,'maximum capillary pressure', &
+        call InputErrorMsg(input,option,'MAX_CAPILLARY_PRESSURE', &
                             error_string)
       case('SMOOTH')
         smooth = PETSC_TRUE
@@ -656,6 +785,20 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
     if (found) cycle
     
     select type(sf => saturation_function)
+      class is(sat_func_constant_type)
+        select case(keyword)
+          case('CONSTANT_CAPILLARY_PRESSURE') 
+            call InputReadDouble(input,option,sf%constant_capillary_pressure)
+            call InputErrorMsg(input,option,'constant capillary pressure', &
+                               error_string)
+          case('CONSTANT_SATURATION') 
+            call InputReadDouble(input,option,sf%constant_saturation)
+            call InputErrorMsg(input,option,'constant saturation', &
+                                error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                   'constant saturation function',option)
+        end select
       class is(sat_func_VG_type)
         select case(keyword)
           case('M') 
@@ -689,6 +832,33 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputKeywordUnrecognized(keyword, &
                    'Linear saturation function',option)
         end select
+      class is(sat_func_BF_KRP1_type)
+        select case(keyword)
+          case('M') 
+            call InputReadDouble(input,option,sf%m)
+            call InputErrorMsg(input,option,'m',error_string)
+          case('ALPHA') 
+            call InputReadDouble(input,option,sf%alpha)
+            call InputErrorMsg(input,option,'alpha',error_string)
+          case('GAS_RESIDUAL_SATURATION') 
+            call InputReadDouble(input,option,sf%Srg)
+            call InputErrorMsg(input,option,'Srg',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                   'BRAGFLO_KRP1 saturation function',option)
+        end select
+      class is(sat_func_BF_KRP5_type)
+        select case(keyword)
+          case('ALPHA') 
+            call InputReadDouble(input,option,sf%alpha)
+            call InputErrorMsg(input,option,'alpha',error_string)
+          case('GAS_RESIDUAL_SATURATION') 
+            call InputReadDouble(input,option,sf%Srg)
+            call InputErrorMsg(input,option,'Srg',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                   'BRAGFLO_KRP5 saturation function',option)
+        end select
       class is(sat_func_BF_KRP4_type)
         select case(keyword)
           case('LAMBDA') 
@@ -702,10 +872,22 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputErrorMsg(input,option,'Srg',error_string)
           case('KPC') 
             call InputReadInt(input,option,sf%pcmax_flag)
-            call InputErrorMsg(input,option,'pcmax_flag',error_string)
+            call InputErrorMsg(input,option,'pcmax_flag, KPC',error_string)
           case default
             call InputKeywordUnrecognized(keyword, &
-                   'Brooks-Corey saturation function',option)
+                   'BRAGFLO_KRP4 saturation function',option)
+        end select
+      class is(sat_func_BF_KRP9_type)
+        select case(keyword)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                   'BRAGFLO_KRP9 saturation function',option)
+        end select
+      class is(sat_func_BF_KRP11_type)
+        select case(keyword)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                   'BRAGFLO_KRP11 saturation function',option)
         end select
       class is(sat_func_BF_KRP12_type)
         select case(keyword)
@@ -726,11 +908,32 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputErrorMsg(input,option,'soceffmin',error_string)
           case default
             call InputKeywordUnrecognized(keyword, &
-                   'Brooks-Corey saturation function',option)
-        end select
+                   'BRAGFLO_KRP12 saturation function',option)
+          end select
+        class is(sat_func_mK_type)
+          select case(keyword)
+            case('SIGMAZ')
+              call InputReadDouble(input,option,sf%sigmaz)
+              call InputErrorMsg(input,option,'sigmaz',error_string)
+            case('MUZ')
+              call InputReadDouble(input,option,sf%muz)
+              call InputErrorMsg(input,option,'muz',error_string)
+            case('RMAX')
+              call InputReadDouble(input,option,sf%rmax)
+              call InputErrorMsg(input,option,'rmax',error_string)
+            case('R0')
+              call InputReadDouble(input,option,sf%r0)
+              call InputErrorMsg(input,option,'r0',error_string)
+            case('NPARAM')
+              call InputReadInt(input,option,sf%nparam)
+              call InputErrorMsg(input,option,'nparam',error_string)
+            case default
+              call InputKeywordUnrecognized(keyword, &
+                   'MODIFIED_KOSUGI saturation function',option)
+          end select
       class default
-        option%io_buffer = 'Read routine not implemented for saturation ' // &
-                           'function class.'
+        option%io_buffer = 'Read routine not implemented for ' &
+                           // trim(error_string) // '.'
         call printErrMsg(option)
     end select
   enddo
@@ -740,24 +943,29 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
   endif
 
   select type(sf => saturation_function)
+    class is(sat_func_constant_type)
+      option%io_buffer = 'Constant saturation function is being used.'
+      call printWrnMsg(option)
     class is(sat_func_VG_type)
     class is(sat_func_BC_type)
       if (.not.smooth) then
-        option%io_buffer = 'Brooks-Corey saturation function is being used ' // &
-          'without SMOOTH option.'
+        option%io_buffer = 'Brooks-Corey saturation function is being used &
+          &without SMOOTH option.'
         call printWrnMsg(option)
       endif
     class is(sat_func_Linear_type)
+    class is(sat_func_BF_KRP1_type)
+    class is(sat_func_BF_KRP5_type)
     class is(sat_func_BF_KRP4_type)
       if (.not.smooth) then
-        option%io_buffer = 'Brooks-Corey saturation function is being used ' // &
-          'without SMOOTH option.'
+        option%io_buffer = 'Brooks-Corey saturation function is being used &
+          &without SMOOTH option.'
         call printWrnMsg(option)
       endif
     class is(sat_func_BF_KRP12_type)
       if (.not.smooth) then
-        option%io_buffer = 'Brooks-Corey saturation function is being used ' // &
-          'without SMOOTH option.'
+        option%io_buffer = 'Brooks-Corey saturation function is being used &
+          &without SMOOTH option.'
         call printWrnMsg(option)
       endif
   end select
@@ -818,14 +1026,22 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
       error_string = trim(error_string) // 'BURDINE_Linear_LIQ'
     class is(rpf_Burdine_Linear_gas_type)
       error_string = trim(error_string) // 'BURDINE_Linear_GAS'
-    class is(rpf_BRAGFLO_KRP9_liq_type)
-      error_string = trim(error_string) // 'BURDINE_BF_KRP9_LIQ'
-    class is(rpf_BRAGFLO_KRP9_gas_type)
-      error_string = trim(error_string) // 'BURDINE_BF_KRP9_GAS'
+    class is(rpf_BRAGFLO_KRP1_liq_type)
+      error_string = trim(error_string) // 'MUALEM_BF_KRP1_LIQ'
+    class is(rpf_BRAGFLO_KRP1_gas_type)
+      error_string = trim(error_string) // 'MUALEM_BF_KRP1_GAS'
     class is(rpf_BRAGFLO_KRP4_liq_type)
       error_string = trim(error_string) // 'BURDINE_BF_KRP4_LIQ'
     class is(rpf_BRAGFLO_KRP4_gas_type)
       error_string = trim(error_string) // 'BURDINE_BF_KRP4_GAS'  
+    class is(rpf_BRAGFLO_KRP5_liq_type)
+      error_string = trim(error_string) // 'BURDINE_BF_KRP5_LIQ'
+    class is(rpf_BRAGFLO_KRP5_gas_type)
+      error_string = trim(error_string) // 'BURDINE_BF_KRP5_GAS'
+    class is(rpf_BRAGFLO_KRP9_liq_type)
+      error_string = trim(error_string) // 'BURDINE_BF_KRP9_LIQ'
+    class is(rpf_BRAGFLO_KRP9_gas_type)
+      error_string = trim(error_string) // 'BURDINE_BF_KRP9_GAS'
     class is(rpf_BRAGFLO_KRP11_liq_type)
       error_string = trim(error_string) // 'BURDINE_BF_KRP11_LIQ'
     class is(rpf_BRAGFLO_KRP11_gas_type)
@@ -834,6 +1050,10 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
       error_string = trim(error_string) // 'BURDINE_BF_KRP12_LIQ'
     class is(rpf_BRAGFLO_KRP12_gas_type)
       error_string = trim(error_string) // 'BURDINE_BF_KRP12_GAS'
+    class is(rpf_mK_liq_type)
+      error_string = trim(error_string) // 'MODIFIED_KOSUGI_LIQ'
+    class is(rpf_mK_gas_type)
+      error_string = trim(error_string) // 'MODIFIED_KOSUGI_GAS'
     class is(rpf_TOUGH2_Linear_oil_type)
       error_string = trim(error_string) // 'TOUGH2_Linear_OIL'
     class is(rpf_mod_BC_liq_type)
@@ -1020,6 +1240,49 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
               'Burdine Linear gas relative permeability function', &
               option)
         end select
+      class is(rpf_BRAGFLO_KRP1_liq_type)
+        select case(keyword)
+          case('M') 
+            call InputReadDouble(input,option,rpf%m)
+            call InputErrorMsg(input,option,'m',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+              'BRAGFLO KRP1 liquid relative permeability function', &
+              option)
+        end select
+      class is(rpf_BRAGFLO_KRP1_gas_type)
+        select case(keyword)
+          case('M') 
+            call InputReadDouble(input,option,rpf%m)
+            call InputErrorMsg(input,option,'m',error_string)
+          case('GAS_RESIDUAL_SATURATION') 
+            call InputReadDouble(input,option,rpf%Srg)
+            call InputErrorMsg(input,option,'Srg',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+              'BRAGFLO KRP1 gas relative permeability function', &
+              option)
+        end select
+      class is(rpf_BRAGFLO_KRP5_liq_type)
+        select case(keyword)
+          case('GAS_RESIDUAL_SATURATION') 
+            call InputReadDouble(input,option,rpf%Srg)
+            call InputErrorMsg(input,option,'Srg',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+              'BRAGFLO KRP5 liquid relative permeability function', &
+              option)
+        end select
+      class is(rpf_BRAGFLO_KRP5_gas_type)
+        select case(keyword)
+          case('GAS_RESIDUAL_SATURATION') 
+            call InputReadDouble(input,option,rpf%Srg)
+            call InputErrorMsg(input,option,'Srg',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+              'BRAGFLO KRP5 gas relative permeability function', &
+              option)
+        end select
       class is(rpf_BRAGFLO_KRP9_liq_type)
         select case(keyword)
           case default
@@ -1106,6 +1369,29 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
               'BRAGFLO KRP4 gas relative permeability function', &
               option)
         end select
+      class is(rpf_mK_liq_type)
+        select case(keyword)
+          case('SIGMAZ')
+            call InputReadDouble(input,option,rpf%sigmaz)
+            call InputErrorMsg(input,option,'sigmaz',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                 'MODIFIED_KOSUGI liquid relative permeability '//&
+                 &'function',option)
+        end select
+      class is(rpf_mK_gas_type)
+        select case(keyword)
+          case('SIGMAZ')
+            call InputReadDouble(input,option,rpf%sigmaz)
+            call InputErrorMsg(input,option,'sigmaz',error_string)
+          case('GAS_RESIDUAL_SATURATION')
+            call InputReadDouble(input,option,rpf%Srg)
+            call InputErrorMsg(input,option,'Srg',error_string)
+          case default
+            call InputKeywordUnrecognized(keyword, &
+                 'MODIFIED_KOSUGI gas relative permeability '//&
+                 &'function',option)
+        end select
       class is(rpf_TOUGH2_Linear_oil_type)
         select case(keyword)
           case('OIL_RESIDUAL_SATURATION') 
@@ -1179,7 +1465,7 @@ subroutine PermeabilityFunctionRead(permeability_function,phase_keyword, &
   if (StringCompare('NONE',phase_keyword)) then
     phase_keyword = new_phase_keyword
     ! a liq or gas phase should now be specified for the non-phase-specific
-    ! functions, so lets check if it was:
+    ! functions, so check if it was:
     if (StringCompare('NONE',new_phase_keyword)) then
       ! entering means the new phase keyword was also NONE (the default), so
       ! throw an error and abort:
@@ -1303,8 +1589,8 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
   ! Returns the residual saturations associated with a characteristic curves
   ! object
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 09/29/14
+  ! Author: Glenn Hammond, Paolo Orsini
+  ! Date: 09/29/14, 03/27/17
   ! 
 
   use Option_module
@@ -1346,6 +1632,14 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
         CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_Burdine_Linear_gas_type)
         CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
+      class is(rpf_BRAGFLO_KRP1_liq_type)
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
+      class is(rpf_BRAGFLO_KRP1_gas_type)
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
+      class is(rpf_BRAGFLO_KRP5_liq_type)
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
+      class is(rpf_BRAGFLO_KRP5_gas_type)
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_BRAGFLO_KRP9_liq_type)
         CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_BRAGFLO_KRP9_gas_type)
@@ -1357,6 +1651,10 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
       class is(rpf_BRAGFLO_KRP11_liq_type)
         CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_BRAGFLO_KRP11_gas_type)
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
+      class is(rpf_mK_liq_type)
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
+      class is(rpf_mK_gas_type)
         CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_mod_BC_liq_type)
         CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
@@ -1454,10 +1752,13 @@ subroutine CharacteristicCurvesTest(characteristic_curves,option)
   call characteristic_curves%liq_rel_perm_function%Test( &
                                                  characteristic_curves%name, &
                                                  phase,option)
-  phase = 'gas'
-  call characteristic_curves%gas_rel_perm_function%Test( &
+              
+  if ( associated(characteristic_curves%gas_rel_perm_function) ) then
+    phase = 'gas'
+    call characteristic_curves%gas_rel_perm_function%Test( &
                                                  characteristic_curves%name, &
                                                  phase,option)
+  endif
 
   if ( associated(characteristic_curves%oil_rel_perm_function) ) then
     phase = 'oil'
@@ -1545,8 +1846,7 @@ subroutine CharCurvesInputRecord(char_curve_list)
   class(characteristic_curves_type), pointer :: char_curve_list
   
   class(characteristic_curves_type), pointer :: cur_ccurve
-  character(len=MAXWORDLENGTH) :: word1, word2
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word1
   PetscInt :: id = INPUT_RECORD_UNIT
 
   write(id,'(a)') ' '
@@ -1590,6 +1890,26 @@ subroutine CharCurvesInputRecord(char_curve_list)
           write(word1,*) sf%alpha
           write(id,'(a)') adjustl(trim(word1))
       !---------------------------------
+        class is (sat_func_BF_KRP1_type)
+          write(id,'(a)') 'Bragflo KRP1 modified van Genuchten'
+          write(id,'(a29)',advance='no') 'alpha: '
+          write(word1,*) sf%alpha
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'm: '
+          write(word1,*) sf%m
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) sf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !---------------------------------
+        class is (sat_func_BF_KRP5_type)
+          write(id,'(a)') 'Bragflo KRP5 modified Linear'
+          write(id,'(a29)',advance='no') 'alpha: '
+          write(word1,*) sf%alpha
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) sf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !---------------------------------
         class is (sat_func_BF_KRP9_type)
           write(id,'(a)') 'Bragflo KRP9 modified brooks corey'
       !---------------------------------
@@ -1627,6 +1947,24 @@ subroutine CharCurvesInputRecord(char_curve_list)
           write(id,'(a)') adjustl(trim(word1))
           write(id,'(a29)',advance='no') 'soceffmin: '
           write(word1,*) sf%soceffmin
+          write(id,'(a)') adjustl(trim(word1))
+      !---------------------------------
+        class is (sat_func_mK_type)
+          write(id,'(a)') 'Modified Kosugi'
+          write(id,'(a29)',advance='no') 'sigmaz: '
+          write(word1,*) sf%sigmaz
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'muz: '
+          write(word1,*) sf%muz
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'liquid residual sat.: '
+          write(word1,*) sf%Sr
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'rmax: '
+          write(word1,*) sf%rmax
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'r0: '
+          write(word1,*) sf%r0
           write(id,'(a)') adjustl(trim(word1))
       !---------------------------------
         class is (sat_func_default_type)
@@ -1681,8 +2019,14 @@ subroutine CharCurvesInputRecord(char_curve_list)
           write(word1,*) rpf%lambda
           write(id,'(a)') adjustl(trim(word1))
       !------------------------------------
-        class is (rpf_Burdine_linear_liq_type)
+        class is (rpf_Burdine_Linear_liq_type)
           write(id,'(a)') 'burdine_linear_liq'
+      !------------------------------------
+        class is (rpf_BRAGFLO_KRP1_liq_type)
+          write(id,'(a)') 'bragflo_krp1_liq'
+          write(id,'(a29)',advance='no') 'm: '
+          write(word1,*) rpf%m
+          write(id,'(a)') adjustl(trim(word1))
       !------------------------------------
         class is (rpf_BRAGFLO_KRP9_liq_type)
           write(id,'(a)') 'bragflo_krp9_liq'
@@ -1703,6 +2047,15 @@ subroutine CharCurvesInputRecord(char_curve_list)
           write(id,'(a)') 'bragflo_krp12_liq'
           write(id,'(a29)',advance='no') 'lambda: '
           write(word1,*) rpf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_mK_liq_type)
+          write(id,'(a)') 'modified_kosugi_liq'
+          write(id,'(a29)',advance='no') 'sigmaz: '
+          write(word1,*) rpf%sigmaz
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'liquid residual sat.: '
+          write(word1,*) rpf%Sr
           write(id,'(a)') adjustl(trim(word1))
       !------------------------------------
         class default
@@ -1781,6 +2134,15 @@ subroutine CharCurvesInputRecord(char_curve_list)
           write(word1,*) rpf%Srg
           write(id,'(a)') adjustl(trim(word1))
       !------------------------------------
+        class is (rpf_BRAGFLO_KRP1_gas_type)
+          write(id,'(a)') 'bragflo_krp1_gas'
+          write(id,'(a29)',advance='no') 'm: '
+          write(word1,*) rpf%m
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
         class is (rpf_BRAGFLO_KRP9_gas_type)
           write(id,'(a)') 'bragflo_krp9_gas'
           write(id,'(a29)',advance='no') 'gas residual sat.: '
@@ -1809,6 +2171,15 @@ subroutine CharCurvesInputRecord(char_curve_list)
           write(id,'(a)') 'bragflo_krp12_gas'
           write(id,'(a29)',advance='no') 'lambda: '
           write(word1,*) rpf%lambda
+          write(id,'(a)') adjustl(trim(word1))
+          write(id,'(a29)',advance='no') 'gas residual sat.: '
+          write(word1,*) rpf%Srg
+          write(id,'(a)') adjustl(trim(word1))
+      !------------------------------------
+        class is (rpf_mK_gas_type)
+          write(id,'(a)') 'modified_kosugi_gas'
+          write(id,'(a29)',advance='no') 'sigmaz: '
+          write(word1,*) rpf%sigmaz
           write(id,'(a)') adjustl(trim(word1))
           write(id,'(a29)',advance='no') 'gas residual sat.: '
           write(word1,*) rpf%Srg
@@ -1873,6 +2244,7 @@ subroutine SFBaseInit(this)
   nullify(this%pres_poly)
   this%Sr = UNINITIALIZED_DOUBLE
   this%pcmax = DEFAULT_PCMAX
+  this%analytical_derivative_available = PETSC_FALSE
   
 end subroutine SFBaseInit
 
@@ -1907,6 +2279,7 @@ subroutine RPFBaseInit(this)
   ! Cannot allocate here.  Allocation takes place in daughter class
   nullify(this%poly)
   this%Sr = UNINITIALIZED_DOUBLE
+  this%analytical_derivative_available = PETSC_FALSE
   
 end subroutine RPFBaseInit
 
@@ -1944,7 +2317,7 @@ subroutine SFBaseSetupPolynomials(this,option,error_string)
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: error_string
   
-  option%io_buffer = 'Smoothing not supported for ' // trim(error_string)
+  option%io_buffer = 'SF Smoothing not supported for ' // trim(error_string)
   call printErrMsg(option)
   
 end subroutine SFBaseSetupPolynomials
@@ -1963,7 +2336,7 @@ subroutine RPFBaseSetupPolynomials(this,option,error_string)
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: error_string
   
-  option%io_buffer = 'Smoothing not supported for ' // trim(error_string)
+  option%io_buffer = 'RPF Smoothing not supported for ' // trim(error_string)
   call printErrMsg(option)
   
 end subroutine RPFBaseSetupPolynomials
@@ -1971,7 +2344,7 @@ end subroutine RPFBaseSetupPolynomials
 ! ************************************************************************** !
 
 subroutine SFBaseCapillaryPressure(this,liquid_saturation, &
-                                     capillary_pressure,option)
+                                   capillary_pressure,dpc_dsatl,option)
   use Option_module
   
   implicit none
@@ -1979,6 +2352,7 @@ subroutine SFBaseCapillaryPressure(this,liquid_saturation, &
   class(sat_func_base_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
   type(option_type), intent(inout) :: option
   
   option%io_buffer = 'SFBaseCapillaryPressure must be extended.'
@@ -2018,9 +2392,18 @@ subroutine SFBaseTest(this,cc_name,option)
   type(option_type), intent(inout) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
+  PetscInt, parameter :: num_values = 101
   PetscReal :: pc, pc_increment
-  PetscReal :: capillary_pressure(101)
-  PetscReal :: liquid_saturation(101)
+  PetscReal :: capillary_pressure(num_values)
+  PetscReal :: liquid_saturation(num_values)
+  PetscReal :: dpc_dsatl(num_values)
+  PetscReal :: dpc_dsatl_numerical(num_values)
+  PetscReal :: dsat_dpres(num_values)
+  PetscReal :: dsat_dpres_numerical(num_values)
+  PetscReal :: capillary_pressure_pert
+  PetscReal :: liquid_saturation_pert
+  PetscReal :: perturbation
+  PetscReal :: pert
   PetscReal :: dummy_real
   PetscInt :: count, i
 
@@ -2028,39 +2411,67 @@ subroutine SFBaseTest(this,cc_name,option)
   ! start at 1 Pa up to maximum capillary pressure
   pc = 1.d0
   pc_increment = 1.d0
+  perturbation = 1.d-6
   count = 0
   do
     if (pc > this%pcmax) exit
     count = count + 1
-    call this%Saturation(pc,liquid_saturation(count),dummy_real,option)
+    call this%Saturation(pc,liquid_saturation(count),dsat_dpres(count),option)
     capillary_pressure(count) = pc
+    ! calculate numerical derivative dsat_dpres_numerical
+    capillary_pressure_pert = pc + pc*perturbation
+    call this%Saturation(capillary_pressure_pert, &
+                         liquid_saturation_pert,dummy_real,option)
+    dsat_dpres_numerical(count) = (liquid_saturation_pert - &
+         & liquid_saturation(count))/(pc*perturbation)*(-1.d0) ! dPc/dPres
+    ! get next value for pc
     if (pc > 0.99d0*pc_increment*10.d0) pc_increment = pc_increment*10.d0
     pc = pc + pc_increment
   enddo
 
   write(string,*) cc_name
-  string = trim(cc_name) // '_pc_sat.dat'
+  string = trim(cc_name) // '_sat_from_pc.dat'
   open(unit=86,file=string)
-  write(86,*) '"capillary pressure", "saturation"'
+  write(86,*) '"capillary pressure", "saturation", "dsat/dpres", &
+              &"dsat/dpres_numerical"'
   do i = 1, count
-    write(86,'(2es14.6)') capillary_pressure(i), liquid_saturation(i)
+    write(86,'(4es14.6)') capillary_pressure(i), liquid_saturation(i), &
+                          dsat_dpres(i), dsat_dpres_numerical(i)
   enddo
   close(86)
 
  ! calculate capillary pressure as a function of saturation
-  do i = 1, 101
+  do i = 1, num_values
     liquid_saturation(i) = dble(i-1)*0.01d0
+    if (liquid_saturation(i) < 1.d-7) then
+      liquid_saturation(i) = 1.d-7
+    else if (liquid_saturation(i) > (1.d0-1.d-7)) then
+      liquid_saturation(i) = 1.d0-1.d-7
+    endif
     call this%CapillaryPressure(liquid_saturation(i),capillary_pressure(i), &
-                                option)
+                                dpc_dsatl(i),option)
+    ! calculate numerical derivative dpc_dsatl_numerical
+    pert = liquid_saturation(i) * perturbation
+    if (liquid_saturation(i) > 0.5d0) then
+      pert = -1.d0 * pert
+    endif
+    liquid_saturation_pert = liquid_saturation(i) + pert
+    call this%CapillaryPressure(liquid_saturation_pert, &
+                                capillary_pressure_pert, &
+                                dummy_real,option)
+    dpc_dsatl_numerical(i) = (capillary_pressure_pert - &
+         & capillary_pressure(i))/pert 
   enddo
-  count = 101
+  count = num_values
 
   write(string,*) cc_name
-  string = trim(cc_name) // '_sat_pc.dat'
+  string = trim(cc_name) // '_pc_from_sat.dat'
   open(unit=86,file=string)
-  write(86,*) '"saturation", "capillary pressure"'
+  write(86,*) '"saturation", "capillary pressure", "dpc/dsat", &
+              &dpc_dsat_numerical"'
   do i = 1, count
-    write(86,'(2es14.6)') liquid_saturation(i), capillary_pressure(i)
+    write(86,'(4es14.6)') liquid_saturation(i), capillary_pressure(i), &
+                          dpc_dsatl(i), dpc_dsatl_numerical(i)
   enddo
   close(86)
 
@@ -2099,22 +2510,41 @@ subroutine RPF_Base_Test(this,cc_name,phase,option)
   type(option_type), intent(inout) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
-  PetscReal :: dummy_real
   PetscInt :: i
-  PetscReal :: liquid_saturation(101), kr(101)
+  PetscInt, parameter :: num_values = 101
+  PetscReal :: perturbation
+  PetscReal :: liquid_saturation(num_values)
+  PetscReal :: liquid_saturation_pert(num_values)
+  PetscReal :: kr(num_values)
+  PetscReal :: kr_pert(num_values)
+  PetscReal :: dkr_dsat(num_values)
+  PetscReal :: dkr_dsat_numerical(num_values)
+  PetscReal :: dummy_real(num_values)
+  
+  perturbation = 1.d-6
 
-  do i = 1, 101
+  do i = 1, num_values
     liquid_saturation(i) = dble(i-1)*0.01d0
-    call this%RelativePermeability(liquid_saturation(i),kr(i),dummy_real, &
+    call this%RelativePermeability(liquid_saturation(i),kr(i),dkr_dsat(i), &
                                    option)
+    ! calculate numerical derivative dkr_dsat_numerical
+    liquid_saturation_pert(i) = liquid_saturation(i) &
+                                + liquid_saturation(i)*perturbation
+    call this%RelativePermeability(liquid_saturation_pert(i),kr_pert(i), &
+                                   dummy_real(i),option)
+    dkr_dsat_numerical(i) = (kr_pert(i) - kr(i))/ &
+                            (liquid_saturation(i)*perturbation)
   enddo
 
   write(string,*) cc_name
   string = trim(cc_name) // '_' // trim(phase) // '_rel_perm.dat'
   open(unit=86,file=string)
-  write(86,*) '"saturation", "' // trim(phase) // ' relative permeability"'
+  write(86,*) '"saturation", "' // trim(phase) // ' relative permeability", "' &
+              // trim(phase) // ' dkr/dsat", "' // trim(phase) // &
+              ' dkr/dsat_numerical"'
   do i = 1, size(liquid_saturation)
-    write(86,'(2es14.6)') liquid_saturation(i), kr(i)
+    write(86,'(4es14.6)') liquid_saturation(i), kr(i), dkr_dsat(i), &
+                          dkr_dsat_numerical(i)
   enddo
   close(86)
 
@@ -2159,7 +2589,7 @@ end subroutine SFDefaultVerify
 ! ************************************************************************** !
 
 subroutine SFDefaultCapillaryPressure(this,liquid_saturation, &
-                                      capillary_pressure,option)
+                                      capillary_pressure,dpc_dsatl,option)
   use Option_module
   
   implicit none
@@ -2167,6 +2597,7 @@ subroutine SFDefaultCapillaryPressure(this,liquid_saturation, &
   class(sat_func_default_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
   type(option_type), intent(inout) :: option
   
   if (liquid_saturation < 1.d0) then
@@ -2260,6 +2691,116 @@ end subroutine RPF_DefaultRelPerm
 
 ! ************************************************************************** !
 
+! Begin SF: Constant
+function SF_Constant_Create()
+
+  ! Creates the default saturation function object
+
+  implicit none
+  
+  class(sat_func_constant_type), pointer :: SF_Constant_Create
+  
+  allocate(SF_Constant_Create)
+  call SFBaseInit(SF_Constant_Create)
+  ! set Sr to zero as it doesn't matter, but must be initialized
+  SF_Constant_Create%Sr = 0.d0 
+  SF_Constant_Create%constant_capillary_pressure = UNINITIALIZED_DOUBLE
+  SF_Constant_Create%constant_saturation = UNINITIALIZED_DOUBLE
+  
+end function SF_Constant_Create
+
+! ************************************************************************** !
+
+subroutine SFConstantVerify(this,name,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_constant_type) :: this  
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option  
+
+  character(len=MAXSTRINGLENGTH) :: string  
+
+  if (index(name,'SATURATION_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'SATURATION_FUNCTION,CONSTANT'
+  endif
+  call SFBaseVerify(this,string,option)
+  select case(option%iflowmode)
+    case(RICHARDS_MODE,TH_MODE)
+      if (Initialized(this%constant_capillary_pressure)) then
+        option%io_buffer = 'CONSTANT_CAPILLARY_PRESSURE is not supported for &
+          &Richards or TH flow modes as CONSTANT_SATURATION must be applied. &
+          &See ' // trim(string) // '.'
+        call printErrMsg(option)
+      endif
+      if (Uninitialized(this%constant_saturation)) then
+        option%io_buffer = 'CONSTANT_SATURATION must be specified for ' // &
+          trim(string) // '.'
+        call printErrMsg(option)
+      endif
+    case(G_MODE,TOIL_IMS_MODE,IMS_MODE,MIS_MODE,MPH_MODE,FLASH2_MODE)
+      if (Initialized(this%constant_saturation)) then
+        option%io_buffer = 'CONSTANT_SATURATION is not supported for &
+          &multiphase flow modes as CONSTANT_CAPILLARY_PRESSURE must be &
+          &applied. Saturation is a primary dependent variables. &
+          &See ' // trim(string) // '.'
+        call printErrMsg(option)
+      endif
+      if (Uninitialized(this%constant_capillary_pressure)) then
+        option%io_buffer = 'CONSTANT_CAPILLARY_PRESSURE must be specified &
+          &for ' // trim(string) // '.'
+        call printErrMsg(option)
+      endif
+    case default
+  end select
+
+end subroutine SFConstantVerify
+
+! ************************************************************************** !
+
+subroutine SFConstantCapillaryPressure(this,liquid_saturation, &
+                                       capillary_pressure,dpc_dsatl,option)
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_constant_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
+  type(option_type), intent(inout) :: option
+  
+  dpc_dsatl = 0.d0
+  capillary_pressure = this%constant_capillary_pressure
+
+end subroutine SFConstantCapillaryPressure
+
+! ************************************************************************** !
+
+subroutine SFConstantSaturation(this,capillary_pressure,liquid_saturation, &
+                               dsat_dpres,option)
+  use Option_module
+
+  implicit none
+  
+  class(sat_func_constant_type) :: this
+  PetscReal, intent(in) :: capillary_pressure
+  PetscReal, intent(out) :: liquid_saturation
+  PetscReal, intent(out) :: dsat_dpres
+  type(option_type), intent(inout) :: option
+
+  liquid_saturation = this%constant_saturation
+  dsat_dpres = 0.d0
+
+end subroutine SFConstantSaturation
+! End Constant Routines
+
+! ************************************************************************** !
+
 ! Begin SF: van Genuchten
 function SF_VG_Create()
 
@@ -2324,7 +2865,7 @@ end subroutine SF_VG_Verify
 ! ************************************************************************** !
 
 subroutine SF_VG_CapillaryPressure(this,liquid_saturation, &
-                                   capillary_pressure,option)
+                                   capillary_pressure,dpc_dsatl,option)
   ! 
   ! Computes the capillary_pressure as a function of saturation
   ! 
@@ -2343,6 +2884,7 @@ subroutine SF_VG_CapillaryPressure(this,liquid_saturation, &
   class(sat_func_VG_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
   type(option_type), intent(inout) :: option
   
   PetscReal :: n
@@ -2350,7 +2892,15 @@ subroutine SF_VG_CapillaryPressure(this,liquid_saturation, &
   PetscReal :: one_plus_pc_alpha_n
   PetscReal :: pc_alpha_n
   PetscReal :: pc_alpha
+
+  PetscReal :: neg_one_over_m
+  PetscReal :: one_over_n
+  PetscReal :: dSe_dsatl
+  PetscReal :: Se_sup_neg_one_over_m
+  PetscReal :: Se_sup_neg_one_over_m_minus_one
   
+  dpc_dsatl = 0.d0
+
   if (liquid_saturation <= this%Sr) then
     capillary_pressure = this%pcmax
     return
@@ -2360,19 +2910,29 @@ subroutine SF_VG_CapillaryPressure(this,liquid_saturation, &
   endif
   
   n = 1.d0/(1.d0-this%m)
-  Se = (liquid_saturation-this%Sr)/(1.d0-this%Sr)
-  one_plus_pc_alpha_n = Se**(-1.d0/this%m)
-  pc_alpha_n = one_plus_pc_alpha_n - 1.d0
-  pc_alpha = pc_alpha_n**(1.d0/n)
-  capillary_pressure = pc_alpha/this%alpha  
+  neg_one_over_m = -1.d0/this%m
+  one_over_n = 1.d0/n
+  dSe_dsatl = 1.d0 / (1.d0-this%Sr)
+  Se = (liquid_saturation-this%Sr)*dSe_dsatl
+  Se_sup_neg_one_over_m = Se**neg_one_over_m
+  Se_sup_neg_one_over_m_minus_one = Se_sup_neg_one_over_m - 1.d0
+  capillary_pressure = (Se_sup_neg_one_over_m_minus_one**one_over_n)/this%alpha
+  dpc_dsatl = capillary_pressure/Se_sup_neg_one_over_m_minus_one * &
+              one_over_n * neg_one_over_m * Se_sup_neg_one_over_m / Se * &
+              dSe_dsatl
+
 #if defined(MATCH_TOUGH2)
   if (liquid_saturation > 0.999d0) then
     capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
+    dpc_dsatl = dpc_dsatl*(1.d0-liquid_saturation)/0.001d0 +
+                capillary_pressure*(-1.d0)/0.001d0
   endif
 #endif
 
-
-  capillary_pressure = min(capillary_pressure,this%pcmax)
+  if (capillary_pressure > this%pcmax) then
+    capillary_pressure = this%pcmax
+    dpc_dsatl = 0.d0
+  endif
   
 end subroutine SF_VG_CapillaryPressure
 
@@ -2410,6 +2970,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: one_plus_pc_alpha_n
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
   
@@ -2421,7 +2982,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_dpc)
       liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+      dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
       return
     endif
   endif
@@ -2447,7 +3008,7 @@ subroutine SF_VG_Saturation(this,capillary_pressure,liquid_saturation, &
     dSe_dpc = -this%m*n*this%alpha*pc_alpha_n/ &
             (pc_alpha*one_plus_pc_alpha_n**(this%m+1.d0))
     liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-    dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+    dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   endif
   
 end subroutine SF_VG_Saturation
@@ -2478,7 +3039,6 @@ subroutine SF_BC_Init(this)
   implicit none
   
   class(sat_func_BC_type) :: this
-  character(len=MAXWORDLENGTH) :: name
   type(option_type) :: option
 
   call SFBaseInit(this)
@@ -2592,7 +3152,7 @@ end subroutine SF_BC_SetupPolynomials
 ! ************************************************************************** !
 
 subroutine SF_BC_CapillaryPressure(this,liquid_saturation, &
-                                   capillary_pressure,option)
+                                   capillary_pressure,dpc_dsatl,option)
   ! 
   ! Computes the capillary_pressure as a function of saturation using the
   ! Brooks-Corey formulation
@@ -2613,10 +3173,15 @@ subroutine SF_BC_CapillaryPressure(this,liquid_saturation, &
   class(sat_func_BC_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
-  PetscReal :: dummy_real
+  PetscReal :: dSe_dsatl
+  PetscReal :: dpc_dSe
+  PetscReal :: neg_one_over_lambda
+
+  dpc_dsatl = 0.d0
   
   if (liquid_saturation <= this%Sr) then
     capillary_pressure = this%pcmax
@@ -2626,22 +3191,32 @@ subroutine SF_BC_CapillaryPressure(this,liquid_saturation, &
     return
   endif
   
-  Se = (liquid_saturation-this%Sr)/(1.d0-this%Sr)
+  dSe_dsatl = 1.d0 / (1.d0-this%Sr)
+  Se = (liquid_saturation-this%Sr)*dSe_dsatl
   if (associated(this%sat_poly)) then
     if (Se > this%sat_poly%low) then
       call QuadraticPolynomialEvaluate(this%sat_poly%coefficients(1:3), &
-                                       Se,capillary_pressure,dummy_real)
+                                       Se,capillary_pressure,dpc_dSe)
+      dpc_dsatl = dpc_dSe*dSe_dsatl
       return
     endif
   endif
-  capillary_pressure = (Se**(-1.d0/this%lambda))/this%alpha
+  neg_one_over_lambda = -1.d0/this%lambda
+  capillary_pressure = (Se**neg_one_over_lambda)/this%alpha
+  dpc_dsatl = capillary_pressure/Se*neg_one_over_lambda*dSe_dsatl
+
 #if defined(MATCH_TOUGH2)
   if (liquid_saturation > 0.999d0) then
     capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
+    dpc_dsatl = dpc_satl*(1.d0-liquid_saturation)/0.001d0 + &
+                capillary_pressure*(-1.d0/0.001d0)
   endif
 #endif  
 
-  capillary_pressure = min(capillary_pressure,this%pcmax)
+  if (capillary_pressure > this%pcmax) then
+    capillary_pressure = this%pcmax
+    dpc_dsatl = 0.d0
+  endif
   
 end subroutine SF_BC_CapillaryPressure
 
@@ -2675,6 +3250,7 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: pc_alpha_neg_lambda
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
   
@@ -2687,7 +3263,7 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_dpc)
       liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+      dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
       return
     endif
   else
@@ -2702,7 +3278,7 @@ subroutine SF_BC_Saturation(this,capillary_pressure,liquid_saturation, &
   Se = pc_alpha_neg_lambda
   dSe_dpc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
   liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-  dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+  dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   
 end subroutine SF_BC_Saturation
 ! End SF: Brooks-Corey
@@ -2712,7 +3288,7 @@ end subroutine SF_BC_Saturation
 ! Begin SF: Linear Model
 function SF_Linear_Create()
 
-  ! Creates the van Genutchten capillary pressure function object
+  ! Creates the Linear capillary pressure function object
 
   implicit none
   
@@ -2727,7 +3303,7 @@ end function SF_Linear_Create
 
 subroutine SF_Linear_Init(this)
 
-  ! Creates the van Genutchten capillary pressure function object
+  ! Creates the Linear capillary pressure function object
 
   implicit none
   
@@ -2768,7 +3344,7 @@ end subroutine SF_Linear_Verify
 ! ************************************************************************** !
 
 subroutine SF_Linear_CapillaryPressure(this,liquid_saturation, &
-                                   capillary_pressure,option)
+                                       capillary_pressure,dpc_dsatl,option)
   ! 
   ! Computes the capillary_pressure as a function of saturation
   ! 
@@ -2784,9 +3360,14 @@ subroutine SF_Linear_CapillaryPressure(this,liquid_saturation, &
   class(sat_func_Linear_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
+  PetscReal :: dSe_dsatl
+  PetscReal :: one_over_alpha_minus_pcmax
+
+  dpc_dsatl = 0.d0
   
   if (liquid_saturation <= this%Sr) then
     capillary_pressure = this%pcmax
@@ -2796,15 +3377,24 @@ subroutine SF_Linear_CapillaryPressure(this,liquid_saturation, &
     return
   endif
   
-  Se = (liquid_saturation-this%Sr)/(1.d0-this%Sr)
-  capillary_pressure = (1.d0/this%alpha-this%pcmax)*Se + this%pcmax
+  dSe_dsatl = 1.d0/(1.d0-this%Sr)
+  Se = (liquid_saturation-this%Sr)*dSe_dsatl
+  one_over_alpha_minus_pcmax = 1.d0/this%alpha-this%pcmax
+  capillary_pressure = one_over_alpha_minus_pcmax*Se + this%pcmax
+  dpc_dsatl = one_over_alpha_minus_pcmax*dSe_dsatl
+
 #if defined(MATCH_TOUGH2)
   if (liquid_saturation > 0.999d0) then
     capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
+    dpc_dsatl = dpc_satl*(1.d0-liquid_saturation)/0.001d0 + &
+                capillary_pressure*(-1.d0/0.001d0)
   endif
 #endif  
 
-  capillary_pressure = min(capillary_pressure,this%pcmax)
+  if (capillary_pressure > this%pcmax) then
+    capillary_pressure = this%pcmax
+    dpc_dsatl = 0.d0
+  endif
   
 end subroutine SF_Linear_CapillaryPressure
 
@@ -2833,6 +3423,7 @@ subroutine SF_Linear_Saturation(this,capillary_pressure,liquid_saturation, &
   
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
 
@@ -2843,12 +3434,334 @@ subroutine SF_Linear_Saturation(this,capillary_pressure,liquid_saturation, &
     Se = (this%pcmax-capillary_pressure) / (this%pcmax-1.d0/this%alpha)
     dSe_dpc = -1.d0/(this%pcmax-1.d0/this%alpha)
     liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
-    dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+    dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   endif 
 
 end subroutine SF_Linear_Saturation
 ! End SF: Linear Model
 
+! ************************************************************************** !
+
+! Begin SF: BRAGFLO KRP1 Model
+function SF_BF_KRP1_Create()
+
+  ! Creates the BRAGFLO KRP1 capillary pressure function object
+
+  implicit none
+  
+  class(sat_func_BF_KRP1_type), pointer :: SF_BF_KRP1_Create
+  
+  allocate(SF_BF_KRP1_Create)
+  call SF_BF_KRP1_Create%Init()
+  
+end function SF_BF_KRP1_Create
+
+! ************************************************************************** !
+
+subroutine SF_BF_KRP1_Init(this)
+
+  ! Creates the BRAGFLO KRP1 capillary pressure function object
+
+  implicit none
+  
+  class(sat_func_BF_KRP1_type) :: this
+
+  call SFBaseInit(this)
+  this%Srg = UNINITIALIZED_DOUBLE
+  this%alpha = UNINITIALIZED_DOUBLE
+  this%m = UNINITIALIZED_DOUBLE
+  
+end subroutine SF_BF_KRP1_Init
+
+! ************************************************************************** !
+
+subroutine SF_BF_KRP1_Verify(this,name,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_BF_KRP1_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  if (index(name,'SATURATION_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'SATURATION_FUNCTION,VAN_GENUCHTEN'
+  endif
+  call SFBaseVerify(this,string,option)
+  if (Uninitialized(this%alpha)) then
+    option%io_buffer = UninitializedMessage('ALPHA',string)
+    call printErrMsg(option)
+  endif   
+  if (Uninitialized(this%m)) then
+    option%io_buffer = UninitializedMessage('M',string)
+    call printErrMsg(option)
+  endif   
+  if (Uninitialized(this%Srg)) then
+    option%io_buffer = UninitializedMessage('Srg',string)
+    call printErrMsg(option)
+  endif   
+
+end subroutine SF_BF_KRP1_Verify
+
+! ************************************************************************** !
+
+subroutine SF_BF_KRP1_CapillaryPressure(this,liquid_saturation, &
+                                        capillary_pressure,dpc_dsatl,option)
+  ! 
+  ! Computes the capillary_pressure as a function of saturation using the
+  ! van Genuchten formulation with non-zero gas residual saturation
+  ! BRAGFLO UM 6.02 pg 41, 42; eq.120 - eq.124
+  ! Modified according to KRP=1 option of BRAGFLO
+  ! Explanation: residual gas saturation is in the denominator of effective 
+  ! saturation
+  !
+  ! Author: Heeho Park
+  ! Date: 11/17/16
+  !
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_BF_KRP1_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: Se2
+  
+  if (liquid_saturation <= this%Sr) then
+    capillary_pressure = this%pcmax
+    return
+  else if (liquid_saturation >= 1.d0) then
+    capillary_pressure = 0.d0
+    return
+  endif
+  
+  Se2 = (liquid_saturation-this%Sr)/(1.d0-this%Sr-this%Srg)
+  capillary_pressure = (1/this%alpha)*(Se2**(-1/this%m)-1)**(1-this%m)
+#if defined(MATCH_TOUGH2)
+  if (liquid_saturation > 0.999d0) then
+    capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
+  endif
+#endif
+  capillary_pressure = min(capillary_pressure,this%pcmax)
+  
+end subroutine SF_BF_KRP1_CapillaryPressure
+
+! ************************************************************************** !
+
+subroutine SF_BF_KRP1_Saturation(this,capillary_pressure,liquid_saturation, &
+                            dsat_dpres,option)
+  ! 
+  ! Computes the capillary_pressure as a function of saturation using the
+  ! van Genuchten formulation with non-zero gas residual saturation
+  ! BRAGFLO UM 6.02 pg 41, 42; eq.120 - eq.124
+  ! Modified according to KRP=1 option of BRAGFLO
+  ! Explanation: residual gas saturation is in the denominator of effective 
+  ! saturation
+  !
+  ! Author: Heeho Park
+  ! Date: 11/17/16
+  !
+  use Option_module
+  use Utility_module
+  
+  implicit none
+
+  class(sat_func_BF_KRP1_type) :: this
+  PetscReal, intent(in) :: capillary_pressure
+  PetscReal, intent(out) :: liquid_saturation
+  PetscReal, intent(out) :: dsat_dpres
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: n
+  PetscReal :: pc_alpha
+  PetscReal :: pc_alpha_n
+  PetscReal :: one_plus_pc_alpha_n
+  PetscReal :: Se
+  PetscReal :: dSe_dpc
+  
+  dsat_dpres = 0.d0
+  
+  if (associated(this%pres_poly)) then
+    if (capillary_pressure < this%pres_poly%low) then
+      liquid_saturation = 1.d0
+      return
+    else if (capillary_pressure < this%pres_poly%high) then
+      call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
+                                   capillary_pressure,Se,dSe_dpc)
+      liquid_saturation = this%Sr + (1.d0-this%Sr)*Se
+      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+      return
+    endif
+  endif
+
+  if (capillary_pressure <= 0.d0) then
+    liquid_saturation = 1.d0
+    return
+  else
+    n = 1.d0/(1.d0-this%m)
+    pc_alpha = capillary_pressure*this%alpha
+    pc_alpha_n = pc_alpha**n
+    one_plus_pc_alpha_n = 1.d0+pc_alpha_n
+    Se = one_plus_pc_alpha_n**(-this%m)
+    dSe_dpc = -this%m*n*this%alpha*pc_alpha_n/ &
+            (pc_alpha*one_plus_pc_alpha_n**(this%m+1.d0))
+    liquid_saturation = this%Sr + (1.d0-this%Sr-this%Srg)*Se
+    dsat_dpres = -(1.d0-this%Sr-this%Srg)*dSe_dpc
+  endif
+  
+end subroutine SF_BF_KRP1_Saturation
+! End SF: BRAGFLO KRP1 Model
+
+! ************************************************************************** !
+
+! Begin SF: BRAGFLO KRP5 Model
+function SF_BF_KRP5_Create()
+
+  ! Creates the van Genutchten capillary pressure function object
+
+  implicit none
+  
+  class(sat_func_BF_KRP5_type), pointer :: SF_BF_KRP5_Create
+  
+  allocate(SF_BF_KRP5_Create)
+  call SF_BF_KRP5_Create%Init()
+  
+end function SF_BF_KRP5_Create
+
+! ************************************************************************** !
+
+subroutine SF_BF_KRP5_Init(this)
+
+  ! Creates the van Genutchten capillary pressure function object
+
+  implicit none
+  
+  class(sat_func_BF_KRP5_type) :: this
+
+  call SFBaseInit(this)
+  this%alpha = UNINITIALIZED_DOUBLE
+  this%Srg = UNINITIALIZED_DOUBLE
+  
+end subroutine SF_BF_KRP5_Init
+
+! ************************************************************************** !
+
+subroutine SF_BF_KRP5_Verify(this,name,option)
+
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_BF_KRP5_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  if (index(name,'SATURATION_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'SATURATION_FUNCTION,LINEAR'
+  endif
+  call SFBaseVerify(this,string,option)
+  if (Uninitialized(this%alpha)) then
+    option%io_buffer = UninitializedMessage('ALPHA',string)
+    call printErrMsg(option)
+  endif   
+  if (Uninitialized(this%Srg)) then
+    option%io_buffer = UninitializedMessage('Srg',string)
+    call printErrMsg(option)
+  endif   
+end subroutine SF_BF_KRP5_Verify
+
+! ************************************************************************** !
+
+subroutine SF_BF_KRP5_CapillaryPressure(this,liquid_saturation, &
+                                        capillary_pressure,dpc_dsatl,option)
+  ! 
+  ! Computes the capillary_pressure as a function of saturation
+  ! From BRAGFLO 6.02 User Manual page 121 KRP=5.
+  ! I also referenced the source code of BRAGFLO 6.02
+
+  ! Author: Heeho Park
+  ! Date: 11/18/16
+  !
+  use Option_module
+  
+  implicit none
+  
+  class(sat_func_BF_KRP5_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: Se
+  
+  if (liquid_saturation <= this%Sr) then
+    capillary_pressure = this%pcmax
+    return
+  else if (liquid_saturation >= 1.d0) then
+    capillary_pressure = 0.d0
+    return
+  endif
+  
+  Se = (liquid_saturation-this%Sr)/(1.d0-this%Sr-this%Srg)
+  capillary_pressure = (1.d0/this%alpha-this%pcmax)*Se + this%pcmax
+
+  capillary_pressure = min(capillary_pressure,this%pcmax)
+  
+end subroutine SF_BF_KRP5_CapillaryPressure
+
+! ************************************************************************** !
+
+subroutine SF_BF_KRP5_Saturation(this,capillary_pressure,liquid_saturation, &
+                            dsat_dpres,option)
+  ! 
+  ! Computes the saturation as a function of capillary_pressure
+  ! From BRAGFLO 6.02 User Manual page 121 KRP=5.
+  ! I also referenced the source code of BRAGFLO 6.02
+
+  ! Author: Heeho Park
+  ! Date: 11/18/16
+  !
+  use Option_module
+  use Utility_module
+  
+  implicit none
+
+  class(sat_func_BF_KRP5_type) :: this
+  PetscReal, intent(in) :: capillary_pressure
+  PetscReal, intent(out) :: liquid_saturation
+  PetscReal, intent(out) :: dsat_dpres
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: Se
+  PetscReal :: dSe_dpc
+  
+  dsat_dpres = 0.d0
+
+  if (capillary_pressure <= 0.d0) then
+    liquid_saturation = 1.d0
+    return
+  else
+    Se = (this%pcmax-capillary_pressure) / (this%pcmax-1.d0/this%alpha)
+    dSe_dpc = -1.d0/(this%pcmax-1.d0/this%alpha)
+    liquid_saturation = this%Sr + (1.d0-this%Sr-this%Srg)*Se
+    dsat_dpres = -(1.d0-this%Sr-this%Srg)*dSe_dpc
+  endif 
+
+end subroutine SF_BF_KRP5_Saturation
+! End SF: BRAGFLO KRP5 Model
+                            
 ! ************************************************************************** !
 
 ! Begin SF: BRAGFLO KRP9 Model
@@ -2905,13 +3818,15 @@ end subroutine SF_BF_KRP9_Verify
 ! ************************************************************************** !
 
 subroutine SF_BF_KRP9_CapillaryPressure(this,liquid_saturation, &
-                                   capillary_pressure,option)
+                                        capillary_pressure,dpc_dsatl,option)
   ! 
   ! Computes the capillary_pressure as a function of saturation
   ! based on experimental measurements and analyses done by Vauclin et al.
-  ! as discussed by Moridis and Pruess.  
-  ! 14.	Moridis, G. J., and K. Pruess.  1992.  TOUGH Simulations of 
-  ! Updegraff\92s Set of Fluid and Heat Flow Problems.  LBL-32611, ERMS# 138458. 
+  ! as discussed by Moridis and Pruess, and the BRAGFLO V6.02 Requirements
+  ! Document and Verification and Validation Plan, Sandia National Laboratories,
+  ! Carlsbad, NM. ERMS #558659.  
+  ! Moridis, G. J., and K. Pruess.  1992.  TOUGH Simulations of 
+  ! Updegraff's Set of Fluid and Heat Flow Problems.  LBL-32611, ERMS# 138458. 
   ! Berkeley, CA:  Lawrence Berkeley Laboratory.
   ! Author: Heeho Park
   ! Date: 03/26/15
@@ -2923,9 +3838,12 @@ subroutine SF_BF_KRP9_CapillaryPressure(this,liquid_saturation, &
   class(sat_func_BF_KRP9_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
+  PetscReal, parameter :: a = 3783.0145d0
+  PetscReal, parameter :: b = 2.9d0
   
   if (liquid_saturation <= this%Sr) then
     capillary_pressure = 0.d0
@@ -2936,7 +3854,7 @@ subroutine SF_BF_KRP9_CapillaryPressure(this,liquid_saturation, &
   endif
   
   Se = (1.d0-liquid_saturation)/(liquid_saturation)
-  capillary_pressure = 3783.0145d0*Se**(1.d0/2.9d0)
+  capillary_pressure = a*Se**(1.d0/b)
 #if defined(MATCH_TOUGH2)
   if (liquid_saturation > 0.999d0) then
     capillary_pressure = capillary_pressure*(1.d0-liquid_saturation)/0.001d0
@@ -2954,8 +3872,7 @@ subroutine SF_BF_KRP9_Saturation(this,capillary_pressure,liquid_saturation, &
   ! 
   ! Computes the saturation (and associated derivatives) as a function of 
   ! capillary pressure
-  ! 
-  !   
+  !  
   ! Author: Heeho Park
   ! Date: 03/26/15
   !
@@ -2971,16 +3888,24 @@ subroutine SF_BF_KRP9_Saturation(this,capillary_pressure,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
+  PetscReal :: dS_dSe
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
+  PetscReal, parameter :: a = 3783.0145d0
+  PetscReal, parameter :: b = 2.9d0
   
   dsat_dpres = 0.d0
-
+  
   if (capillary_pressure <= 0.d0) then
     liquid_saturation = 1.d0
     return
   else
-    Se = (capillary_pressure/3783.0145d0)**(2.9d0)
-    liquid_saturation = 1.d0 / (Se-1.d0)
+    Se = (capillary_pressure/a)**(b)
+    liquid_saturation = 1.d0 / (Se+1.d0)
+    ! Python analytical derivative (Jenn Frederick)
+    dS_dSe = -1.d0/(Se + 1.d0)**2
+    dSe_dpc = b*(capillary_pressure/a)**b/capillary_pressure
+    dsat_dpres = dS_dSe*dSe_dpc*dpc_dpres
   endif 
 
 end subroutine SF_BF_KRP9_Saturation
@@ -3045,7 +3970,7 @@ end subroutine SF_BF_KRP4_Verify
 ! ************************************************************************** !
 
 subroutine SF_BF_KRP4_CapillaryPressure(this,liquid_saturation, &
-                                   capillary_pressure,option)
+                                        capillary_pressure,dpc_dsatl,option)
   ! 
   ! Computes the capillary_pressure as a function of saturation using the
   ! Brooks-Corey formulation
@@ -3066,6 +3991,7 @@ subroutine SF_BF_KRP4_CapillaryPressure(this,liquid_saturation, &
   class(sat_func_BF_KRP4_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
@@ -3108,7 +4034,7 @@ end subroutine SF_BF_KRP4_CapillaryPressure
 ! ************************************************************************** !
 
 subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
-                            dsat_dpres,option)
+                                 dsat_dpres,option)
   ! 
   ! Computes the capillary_pressure as a function of saturation using the
   ! Brooks-Corey formulation
@@ -3135,6 +4061,7 @@ subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal :: pc_alpha_neg_lambda
   PetscReal :: Se
   PetscReal :: dSe_dpc
+  PetscReal, parameter :: dpc_dpres = -1.d0
   
   dsat_dpres = 0.d0
   
@@ -3147,7 +4074,7 @@ subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
       call CubicPolynomialEvaluate(this%pres_poly%coefficients, &
                                    capillary_pressure,Se,dSe_dpc)
       liquid_saturation = this%Sr + (1.d0-this%Sr-this%Srg)*Se
-      dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+      dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
       return
     endif
   else
@@ -3162,7 +4089,7 @@ subroutine SF_BF_KRP4_Saturation(this,capillary_pressure,liquid_saturation, &
   Se = pc_alpha_neg_lambda
   dSe_dpc = -this%lambda/capillary_pressure*pc_alpha_neg_lambda
   liquid_saturation = this%Sr + (1.d0-this%Sr-this%Srg)*Se
-  dsat_dpres = -(1.d0-this%Sr)*dSe_dpc
+  dsat_dpres = (1.d0-this%Sr)*dSe_dpc*dpc_dpres
   
 end subroutine SF_BF_KRP4_Saturation
 
@@ -3223,7 +4150,7 @@ end subroutine SF_BF_KRP11_Verify
 ! ************************************************************************** !
 
 subroutine SF_BF_KRP11_CapillaryPressure(this,liquid_saturation, &
-                                   capillary_pressure,option)
+                                         capillary_pressure,dpc_dsatl,option)
   ! 
   ! KRP=11 of BRAGFLO
   ! capillary pressure is 0 at all times
@@ -3237,8 +4164,10 @@ subroutine SF_BF_KRP11_CapillaryPressure(this,liquid_saturation, &
   class(sat_func_BF_KRP11_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
   type(option_type), intent(inout) :: option
 
+  dpc_dsatl = 0.d0
   capillary_pressure = 0.0d0
   
 end subroutine SF_BF_KRP11_CapillaryPressure
@@ -3246,7 +4175,7 @@ end subroutine SF_BF_KRP11_CapillaryPressure
 ! ************************************************************************** !
 
 subroutine SF_BF_KRP11_Saturation(this,capillary_pressure,liquid_saturation, &
-                            dsat_dpres,option)
+                                  dsat_dpres,option)
   ! 
   ! Computes the saturation (and associated derivatives) as a function of 
   ! capillary pressure
@@ -3266,11 +4195,7 @@ subroutine SF_BF_KRP11_Saturation(this,capillary_pressure,liquid_saturation, &
   PetscReal, intent(out) :: dsat_dpres
   type(option_type), intent(inout) :: option
   
-  PetscReal :: Se
-  PetscReal :: dSe_dpc
-  
   dsat_dpres = 0.d0
-
   liquid_saturation = 1.d0
 
 end subroutine SF_BF_KRP11_Saturation
@@ -3330,7 +4255,7 @@ end subroutine SF_BF_KRP12_Verify
 ! ************************************************************************** !
 
 subroutine SF_BF_KRP12_CapillaryPressure(this,liquid_saturation, &
-                                   capillary_pressure,option)
+                                         capillary_pressure,dpc_dsatl,option)
   ! 
   ! Computes the capillary_pressure as a function of saturation using the
   ! Brooks-Corey formulation
@@ -3350,6 +4275,7 @@ subroutine SF_BF_KRP12_CapillaryPressure(this,liquid_saturation, &
   class(sat_func_BF_KRP12_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
@@ -3384,6 +4310,242 @@ subroutine SF_BF_KRP12_CapillaryPressure(this,liquid_saturation, &
 end subroutine SF_BF_KRP12_CapillaryPressure
 
 ! End SF: BRAGFLO KRP12 Model  
+
+! ************************************************************************** !
+function SF_mK_Create()
+
+  ! Creates the modified Kosugi saturation function object
+
+  implicit none
+
+  class(sat_func_mK_type), pointer :: SF_mK_Create
+
+  allocate(SF_mK_Create)
+  call SF_mK_Create%Init()
+
+end function SF_mK_Create
+
+! ************************************************************************** !
+
+subroutine SF_mK_Init(this)
+
+  ! Initializes modified Kosugi saturation function object
+
+  implicit none
+  
+  class(sat_func_mK_type) :: this
+
+  call SFBaseInit(this)
+  this%sigmaz = UNINITIALIZED_DOUBLE
+  this%muz = UNINITIALIZED_DOUBLE
+  this%rmax = UNINITIALIZED_DOUBLE
+  this%r0 = UNINITIALIZED_DOUBLE
+  this%nparam = UNINITIALIZED_INTEGER
+  
+end subroutine SF_mK_Init
+
+! ************************************************************************** !
+
+subroutine SF_mK_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+
+  class(sat_func_mK_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+
+  if (index(name,'SATURATION_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'SATURATION_FUNCTION,MODIFIED_KOSUGI'
+  endif
+  call SFBaseVerify(this,string,option)
+  if (Uninitialized(this%sigmaz)) then
+    option%io_buffer = UninitializedMessage('SIGMAZ',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%muz)) then
+    option%io_buffer = UninitializedMessage('MUZ',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%nparam)) then
+    option%io_buffer = UninitializedMessage('NPARAM',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%rmax)) then
+    ! rmax is used for both nparam 3 and 4
+    option%io_buffer = UninitializedMessage('RMAX',string)
+    call printErrMsg(option)
+  endif
+  select case(this%nparam)
+    case(4)
+      ! r0 is only used for nparam 4
+      if (Uninitialized(this%r0)) then
+        option%io_buffer = UninitializedMessage('R0',string)
+        call printErrMsg(option)
+      endif
+      if (this%r0 >= this%rmax) then
+        option%io_buffer = trim(string) // ' requires RMAX > R0'
+        call printErrMsg(option)
+      end if
+    case(3)
+      continue ! rmax handled above
+    case default
+      option%io_buffer = 'invalid NPARAM value in' // &
+        trim(string) // '. Only NPARAM=(3,4) supported.'
+      call printErrMsg(option)
+  end select
+
+end subroutine SF_mK_Verify
+
+! ************************************************************************** !
+
+subroutine SF_mK_CapillaryPressure(this,liquid_saturation, &
+                                   capillary_pressure,dpc_dsatl,option)
+  !
+  ! Computes the capillary_pressure as a function of saturation
+  ! for modified Kosugi model.
+  !
+  ! Malama, B. & K.L. Kuhlman, 2015. Unsaturated Hydraulic Conductivity
+  ! Models Based on Truncated Lognormal Pore-size Distributions, Groundwater,
+  ! 53(3):498–502. http://dx.doi.org/10.1111/gwat.12220
+  !
+  ! Author: Kris Kuhlman
+  ! Date: 2017
+  !
+  use Option_module
+  use Utility_module, only : InverseNorm
+
+  implicit none
+
+  PetscReal, parameter :: KAPPA = 1.49D-1 !  water in glass tube
+  PetscReal, parameter :: LNKAP = log(KAPPA)
+  PetscReal, parameter :: UNIT_CONVERSION = 9.982D+2*9.81d0/1.0D+2
+  
+  class(sat_func_mK_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: capillary_pressure
+  PetscReal, intent(out) :: dpc_dsatl
+  type(option_type), intent(inout) :: option
+
+  PetscReal :: Se
+  PetscReal :: inverse, exparg
+  PetscReal :: hc, hmaxinv
+  PetscReal :: dinverse_dSe
+  PetscReal :: dSe_dsatl, dexparg_dinverse, dpc_dexparg
+  PetscReal :: one_over_pc
+  PetscReal :: tempreal
+
+  dpc_dsatl = 0.d0
+
+  if (liquid_saturation <= this%Sr) then
+    capillary_pressure = this%pcmax
+    return
+  else if (liquid_saturation >= 1.d0) then
+    capillary_pressure = 0.d0
+    return
+  endif
+
+  dSe_dsatl = 1.d0/(1.d0 - this%Sr)
+  Se = (liquid_saturation - this%Sr)*dSe_dsatl
+!  inverse = -InverseNorm(Se)
+  call InverseNorm(Se,inverse,PETSC_TRUE,dinverse_dSe)
+  inverse = -1.d0*inverse
+  dinverse_dSe = -1.d0*dinverse_dSe
+  exparg = this%sigmaz*inverse + LNKAP - this%muz
+  dexparg_dinverse = this%sigmaz
+
+  hc = KAPPA/this%rmax
+  dpc_dexparg = exp(exparg)
+  capillary_pressure = dpc_dexparg + hc
+  dpc_dsatl = dpc_dexparg*dexparg_dinverse*dinverse_dSe*dSe_dsatl
+  if (this%nparam == 4) then
+    hmaxinv = this%r0/KAPPA
+    one_over_pc = 1.d0/capillary_pressure
+    tempreal = 1.d0/(one_over_pc + hmaxinv)
+    capillary_pressure = tempreal
+    dpc_dsatl = capillary_pressure*tempreal*one_over_pc*one_over_pc*dpc_dsatl
+  end if
+
+  capillary_pressure = capillary_pressure*UNIT_CONVERSION
+  dpc_dsatl = dpc_dsatl*UNIT_CONVERSION
+  if (capillary_pressure > this%pcmax) then
+    capillary_pressure = this%pcmax
+    dpc_dsatl = 0.d0
+  endif
+
+end subroutine SF_mK_CapillaryPressure
+
+! ************************************************************************** !
+
+subroutine SF_mK_Saturation(this,capillary_pressure,liquid_saturation, &
+                            dsat_dpres,option)
+  !
+  ! Computes the saturation (and associated derivatives) as a function of
+  ! capillary pressure for modified Kosugi model
+  !
+  ! Malama, B. & K.L. Kuhlman, 2015. Unsaturated Hydraulic Conductivity
+  ! Models Based on Truncated Lognormal Pore-size Distributions, Groundwater,
+  ! 53(3):498–502. http://dx.doi.org/10.1111/gwat.12220
+  !
+  ! Author: Kris Kuhlman
+  ! Date: 2017
+  !
+  use Option_module
+  use Utility_module, only : InverseNorm
+
+  implicit none
+
+  ! gnu & intel extension and required in f2008
+  intrinsic :: erfc
+
+  PetscReal, parameter :: KAPPA = 1.49D-1 ! water in glass tube
+  PetscReal, parameter :: LNKAP = log(KAPPA)
+  PetscReal, parameter :: SQRT2 = sqrt(2.0d0)
+  PetscReal, parameter :: SQRTPI = sqrt(4.0d0*atan(1.0d0))
+  PetscReal, parameter :: UNIT_CONVERSION = 9.982D+2*9.81d0/1.0D+2
+  
+  class(sat_func_mK_type) :: this
+  PetscReal, intent(in) :: capillary_pressure
+  PetscReal, intent(out) :: liquid_saturation
+  PetscReal, intent(out) :: dsat_dpres
+  type(option_type), intent(inout) :: option
+
+  PetscReal :: hc, hmax, cap_press_scaled
+  PetscReal :: rt2sz
+  PetscReal :: lnArg, erfcArg
+
+  dsat_dpres = 0.0d0
+  cap_press_scaled = capillary_pressure/UNIT_CONVERSION
+  
+  hc = KAPPA/this%rmax
+  if (cap_press_scaled <= hc) then
+    liquid_saturation = 1.d0
+    return
+  end if
+
+  if (this%nparam == 3) then
+    lnArg = cap_press_scaled - hc
+  else ! nparam == 4 
+    hmax = KAPPA/this%r0
+    if (cap_press_scaled >= hmax) then
+      liquid_saturation = this%Sr
+      return
+    end if
+    lnArg = 1.d0/(1.d0/cap_press_scaled - 1.d0/hmax) - hc
+  end if
+
+  rt2sz = SQRT2*this%sigmaz
+  erfcArg = (log(lnArg) - LNKAP + this%muz)/rt2sz
+  liquid_saturation = this%Sr + (1.0d0-this%Sr)*5.0D-1*erfc(erfcArg)
+  dsat_dpres = exp(-erfcArg**2)/(SQRTPI*rt2sz*lnArg)/UNIT_CONVERSION
+
+end subroutine SF_mK_Saturation
+! End SF: modified Kosugi
 
 ! ************************************************************************** !
 
@@ -3643,7 +4805,8 @@ subroutine RPF_Mualem_VG_Gas_RelPerm(this,liquid_saturation, &
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   
   relative_permeability = 0.d0
-  dkr_sat = UNINITIALIZED_DOUBLE
+  dkr_sat = 0.d0
+  
   if (Se >= 1.d0) then
     relative_permeability = 0.d0
     return
@@ -3654,7 +4817,7 @@ subroutine RPF_Mualem_VG_Gas_RelPerm(this,liquid_saturation, &
   
   Seg = 1.d0 - Se
   relative_permeability = sqrt(Seg)*(1.d0-Se**(1.d0/this%m))**(2.d0*this%m)
-  ! Mathematica Analytical solution (Heeho Park)
+  ! Mathematica analytical solution (Heeho Park)
   dkr_Se = -(1.d0-Se**(1.d0/this%m))**(2.d0*this%m)/(2.d0*sqrt(Seg)) &
           - 2.d0*sqrt(Seg)*Se**(1.d0/this%m-1.d0) &
           * (1.d0-Se**(1.d0/this%m))**(2.d0*this%m-1.d0)
@@ -3785,7 +4948,7 @@ function RPF_Burdine_BC_Liq_Create()
 
   implicit none
   
-  class(rpf_Burdine_BC_Liq_type), pointer :: RPF_Burdine_BC_Liq_Create
+  class(rpf_Burdine_BC_liq_type), pointer :: RPF_Burdine_BC_Liq_Create
   
   allocate(RPF_Burdine_BC_Liq_Create)
   call RPF_Burdine_BC_Liq_Create%Init()
@@ -3800,7 +4963,7 @@ subroutine RPF_Burdine_BC_Liq_Init(this)
 
   implicit none
   
-  class(rpf_Burdine_BC_Liq_type) :: this
+  class(rpf_Burdine_BC_liq_type) :: this
 
   call RPFBaseInit(this)
   this%lambda = UNINITIALIZED_DOUBLE
@@ -3856,7 +5019,7 @@ subroutine RPF_Burdine_BC_Liq_RelPerm(this,liquid_saturation, &
   
   implicit none
 
-  class(rpf_Burdine_BC_Liq_type) :: this
+  class(rpf_Burdine_BC_liq_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: relative_permeability
   PetscReal, intent(out) :: dkr_sat
@@ -3983,7 +5146,8 @@ subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   
   relative_permeability = 0.d0
-  dkr_sat = UNINITIALIZED_DOUBLE
+  dkr_sat = 0.d0
+  
   if (Se >= 1.d0) then
     relative_permeability = 0.d0
     return
@@ -3993,9 +5157,9 @@ subroutine RPF_Burdine_BC_Gas_RelPerm(this,liquid_saturation, &
   endif
   
   Seg = 1.d0 - Se
-        ! reference #1
+  ! reference #1
   relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
-  ! Mathematica Analytical solution (Heeho Park)
+  ! Mathematica analytical solution (Heeho Park)
   dkr_Se = -(1.d0+2.d0/this%lambda)*Seg**2.d0*Se**(2.d0/this%lambda) &
            - 2.d0*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
   dSe_sat = 1.d0 / (1.d0 - this%Sr - this%Srg)
@@ -4085,7 +5249,7 @@ subroutine RPF_Mualem_BC_Liq_RelPerm(this,liquid_saturation, &
   
   implicit none
 
-  class(rpf_Mualem_BC_Liq_type) :: this
+  class(rpf_Mualem_BC_liq_type) :: this
   PetscReal, intent(in) :: liquid_saturation
   PetscReal, intent(out) :: relative_permeability
   PetscReal, intent(out) :: dkr_sat
@@ -4211,7 +5375,8 @@ subroutine RPF_Mualem_BC_Gas_RelPerm(this,liquid_saturation, &
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   
   relative_permeability = 0.d0
-  dkr_sat = UNINITIALIZED_DOUBLE
+  dkr_sat = 0.d0
+  
   if (Se >= 1.d0) then
     relative_permeability = 0.d0
     return
@@ -4223,8 +5388,8 @@ subroutine RPF_Mualem_BC_Gas_RelPerm(this,liquid_saturation, &
   Seg = 1.d0 - Se
   ! reference Table 2
   relative_permeability = sqrt(Seg)* &
-                              (1.d0-Se**(1.d0+1.d0/this%lambda))**2.d0
-  ! Mathematica Analytical solution (Heeho Park)
+                             (1.d0-Se**(1.d0+1.d0/this%lambda))**2.d0
+  ! Mathematica analytical solution (Heeho Park)
   dkr_Se = -2.d0*(1.d0+1.d0/this%lambda)*sqrt(Seg)*Se**(1.d0/this%lambda) &
           * (1.d0-Se**(1.d0+1.d0/this%lambda)) &
           - (1.d0-Se**(1.d0+1.d0/this%lambda))**2.d0/(2.d0*sqrt(Seg))
@@ -4668,8 +5833,6 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   ! Computes the relative permeability (and associated derivatives) as a 
   ! function of saturation
   !
-  !
-  !
   ! Author: Bwalya Malama, Heeho Park
   ! Date: 11/14/14
 
@@ -4686,17 +5849,16 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   PetscReal :: Se
   PetscReal :: Seg
   PetscReal :: liquid_relative_permeability
-  PetscReal :: liquid_dkr_sat
+  PetscReal :: liquid_dkr_sat  
+  PetscReal :: dkr_dSe
+  PetscReal :: dSe_dsat
   
   call RPF_Mualem_Linear_Liq_RelPerm(this,liquid_saturation, &
-                        liquid_relative_permeability, &
-                        liquid_dkr_sat,option)
+                                     liquid_relative_permeability, &
+                                     liquid_dkr_sat,option)
   
   relative_permeability = 0.d0
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
 
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   if (Se >= 1.d0) then
@@ -4711,6 +5873,15 @@ subroutine RPF_Mualem_Linear_Gas_RelPerm(this,liquid_saturation, &
   ! reference Table 2
   relative_permeability = Seg**0.5d0 * &
                  (1.d0-sqrt(liquid_relative_permeability*Se**(-0.5d0)))**2.d0
+  ! Python analytical derivative (Jenn Frederick)
+  dkr_dSe = 0.5d0*1.d0/Se*sqrt(Se**(-0.5d0)*liquid_relative_permeability)* &
+    sqrt(1.d0-Se)*(1.d0-sqrt(Se**(-0.5d0)*liquid_relative_permeability))**1.0 &
+    - (1.d0-sqrt(Se**(-0.5d0)*liquid_relative_permeability))**2.d0 &
+    /(2.d0*sqrt(1.d0-Se))
+  !one_over_apcm = 1.d0/(1.d-7)/(1.d9)
+  !dkr_dSe = -2.0*Se**0.5*sqrt(Se**(-0.5)*log(-Se*(-one_over_apcm + 1.0) + 1.0)/log(one_over_apcm))*sqrt(-Se + 1.0)*(-0.25*Se**(-1.5)*log(-Se*(-one_over_apcm + 1.0) + 1.0)/log(one_over_apcm) + Se**(-0.5)*(one_over_apcm - 1.0)/(2*(-Se*(-one_over_apcm + 1.0) + 1.0)*log(one_over_apcm)))*(-sqrt(Se**(-0.5)*log(-Se*(-one_over_apcm + 1.0) + 1.0)/log(one_over_apcm)) + 1.0)**1.0*log(one_over_apcm)/log(-Se*(-one_over_apcm + 1.0) + 1.0) - (-sqrt(Se**(-0.5)*log(-Se*(-one_over_apcm + 1.0) + 1.0)/log(one_over_apcm)) + 1.0)**2.0/(2*sqrt(-Se + 1.0))
+  dSe_dsat = 1.d0/(1.d0 - this%Sr - this%Srg)
+  dkr_sat = dkr_dSe*dSe_dsat
 
 end subroutine RPF_Mualem_Linear_Gas_RelPerm
 ! End RPF: Mualem, Linear (Gas)
@@ -4724,7 +5895,7 @@ function RPF_Burdine_Linear_Liq_Create()
 
   implicit none
   
-  class(rpf_Burdine_linear_liq_type), pointer :: RPF_Burdine_Linear_Liq_Create
+  class(rpf_Burdine_Linear_liq_type), pointer :: RPF_Burdine_Linear_Liq_Create
   
   allocate(RPF_Burdine_Linear_Liq_Create)
   call RPF_Burdine_Linear_Liq_Create%Init()
@@ -4776,9 +5947,7 @@ subroutine RPF_Burdine_Linear_Liq_RelPerm(this,liquid_saturation, &
   ! 
   ! Computes the relative permeability (and associated derivatives) as a 
   ! function of saturation
-  ! 
-  !
-  !   
+  !  
   ! Author: Bwalya Malama, Heeho Park
   ! Date: 11/14/14
   ! 
@@ -4794,8 +5963,6 @@ subroutine RPF_Burdine_Linear_Liq_RelPerm(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
-  PetscReal :: one_over_m
-  PetscReal :: Se_one_over_m
   
   relative_permeability = 0.d0
   dkr_sat = 0.d0
@@ -4864,7 +6031,8 @@ subroutine RPF_Burdine_Linear_Gas_Verify(this,name,option)
   if (index(name,'PERMEABILITY_FUNCTION') > 0) then
     string = name
   else
-    string = trim(name) // 'PERMEABILITY_FUNCTION,BURDINE_LINEAR_GAS'
+    string = trim(name) // 'PERMEABILITY_FUNCTION,BURDINE_LINEAR_GAS&
+             &/BRAGFLO_ KRP5'
   endif    
   call RPFBaseVerify(this,string,option)
   if (Uninitialized(this%Srg)) then
@@ -4900,15 +6068,14 @@ subroutine RPF_Burdine_Linear_Gas_RelPerm(this,liquid_saturation, &
   
   PetscReal :: Se
   PetscReal :: Seg
-  PetscReal :: liquid_relative_permeability
-  PetscReal :: liquid_dkr_sat
   PetscReal :: dkr_Se
   PetscReal :: dSe_sat
   
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
   
   relative_permeability = 0.d0
-  dkr_sat = UNINITIALIZED_DOUBLE
+  dkr_sat = 0.d0
+  
   if (Se >= 1.d0) then
     relative_permeability = 0.d0
     return
@@ -4923,11 +6090,161 @@ subroutine RPF_Burdine_Linear_Gas_RelPerm(this,liquid_saturation, &
   dSe_sat = 1.d0 / (1.d0 - this%Sr - this%Srg)
   dkr_sat = dkr_Se * dSe_sat
   
-  end subroutine RPF_Burdine_Linear_Gas_RelPerm
+end subroutine RPF_Burdine_Linear_Gas_RelPerm
 ! End Burdine Linear (Gas)
 
 ! ************************************************************************** !
+
+! Begin RPF: BRAGFLO KRP1 (Liq)
+function RPF_BRAGFLO_KRP1_Liq_Create()
+
+  ! Creates the KRP1 or VG_Mualem liq relative permeability function object
+
+  implicit none
   
+  class(rpf_BRAGFLO_KRP1_liq_type), pointer :: RPF_BRAGFLO_KRP1_Liq_Create
+  
+  allocate(RPF_BRAGFLO_KRP1_Liq_Create)
+  call RPF_BRAGFLO_KRP1_Liq_Create%Init()
+  
+end function RPF_BRAGFLO_KRP1_Liq_Create
+! End RPF: BRAGFLO KRP4 (Liq)
+
+! ************************************************************************** !
+
+! Begin RPF: BRAGFLO KRP1 (Gas)
+function RPF_BRAGFLO_KRP1_Gas_Create()
+
+  ! Creates the KRP1 or VG_Mualem liq relative permeability function object
+
+  implicit none
+  
+  class(rpf_BRAGFLO_KRP1_gas_type), pointer :: RPF_BRAGFLO_KRP1_Gas_Create
+  
+  allocate(RPF_BRAGFLO_KRP1_Gas_Create)
+  call RPF_BRAGFLO_KRP1_Gas_Create%Init()
+  
+end function RPF_BRAGFLO_KRP1_Gas_Create
+! End RPF: BRAGFLO KRP4 (Gas)
+
+! ************************************************************************** !
+
+! Begin RPF: BRAGFLO KRP5 (Liquid)
+function RPF_BRAGFLO_KRP5_Liq_Create()
+
+  ! Creates the BRAGFLO KRP5 relative permeability function object
+  ! Linear Burdine with gas residual saturation.
+
+  implicit none
+  
+  class(rpf_BRAGFLO_KRP5_liq_type), pointer :: RPF_BRAGFLO_KRP5_Liq_Create
+  
+  allocate(RPF_BRAGFLO_KRP5_Liq_Create)
+  call RPF_BRAGFLO_KRP5_Liq_Create%Init()
+  
+end function RPF_BRAGFLO_KRP5_Liq_Create
+
+! ************************************************************************** !
+
+subroutine RPF_BRAGFLO_KRP5_Liq_Init(this)
+
+  ! Initializes the BRAGFLO KRP5 relative permeability function 
+  ! object
+
+  implicit none
+  
+  class(rpf_BRAGFLO_KRP5_liq_type) :: this
+
+  call RPFBaseInit(this)
+  this%Srg = UNINITIALIZED_DOUBLE
+  
+end subroutine RPF_BRAGFLO_KRP5_Liq_Init
+
+! ************************************************************************** !
+
+subroutine RPF_BRAGFLO_KRP5_Liq_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+  
+  class(rpf_BRAGFLO_KRP5_liq_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  if (index(name,'PERMEABILITY_FUNCTION') > 0) then
+    string = name
+  else
+    string = trim(name) // 'PERMEABILITY_FUNCTION,BRAGFLO_KRP5'
+  endif  
+  call RPFBaseVerify(this,string,option)
+  if (Uninitialized(this%Srg)) then
+    option%io_buffer = UninitializedMessage('GAS_RESIDUAL_SATURATION',string)
+    call printErrMsg(option)
+  endif  
+    
+end subroutine RPF_BRAGFLO_KRP5_Liq_Verify
+
+! ************************************************************************** !
+
+subroutine RPF_BRAGFLO_KRP5_Liq_RelPerm(this,liquid_saturation, &
+                              relative_permeability,dkr_sat,option)
+  !
+  ! Author: Heeho Park
+  ! Date: 11/18/16
+  !
+  use Option_module
+  use Utility_module
+  
+  implicit none
+
+  class(rpf_BRAGFLO_KRP5_liq_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: relative_permeability
+  PetscReal, intent(out) :: dkr_sat
+  type(option_type), intent(inout) :: option
+  
+  PetscReal :: Se
+  
+  relative_permeability = 0.d0
+  dkr_sat = 0.d0
+  
+  Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
+  if (Se >= 1.d0) then
+    relative_permeability = 1.d0
+    return
+  else if (Se <= 0.d0) then
+    relative_permeability = 0.d0
+    return
+  endif
+  
+  relative_permeability = Se
+  dkr_sat = 1.d0 / (1.d0 - this%Sr - this%Srg)
+  
+end subroutine RPF_BRAGFLO_KRP5_Liq_RelPerm
+! End RPF: BRAGFLO KRP5 (Liquid)
+
+! ************************************************************************** !
+
+! Begin BRAGFLO KRP5 (Gas)
+function RPF_BRAGFLO_KRP5_Gas_Create()
+
+  ! Creates the BRAGFLO KRP5 gas relative permeability function object
+
+  implicit none
+  
+  class(rpf_BRAGFLO_KRP5_gas_type), pointer :: RPF_BRAGFLO_KRP5_Gas_Create
+  
+  allocate(RPF_BRAGFLO_KRP5_Gas_Create)
+  call RPF_BRAGFLO_KRP5_Gas_Create%Init()
+  
+end function RPF_BRAGFLO_KRP5_Gas_Create
+! End RPF: BRAGFLO KRP5 (Liquid)
+
+! ************************************************************************** !
+                                     
 ! Begin RPF: BRAGFLO KRP9 (Liquid)
 function RPF_BRAGFLO_KRP9_Liq_Create()
 
@@ -5007,16 +6324,11 @@ subroutine RPF_BRAGFLO_KRP9_Liq_RelPerm(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
-  PetscReal :: one_over_m
-  PetscReal :: Se_one_over_m
+  PetscReal :: dkr_dSe
+  PetscReal :: dSe_dsat
   
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP9_Liq_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
   
   Se = (1.d0-liquid_saturation)/(liquid_saturation)
   if (liquid_saturation <= this%Sr) then
@@ -5025,6 +6337,11 @@ subroutine RPF_BRAGFLO_KRP9_Liq_RelPerm(this,liquid_saturation, &
   endif
   
   relative_permeability = 1.d0/(1.d0+28.768353d0*Se**1.7241379d0)
+  ! Python analytical derivative (Jenn Frederick)
+  dkr_dSe = -49.6006077278787*Se**0.7241379/(28.768353*Se**1.7241379+1.0)**2.0
+  dSe_dsat = -1.0*(1.0/liquid_saturation) &
+             - (1.0-liquid_saturation)/liquid_saturation**2.0
+  dkr_sat = dkr_dSe * dSe_dsat
   
 end subroutine RPF_BRAGFLO_KRP9_Liq_RelPerm
 ! End RPF: BRAGFLO KRP9 (Liquid)
@@ -5077,7 +6394,7 @@ subroutine RPF_BRAGFLO_KRP9_Gas_Verify(this,name,option)
   if (index(name,'PERMEABILITY_FUNCTION') > 0) then
     string = name
   else
-    string = trim(name) // 'PERMEABILITY_FUNCTION,BURDINE_LINEAR_GAS'
+    string = trim(name) // 'PERMEABILITY_FUNCTION,BRAGFLO_KRP9_GAS'
   endif    
   call RPFBaseVerify(this,string,option)
   
@@ -5110,18 +6427,11 @@ subroutine RPF_BRAGFLO_KRP9_Gas_RelPerm(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: Se
-  PetscReal :: Seg
   PetscReal :: liquid_relative_permeability
   PetscReal :: liquid_dkr_sat
-  PetscReal :: dkr_Se
 
-  print *, 'RPF_BRAGFLO_KRP9_Gas_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
+  relative_permeability = 0.d0
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
-  
 
   Se = (1.d0-liquid_saturation)/(liquid_saturation)
   if (liquid_saturation <= this%Sr) then
@@ -5134,7 +6444,7 @@ subroutine RPF_BRAGFLO_KRP9_Gas_RelPerm(this,liquid_saturation, &
                         liquid_dkr_sat,option)
   
   relative_permeability = 1.d0 - liquid_relative_permeability
-  dkr_Se = -1.d0 * liquid_dkr_sat
+  dkr_sat = -1.d0 * liquid_dkr_sat
   
 end subroutine RPF_BRAGFLO_KRP9_Gas_RelPerm
 ! End RPF: BRAGFLO KRP9 (Gas)
@@ -5251,22 +6561,16 @@ subroutine RPF_BRAGFLO_KRP4_Gas_RelPerm(this,liquid_saturation, &
   gas_saturation = 1.0d0 - liquid_saturation
   
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP4_Gas_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
-  dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
-  
+  dkr_sat = 0.d0  
 
   if (gas_saturation <= this%Srg) then
     relative_permeability = 0.0d0
   else if (liquid_saturation > this%Sr) then
     Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
     Seg = 1.d0 - Se
-        ! reference #1
+    ! reference #1
     relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
-    ! Mathematica Analytical solution (Heeho Park)
+    ! Mathematica analytical solution (Heeho Park)
     dkr_Se = -(1.d0+2.d0/this%lambda)*Seg**2.d0*Se**(2.d0/this%lambda) &
              - 2.d0*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
     dSe_sat = 1.d0 / (1.d0 - this%Sr - this%Srg)
@@ -5370,25 +6674,25 @@ subroutine RPF_BRAGFLO_KRP11_Liq_RelPerm(this,liquid_saturation, &
   gas_saturation = 1.d0 - liquid_saturation
   
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP11_Liq_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
   
   tol = this%tolc * (1 - this%Sr - this%Srg)
   
   if (liquid_saturation <= this%Sr) then
     relative_permeability = 0.d0
+    dkr_sat = 0.d0
   else if (gas_saturation <= this%Srg) then
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   else if (liquid_saturation <= this%Sr+tol) then
     relative_permeability = (liquid_saturation - this%Sr)/tol
+    dkr_sat = 1.d0/tol
   else if (gas_saturation <= this%Srg+tol) then
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   else
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   endif
     
 end subroutine RPF_BRAGFLO_KRP11_Liq_RelPerm
@@ -5440,26 +6744,25 @@ subroutine RPF_BRAGFLO_KRP11_Gas_RelPerm(this,liquid_saturation, &
   gas_saturation = 1.d0 - liquid_saturation
   
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP11_Gas_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
-  
   
   tol = this%tolc * (1 - this%Sr - this%Srg)
   
   if (liquid_saturation <= this%Sr) then
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   else if (gas_saturation <= this%Srg) then
     relative_permeability = 0.d0
+    dkr_sat = 0.d0
   else if (liquid_saturation <= this%Sr+tol) then
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   else if (gas_saturation <= this%Srg+tol) then
     relative_permeability = (gas_saturation - this%Srg)/tol
+    dkr_sat = -1.d0/tol
   else
     relative_permeability = 1.d0
+    dkr_sat = 0.d0
   endif
   
   end subroutine RPF_BRAGFLO_KRP11_Gas_RelPerm
@@ -5507,15 +6810,11 @@ subroutine RPF_BRAGFLO_KRP12_Liq_RelPerm(this,liquid_saturation, &
   
   PetscReal :: Se
   PetscReal :: power
-  PetscReal :: dkr_Se
+  PetscReal :: dkr_dSe
+  PetscReal :: dSe_dsat
 
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP12_Liq_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
   
   Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr)
   Se = max(min(Se,1.0d0),0.0d0)
@@ -5533,7 +6832,9 @@ subroutine RPF_BRAGFLO_KRP12_Liq_RelPerm(this,liquid_saturation, &
   ! reference #1
   power = 3.d0+2.d0/this%lambda
   relative_permeability = Se**power
-  dkr_Se = power*relative_permeability/Se          
+  dkr_dSe = power*relative_permeability/Se    
+  dSe_dsat = 1.d0 / (1.d0 - this%Sr)
+  dkr_sat = dkr_dSe * dSe_dsat
   
 end subroutine RPF_BRAGFLO_KRP12_Liq_RelPerm
 ! End RPF: Burdine, Brooks-Corey (Liquid)
@@ -5581,17 +6882,12 @@ subroutine RPF_BRAGFLO_KRP12_Gas_RelPerm(this,liquid_saturation, &
   PetscReal :: Se
   PetscReal :: Seg
   PetscReal :: gas_saturation
-  PetscReal :: dkr_Se
+  PetscReal :: dkr_dSe
+  PetscReal :: dSe_dsat
   
   gas_saturation = 1.0d0 - liquid_saturation
-  
   relative_permeability = 0.d0
-  print *, 'RPF_BRAGFLO_KRP12_Gas_RelPerm not validated'
-  stop
-  ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
-  dkr_sat = dkr_sat / 0.d0
-  dkr_sat = dkr_sat * 0.d0
 
   if (gas_saturation <= this%Srg) then
     relative_permeability = 0.0d0
@@ -5599,18 +6895,13 @@ subroutine RPF_BRAGFLO_KRP12_Gas_RelPerm(this,liquid_saturation, &
     Se = (liquid_saturation - this%Sr) / (1.d0 - this%Sr - this%Srg)
     Se = max(min(Se,1.0d0),0.0d0)
     Seg = 1.d0 - Se
-    if (Se < this%Sr) then
-       Se = this%Sr
-       Seg = 1.d0 - Se
-    else if (Seg < this%Srg) then
-       Seg = this%Srg
-       Se = 1.d0 - Seg
-    endif
-        ! reference #1
+    ! reference #1
     relative_permeability = Seg*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
-    ! Mathematica Analytical solution (Heeho Park)
-    dkr_Se = -(1.d0+2.d0/this%lambda)*Seg**2.d0*Se**(2.d0/this%lambda) &
-             - 2.d0*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
+    ! Mathematica analytical solution (Heeho Park)
+    dkr_dSe = -(1.d0+2.d0/this%lambda)*Seg**2.d0*Se**(2.d0/this%lambda) &
+              - 2.d0*Seg*(1.d0-Se**(1.d0+2.d0/this%lambda))
+    dSe_dsat = 1.d0/(1.d0 - this%Sr - this%Srg)  
+    dkr_sat = dkr_dSe * dSe_dsat
   else
     relative_permeability = 1.0d0
   endif
@@ -5619,7 +6910,277 @@ end subroutine RPF_BRAGFLO_KRP12_Gas_RelPerm
 ! End RPF: Burdine, Brooks-Corey (Gas)
   
 ! ************************************************************************** !
+
+! Begin RPF: modified Kosugi (Liq)
+function RPF_mK_Liq_Create()
+
+  ! Creates the modified Kosugi liq relative permeability function object
+
+  implicit none
+
+  class(rpf_mK_liq_type), pointer :: RPF_mK_Liq_Create
+
+  allocate(RPF_mK_Liq_Create)
+  call RPF_mK_Liq_Create%Init()
+
+end function RPF_mK_Liq_Create
+! End RPF:  modified Kosugi (Liq)
+
+! ************************************************************************** !
+
+subroutine RPF_mK_Liq_Init(this)
+
+  ! Initializes modified Kosugi saturation function object
+
+  implicit none
   
+  class(rpf_mK_liq_type) :: this
+
+  call RPFBaseInit(this)
+  this%sigmaz = UNINITIALIZED_DOUBLE
+  
+end subroutine RPF_mK_Liq_Init
+
+! ************************************************************************** !
+
+subroutine RPF_mK_Liq_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+
+  class(rpf_mK_liq_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+
+  if (index(name,'LIQUID_RELATIVE_PERM') > 0) then
+    string = name
+  else
+    string = trim(name) // 'LIQUID_RELATIVE_PERM,MODIFIED_KOSUGI'
+  endif
+  call RPFBaseVerify(this,string,option)
+  if (Uninitialized(this%sigmaz)) then
+    option%io_buffer = UninitializedMessage('SIGMAZ',string)
+    call printErrMsg(option)
+  endif
+
+end subroutine RPF_mK_Liq_Verify
+
+! ************************************************************************** !
+
+subroutine RPF_mK_Liq_RelPerm(this,liquid_saturation, &
+                              relative_permeability,dkr_sat,option)
+  !
+  ! Computes the relative permeability (and associated derivatives) as a
+  ! function of saturation for modified Kosugi model
+  !
+  ! Malama, B. & K.L. Kuhlman, 2015. Unsaturated Hydraulic Conductivity
+  ! Models Based on Truncated Lognormal Pore-size Distributions, Groundwater,
+  ! 53(3):498–502. http://dx.doi.org/10.1111/gwat.12220
+  !
+  ! Author: Kris Kuhlman
+  ! Date: 2017
+  !
+  use Option_module
+  use Utility_module
+
+  implicit none
+
+  ! gnu & intel extension and required in f2008
+  intrinsic :: erfc
+
+  PetscReal, parameter :: SQRT2 = sqrt(2.0d0)
+
+  class(rpf_mK_liq_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: relative_permeability
+  PetscReal, intent(out) :: dkr_sat
+  type(option_type), intent(inout) :: option
+
+  PetscReal :: Se, dkr_Se
+  PetscReal :: InvSatRange
+  PetscReal :: erfcArg, erfcRes
+  PetscReal :: invErfcRes
+  PetscReal :: sqrtSe, expArg
+  PetscReal :: dinvErfcRes_dSe
+
+  relative_permeability = 0.d0
+  dkr_sat = 0.d0
+
+  InvSatRange = 1.0d0/(1.0d0 - this%Sr)
+  Se = (liquid_saturation - this%Sr)*InvSatRange
+  if (Se >= 1.d0) then
+    relative_permeability = 1.d0
+    return
+  else if (Se <= 0.d0) then
+    relative_permeability = 0.d0
+    return
+  endif
+
+!  invErfcRes = InverseNorm(Se)
+  call InverseNorm(Se,invErfcRes,PETSC_TRUE,dinvErfcRes_dSe)
+  erfcArg = (this%sigmaz - invErfcRes)/SQRT2
+  erfcRes = erfc(erfcArg)
+  sqrtSe = sqrt(Se)
+  relative_permeability = sqrtSe*erfcRes*5.0D-1
+
+  ! from Wolfram Alpha (x -> Se)
+  ! (InverseErfc[x] -> -1/Sqrt[x] InverseNorm[x/2])
+  !
+  ! D[(Sqrt[x] Erfc[sigmaz/Sqrt[2] + InverseErfc[2 x]])/2, x] =
+  ! E^(InverseErfc[2 x]^2 - (simgaz/Sqrt[2] + InverseErfc[2 x])^2) * ...
+  ! Sqrt[x] + Erfc[sigmaz/Sqrt[2] + InverseErfc[2 x]]/(4 Sqrt[x])
+  expArg = 5.0D-1*invErfcRes**2 - erfcArg**2
+  dkr_Se = erfcres/(4.0D0*sqrtSe) + sqrtSe*exp(expArg)
+
+  ! InvSatRange = dSe/dsat
+  dkr_sat = dkr_Se * InvSatRange 
+
+end subroutine RPF_mK_Liq_RelPerm
+! End RPF: modified Kosugi (Liquid)
+
+! ************************************************************************** !
+
+! Begin RPF: modified Kosugi (Gas)
+function RPF_mK_Gas_Create()
+
+  ! Creates the modified Kosugi gas relative permeability function object
+
+  implicit none
+
+  class(rpf_mK_gas_type), pointer :: RPF_mK_Gas_Create
+
+  allocate(RPF_mK_Gas_Create)
+  call RPF_mK_Gas_Create%Init()
+
+end function RPF_mK_Gas_Create
+! End RPF:  modified Kosugi (Gas)
+
+! ************************************************************************** !
+
+subroutine RPF_mK_Gas_Init(this)
+
+  ! Initializes modified Kosugi saturation function object
+
+  implicit none
+  
+  class(rpf_mK_gas_type) :: this
+
+  call RPFBaseInit(this)
+  this%sigmaz = UNINITIALIZED_DOUBLE
+  
+end subroutine RPF_mK_Gas_Init
+
+! ************************************************************************** !
+
+subroutine RPF_mK_Gas_Verify(this,name,option)
+
+  use Option_module
+
+  implicit none
+
+  class(rpf_mK_gas_type) :: this
+  character(len=MAXSTRINGLENGTH) :: name
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+
+  if (index(name,'GAS_RELATIVE_PERM') > 0) then
+    string = name
+  else
+    string = trim(name) // 'GAS_RELATIVE_PERM,MODIFIED_KOSUGI'
+  endif
+  call RPFBaseVerify(this,string,option)
+  if (Uninitialized(this%sigmaz)) then
+    option%io_buffer = UninitializedMessage('SIGMAZ',string)
+    call printErrMsg(option)
+  endif
+  if (Uninitialized(this%srg)) then
+    option%io_buffer = UninitializedMessage('SRG',string)
+    call printErrMsg(option)
+  endif
+
+end subroutine RPF_mK_Gas_Verify
+! ************************************************************************** !
+
+subroutine RPF_mK_Gas_RelPerm(this,liquid_saturation, &
+                              relative_permeability,dkr_sat,option)
+  !
+  ! Computes the relative permeability (and associated derivatives) as a
+  ! function of saturation for modified Kosugi model
+  !
+  ! Malama, B. & K.L. Kuhlman, 2015. Unsaturated Hydraulic Conductivity
+  ! Models Based on Truncated Lognormal Pore-size Distributions, Groundwater,
+  ! 53(3):498–502. http://dx.doi.org/10.1111/gwat.12220
+  !
+  ! Author: Kris Kuhlman
+  ! Date: 2017
+  !
+  use Option_module
+  use Utility_module, only : InverseNorm
+
+  implicit none
+
+  ! gnu & intel extension and required in f2008
+  intrinsic :: erfc
+
+  PetscReal, parameter :: SQRT2 = sqrt(2.0d0)
+
+  class(rpf_mK_gas_type) :: this
+  PetscReal, intent(in) :: liquid_saturation
+  PetscReal, intent(out) :: relative_permeability
+  PetscReal, intent(out) :: dkr_sat
+  type(option_type), intent(inout) :: option
+
+  PetscReal :: Se, Seg, InvSatRange
+  PetscReal :: dkr_Se, dSe_sat
+  PetscReal :: erfcArg, erfcRes
+  PetscReal :: invErfcRes
+  PetscReal :: sqrtSe, expArg
+  PetscReal :: dinvErfcRes_dSeg
+
+  InvSatRange = 1.d0/(1.d0 - this%Sr - this%Srg)
+  Se = (liquid_saturation - this%Sr)*InvSatRange
+
+  relative_permeability = 0.d0
+  dkr_sat = 0.d0
+  if (Se >= 1.d0) then
+    relative_permeability = 0.d0
+    return
+  else if (Se <=  0.d0) then
+    relative_permeability = 1.d0
+    return
+  endif
+
+  Seg = 1.d0 - Se
+
+!  invErfcRes = InverseNorm(Seg)
+  call InverseNorm(Seg,invErfcRes,PETSC_TRUE,dinvErfcRes_dSeg)
+  erfcArg = (this%sigmaz - invErfcRes)/SQRT2
+  erfcRes = erfc(erfcArg)
+  sqrtSe = sqrt(Seg)
+  relative_permeability = sqrtSe*erfcRes*5.0D-1
+
+  ! from Wolfram Alpha (x -> Seg)
+  ! (InverseErfc[x] -> -1/Sqrt[x] InverseNorm[x/2])
+  !
+  ! D[(Sqrt[x] Erfc[sigmaz/Sqrt[2] + InverseErfc[2 x]])/2, x] =
+  ! E^(InverseErfc[2 x]^2 - (simgaz/Sqrt[2] + InverseErfc[2 x])^2) * ...
+  ! Sqrt[x] + Erfc[sigmaz/Sqrt[2] + InverseErfc[2 x]]/(4 Sqrt[x])
+  expArg = 5.0D-1*invErfcRes**2 - erfcArg**2
+  dkr_Se = erfcres/(4.0D0*sqrtSe) + sqrtSe*exp(expArg)
+
+  ! -1 = dSeg/dSe
+  ! InvSatRange = dSe/dsat
+  dkr_sat = -1.d0 * dkr_Se * InvSatRange 
+
+end subroutine RPF_mK_Gas_RelPerm
+! End RPF: modified Kosigi (Gas)
+
+! ************************************************************************** !
+
 ! Begin RPF: TOUGH2, Linear (Oil) 
 function RPF_TOUGH2_Linear_Oil_Create()
 
@@ -5702,10 +7263,7 @@ subroutine RPF_TOUGH2_Linear_Oil_RelPerm(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: So
-  PetscReal :: Se
   PetscReal :: Seo
-  PetscReal :: liquid_relative_permeability
-  PetscReal :: liquid_dkr_sat
   
   ! initialize to derivative to NaN so that not mistakenly used.
   dkr_sat = 0.d0
@@ -5956,7 +7514,6 @@ subroutine RPF_Mod_BC_Oil_RelPerm(this,liquid_saturation, &
   type(option_type), intent(inout) :: option
   
   PetscReal :: So
-  PetscReal :: Se
   PetscReal :: Seo
   PetscReal :: dkr_Se
   
