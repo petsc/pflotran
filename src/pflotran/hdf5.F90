@@ -446,8 +446,8 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
       call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
       call DeallocateArray(double_array)
     endif
-    call h5pclose_f(prop_id,hdf5_err)
   endif
+  call h5pclose_f(prop_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5sclose_f(memory_space_id,hdf5_err)
