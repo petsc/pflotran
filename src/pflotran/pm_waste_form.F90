@@ -2484,7 +2484,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         pri_molal(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
       call PMWFCalcParallelSUM(pm%option,waste_form,avg_pri_molal_local, &
-                           avg_pri_molal_global)
+                               avg_pri_molal_global)
       i = 0
       avg_pri_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
@@ -2494,7 +2494,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         pri_act_coef(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
       call PMWFCalcParallelSUM(pm%option,waste_form,avg_pri_act_coef_local, &
-                           avg_pri_act_coef_global)
+                               avg_pri_act_coef_global)
       this%pH = -log10(avg_pri_molal_global*avg_pri_act_coef_global)
     elseif (this%h_ion_id < 0) then   ! secondary species
       i = 0
@@ -2506,7 +2506,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         sec_molal(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
       call PMWFCalcParallelSUM(pm%option,waste_form,avg_sec_molal_local, &
-                           avg_sec_molal_global)
+                               avg_sec_molal_global)
       i = 0
       avg_sec_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
@@ -2516,7 +2516,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         sec_act_coef(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
       call PMWFCalcParallelSUM(pm%option,waste_form,avg_sec_act_coef_local, &
-                           avg_sec_act_coef_global)
+                               avg_sec_act_coef_global)
       this%pH = -log10(avg_sec_molal_global*avg_sec_act_coef_global)
     endif
   endif
@@ -2532,7 +2532,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         pri_molal(this%SiO2_id)*waste_form%scaling_factor(i)
       enddo
       call PMWFCalcParallelSUM(pm%option,waste_form,avg_pri_molal_local, &
-                           avg_pri_molal_global)
+                               avg_pri_molal_global)
       i = 0
       avg_pri_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
@@ -2542,7 +2542,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         pri_act_coef(this%SiO2_id)*waste_form%scaling_factor(i)
       enddo
       call PMWFCalcParallelSUM(pm%option,waste_form,avg_pri_act_coef_local, &
-                           avg_pri_act_coef_global)
+                               avg_pri_act_coef_global)
       this%Q = avg_pri_molal_global*avg_pri_act_coef_global
     elseif (this%SiO2_id < 0) then   ! secondary species
       i = 0
@@ -2555,7 +2555,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         waste_form%scaling_factor(i)
       enddo
       call PMWFCalcParallelSUM(pm%option,waste_form,avg_sec_molal_local, &
-                           avg_sec_molal_global)
+                               avg_sec_molal_global)
       i = 0
       avg_sec_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
@@ -2566,7 +2566,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         waste_form%scaling_factor(i)
       enddo
       call PMWFCalcParallelSUM(pm%option,waste_form,avg_sec_act_coef_local, &
-                           avg_sec_act_coef_global)
+                               avg_sec_act_coef_global)
       this%Q = avg_sec_molal_global*avg_sec_act_coef_global
     endif
   endif
@@ -2855,10 +2855,6 @@ subroutine PMWFUpdateSolution(this)
   implicit none
   
   class(pm_waste_form_type) :: this
-  
-  PetscErrorCode :: ierr
-  
-  ! update glass mass here?
 
 end subroutine PMWFUpdateSolution
 
@@ -3227,10 +3223,7 @@ subroutine PMWFInputRecord(this)
   
   class(pm_waste_form_type) :: this
 
-  character(len=MAXWORDLENGTH) :: word
-  class(waste_form_base_type), pointer :: cur_waste_form
   PetscInt :: id
-  PetscInt :: k
 
   id = INPUT_RECORD_UNIT
   
