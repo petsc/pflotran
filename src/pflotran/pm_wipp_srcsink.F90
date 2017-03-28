@@ -373,8 +373,8 @@ subroutine PMWSSAssociateRegion(this,region_list)
       do
         if (.not.associated(cur_region)) exit
         matched = PETSC_FALSE
-        if (StringCompare(trim(cur_region%name), &
-                          trim(cur_waste_panel%region_name))) then
+        if (StringCompare(cur_region%name, &
+                          cur_waste_panel%region_name)) then
           cur_waste_panel%region => cur_region
           matched = PETSC_TRUE
         endif
@@ -422,8 +422,8 @@ subroutine PMWSSAssociateInventory(this)
       do
         if (.not.associated(cur_preinventory)) exit
         matched = PETSC_FALSE
-        if (StringCompare(trim(cur_preinventory%name), &
-                          trim(cur_waste_panel%inventory_name))) then
+        if (StringCompare(cur_preinventory%name, &
+                          cur_waste_panel%inventory_name)) then
           call PMWSSCopyPreInvToInv(cur_preinventory,cur_waste_panel%inventory)
           matched = PETSC_TRUE
         endif
