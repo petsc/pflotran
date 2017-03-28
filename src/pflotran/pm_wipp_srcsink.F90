@@ -534,6 +534,7 @@ subroutine PMWSSRead(this,input)
   type(srcsink_panel_type), pointer :: cur_waste_panel
   type(pre_inventory_type), pointer :: new_inventory
   type(pre_inventory_type), pointer :: cur_preinventory
+  PetscInt :: num_errors
   PetscBool :: added
   
   option => this%option
@@ -548,6 +549,7 @@ subroutine PMWSSRead(this,input)
     
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword',error_string)
+    num_errors = 0
     error_string = 'WIPP_SOURCE_SINK'
     call StringToUpper(word)
     select case(trim(word))
@@ -635,15 +637,23 @@ subroutine PMWSSRead(this,input)
         enddo
         ! error messages ---------------------
         if (new_waste_panel%region_name == '') then
-          option%io_buffer = 'REGION must be specified in the ' // &
+          option%io_buffer = 'ERROR: REGION must be specified in the ' // &
                  trim(error_string) // ' block. WASTE_PANEL name "' // &
                  trim(new_waste_panel%name) // '".'
-          call printErrMsg(option)
+          call printMsg(option)
+          num_errors = num_errors + 1
         endif
         if (new_waste_panel%inventory_name == '') then
-          option%io_buffer = 'INVENTORY must be specified in the ' // &
+          option%io_buffer = 'ERROR: INVENTORY must be specified in the ' // &
                  trim(error_string) // ' block. WASTE_PANEL name "' // &
                  trim(new_waste_panel%name) // '".'
+          call printMsg(option)
+          num_errors = num_errors + 1
+        endif
+        if (num_errors > 0) then
+          write(option%io_buffer,*) num_errors
+          option%io_buffer = trim(adjustl(option%io_buffer)) // ' errors in &
+                             &WIPP_SOURCE_SINK,WASTE_PANEL block. See above.'
           call printErrMsg(option)
         endif
         added = PETSC_FALSE
@@ -790,59 +800,73 @@ subroutine PMWSSRead(this,input)
         enddo
         ! error messages ---------------------
         if (Uninitialized(new_inventory%Fe_in_panel)) then
-          option%io_buffer = 'Initial Fe (solid) inventory must be specified &
-                        &using the SOLIDS,WTFETOT keyword in the &
-                        &WIPP_SOURCE_SINK block. Inventory name "' // &
-                        trim(new_inventory%name) // '".'
-          call printErrMsg(option)
+          option%io_buffer = 'ERROR: Initial Fe (solid) inventory must be &
+                        &specified using the SOLIDS,WTFETOT keyword in the &
+                        &WIPP_SOURCE_SINK,INVENTORY ' // &
+                        trim(new_inventory%name) // ' block.'
+          call printMsg(option)
+          num_errors = num_errors + 1
         endif
         if (Uninitialized(new_inventory%MgO_in_panel)) then
-          option%io_buffer = 'Initial MgO (solid) inventory must be specified &
-                        &using the SOLIDS,WTMGOTOT keyword in the &
-                        &WIPP_SOURCE_SINK block. Inventory name "' // &
-                        trim(new_inventory%name) // '".'
-          call printErrMsg(option)
+          option%io_buffer = 'ERROR: Initial MgO (solid) inventory must be &
+                        &specified using the SOLIDS,WTMGOTOT keyword in the &
+                        &WIPP_SOURCE_SINK,INVENTORY ' // &
+                        trim(new_inventory%name) // ' block.'
+          call printMsg(option)
+          num_errors = num_errors + 1
         endif
         if (Uninitialized(new_inventory%Cellulose_in_panel)) then
-          option%io_buffer = 'Initial cellulose (solid) inventory must be &
-                        &specified using the SOLIDS,WTCELTOT keyword in the &
-                        &WIPP_SOURCE_SINK block. Inventory name "' // &
-                        trim(new_inventory%name) // '".'
-          call printErrMsg(option)
+          option%io_buffer = 'ERROR: Initial cellulose (solid) inventory must &
+                        &be specified using the SOLIDS,WTCELTOT keyword in the &
+                        &WIPP_SOURCE_SINK,INVENTORY ' // &
+                        trim(new_inventory%name) // ' block.'
+          call printMsg(option)
+          num_errors = num_errors + 1
         endif
         if (Uninitialized(new_inventory%RubberPlas_in_panel)) then
-          option%io_buffer = 'Initial rubber/plastic (solid) inventory must be &
-                        &specified using the SOLIDS,WTRPLTOT keyword in &
-                        &the WIPP_SOURCE_SINK block. Inventory name "' // &
-                        trim(new_inventory%name) // '".'
-          call printErrMsg(option)
+          option%io_buffer = 'ERROR: Initial rubber/plastic (solid) inventory &
+                        &must be specified using the SOLIDS,WTRPLTOT keyword &
+                        &in the WIPP_SOURCE_SINK,INVENTORY ' // &
+                        trim(new_inventory%name) // ' block.'
+          call printMsg(option)
+          num_errors = num_errors + 1
         endif
         if (Uninitialized(new_inventory%H_ion_in_panel)) then
-          option%io_buffer = 'Initial H+ (aqueous) inventory must be specified &
-                        &using the AQUEOUS,H+ keyword in the WIPP_SOURCE_SINK &
-                        &block. Inventory name "' // trim(new_inventory%name) &
-                         // '".'
-          call printErrMsg(option)
+          option%io_buffer = 'ERROR: Initial H+ (aqueous) inventory must be &
+                        &specified using the AQUEOUS,H+ keyword in the &
+                        &WIPP_SOURCE_SINK,INVENTORY ' // &
+                        trim(new_inventory%name) // ' block.'
+          call printMsg(option)
+          num_errors = num_errors + 1
         endif
         if (Uninitialized(new_inventory%Nitrate_in_panel)) then
-          option%io_buffer = 'Initial nitrate (aqueous) inventory must be &
-                        &specified using the AQUEOUS,NITRATE keyword in the &
-                        &WIPP_SOURCE_SINK block. Inventory name "' // &
-                        trim(new_inventory%name) // '".'
-          call printErrMsg(option)
+          option%io_buffer = 'ERROR: Initial nitrate (aqueous) inventory must &
+                        &be specified using the AQUEOUS,NITRATE keyword in the &
+                        &WIPP_SOURCE_SINK,INVENTORY ' // &
+                        trim(new_inventory%name) // ' block.'
+          call printMsg(option)
+          num_errors = num_errors + 1
         endif
         if (Uninitialized(new_inventory%Sulfate_in_panel)) then
-          option%io_buffer = 'Initial sulfate (aqueous) inventory must be &
-                        &specified using the AQUEOUS,SULFATE keyword in the &
-                        &WIPP_SOURCE_SINK block. Inventory name "' // &
-                        trim(new_inventory%name) // '".'
-          call printErrMsg(option)
+          option%io_buffer = 'ERROR: Initial sulfate (aqueous) inventory must &
+                        &be specified using the AQUEOUS,SULFATE keyword in the &
+                        &WIPP_SOURCE_SINK,INVENTORY ' // &
+                        trim(new_inventory%name) // ' block.'
+          call printMsg(option)
+          num_errors = num_errors + 1
         endif
         if (Uninitialized(new_inventory%num_drums_packing)) then
-          option%io_buffer = 'Number of metal drums must be specified in the &
-                        &specified using the SOLIDS,DRROOM keyword in the &
-                        &WIPP_SOURCE_SINK block. Inventory name "' // &
-                        trim(new_inventory%name) // '".'
+          option%io_buffer = 'ERROR: Number of metal drums must be specified &
+                        &using the SOLIDS,DRROOM keyword in the &
+                        &WIPP_SOURCE_SINK,INVENTORY ' // &
+                        trim(new_inventory%name) // ' block.'
+          call printMsg(option)
+          num_errors = num_errors + 1
+        endif
+        if (num_errors > 0) then
+          write(option%io_buffer,*) num_errors
+          option%io_buffer = trim(adjustl(option%io_buffer)) // ' errors in &
+                             &WIPP_SOURCE_SINK,INVENTORY block. See above.'
           call printErrMsg(option)
         endif
         added = PETSC_FALSE
@@ -869,72 +893,96 @@ subroutine PMWSSRead(this,input)
   enddo
   
   if (.not.associated(this%waste_panel_list)) then
-    option%io_buffer = 'At least one WASTE_PANEL must be specified in the &
-                       &WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    option%io_buffer = 'ERROR: At least one WASTE_PANEL must be specified &
+                       &in the WIPP_SOURCE_SINK block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (.not.associated(this%pre_inventory_list)) then
-    option%io_buffer = 'At least one INVENTORY must be specified in the &
-                       &WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    option%io_buffer = 'ERROR: At least one INVENTORY must be specified in &
+                       &the WIPP_SOURCE_SINK block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%alpharxn)) then
-    option%io_buffer = 'ALPHARXN must be specified in the WIPP_SOURCE_SINK &
-                       &block.'
-    call printErrMsg(option)
+    option%io_buffer = 'ERROR: ALPHARXN must be specified in the &
+                       &WIPP_SOURCE_SINK block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%smin)) then
-    option%io_buffer = 'SOCMIN must be specified in the WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    option%io_buffer = 'ERROR: SOCMIN must be specified in the &
+                       &WIPP_SOURCE_SINK block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%satwick)) then
-    option%io_buffer = 'SAT_WICK (wicking saturation parameter) must be &
+    option%io_buffer = 'ERROR: SAT_WICK (wicking saturation parameter) must be &
                        &specified in the WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%gratmici)) then
-    option%io_buffer = 'GRATMICI (inundated biodegradation rate for cellulose) &
-                       &must be specified in the WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    option%io_buffer = 'ERROR: GRATMICI (inundated biodegradation rate for &
+                       &cellulose) must be specified in the WIPP_SOURCE_SINK &
+                       &block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%brucitei)) then
-    option%io_buffer = 'BRUCITEI (MgO inundated hydration rate in brine) must &
-                       &be specified in the WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    option%io_buffer = 'ERROR: BRUCITEI (MgO inundated hydration rate in &
+                       &brine) must be specified in the WIPP_SOURCE_SINK block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%corrmco2)) then
-    option%io_buffer = 'CORRMCO2 (inundated steel corrosion rate) must be &
-                       &specified in the WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    option%io_buffer = 'ERROR: CORRMCO2 (inundated steel corrosion rate) must &
+                       &be specified in the WIPP_SOURCE_SINK block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%gratmich)) then
-    option%io_buffer = 'GRATMICH (humid biodegradation rate for cellulose) &
-                       &must be specified in the WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    option%io_buffer = 'ERROR: GRATMICH (humid biodegradation rate for &
+                       &cellulose) must be specified in the WIPP_SOURCE_SINK &
+                       &block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%bruciteh)) then
-    option%io_buffer = 'BRUCITEH (MgO humid hydration rate) must be specified &
-                       &in the WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    option%io_buffer = 'ERROR: BRUCITEH (MgO humid hydration rate) must be &
+                       &specified in the WIPP_SOURCE_SINK block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%humcorr)) then
-    option%io_buffer = 'HUMCORR (humid steel corrosion rate) must be specified &
-                       &in the WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    option%io_buffer = 'ERROR: HUMCORR (humid steel corrosion rate) must be &
+                       &specified in the WIPP_SOURCE_SINK block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%hymagcon_rate)) then
-    option%io_buffer = 'HYMAGCON (hydromagnesite to magnesite conversion rate) &
-                       &must be specified in the WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    option%io_buffer = 'ERROR: HYMAGCON (hydromagnesite to magnesite &
+                       &conversion rate) must be specified in the &
+                       &WIPP_SOURCE_SINK block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%drum_surface_area)) then
-    option%io_buffer = 'ASDRUM (metal drum surface area) &
+    option%io_buffer = 'ERROR: ASDRUM (metal drum surface area) &
                        &must be specified in the WIPP_SOURCE_SINK block.'
-    call printErrMsg(option)
+    call printMsg(option)
+    num_errors = num_errors + 1
   endif
   if (Uninitialized(this%biogenfc)) then
-    option%io_buffer = 'BIOGENFC (microbial gas generation probability) &
+    option%io_buffer = 'ERROR: BIOGENFC (microbial gas generation probability) &
                        &must be specified in the WIPP_SOURCE_SINK block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
+  endif
+  if (num_errors > 0) then
+    write(option%io_buffer,*) num_errors
+    option%io_buffer = trim(adjustl(option%io_buffer)) // ' errors in &
+                       &the WIPP_SOURCE_SINK block. See above.'
     call printErrMsg(option)
   endif
   
