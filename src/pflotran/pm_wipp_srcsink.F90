@@ -362,7 +362,6 @@ subroutine PMWSSAssociateRegion(this,region_list)
   type(region_type), pointer :: cur_region
   class(srcsink_panel_type), pointer :: cur_waste_panel
   type(option_type), pointer :: option
-  PetscBool :: matched
   
   option => this%option
   
@@ -372,13 +371,10 @@ subroutine PMWSSAssociateRegion(this,region_list)
       cur_region => region_list%first     
       do
         if (.not.associated(cur_region)) exit
-        matched = PETSC_FALSE
-        if (StringCompare(cur_region%name, &
-                          cur_waste_panel%region_name)) then
+        if (StringCompare(cur_region%name,cur_waste_panel%region_name)) then
           cur_waste_panel%region => cur_region
-          matched = PETSC_TRUE
+          exit
         endif
-        if (matched) exit
         cur_region => cur_region%next
       enddo      
       if (.not.associated(cur_waste_panel%region)) then
@@ -411,7 +407,6 @@ subroutine PMWSSAssociateInventory(this)
   type(pre_inventory_type), pointer :: cur_preinventory
   class(srcsink_panel_type), pointer :: cur_waste_panel
   type(option_type), pointer :: option
-  PetscBool :: matched
   
   option => this%option
   
@@ -421,13 +416,11 @@ subroutine PMWSSAssociateInventory(this)
       cur_preinventory => this%pre_inventory_list     
       do
         if (.not.associated(cur_preinventory)) exit
-        matched = PETSC_FALSE
         if (StringCompare(cur_preinventory%name, &
                           cur_waste_panel%inventory_name)) then
           call PMWSSCopyPreInvToInv(cur_preinventory,cur_waste_panel%inventory)
-          matched = PETSC_TRUE
+          exit
         endif
-        if (matched) exit
         cur_preinventory => cur_preinventory%next
       enddo      
       if (.not.associated(cur_waste_panel%inventory%preinventory)) then

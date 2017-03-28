@@ -470,7 +470,6 @@ subroutine PMWFRead(this,input)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
-  PetscBool :: matched
 
   option => this%option
   input%ierr = 0
@@ -511,16 +510,13 @@ subroutine PMWFRead(this,input)
   cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit
-    matched = PETSC_FALSE
     cur_mechanism => this%mechanism_list
     do
       if (.not.associated(cur_mechanism)) exit
-      if (StringCompare(cur_waste_form%mech_name, &
-                        cur_mechanism%name)) then
+      if (StringCompare(cur_waste_form%mech_name,cur_mechanism%name)) then
         cur_waste_form%mechanism => cur_mechanism
-        matched = PETSC_TRUE
+        exit
       endif
-      if (matched) exit
       cur_mechanism => cur_mechanism%next
     enddo
     ! error messaging: ----------------------------------------------
@@ -1486,7 +1482,6 @@ subroutine PMWFAssociateRegion(this,region_list)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   character(len=MAXWORDLENGTH) :: word1, word2
-  PetscBool :: matched
   PetscReal :: x, y, z
   PetscInt :: i, j, k
   PetscInt :: local_id(1)
@@ -1537,13 +1532,10 @@ subroutine PMWFAssociateRegion(this,region_list)
       cur_region => region_list%first
       do
         if (.not.associated(cur_region)) exit
-        matched = PETSC_FALSE
-        if (StringCompare(cur_region%name, &
-                          cur_waste_form%region_name)) then
+        if (StringCompare(cur_region%name,cur_waste_form%region_name)) then
           cur_waste_form%region => cur_region
-          matched = PETSC_TRUE
+          exit
         endif
-        if (matched) exit
         cur_region => cur_region%next
       enddo
       if (.not.associated(cur_waste_form%region)) then
