@@ -524,7 +524,7 @@ subroutine PMWSSRead(this,input)
   type(option_type), pointer :: option
   character(len=MAXWORDLENGTH) :: word
   PetscReal :: double
-  character(len=MAXSTRINGLENGTH) :: error_string
+  character(len=MAXSTRINGLENGTH) :: error_string, error_string2, error_string3
   type(srcsink_panel_type), pointer :: new_waste_panel
   type(srcsink_panel_type), pointer :: cur_waste_panel
   type(pre_inventory_type), pointer :: new_inventory
@@ -687,103 +687,103 @@ subroutine PMWSSRead(this,input)
           select case(trim(word))
           !-----------------------------------
             case('SOLIDS','SOLID')
-              error_string = trim(error_string) // ',SOLIDS'
+              error_string2 = trim(error_string) // ',SOLIDS'
               do
                 call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
                 if (InputCheckExit(input,option)) exit
                 call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'keyword',error_string)
+                call InputErrorMsg(input,option,'keyword',error_string2)
                 call StringToUpper(word)
                 select case(trim(word))
                 !-----------------------------
                   case('WTFETOT')
                     call InputReadDouble(input,option,double)
                     call InputErrorMsg(input,option,'initial Fe mass &
-                                       &(WTFETOT)',error_string)
+                                       &(WTFETOT)',error_string2)
                     call InputReadAndConvertUnits(input,double,'kg', &
-                          trim(error_string) // ',initial Fe mass (WTFETOT) &
+                          trim(error_string2) // ',initial Fe mass (WTFETOT) &
                           &units',option)
                     new_inventory%Fe_in_panel = double
                 !-----------------------------
                   case('WTMGOTOT')
                     call InputReadDouble(input,option,double)
                     call InputErrorMsg(input,option,'initial MgO mass &
-                                       &(WTMGOTOT)',error_string)
+                                       &(WTMGOTOT)',error_string2)
                     call InputReadAndConvertUnits(input,double,'kg', &
-                         trim(error_string) // ',initial MgO mass units &
+                         trim(error_string2) // ',initial MgO mass units &
                          &(WTMGOTOT)',option)
                     new_inventory%MgO_in_panel = double
                 !-----------------------------
                   case('WTCELTOT')
                     call InputReadDouble(input,option,double)
                     call InputErrorMsg(input,option,'initial cellulose mass &
-                                       &(WTCELTOT)',error_string)
+                                       &(WTCELTOT)',error_string2)
                     call InputReadAndConvertUnits(input,double,'kg', &
-                         trim(error_string) // ',initial cellulose mass &
+                         trim(error_string2) // ',initial cellulose mass &
                          &(WTCELTOT) units',option)
                     new_inventory%Cellulose_in_panel = double
                 !-----------------------------
                   case('WTRPLTOT')
                     call InputReadDouble(input,option,double)
                     call InputErrorMsg(input,option,'initial rubber and &
-                                       &plastics mass (WTRPLTOT)',error_string)
+                                       &plastics mass (WTRPLTOT)',error_string2)
                     call InputReadAndConvertUnits(input,double,'kg', &
-                         trim(error_string) // ',initial rubber and plastics &
+                         trim(error_string2) // ',initial rubber and plastics &
                          &mass (WTRPLTOT) units',option)
                     new_inventory%RubberPlas_in_panel = double
                 !-----------------------------------
                   case('DRROOM')
                     call InputReadDouble(input,option,double)
                     call InputErrorMsg(input,option,'number of metal drums per &
-                                 &panel in ideal packing (DRROOM)',error_string)
+                                &panel in ideal packing (DRROOM)',error_string2)
                     new_inventory%num_drums_packing = double
                 !-----------------------------
                   case default
-                    call InputKeywordUnrecognized(word,error_string,option)
+                    call InputKeywordUnrecognized(word,error_string2,option)
                 !-----------------------------
                 end select
               enddo
           !-----------------------------------
             case('AQUEOUS')
-              error_string = trim(error_string) // ',AQUEOUS'
+              error_string3 = trim(error_string) // ',AQUEOUS'
               do
                 call InputReadPflotranString(input,option)
                 if (InputError(input)) exit
                 if (InputCheckExit(input,option)) exit
                 call InputReadWord(input,option,word,PETSC_TRUE)
-                call InputErrorMsg(input,option,'keyword',error_string)
+                call InputErrorMsg(input,option,'keyword',error_string3)
                 call StringToUpper(word)
                 select case(trim(word))
                 !-----------------------------
                   case('H+')
                     call InputReadDouble(input,option,double)
                     call InputErrorMsg(input,option,'initial H+ mass', &
-                                       error_string)
+                                       error_string3)
                     call InputReadAndConvertUnits(input,double,'kg', &
-                          trim(error_string) // ',initial H+ mass units',option)
+                         trim(error_string3) // ',initial H+ mass units',option)
                     new_inventory%H_ion_in_panel = double
                 !-----------------------------
                   case('NITRATE')
                     call InputReadDouble(input,option,double)
                     call InputErrorMsg(input,option,'initial nitrate mass', &
-                                       error_string)
+                                       error_string3)
                     call InputReadAndConvertUnits(input,double,'kg', &
-                      trim(error_string) // ',initial nitrate mass units', &
+                      trim(error_string3) // ',initial nitrate mass units', &
                       option)
                     new_inventory%Nitrate_in_panel = double
                 !-----------------------------
                   case('SULFATE')
                     call InputReadDouble(input,option,double)
                     call InputErrorMsg(input,option,'initial sulfate mass', &
-                                       error_string)
+                                       error_string3)
                     call InputReadAndConvertUnits(input,double,'kg', &
-                      trim(error_string) // ',initial sulfate mass units', &
+                      trim(error_string3) // ',initial sulfate mass units', &
                       option)
                     new_inventory%Sulfate_in_panel = double
                 !-----------------------------
                   case default
-                    call InputKeywordUnrecognized(word,error_string,option)
+                    call InputKeywordUnrecognized(word,error_string3,option)
                 !-----------------------------
                 end select
               enddo
