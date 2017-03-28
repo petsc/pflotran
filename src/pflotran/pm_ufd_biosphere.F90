@@ -778,8 +778,9 @@ subroutine PMUFDBAssociateRegion(this,region_list)
   type(option_type), pointer :: option
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(grid_type), pointer :: grid
-  PetscInt :: k, cell_id
+  PetscInt :: ghosted_id
   PetscReal :: total_volume_local, total_volume_global
+  PetscInt :: k 
   PetscErrorCode :: ierr
   
   option => this%option
@@ -800,11 +801,11 @@ subroutine PMUFDBAssociateRegion(this,region_list)
           total_volume_global = 0.d0
           total_volume_local = 0.d0
           do k = 1,cur_ERB%region%num_cells
-            cell_id = grid%nL2G(cur_ERB%region%cell_ids(k))
+            ghosted_id = grid%nL2G(cur_ERB%region%cell_ids(k))
             cur_ERB%region_scaling_factor(k) = &
-                                      material_auxvars(cell_id)%volume ! [m^3]
+                                   material_auxvars(ghosted_id)%volume ! [m^3]
             total_volume_local = total_volume_local &
-                                    + material_auxvars(cell_id)%volume ! [m^3]
+                                 + material_auxvars(ghosted_id)%volume ! [m^3]
           enddo
           call MPI_Allreduce(total_volume_local,total_volume_global, &
                              ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION,MPI_SUM, &
