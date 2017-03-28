@@ -750,8 +750,8 @@ subroutine PMUFDBAssociateRegion(this,region_list)
       do
         if (.not.associated(cur_region)) exit
         matched = PETSC_FALSE
-        if (StringCompare(trim(cur_region%name), &
-                          trim(cur_ERB%region_name))) then
+        if (StringCompare(cur_region%name, &
+                          cur_ERB%region_name)) then
           cur_ERB%region => cur_region
           matched = PETSC_TRUE
           ! calculate scaling factor by cell volumes in region
@@ -907,8 +907,8 @@ subroutine PMUFDBAscUnsuppRadWithSuppRad(this)
       do
         if (.not.associated(cur_supp_rad)) exit
         matched = PETSC_FALSE
-        if (StringCompare(trim(cur_supp_rad%name), &
-                          trim(cur_unsupp_rad%supported_parent_name))) then
+        if (StringCompare(cur_supp_rad%name, &
+                          cur_unsupp_rad%supported_parent_name)) then
           cur_unsupp_rad%supported_parent => cur_supp_rad
           matched = PETSC_TRUE
         endif
