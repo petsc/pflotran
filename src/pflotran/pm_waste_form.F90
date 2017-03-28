@@ -3255,16 +3255,7 @@ subroutine PMWFStrip(this)
     if (.not.associated(cur_waste_form)) exit
     prev_waste_form => cur_waste_form
     cur_waste_form => cur_waste_form%next
-    call DeallocateArray(prev_waste_form%rad_mass_fraction)
-    call DeallocateArray(prev_waste_form%rad_concentration)
-    call DeallocateArray(prev_waste_form%inst_release_amount)
-    call DeallocateArray(prev_waste_form%instantaneous_mass_rate)
-    call DeallocateArray(prev_waste_form%cumulative_mass)
-    call DeallocateArray(prev_waste_form%scaling_factor)
-    nullify(prev_waste_form%mechanism)
-    nullify(prev_waste_form%region)
-    deallocate(prev_waste_form)
-    nullify(prev_waste_form)
+    call PMWFDestroyWasteForm(prev_waste_form)
   enddo
   nullify(this%waste_form_list)
   call PMWFMechanismStrip(this)
@@ -3280,6 +3271,7 @@ subroutine PMWFMechanismStrip(this)
   ! Author: Jenn Frederick
   ! Date: 03/28/2016
   !
+  
   use Utility_module, only : DeallocateArray
   
   implicit none
@@ -3307,6 +3299,36 @@ subroutine PMWFMechanismStrip(this)
   nullify(this%mechanism_list)
 
 end subroutine PMWFMechanismStrip
+
+! ************************************************************************** !
+
+subroutine PMWFDestroyWasteForm(waste_form)
+  ! 
+  ! Destroys a waste form in the waste form process model
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/28/17
+  !
+  
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+  
+  class(waste_form_base_type), pointer :: waste_form
+  
+  call DeallocateArray(waste_form%rad_mass_fraction)
+  call DeallocateArray(waste_form%rad_concentration)
+  call DeallocateArray(waste_form%inst_release_amount)
+  call DeallocateArray(waste_form%instantaneous_mass_rate)
+  call DeallocateArray(waste_form%cumulative_mass)
+  call DeallocateArray(waste_form%scaling_factor)
+  call DeallocateArray(waste_form%rank_list)
+  nullify(waste_form%mechanism)
+  nullify(waste_form%region)
+  deallocate(waste_form)
+  nullify(waste_form)
+  
+end subroutine PMWFDestroyWasteForm
   
 ! ************************************************************************** !
 
