@@ -1163,7 +1163,7 @@ subroutine PMWSSSetup(this)
       else
         this%waste_panel_list => next_waste_panel
       endif
-      deallocate(cur_waste_panel)
+      call PMWSSDestroyPanel(cur_waste_panel)
       cur_waste_panel => next_waste_panel
     endif
   enddo
@@ -2120,7 +2120,6 @@ subroutine PMWSSStrip(this)
   ! Author: Jenn Frederick
   ! Date: 01/31/2017
   !
-  use Utility_module, only : DeallocateArray
   
   implicit none
   
@@ -2134,13 +2133,7 @@ subroutine PMWSSStrip(this)
     if (.not.associated(cur_waste_panel)) exit
     prev_waste_panel => cur_waste_panel
     cur_waste_panel => cur_waste_panel%next
-    call PMWSSInvDeallocate(prev_waste_panel%inventory)
-    call DeallocateArray(prev_waste_panel%scaling_factor)
-    call DeallocateArray(prev_waste_panel%gas_generation_rate)
-    call DeallocateArray(prev_waste_panel%brine_generation_rate)
-    call DeallocateArray(prev_waste_panel%rank_list)
-    deallocate(prev_waste_panel)
-    nullify(prev_waste_panel)
+    call PMWSSDestroyPanel(prev_waste_panel)
   enddo
   nullify(this%waste_panel_list)
   
@@ -2158,7 +2151,35 @@ end subroutine PMWSSStrip
 
 ! ************************************************************************** !
 
-subroutine PMWSSInvDeallocate(inventory)
+subroutine PMWSSDestroyPanel(waste_panel)
+  ! 
+  ! Strips a waste panel in the WIPP source/sink process model.
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/28/2017
+  !
+  
+  use Utility_module, only : DeallocateArray
+  
+  implicit none
+  
+  type(srcsink_panel_type), pointer :: waste_panel
+  
+  if (.not.associated(waste_panel)) return
+  call PMWSSInventoryDestroy(waste_panel%inventory)
+  call DeallocateArray(waste_panel%scaling_factor)
+  call DeallocateArray(waste_panel%gas_generation_rate)
+  call DeallocateArray(waste_panel%brine_generation_rate)
+  call DeallocateArray(waste_panel%rank_list)
+  nullify(waste_panel%next)
+  deallocate(waste_panel)
+  nullify(waste_panel)
+    
+end subroutine PMWSSDestroyPanel
+
+! ************************************************************************** !
+
+subroutine PMWSSInventoryDestroy(inventory)
   ! 
   ! Deallocates the inventory's chemical species.
   ! 
@@ -2187,7 +2208,7 @@ subroutine PMWSSInvDeallocate(inventory)
   call PMWSSChemSpeciesDeallocate(inventory%MgCO3_s)
   nullify(inventory%preinventory)
   
-end subroutine PMWSSInvDeallocate
+end subroutine PMWSSInventoryDestroy
 
 ! ************************************************************************** !
 
