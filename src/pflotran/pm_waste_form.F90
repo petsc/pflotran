@@ -576,7 +576,7 @@ subroutine PMWFRead(this,input)
         option%io_buffer = 'CANISTER_VITALITY_RATE within the WASTE_FORM &
           &blocks -or- CANISTER_BREACH_TIME within the WASTE_FORM blocks &
           &-or- the VITALITY_LOG10_MEAN, VITALITY_LOG10_STDEV, and &
-          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM MECHANISM ' // &
+          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM with MECHANISM ' // &
           trim(cur_waste_form%mechanism%name) // ' is missing.'
         call printErrMsg(option)
       endif
@@ -589,7 +589,7 @@ subroutine PMWFRead(this,input)
         option%io_buffer = 'CANISTER_VITALITY_RATE within the WASTE_FORM &
           &blocks -or- CANISTER_BREACH_TIME within the WASTE_FORM blocks &
           &-or- the VITALITY_LOG10_MEAN, VITALITY_LOG10_STDEV, and &
-          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM MECHANISM ' // &
+          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM with MECHANISM ' // &
           trim(cur_waste_form%mechanism%name) // ' should be specified, &
           &but not all.'
         call printErrMsg(option)
@@ -612,7 +612,7 @@ subroutine PMWFRead(this,input)
           &WASTE_FORM block with WASTE_FORM MECHANISM ' &
           // trim(cur_waste_form%mechanism%name) // ' -or- the &
           &VITALITY_LOG10_MEAN, VITALITY_LOG10_STDEV, and &
-          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM MECHANISM ' // &
+          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM with MECHANISM ' // &
           trim(cur_waste_form%mechanism%name) // ' should be specified, &
           &but not both.'
         call printErrMsg(option)
@@ -650,6 +650,7 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
   PetscBool :: found
 
   PetscBool :: added
+  PetscInt :: num_errors
   character(len=MAXWORDLENGTH) :: word, units, internal_units
   character(len=MAXSTRINGLENGTH) :: temp_buf, string
   type(rad_species_type), pointer :: temp_species_array(:)
@@ -669,6 +670,7 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
     case('MECHANISM')
       call InputReadWord(input,option,word,PETSC_TRUE)
       call InputErrorMsg(input,option,'mechanism type',error_string)
+      num_errors = 0
       call StringToUpper(word)
       select case(trim(word))
       !---------------------------------
@@ -739,9 +741,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             select type(new_mechanism)
               class is(wf_mechanism_dsnf_type)
                 ! applies to dsnf & wipp types
-                option%io_buffer = 'SPECIFIC_SURFACE_AREA cannot be &
+                option%io_buffer = 'ERROR: SPECIFIC_SURFACE_AREA cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
               class default
                 new_mechanism%specific_surface_area = double
             end select
@@ -766,9 +769,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_custom_type)
                 new_mechanism%frac_dissolution_rate = double
               class default
-                option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE cannot be &
-                                   &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                option%io_buffer = 'ERRORS: FRACTIONAL_DISSOLUTION_RATE cannot &
+                                   &be specified for ' // trim(error_string)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('DISSOLUTION_RATE')
@@ -780,9 +784,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_custom_type)
                 new_mechanism%dissolution_rate = double
               class default
-                option%io_buffer = 'DISSOLUTION_RATE cannot be specified for ' &
-                                   // trim(error_string)
-                call printErrMsg(option)
+                option%io_buffer = 'ERROR: DISSOLUTION_RATE cannot be &
+                                   &specified for ' // trim(error_string)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('K0')
@@ -795,9 +800,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%k0 = double
               class default
-                option%io_buffer = 'K0 (intrinsic dissolution rate) cannot be &
-                                   &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                option%io_buffer = 'ERROR: K0 (intrinsic dissolution rate) &
+                                &cannot be specified for ' // trim(error_string)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('K_LONG')
@@ -810,9 +816,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%k_long = double
               class default
-                option%io_buffer = 'K_LONG (dissolution rate) cannot be &
+                option%io_buffer = 'ERROR: K_LONG (dissolution rate) cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('NU')
@@ -823,9 +830,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%nu = double
               class default
-                option%io_buffer = 'NU (pH dependence parameter) cannot be &
-                                   &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                option%io_buffer = 'ERROR: NU (pH dependence parameter) cannot &
+                                   &be specified for ' // trim(error_string)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('EA')
@@ -838,9 +846,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%Ea = double
               class default
-                option%io_buffer = 'EA (effective activation energy) cannot be &
-                                   &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                option%io_buffer = 'ERROR: EA (effective activation energy) &
+                                &cannot be specified for ' // trim(error_string)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('Q')
@@ -854,10 +863,11 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                   if (trim(word) == 'AS_CALCULATED') then 
                     new_mechanism%use_Q = PETSC_TRUE
                   else
-                    option%io_buffer = 'Q value (ion activity product) was &
-                                       &not provided, or Q instructions not &
-                                       &understood for ' // trim(error_string)
-                    call printErrMsg(option)
+                    option%io_buffer = 'ERROR: Q value (ion activity product) &
+                                     &was not provided, or Q instructions not &
+                                     &understood for ' // trim(error_string)
+                    call printMsg(option)
+                    num_errors = num_errors + 1
                   endif
                 endif
                 if (new_mechanism%use_Q) then
@@ -866,9 +876,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                   new_mechanism%Q = double
                 endif
               class default
-                option%io_buffer = 'Q (ion activity product) cannot be &
+                option%io_buffer = 'ERROR: Q (ion activity product) cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('K')
@@ -879,9 +890,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%K = double
               class default
-                option%io_buffer = 'K (equilibrium constant) cannot be &
+                option%io_buffer = 'ERROR: K (equilibrium constant) cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('V')
@@ -892,9 +904,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%v = double
               class default
-                option%io_buffer = 'V (exponent parameter) cannot be &
+                option%io_buffer = 'ERROR: V (exponent parameter) cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('PH')
@@ -908,10 +921,11 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                   if (trim(word) == 'AS_CALCULATED') then 
                     new_mechanism%use_pH = PETSC_TRUE
                   else
-                    option%io_buffer = 'PH value was not provided, or PH &
-                                       &instructions not understood for ' &
+                    option%io_buffer = 'ERROR: PH value was not provided, or &
+                                       &PH instructions not understood for ' &
                                        // trim(error_string) // '.'
-                    call printErrMsg(option)
+                    call printMsg(option)
+                    num_errors = num_errors + 1
                   endif
                 endif
                 if (new_mechanism%use_pH) then
@@ -920,9 +934,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                   new_mechanism%pH = double
                 endif
               class default
-                option%io_buffer = 'PH cannot be &
+                option%io_buffer = 'ERROR: PH cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('KIENZLER_DISSOLUTION')
@@ -937,9 +952,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                 new_mechanism%v = 1.d0
                 new_mechanism%pH = 0.d0
               class default
-                option%io_buffer = 'KIENZLER_DISSOLUTION cannot be &
+                option%io_buffer = 'ERROR: KIENZLER_DISSOLUTION cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('BURNUP')
@@ -961,9 +977,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                 call printMsg(option)
 #endif
               class default
-                option%io_buffer = 'BURNUP cannot be &
+                option%io_buffer = 'ERROR: BURNUP cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('SPECIES')
@@ -1014,10 +1031,11 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               new_mechanism%num_species = k
             enddo
             if (k == 0) then
-              option%io_buffer = 'At least one radionuclide species must be &
-                                 &provided in the ' // trim(error_string) // &
-                                 ', SPECIES block.'
-              call printErrMsg(option)
+              option%io_buffer = 'ERROR: At least one radionuclide species &
+                                 &must be provided in the ' // &
+                                 trim(error_string) // ', SPECIES block.'
+              call printMsg(option)
+              num_errors = num_errors + 1
             endif
             allocate(new_mechanism%rad_species_list(k))
             new_mechanism%rad_species_list(1:k) = temp_species_array(1:k)
@@ -1086,140 +1104,159 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
 
      !----------- error messaging ----------------------------------------------
       if (new_mechanism%name == '') then
-        option%io_buffer = 'NAME must be specified in ' // trim(error_string) &
-                           // ' block.'
-        call printErrMsg(option)
+        option%io_buffer = 'ERROR: NAME must be specified in ' // &
+                           trim(error_string) // ' block.'
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
       select type(new_mechanism)
         type is(wf_mechanism_glass_type)
           if (Uninitialized(new_mechanism%specific_surface_area)) then
-            option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' &
-                               // trim(error_string) // ' ' // &
+            option%io_buffer = 'ERROR: SPECIFIC_SURFACE_AREA must be specified &
+                               &in ' // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
           if (Uninitialized(new_mechanism%k0)) then
-            option%io_buffer = 'K0 must be specified in ' &
+            option%io_buffer = 'ERROR: K0 must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
           if (Uninitialized(new_mechanism%k_long)) then
-            option%io_buffer = 'K_LONG must be specified in ' &
+            option%io_buffer = 'ERROR: K_LONG must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
           if (Uninitialized(new_mechanism%nu)) then
-            option%io_buffer = 'NU must be specified in ' &
+            option%io_buffer = 'ERROR: NU must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
           if (Uninitialized(new_mechanism%Ea)) then
-            option%io_buffer = 'EA must be specified in ' &
+            option%io_buffer = 'ERROR: EA must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
           if (Uninitialized(new_mechanism%Q)) then
-            option%io_buffer = 'Q must be specified in ' &
+            option%io_buffer = 'ERROR: Q must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
           if (Uninitialized(new_mechanism%K)) then
-            option%io_buffer = 'K must be specified in ' &
+            option%io_buffer = 'ERROR: K must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
           if (Uninitialized(new_mechanism%pH)) then
-            option%io_buffer = 'PH must be specified in ' &
+            option%io_buffer = 'ERROR: PH must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
           if (Uninitialized(new_mechanism%v)) then
-            option%io_buffer = 'V must be specified in ' &
+            option%io_buffer = 'ERROR: V must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
         type is(wf_mechanism_custom_type)
           if (Uninitialized(new_mechanism%specific_surface_area) .and. &
               Uninitialized(new_mechanism%dissolution_rate) .and. &
               Uninitialized(new_mechanism%frac_dissolution_rate)) then
-            option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE or &
+            option%io_buffer = 'ERROR: FRACTIONAL_DISSOLUTION_RATE or &
                                &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
                                &must be specified in ' // trim(error_string) &
                                // ' ' // trim(new_mechanism%name) // ' block.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if ( (initialized(new_mechanism%frac_dissolution_rate) .and. &
-                initialized(new_mechanism%dissolution_rate)    ) .or. &
+          if ( (Initialized(new_mechanism%frac_dissolution_rate) .and. &
+                Initialized(new_mechanism%dissolution_rate)    ) .or. &
                (Uninitialized(new_mechanism%frac_dissolution_rate) .and. &
                 Uninitialized(new_mechanism%dissolution_rate)    ) ) then
-            option%io_buffer = 'Either FRACTIONAL_DISSOLUTION_RATE or &
+            option%io_buffer = 'ERROR: Either FRACTIONAL_DISSOLUTION_RATE or &
                                &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
                                &must be specified in ' // trim(error_string) &
                                // ' ' // trim(new_mechanism%name) // ' block. &
                                &Both types of dissolution rates cannot be &
                                &specified.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if ( (initialized(new_mechanism%specific_surface_area) .and. &
+          if ( (Initialized(new_mechanism%specific_surface_area) .and. &
                 Uninitialized(new_mechanism%dissolution_rate)  ) .or. &
                (Uninitialized(new_mechanism%specific_surface_area) .and. &
                 initialized(new_mechanism%dissolution_rate)      ) ) then
-            option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE or &
+            option%io_buffer = 'ERROR: FRACTIONAL_DISSOLUTION_RATE or &
                                &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
                                &must be specified in ' // trim(error_string) &
                                // ' ' // trim(new_mechanism%name) // ' block.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
         type is(wf_mechanism_fmdm_type)
           if (Uninitialized(new_mechanism%burnup)) then
-            option%io_buffer = 'BURNUP must be specified in ' &
+            option%io_buffer = 'ERROR: BURNUP must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
           if (Uninitialized(new_mechanism%specific_surface_area)) then
-            option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' &
-                               // trim(error_string) // ' ' // &
+            option%io_buffer = 'ERROR: SPECIFIC_SURFACE_AREA must be specified &
+                               &in ' // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
       end select
       if (Uninitialized(new_mechanism%matrix_density)) then
-        option%io_buffer = 'MATRIX_DENSITY must be specified in ' // &
+        option%io_buffer = 'ERROR: MATRIX_DENSITY must be specified in ' // &
                            trim(error_string) // ' ' // &
                            trim(new_mechanism%name) // ' block.'
-        call printErrMsg(option)
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
 
       if (new_mechanism%canister_degradation_model .and. &
           Uninitialized(new_mechanism%canister_material_constant)) then
-        option%io_buffer = 'CANISTER_MATERIAL_CONSTANT must be given in the '&
-                           // trim(error_string) // ' ' // &
+        option%io_buffer = 'ERROR: CANISTER_MATERIAL_CONSTANT must be given in &
+                           &the ' // trim(error_string) // ' ' // &
                            trim(new_mechanism%name) // &
                            ', CANISTER_DEGRADATION_MODEL block.'
-        call printErrMsg(option)
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
 
       if (.not.associated(new_mechanism%rad_species_list)) then
-        option%io_buffer = 'At least one SPECIES must be specified in the ' // &
-          trim(error_string) // ' ' // trim(new_mechanism%name) // ' block.'
-        call printErrMsg(option)
+        option%io_buffer = 'ERROR: At least one SPECIES must be specified in &
+                           &the ' // trim(error_string) // ' ' // &
+                           trim(new_mechanism%name) // ' block.'
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
 
       if (.not.associated(this%mechanism_list)) then
@@ -1242,6 +1279,13 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
       found = PETSC_FALSE
   !-------------------------------------
   end select
+  
+  if (num_errors > 0) then
+    write(option%io_buffer,*) num_errors
+    option%io_buffer = trim(adjustl(option%io_buffer)) // ' errors in &
+                       &the MECHANISM block. See above.'
+    call printErrMsg(option)
+  endif
 
 end subroutine PMWFReadMechanism
 
@@ -1273,6 +1317,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   PetscBool :: found
 
   PetscBool :: added
+  PetscInt :: num_errors
   character(len=MAXWORDLENGTH) :: word, internal_units
   class(waste_form_base_type), pointer :: new_waste_form, cur_waste_form
   class(wf_mechanism_base_type), pointer :: cur_mechanism
@@ -1280,6 +1325,7 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   error_string = trim(error_string) // ',WASTE_FORM'
   found = PETSC_TRUE
   added = PETSC_FALSE
+  num_errors = 0
 
   select case(trim(keyword))
   !-------------------------------------
@@ -1347,25 +1393,30 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
       
      ! ----------------- error messaging -------------------------------------
       if (Uninitialized(new_waste_form%volume)) then
-        option%io_buffer = 'VOLUME must be specified for all waste forms.'
-        call printErrMsg(option)
+        option%io_buffer = 'ERROR: VOLUME must be specified for all &
+                           &waste forms.'
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
       if (Uninitialized(new_waste_form%coordinate%z) .and. &
           (len(trim(new_waste_form%region_name)) == 0)) then
-        option%io_buffer = 'Either COORDINATE or REGION must be specified &
-                           &for all waste forms.'
-        call printErrMsg(option)
+        option%io_buffer = 'ERROR: Either COORDINATE or REGION must be &
+                           &specified for all waste forms.'
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
       if (Initialized(new_waste_form%coordinate%z) .and. &
           (len(trim(new_waste_form%region_name)) > 0)) then
-        option%io_buffer = 'Either COORDINATE or REGION must be specified &
-                           &for all waste forms, but not both.'
-        call printErrMsg(option)
+        option%io_buffer = 'ERROR: Either COORDINATE or REGION must be &
+                           &specified for all waste forms, but not both.'
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
       if (new_waste_form%mech_name == '') then
-        option%io_buffer = 'MECHANISM_NAME must be specified for &
+        option%io_buffer = 'ERROR: MECHANISM_NAME must be specified for &
                            &all waste forms.'
-        call printErrMsg(option)
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
       !note: do not throw error if EXPOSURE_FACTOR isn't specified (default = 1)
       
@@ -1391,8 +1442,16 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   end select
 
   if (.not.associated(this%waste_form_list)) then
-    option%io_buffer = 'At least one WASTE_FORM must be specified in the &
-                       &WASTE_FORM_GENERAL block.'
+    option%io_buffer = 'ERROR: At least one WASTE_FORM must be specified &
+                       &in the WASTE_FORM_GENERAL block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
+  endif
+  
+  if (num_errors > 0) then
+    write(option%io_buffer,*) num_errors
+    option%io_buffer = trim(adjustl(option%io_buffer)) // ' errors in &
+                       &the WASTE_FORM_GENERAL,WASTE_FORM block(s). See above.'
     call printErrMsg(option)
   endif
 
