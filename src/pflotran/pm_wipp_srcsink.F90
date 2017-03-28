@@ -476,7 +476,8 @@ subroutine PMWSSSetRegionScaling(this,waste_panel)
   
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(grid_type), pointer :: grid
-  PetscInt :: k, cell_id
+  PetscInt :: k
+  PetscInt :: local_id, ghosted_id
   PetscReal :: total_volume_local, total_volume_global
   PetscErrorCode :: ierr
   
@@ -488,10 +489,11 @@ subroutine PMWSSSetRegionScaling(this,waste_panel)
   
   ! scale by cell volume
   do k = 1,waste_panel%region%num_cells
-    cell_id = grid%nL2G(waste_panel%region%cell_ids(k))
-    waste_panel%scaling_factor(k) = material_auxvars(cell_id)%volume ! [m^3]
+    local_id = waste_panel%region%cell_ids(k)
+    ghosted_id = grid%nL2G(local_id)
+    waste_panel%scaling_factor(k) = material_auxvars(ghosted_id)%volume ! [m^3]
     total_volume_local = total_volume_local &
-                         + material_auxvars(cell_id)%volume  ! [m^3]
+                         + material_auxvars(ghosted_id)%volume          ! [m^3]
   enddo
   call MPI_Allreduce(total_volume_local,total_volume_global,ONE_INTEGER_MPI, &
               MPI_DOUBLE_PRECISION,MPI_SUM,waste_panel%myMPIcomm,ierr)
@@ -1500,7 +1502,7 @@ end subroutine PMWSSUpdateChemSpecies
   PetscReal, pointer :: vec_p(:)
   type(srcsink_panel_type), pointer :: cur_waste_panel
   PetscInt :: i, j
-  PetscInt :: cell_id
+  PetscInt :: local_id, ghosted_id
   PetscInt :: num_cells
   ! brine/gas generation variable
   PetscReal :: water_saturation
@@ -1551,10 +1553,11 @@ end subroutine PMWSSUpdateChemSpecies
     rxnrate_hymagcon = 0.d0
 
     do i = 1,num_cells
+      local_id = cur_waste_panel%region%cell_ids(i)
+      ghosted_id = grid%nL2G(local_id)
     !-----effective-brine-saturation------------------------------------------
       water_saturation = &
-        gen_auxvar(ZERO_INTEGER,grid%nL2G(cur_waste_panel%region%cell_ids(i)))% &
-        sat(option%liquid_phase)
+        gen_auxvar(ZERO_INTEGER,ghosted_id)%sat(option%liquid_phase)
       s_eff = water_saturation - this%smin + this%satwick*(1.d0 - &
         exp(200.d0*this%alpharxn*(max((water_saturation-this%smin),0.d0))**2.d0))
     !-----anoxic-iron-corrosion-[mol-Fe/m3/sec]-------------------------------
@@ -1654,58 +1657,52 @@ end subroutine PMWSSUpdateChemSpecies
           5.d0*rxnrate_biodeg_sulfate + 2.d0*rxnrate_FeS_FeOH2 + &
           (-1.d0*rxnrate_mgoh2) + 4.d0*rxnrate_hymagcon
     !------source-term-calculation--------------------------------------------
-      cell_id = grid%nL2G(cur_waste_panel%region%cell_ids(i))
       j = j + 1
       ! liquid source term [kmol/sec]
       vec_p(j) = cur_waste_panel%brine_generation_rate(i) * &  ! [mol/m3/sec]
-                 material_auxvars(cell_id)%volume / &          ! [m3-bulk]
+                 material_auxvars(ghosted_id)%volume / &       ! [m3-bulk]
                  1.d3                                          ! [mol -> kmol]
       j = j + 1
       ! gas source term [kmol/sec]
       vec_p(j) = cur_waste_panel%gas_generation_rate(i) * &    ! [mol/m3/sec]
-                 material_auxvars(cell_id)%volume / &          ! [m3-bulk]
+                 material_auxvars(ghosted_id)%volume / &       ! [m3-bulk]
                  1.d3                                          ! [mol -> kmol]
       j = j + 1
       ! energy source term [MJ/sec]; H from EOS [J/kmol]
       brine_energy = 0.d0
       gas_energy = 0.d0
-      temperature = gen_auxvar(ZERO_INTEGER, &
-          grid%nL2G(cur_waste_panel%region%cell_ids(i)))%temp
-      select case(global_auxvar(cell_id)%istate)
+      temperature = gen_auxvar(ZERO_INTEGER,ghosted_id)%temp
+      select case(global_auxvar(ghosted_id)%istate)
         case(GAS_STATE) !------------------------------------------------------
-          pressure_gas = gen_auxvar(ZERO_INTEGER, &
-              grid%nL2G(cur_waste_panel%region%cell_ids(i)))% &
-              pres(option%gas_phase)
+          pressure_gas = gen_auxvar(ZERO_INTEGER,ghosted_id)% &
+                         pres(option%gas_phase)
           call EOSGasEnergy(temperature,pressure_gas,H_gas,U_gas,ierr)
           gas_energy = &
               cur_waste_panel%gas_generation_rate(i) * &    ! [mol/m3/sec]
-              material_auxvars(cell_id)%volume * &          ! [m3-bulk] 
+              material_auxvars(ghosted_id)%volume * &       ! [m3-bulk] 
               H_gas * 1.d-3 * 1.d-6                         ! [MJ/mol]
         case(LIQUID_STATE) !---------------------------------------------------
-          pressure_liq = gen_auxvar(ZERO_INTEGER, &
-              grid%nL2G(cur_waste_panel%region%cell_ids(i)))% &
-              pres(option%liquid_phase)
+          pressure_liq = gen_auxvar(ZERO_INTEGER,ghosted_id)% &
+                         pres(option%liquid_phase)
           call EOSWaterEnthalpy(temperature,pressure_liq,H_liq,ierr)
           brine_energy = &
               cur_waste_panel%brine_generation_rate(i) * &  ! [mol/m3/sec]
-              material_auxvars(cell_id)%volume * &          ! [m3-bulk] 
+              material_auxvars(ghosted_id)%volume * &       ! [m3-bulk] 
               H_liq * 1.d-3 * 1.d-6                         ! [MJ/mol]
         case(TWO_PHASE_STATE) !------------------------------------------------
-          pressure_liq = gen_auxvar(ZERO_INTEGER, &
-              grid%nL2G(cur_waste_panel%region%cell_ids(i)))% &
-              pres(option%liquid_phase)
-          pressure_gas = gen_auxvar(ZERO_INTEGER, &
-              grid%nL2G(cur_waste_panel%region%cell_ids(i)))% &
-              pres(option%gas_phase)
+          pressure_liq = gen_auxvar(ZERO_INTEGER,ghosted_id)% &
+                         pres(option%liquid_phase)
+          pressure_gas = gen_auxvar(ZERO_INTEGER,ghosted_id)% &
+                         pres(option%gas_phase)
           call EOSWaterEnthalpy(temperature,pressure_liq,H_liq,ierr)
           call EOSGasEnergy(temperature,pressure_gas,H_gas,U_gas,ierr)
           brine_energy = &
               cur_waste_panel%brine_generation_rate(i) * &  ! [mol/m3/sec]
-              material_auxvars(cell_id)%volume * &          ! [m3-bulk] 
+              material_auxvars(ghosted_id)%volume * &       ! [m3-bulk] 
               H_liq * 1.d-3 * 1.d-6                         ! [MJ/mol]
           gas_energy = &
               cur_waste_panel%gas_generation_rate(i) * &    ! [mol/m3/sec]
-              material_auxvars(cell_id)%volume * &          ! [m3-bulk] 
+              material_auxvars(ghosted_id)%volume * &       ! [m3-bulk] 
               H_gas * 1.d-3 * 1.d-6                         ! [MJ/mol]
       end select
       vec_p(j) = brine_energy + gas_energy
