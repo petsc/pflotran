@@ -134,28 +134,31 @@ function PMWSSCreate()
   implicit none
   
   class(pm_wipp_srcsink_type), pointer :: PMWSSCreate
+  class(pm_wipp_srcsink_type), pointer :: pm
   
-  allocate(PMWSSCreate)
-  nullify(PMWSSCreate%waste_panel_list)
-  nullify(PMWSSCreate%pre_inventory_list)
-  nullify(PMWSSCreate%data_mediator)
-  nullify(PMWSSCreate%realization)
-  PMWSSCreate%name = 'wipp source sink'
-  PMWSSCreate%alpharxn = UNINITIALIZED_DOUBLE
-  PMWSSCreate%smin = UNINITIALIZED_DOUBLE
-  PMWSSCreate%satwick = UNINITIALIZED_DOUBLE
-  PMWSSCreate%corrmco2 = UNINITIALIZED_DOUBLE
-  PMWSSCreate%humcorr = UNINITIALIZED_DOUBLE
-  PMWSSCreate%gratmici = UNINITIALIZED_DOUBLE
-  PMWSSCreate%gratmich = UNINITIALIZED_DOUBLE
-  PMWSSCreate%brucitei = UNINITIALIZED_DOUBLE
-  PMWSSCreate%bruciteh = UNINITIALIZED_DOUBLE
-  PMWSSCreate%RXCO2_factor = UNINITIALIZED_DOUBLE
-  PMWSSCreate%hymagcon_rate = UNINITIALIZED_DOUBLE
-  PMWSSCreate%drum_surface_area = UNINITIALIZED_DOUBLE
-  PMWSSCreate%biogenfc = UNINITIALIZED_DOUBLE
+  allocate(pm)
+  nullify(pm%waste_panel_list)
+  nullify(pm%pre_inventory_list)
+  nullify(pm%data_mediator)
+  nullify(pm%realization)
+  pm%name = 'wipp source sink'
+  pm%alpharxn = UNINITIALIZED_DOUBLE
+  pm%smin = UNINITIALIZED_DOUBLE
+  pm%satwick = UNINITIALIZED_DOUBLE
+  pm%corrmco2 = UNINITIALIZED_DOUBLE
+  pm%humcorr = UNINITIALIZED_DOUBLE
+  pm%gratmici = UNINITIALIZED_DOUBLE
+  pm%gratmich = UNINITIALIZED_DOUBLE
+  pm%brucitei = UNINITIALIZED_DOUBLE
+  pm%bruciteh = UNINITIALIZED_DOUBLE
+  pm%RXCO2_factor = UNINITIALIZED_DOUBLE
+  pm%hymagcon_rate = UNINITIALIZED_DOUBLE
+  pm%drum_surface_area = UNINITIALIZED_DOUBLE
+  pm%biogenfc = UNINITIALIZED_DOUBLE
   
-  call PMBaseInit(PMWSSCreate)
+  call PMBaseInit(pm)
+  
+  PMWSSCreate => pm
   
 end function PMWSSCreate
 
@@ -172,30 +175,33 @@ function PMWSSWastePanelCreate()
   implicit none
   
   type(srcsink_panel_type), pointer :: PMWSSWastePanelCreate
+  type(srcsink_panel_type), pointer :: panel
   
-  allocate(PMWSSWastePanelCreate)
+  allocate(panel)
   
-  nullify(PMWSSWastePanelCreate%next)
-  nullify(PMWSSWastePanelCreate%region)
-  nullify(PMWSSWastePanelCreate%scaling_factor)
-  nullify(PMWSSWastePanelCreate%gas_generation_rate)
-  nullify(PMWSSWastePanelCreate%brine_generation_rate)
-  nullify(PMWSSWastePanelCreate%rank_list)
-  call PMWSSInventoryInit(PMWSSWastePanelCreate%inventory)
-  PMWSSWastePanelCreate%name = ''
-  PMWSSWastePanelCreate%region_name = ''
-  PMWSSWastePanelCreate%inventory_name = ''
-  PMWSSWastePanelCreate%volume = UNINITIALIZED_DOUBLE
-  PMWSSWastePanelCreate%inundated_corrosion_rate = UNINITIALIZED_DOUBLE
-  PMWSSWastePanelCreate%humid_corrosion_rate = UNINITIALIZED_DOUBLE
-  PMWSSWastePanelCreate%inundated_biodeg_rate = UNINITIALIZED_DOUBLE
-  PMWSSWastePanelCreate%humid_biodeg_rate = UNINITIALIZED_DOUBLE
-  PMWSSWastePanelCreate%inundated_brucite_rate = UNINITIALIZED_DOUBLE
-  PMWSSWastePanelCreate%humid_brucite_rate = UNINITIALIZED_DOUBLE
-  PMWSSWastePanelCreate%RXH2S_factor = UNINITIALIZED_DOUBLE
-  PMWSSWastePanelCreate%id = 0
-  PMWSSWastePanelCreate%myMPIgroup = 0
-  PMWSSWastePanelCreate%myMPIcomm = 0
+  nullify(panel%next)
+  nullify(panel%region)
+  nullify(panel%scaling_factor)
+  nullify(panel%gas_generation_rate)
+  nullify(panel%brine_generation_rate)
+  nullify(panel%rank_list)
+  call PMWSSInventoryInit(panel%inventory)
+  panel%name = ''
+  panel%region_name = ''
+  panel%inventory_name = ''
+  panel%volume = UNINITIALIZED_DOUBLE
+  panel%inundated_corrosion_rate = UNINITIALIZED_DOUBLE
+  panel%humid_corrosion_rate = UNINITIALIZED_DOUBLE
+  panel%inundated_biodeg_rate = UNINITIALIZED_DOUBLE
+  panel%humid_biodeg_rate = UNINITIALIZED_DOUBLE
+  panel%inundated_brucite_rate = UNINITIALIZED_DOUBLE
+  panel%humid_brucite_rate = UNINITIALIZED_DOUBLE
+  panel%RXH2S_factor = UNINITIALIZED_DOUBLE
+  panel%id = 0
+  panel%myMPIgroup = 0
+  panel%myMPIcomm = 0
+  
+  PMWSSWastePanelCreate => panel
 
 end function PMWSSWastePanelCreate
 
@@ -212,19 +218,22 @@ function PMWSSPreInventoryCreate()
   implicit none
   
   type(pre_inventory_type), pointer :: PMWSSPreInventoryCreate
+  type(pre_inventory_type), pointer :: preinv
   
-  allocate(PMWSSPreInventoryCreate)
-  nullify(PMWSSPreInventoryCreate%next)
+  allocate(preinv)
+  nullify(preinv%next)
 
-  PMWSSPreInventoryCreate%name = ''
-  PMWSSPreInventoryCreate%Fe_in_panel = UNINITIALIZED_DOUBLE
-  PMWSSPreInventoryCreate%MgO_in_panel = UNINITIALIZED_DOUBLE
-  PMWSSPreInventoryCreate%Cellulose_in_panel = UNINITIALIZED_DOUBLE
-  PMWSSPreInventoryCreate%RubberPlas_in_panel = UNINITIALIZED_DOUBLE
-  PMWSSPreInventoryCreate%H_ion_in_panel = UNINITIALIZED_DOUBLE
-  PMWSSPreInventoryCreate%Nitrate_in_panel = UNINITIALIZED_DOUBLE
-  PMWSSPreInventoryCreate%Sulfate_in_panel = UNINITIALIZED_DOUBLE
-  PMWSSPreInventoryCreate%num_drums_packing = UNINITIALIZED_DOUBLE
+  preinv%name = ''
+  preinv%Fe_in_panel = UNINITIALIZED_DOUBLE
+  preinv%MgO_in_panel = UNINITIALIZED_DOUBLE
+  preinv%Cellulose_in_panel = UNINITIALIZED_DOUBLE
+  preinv%RubberPlas_in_panel = UNINITIALIZED_DOUBLE
+  preinv%H_ion_in_panel = UNINITIALIZED_DOUBLE
+  preinv%Nitrate_in_panel = UNINITIALIZED_DOUBLE
+  preinv%Sulfate_in_panel = UNINITIALIZED_DOUBLE
+  preinv%num_drums_packing = UNINITIALIZED_DOUBLE
+  
+  PMWSSPreInventoryCreate => preinv
 
 end function PMWSSPreInventoryCreate
 
