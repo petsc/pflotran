@@ -214,22 +214,25 @@ function PMWFMechanismGlassCreate()
   implicit none
   
   class(wf_mechanism_glass_type), pointer :: PMWFMechanismGlassCreate
+  class(wf_mechanism_glass_type), pointer :: glass
   
-  allocate(PMWFMechanismGlassCreate)
-  call PMWFMechanismInit(PMWFMechanismGlassCreate)
-  PMWFMechanismGlassCreate%dissolution_rate = 0.d0        ! [kg/m^2/sec]
-  PMWFMechanismGlassCreate%k0 = UNINITIALIZED_DOUBLE      ! [kg/m^2/sec]
-  PMWFMechanismGlassCreate%k_long = UNINITIALIZED_DOUBLE  ! [kg/m^2/sec]
-  PMWFMechanismGlassCreate%nu = UNINITIALIZED_DOUBLE      ! [-]
-  PMWFMechanismGlassCreate%Ea = UNINITIALIZED_DOUBLE      ! [J/mol]
-  PMWFMechanismGlassCreate%Q = UNINITIALIZED_DOUBLE      
-  PMWFMechanismGlassCreate%K = UNINITIALIZED_DOUBLE
-  PMWFMechanismGlassCreate%v = UNINITIALIZED_DOUBLE    
-  PMWFMechanismGlassCreate%pH = UNINITIALIZED_DOUBLE   
-  PMWFMechanismGlassCreate%use_pH = PETSC_FALSE  
-  PMWFMechanismGlassCreate%use_Q = PETSC_FALSE
-  PMWFMechanismGlassCreate%h_ion_id = 0
-  PMWFMechanismGlassCreate%SiO2_id = 0
+  allocate(glass)
+  call PMWFMechanismInit(glass)
+  glass%dissolution_rate = 0.d0        ! [kg/m^2/sec]
+  glass%k0 = UNINITIALIZED_DOUBLE      ! [kg/m^2/sec]
+  glass%k_long = UNINITIALIZED_DOUBLE  ! [kg/m^2/sec]
+  glass%nu = UNINITIALIZED_DOUBLE      ! [-]
+  glass%Ea = UNINITIALIZED_DOUBLE      ! [J/mol]
+  glass%Q = UNINITIALIZED_DOUBLE      
+  glass%K = UNINITIALIZED_DOUBLE
+  glass%v = UNINITIALIZED_DOUBLE    
+  glass%pH = UNINITIALIZED_DOUBLE   
+  glass%use_pH = PETSC_FALSE  
+  glass%use_Q = PETSC_FALSE
+  glass%h_ion_id = 0
+  glass%SiO2_id = 0
+  
+  PMWFMechanismGlassCreate => glass
 
 end function PMWFMechanismGlassCreate
 
@@ -245,10 +248,13 @@ function PMWFMechanismDSNFCreate()
   implicit none
   
   class(wf_mechanism_dsnf_type), pointer :: PMWFMechanismDSNFCreate
+  class(wf_mechanism_dsnf_type), pointer :: dsnf
   
-  allocate(PMWFMechanismDSNFCreate)
-  call PMWFMechanismInit(PMWFMechanismDSNFCreate)
-  PMWFMechanismDSNFCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/sec
+  allocate(dsnf)
+  call PMWFMechanismInit(dsnf)
+  dsnf%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/sec
+  
+  PMWFMechanismDSNFCreate => dsnf
 
 end function PMWFMechanismDSNFCreate
 
@@ -264,10 +270,13 @@ function PMWFMechanismWIPPCreate()
   implicit none
   
   class(wf_mechanism_wipp_type), pointer :: PMWFMechanismWIPPCreate
+  class(wf_mechanism_wipp_type), pointer :: wipp
   
-  allocate(PMWFMechanismWIPPCreate)
-  call PMWFMechanismInit(PMWFMechanismWIPPCreate)
-  PMWFMechanismWIPPCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/sec
+  allocate(wipp)
+  call PMWFMechanismInit(wipp)
+  wipp%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/sec
+  
+  PMWFMechanismWIPPCreate => wipp
 
 end function PMWFMechanismWIPPCreate
 
@@ -283,47 +292,45 @@ function PMWFMechanismFMDMCreate()
   implicit none
   
   class(wf_mechanism_fmdm_type), pointer :: PMWFMechanismFMDMCreate
+  class(wf_mechanism_fmdm_type), pointer :: fmdm
   
-  allocate(PMWFMechanismFMDMCreate)
-  call PMWFMechanismInit(PMWFMechanismFMDMCreate)
+  allocate(fmdm)
+  call PMWFMechanismInit(fmdm)
   
-  PMWFMechanismFMDMCreate%dissolution_rate = UNINITIALIZED_DOUBLE   ! kg/m^2/sec
-  PMWFMechanismFMDMCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
-  PMWFMechanismFMDMCreate%burnup = UNINITIALIZED_DOUBLE ! GWd/MTHM or (kg/m^2/sec)
+  fmdm%dissolution_rate = UNINITIALIZED_DOUBLE   ! kg/m^2/sec
+  fmdm%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
+  fmdm%burnup = UNINITIALIZED_DOUBLE ! GWd/MTHM or (kg/m^2/sec)
   
-  PMWFMechanismFMDMCreate%num_grid_cells_in_waste_form = 40  ! hardwired
+  fmdm%num_grid_cells_in_waste_form = 40  ! hardwired
   
-  nullify(PMWFMechanismFMDMCreate%concentration)
-  PMWFMechanismFMDMCreate%num_concentrations = 11         
-  PMWFMechanismFMDMCreate%iUO2_2p = 1
-  PMWFMechanismFMDMCreate%iUCO3_2n = 2
-  PMWFMechanismFMDMCreate%iUO2 = 3
-  PMWFMechanismFMDMCreate%iCO3_2n = 4
-  PMWFMechanismFMDMCreate%iO2 = 5
-  PMWFMechanismFMDMCreate%iH2O2 = 6
-  PMWFMechanismFMDMCreate%iFe_2p = 7
-  PMWFMechanismFMDMCreate%iH2 = 8
-  PMWFMechanismFMDMCreate%iUO2_sld = 9
-  PMWFMechanismFMDMCreate%iUO3_sld = 10
-  PMWFMechanismFMDMCreate%iUO4_sld = 11
+  nullify(fmdm%concentration)
+  fmdm%num_concentrations = 11         
+  fmdm%iUO2_2p = 1
+  fmdm%iUCO3_2n = 2
+  fmdm%iUO2 = 3
+  fmdm%iCO3_2n = 4
+  fmdm%iO2 = 5
+  fmdm%iH2O2 = 6
+  fmdm%iFe_2p = 7
+  fmdm%iH2 = 8
+  fmdm%iUO2_sld = 9
+  fmdm%iUO3_sld = 10
+  fmdm%iUO4_sld = 11
   
-  allocate(PMWFMechanismFMDMCreate%mapping_fmdm_to_pflotran( &
-           PMWFMechanismFMDMCreate%num_concentrations))
-  PMWFMechanismFMDMCreate%mapping_fmdm_to_pflotran = UNINITIALIZED_INTEGER
+  allocate(fmdm%mapping_fmdm_to_pflotran(fmdm%num_concentrations))
+  fmdm%mapping_fmdm_to_pflotran = UNINITIALIZED_INTEGER
   
   ! concentration can be allocated here because we hardwired
   ! the num_grid_cells_in_waste_form value, but if it becomes
   ! user defined, then allocation must be delayed until PMWFSetup
-  allocate(PMWFMechanismFMDMCreate%concentration( &
-             PMWFMechanismFMDMCreate%num_concentrations, &
-             PMWFMechanismFMDMCreate%num_grid_cells_in_waste_form))
-  PMWFMechanismFMDMCreate%concentration = 1.d-13
+  allocate(fmdm%concentration(fmdm%num_concentrations, &
+                              fmdm%num_grid_cells_in_waste_form))
+  fmdm%concentration = 1.d-13
   
-  allocate(PMWFMechanismFMDMCreate%mapping_fmdm(4))
-  PMWFMechanismFMDMCreate%mapping_fmdm = [PMWFMechanismFMDMCreate%iO2, &
-                                      PMWFMechanismFMDMCreate%iCO3_2n, &
-                                      PMWFMechanismFMDMCreate%iH2, &
-                                      PMWFMechanismFMDMCreate%iFe_2p]
+  allocate(fmdm%mapping_fmdm(4))
+  fmdm%mapping_fmdm = [fmdm%iO2,fmdm%iCO3_2n,fmdm%iH2,fmdm%iFe_2p]
+                                      
+  PMWFMechanismFMDMCreate => fmdm
 
 end function PMWFMechanismFMDMCreate
 
@@ -339,11 +346,14 @@ function PMWFMechanismCustomCreate()
   implicit none
   
   class(wf_mechanism_custom_type), pointer :: PMWFMechanismCustomCreate
+  class(wf_mechanism_custom_type), pointer :: custom
   
-  allocate(PMWFMechanismCustomCreate)
-  call PMWFMechanismInit(PMWFMechanismCustomCreate)
-  PMWFMechanismCustomCreate%dissolution_rate = UNINITIALIZED_DOUBLE ! kg/m^2/sec
-  PMWFMechanismCustomCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE ! 1/sec
+  allocate(custom)
+  call PMWFMechanismInit(custom)
+  custom%dissolution_rate = UNINITIALIZED_DOUBLE ! kg/m^2/sec
+  custom%frac_dissolution_rate = UNINITIALIZED_DOUBLE ! 1/sec
+  
+  PMWFMechanismCustomCreate => custom
 
 end function PMWFMechanismCustomCreate
 
@@ -385,36 +395,39 @@ function PMWFWasteFormCreate()
   implicit none
 
   type(waste_form_base_type), pointer :: PMWFWasteFormCreate
+  type(waste_form_base_type), pointer :: wf
 
-  allocate(PMWFWasteFormCreate)
-  PMWFWasteFormCreate%id = UNINITIALIZED_INTEGER
-  nullify(PMWFWasteFormCreate%rank_list)
-  PMWFWasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
-  PMWFWasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
-  PMWFWasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
-  nullify(PMWFWasteFormCreate%region)
-  PMWFWasteFormCreate%region_name = ''
-  nullify(PMWFWasteFormCreate%scaling_factor) ! [-]
-  PMWFWasteFormCreate%init_volume = UNINITIALIZED_DOUBLE
-  PMWFWasteFormCreate%volume = UNINITIALIZED_DOUBLE
-  PMWFWasteFormCreate%exposure_factor = 1.0d0
-  PMWFWasteFormCreate%eff_dissolution_rate = UNINITIALIZED_DOUBLE
-  PMWFWasteFormCreate%mech_name = ''
-  nullify(PMWFWasteFormCreate%instantaneous_mass_rate) ! mol-rad/sec
-  nullify(PMWFWasteFormCreate%cumulative_mass) ! mol-rad
-  nullify(PMWFWasteFormCreate%rad_mass_fraction) ! g-rad/g-matrix
-  nullify(PMWFWasteFormCreate%rad_concentration) ! mol-rad/g-matrix
-  nullify(PMWFWasteFormCreate%inst_release_amount) ! of rad
-  nullify(PMWFWasteFormCreate%mechanism)
-  nullify(PMWFWasteFormCreate%next)
+  allocate(wf)
+  wf%id = UNINITIALIZED_INTEGER
+  nullify(wf%rank_list)
+  wf%coordinate%x = UNINITIALIZED_DOUBLE
+  wf%coordinate%y = UNINITIALIZED_DOUBLE
+  wf%coordinate%z = UNINITIALIZED_DOUBLE
+  nullify(wf%region)
+  wf%region_name = ''
+  nullify(wf%scaling_factor) ! [-]
+  wf%init_volume = UNINITIALIZED_DOUBLE
+  wf%volume = UNINITIALIZED_DOUBLE
+  wf%exposure_factor = 1.0d0
+  wf%eff_dissolution_rate = UNINITIALIZED_DOUBLE
+  wf%mech_name = ''
+  nullify(wf%instantaneous_mass_rate) ! mol-rad/sec
+  nullify(wf%cumulative_mass) ! mol-rad
+  nullify(wf%rad_mass_fraction) ! g-rad/g-matrix
+  nullify(wf%rad_concentration) ! mol-rad/g-matrix
+  nullify(wf%inst_release_amount) ! of rad
+  nullify(wf%mechanism)
+  nullify(wf%next)
  !------- canister degradation model -----------------
-  PMWFWasteFormCreate%canister_degradation_flag = PETSC_FALSE
-  PMWFWasteFormCreate%breached = PETSC_FALSE
-  PMWFWasteFormCreate%breach_time = UNINITIALIZED_DOUBLE
-  PMWFWasteFormCreate%canister_vitality = 0.d0
-  PMWFWasteFormCreate%canister_vitality_rate = UNINITIALIZED_DOUBLE
-  PMWFWasteFormCreate%eff_canister_vit_rate = UNINITIALIZED_DOUBLE
+  wf%canister_degradation_flag = PETSC_FALSE
+  wf%breached = PETSC_FALSE
+  wf%breach_time = UNINITIALIZED_DOUBLE
+  wf%canister_vitality = 0.d0
+  wf%canister_vitality_rate = UNINITIALIZED_DOUBLE
+  wf%eff_canister_vit_rate = UNINITIALIZED_DOUBLE
  !----------------------------------------------------
+ 
+ PMWFWasteFormCreate => wf
 
 end function PMWFWasteFormCreate
 
