@@ -647,11 +647,11 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
 
   PetscBool :: added
   PetscInt :: num_errors
-  character(len=MAXWORDLENGTH) :: word, units, internal_units
-  character(len=MAXSTRINGLENGTH) :: temp_buf, string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: temp_buf
   type(rad_species_type), pointer :: temp_species_array(:)
   class(wf_mechanism_base_type), pointer :: new_mechanism, cur_mechanism
-  PetscInt :: k, j, icol
+  PetscInt :: k, j
   PetscReal :: double
 
   error_string = trim(error_string) // ',MECHANISM'
@@ -1314,9 +1314,8 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
 
   PetscBool :: added
   PetscInt :: num_errors
-  character(len=MAXWORDLENGTH) :: word, internal_units
+  character(len=MAXWORDLENGTH) :: word
   class(waste_form_base_type), pointer :: new_waste_form, cur_waste_form
-  class(wf_mechanism_base_type), pointer :: cur_mechanism
 
   error_string = trim(error_string) // ',WASTE_FORM'
   found = PETSC_TRUE
@@ -1573,9 +1572,9 @@ subroutine PMWFSetRegionScaling(this,waste_form)
   
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(grid_type), pointer :: grid
-  PetscInt :: k, cell_id
+  PetscInt :: k 
+  PetscInt :: local_id, ghosted_id
   PetscReal :: total_volume_local, total_volume_global
-  PetscErrorCode :: ierr
   
   material_auxvars => this%realization%patch%aux%Material%auxvars
   grid => this%realization%patch%grid
@@ -1585,13 +1584,14 @@ subroutine PMWFSetRegionScaling(this,waste_form)
   
   ! scale by cell volume
   do k = 1,waste_form%region%num_cells
-    cell_id = grid%nL2G(waste_form%region%cell_ids(k))
-    waste_form%scaling_factor(k) = material_auxvars(cell_id)%volume ! [m^3]
+    local_id = waste_form%region%cell_ids(k)
+    ghosted_id = grid%nL2G(local_id)
+    waste_form%scaling_factor(k) = material_auxvars(ghosted_id)%volume ! [m^3]
     total_volume_local = total_volume_local &
-                         + material_auxvars(cell_id)%volume  ! [m^3]
+                         + material_auxvars(ghosted_id)%volume  ! [m^3]
   enddo
   call PMWFCalcParallelSUM(this%option,waste_form,total_volume_local, &
-                       total_volume_global)
+                           total_volume_global)
   waste_form%scaling_factor = waste_form%scaling_factor/total_volume_global 
   
 end subroutine PMWFSetRegionScaling
@@ -1866,7 +1866,6 @@ end subroutine PMWFSetup
   PetscInt :: num_species
   PetscInt :: size_of_vec
   PetscInt :: i, j, k
-  PetscInt :: data_mediator_species_id
   PetscInt, allocatable :: species_indices_in_residual(:)
   PetscErrorCode :: ierr
 
@@ -1990,14 +1989,14 @@ subroutine PMWFInitializeTimestep(this)
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
-  PetscReal :: rate
   PetscReal :: dV
   PetscReal :: dt
   PetscReal :: avg_temp_local, avg_temp_global
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: idof
   PetscInt :: i, k, p, g, d, f
   PetscInt :: num_species
   PetscErrorCode :: ierr
-  PetscInt :: cell_id, idof
   PetscReal, allocatable :: Coeff(:)
   PetscReal, allocatable :: concentration_old(:)
   PetscReal :: inst_release_molality
@@ -2070,13 +2069,12 @@ subroutine PMWFInitializeTimestep(this)
         cur_waste_form%eff_canister_vit_rate = &
           cur_waste_form%eff_canister_vit_rate   
       else
-        i = 0
         avg_temp_local = 0.d0
-        do while (i < cur_waste_form%region%num_cells)
-          i = i + 1
-          avg_temp_local = avg_temp_local + &  ! Celcius
-            global_auxvars(grid%nL2G(cur_waste_form%region%cell_ids(i)))%temp* &
-            cur_waste_form%scaling_factor(i)
+        do i = 1,cur_waste_form%region%num_cells
+          local_id = cur_waste_form%region%cell_ids(i)
+          ghosted_id = grid%nL2G(local_id)
+          avg_temp_local = avg_temp_local + global_auxvars(ghosted_id)%temp * &
+                           cur_waste_form%scaling_factor(i)
         enddo
         call PMWFCalcParallelSUM(option,cur_waste_form,avg_temp_local, &
                              avg_temp_global)
@@ -2116,7 +2114,8 @@ subroutine PMWFInitializeTimestep(this)
         ! update transport solution vector with mass injection molality
         ! as an alternative to a source term (issue with tran_dt changing)
         do f = 1, cur_waste_form%region%num_cells
-          cell_id = grid%nL2G(cur_waste_form%region%cell_ids(f))
+          local_id = cur_waste_form%region%cell_ids(f)
+          ghosted_id = grid%nL2G(local_id)
           inst_release_molality = &                    ! [mol-rad/kg-water]
             ! [mol-rad]
             (cur_waste_form%inst_release_amount(k) * & ! [mol-rad/g-matrix]
@@ -2124,12 +2123,12 @@ subroutine PMWFInitializeTimestep(this)
              cwfm%matrix_density * &                   ! [kg-matrix/m^3-matrix] 
              1.d3) / &                               ! [kg-matrix] -> [g-matrix]
              ! [kg-water]
-            (material_auxvars(cell_id)%porosity * &         ! [-]
-             global_auxvars(cell_id)%sat(LIQUID_PHASE) * &  ! [-]
-             material_auxvars(cell_id)%volume * &           ! [m^3]
-             global_auxvars(cell_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
+            (material_auxvars(ghosted_id)%porosity * &         ! [-]
+             global_auxvars(ghosted_id)%sat(LIQUID_PHASE) * &  ! [-]
+             material_auxvars(ghosted_id)%volume * &           ! [m^3]
+             global_auxvars(ghosted_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
           idof = cwfm%rad_species_list(k)%ispecies + &
-                 ((cur_waste_form%region%cell_ids(f) - 1) * option%ntrandof) 
+                 ((local_id - 1) * option%ntrandof) 
           xx_p(idof) = xx_p(idof) + & 
                        (inst_release_molality*cur_waste_form%scaling_factor(f))
         enddo
@@ -2272,7 +2271,7 @@ subroutine PMWFSolve(this,time,ierr)
   class(waste_form_base_type), pointer :: cur_waste_form
   PetscInt :: i, j, k
   PetscInt :: num_species
-  PetscInt :: cell_id
+  PetscInt :: local_id, ghosted_id
   PetscInt :: idof
   PetscReal :: inst_diss_molality
   PetscReal, pointer :: vec_p(:)  
@@ -2309,7 +2308,8 @@ subroutine PMWFSolve(this,time,ierr)
         ! solution vector instead (see note in WFMech[DSNF/WIPP]Dissolution):
         class is(wf_mechanism_dsnf_type)
           do k = 1,cur_waste_form%region%num_cells
-            cell_id = grid%nL2G(cur_waste_form%region%cell_ids(k))
+            local_id = cur_waste_form%region%cell_ids(k)
+            ghosted_id = grid%nL2G(local_id)
             do j = 1,num_species
               i = i + 1
               cur_waste_form%instantaneous_mass_rate(j) = &
@@ -2321,13 +2321,12 @@ subroutine PMWFSolve(this,time,ierr)
                 cur_waste_form%instantaneous_mass_rate(j) * & ! mol-rad/sec
                 this%realization%option%tran_dt / &           ! sec
                 ! [kg-water]
-                (material_auxvars(cell_id)%porosity * &        ! [-]
-                 global_auxvars(cell_id)%sat(LIQUID_PHASE) * & ! [-]
-                 material_auxvars(cell_id)%volume * &          ! [m^3]
-                 global_auxvars(cell_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
+                (material_auxvars(ghosted_id)%porosity * &        ! [-]
+                 global_auxvars(ghosted_id)%sat(LIQUID_PHASE) * & ! [-]
+                 material_auxvars(ghosted_id)%volume * &          ! [m^3]
+                 global_auxvars(ghosted_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
               idof = cwfm%rad_species_list(j)%ispecies + &
-                     ((cur_waste_form%region%cell_ids(k) - 1) * &
-                      this%option%ntrandof)
+                     ((local_id - 1) * this%option%ntrandof)
               xx_p(idof) = xx_p(idof) + &                     ! mol-rad/kg-water
                            (inst_diss_molality*cur_waste_form%scaling_factor(k))  
               vec_p(i) = 0.d0
@@ -2446,6 +2445,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   PetscReal :: avg_sec_molal_local, avg_sec_molal_global
   PetscReal :: avg_pri_act_coef_local, avg_pri_act_coef_global
   PetscReal :: avg_sec_act_coef_local, avg_sec_act_coef_global
+  PetscInt :: ghosted_id
   PetscInt :: i
 
   grid => pm%realization%patch%grid
@@ -2462,13 +2462,11 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   ! Generalized glass dissolution equation comes from Eq. 2.3.7-6 in
   ! Yucca Mountain Repository SAR, Section 2.3.7, DOE/RW-0573 Rev.0
   
-  i = 0
   avg_temp_local = 0.d0
-  do while (i < waste_form%region%num_cells)
-    i = i + 1
+  do i = 1,waste_form%region%num_cells
+    ghosted_id = grid%nL2G(waste_form%region%cell_ids(i))
     avg_temp_local = avg_temp_local + &  ! Celcius
-               global_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))%temp * &
-               waste_form%scaling_factor(i)
+                 global_auxvars(ghosted_id)%temp * waste_form%scaling_factor(i)
   enddo
   call PMWFCalcParallelSUM(pm%option,waste_form,avg_temp_local,avg_temp_global)
   avg_temp_global = avg_temp_global+273.15d0   ! Kelvin
@@ -2741,13 +2739,11 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
  !====================================================================
   time = option%time
   
-  i = 0
   avg_temp_local = 0.d0
-  do while (i < waste_form%region%num_cells)
-    i = i + 1
+  do i = 1,waste_form%region%num_cells)
+    ghosted_id = grid%nL2G(waste_form%region%cell_ids(i))
     avg_temp_local = avg_temp_local + &  ! Celcius
-               global_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))%temp * &
-               waste_form%scaling_factor(i)
+               global_auxvars(ghosted_id)%temp * waste_form%scaling_factor(i)
   enddo
   call PMWFCalcParallelSUM(option,waste_form,avg_temp_local,avg_temp_global)
   call AMP_step(this%burnup, time, avg_temp_global, this%concentration, &
