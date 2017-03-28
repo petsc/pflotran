@@ -515,8 +515,8 @@ subroutine PMWFRead(this,input)
     cur_mechanism => this%mechanism_list
     do
       if (.not.associated(cur_mechanism)) exit
-      if (StringCompare(trim(cur_waste_form%mech_name), &
-                        trim(cur_mechanism%name))) then
+      if (StringCompare(cur_waste_form%mech_name, &
+                        cur_mechanism%name)) then
         cur_waste_form%mechanism => cur_mechanism
         matched = PETSC_TRUE
       endif
@@ -1479,8 +1479,8 @@ subroutine PMWFAssociateRegion(this,region_list)
       do
         if (.not.associated(cur_region)) exit
         matched = PETSC_FALSE
-        if (StringCompare(trim(cur_region%name), &
-                          trim(cur_waste_form%region_name))) then
+        if (StringCompare(cur_region%name, &
+                          cur_waste_form%region_name)) then
           cur_waste_form%region => cur_region
           matched = PETSC_TRUE
         endif
