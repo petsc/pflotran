@@ -1740,7 +1740,7 @@ subroutine PMWFSetup(this)
       else
         this%waste_form_list => next_waste_form
       endif
-      deallocate(cur_waste_form)
+      call PMWFDestroyWasteForm(cur_waste_form)
       cur_waste_form => next_waste_form
     endif
   enddo
