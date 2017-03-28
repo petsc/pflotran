@@ -776,7 +776,6 @@ subroutine PMUFDBAssociateRegion(this,region_list)
   type(region_type), pointer :: cur_region
   class(ERB_base_type), pointer :: cur_ERB
   type(option_type), pointer :: option
-  PetscBool :: matched
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(grid_type), pointer :: grid
   PetscInt :: k, cell_id
@@ -793,11 +792,9 @@ subroutine PMUFDBAssociateRegion(this,region_list)
       cur_region => region_list%first     
       do
         if (.not.associated(cur_region)) exit
-        matched = PETSC_FALSE
         if (StringCompare(cur_region%name, &
                           cur_ERB%region_name)) then
           cur_ERB%region => cur_region
-          matched = PETSC_TRUE
           ! calculate scaling factor by cell volumes in region
           allocate(cur_ERB%region_scaling_factor(cur_ERB%region%num_cells))
           total_volume_global = 0.d0
@@ -814,8 +811,8 @@ subroutine PMUFDBAssociateRegion(this,region_list)
                              option%mycomm,ierr)
           cur_ERB%region_scaling_factor = cur_ERB%region_scaling_factor / &
                                           total_volume_global
+          exit
         endif
-        if (matched) exit
         cur_region => cur_region%next
       enddo      
       if (.not.associated(cur_ERB%region)) then
@@ -940,7 +937,6 @@ subroutine PMUFDBAscUnsuppRadWithSuppRad(this)
   type(supported_rad_type), pointer :: cur_supp_rad
   type(unsupported_rad_type), pointer :: cur_unsupp_rad
   type(option_type), pointer :: option
-  PetscBool :: matched
   
   option => this%option
   
@@ -950,13 +946,11 @@ subroutine PMUFDBAscUnsuppRadWithSuppRad(this)
       cur_supp_rad => this%supported_rad_list     
       do
         if (.not.associated(cur_supp_rad)) exit
-        matched = PETSC_FALSE
         if (StringCompare(cur_supp_rad%name, &
                           cur_unsupp_rad%supported_parent_name)) then
           cur_unsupp_rad%supported_parent => cur_supp_rad
-          matched = PETSC_TRUE
+          exit
         endif
-        if (matched) exit
         cur_supp_rad => cur_supp_rad%next
       enddo      
       if (.not.associated(cur_unsupp_rad%supported_parent)) then
