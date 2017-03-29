@@ -621,7 +621,6 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
 
 #if defined(PETSC_HAVE_HDF5)
   integer(HID_T) :: file_id
-  integer(HID_T) :: ndims
   integer(HID_T) :: grp_id, grp_id2
   integer(HID_T) :: prop_id
   integer(HID_T) :: data_set_id
@@ -632,6 +631,7 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
   integer(HSIZE_T) :: offset(2), length(2), stride(2), block(2), dims(2)
 #endif
+  integer :: ndims_h5
 
   ! Initialize FORTRAN predefined datatypes
   call h5open_f(hdf5_err)
@@ -663,16 +663,16 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
   
   ! Get number of dimensions and check
-  call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
-  if (ndims /= 2) then
+  call h5sget_simple_extent_ndims_f(data_space_id, ndims_h5, hdf5_err)
+  if (ndims_h5 /= 2) then
     option%io_buffer='Dimension of Domain/Cells dataset in ' // trim(filename) // &
           ' is not equal to 2.'
     call printErrMsg(option)
   endif
   
   ! Allocate memory
-  allocate(dims_h5(ndims))
-  allocate(max_dims_h5(ndims))
+  allocate(dims_h5(ndims_h5))
+  allocate(max_dims_h5(ndims_h5))
   
   ! Get dimensions of dataset
   call h5sget_simple_extent_dims_f(data_space_id, dims_h5, max_dims_h5, &
@@ -757,16 +757,16 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
   
   ! Get number of dimensions and check
-  call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
-  if (ndims /= 2) then
+  call h5sget_simple_extent_ndims_f(data_space_id, ndims_h5, hdf5_err)
+  if (ndims_h5 /= 2) then
     option%io_buffer='Dimension of Domain/Vertices dataset in ' // trim(filename) // &
           ' is not equal to 2.'
     call printErrMsg(option)
   endif
   
   ! Allocate memory
-  allocate(dims_h5(ndims))
-  allocate(max_dims_h5(ndims))
+  allocate(dims_h5(ndims_h5))
+  allocate(max_dims_h5(ndims_h5))
   
   ! Get dimensions of dataset
   call h5sget_simple_extent_dims_f(data_space_id, dims_h5, max_dims_h5, &
@@ -906,7 +906,6 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
 
 #if defined(PETSC_HAVE_HDF5)
   integer(HID_T) :: file_id
-  integer(HID_T) :: ndims
   integer(HID_T) :: grp_id, grp_id2
   integer(HID_T) :: prop_id
   integer(HID_T) :: data_set_id
@@ -917,6 +916,7 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
   integer(HSIZE_T) :: offset(2), length(2), stride(2), block(2), dims(2)
 #endif
+  integer :: ndims_h5
 
   ! Initialize FORTRAN predefined datatypes
   call h5open_f(hdf5_err)
@@ -948,16 +948,16 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
   
   ! Get number of dimensions and check
-  call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
-  if (ndims /= 2) then
+  call h5sget_simple_extent_ndims_f(data_space_id, ndims_h5, hdf5_err)
+  if (ndims_h5 /= 2) then
     option%io_buffer='Dimension of Domain/Cells dataset in ' // trim(filename) // &
           ' is not equal to 2.'
     call printErrMsg(option)
   endif
   
   ! Allocate memory
-  allocate(dims_h5(ndims))
-  allocate(max_dims_h5(ndims))
+  allocate(dims_h5(ndims_h5))
+  allocate(max_dims_h5(ndims_h5))
   
   ! Get dimensions of dataset
   call h5sget_simple_extent_dims_f(data_space_id, dims_h5, max_dims_h5, &
@@ -1062,16 +1062,16 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   call h5dget_space_f(data_set_id, data_space_id, hdf5_err)
   
   ! Get number of dimensions and check
-  call h5sget_simple_extent_ndims_f(data_space_id, ndims, hdf5_err)
-  if (ndims /= 2) then
+  call h5sget_simple_extent_ndims_f(data_space_id, ndims_h5, hdf5_err)
+  if (ndims_h5 /= 2) then
     option%io_buffer='Dimension of Domain/Vertices dataset in ' // trim(filename) // &
           ' is not equal to 2.'
     call printErrMsg(option)
   endif
   
   ! Allocate memory
-  allocate(dims_h5(ndims))
-  allocate(max_dims_h5(ndims))
+  allocate(dims_h5(ndims_h5))
+  allocate(max_dims_h5(ndims_h5))
   
   ! Get dimensions of dataset
   call h5sget_simple_extent_dims_f(data_space_id, dims_h5, max_dims_h5, &

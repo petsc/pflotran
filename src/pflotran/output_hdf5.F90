@@ -1671,14 +1671,14 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   integer(HID_T) :: file_id
   
   integer(HID_T) :: file_space_id
+  integer(HID_T) :: memory_space_id
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   PetscMPIInt :: rank
 #endif
-
+  integer :: hdf5_err
   PetscMPIInt :: hdf5_flag
-  PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
   
   call PetscLogEventBegin(logging%event_output_coordinates_hdf5, &
@@ -1727,8 +1727,11 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
 #endif
   if (option%myrank == option%io_rank) then
      call PetscLogEventBegin(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
+     ! this is due to a bug in hdf5-1.8.18 hwere H5S_ALL_F is an INTEGER.  It
+     ! should be INTEGER(HID_T)
+     memory_space_id = H5S_ALL_F
      call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
-                    hdf5_err,H5S_ALL_F,H5S_ALL_F,prop_id)
+                     hdf5_err,memory_space_id,file_space_id,prop_id)
      call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
   endif
   call h5pclose_f(prop_id,hdf5_err)
