@@ -38,7 +38,7 @@ module PM_WIPP_SrcSink_class
     type(chem_species_type) :: MgOH2_s
     type(chem_species_type) :: Mg5CO34OH24H2_s
     type(chem_species_type) :: MgCO3_s
-    PetscReal :: num_drums_packing
+    PetscInt :: num_drums_packing
     type(pre_inventory_type), pointer :: preinventory
   end type inventory_type
   
@@ -51,7 +51,7 @@ module PM_WIPP_SrcSink_class
     PetscReal :: H_ion_in_panel       ! [total initial kg in waste panel]
     PetscReal :: Nitrate_in_panel     ! [total initial kg in waste panel]
     PetscReal :: Sulfate_in_panel     ! [total initial kg in waste panel]
-    PetscReal :: num_drums_packing
+    PetscInt :: num_drums_packing
     type(pre_inventory_type), pointer :: next
   end type pre_inventory_type
   
@@ -231,7 +231,7 @@ function PMWSSPreInventoryCreate()
   preinv%H_ion_in_panel = UNINITIALIZED_DOUBLE
   preinv%Nitrate_in_panel = UNINITIALIZED_DOUBLE
   preinv%Sulfate_in_panel = UNINITIALIZED_DOUBLE
-  preinv%num_drums_packing = UNINITIALIZED_DOUBLE
+  preinv%num_drums_packing = UNINITIALIZED_INTEGER
   
   PMWSSPreInventoryCreate => preinv
 
@@ -743,10 +743,10 @@ subroutine PMWSSRead(this,input)
                     new_inventory%RubberPlas_in_panel = double
                 !-----------------------------------
                   case('DRROOM')
-                    call InputReadDouble(input,option,double)
+                    call InputReadInt(input,option, &
+                                      new_inventory%num_drums_packing)
                     call InputErrorMsg(input,option,'number of metal drums per &
                                 &panel in ideal packing (DRROOM)',error_string2)
-                    new_inventory%num_drums_packing = double
                 !-----------------------------
                   case default
                     call InputKeywordUnrecognized(word,error_string2,option)
