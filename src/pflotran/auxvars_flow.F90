@@ -13,6 +13,7 @@ module AuxVars_Flow_module
   type, public, extends(auxvar_base_type) :: auxvar_flow_type
     PetscReal, pointer :: pres(:)   ! (iphase)
     PetscReal, pointer :: sat(:)    ! (iphase)
+    PetscReal, pointer :: pc(:)     ! capillary pressure (iphase-1)
     PetscReal, pointer :: den(:)    ! (iphase) kmol/m^3 phase
     PetscReal, pointer :: den_kg(:) ! (iphase) kg/m^3 phase
     PetscReal, pointer :: mobility(:) ! relative perm / dynamic viscosity
@@ -26,7 +27,7 @@ module AuxVars_Flow_module
     !procedure, public :: Init => InitAuxVarFlow
   end type auxvar_flow_type
 
-  public :: AuxVarFlowStrip
+  public :: AuxVarFlowInit, AuxVarFlowStrip
 
 contains
 
@@ -46,11 +47,19 @@ subroutine AuxVarFlowInit(this,option)
   class(auxvar_flow_type) :: this
   type(option_type) :: option
  
-  !this could be used to initialize flow part of auxvar
+  allocate(this%pres(option%nphase))
+  this%pres = 0.d0
+  allocate(this%pc(option%nphase - ONE_INTEGER))
+  this%pc = 0.0d0
+  allocate(this%sat(option%nphase))
+  this%sat = 0.d0
+  allocate(this%den(option%nphase))
+  this%den = 0.d0
+  allocate(this%den_kg(option%nphase))
+  this%den_kg = 0.d0
+  allocate(this%mobility(option%nphase))
+  this%mobility = 0.d0
 
-  !currently does nothing - could init the base members
-  !print *, 'Must extend InitAuxVarFlow '
-  !stop    
 
 end subroutine AuxVarFlowInit
 
@@ -70,6 +79,7 @@ subroutine AuxVarFlowStrip(this)
   class(auxvar_flow_type) :: this
 
   call DeallocateArray(this%pres)  
+  call DeallocateArray(this%pc)
   call DeallocateArray(this%sat)  
   call DeallocateArray(this%den)  
   call DeallocateArray(this%den_kg)  

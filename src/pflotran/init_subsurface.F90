@@ -323,7 +323,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
     material_id = patch%imat(ghosted_id)
     if (material_id == 0) then
       material_property => null_material_property
-    else if (iabs(material_id) <= &
+    else if (abs(material_id) <= &
              size(patch%material_property_array)) then
       if (material_id < 0) then
         material_property => null_material_property
@@ -358,7 +358,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
       patch%sat_func_id(ghosted_id) = &
         material_property%saturation_function_id
       icap_loc_p(ghosted_id) = material_property%saturation_function_id
-      ithrm_loc_p(ghosted_id) = iabs(material_property%internal_id)
+      ithrm_loc_p(ghosted_id) = abs(material_property%internal_id)
       perm_xx_p(local_id) = material_property%permeability(1,1)
       perm_yy_p(local_id) = material_property%permeability(2,2)
       perm_zz_p(local_id) = material_property%permeability(3,3)
@@ -1011,6 +1011,14 @@ subroutine InitSubsurfaceSetupZeroArrays(realization)
                    realization%patch%aux%TOil_ims%inactive_rows_local_ghosted, &
                       realization%patch%aux%TOil_ims%n_inactive_rows, &
                       realization%patch%aux%TOil_ims%inactive_cells_exist, &
+                      option)
+      case(TOWG_MODE)
+        !PO: same for all pm_XXX_aux - can be defined in PM_Base_Aux_module
+        call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &
+                      realization%patch%aux%TOWG%inactive_rows_local, &
+                   realization%patch%aux%TOWG%inactive_rows_local_ghosted, &
+                      realization%patch%aux%TOWG%n_inactive_rows, &
+                      realization%patch%aux%TOWG%inactive_cells_exist, &
                       option)
       case(IMS_MODE)
         call InitSubsurfaceCreateZeroArray(realization%patch,dof_is_active, &

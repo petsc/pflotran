@@ -427,7 +427,9 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
       call h5dwrite_f(data_set_id,data_type,int_array_i4,dims, &
                       hdf5_err,memory_space_id,file_space_id,prop_id)
       call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
-      call DeallocateArray(int_array_i4)
+      ! cannot use DeallocateArray since int_array_i4 may not be PetscInt
+      deallocate(int_array_i4)
+      nullify(int_array_i4)
     else
       allocate(double_array(nx_local*ny_local*nz_local))
       count = 0
@@ -1235,7 +1237,9 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
   PetscInt :: remainder
   PetscInt :: istart, iend, ii, jj
   PetscInt, pointer :: int_buffer_1d(:)
-  PetscInt, pointer :: int_buffer_2d(:,:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_buffer_2d(:,:)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH) :: string2
 
@@ -1359,7 +1363,9 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
         sideset%face_vertices(jj,ii) = int_buffer_2d(jj,ii)
      enddo
   enddo
-  call DeallocateArray(int_buffer_2d)
+  ! cannot use DeallocateArray since int_array_i4 may not be PetscInt
+  deallocate(int_buffer_2d)
+  nullify(int_buffer_2d)
 
   deallocate(dims_h5)
   deallocate(max_dims_h5)
@@ -1914,7 +1920,9 @@ subroutine HDF5WriteDataSetFromVec(name,option,vec,file_id,data_type)
   integer(HSIZE_T) :: start(3), length(3), stride(3)
   PetscInt :: istart
   PetscInt :: local_size,global_size,i
-  PetscInt, pointer :: int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_array(:)
   PetscReal, pointer :: double_array(:)
 
   call VecGetLocalSize(vec,local_size,ierr);CHKERRQ(ierr)
@@ -1999,7 +2007,9 @@ subroutine HDF5WriteDataSetFromVec(name,option,vec,file_id,data_type)
                     hdf5_err,memory_space_id,file_space_id,prop_id)
     call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
 
-    call DeallocateArray(int_array)
+    ! cannot use DeallocateArray since int_array_i4 may not be PetscInt
+    deallocate(int_array)
+    nullify(int_array)
     call h5pclose_f(prop_id,hdf5_err)
   endif
 
@@ -2051,7 +2061,9 @@ subroutine HDF5ReadDataSetInVec(name, option, vec, file_id, data_type)
   integer(HSIZE_T) :: start(3), length(3), stride(3)
   PetscInt :: istart
   PetscInt :: local_size,global_size,i
-  PetscInt, pointer :: int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_array(:)
   PetscReal, pointer :: double_array(:)
 
   call VecGetLocalSize(vec,local_size,ierr);CHKERRQ(ierr)
@@ -2138,7 +2150,9 @@ subroutine HDF5ReadDataSetInVec(name, option, vec, file_id, data_type)
     enddo
     call VecRestoreArrayF90(vec,vec_ptr,ierr);CHKERRQ(ierr)
 
-    call DeallocateArray(int_array)
+    ! cannot use DeallocateArray since int_array_i4 may not be PetscInt
+    deallocate(int_array)
+    nullify(int_array)
     call h5pclose_f(prop_id,hdf5_err)
   endif
 

@@ -1522,7 +1522,9 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
 
   PetscMPIInt :: dataset_rank
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscInt, pointer :: int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_array(:)
 
   class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
@@ -1566,12 +1568,14 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
 
   dataset_name = "Checkpoint_Activity_Coefs" // CHAR(0)
   call CheckPointWriteIntDatasetHDF5(pm_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+                                     dims, start, length, stride, &
+                                     int_array, option)
 
   dataset_name = "NDOF" // CHAR(0)
   int_array(1) = option%ntrandof
   call CheckPointWriteIntDatasetHDF5(pm_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+                                     dims, start, length, stride, &
+                                     int_array, option)
 
   !geh: %ndof should be pushed down to the base class, but this is not possible
   !     as long as option%ntrandof is used.
@@ -1580,8 +1584,9 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
 
     call DiscretizationCreateVector(realization%discretization, NTRANDOF, &
                                      natural_vec, NATURAL, option)
-    call DiscretizationGlobalToNatural(realization%discretization, field%tran_xx, &
-                                        natural_vec, NTRANDOF)
+    call DiscretizationGlobalToNatural(realization%discretization, &
+                                       field%tran_xx, &
+                                       natural_vec, NTRANDOF)
     dataset_name = "Primary_Variable" // CHAR(0)
     call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
            pm_grp_id, H5T_NATIVE_DOUBLE)
@@ -1600,8 +1605,8 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
       do i = 1, realization%reaction%naqcomp
         call RealizationGetVariable(realization,global_vec, &
                                     PRIMARY_ACTIVITY_COEF,i)
-        call DiscretizationGlobalToNatural(realization%discretization, global_vec, &
-                                        natural_vec, ONEDOF)
+        call DiscretizationGlobalToNatural(realization%discretization, &
+                                           global_vec, natural_vec, ONEDOF)
         write(dataset_name,*) i
         dataset_name = 'Aq_comp_' // trim(adjustl(dataset_name))
         call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
@@ -1611,8 +1616,8 @@ subroutine PMRTCheckpointHDF5(this, pm_grp_id)
       do i = 1, realization%reaction%neqcplx
         call RealizationGetVariable(realization,global_vec, &
                                    SECONDARY_ACTIVITY_COEF,i)
-        call DiscretizationGlobalToNatural(realization%discretization, global_vec, &
-                                        natural_vec, ONEDOF)
+        call DiscretizationGlobalToNatural(realization%discretization, &
+                                           global_vec, natural_vec, ONEDOF)
         write(dataset_name,*) i
         dataset_name = 'Eq_cplx_' // trim(adjustl(dataset_name))
         call HDF5WriteDataSetFromVec(dataset_name, option, natural_vec, &
@@ -1724,7 +1729,9 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
 
   PetscMPIInt :: dataset_rank
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscInt, pointer :: int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_array(:)
 
   class(realization_subsurface_type), pointer :: realization
   type(option_type), pointer :: option
@@ -1758,13 +1765,15 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
 
   dataset_name = "Checkpoint_Activity_Coefs" // CHAR(0)
   call CheckPointReadIntDatasetHDF5(pm_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+                                    dims, start, length, stride, &
+                                    int_array, option)
   checkpoint_activity_coefs = int_array(1)
   
   dataset_name = "NDOF" // CHAR(0)
   int_array(1) = option%ntrandof
   call CheckPointReadIntDatasetHDF5(pm_grp_id, dataset_name, dataset_rank, &
-                                    dims, start, length, stride, int_array, option)
+                                    dims, start, length, stride, &
+                                    int_array, option)
   option%ntrandof = int_array(1)
   
   !geh: %ndof should be pushed down to the base class, but this is not possible
@@ -1777,7 +1786,8 @@ subroutine PMRTRestartHDF5(this, pm_grp_id)
     dataset_name = "Primary_Variable" // CHAR(0)
     call HDF5ReadDataSetInVec(dataset_name, option, natural_vec, &
                              pm_grp_id, H5T_NATIVE_DOUBLE)
-    call DiscretizationNaturalToGlobal(discretization, natural_vec, field%tran_xx, &
+    call DiscretizationNaturalToGlobal(discretization, natural_vec, &
+                                       field%tran_xx, &
                                        NTRANDOF)
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                     field%tran_xx_loc,NTRANDOF)

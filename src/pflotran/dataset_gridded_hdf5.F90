@@ -194,7 +194,11 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   PetscBool :: first_time
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer :: tempint
   PetscLogDouble :: tstart, tend
+
   character(len=MAXWORDLENGTH) :: attribute_name, dataset_name, word
 
   call PetscLogEventBegin(logging%event_dataset_gridded_hdf5_read, &
@@ -313,15 +317,16 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
           call printErrMsg(option)
       end select
     endif
-    ! this%max_buffer_size is initially set to UNINITIALIZED_INTEGER to force initializaion
-    ! either here, or in the reading of the dataset block.
+    ! this%max_buffer_size is initially set to UNINITIALIZED_INTEGER to 
+    ! force initializaion either here, or in the reading of the dataset block.
     attribute_name = "Max Buffer Size"
     call H5aexists_f(grp_id,attribute_name,attribute_exists,hdf5_err)
     if (attribute_exists .and. this%max_buffer_size < 0) then
       call h5aopen_f(grp_id,attribute_name,attribute_id,hdf5_err)
       attribute_dim(1) = 1
-      call h5aread_f(attribute_id,H5T_NATIVE_INTEGER,this%max_buffer_size, &
+      call h5aread_f(attribute_id,H5T_NATIVE_INTEGER,tempint, &
                      attribute_dim,hdf5_err)
+      this%max_buffer_size = tempint
       call h5aclose_f(attribute_id,hdf5_err)
     else if (this%max_buffer_size < 0) then
       this%max_buffer_size = default_max_buffer_size
@@ -449,7 +454,8 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   length = 1
   ! length (or size) must be adjusted according to the size of the 
   ! remaining data in the file
-  this%buffer_nslice = min(this%max_buffer_size,(num_times-this%buffer_slice_offset))
+  this%buffer_nslice = min(this%max_buffer_size, &
+                           (num_times-this%buffer_slice_offset))
   if (time_dim > 0) then
     length(1) = size(this%rarray) * this%buffer_nslice
   else
@@ -460,8 +466,8 @@ subroutine DatasetGriddedHDF5ReadData(this,option)
   if (option%myrank == option%io_rank) then
 #endif
 
-  call h5screate_simple_f(array_rank_mpi,length,memory_space_id,hdf5_err,length)    
-
+  call h5screate_simple_f(array_rank_mpi,length,memory_space_id, &
+                          hdf5_err,length)    
   length = 1
   stride = 1
   offset = 0
