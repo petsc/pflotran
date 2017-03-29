@@ -164,18 +164,18 @@ module PM_Waste_Form_class
   
   public :: PMWFCreate, &
             PMWFSetup, &
-            MechanismGlassCreate, &
-            MechanismDSNFCreate, &
-            MechanismWIPPCreate, &
-            MechanismCustomCreate, &
-            MechanismFMDMCreate, &
-            RadSpeciesCreate
+            PMWFMechanismGlassCreate, &
+            PMWFMechanismDSNFCreate, &
+            PMWFMechanismWIPPCreate, &
+            PMWFMechanismCustomCreate, &
+            PMWFMechanismFMDMCreate, &
+            PMWFRadSpeciesCreate
   
 contains
 
 ! ************************************************************************** !
 
-subroutine MechanismInit(this)
+subroutine PMWFMechanismInit(this)
   ! 
   ! Initializes the base waste form mechanism package
   ! 
@@ -200,11 +200,11 @@ subroutine MechanismInit(this)
   this%canister_material_constant = UNINITIALIZED_DOUBLE
  !------------------------------------------------------
 
-end subroutine MechanismInit
+end subroutine PMWFMechanismInit
 
 ! ************************************************************************** !
 
-function MechanismGlassCreate()
+function PMWFMechanismGlassCreate()
   ! 
   ! Creates the glass waste form mechanism package
   ! 
@@ -213,29 +213,32 @@ function MechanismGlassCreate()
 
   implicit none
   
-  class(wf_mechanism_glass_type), pointer :: MechanismGlassCreate
+  class(wf_mechanism_glass_type), pointer :: PMWFMechanismGlassCreate
+  class(wf_mechanism_glass_type), pointer :: glass
   
-  allocate(MechanismGlassCreate)
-  call MechanismInit(MechanismGlassCreate)
-  MechanismGlassCreate%dissolution_rate = 0.d0        ! [kg/m^2/sec]
-  MechanismGlassCreate%k0 = UNINITIALIZED_DOUBLE      ! [kg/m^2/sec]
-  MechanismGlassCreate%k_long = UNINITIALIZED_DOUBLE  ! [kg/m^2/sec]
-  MechanismGlassCreate%nu = UNINITIALIZED_DOUBLE      ! [-]
-  MechanismGlassCreate%Ea = UNINITIALIZED_DOUBLE      ! [J/mol]
-  MechanismGlassCreate%Q = UNINITIALIZED_DOUBLE      
-  MechanismGlassCreate%K = UNINITIALIZED_DOUBLE
-  MechanismGlassCreate%v = UNINITIALIZED_DOUBLE    
-  MechanismGlassCreate%pH = UNINITIALIZED_DOUBLE   
-  MechanismGlassCreate%use_pH = PETSC_FALSE  
-  MechanismGlassCreate%use_Q = PETSC_FALSE
-  MechanismGlassCreate%h_ion_id = 0
-  MechanismGlassCreate%SiO2_id = 0
+  allocate(glass)
+  call PMWFMechanismInit(glass)
+  glass%dissolution_rate = 0.d0        ! [kg/m^2/sec]
+  glass%k0 = UNINITIALIZED_DOUBLE      ! [kg/m^2/sec]
+  glass%k_long = UNINITIALIZED_DOUBLE  ! [kg/m^2/sec]
+  glass%nu = UNINITIALIZED_DOUBLE      ! [-]
+  glass%Ea = UNINITIALIZED_DOUBLE      ! [J/mol]
+  glass%Q = UNINITIALIZED_DOUBLE      
+  glass%K = UNINITIALIZED_DOUBLE
+  glass%v = UNINITIALIZED_DOUBLE    
+  glass%pH = UNINITIALIZED_DOUBLE   
+  glass%use_pH = PETSC_FALSE  
+  glass%use_Q = PETSC_FALSE
+  glass%h_ion_id = 0
+  glass%SiO2_id = 0
+  
+  PMWFMechanismGlassCreate => glass
 
-end function MechanismGlassCreate
+end function PMWFMechanismGlassCreate
 
 ! ************************************************************************** !
 
-function MechanismDSNFCreate()
+function PMWFMechanismDSNFCreate()
   ! 
   ! Creates the DSNF (DOE Spent Nuclear Fuel) waste form mechanism package
   ! 
@@ -244,17 +247,20 @@ function MechanismDSNFCreate()
 
   implicit none
   
-  class(wf_mechanism_dsnf_type), pointer :: MechanismDSNFCreate
+  class(wf_mechanism_dsnf_type), pointer :: PMWFMechanismDSNFCreate
+  class(wf_mechanism_dsnf_type), pointer :: dsnf
   
-  allocate(MechanismDSNFCreate)
-  call MechanismInit(MechanismDSNFCreate)
-  MechanismDSNFCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/sec
+  allocate(dsnf)
+  call PMWFMechanismInit(dsnf)
+  dsnf%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/sec
+  
+  PMWFMechanismDSNFCreate => dsnf
 
-end function MechanismDSNFCreate
+end function PMWFMechanismDSNFCreate
 
 ! ************************************************************************** !
 
-function MechanismWIPPCreate()
+function PMWFMechanismWIPPCreate()
   ! 
   ! Creates the WIPP (Waste Isolation Pilot Plant) waste form mechanism package
   ! 
@@ -263,17 +269,20 @@ function MechanismWIPPCreate()
 
   implicit none
   
-  class(wf_mechanism_wipp_type), pointer :: MechanismWIPPCreate
+  class(wf_mechanism_wipp_type), pointer :: PMWFMechanismWIPPCreate
+  class(wf_mechanism_wipp_type), pointer :: wipp
   
-  allocate(MechanismWIPPCreate)
-  call MechanismInit(MechanismWIPPCreate)
-  MechanismWIPPCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/sec
+  allocate(wipp)
+  call PMWFMechanismInit(wipp)
+  wipp%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/sec
+  
+  PMWFMechanismWIPPCreate => wipp
 
-end function MechanismWIPPCreate
+end function PMWFMechanismWIPPCreate
 
 ! ************************************************************************** !
 
-function MechanismFMDMCreate()
+function PMWFMechanismFMDMCreate()
   ! 
   ! Creates the FMDM waste form mechanism package
   ! 
@@ -282,54 +291,52 @@ function MechanismFMDMCreate()
 
   implicit none
   
-  class(wf_mechanism_fmdm_type), pointer :: MechanismFMDMCreate
+  class(wf_mechanism_fmdm_type), pointer :: PMWFMechanismFMDMCreate
+  class(wf_mechanism_fmdm_type), pointer :: fmdm
   
-  allocate(MechanismFMDMCreate)
-  call MechanismInit(MechanismFMDMCreate)
+  allocate(fmdm)
+  call PMWFMechanismInit(fmdm)
   
-  MechanismFMDMCreate%dissolution_rate = UNINITIALIZED_DOUBLE       ! kg/m^2/sec
-  MechanismFMDMCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
-  MechanismFMDMCreate%burnup = UNINITIALIZED_DOUBLE     ! GWd/MTHM or (kg/m^2/sec)
+  fmdm%dissolution_rate = UNINITIALIZED_DOUBLE   ! kg/m^2/sec
+  fmdm%frac_dissolution_rate = UNINITIALIZED_DOUBLE  ! 1/day
+  fmdm%burnup = UNINITIALIZED_DOUBLE ! GWd/MTHM or (kg/m^2/sec)
   
-  MechanismFMDMCreate%num_grid_cells_in_waste_form = 40  ! hardwired
+  fmdm%num_grid_cells_in_waste_form = 40  ! hardwired
   
-  nullify(MechanismFMDMCreate%concentration)
-  MechanismFMDMCreate%num_concentrations = 11         
-  MechanismFMDMCreate%iUO2_2p = 1
-  MechanismFMDMCreate%iUCO3_2n = 2
-  MechanismFMDMCreate%iUO2 = 3
-  MechanismFMDMCreate%iCO3_2n = 4
-  MechanismFMDMCreate%iO2 = 5
-  MechanismFMDMCreate%iH2O2 = 6
-  MechanismFMDMCreate%iFe_2p = 7
-  MechanismFMDMCreate%iH2 = 8
-  MechanismFMDMCreate%iUO2_sld = 9
-  MechanismFMDMCreate%iUO3_sld = 10
-  MechanismFMDMCreate%iUO4_sld = 11
+  nullify(fmdm%concentration)
+  fmdm%num_concentrations = 11         
+  fmdm%iUO2_2p = 1
+  fmdm%iUCO3_2n = 2
+  fmdm%iUO2 = 3
+  fmdm%iCO3_2n = 4
+  fmdm%iO2 = 5
+  fmdm%iH2O2 = 6
+  fmdm%iFe_2p = 7
+  fmdm%iH2 = 8
+  fmdm%iUO2_sld = 9
+  fmdm%iUO3_sld = 10
+  fmdm%iUO4_sld = 11
   
-  allocate(MechanismFMDMCreate%mapping_fmdm_to_pflotran( &
-           MechanismFMDMCreate%num_concentrations))
-  MechanismFMDMCreate%mapping_fmdm_to_pflotran = UNINITIALIZED_INTEGER
+  allocate(fmdm%mapping_fmdm_to_pflotran(fmdm%num_concentrations))
+  fmdm%mapping_fmdm_to_pflotran = UNINITIALIZED_INTEGER
   
   ! concentration can be allocated here because we hardwired
   ! the num_grid_cells_in_waste_form value, but if it becomes
   ! user defined, then allocation must be delayed until PMWFSetup
-  allocate(MechanismFMDMCreate%concentration( &
-             MechanismFMDMCreate%num_concentrations, &
-             MechanismFMDMCreate%num_grid_cells_in_waste_form))
-  MechanismFMDMCreate%concentration = 1.d-13
+  allocate(fmdm%concentration(fmdm%num_concentrations, &
+                              fmdm%num_grid_cells_in_waste_form))
+  fmdm%concentration = 1.d-13
   
-  allocate(MechanismFMDMCreate%mapping_fmdm(4))
-  MechanismFMDMCreate%mapping_fmdm = [MechanismFMDMCreate%iO2, &
-                                      MechanismFMDMCreate%iCO3_2n, &
-                                      MechanismFMDMCreate%iH2, &
-                                      MechanismFMDMCreate%iFe_2p]
+  allocate(fmdm%mapping_fmdm(4))
+  fmdm%mapping_fmdm = [fmdm%iO2,fmdm%iCO3_2n,fmdm%iH2,fmdm%iFe_2p]
+                                      
+  PMWFMechanismFMDMCreate => fmdm
 
-end function MechanismFMDMCreate
+end function PMWFMechanismFMDMCreate
 
 ! ************************************************************************** !
 
-function MechanismCustomCreate()
+function PMWFMechanismCustomCreate()
   ! 
   ! Creates the 'custom' waste form mechanism package
   ! 
@@ -338,19 +345,22 @@ function MechanismCustomCreate()
 
   implicit none
   
-  class(wf_mechanism_custom_type), pointer :: MechanismCustomCreate
+  class(wf_mechanism_custom_type), pointer :: PMWFMechanismCustomCreate
+  class(wf_mechanism_custom_type), pointer :: custom
   
-  allocate(MechanismCustomCreate)
-  call MechanismInit(MechanismCustomCreate)
-  MechanismCustomCreate%dissolution_rate = UNINITIALIZED_DOUBLE    ! kg/m^2/sec
-  MechanismCustomCreate%frac_dissolution_rate = UNINITIALIZED_DOUBLE    ! 1/sec
+  allocate(custom)
+  call PMWFMechanismInit(custom)
+  custom%dissolution_rate = UNINITIALIZED_DOUBLE ! kg/m^2/sec
+  custom%frac_dissolution_rate = UNINITIALIZED_DOUBLE ! 1/sec
+  
+  PMWFMechanismCustomCreate => custom
 
-end function MechanismCustomCreate
+end function PMWFMechanismCustomCreate
 
 
 ! ************************************************************************** !
 
-function RadSpeciesCreate()
+function PMWFRadSpeciesCreate()
   ! 
   ! Creates a radioactive species in the waste form mechanism package
   ! 
@@ -359,23 +369,23 @@ function RadSpeciesCreate()
 
   implicit none
   
-  type(rad_species_type) :: RadSpeciesCreate
+  type(rad_species_type) :: PMWFRadSpeciesCreate
 
-  RadSpeciesCreate%name = ''
-  RadSpeciesCreate%daughter = ''
-  RadSpeciesCreate%daugh_id = UNINITIALIZED_INTEGER
-  RadSpeciesCreate%formula_weight = UNINITIALIZED_DOUBLE
-  RadSpeciesCreate%decay_constant = UNINITIALIZED_DOUBLE
-  RadSpeciesCreate%mass_fraction = UNINITIALIZED_DOUBLE
-  RadSpeciesCreate%inst_release_fraction = UNINITIALIZED_DOUBLE
-  RadSpeciesCreate%column_id = UNINITIALIZED_INTEGER
-  RadSpeciesCreate%ispecies = UNINITIALIZED_INTEGER
+  PMWFRadSpeciesCreate%name = ''
+  PMWFRadSpeciesCreate%daughter = ''
+  PMWFRadSpeciesCreate%daugh_id = UNINITIALIZED_INTEGER
+  PMWFRadSpeciesCreate%formula_weight = UNINITIALIZED_DOUBLE
+  PMWFRadSpeciesCreate%decay_constant = UNINITIALIZED_DOUBLE
+  PMWFRadSpeciesCreate%mass_fraction = UNINITIALIZED_DOUBLE
+  PMWFRadSpeciesCreate%inst_release_fraction = UNINITIALIZED_DOUBLE
+  PMWFRadSpeciesCreate%column_id = UNINITIALIZED_INTEGER
+  PMWFRadSpeciesCreate%ispecies = UNINITIALIZED_INTEGER
 
-end function RadSpeciesCreate
+end function PMWFRadSpeciesCreate
 
 ! ************************************************************************** !
 
-function WasteFormCreate()
+function PMWFWasteFormCreate()
   ! 
   ! Creates a waste form and initializes all parameters
   ! 
@@ -384,39 +394,42 @@ function WasteFormCreate()
 
   implicit none
 
-  type(waste_form_base_type), pointer :: WasteFormCreate
+  type(waste_form_base_type), pointer :: PMWFWasteFormCreate
+  type(waste_form_base_type), pointer :: wf
 
-  allocate(WasteFormCreate)
-  WasteFormCreate%id = UNINITIALIZED_INTEGER
-  nullify(WasteFormCreate%rank_list)
-  WasteFormCreate%coordinate%x = UNINITIALIZED_DOUBLE
-  WasteFormCreate%coordinate%y = UNINITIALIZED_DOUBLE
-  WasteFormCreate%coordinate%z = UNINITIALIZED_DOUBLE
-  nullify(WasteFormCreate%region)
-  WasteFormCreate%region_name = ''
-  nullify(WasteFormCreate%scaling_factor) ! [-]
-  WasteFormCreate%init_volume = UNINITIALIZED_DOUBLE
-  WasteFormCreate%volume = UNINITIALIZED_DOUBLE
-  WasteFormCreate%exposure_factor = 1.0d0
-  WasteFormCreate%eff_dissolution_rate = UNINITIALIZED_DOUBLE
-  WasteFormCreate%mech_name = ''
-  nullify(WasteFormCreate%instantaneous_mass_rate) ! mol-rad/sec
-  nullify(WasteFormCreate%cumulative_mass) ! mol-rad
-  nullify(WasteFormCreate%rad_mass_fraction) ! g-rad/g-matrix
-  nullify(WasteFormCreate%rad_concentration) ! mol-rad/g-matrix
-  nullify(WasteFormCreate%inst_release_amount) ! of rad
-  nullify(WasteFormCreate%mechanism)
-  nullify(WasteFormCreate%next)
+  allocate(wf)
+  wf%id = UNINITIALIZED_INTEGER
+  nullify(wf%rank_list)
+  wf%coordinate%x = UNINITIALIZED_DOUBLE
+  wf%coordinate%y = UNINITIALIZED_DOUBLE
+  wf%coordinate%z = UNINITIALIZED_DOUBLE
+  nullify(wf%region)
+  wf%region_name = ''
+  nullify(wf%scaling_factor) ! [-]
+  wf%init_volume = UNINITIALIZED_DOUBLE
+  wf%volume = UNINITIALIZED_DOUBLE
+  wf%exposure_factor = 1.0d0
+  wf%eff_dissolution_rate = UNINITIALIZED_DOUBLE
+  wf%mech_name = ''
+  nullify(wf%instantaneous_mass_rate) ! mol-rad/sec
+  nullify(wf%cumulative_mass) ! mol-rad
+  nullify(wf%rad_mass_fraction) ! g-rad/g-matrix
+  nullify(wf%rad_concentration) ! mol-rad/g-matrix
+  nullify(wf%inst_release_amount) ! of rad
+  nullify(wf%mechanism)
+  nullify(wf%next)
  !------- canister degradation model -----------------
-  WasteFormCreate%canister_degradation_flag = PETSC_FALSE
-  WasteFormCreate%breached = PETSC_FALSE
-  WasteFormCreate%breach_time = UNINITIALIZED_DOUBLE
-  WasteFormCreate%canister_vitality = 0.d0
-  WasteFormCreate%canister_vitality_rate = UNINITIALIZED_DOUBLE
-  WasteFormCreate%eff_canister_vit_rate = UNINITIALIZED_DOUBLE
+  wf%canister_degradation_flag = PETSC_FALSE
+  wf%breached = PETSC_FALSE
+  wf%breach_time = UNINITIALIZED_DOUBLE
+  wf%canister_vitality = 0.d0
+  wf%canister_vitality_rate = UNINITIALIZED_DOUBLE
+  wf%eff_canister_vit_rate = UNINITIALIZED_DOUBLE
  !----------------------------------------------------
+ 
+ PMWFWasteFormCreate => wf
 
-end function WasteFormCreate
+end function PMWFWasteFormCreate
 
 ! ************************************************************************** !
 
@@ -470,7 +483,6 @@ subroutine PMWFRead(this,input)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscBool :: found
-  PetscBool :: matched
 
   option => this%option
   input%ierr = 0
@@ -511,16 +523,13 @@ subroutine PMWFRead(this,input)
   cur_waste_form => this%waste_form_list
   do
     if (.not.associated(cur_waste_form)) exit
-    matched = PETSC_FALSE
     cur_mechanism => this%mechanism_list
     do
       if (.not.associated(cur_mechanism)) exit
-      if (StringCompare(trim(cur_waste_form%mech_name), &
-                        trim(cur_mechanism%name))) then
+      if (StringCompare(cur_waste_form%mech_name,cur_mechanism%name)) then
         cur_waste_form%mechanism => cur_mechanism
-        matched = PETSC_TRUE
+        exit
       endif
-      if (matched) exit
       cur_mechanism => cur_mechanism%next
     enddo
     ! error messaging: ----------------------------------------------
@@ -568,15 +577,15 @@ subroutine PMWFRead(this,input)
     ! the parameters provided:
     if (cur_waste_form%mechanism%canister_degradation_model) then 
       ! all parameters are missing:
-      if ( (uninitialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
-            uninitialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
-            uninitialized(cur_waste_form%mechanism%vitality_rate_trunc) ) .and. &
-          uninitialized(cur_waste_form%canister_vitality_rate) .and. &
-          uninitialized(cur_waste_form%breach_time)                 )  then 
+      if ( (Uninitialized(cur_waste_form%mechanism%vitality_rate_mean) .or. &
+            Uninitialized(cur_waste_form%mechanism%vitality_rate_stdev) .or. &
+            Uninitialized(cur_waste_form%mechanism%vitality_rate_trunc) ) .and. &
+          Uninitialized(cur_waste_form%canister_vitality_rate) .and. &
+          Uninitialized(cur_waste_form%breach_time)                 )  then 
         option%io_buffer = 'CANISTER_VITALITY_RATE within the WASTE_FORM &
           &blocks -or- CANISTER_BREACH_TIME within the WASTE_FORM blocks &
           &-or- the VITALITY_LOG10_MEAN, VITALITY_LOG10_STDEV, and &
-          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM MECHANISM ' // &
+          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM with MECHANISM ' // &
           trim(cur_waste_form%mechanism%name) // ' is missing.'
         call printErrMsg(option)
       endif
@@ -589,7 +598,7 @@ subroutine PMWFRead(this,input)
         option%io_buffer = 'CANISTER_VITALITY_RATE within the WASTE_FORM &
           &blocks -or- CANISTER_BREACH_TIME within the WASTE_FORM blocks &
           &-or- the VITALITY_LOG10_MEAN, VITALITY_LOG10_STDEV, and &
-          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM MECHANISM ' // &
+          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM with MECHANISM ' // &
           trim(cur_waste_form%mechanism%name) // ' should be specified, &
           &but not all.'
         call printErrMsg(option)
@@ -612,7 +621,7 @@ subroutine PMWFRead(this,input)
           &WASTE_FORM block with WASTE_FORM MECHANISM ' &
           // trim(cur_waste_form%mechanism%name) // ' -or- the &
           &VITALITY_LOG10_MEAN, VITALITY_LOG10_STDEV, and &
-          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM MECHANISM ' // &
+          &VITALITY_UPPER_TRUNCATION within the WASTE_FORM with MECHANISM ' // &
           trim(cur_waste_form%mechanism%name) // ' should be specified, &
           &but not both.'
         call printErrMsg(option)
@@ -650,11 +659,12 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
   PetscBool :: found
 
   PetscBool :: added
-  character(len=MAXWORDLENGTH) :: word, units, internal_units
-  character(len=MAXSTRINGLENGTH) :: temp_buf, string
+  PetscInt :: num_errors
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: temp_buf
   type(rad_species_type), pointer :: temp_species_array(:)
   class(wf_mechanism_base_type), pointer :: new_mechanism, cur_mechanism
-  PetscInt :: k, j, icol
+  PetscInt :: k, j
   PetscReal :: double
 
   error_string = trim(error_string) // ',MECHANISM'
@@ -669,23 +679,24 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
     case('MECHANISM')
       call InputReadWord(input,option,word,PETSC_TRUE)
       call InputErrorMsg(input,option,'mechanism type',error_string)
+      num_errors = 0
       call StringToUpper(word)
       select case(trim(word))
       !---------------------------------
         case('GLASS')
           error_string = trim(error_string) // ' GLASS'
           allocate(new_mechanism)
-          new_mechanism => MechanismGlassCreate()
+          new_mechanism => PMWFMechanismGlassCreate()
       !---------------------------------
         case('DSNF')
           error_string = trim(error_string) // ' DSNF'
           allocate(new_mechanism)
-          new_mechanism => MechanismDSNFCreate()
+          new_mechanism => PMWFMechanismDSNFCreate()
       !---------------------------------
         case('WIPP')
           error_string = trim(error_string) // ' WIPP'
           allocate(new_mechanism)
-          new_mechanism => MechanismWIPPCreate()
+          new_mechanism => PMWFMechanismWIPPCreate()
       !---------------------------------
         case('FMDM')
           ! for now, set bypass_warning_message = TRUE so we can run 
@@ -701,12 +712,12 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
 #endif
           error_string = trim(error_string) // ' FMDM'
           allocate(new_mechanism)
-          new_mechanism => MechanismFMDMCreate()
+          new_mechanism => PMWFMechanismFMDMCreate()
       !---------------------------------
         case('CUSTOM')
           error_string = trim(error_string) // ' CUSTOM'
           allocate(new_mechanism)
-          new_mechanism => MechanismCustomCreate()
+          new_mechanism => PMWFMechanismCustomCreate()
       !---------------------------------
         case default
           option%io_buffer = 'Unrecognized mechanism type &
@@ -739,9 +750,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
             select type(new_mechanism)
               class is(wf_mechanism_dsnf_type)
                 ! applies to dsnf & wipp types
-                option%io_buffer = 'SPECIFIC_SURFACE_AREA cannot be &
+                option%io_buffer = 'ERROR: SPECIFIC_SURFACE_AREA cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
               class default
                 new_mechanism%specific_surface_area = double
             end select
@@ -766,9 +778,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_custom_type)
                 new_mechanism%frac_dissolution_rate = double
               class default
-                option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE cannot be &
-                                   &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                option%io_buffer = 'ERRORS: FRACTIONAL_DISSOLUTION_RATE cannot &
+                                   &be specified for ' // trim(error_string)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('DISSOLUTION_RATE')
@@ -780,9 +793,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_custom_type)
                 new_mechanism%dissolution_rate = double
               class default
-                option%io_buffer = 'DISSOLUTION_RATE cannot be specified for ' &
-                                   // trim(error_string)
-                call printErrMsg(option)
+                option%io_buffer = 'ERROR: DISSOLUTION_RATE cannot be &
+                                   &specified for ' // trim(error_string)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('K0')
@@ -795,9 +809,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%k0 = double
               class default
-                option%io_buffer = 'K0 (intrinsic dissolution rate) cannot be &
-                                   &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                option%io_buffer = 'ERROR: K0 (intrinsic dissolution rate) &
+                                &cannot be specified for ' // trim(error_string)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('K_LONG')
@@ -810,9 +825,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%k_long = double
               class default
-                option%io_buffer = 'K_LONG (dissolution rate) cannot be &
+                option%io_buffer = 'ERROR: K_LONG (dissolution rate) cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('NU')
@@ -823,9 +839,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%nu = double
               class default
-                option%io_buffer = 'NU (pH dependence parameter) cannot be &
-                                   &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                option%io_buffer = 'ERROR: NU (pH dependence parameter) cannot &
+                                   &be specified for ' // trim(error_string)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('EA')
@@ -838,9 +855,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%Ea = double
               class default
-                option%io_buffer = 'EA (effective activation energy) cannot be &
-                                   &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                option%io_buffer = 'ERROR: EA (effective activation energy) &
+                                &cannot be specified for ' // trim(error_string)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('Q')
@@ -854,10 +872,11 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                   if (trim(word) == 'AS_CALCULATED') then 
                     new_mechanism%use_Q = PETSC_TRUE
                   else
-                    option%io_buffer = 'Q value (ion activity product) was &
-                                       &not provided, or Q instructions not &
-                                       &understood for ' // trim(error_string)
-                    call printErrMsg(option)
+                    option%io_buffer = 'ERROR: Q value (ion activity product) &
+                                     &was not provided, or Q instructions not &
+                                     &understood for ' // trim(error_string)
+                    call printMsg(option)
+                    num_errors = num_errors + 1
                   endif
                 endif
                 if (new_mechanism%use_Q) then
@@ -866,9 +885,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                   new_mechanism%Q = double
                 endif
               class default
-                option%io_buffer = 'Q (ion activity product) cannot be &
+                option%io_buffer = 'ERROR: Q (ion activity product) cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('K')
@@ -879,9 +899,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%K = double
               class default
-                option%io_buffer = 'K (equilibrium constant) cannot be &
+                option%io_buffer = 'ERROR: K (equilibrium constant) cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('V')
@@ -892,9 +913,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               type is(wf_mechanism_glass_type)
                 new_mechanism%v = double
               class default
-                option%io_buffer = 'V (exponent parameter) cannot be &
+                option%io_buffer = 'ERROR: V (exponent parameter) cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('PH')
@@ -908,10 +930,11 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                   if (trim(word) == 'AS_CALCULATED') then 
                     new_mechanism%use_pH = PETSC_TRUE
                   else
-                    option%io_buffer = 'PH value was not provided, or PH &
-                                       &instructions not understood for ' &
+                    option%io_buffer = 'ERROR: PH value was not provided, or &
+                                       &PH instructions not understood for ' &
                                        // trim(error_string) // '.'
-                    call printErrMsg(option)
+                    call printMsg(option)
+                    num_errors = num_errors + 1
                   endif
                 endif
                 if (new_mechanism%use_pH) then
@@ -920,9 +943,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                   new_mechanism%pH = double
                 endif
               class default
-                option%io_buffer = 'PH cannot be &
+                option%io_buffer = 'ERROR: PH cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('KIENZLER_DISSOLUTION')
@@ -937,9 +961,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                 new_mechanism%v = 1.d0
                 new_mechanism%pH = 0.d0
               class default
-                option%io_buffer = 'KIENZLER_DISSOLUTION cannot be &
+                option%io_buffer = 'ERROR: KIENZLER_DISSOLUTION cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('BURNUP')
@@ -961,9 +986,10 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                 call printMsg(option)
 #endif
               class default
-                option%io_buffer = 'BURNUP cannot be &
+                option%io_buffer = 'ERROR: BURNUP cannot be &
                                    &specified for ' // trim(error_string)
-                call printErrMsg(option)
+                call printMsg(option)
+                num_errors = num_errors + 1
             end select
         !--------------------------
           case('SPECIES')
@@ -979,7 +1005,7 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
                                  &googlegroups dot com.'
                 call printErrMsg(option)
               endif
-              temp_species_array(k) = RadSpeciesCreate() 
+              temp_species_array(k) = PMWFRadSpeciesCreate() 
               ! read species name
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'SPECIES name',error_string)
@@ -1014,10 +1040,11 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
               new_mechanism%num_species = k
             enddo
             if (k == 0) then
-              option%io_buffer = 'At least one radionuclide species must be &
-                                 &provided in the ' // trim(error_string) // &
-                                 ', SPECIES block.'
-              call printErrMsg(option)
+              option%io_buffer = 'ERROR: At least one radionuclide species &
+                                 &must be provided in the ' // &
+                                 trim(error_string) // ', SPECIES block.'
+              call printMsg(option)
+              num_errors = num_errors + 1
             endif
             allocate(new_mechanism%rad_species_list(k))
             new_mechanism%rad_species_list(1:k) = temp_species_array(1:k)
@@ -1086,140 +1113,159 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
 
      !----------- error messaging ----------------------------------------------
       if (new_mechanism%name == '') then
-        option%io_buffer = 'NAME must be specified in ' // trim(error_string) &
-                           // ' block.'
-        call printErrMsg(option)
+        option%io_buffer = 'ERROR: NAME must be specified in ' // &
+                           trim(error_string) // ' block.'
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
       select type(new_mechanism)
         type is(wf_mechanism_glass_type)
-          if (uninitialized(new_mechanism%specific_surface_area)) then
-            option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' &
-                               // trim(error_string) // ' ' // &
+          if (Uninitialized(new_mechanism%specific_surface_area)) then
+            option%io_buffer = 'ERROR: SPECIFIC_SURFACE_AREA must be specified &
+                               &in ' // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if (uninitialized(new_mechanism%k0)) then
-            option%io_buffer = 'K0 must be specified in ' &
+          if (Uninitialized(new_mechanism%k0)) then
+            option%io_buffer = 'ERROR: K0 must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if (uninitialized(new_mechanism%k_long)) then
-            option%io_buffer = 'K_LONG must be specified in ' &
+          if (Uninitialized(new_mechanism%k_long)) then
+            option%io_buffer = 'ERROR: K_LONG must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if (uninitialized(new_mechanism%nu)) then
-            option%io_buffer = 'NU must be specified in ' &
+          if (Uninitialized(new_mechanism%nu)) then
+            option%io_buffer = 'ERROR: NU must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if (uninitialized(new_mechanism%Ea)) then
-            option%io_buffer = 'EA must be specified in ' &
+          if (Uninitialized(new_mechanism%Ea)) then
+            option%io_buffer = 'ERROR: EA must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if (uninitialized(new_mechanism%Q)) then
-            option%io_buffer = 'Q must be specified in ' &
+          if (Uninitialized(new_mechanism%Q)) then
+            option%io_buffer = 'ERROR: Q must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if (uninitialized(new_mechanism%K)) then
-            option%io_buffer = 'K must be specified in ' &
+          if (Uninitialized(new_mechanism%K)) then
+            option%io_buffer = 'ERROR: K must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if (uninitialized(new_mechanism%pH)) then
-            option%io_buffer = 'PH must be specified in ' &
+          if (Uninitialized(new_mechanism%pH)) then
+            option%io_buffer = 'ERROR: PH must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if (uninitialized(new_mechanism%v)) then
-            option%io_buffer = 'V must be specified in ' &
+          if (Uninitialized(new_mechanism%v)) then
+            option%io_buffer = 'ERROR: V must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block, or choose &
                                &the KIENZLER_DISSOLUTION option.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
         type is(wf_mechanism_custom_type)
-          if (uninitialized(new_mechanism%specific_surface_area) .and. &
-              uninitialized(new_mechanism%dissolution_rate) .and. &
-              uninitialized(new_mechanism%frac_dissolution_rate)) then
-            option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE or &
+          if (Uninitialized(new_mechanism%specific_surface_area) .and. &
+              Uninitialized(new_mechanism%dissolution_rate) .and. &
+              Uninitialized(new_mechanism%frac_dissolution_rate)) then
+            option%io_buffer = 'ERROR: FRACTIONAL_DISSOLUTION_RATE or &
                                &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
                                &must be specified in ' // trim(error_string) &
                                // ' ' // trim(new_mechanism%name) // ' block.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if ( (initialized(new_mechanism%frac_dissolution_rate) .and. &
-                initialized(new_mechanism%dissolution_rate)    ) .or. &
-               (uninitialized(new_mechanism%frac_dissolution_rate) .and. &
-                uninitialized(new_mechanism%dissolution_rate)    ) ) then
-            option%io_buffer = 'Either FRACTIONAL_DISSOLUTION_RATE or &
+          if ( (Initialized(new_mechanism%frac_dissolution_rate) .and. &
+                Initialized(new_mechanism%dissolution_rate)    ) .or. &
+               (Uninitialized(new_mechanism%frac_dissolution_rate) .and. &
+                Uninitialized(new_mechanism%dissolution_rate)    ) ) then
+            option%io_buffer = 'ERROR: Either FRACTIONAL_DISSOLUTION_RATE or &
                                &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
                                &must be specified in ' // trim(error_string) &
                                // ' ' // trim(new_mechanism%name) // ' block. &
                                &Both types of dissolution rates cannot be &
                                &specified.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if ( (initialized(new_mechanism%specific_surface_area) .and. &
-                uninitialized(new_mechanism%dissolution_rate)  ) .or. &
-               (uninitialized(new_mechanism%specific_surface_area) .and. &
+          if ( (Initialized(new_mechanism%specific_surface_area) .and. &
+                Uninitialized(new_mechanism%dissolution_rate)  ) .or. &
+               (Uninitialized(new_mechanism%specific_surface_area) .and. &
                 initialized(new_mechanism%dissolution_rate)      ) ) then
-            option%io_buffer = 'FRACTIONAL_DISSOLUTION_RATE or &
+            option%io_buffer = 'ERROR: FRACTIONAL_DISSOLUTION_RATE or &
                                &DISSOLUTION_RATE with SPECIFIC_SURFACE_AREA &
                                &must be specified in ' // trim(error_string) &
                                // ' ' // trim(new_mechanism%name) // ' block.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
         type is(wf_mechanism_fmdm_type)
-          if (uninitialized(new_mechanism%burnup)) then
-            option%io_buffer = 'BURNUP must be specified in ' &
+          if (Uninitialized(new_mechanism%burnup)) then
+            option%io_buffer = 'ERROR: BURNUP must be specified in ' &
                                // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
-          if (uninitialized(new_mechanism%specific_surface_area)) then
-            option%io_buffer = 'SPECIFIC_SURFACE_AREA must be specified in ' &
-                               // trim(error_string) // ' ' // &
+          if (Uninitialized(new_mechanism%specific_surface_area)) then
+            option%io_buffer = 'ERROR: SPECIFIC_SURFACE_AREA must be specified &
+                               &in ' // trim(error_string) // ' ' // &
                                trim(new_mechanism%name) // ' block.'
-            call printErrMsg(option)
+            call printMsg(option)
+            num_errors = num_errors + 1
           endif
       end select
-      if (uninitialized(new_mechanism%matrix_density)) then
-        option%io_buffer = 'MATRIX_DENSITY must be specified in ' // &
+      if (Uninitialized(new_mechanism%matrix_density)) then
+        option%io_buffer = 'ERROR: MATRIX_DENSITY must be specified in ' // &
                            trim(error_string) // ' ' // &
                            trim(new_mechanism%name) // ' block.'
-        call printErrMsg(option)
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
 
       if (new_mechanism%canister_degradation_model .and. &
-          uninitialized(new_mechanism%canister_material_constant)) then
-        option%io_buffer = 'CANISTER_MATERIAL_CONSTANT must be given in the '&
-                           // trim(error_string) // ' ' // &
+          Uninitialized(new_mechanism%canister_material_constant)) then
+        option%io_buffer = 'ERROR: CANISTER_MATERIAL_CONSTANT must be given in &
+                           &the ' // trim(error_string) // ' ' // &
                            trim(new_mechanism%name) // &
                            ', CANISTER_DEGRADATION_MODEL block.'
-        call printErrMsg(option)
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
 
       if (.not.associated(new_mechanism%rad_species_list)) then
-        option%io_buffer = 'At least one SPECIES must be specified in the ' // &
-          trim(error_string) // ' ' // trim(new_mechanism%name) // ' block.'
-        call printErrMsg(option)
+        option%io_buffer = 'ERROR: At least one SPECIES must be specified in &
+                           &the ' // trim(error_string) // ' ' // &
+                           trim(new_mechanism%name) // ' block.'
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
 
       if (.not.associated(this%mechanism_list)) then
@@ -1242,6 +1288,13 @@ subroutine PMWFReadMechanism(this,input,option,keyword,error_string,found)
       found = PETSC_FALSE
   !-------------------------------------
   end select
+  
+  if (num_errors > 0) then
+    write(option%io_buffer,*) num_errors
+    option%io_buffer = trim(adjustl(option%io_buffer)) // ' errors in &
+                       &the MECHANISM block. See above.'
+    call printErrMsg(option)
+  endif
 
 end subroutine PMWFReadMechanism
 
@@ -1273,19 +1326,20 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   PetscBool :: found
 
   PetscBool :: added
-  character(len=MAXWORDLENGTH) :: word, internal_units
+  PetscInt :: num_errors
+  character(len=MAXWORDLENGTH) :: word
   class(waste_form_base_type), pointer :: new_waste_form, cur_waste_form
-  class(wf_mechanism_base_type), pointer :: cur_mechanism
 
   error_string = trim(error_string) // ',WASTE_FORM'
   found = PETSC_TRUE
   added = PETSC_FALSE
+  num_errors = 0
 
   select case(trim(keyword))
   !-------------------------------------
     case('WASTE_FORM')
       allocate(new_waste_form)
-      new_waste_form => WasteFormCreate()
+      new_waste_form => PMWFWasteFormCreate()
       do
         call InputReadPflotranString(input,option)
         if (InputError(input)) exit
@@ -1347,25 +1401,30 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
       
      ! ----------------- error messaging -------------------------------------
       if (Uninitialized(new_waste_form%volume)) then
-        option%io_buffer = 'VOLUME must be specified for all waste forms.'
-        call printErrMsg(option)
+        option%io_buffer = 'ERROR: VOLUME must be specified for all &
+                           &waste forms.'
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
       if (Uninitialized(new_waste_form%coordinate%z) .and. &
           (len(trim(new_waste_form%region_name)) == 0)) then
-        option%io_buffer = 'Either COORDINATE or REGION must be specified &
-                           &for all waste forms.'
-        call printErrMsg(option)
+        option%io_buffer = 'ERROR: Either COORDINATE or REGION must be &
+                           &specified for all waste forms.'
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
       if (Initialized(new_waste_form%coordinate%z) .and. &
           (len(trim(new_waste_form%region_name)) > 0)) then
-        option%io_buffer = 'Either COORDINATE or REGION must be specified &
-                           &for all waste forms, but not both.'
-        call printErrMsg(option)
+        option%io_buffer = 'ERROR: Either COORDINATE or REGION must be &
+                           &specified for all waste forms, but not both.'
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
       if (new_waste_form%mech_name == '') then
-        option%io_buffer = 'MECHANISM_NAME must be specified for &
+        option%io_buffer = 'ERROR: MECHANISM_NAME must be specified for &
                            &all waste forms.'
-        call printErrMsg(option)
+        call printMsg(option)
+        num_errors = num_errors + 1
       endif
       !note: do not throw error if EXPOSURE_FACTOR isn't specified (default = 1)
       
@@ -1391,8 +1450,16 @@ subroutine PMWFReadWasteForm(this,input,option,keyword,error_string,found)
   end select
 
   if (.not.associated(this%waste_form_list)) then
-    option%io_buffer = 'At least one WASTE_FORM must be specified in the &
-                       &WASTE_FORM_GENERAL block.'
+    option%io_buffer = 'ERROR: At least one WASTE_FORM must be specified &
+                       &in the WASTE_FORM_GENERAL block.'
+    call printMsg(option)
+    num_errors = num_errors + 1
+  endif
+  
+  if (num_errors > 0) then
+    write(option%io_buffer,*) num_errors
+    option%io_buffer = trim(adjustl(option%io_buffer)) // ' errors in &
+                       &the WASTE_FORM_GENERAL,WASTE_FORM block(s). See above.'
     call printErrMsg(option)
   endif
 
@@ -1427,7 +1494,6 @@ subroutine PMWFAssociateRegion(this,region_list)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   character(len=MAXWORDLENGTH) :: word1, word2
-  PetscBool :: matched
   PetscReal :: x, y, z
   PetscInt :: i, j, k
   PetscInt :: local_id(1)
@@ -1478,13 +1544,10 @@ subroutine PMWFAssociateRegion(this,region_list)
       cur_region => region_list%first
       do
         if (.not.associated(cur_region)) exit
-        matched = PETSC_FALSE
-        if (StringCompare(trim(cur_region%name), &
-                          trim(cur_waste_form%region_name))) then
+        if (StringCompare(cur_region%name,cur_waste_form%region_name)) then
           cur_waste_form%region => cur_region
-          matched = PETSC_TRUE
+          exit
         endif
-        if (matched) exit
         cur_region => cur_region%next
       enddo
       if (.not.associated(cur_waste_form%region)) then
@@ -1522,9 +1585,9 @@ subroutine PMWFSetRegionScaling(this,waste_form)
   
   class(material_auxvar_type), pointer :: material_auxvars(:)
   type(grid_type), pointer :: grid
-  PetscInt :: k, cell_id
+  PetscInt :: k 
+  PetscInt :: local_id, ghosted_id
   PetscReal :: total_volume_local, total_volume_global
-  PetscErrorCode :: ierr
   
   material_auxvars => this%realization%patch%aux%Material%auxvars
   grid => this%realization%patch%grid
@@ -1534,13 +1597,14 @@ subroutine PMWFSetRegionScaling(this,waste_form)
   
   ! scale by cell volume
   do k = 1,waste_form%region%num_cells
-    cell_id = grid%nL2G(waste_form%region%cell_ids(k))
-    waste_form%scaling_factor(k) = material_auxvars(cell_id)%volume ! [m^3]
+    local_id = waste_form%region%cell_ids(k)
+    ghosted_id = grid%nL2G(local_id)
+    waste_form%scaling_factor(k) = material_auxvars(ghosted_id)%volume ! [m^3]
     total_volume_local = total_volume_local &
-                         + material_auxvars(cell_id)%volume  ! [m^3]
+                         + material_auxvars(ghosted_id)%volume  ! [m^3]
   enddo
-  call CalcParallelSUM(this%option,waste_form,total_volume_local, &
-                       total_volume_global)
+  call PMWFCalcParallelSUM(this%option,waste_form,total_volume_local, &
+                           total_volume_global)
   waste_form%scaling_factor = waste_form%scaling_factor/total_volume_global 
   
 end subroutine PMWFSetRegionScaling
@@ -1624,12 +1688,12 @@ subroutine PMWFSetup(this)
       cur_waste_form%canister_vitality = 1.d0
       ! waste form breach time specified:
       if (initialized(cur_waste_form%breach_time) .and. &
-          uninitialized(cur_waste_form%canister_vitality_rate)) then
+          Uninitialized(cur_waste_form%canister_vitality_rate)) then
         cur_waste_form%eff_canister_vit_rate = &
           (1.d0/cur_waste_form%breach_time)
       ! distribution for canister degradation rate specified:
-      elseif (uninitialized(cur_waste_form%canister_vitality_rate) .and. &
-              uninitialized(cur_waste_form%breach_time)) then
+      elseif (Uninitialized(cur_waste_form%canister_vitality_rate) .and. &
+              Uninitialized(cur_waste_form%breach_time)) then
         ! call to random number generator must be done while each processor
         ! knows about every other processor's waste forms, otherwise the
         ! memory of the random number generator will not be global
@@ -1689,7 +1753,7 @@ subroutine PMWFSetup(this)
       else
         this%waste_form_list => next_waste_form
       endif
-      deallocate(cur_waste_form)
+      call PMWFDestroyWasteForm(cur_waste_form)
       cur_waste_form => next_waste_form
     endif
   enddo
@@ -1815,7 +1879,6 @@ end subroutine PMWFSetup
   PetscInt :: num_species
   PetscInt :: size_of_vec
   PetscInt :: i, j, k
-  PetscInt :: data_mediator_species_id
   PetscInt, allocatable :: species_indices_in_residual(:)
   PetscErrorCode :: ierr
 
@@ -1939,14 +2002,14 @@ subroutine PMWFInitializeTimestep(this)
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
-  PetscReal :: rate
   PetscReal :: dV
   PetscReal :: dt
   PetscReal :: avg_temp_local, avg_temp_global
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: idof
   PetscInt :: i, k, p, g, d, f
   PetscInt :: num_species
   PetscErrorCode :: ierr
-  PetscInt :: cell_id, idof
   PetscReal, allocatable :: Coeff(:)
   PetscReal, allocatable :: concentration_old(:)
   PetscReal :: inst_release_molality
@@ -2019,15 +2082,14 @@ subroutine PMWFInitializeTimestep(this)
         cur_waste_form%eff_canister_vit_rate = &
           cur_waste_form%eff_canister_vit_rate   
       else
-        i = 0
         avg_temp_local = 0.d0
-        do while (i < cur_waste_form%region%num_cells)
-          i = i + 1
-          avg_temp_local = avg_temp_local + &  ! Celcius
-            global_auxvars(grid%nL2G(cur_waste_form%region%cell_ids(i)))%temp* &
-            cur_waste_form%scaling_factor(i)
+        do i = 1,cur_waste_form%region%num_cells
+          local_id = cur_waste_form%region%cell_ids(i)
+          ghosted_id = grid%nL2G(local_id)
+          avg_temp_local = avg_temp_local + global_auxvars(ghosted_id)%temp * &
+                           cur_waste_form%scaling_factor(i)
         enddo
-        call CalcParallelSUM(option,cur_waste_form,avg_temp_local, &
+        call PMWFCalcParallelSUM(option,cur_waste_form,avg_temp_local, &
                              avg_temp_global)
         avg_temp_global = avg_temp_global+273.15d0   ! Kelvin
         cur_waste_form%eff_canister_vit_rate = &
@@ -2065,7 +2127,8 @@ subroutine PMWFInitializeTimestep(this)
         ! update transport solution vector with mass injection molality
         ! as an alternative to a source term (issue with tran_dt changing)
         do f = 1, cur_waste_form%region%num_cells
-          cell_id = grid%nL2G(cur_waste_form%region%cell_ids(f))
+          local_id = cur_waste_form%region%cell_ids(f)
+          ghosted_id = grid%nL2G(local_id)
           inst_release_molality = &                    ! [mol-rad/kg-water]
             ! [mol-rad]
             (cur_waste_form%inst_release_amount(k) * & ! [mol-rad/g-matrix]
@@ -2073,12 +2136,12 @@ subroutine PMWFInitializeTimestep(this)
              cwfm%matrix_density * &                   ! [kg-matrix/m^3-matrix] 
              1.d3) / &                               ! [kg-matrix] -> [g-matrix]
              ! [kg-water]
-            (material_auxvars(cell_id)%porosity * &         ! [-]
-             global_auxvars(cell_id)%sat(LIQUID_PHASE) * &  ! [-]
-             material_auxvars(cell_id)%volume * &           ! [m^3]
-             global_auxvars(cell_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
+            (material_auxvars(ghosted_id)%porosity * &         ! [-]
+             global_auxvars(ghosted_id)%sat(LIQUID_PHASE) * &  ! [-]
+             material_auxvars(ghosted_id)%volume * &           ! [m^3]
+             global_auxvars(ghosted_id)%den_kg(LIQUID_PHASE))  ! [kg/m^3-water]
           idof = cwfm%rad_species_list(k)%ispecies + &
-                 ((cur_waste_form%region%cell_ids(f) - 1) * option%ntrandof) 
+                 ((local_id - 1) * option%ntrandof) 
           xx_p(idof) = xx_p(idof) + & 
                        (inst_release_molality*cur_waste_form%scaling_factor(f))
         enddo
@@ -2221,7 +2284,7 @@ subroutine PMWFSolve(this,time,ierr)
   class(waste_form_base_type), pointer :: cur_waste_form
   PetscInt :: i, j, k
   PetscInt :: num_species
-  PetscInt :: cell_id
+  PetscInt :: local_id, ghosted_id
   PetscInt :: idof
   PetscReal :: inst_diss_molality
   PetscReal, pointer :: vec_p(:)  
@@ -2258,7 +2321,8 @@ subroutine PMWFSolve(this,time,ierr)
         ! solution vector instead (see note in WFMech[DSNF/WIPP]Dissolution):
         class is(wf_mechanism_dsnf_type)
           do k = 1,cur_waste_form%region%num_cells
-            cell_id = grid%nL2G(cur_waste_form%region%cell_ids(k))
+            local_id = cur_waste_form%region%cell_ids(k)
+            ghosted_id = grid%nL2G(local_id)
             do j = 1,num_species
               i = i + 1
               cur_waste_form%instantaneous_mass_rate(j) = &
@@ -2270,13 +2334,12 @@ subroutine PMWFSolve(this,time,ierr)
                 cur_waste_form%instantaneous_mass_rate(j) * & ! mol-rad/sec
                 this%realization%option%tran_dt / &           ! sec
                 ! [kg-water]
-                (material_auxvars(cell_id)%porosity * &        ! [-]
-                 global_auxvars(cell_id)%sat(LIQUID_PHASE) * & ! [-]
-                 material_auxvars(cell_id)%volume * &          ! [m^3]
-                 global_auxvars(cell_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
+                (material_auxvars(ghosted_id)%porosity * &        ! [-]
+                 global_auxvars(ghosted_id)%sat(LIQUID_PHASE) * & ! [-]
+                 material_auxvars(ghosted_id)%volume * &          ! [m^3]
+                 global_auxvars(ghosted_id)%den_kg(LIQUID_PHASE)) ! [kg/m^3-water]
               idof = cwfm%rad_species_list(j)%ispecies + &
-                     ((cur_waste_form%region%cell_ids(k) - 1) * &
-                      this%option%ntrandof)
+                     ((local_id - 1) * this%option%ntrandof)
               xx_p(idof) = xx_p(idof) + &                     ! mol-rad/kg-water
                            (inst_diss_molality*cur_waste_form%scaling_factor(k))  
               vec_p(i) = 0.d0
@@ -2395,6 +2458,7 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   PetscReal :: avg_sec_molal_local, avg_sec_molal_global
   PetscReal :: avg_pri_act_coef_local, avg_pri_act_coef_global
   PetscReal :: avg_sec_act_coef_local, avg_sec_act_coef_global
+  PetscInt :: ghosted_id
   PetscInt :: i
 
   grid => pm%realization%patch%grid
@@ -2411,15 +2475,13 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
   ! Generalized glass dissolution equation comes from Eq. 2.3.7-6 in
   ! Yucca Mountain Repository SAR, Section 2.3.7, DOE/RW-0573 Rev.0
   
-  i = 0
   avg_temp_local = 0.d0
-  do while (i < waste_form%region%num_cells)
-    i = i + 1
+  do i = 1,waste_form%region%num_cells
+    ghosted_id = grid%nL2G(waste_form%region%cell_ids(i))
     avg_temp_local = avg_temp_local + &  ! Celcius
-               global_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))%temp * &
-               waste_form%scaling_factor(i)
+                 global_auxvars(ghosted_id)%temp * waste_form%scaling_factor(i)
   enddo
-  call CalcParallelSUM(pm%option,waste_form,avg_temp_local,avg_temp_global)
+  call PMWFCalcParallelSUM(pm%option,waste_form,avg_temp_local,avg_temp_global)
   avg_temp_global = avg_temp_global+273.15d0   ! Kelvin
               
   if (this%use_pH) then
@@ -2432,8 +2494,8 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         pri_molal(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      call CalcParallelSUM(pm%option,waste_form,avg_pri_molal_local, &
-                           avg_pri_molal_global)
+      call PMWFCalcParallelSUM(pm%option,waste_form,avg_pri_molal_local, &
+                               avg_pri_molal_global)
       i = 0
       avg_pri_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
@@ -2442,8 +2504,8 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         pri_act_coef(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      call CalcParallelSUM(pm%option,waste_form,avg_pri_act_coef_local, &
-                           avg_pri_act_coef_global)
+      call PMWFCalcParallelSUM(pm%option,waste_form,avg_pri_act_coef_local, &
+                               avg_pri_act_coef_global)
       this%pH = -log10(avg_pri_molal_global*avg_pri_act_coef_global)
     elseif (this%h_ion_id < 0) then   ! secondary species
       i = 0
@@ -2454,8 +2516,8 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         sec_molal(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      call CalcParallelSUM(pm%option,waste_form,avg_sec_molal_local, &
-                           avg_sec_molal_global)
+      call PMWFCalcParallelSUM(pm%option,waste_form,avg_sec_molal_local, &
+                               avg_sec_molal_global)
       i = 0
       avg_sec_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
@@ -2464,8 +2526,8 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         sec_act_coef(this%h_ion_id)*waste_form%scaling_factor(i)
       enddo
-      call CalcParallelSUM(pm%option,waste_form,avg_sec_act_coef_local, &
-                           avg_sec_act_coef_global)
+      call PMWFCalcParallelSUM(pm%option,waste_form,avg_sec_act_coef_local, &
+                               avg_sec_act_coef_global)
       this%pH = -log10(avg_sec_molal_global*avg_sec_act_coef_global)
     endif
   endif
@@ -2480,8 +2542,8 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         pri_molal(this%SiO2_id)*waste_form%scaling_factor(i)
       enddo
-      call CalcParallelSUM(pm%option,waste_form,avg_pri_molal_local, &
-                           avg_pri_molal_global)
+      call PMWFCalcParallelSUM(pm%option,waste_form,avg_pri_molal_local, &
+                               avg_pri_molal_global)
       i = 0
       avg_pri_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
@@ -2490,8 +2552,8 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         rt_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))% &
                         pri_act_coef(this%SiO2_id)*waste_form%scaling_factor(i)
       enddo
-      call CalcParallelSUM(pm%option,waste_form,avg_pri_act_coef_local, &
-                           avg_pri_act_coef_global)
+      call PMWFCalcParallelSUM(pm%option,waste_form,avg_pri_act_coef_local, &
+                               avg_pri_act_coef_global)
       this%Q = avg_pri_molal_global*avg_pri_act_coef_global
     elseif (this%SiO2_id < 0) then   ! secondary species
       i = 0
@@ -2503,8 +2565,8 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         sec_molal(abs(this%SiO2_id))* &
                         waste_form%scaling_factor(i)
       enddo
-      call CalcParallelSUM(pm%option,waste_form,avg_sec_molal_local, &
-                           avg_sec_molal_global)
+      call PMWFCalcParallelSUM(pm%option,waste_form,avg_sec_molal_local, &
+                               avg_sec_molal_global)
       i = 0
       avg_sec_act_coef_local = 0.d0
       do while (i < waste_form%region%num_cells)
@@ -2514,8 +2576,8 @@ subroutine WFMechGlassDissolution(this,waste_form,pm,ierr)
                         sec_act_coef(abs(this%SiO2_id))* &
                         waste_form%scaling_factor(i)
       enddo
-      call CalcParallelSUM(pm%option,waste_form,avg_sec_act_coef_local, &
-                           avg_sec_act_coef_global)
+      call PMWFCalcParallelSUM(pm%option,waste_form,avg_sec_act_coef_local, &
+                               avg_sec_act_coef_global)
       this%Q = avg_sec_molal_global*avg_sec_act_coef_global
     endif
   endif
@@ -2690,15 +2752,13 @@ subroutine WFMechFMDMDissolution(this,waste_form,pm,ierr)
  !====================================================================
   time = option%time
   
-  i = 0
   avg_temp_local = 0.d0
-  do while (i < waste_form%region%num_cells)
-    i = i + 1
+  do i = 1,waste_form%region%num_cells)
+    ghosted_id = grid%nL2G(waste_form%region%cell_ids(i))
     avg_temp_local = avg_temp_local + &  ! Celcius
-               global_auxvars(grid%nL2G(waste_form%region%cell_ids(i)))%temp * &
-               waste_form%scaling_factor(i)
+               global_auxvars(ghosted_id)%temp * waste_form%scaling_factor(i)
   enddo
-  call CalcParallelSUM(option,waste_form,avg_temp_local,avg_temp_global)
+  call PMWFCalcParallelSUM(option,waste_form,avg_temp_local,avg_temp_global)
   call AMP_step(this%burnup, time, avg_temp_global, this%concentration, &
                 initialRun, this%dissolution_rate, Usource, success) 
   write(*,*) this%dissolution_rate
@@ -2762,7 +2822,7 @@ subroutine WFMechCustomDissolution(this,waste_form,pm,ierr)
   
   ierr = 0
 
-  if (uninitialized(this%frac_dissolution_rate)) then
+  if (Uninitialized(this%frac_dissolution_rate)) then
     ! kg-matrix / sec
     waste_form%eff_dissolution_rate = &
        this%dissolution_rate * &         ! kg-matrix/m^2/sec
@@ -2804,10 +2864,6 @@ subroutine PMWFUpdateSolution(this)
   implicit none
   
   class(pm_waste_form_type) :: this
-  
-  PetscErrorCode :: ierr
-  
-  ! update glass mass here?
 
 end subroutine PMWFUpdateSolution
 
@@ -2834,7 +2890,7 @@ end subroutine PMWFFinalizeRun
 
 ! ************************************************************************** !
 
-subroutine CalcParallelSUM(option,waste_form,local_val,global_sum)
+subroutine PMWFCalcParallelSUM(option,waste_form,local_val,global_sum)
   ! 
   ! Calculates global sum for a MPI_DOUBLE_PRECISION number over a
   ! waste form region. This function uses only MPI_Send and MPI_Recv functions
@@ -2863,7 +2919,7 @@ subroutine CalcParallelSUM(option,waste_form,local_val,global_sum)
   temp_array = 0.d0
   TAG = 0
   
-  if (num_ranks .gt. 1) then
+  if (num_ranks > 1) then
   !------------------------------------------
     if (option%myrank .ne. waste_form%rank_list(1)) then
       call MPI_Send(local_val,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
@@ -2895,7 +2951,7 @@ subroutine CalcParallelSUM(option,waste_form,local_val,global_sum)
   
   deallocate(temp_array)
 
-end subroutine CalcParallelSUM
+end subroutine PMWFCalcParallelSUM
 
 ! ************************************************************************** !
 
@@ -3176,10 +3232,7 @@ subroutine PMWFInputRecord(this)
   
   class(pm_waste_form_type) :: this
 
-  character(len=MAXWORDLENGTH) :: word
-  class(waste_form_base_type), pointer :: cur_waste_form
   PetscInt :: id
-  PetscInt :: k
 
   id = INPUT_RECORD_UNIT
   
@@ -3215,16 +3268,7 @@ subroutine PMWFStrip(this)
     if (.not.associated(cur_waste_form)) exit
     prev_waste_form => cur_waste_form
     cur_waste_form => cur_waste_form%next
-    call DeallocateArray(prev_waste_form%rad_mass_fraction)
-    call DeallocateArray(prev_waste_form%rad_concentration)
-    call DeallocateArray(prev_waste_form%inst_release_amount)
-    call DeallocateArray(prev_waste_form%instantaneous_mass_rate)
-    call DeallocateArray(prev_waste_form%cumulative_mass)
-    call DeallocateArray(prev_waste_form%scaling_factor)
-    nullify(prev_waste_form%mechanism)
-    nullify(prev_waste_form%region)
-    deallocate(prev_waste_form)
-    nullify(prev_waste_form)
+    call PMWFDestroyWasteForm(prev_waste_form)
   enddo
   nullify(this%waste_form_list)
   call PMWFMechanismStrip(this)
@@ -3240,6 +3284,7 @@ subroutine PMWFMechanismStrip(this)
   ! Author: Jenn Frederick
   ! Date: 03/28/2016
   !
+  
   use Utility_module, only : DeallocateArray
   
   implicit none
@@ -3267,6 +3312,36 @@ subroutine PMWFMechanismStrip(this)
   nullify(this%mechanism_list)
 
 end subroutine PMWFMechanismStrip
+
+! ************************************************************************** !
+
+subroutine PMWFDestroyWasteForm(waste_form)
+  ! 
+  ! Destroys a waste form in the waste form process model
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/28/17
+  !
+  
+  use Utility_module, only : DeallocateArray
+
+  implicit none
+  
+  class(waste_form_base_type), pointer :: waste_form
+  
+  call DeallocateArray(waste_form%rad_mass_fraction)
+  call DeallocateArray(waste_form%rad_concentration)
+  call DeallocateArray(waste_form%inst_release_amount)
+  call DeallocateArray(waste_form%instantaneous_mass_rate)
+  call DeallocateArray(waste_form%cumulative_mass)
+  call DeallocateArray(waste_form%scaling_factor)
+  call DeallocateArray(waste_form%rank_list)
+  nullify(waste_form%mechanism)
+  nullify(waste_form%region)
+  deallocate(waste_form)
+  nullify(waste_form)
+  
+end subroutine PMWFDestroyWasteForm
   
 ! ************************************************************************** !
 

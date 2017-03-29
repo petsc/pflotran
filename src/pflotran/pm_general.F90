@@ -316,6 +316,8 @@ subroutine PMGeneralPreSolve(this)
 
   class(pm_general_type) :: this
 
+  call PMSubsurfaceFlowPreSolve(this)
+
 end subroutine PMGeneralPreSolve
 
 ! ************************************************************************** !
