@@ -123,11 +123,7 @@ subroutine SimulationBaseInitializeRun(this)
 
   class(simulation_base_type) :: this
 
-#if defined(SCORPIO_WRITE) || !defined(PETSC_HAVE_HDF5)
-  integer :: chk_grp_id
-#else
-  integer(HID_T) :: chk_grp_id
-#endif
+  PetscInt :: chk_grp_id
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   

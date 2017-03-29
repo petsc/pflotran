@@ -612,7 +612,9 @@ subroutine UGridReadHDF5SurfGrid(unstructured_grid,filename,option)
   PetscInt :: num_vertices_local
   PetscInt :: num_vertices_local_save
   PetscInt :: remainder
-  PetscInt, pointer :: int_buffer(:,:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_buffer(:,:)
   PetscReal, pointer :: double_buffer(:,:)
   PetscInt, parameter :: max_nvert_per_cell = 8  
   PetscErrorCode :: ierr
@@ -894,7 +896,9 @@ subroutine UGridReadHDF5(unstructured_grid,filename,option)
   PetscInt :: num_vertices_local
   PetscInt :: num_vertices_local_save
   PetscInt :: remainder
-  PetscInt, pointer :: int_buffer(:,:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_buffer(:,:)
   PetscReal, pointer :: double_buffer(:,:)
   PetscInt, parameter :: max_nvert_per_cell = 8  
   PetscInt :: error_count

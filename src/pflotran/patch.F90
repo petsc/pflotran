@@ -5224,7 +5224,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          patch%imat_internal_to_external(iabs(patch%imat(grid%nL2G(local_id))))
+          patch%imat_internal_to_external(abs(patch%imat(grid%nL2G(local_id))))
       enddo
     case(PROCESS_ID)
       do local_id=1,grid%nlmax
@@ -5998,7 +5998,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       value = vec_ptr2(ghosted_id)
       call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
     case(MATERIAL_ID)
-      value = patch%imat_internal_to_external(iabs(patch%imat(ghosted_id)))
+      value = patch%imat_internal_to_external(abs(patch%imat(ghosted_id)))
     case(PROCESS_ID)
       value = grid%nG2A(ghosted_id)
     case(NATURAL_ID)
@@ -7219,7 +7219,7 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec, &
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          patch%imat_internal_to_external(iabs(patch%imat(grid%nL2G(local_id))))
+          patch%imat_internal_to_external(abs(patch%imat(grid%nL2G(local_id))))
       enddo
     case(PROCESS_ID)
       do local_id=1,grid%nlmax

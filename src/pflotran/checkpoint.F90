@@ -715,7 +715,9 @@ subroutine CheckPointWriteIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank,
   PetscErrorCode :: hdf5_flag
   PetscMPIInt, parameter :: ON=1, OFF=0
 
-  PetscInt, pointer :: data_int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: data_int_array(:)
 
   call h5screate_simple_f(dataset_rank, dims, memory_space_id, hdf5_err, dims)
 
@@ -896,7 +898,9 @@ subroutine CheckPointReadIntDatasetHDF5(chk_grp_id, dataset_name, dataset_rank, 
   PetscErrorCode :: hdf5_flag
   PetscMPIInt, parameter :: ON=1, OFF=0
 
-  PetscInt, pointer :: data_int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: data_int_array(:)
 
   call h5screate_simple_f(dataset_rank, dims, memory_space_id, hdf5_err, dims)
 
@@ -1048,7 +1052,9 @@ subroutine CheckPointWriteCompatibilityHDF5(chk_grp_id, option)
 
   PetscMPIInt :: dataset_rank
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscInt, pointer :: int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_array(:)
 
   dataset_name = "Revision Number" // CHAR(0)
 
@@ -1110,7 +1116,9 @@ subroutine CheckPointReadCompatibilityHDF5(chk_grp_id, option)
 
   PetscMPIInt :: dataset_rank
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscInt, pointer :: int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_array(:)
   character(len=MAXWORDLENGTH) :: word, word2
 
   dataset_name = "Revision Number" // CHAR(0)
@@ -1657,7 +1665,7 @@ subroutine CheckpointPeriodicTimeWaypoints(checkpoint_option,waypoint_list)
         call WaypointInsertInList(waypoint,waypoint_list)
         if ((num_waypoints > warning_num_waypoints) .and. &
             OptionPrintToScreen(option)) then
-          call PrintProgressBarInt(floor(num_waypoints),10,k)
+          call PrintProgressBarInt(num_waypoints,TEN_INTEGER,k)
         endif
       enddo
     endif

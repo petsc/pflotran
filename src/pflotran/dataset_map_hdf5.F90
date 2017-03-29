@@ -444,6 +444,9 @@ subroutine DatasetMapHDF5ReadMap(this,option)
   PetscInt :: nids_local, remainder, istart, iend
   PetscErrorCode :: ierr
   character(len=MAXWORDLENGTH) :: dataset_name
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, allocatable :: tempint_array(:,:)
 
   call PetscLogEventBegin(logging%event_dataset_map_hdf5_read, &
                           ierr);CHKERRQ(ierr)
@@ -531,10 +534,12 @@ subroutine DatasetMapHDF5ReadMap(this,option)
   
   ! Initialize data buffer
   allocate(this%mapping(length(1), length(2)))
+  allocate(tempint_array(length(1), length(2)))
 
   ! Read the dataset collectively
-  call h5dread_f(dataset_id, H5T_NATIVE_INTEGER, this%mapping, &
+  call h5dread_f(dataset_id, H5T_NATIVE_INTEGER, tempint_array, &
                  dims_h5, hdf5_err, memory_space_id, file_space_id,prop_id)
+  this%mapping = tempint_array
 
   call h5pclose_f(prop_id,hdf5_err)
 

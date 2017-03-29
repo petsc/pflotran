@@ -2008,7 +2008,7 @@ end subroutine InterfaceApproxWithoutDeriv
 
 ! ************************************************************************** !
 
-subroutine PrintProgressBarInt(max,increment,current)
+subroutine PrintProgressBarInt(max_value,increment,current)
   ! 
   ! Prints a piece of a progress bar to the screen based on the maximum
   ! value, the increment of progress (must be given in percent), and the
@@ -2020,19 +2020,21 @@ subroutine PrintProgressBarInt(max,increment,current)
 
   implicit none
   
-  PetscInt :: max
+  PetscReal :: max_value
   PetscInt :: increment
   PetscInt :: current
 
+  PetscInt :: max_value_int
   PetscInt :: g, j, chunk
   character(len=MAXWORDLENGTH) :: percent_num
 
-  if (max < increment) then
-    max = max*(increment/max)
-    current = current*(increment/max)
+  max_value_int = floor(max_value)
+  if (max_value_int < increment) then
+    max_value_int = max_value_int*(increment/max_value_int)
+    current = current*(increment/max_value_int)
   endif
 
-  chunk = floor(max*(increment/100.0))
+  chunk = floor(max_value_int*(increment/100.0))
 
   if (mod(current,chunk) == 0) then
     j = current/chunk

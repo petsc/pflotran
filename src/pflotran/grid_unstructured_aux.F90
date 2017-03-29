@@ -1004,6 +1004,7 @@ subroutine UGridPartition(ugrid,option,Dual_mat,is_new, &
   MatPartitioning :: Part
   PetscInt, allocatable :: cell_counts(:)
   PetscInt :: iflag
+  PetscInt :: tempint
   PetscViewer :: viewer
   PetscInt :: local_vertex_offset
   PetscErrorCode :: ierr
@@ -1040,8 +1041,8 @@ subroutine UGridPartition(ugrid,option,Dual_mat,is_new, &
   allocate(cell_counts(option%mycommsize))
   ! ISPartitioningCount takes a ISPartitioning and determines the number of  
   ! resulting elements on each (partition) process - petsc
-  call ISPartitioningCount(is_new,option%mycommsize,cell_counts, &
-                           ierr);CHKERRQ(ierr)
+  tempint = option%mycommsize
+  call ISPartitioningCount(is_new,tempint,cell_counts,ierr);CHKERRQ(ierr)
   num_cells_local_new = cell_counts(option%myrank+1) 
   call MPI_Allreduce(num_cells_local_new,iflag,ONE_INTEGER_MPI,MPIU_INTEGER, &
                      MPI_MIN,option%mycomm,ierr)
