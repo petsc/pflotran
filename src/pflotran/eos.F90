@@ -447,6 +447,12 @@ subroutine EOSRead(input,option)
                               test_uniform_temp, test_uniform_pres, &
                               test_filename)
             endif
+          case('FORMULA_WEIGHT') 
+            call InputReadDouble(input,option,tempreal)
+            call InputErrorMsg(input,option,'VALUE','EOS,GAS,FORMULA_WEIGHT')
+            call InputReadAndConvertUnits(input,tempreal, &
+                             'g/mol','EOS,GAS,FORMULA_WEIGHT',option)
+            call EOSGasSetFMWConstant(tempreal)
           case default
             call InputKeywordUnrecognized(keyword,'EOS,GAS',option)
         end select
@@ -459,6 +465,12 @@ subroutine EOSRead(input,option)
           option%io_buffer =  trim(string) // ': ' // trim(option%io_buffer)
         endif
         call printMsg(option)
+      !else if (ierr == 6) then
+      !  option%io_buffer = 'set as default value for gas fmw'
+      !  if (len_trim(string) > 1) then
+      !    option%io_buffer =  trim(string) // ': ' // trim(option%io_buffer)
+      !  endif
+      !  call printMsg(option)
       else if (ierr /= 0) then
         option%io_buffer = 'Error in Gas EOS'    
         if (len_trim(string) > 1) then

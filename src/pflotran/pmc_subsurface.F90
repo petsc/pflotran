@@ -102,6 +102,7 @@ subroutine PMCSubsurfaceSetupSolvers(this)
   use PM_Waste_Form_class
   use PM_UFD_Decay_class
   use PM_TOilIms_class
+  use PM_TOWG_class
   use Secondary_Continuum_module, only : SecondaryRTUpdateIterate  
   use Solver_module
   use Timestepper_Base_class
@@ -273,6 +274,17 @@ subroutine PMCSubsurfaceSetupSolvers(this)
                                                ierr);CHKERRQ(ierr)
             !-------------------------------------
               class is(pm_toil_ims_type)
+                call SNESLineSearchSetPreCheck(linesearch, &
+#if defined(USE_PM_AS_PETSC_CONTEXT)
+                                               PMCheckUpdatePre, &
+                                               this%pm_ptr%pm, &
+#else
+                                               PMCheckUpdatePrePtr, &
+                                               this%pm_ptr, &
+#endif
+                                               ierr);CHKERRQ(ierr)
+            !-------------------------------------
+              class is(pm_towg_type)
                 call SNESLineSearchSetPreCheck(linesearch, &
 #if defined(USE_PM_AS_PETSC_CONTEXT)
                                                PMCheckUpdatePre, &

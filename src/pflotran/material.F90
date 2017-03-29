@@ -31,6 +31,7 @@ module Material_module
     class(dataset_base_type), pointer :: porosity_dataset
     class(dataset_base_type), pointer :: tortuosity_dataset
     PetscReal :: tortuosity
+    PetscBool :: tortuosity_function_of_porosity
     PetscInt :: saturation_function_id
     character(len=MAXWORDLENGTH) :: saturation_function_name
     PetscReal :: rock_density ! kg/m^3
@@ -55,6 +56,7 @@ module Material_module
     PetscReal :: thermal_expansitivity   
     PetscReal :: dispersivity(3)
     PetscReal :: tortuosity_pwr
+    PetscReal :: tortuosity_func_porosity_pwr
     PetscReal :: min_pressure
     PetscReal :: max_pressure
     PetscReal :: max_permfactor
@@ -154,8 +156,10 @@ function MaterialPropertyCreate()
 !  material_property%porosity_dataset_name = ''
   nullify(material_property%porosity_dataset)
   nullify(material_property%tortuosity_dataset)
+  material_property%tortuosity_function_of_porosity = PETSC_FALSE
   material_property%tortuosity = 1.d0
   material_property%tortuosity_pwr = 0.d0
+  material_property%tortuosity_func_porosity_pwr = UNINITIALIZED_DOUBLE
   material_property%saturation_function_id = 0
   material_property%saturation_function_name = ''
   material_property%rock_density = UNINITIALIZED_DOUBLE
@@ -386,6 +390,13 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call DatasetReadDoubleOrDataset(input,material_property%tortuosity, &
                                         material_property%tortuosity_dataset, &
                                         'tortuosity','MATERIAL_PROPERTY',option)
+      case('TORTUOSITY_FUNCTION_OF_POROSITY')
+        material_property%tortuosity_function_of_porosity = PETSC_TRUE
+        material_property%tortuosity = UNINITIALIZED_DOUBLE
+        call InputReadDouble(input,option, &
+                             material_property%tortuosity_func_porosity_pwr)
+        call InputErrorMsg(input,option,'tortuosity power as a function of &
+                           &porosity','MATERIAL_PROPERTY')
       case('WIPP-FRACTURE')
         ! Calculates permeability and porosity induced by fracture,
         ! which is described by pressure within certain range of pressure
@@ -695,6 +706,18 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputKeywordUnrecognized(keyword,'MATERIAL_PROPERTY',option)
     end select 
   enddo
+  
+  if (material_property%tortuosity_function_of_porosity) then
+    if (associated(material_property%tortuosity_dataset)) then
+      option%io_buffer = 'A TORTUOSITY dataset may not be assigned in &
+        &combination with TORTUOSITY_FUNCTION_OF_POROSITY.'
+      call printErrMsg(option)
+    endif
+    if (.not.associated(material_property%porosity_dataset)) then
+      material_property%tortuosity = material_property%porosity** &
+        material_property%tortuosity_func_porosity_pwr
+    endif
+  endif
 
   if (associated(material_property%permeability_dataset) .and. &
       .not.material_property%isotropic_permeability .and. &
@@ -811,7 +834,7 @@ subroutine MaterialPropertyAddToList(material_property,list)
       cur_material_property => cur_material_property%next
     enddo
     cur_material_property%next => material_property
-    material_property%internal_id = iabs(cur_material_property%internal_id) + 1
+    material_property%internal_id = abs(cur_material_property%internal_id) + 1
   else
     list => material_property
     material_property%internal_id = 1
@@ -888,7 +911,7 @@ subroutine MaterialPropConvertListToArray(list,array,option)
     if (.not.associated(cur_material_property)) exit
     max_internal_id = max_internal_id + 1
     max_external_id = max(max_external_id,cur_material_property%external_id)
-    if (max_internal_id /= iabs(cur_material_property%internal_id)) then
+    if (max_internal_id /= abs(cur_material_property%internal_id)) then
       write(string,*) cur_material_property%external_id
       option%io_buffer = 'Non-contiguous internal material id for ' // &
         'material named "' // trim(cur_material_property%name) // &
@@ -916,7 +939,7 @@ subroutine MaterialPropConvertListToArray(list,array,option)
     if (.not.associated(cur_material_property)) exit
     id_count(cur_material_property%external_id) = &
       id_count(cur_material_property%external_id) + 1
-    array(iabs(cur_material_property%internal_id))%ptr => cur_material_property
+    array(abs(cur_material_property%internal_id))%ptr => cur_material_property
     cur_material_property => cur_material_property%next
   enddo
   
@@ -1013,7 +1036,7 @@ subroutine MaterialCreateIntToExtMapping(material_property_array,mapping)
   mapping(0) = 0
   
   do i = 1, size(material_property_array)
-    mapping(iabs(material_property_array(i)%ptr%internal_id)) = &
+    mapping(abs(material_property_array(i)%ptr%internal_id)) = &
       material_property_array(i)%ptr%external_id
   enddo
 

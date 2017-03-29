@@ -360,6 +360,8 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
   use PM_Richards_class
   use PM_TH_class
   use PM_TOilIms_class
+  use PM_TOWG_class
+  use PM_TOWG_Aux_module
 
   implicit none 
 
@@ -409,9 +411,10 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%nphase = 2
       option%liquid_phase = 1           ! liquid_pressure
       option%oil_phase = 2              ! oil_pressure
+      allocate(option%phase_map(option%nphase))
       option%phase_map(1) = LIQUID_PHASE 
       option%phase_map(2) = OIL_PHASE
-      option%phase_map(3) = UNINITIALIZED_INTEGER ! no third phase
+      !option%phase_map(3) = UNINITIALIZED_INTEGER ! no third phase
 
       option%capillary_pressure_id = 3  ! capillary pressure
 
@@ -423,6 +426,36 @@ subroutine SubsurfaceSetFlowMode(pm_flow,option)
       option%oil_id = 2
       option%energy_id = 3
 
+      option%use_isothermal = PETSC_FALSE
+    class is (pm_towg_type)
+      option%iflowmode = TOWG_MODE
+      option%nphase = 3
+      option%liquid_phase = 1           ! liquid_pressure
+      option%oil_phase = 2              ! oil_pressure
+      option%gas_phase = 3              ! gas_pressure
+      !option%solvent_phase = 4         ! solvent saturation
+      allocate(option%phase_map(option%nphase))
+      option%phase_map(1) = LIQUID_PHASE 
+      option%phase_map(2) = OIL_PHASE
+      option%phase_map(3) = GAS_PHASE
+      option%energy_id = towg_energy_eq_idx
+      select case (towg_miscibility_model)
+        case(TOWG_IMMISCIBLE)
+          option%nflowdof = 4
+          option%nflowspec = 3 !H20, Oil, Gas
+        !case(TOWG_TODD_LONGSTAFF,TOWG_BLACK_OIL)
+        !  option%nflowdof = 4
+        !  option%nflowspec = 3 !H20, Oil, Gas 
+        !case(TOWG_SOLVENT_TL)
+        !  option%nphase = 4
+        !  option%nflowdof = 5
+        !  option%nflowspec = 4 !H20, Oil, Gas, Solvent
+        case default
+          !option%io_buffer = 'SubsurfaceSetFlowMode: ' // 
+          !  'towg_miscibility_model must be intiialized'
+          option%io_buffer = 'only immiscible TOWG currently implemented'
+          call printErrMsg(option)
+      end select
       option%use_isothermal = PETSC_FALSE
     class is (pm_immis_type)
       option%iflowmode = IMS_MODE
@@ -498,6 +531,7 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
   use PM_Richards_class
   use PM_TH_class
   use PM_TOilIms_class
+  use PM_TOWG_class
   
   use Init_Common_module
 
@@ -543,6 +577,10 @@ subroutine SubsurfaceReadFlowPM(input, option, pm)
             pm => PMTHCreate()
           case('TOIL_IMS')
             pm => PMTOilImsCreate() 
+          !case('TOWG')
+          case('TOWG_IMMISCIBLE','TODD_LONGOSTAFF','TOWG_MISCIBLE', &
+               'BLACK_OIL','SOLVENT_TL')
+            pm => PMTOWGCreate(word,option) 
           case default
             error_string = trim(error_string) // ',MODE'
             call InputKeywordUnrecognized(word,error_string,option)
@@ -1609,6 +1647,8 @@ subroutine SubsurfaceReadInput(simulation)
           call FlowConditionGeneralRead(flow_condition,input,option)
         else if(option%iflowmode == TOIL_IMS_MODE) then
           call FlowConditionTOilImsRead(flow_condition,input,option)
+        else if (option%iflowmode == TOWG_MODE) then
+          call FlowConditionTOWGRead(flow_condition,input,option)
         else 
           call FlowConditionRead(flow_condition,input,option)
         endif
@@ -1985,6 +2025,7 @@ subroutine SubsurfaceReadInput(simulation)
       case ('SATURATION_FUNCTION')
         if (option%iflowmode == RICHARDS_MODE .or. &
             option%iflowmode == TOIL_IMS_MODE .or. &
+            option%iflowmode == TOWG_MODE .or. &
             option%iflowmode == G_MODE) then
           option%io_buffer = &
             'Must compile with legacy_saturation_function=1 ' //&
@@ -2009,6 +2050,7 @@ subroutine SubsurfaceReadInput(simulation)
         if (.not.(option%iflowmode == NULL_MODE .or. &
                   option%iflowmode == RICHARDS_MODE .or. &
                   option%iflowmode == TOIL_IMS_MODE .or. &
+                  option%iflowmode == TOWG_MODE .or. &
                   option%iflowmode == G_MODE)) then
           option%io_buffer = 'CHARACTERISTIC_CURVES not supported in flow ' // &
             'modes other than RICHARDS, TOIL_IMS,  or GENERAL.  Use ' // &

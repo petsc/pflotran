@@ -1568,7 +1568,9 @@ subroutine WriteHDF5CoordinatesXDMFGeomech(geomech_realization, &
 
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec, natural_vec
-  PetscInt, pointer :: int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_array(:)
   type(gmdm_type),pointer :: gmdm_element
   PetscErrorCode :: ierr
 

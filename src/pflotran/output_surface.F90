@@ -1079,7 +1079,9 @@ subroutine WriteHDF5CoordinatesUGridXDMF(surf_realization,realization, &
 
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec, natural_vec
-  PetscInt, pointer :: int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_array(:)
   type(ugdm_type),pointer :: ugdm_element,ugdm_cell
 
   PetscInt :: TRI_ID_XDMF = 4

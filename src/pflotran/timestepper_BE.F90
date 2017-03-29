@@ -665,12 +665,16 @@ subroutine TimestepperBECheckpointHDF5(this, chk_grp_id, option)
   PetscMPIInt :: dataset_rank
   character(len=MAXSTRINGLENGTH) :: dataset_name
   character(len=MAXSTRINGLENGTH) :: string
-  PetscInt, pointer :: int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_array(:)
   PetscReal, pointer :: real_array(:)
   PetscMPIInt :: hdf5_err
 
   string = "Timestepper"
-  call h5gcreate_f(chk_grp_id, string, timestepper_grp_id, hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
+  h5_chk_grp_id = chk_grp_id
+  call h5gcreate_f(h5_chk_grp_id, string, timestepper_grp_id, &
+                   hdf5_err, OBJECT_NAMELEN_DEFAULT_F)
 
   allocate(start(1))
   allocate(dims(1))
@@ -687,59 +691,70 @@ subroutine TimestepperBECheckpointHDF5(this, chk_grp_id, option)
 
   dataset_name = "Cumulative_newton_iterations" // CHAR(0)
   int_array(1) = this%cumulative_newton_iterations
-  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
 
   dataset_name = "Cumulative_linear_iterations" // CHAR(0)
   int_array(1) = this%cumulative_linear_iterations
-  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
 
   dataset_name = "Num_newton_iterations" // CHAR(0)
   int_array(1) = this%num_newton_iterations
-  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
 
   dataset_name = "Time" // CHAR(0)
   real_array(1) = this%target_time
-  call CheckPointWriteRealDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, real_array, option)
+  call CheckPointWriteRealDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, real_array, option)
 
   dataset_name = "Dt" // CHAR(0)
   real_array(1) = this%dt
-  call CheckPointWriteRealDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, real_array, option)
+  call CheckPointWriteRealDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, real_array, option)
 
   dataset_name = "Prev_dt" // CHAR(0)
   real_array(1) = this%prev_dt
-  call CheckPointWriteRealDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, real_array, option)
+  call CheckPointWriteRealDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, real_array, option)
 
   dataset_name = "Num_steps" // CHAR(0)
   int_array(1) = this%steps
-  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
 
   dataset_name = "Cumulative_time_step_cuts" // CHAR(0)
   int_array(1) = this%cumulative_time_step_cuts
-  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
 
   dataset_name = "Num_constant_time_steps" // CHAR(0)
   int_array(1) = this%num_constant_time_steps
-  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
 
   dataset_name = "Num_contig_revert_due_to_sync" // CHAR(0)
   int_array(1) = this%num_contig_revert_due_to_sync
-  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
 
   dataset_name = "Revert_dt" // CHAR(0)
   int_array(1) = ZERO_INTEGER
   if (this%revert_dt) int_array(1) = ONE_INTEGER
-  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointWriteIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
 
   call h5gclose_f(timestepper_grp_id, hdf5_err)
 
@@ -792,7 +807,9 @@ subroutine TimestepperBERestartHDF5(this, chk_grp_id, option)
   PetscMPIInt :: dataset_rank
   character(len=MAXSTRINGLENGTH) :: dataset_name
   character(len=MAXSTRINGLENGTH) :: string
-  PetscInt, pointer :: int_array(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, pointer :: int_array(:)
   PetscReal, pointer :: real_array(:)
   PetscMPIInt :: hdf5_err
 
@@ -814,58 +831,69 @@ subroutine TimestepperBERestartHDF5(this, chk_grp_id, option)
   stride(1) = ONE_INTEGER
 
   dataset_name = "Cumulative_newton_iterations" // CHAR(0)
-  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                    dataset_rank, dims, start, length, &
+                                    stride, int_array, option)
   this%cumulative_newton_iterations = int_array(1)
 
   dataset_name = "Cumulative_linear_iterations" // CHAR(0)
-  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                    dataset_rank, dims, start, length, &
+                                    stride, int_array, option)
   this%cumulative_linear_iterations = int_array(1)
 
   dataset_name = "Num_newton_iterations" // CHAR(0)
-  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                    dataset_rank, dims, start, length, &
+                                    stride, int_array, option)
   this%num_newton_iterations = int_array(1)
 
   dataset_name = "Time" // CHAR(0)
-  call CheckPointReadRealDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, real_array, option)
+  call CheckPointReadRealDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, real_array, option)
   this%target_time = real_array(1)
 
   dataset_name = "Dt" // CHAR(0)
-  call CheckPointReadRealDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, real_array, option)
+  call CheckPointReadRealDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, real_array, option)
   this%dt = real_array(1)
 
   dataset_name = "Prev_dt" // CHAR(0)
-  call CheckPointReadRealDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, real_array, option)
+  call CheckPointReadRealDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, real_array, option)
   this%prev_dt = real_array(1)
 
   dataset_name = "Num_steps" // CHAR(0)
-  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
   this%steps = int_array(1)
 
   dataset_name = "Cumulative_time_step_cuts" // CHAR(0)
-  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
   this%cumulative_time_step_cuts = int_array(1)
 
   dataset_name = "Num_constant_time_steps" // CHAR(0)
-  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
   this%num_constant_time_steps = int_array(1)
 
   dataset_name = "Num_contig_revert_due_to_sync" // CHAR(0)
-  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
   this%num_contig_revert_due_to_sync = int_array(1)
 
   dataset_name = "Revert_dt" // CHAR(0)
-  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, dataset_rank, &
-                                     dims, start, length, stride, int_array, option)
+  call CheckPointReadIntDatasetHDF5(timestepper_grp_id, dataset_name, &
+                                     dataset_rank, dims, start, length, &
+                                     stride, int_array, option)
   this%revert_dt = (int_array(1) == ONE_INTEGER)
 
   call h5gclose_f(timestepper_grp_id, hdf5_err)

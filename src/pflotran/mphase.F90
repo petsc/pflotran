@@ -162,7 +162,7 @@ subroutine MphaseSetupPatch(realization)
 ! dencpr  
   allocate(mphase%Mphase_parameter%dencpr(size(patch%material_property_array)))
   do ipara = 1, size(patch%material_property_array)
-    mphase%mphase_parameter%dencpr(iabs(patch%material_property_array(ipara)% &
+    mphase%mphase_parameter%dencpr(abs(patch%material_property_array(ipara)% &
                                         ptr%internal_id)) = &
       patch%material_property_array(ipara)%ptr%rock_density*option%scale*&
       patch%material_property_array(ipara)%ptr%specific_heat
@@ -170,7 +170,7 @@ subroutine MphaseSetupPatch(realization)
 ! ckwet
   allocate(mphase%Mphase_parameter%ckwet(size(patch%material_property_array)))
   do ipara = 1, size(patch%material_property_array)
-    mphase%mphase_parameter%ckwet(iabs(patch%material_property_array(ipara)% &
+    mphase%mphase_parameter%ckwet(abs(patch%material_property_array(ipara)% &
                                        ptr%internal_id)) = &
       patch%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo

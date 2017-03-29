@@ -19,9 +19,34 @@ module AuxVars_FlowEnergy_module
    !..............
   end type auxvar_flow_energy_type
 
-  public :: AuxVarFlowEnergyStrip
+  public :: AuxVarFlowEnergyInit, AuxVarFlowEnergyStrip
 
 contains
+
+! ************************************************************************** !
+
+subroutine AuxVarFlowEnergyInit(this,option)
+  ! 
+  ! Initialise energy auxiliary variables
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 11/07/16
+  ! 
+
+  use Option_module
+
+  implicit none
+
+  class(auxvar_flow_energy_type) :: this
+  type(option_type) :: option
+
+  this%temp = 0.d0
+  allocate(this%H(option%nphase))
+  this%H = 0.d0
+  allocate(this%U(option%nphase))
+  this%U = 0.d0
+
+end subroutine AuxVarFlowEnergyInit
 
 ! ************************************************************************** !
 

@@ -36,6 +36,7 @@ subroutine InitSubsurfFlowSetupRealization(realization)
   use TH_module
   use General_module
   use TOilIms_module
+  use TOWG_module
   use Condition_Control_module
   use co2_sw_module, only : init_span_wagner
   
@@ -85,6 +86,12 @@ subroutine InitSubsurfFlowSetupRealization(realization)
                            patch%characteristic_curves_array, &
                            realization%option)
         call TOilImsSetup(realization)
+      case(TOWG_MODE)
+        call MaterialSetup(realization%patch%aux%Material%material_parameter, &
+                           patch%material_property_array, &
+                           patch%characteristic_curves_array, &
+                           realization%option)
+        call TOWGSetup(realization)
     end select
   
     ! assign initial conditionsRealizAssignFlowInitCond
@@ -116,6 +123,8 @@ subroutine InitSubsurfFlowSetupRealization(realization)
         call GeneralUpdateAuxVars(realization,PETSC_FALSE)
       case(TOIL_IMS_MODE)
         call TOilImsUpdateAuxVars(realization)
+      case(TOWG_MODE)
+        call TOWGUpdateAuxVars(realization,PETSC_FALSE)
     end select
   else ! no flow mode specified
     if (len_trim(realization%nonuniform_velocity_filename) > 0) then

@@ -682,7 +682,7 @@ subroutine CharacteristicCurvesRead(this,input,option)
             ! to pass the verification in CharacteristicCurvesVerify
             ! in case gas_rel_perm_function is not defined in the input
             ! We should change CharacteristicCurvesVerify instead
-             this%gas_rel_perm_function => rel_perm_function_ptr
+            ! this%gas_rel_perm_function => rel_perm_function_ptr
           case('NONE')
             option%io_buffer = 'PHASE has not been set for &
                                &CHARACTERISTIC_CURVES,PERMEABILITY_FUNCTION. &
@@ -1589,8 +1589,8 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
   ! Returns the residual saturations associated with a characteristic curves
   ! object
   ! 
-  ! Author: Glenn Hammond
-  ! Date: 09/29/14
+  ! Author: Glenn Hammond, Paolo Orsini
+  ! Date: 09/29/14, 03/27/17
   ! 
 
   use Option_module
@@ -1602,74 +1602,86 @@ function CharCurvesGetGetResidualSats(characteristic_curves,option)
 
   CharCurvesGetGetResidualSats(1) = &
     characteristic_curves%liq_rel_perm_function%Sr
-  if (option%nphase > 1) then
+  !if (option%nphase > 1) then
+  if ( (option%nphase > 1) .and. &
+       associated(characteristic_curves%gas_rel_perm_function) ) then
     select type(rpf=>characteristic_curves%gas_rel_perm_function)
       class is(rpf_Mualem_VG_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_Mualem_VG_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_Burdine_BC_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_Burdine_BC_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_Mualem_BC_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_Mualem_BC_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_Burdine_VG_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_Burdine_VG_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_TOUGH2_IRP7_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_Mualem_Linear_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_Mualem_Linear_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_Burdine_Linear_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_Burdine_Linear_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_BRAGFLO_KRP1_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_BRAGFLO_KRP1_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_BRAGFLO_KRP5_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_BRAGFLO_KRP5_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_BRAGFLO_KRP9_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_BRAGFLO_KRP9_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_BRAGFLO_KRP4_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_BRAGFLO_KRP4_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_BRAGFLO_KRP11_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_BRAGFLO_KRP11_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_mK_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rpf_mK_gas_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Srg
-      class is(rpf_TOUGH2_Linear_oil_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sro
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Srg
       class is(rpf_mod_BC_liq_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
-      class is(rpf_mod_BC_oil_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sro
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rel_perm_func_constant_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class is(rel_perm_func_default_type)
-        CharCurvesGetGetResidualSats(2) = rpf%Sr
+        CharCurvesGetGetResidualSats(option%gas_phase) = rpf%Sr
       class default
         option%io_buffer = 'Relative permeability class not supported in ' // &
           'CharCurvesGetGetResidualSats.'
         call printErrMsg(option)
     end select
-     
+
+  end if
+
+  if ( (option%nphase > 1) .and. &
+       associated(characteristic_curves%oil_rel_perm_function) ) then
+    select type(rpf=>characteristic_curves%oil_rel_perm_function)
+      class is(rpf_TOUGH2_Linear_oil_type)
+        CharCurvesGetGetResidualSats(option%oil_phase) = rpf%Sro
+      class is(rpf_mod_BC_oil_type)
+        CharCurvesGetGetResidualSats(option%oil_phase) = rpf%Sro 
+      class default
+        option%io_buffer = 'Oil Relative permeability class ' // &
+          'not supported in CharCurvesGetGetResidualSats.'
+        call printErrMsg(option)
+    end select
   endif
 
 end function CharCurvesGetGetResidualSats
@@ -1794,7 +1806,7 @@ subroutine CharacteristicCurvesVerify(characteristic_curves,option)
   if (associated(characteristic_curves%gas_rel_perm_function) ) then
     call characteristic_curves%gas_rel_perm_function%Verify(string,option)
   else
-    if (option%iflowmode == G_MODE) then
+    if (option%iflowmode == G_MODE .or. option%iflowmode == TOWG_MODE) then
       option%io_buffer = 'A gas phase relative permeability curve has &
                          &not been set under CHARACTERISTIC_CURVES "' // &
                          trim(characteristic_curves%name) // '". Another &
@@ -1805,7 +1817,16 @@ subroutine CharacteristicCurvesVerify(characteristic_curves,option)
   end if
 
   if ( associated(characteristic_curves%oil_rel_perm_function) ) then  
-    call characteristic_curves%oil_rel_perm_function%Verify(string,option) 
+    call characteristic_curves%oil_rel_perm_function%Verify(string,option)
+  else 
+    if (option%iflowmode == TOIL_IMS_MODE .or. &
+       option%iflowmode == TOWG_MODE  ) then
+      option%io_buffer = 'An oil phase relative permeability curve has &
+                         &not been set under CHARACTERISTIC_CURVES "' // &
+                         trim(characteristic_curves%name) // '". Another &
+                         &PERMEABILITY_FUNCTION block must be specified &
+                         &for the oil phase.'      
+    end if
   end if
   
 end subroutine CharacteristicCurvesVerify

@@ -151,7 +151,7 @@ subroutine Flash2SetupPatch(realization)
 ! dencpr  
   allocate(patch%aux%Flash2%Flash2_parameter%dencpr(size(patch%material_property_array)))
   do ipara = 1, size(patch%material_property_array)
-    patch%aux%Flash2%Flash2_parameter%dencpr(iabs(patch% &
+    patch%aux%Flash2%Flash2_parameter%dencpr(abs(patch% &
         material_property_array(ipara)%ptr%internal_id)) = &
       patch%material_property_array(ipara)%ptr%rock_density*option%scale*&
       patch%material_property_array(ipara)%ptr%specific_heat
@@ -159,7 +159,7 @@ subroutine Flash2SetupPatch(realization)
 ! ckwet
   allocate(patch%aux%Flash2%Flash2_parameter%ckwet(size(patch%material_property_array)))
   do ipara = 1, size(patch%material_property_array)
-    patch%aux%Flash2%Flash2_parameter%ckwet(iabs(patch% &
+    patch%aux%Flash2%Flash2_parameter%ckwet(abs(patch% &
         material_property_array(ipara)%ptr%internal_id)) = &
       patch%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo

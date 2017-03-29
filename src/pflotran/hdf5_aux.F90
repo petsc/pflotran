@@ -549,7 +549,9 @@ subroutine HDF5ReadDbase(filename,option)
   character(len=MAXWORDLENGTH), allocatable :: wbuffer(:)
   character(len=MAXWORDLENGTH) :: wbuffer_word
   PetscReal, allocatable :: rbuffer(:)
-  PetscInt, allocatable :: ibuffer(:)
+  ! must be 'integer' so that ibuffer does not switch to 64-bit integers 
+  ! when PETSc is configured with --with-64-bit-indices=yes.
+  integer, allocatable :: ibuffer(:)
   PetscInt :: dummy_int
   PetscInt :: value_index
   character(len=MAXSTRINGLENGTH) :: string

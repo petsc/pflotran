@@ -551,6 +551,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
               temp_int = 1
             endif
           end if
+          if (associated(coupler%flow_condition%towg)) then          
+            if (associated(coupler%flow_condition%towg%rate)) then
+              temp_int = 1
+            endif
+          end if
           if (associated(coupler%flow_condition%flow_well)) then          
             if ( associated(coupler%flow_condition%flow_well%rate) .or. &
                  associated(coupler%flow_condition%flow_well%pressure) &
@@ -1128,9 +1133,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
   use General_Aux_module
   !use TOilIms_Aux_module
   use PM_TOilIms_Aux_module 
-    ! to use constant paramters such as TOIL_IMS_MAX_INDEX
-    ! could work something out to eliminate this dependency here 
-  
+  use PM_TOWG_Aux_module  
 
   implicit none
   
@@ -1170,6 +1173,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
               associated(coupler%flow_condition%rate) .or. &
               associated(coupler%flow_condition%temperature) .or. &
               associated(coupler%flow_condition%toil_ims) .or. & 
+              associated(coupler%flow_condition%towg) .or. & 
               associated(coupler%flow_condition%general)) then
 
             ! allocate arrays that match the number of connections
@@ -1223,7 +1227,17 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                 coupler%flow_aux_mapping = 0
                 coupler%flow_bc_type = 0
                 coupler%flow_aux_real_var = 0.d0
-                
+              case(TOWG_MODE)
+                allocate(coupler%flow_aux_mapping(TOWG_MAX_INDEX))
+                allocate(coupler%flow_bc_type(option%nflowdof))
+                allocate(coupler%flow_aux_real_var(option%nflowdof, &
+                                                   num_connections))
+                allocate(coupler%flow_aux_int_var(ONE_INTEGER,num_connections))
+                coupler%flow_aux_mapping = 0
+                coupler%flow_bc_type = 0
+                coupler%flow_aux_real_var = 0.d0
+                coupler%flow_aux_int_var = 0
+  
               case default
             end select
       
@@ -1277,7 +1291,16 @@ subroutine PatchInitCouplerAuxVars(coupler_list,patch,option)
                   coupler%flow_aux_real_var = 0.d0
               end select
             endif
-          endif ! associated(coupler%flow_condition%rate)
+          ! source/sinks for towg
+          else if (associated(coupler%flow_condition%towg)) then
+            if (associated(coupler%flow_condition%towg%rate)) then
+              select case(coupler%flow_condition%towg%rate%itype)
+                case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+                  allocate(coupler%flow_aux_real_var(1,num_connections))
+                  coupler%flow_aux_real_var = 0.d0
+              end select
+            endif
+          endif ! associated(coupler%flow_condition%towg)
         endif ! coupler%itype == SRC_SINK_COUPLER_TYPE
       endif ! associated(coupler%flow_condition)
     endif ! associated(coupler%connection_set)
@@ -1412,6 +1435,8 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             call PatchUpdateCouplerAuxVarsRich(patch,coupler,option)
           case(TOIL_IMS_MODE)
             call PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
+          case(TOWG_MODE)
+            call PatchUpdateCouplerAuxVarsTOWG(patch,coupler,option)
         end select
       endif
     endif
@@ -2126,6 +2151,270 @@ subroutine PatchUpdateCouplerAuxVarsTOI(patch,coupler,option)
   !endif
 
 end subroutine PatchUpdateCouplerAuxVarsTOI
+
+! ************************************************************************** !
+
+subroutine PatchUpdateCouplerAuxVarsTOWG(patch,coupler,option)
+  ! 
+  ! Updates flow auxiliary variables associated
+  ! with a coupler for TOWG_MODE
+  ! 
+  ! Author: Paolo Orsini
+  ! Date: 10/25/16
+  ! 
+
+  use Option_module
+  use Condition_module
+  !use Hydrostatic_module
+  use Saturation_module
+  !use EOS_Water_module
+  
+  use PM_TOWG_Aux_module
+  use Grid_module
+  use Dataset_Common_HDF5_class
+  use Dataset_Gridded_HDF5_class
+  use Dataset_Ascii_class
+  use Dataset_module
+
+  implicit none
+  
+  type(patch_type) :: patch
+  type(coupler_type), pointer :: coupler
+  type(option_type) :: option
+  
+  type(flow_condition_type), pointer :: flow_condition
+  type(tran_condition_type), pointer :: tran_condition
+  type(flow_towg_condition_type), pointer :: towg
+  PetscBool :: update
+  PetscBool :: dof1, dof2, dof3, dof_solv, dof_temp 
+  PetscReal :: temperature
+  PetscReal :: dummy_real
+  PetscReal :: x(option%nflowdof)
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  PetscErrorCode :: ierr
+  
+  PetscInt :: idof, num_connections,sum_connection
+  PetscInt :: iconn, local_id, ghosted_id
+  ! use to map flow_aux_map to the flow_aux_real_var array
+  PetscInt :: real_count 
+  
+  num_connections = coupler%connection_set%num_connections
+
+  flow_condition => coupler%flow_condition
+
+  towg => flow_condition%towg
+  dof1 = PETSC_FALSE
+  dof2 = PETSC_FALSE
+  dof3 = PETSC_FALSE
+  dof_solv = PETSC_FALSE
+  dof_temp = PETSC_FALSE
+
+  real_count = 0
+  select case(flow_condition%iphase)
+    case(TOWG_THREE_PHASE_STATE)
+      coupler%flow_aux_int_var(TOWG_STATE_INDEX,1:num_connections) = TOWG_THREE_PHASE_STATE
+      real_count = real_count + 1
+      select case(towg%oil_pressure%itype)
+        case(DIRICHLET_BC)
+          coupler%flow_aux_mapping(TOWG_OIL_PRESSURE_INDEX) = real_count
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
+            towg%oil_pressure%dataset%rarray(1)
+          dof1 = PETSC_TRUE
+          coupler%flow_bc_type(TOWG_LIQ_EQ_IDX) = DIRICHLET_BC
+        case default
+          string = &
+            GetSubConditionName(towg%oil_pressure%itype)
+          option%io_buffer = &
+            FlowConditionUnknownItype(coupler%flow_condition, &
+              'TOWG three phase state oil pressure',string)
+          call printErrMsg(option)
+      end select
+      !in three-phase flow, oil saturation is the second dof
+      real_count = real_count + 1
+      select case(towg%oil_saturation%itype)
+        case(DIRICHLET_BC)
+          coupler%flow_aux_mapping(TOWG_OIL_SATURATION_INDEX) = real_count
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
+             towg%oil_saturation%dataset%rarray(1)
+          dof2 = PETSC_TRUE
+          coupler%flow_bc_type(TOWG_OIL_EQ_IDX) = DIRICHLET_BC
+        case default
+          string = &
+            GetSubConditionName(towg%oil_saturation%itype)
+          option%io_buffer = &
+            FlowConditionUnknownItype(coupler%flow_condition, &
+              'TOWG three phase state oil saturation',string)
+          call printErrMsg(option)
+      end select 
+      !in three-phase flow, gas saturation is the third dof
+      real_count = real_count + 1
+      select case(towg%gas_saturation%itype)
+        case(DIRICHLET_BC)
+          coupler%flow_aux_mapping(TOWG_GAS_SATURATION_INDEX) = real_count
+          coupler%flow_aux_real_var(real_count,1:num_connections) = &
+             towg%gas_saturation%dataset%rarray(1)
+          dof3 = PETSC_TRUE
+          coupler%flow_bc_type(TOWG_GAS_EQ_IDX) = DIRICHLET_BC
+        case default
+          string = &
+            GetSubConditionName(towg%gas_saturation%itype)
+          option%io_buffer = &
+            FlowConditionUnknownItype(coupler%flow_condition, &
+              'TOWG three phase state gas saturation',string)
+          call printErrMsg(option)
+      end select 
+       
+    case(TOWG_LIQ_OIL_STATE)
+     !not yet implemented  
+ 
+    case(TOWG_LIQ_GAS_STATE)
+     !not yet implemented
+
+    case(TOWG_ANY_STATE)
+      !includes: rate, hydrostatic and flux conditions 
+      if (associated(coupler%flow_aux_int_var)) then ! not used with rate
+        coupler%flow_aux_int_var(TOWG_STATE_INDEX,1:num_connections) = &
+          TOWG_ANY_STATE
+      endif
+      ! call here hydrostatic coupler which will determin the phase state
+      ! cell-by-cell 
+ 
+  end select !end select phase state
+
+  !solvent (if defined): same BC/IC whatever is the phase state
+  if (associated(towg%solvent_saturation)) then
+    real_count = real_count + 1
+    select case(towg%solvent_saturation%itype)
+      case(DIRICHLET_BC)
+        coupler%flow_aux_mapping(TOWG_SOLV_SATURATION_INDEX) = real_count
+        select type(selector =>towg%solvent_saturation%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
+              selector%rarray(1)
+            dof_solv = PETSC_TRUE
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               real_count)
+            dof_solv = PETSC_TRUE
+          class default
+            option%io_buffer = 'Unknown dataset class (towg%' // &
+              'solvent_saturation%itype,DIRICHLET_BC)'
+            call printErrMsg(option)
+        end select
+        coupler%flow_bc_type(TOWG_SOLV_EQ_IDX) = DIRICHLET_BC
+      case default
+        string = &
+          GetSubConditionName(towg%solvent_saturation%itype)
+        option%io_buffer = &
+          FlowConditionUnknownItype(coupler%flow_condition, &
+            'towg solvent saturation',string)
+        call printErrMsg(option)
+    end select
+  endif
+
+  !temperature (if defined): same BC/IC whatever is the phase state
+  if (associated(towg%temperature)) then
+    real_count = real_count + 1
+    select case(towg%temperature%itype)
+      case(DIRICHLET_BC)
+        coupler%flow_aux_mapping(TOWG_TEMPERATURE_INDEX) = real_count
+        select type(selector =>towg%temperature%dataset)
+          class is(dataset_ascii_type)
+            coupler%flow_aux_real_var(real_count,1:num_connections) = &
+              selector%rarray(1)
+            dof_temp = PETSC_TRUE
+          class is(dataset_gridded_hdf5_type)
+            call PatchUpdateCouplerFromDataset(coupler,option, &
+                                               patch%grid,selector, &
+                                               real_count)
+            dof_temp = PETSC_TRUE
+          class default
+            option%io_buffer = 'Unknown dataset class (towg%' // &
+              'temperature%itype,DIRICHLET_BC)'
+            call printErrMsg(option)
+        end select
+        coupler%flow_bc_type(towg_energy_eq_idx) = DIRICHLET_BC
+      case default
+        string = &
+          GetSubConditionName(towg%temperature%itype)
+        option%io_buffer = &
+          FlowConditionUnknownItype(coupler%flow_condition, &
+            'towg temperature',string)
+        call printErrMsg(option)
+    end select
+  endif
+  
+  if (associated(towg%liquid_flux)) then
+    coupler%flow_bc_type(TOWG_LIQ_EQ_IDX) = NEUMANN_BC
+    real_count = real_count + 1
+    coupler%flow_aux_mapping(TOWG_LIQUID_FLUX_INDEX) = real_count
+    coupler%flow_aux_real_var(real_count,1:num_connections) = &
+      towg%liquid_flux%dataset%rarray(1)
+    dof1 = PETSC_TRUE
+  endif
+  if (associated(towg%oil_flux)) then
+    coupler%flow_bc_type(TOWG_OIL_EQ_IDX) = NEUMANN_BC
+    real_count = real_count + 1
+    coupler%flow_aux_mapping(TOWG_OIL_FLUX_INDEX) = real_count
+    coupler%flow_aux_real_var(real_count,1:num_connections) = &
+      towg%oil_flux%dataset%rarray(1)
+    dof2 = PETSC_TRUE
+  endif
+  if (associated(towg%gas_flux)) then
+    coupler%flow_bc_type(TOWG_GAS_EQ_IDX) = NEUMANN_BC
+    real_count = real_count + 1
+    coupler%flow_aux_mapping(TOWG_GAS_FLUX_INDEX) = real_count
+    coupler%flow_aux_real_var(real_count,1:num_connections) = &
+      towg%gas_flux%dataset%rarray(1)
+    dof3 = PETSC_TRUE
+  endif
+  if (associated(towg%solvent_flux)) then
+    coupler%flow_bc_type(TOWG_SOLV_EQ_IDX) = NEUMANN_BC
+    real_count = real_count + 1
+    coupler%flow_aux_mapping(TOWG_SOLV_FLUX_INDEX) = real_count
+    coupler%flow_aux_real_var(real_count,1:num_connections) = &
+      towg%solvent_flux%dataset%rarray(1)
+    dof_solv = PETSC_TRUE
+  endif
+  if (associated(towg%energy_flux)) then
+    coupler%flow_bc_type(towg_energy_eq_idx) = NEUMANN_BC
+    real_count = real_count + 1
+    coupler%flow_aux_mapping(TOWG_ENERGY_FLUX_INDEX) = real_count
+    coupler%flow_aux_real_var(real_count,1:num_connections) = &
+      towg%energy_flux%dataset%rarray(1)
+    dof_temp = PETSC_TRUE
+  endif
+
+  if (associated(towg%rate)) then
+    select case(towg%rate%itype)
+      case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+        call PatchScaleSourceSink(patch,coupler,towg%rate%isubtype,option)
+    end select
+  endif
+  
+  !PO todo: for hydrostatic BC - add checks withing the Hydrostaic functions
+  if ( (flow_condition%iphase /= TOWG_ANY_STATE) .or. &
+       ( (flow_condition%iphase == TOWG_ANY_STATE) .and. &
+         (.not.associated(towg%rate)) &
+       ) & 
+     ) then
+    !check if all coupler aux var for isothermal three phase have been updated
+    if ( (.not.dof1).or.(.not.dof2).or.(.not.dof3) ) then
+      option%io_buffer = 'Error with TOWG istothermal phase boundary condition'
+      call printErrMsg(option)
+    endif
+    if ( (.not.towg_isothermal).and.(.not.dof_temp) ) then
+      option%io_buffer = 'Error with TOWG-thermal energy boundary condition'
+      call printErrMsg(option)
+    endif
+    if ( (towg_miscibility_model == TOWG_SOLVENT_TL) .and. (.not.dof_solv)  ) then
+      option%io_buffer = 'Error with TOWG_SOLVENT_TL solvent boundary condition'
+      call printErrMsg(option) 
+    endif
+  end if
+
+end subroutine PatchUpdateCouplerAuxVarsTOWG
 
 ! ************************************************************************** !
 
@@ -4339,6 +4628,168 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
                   grid%nL2G(local_id))%effective_porosity
             enddo
         end select 
+
+      else if (associated(patch%aux%TOWG)) then 
+
+        select case(ivar)
+          case(TEMPERATURE)
+            do local_id=1,grid%nlmax
+               vec_ptr(local_id) = patch%aux%TOWG% &
+                 auxvars(ZERO_INTEGER,grid%nL2G(local_id))%temp
+            enddo
+          case(MAXIMUM_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                  maxval(patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% & 
+                           pres(option%liquid_phase:option%gas_phase))
+            enddo
+          case(LIQUID_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                 patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% &
+                  pres(option%liquid_phase)
+            enddo
+          case(OIL_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% & 
+                  pres(option%oil_phase)
+            enddo
+          case(GAS_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% & 
+                  pres(option%gas_phase)
+            enddo
+          case(CAPILLARY_PRESSURE)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% & 
+                  pc(option%liquid_phase)
+            enddo
+          case(CAPILLARY_PRESSURE_OGC)
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%TOWG%auxvars(ZERO_INTEGER,ghosted_id)% & 
+                  pc(option%oil_phase)
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%sat(option%liquid_phase)
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den_kg(option%liquid_phase)
+            enddo
+          case(LIQUID_DENSITY_MOL)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den(option%liquid_phase)
+            enddo
+          case(LIQUID_ENERGY)
+            if (isubvar == ZERO_INTEGER) then
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                    grid%nL2G(local_id))%U(option%liquid_phase)
+              enddo
+            else
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%U(option%liquid_phase) * &
+                    patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%den(option%liquid_phase)
+              enddo
+            endif
+          case(LIQUID_MOBILITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%mobility(option%liquid_phase)
+            enddo
+          case(OIL_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%sat(option%oil_phase)
+            enddo
+          case(OIL_ENERGY)
+            if (isubvar == ZERO_INTEGER) then
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                    grid%nL2G(local_id))%U(option%oil_phase)
+              enddo
+            else
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%U(option%oil_phase) * &
+                    patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%den(option%oil_phase)
+              enddo
+            endif
+          case(OIL_DENSITY) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den_kg(option%oil_phase)
+            enddo
+          case(OIL_DENSITY_MOL) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den(option%oil_phase)
+            enddo
+          case(OIL_MOBILITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%mobility(option%oil_phase)
+            enddo
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%sat(option%gas_phase)
+            enddo
+          case(GAS_ENERGY)
+            if (isubvar == ZERO_INTEGER) then
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                    grid%nL2G(local_id))%U(option%gas_phase)
+              enddo
+            else
+              do local_id=1,grid%nlmax
+                vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%U(option%gas_phase) * &
+                    patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                      grid%nL2G(local_id))%den(option%gas_phase)
+              enddo
+            endif
+          case(GAS_DENSITY) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den_kg(option%gas_phase)
+            enddo
+          case(GAS_DENSITY_MOL) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%den(option%gas_phase)
+            enddo
+          case(GAS_MOBILITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%mobility(option%gas_phase)
+            enddo
+          case(EFFECTIVE_POROSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%TOWG%auxvars(ZERO_INTEGER, &
+                  grid%nL2G(local_id))%effective_porosity
+            enddo
+          !need to add:
+          ! - gas and oil mole fraction for the black oil model
+          ! - solvent_saturation for SOLVENT model
+        end select 
         
       endif
       
@@ -4764,7 +5215,7 @@ subroutine PatchGetVariable1(patch,field,reaction,option,output_option,vec, &
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          patch%imat_internal_to_external(iabs(patch%imat(grid%nL2G(local_id))))
+          patch%imat_internal_to_external(abs(patch%imat(grid%nL2G(local_id))))
       enddo
     case(PROCESS_ID)
       do local_id=1,grid%nlmax
@@ -5537,7 +5988,7 @@ function PatchGetVariableValueAtCell(patch,field,reaction,option, &
       value = vec_ptr2(ghosted_id)
       call VecRestoreArrayF90(field%iphas_loc,vec_ptr2,ierr);CHKERRQ(ierr)
     case(MATERIAL_ID)
-      value = patch%imat_internal_to_external(iabs(patch%imat(ghosted_id)))
+      value = patch%imat_internal_to_external(abs(patch%imat(ghosted_id)))
     case(PROCESS_ID)
       value = grid%nG2A(ghosted_id)
     case(NATURAL_ID)
@@ -6755,7 +7206,7 @@ subroutine PatchGetVariable2(patch,surf_field,option,output_option,vec, &
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = &
-          patch%imat_internal_to_external(iabs(patch%imat(grid%nL2G(local_id))))
+          patch%imat_internal_to_external(abs(patch%imat(grid%nL2G(local_id))))
       enddo
     case(PROCESS_ID)
       do local_id=1,grid%nlmax

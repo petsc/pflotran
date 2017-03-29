@@ -295,12 +295,13 @@ contains
     PetscReal :: dkr_Se
     PetscReal :: value
     PetscReal, parameter :: tolerance = 1.d-8
+    PetscInt, parameter :: one = 1
     character(len=128) :: string
 
     ! liquid relative permeability = f(saturation)
     saturation = 0.5d0
     call SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
-                                     this%sf_Brooks_Corey_Burdine,1, &
+                                     this%sf_Brooks_Corey_Burdine,one, &
                                   PETSC_TRUE,this%option)
     string = 'Brooks-Corey-Burdine liquid relative permeability as a ' // &
              'function of liquid saturation'
@@ -434,12 +435,13 @@ contains
     PetscReal :: dkr_Se
     PetscReal :: value
     PetscReal, parameter :: tolerance = 1.d-8
+    PetscInt, parameter :: one = 1
     character(len=128) :: string
 
     ! liquid relative permeability = f(saturation)
     saturation = 0.5d0
     call SatFuncGetLiqRelPermFromSat(saturation,relative_perm,dkr_Se, &
-                                     this%sf_van_Genuchten_Mualem,1, &
+                                     this%sf_van_Genuchten_Mualem,one, &
                                      PETSC_TRUE,this%option)
     string = 'van Genuchten-Mualem liquid relative permeability as a ' // &
              'function of liquid saturation'

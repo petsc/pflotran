@@ -715,7 +715,7 @@ subroutine InitCommonAddOutputWaypoints(option,output_option,waypoint_list)
       call WaypointInsertInList(waypoint,waypoint_list)
       if ((num_waypoints > warning_num_waypoints) .and. &
           OptionPrintToScreen(option)) then
-        call PrintProgressBarInt(floor(num_waypoints),10,k)
+        call PrintProgressBarInt(num_waypoints,TEN_INTEGER,k)
       endif
     enddo
   endif
@@ -743,7 +743,7 @@ subroutine InitCommonAddOutputWaypoints(option,output_option,waypoint_list)
       call WaypointInsertInList(waypoint,waypoint_list)
       if ((num_waypoints > warning_num_waypoints) .and. &
           OptionPrintToScreen(option)) then
-        call PrintProgressBarInt(floor(num_waypoints),10,k)
+        call PrintProgressBarInt(num_waypoints,TEN_INTEGER,k)
       endif
     enddo
   endif
@@ -771,7 +771,7 @@ subroutine InitCommonAddOutputWaypoints(option,output_option,waypoint_list)
       call WaypointInsertInList(waypoint,waypoint_list)
       if ((num_waypoints > warning_num_waypoints) .and. &
           OptionPrintToScreen(option)) then
-        call PrintProgressBarInt(floor(num_waypoints),10,k)
+        call PrintProgressBarInt(num_waypoints,TEN_INTEGER,k)
       endif
     enddo
   endif 
