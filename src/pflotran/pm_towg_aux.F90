@@ -1,7 +1,8 @@
 module PM_TOWG_Aux_module
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PFLOTRAN_Constants_module
-
   use PM_Base_Aux_module
   use AuxVars_TOWG_module
 
@@ -9,7 +10,6 @@ module PM_TOWG_Aux_module
 
   private
 
-#include "petsc/finclude/petscsys.h"
 
   !global variable to TOWG
   PetscReal, public :: towg_window_epsilon = 1.d-4

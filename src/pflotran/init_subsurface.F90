@@ -409,7 +409,7 @@ subroutine InitSubsurfAssignMatProperties(realization)
                material_property%internal_id,PETSC_FALSE,field%porosity0)
         ! if tortuosity is a function of porosity, we must calculate the
         ! the tortuosity on a cell to cell basis.
-        if (field%tortuosity0 /= 0 .and. &
+        if (field%tortuosity0 /= PETSC_NULL_VEC .and. &
             material_property%tortuosity_function_of_porosity) then
           call VecGetArrayF90(field%porosity0,por0_p,ierr);CHKERRQ(ierr)
           call VecGetArrayF90(field%tortuosity0,tor0_p,ierr);CHKERRQ(ierr)

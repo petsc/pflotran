@@ -1,23 +1,15 @@
 module TOWG_module
 
+#include "petsc/finclude/petscsnes.h"
+  use petscsnes
   use PM_TOWG_Aux_module
   use AuxVars_TOWG_module
   use Global_Aux_module
-
   use PFLOTRAN_Constants_module
 
   implicit none
   
   private 
-
-#include "petsc/finclude/petscsys.h"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-#include "petsc/finclude/petscmat.h"
-#include "petsc/finclude/petscmat.h90"
-#include "petsc/finclude/petscsnes.h"
-#include "petsc/finclude/petscviewer.h"
-#include "petsc/finclude/petsclog.h"
 
 #define CONVECTION
 #define DIFFUSION
@@ -168,6 +160,8 @@ module TOWG_module
                                        max_it_before_damping,damping_factor, &
                                        max_pressure_change,ierr)
       use Realization_Subsurface_class
+#include "petsc/finclude/petscsnes.h"
+      use petscsnes
       implicit none
       SNESLineSearch :: line_search
       Vec :: X
@@ -2490,6 +2484,10 @@ subroutine TOWGResidual(snes,xx,r,realization,ierr)
   ! Author: Paolo Orsini (OGS)
   ! Date: 12/28/16
   ! 
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscmat.h"
+  use petscsnes
+  use petscmat
   use Realization_Subsurface_class
   use Field_module
   use Patch_module
@@ -2511,7 +2509,7 @@ subroutine TOWGResidual(snes,xx,r,realization,ierr)
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
-  Mat, parameter :: null_mat = 0
+  Mat, parameter :: null_mat = PETSC_NULL_MAT
   type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
@@ -2901,6 +2899,10 @@ subroutine TOWGJacobian(snes,xx,A,B,realization,ierr)
   ! Date: 12/28/16
   ! 
 
+#include "petsc/finclude/petscsnes.h"
+#include "petsc/finclude/petscmat.h"
+  use petscsnes
+  use petscmat
   use Realization_Subsurface_class
   use Patch_module
   use Grid_module
@@ -2931,7 +2933,7 @@ subroutine TOWGJacobian(snes,xx,A,B,realization,ierr)
   PetscInt :: irow
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
-  Vec, parameter :: null_vec = 0
+  Vec, parameter :: null_vec = PETSC_NULL_VEC
   
   PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
                Jdn(realization%option%nflowdof,realization%option%nflowdof)
@@ -3202,7 +3204,7 @@ subroutine TOWGJacobian(snes,xx,A,B,realization,ierr)
     qsrc = 1.d0 ! solely a temporary variable in this conditional
     call MatZeroRowsLocal(A,towg%n_inactive_rows, &
                           towg%inactive_rows_local_ghosted, &
-                          qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          qsrc,PETSC_NULL_VEC,PETSC_NULL_VEC, &
                           ierr);CHKERRQ(ierr)
   endif
 
@@ -3215,8 +3217,8 @@ subroutine TOWGJacobian(snes,xx,A,B,realization,ierr)
       zeros(local_id) = (ghosted_id-1)*option%nflowdof+ &
                         towg_energy_eq_idx - 1 ! zero-based
     enddo
-    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
+    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_VEC, &
+                          PETSC_NULL_VEC,ierr);CHKERRQ(ierr)
   endif
 
   if (towg_no_oil) then
@@ -3228,8 +3230,8 @@ subroutine TOWGJacobian(snes,xx,A,B,realization,ierr)
       zeros(local_id) = (ghosted_id-1)*option%nflowdof+ &
                         TOWG_OIL_EQ_IDX - 1 ! zero-based
     enddo
-    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
+    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_VEC, &
+                          PETSC_NULL_VEC,ierr);CHKERRQ(ierr)
   endif
 
   if (towg_no_gas) then
@@ -3241,8 +3243,8 @@ subroutine TOWGJacobian(snes,xx,A,B,realization,ierr)
       zeros(local_id) = (ghosted_id-1)*option%nflowdof+ &
                         TOWG_GAS_EQ_IDX - 1 ! zero-based
     enddo
-    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr);CHKERRQ(ierr)
+    call MatZeroRowsLocal(A,grid%nlmax,zeros,qsrc,PETSC_NULL_VEC, &
+                          PETSC_NULL_VEC,ierr);CHKERRQ(ierr)
   endif
   
   if (realization%debug%matview_Jacobian) then
