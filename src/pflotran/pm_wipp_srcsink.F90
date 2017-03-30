@@ -1,5 +1,7 @@
 module PM_WIPP_SrcSink_class
 
+#include "petsc/finclude/petscvec.h"
+  use petscvec
   use PM_Base_class
   use Region_module
   use PFLOTRAN_Constants_module
@@ -9,8 +11,6 @@ module PM_WIPP_SrcSink_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   type, public :: chem_species_type
     PetscReal, pointer :: initial_conc_mol(:)  ! [mol/m3-bulk]
@@ -1266,16 +1266,13 @@ subroutine PMWSSInitializeRun(this)
   ! Date: 02/14/2017
   !
   
+#include "petsc/finclude/petscis.h"
+  use petscis
   use Data_Mediator_Vec_class
   use Realization_Base_class
   
   implicit none
   
-#include "petsc/finclude/petscis.h"
-#include "petsc/finclude/petscis.h90"
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-
   class(pm_wipp_srcsink_type) :: this
   
   IS :: is
@@ -1334,7 +1331,7 @@ subroutine PMWSSInitializeRun(this)
                        PETSC_COPY_VALUES,is,ierr);CHKERRQ(ierr)
   if (allocated(dofs_in_residual)) deallocate(dofs_in_residual)
   ! load the data mediator vec scatter context with the IS
-  call VecScatterCreate(this%data_mediator%vec,PETSC_NULL_OBJECT, &
+  call VecScatterCreate(this%data_mediator%vec,PETSC_NULL_VEC, &
                         this%realization%field%flow_r,is, &
                         this%data_mediator%scatter_ctx,ierr);CHKERRQ(ierr)
   call ISDestroy(is,ierr);CHKERRQ(ierr)
@@ -1496,9 +1493,6 @@ end subroutine PMWSSUpdateChemSpecies
   
   implicit none
   
-#include "petsc/finclude/petscvec.h"
-#include "petsc/finclude/petscvec.h90"
-
   class(pm_wipp_srcsink_type) :: this
   PetscReal :: time
   PetscErrorCode :: ierr

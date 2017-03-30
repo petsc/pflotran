@@ -1,5 +1,7 @@
 module PM_UFD_Biosphere_class
 
+#include "petsc/finclude/petscsys.h"
+  use petscsys
   use PM_Base_class
   use Region_module
   use Realization_Subsurface_class
@@ -8,8 +10,6 @@ module PM_UFD_Biosphere_class
   implicit none
 
   private
-
-#include "petsc/finclude/petscsys.h"
 
   type, public :: supported_rad_type
     character(len=MAXWORDLENGTH) :: name
