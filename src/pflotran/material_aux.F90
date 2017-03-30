@@ -195,7 +195,9 @@ subroutine MaterialAuxVarCopy(auxvar,auxvar2,option)
   
   auxvar2%volume = auxvar%volume
   auxvar2%porosity = auxvar%porosity
+  auxvar2%porosity_base = auxvar%porosity_base
   auxvar2%tortuosity = auxvar%tortuosity
+  auxvar2%soil_particle_density = auxvar%soil_particle_density
   if (associated(auxvar%permeability)) then
     auxvar2%permeability = auxvar%permeability
   endif
@@ -324,7 +326,7 @@ subroutine MaterialAuxVarSetValue(material_auxvar,ivar,value)
     case(POROSITY)
       material_auxvar%porosity = value
     case(MINERAL_POROSITY)
-      material_auxvar%porosity = value
+      material_auxvar%porosity_base = value
     case(TORTUOSITY)
       material_auxvar%tortuosity = value
     case(PERMEABILITY_X)

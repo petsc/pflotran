@@ -163,8 +163,8 @@ function InputCreate(fid,filename,option)
   nullify(input%parent)
   
   if (fid == MAX_IN_UNIT) then
-    option%io_buffer = 'MAX_IN_UNIT in pflotran_constants.h must be increased to' // &
-      ' accommodate a larger number of embedded files.'
+    option%io_buffer = 'MAX_IN_UNIT in pflotran_constants.h must be &
+      &increased to accommodate a larger number of embedded files.'
     call printErrMsg(option)
   endif
 

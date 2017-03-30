@@ -448,8 +448,8 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
       call PetscLogEventEnd(logging%event_h5dwrite_f,ierr);CHKERRQ(ierr)
       call DeallocateArray(double_array)
     endif
-    call h5pclose_f(prop_id,hdf5_err)
   endif
+  call h5pclose_f(prop_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5sclose_f(memory_space_id,hdf5_err)
@@ -597,7 +597,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscMPIInt :: ndims
+  integer :: ndims_h5
   PetscMPIInt :: rank_mpi
   ! seeting to MPIInt to ensure i4
   integer, allocatable :: indices_i4(:)
@@ -626,11 +626,11 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
   ! should be a rank=1 data space
-  call h5sget_simple_extent_ndims_f(file_space_id,ndims,hdf5_err)
-  if (ndims /= 1) then
+  call h5sget_simple_extent_ndims_f(file_space_id,ndims_h5,hdf5_err)
+  if (ndims_h5 /= 1) then
     write(option%io_buffer, &
           '(a," data space dimension (",i2,"D) must be 1D.")') &
-          trim(dataset_name), ndims
+          trim(dataset_name), ndims_h5
     call printErrMsg(option)
   endif
   call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
@@ -850,9 +850,9 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi
-  PetscMPIInt :: ndims
   integer(HSIZE_T) :: num_data_in_file
   integer(SIZE_T) :: string_size
+  integer :: ndims_h5
   Vec :: natural_vec
   PetscInt :: i, istart, iend
   PetscReal, allocatable :: real_buffer(:)
@@ -874,11 +874,11 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   endif
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
   ! should be a rank=1 data space
-  call h5sget_simple_extent_ndims_f(file_space_id,ndims,hdf5_err)
-  if (ndims /= 1) then
+  call h5sget_simple_extent_ndims_f(file_space_id,ndims_h5,hdf5_err)
+  if (ndims_h5 /= 1) then
     write(option%io_buffer, &
           '(a," data space dimension (",i2,"D) must be 1D.")') &
-          trim(dataset_name), ndims
+          trim(dataset_name), ndims_h5
     call printErrMsg(option)
   endif
   call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
@@ -1240,7 +1240,6 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
   character(len=MAXSTRINGLENGTH) :: string2
 
 #if defined(PETSC_HAVE_HDF5)
-  integer(HID_T) :: ndims
   integer(HID_T) :: file_id
   integer(HID_T) :: prop_id
   integer(HID_T) :: data_set_id
@@ -1250,6 +1249,7 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
   integer(HSIZE_T) :: length(2), offset(2)
   integer(SIZE_T) :: string_size
 #endif
+  integer :: ndims_h5
 
 
 #if !defined(PETSC_HAVE_HDF5)
@@ -1287,16 +1287,16 @@ subroutine HDF5ReadRegionDefinedByVertex(option,region,filename)
   call h5dget_space_f(data_set_id,data_space_id,hdf5_err)
 
   ! Get number of dimensions and check
-  call h5sget_simple_extent_ndims_f(data_space_id,ndims,hdf5_err)
-  if (ndims /= 2) then
+  call h5sget_simple_extent_ndims_f(data_space_id,ndims_h5,hdf5_err)
+  if (ndims_h5 /= 2) then
     option%io_buffer='Dimension of '//string//' dataset in ' // trim(filename) // &
      ' is /= 2.'
   call printErrMsg(option)
   endif
 
   ! Allocate memory
-  allocate(dims_h5(ndims))
-  allocate(max_dims_h5(ndims))
+  allocate(dims_h5(ndims_h5))
+  allocate(max_dims_h5(ndims_h5))
 
   ! Get dimensions of dataset
   call h5sget_simple_extent_dims_f(data_space_id,dims_h5,max_dims_h5,hdf5_err)

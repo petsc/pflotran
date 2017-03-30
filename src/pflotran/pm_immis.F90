@@ -151,6 +151,8 @@ subroutine PMImmisPreSolve(this)
   implicit none
   
   class(pm_immis_type) :: this
+
+  call PMSubsurfaceFlowPreSolve(this)
   
 end subroutine PMImmisPreSolve
 

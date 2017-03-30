@@ -164,6 +164,8 @@ subroutine PMRichardsPreSolve(this)
   
   class(pm_richards_type) :: this
 
+  call PMSubsurfaceFlowPreSolve(this)
+
 end subroutine PMRichardsPreSolve
 
 ! ************************************************************************** !

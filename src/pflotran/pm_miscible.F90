@@ -155,6 +155,8 @@ subroutine PMMisciblePreSolve(this)
   implicit none
   
   class(pm_miscible_type) :: this
+
+  call PMSubsurfaceFlowPreSolve(this)
   
 end subroutine PMMisciblePreSolve
 

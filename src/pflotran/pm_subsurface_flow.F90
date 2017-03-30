@@ -69,6 +69,7 @@ module PM_Subsurface_Flow_class
             PMSubsurfaceFlowSetup, &
             PMSubsurfaceFlowInitializeTimestepA, &
             PMSubsurfaceFlowInitializeTimestepB, &
+            PMSubsurfaceFlowPreSolve, &
             PMSubsurfaceFlowInitializeRun, &
             PMSubsurfaceFlowUpdateSolution, &
             PMSubsurfaceFlowUpdatePropertiesNI, &
@@ -439,9 +440,11 @@ subroutine PMSubsurfaceFlowInitializeTimestepB(this)
       call RealizationUpdatePropertiesTS(this%realization)
     endif
   endif
+
 #ifdef WELL_CLASS
   call this%AllWellsUpdate()
 #endif  
+
 end subroutine PMSubsurfaceFlowInitializeTimestepB
 
 ! ************************************************************************** !
@@ -493,13 +496,15 @@ subroutine PMSubsurfaceFlowPreSolve(this)
   ! Date: 04/21/14
 
   use Global_module
+  use Data_Mediator_module
 
   implicit none
   
   class(pm_subsurface_flow_type) :: this
   
-  this%option%io_buffer = 'PMSubsurfaceFlowPreSolve() must be extended.'
-  call printErrMsg(this%option)  
+  call DataMediatorUpdate(this%realization%flow_data_mediator_list, &
+                          this%realization%field%flow_mass_transfer, &
+                          this%realization%option)
 
 end subroutine PMSubsurfaceFlowPreSolve
 

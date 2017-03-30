@@ -244,6 +244,8 @@ subroutine PMTHPreSolve(this)
   
   class(pm_th_type) :: this
 
+  call PMSubsurfaceFlowPreSolve(this)
+
 end subroutine PMTHPreSolve
 
 ! ************************************************************************** !

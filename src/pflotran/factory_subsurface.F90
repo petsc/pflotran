@@ -17,7 +17,9 @@ module Factory_Subsurface_module
             SubsurfaceReadFlowPM, &
             SubsurfaceReadRTPM, &
             SubsurfaceReadWasteFormPM, &
-            SubsurfaceReadUFDDecayPM
+            SubsurfaceReadWIPPSrcSinkPM, &
+            SubsurfaceReadUFDDecayPM, &
+            SubsurfaceReadUFDBiospherePM
 
 contains
 
@@ -63,11 +65,14 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   use PM_Base_class
   use PM_RT_class
   use PM_Waste_Form_class
+  use PM_WIPP_SrcSink_class
   use PM_UFD_Decay_class
+  use PM_UFD_Biosphere_class
   use PM_Auxiliary_class
   use PMC_Subsurface_class
   use PMC_Auxiliary_class
   use PMC_Third_Party_class
+  use PMC_Base_class
   use Timestepper_BE_class
   use Realization_Subsurface_class
   use Logging_module
@@ -86,14 +91,21 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   
   type(option_type), pointer :: option
   class(pmc_subsurface_type), pointer :: pmc_subsurface
-  class(pmc_auxiliary_type), pointer :: auxiliary_process_model_coupler
-  class(pmc_third_party_type), pointer :: pmc_third_party
   class(pm_subsurface_flow_type), pointer :: pm_flow
   class(pm_rt_type), pointer :: pm_rt
+  class(pmc_third_party_type), pointer :: pmc_waste_form
   class(pm_waste_form_type), pointer :: pm_waste_form
+  class(pmc_third_party_type), pointer :: pmc_wipp_srcsink
+  class(pm_wipp_srcsink_type), pointer :: pm_wipp_srcsink
+  class(pmc_third_party_type), pointer :: pmc_ufd_decay
   class(pm_ufd_decay_type), pointer :: pm_ufd_decay
+  class(pmc_third_party_type), pointer :: pmc_ufd_biosphere
+  class(pm_ufd_biosphere_type), pointer :: pm_ufd_biosphere
+  class(pmc_auxiliary_type), pointer :: pmc_auxiliary
   class(pm_auxiliary_type), pointer :: pm_auxiliary
+  class(pmc_base_type), pointer :: pmc_dummy
   class(pm_base_type), pointer :: cur_pm, prev_pm
+  class(wf_mechanism_base_type), pointer :: cur_mechanism
   class(realization_subsurface_type), pointer :: realization
   class(timestepper_BE_type), pointer :: timestepper
   type(waypoint_list_type), pointer :: sync_waypoint_list
@@ -102,10 +114,18 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
   option => simulation%option
   ! process command line arguments specific to subsurface
   call SubsurfInitCommandLineSettings(option)
+  nullify(pmc_subsurface)
+  nullify(pmc_waste_form)
+  nullify(pmc_wipp_srcsink)
+  nullify(pmc_ufd_decay)
+  nullify(pmc_auxiliary)
+  nullify(pmc_dummy)
   nullify(pm_flow)
   nullify(pm_rt)
   nullify(pm_waste_form)
+  nullify(pm_wipp_srcsink)
   nullify(pm_ufd_decay)
+  nullify(pm_ufd_biosphere)
   nullify(pm_auxiliary)
   cur_pm => simulation%process_model_list
   do
@@ -117,8 +137,12 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
         pm_rt => cur_pm
       class is(pm_waste_form_type)
         pm_waste_form => cur_pm
+      class is(pm_wipp_srcsink_type)
+        pm_wipp_srcsink => cur_pm
       class is(pm_ufd_decay_type)
         pm_ufd_decay => cur_pm
+      class is(pm_ufd_biosphere_type)
+        pm_ufd_biosphere => cur_pm
       class is(pm_auxiliary_type)
         pm_auxiliary => cur_pm
       class default
@@ -146,7 +170,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     pmc_subsurface%pm_ptr%pm => pm_flow
     pmc_subsurface%realization => realization
     ! set up logging stage
-    string = pm_flow%name
+    string = trim(pm_flow%name) 
     call LoggingCreateStage(string,pmc_subsurface%stage)
 !    timestepper => TimestepperBECreate()
 !    timestepper%solver => SolverCreate()
@@ -165,7 +189,7 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     pmc_subsurface%pm_ptr%pm => pm_rt
     pmc_subsurface%realization => realization
     ! set up logging stage
-    string = pm_rt%name
+    string = trim(pm_rt%name)
     call LoggingCreateStage(string,pmc_subsurface%stage)
 !    timestepper => TimestepperBECreate()
 !    timestepper%solver => SolverCreate()
@@ -174,7 +198,9 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     if (.not.associated(simulation%process_model_coupler_list)) then
       simulation%process_model_coupler_list => pmc_subsurface
     else
-      simulation%flow_process_model_coupler%child => pmc_subsurface
+      call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_subsurface),PM_CHILD, &
+                        PMCCastToBase(simulation%flow_process_model_coupler), &
+                        pmc_dummy,PM_INSERT)
     endif
     nullify(pmc_subsurface)
   endif
@@ -188,11 +214,23 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
     call InputFindStringErrorMsg(realization%input,option,string)
     call pm_waste_form%Read(realization%input)
   endif
+  if (associated(pm_wipp_srcsink)) then
+    string = 'WIPP_SOURCE_SINK'
+    call InputFindStringInFile(realization%input,option,string)
+    call InputFindStringErrorMsg(realization%input,option,string)
+    call pm_wipp_srcsink%Read(realization%input)
+  endif
   if (associated(pm_ufd_decay)) then
     string = 'UFD_DECAY'
     call InputFindStringInFile(realization%input,option,string)
     call InputFindStringErrorMsg(realization%input,option,string)
     call pm_ufd_decay%Read(realization%input)
+  endif
+  if (associated(pm_ufd_biosphere)) then
+    string = 'UFD_BIOSPHERE'
+    call InputFindStringInFile(realization%input,option,string)
+    call InputFindStringErrorMsg(realization%input,option,string)
+    call pm_ufd_biosphere%Read(realization%input)
   endif
   call InputDestroy(realization%input)
   
@@ -202,65 +240,124 @@ subroutine SubsurfaceInitializePostPetsc(simulation)
         'reactive transport.'
       call printErrMsg(option)
     endif
-    pmc_third_party => PMCThirdPartyCreate()
-    pmc_third_party%option => option
-    pmc_third_party%checkpoint_option => simulation%checkpoint_option
-    pmc_third_party%pm_list => pm_waste_form
-    pmc_third_party%pm_ptr%pm => pm_waste_form
-    pmc_third_party%realization => realization
+    cur_mechanism => pm_waste_form%mechanism_list
+    do
+      if(.not.associated(cur_mechanism)) exit
+      select type(cur_mechanism)
+        type is(wf_mechanism_wipp_type)
+          if (.not.associated(pm_ufd_decay)) then
+            option%io_buffer = 'The WIPP type waste form mechanism requires &
+                               &the UFD_DECAY process model.'
+            call printErrMsg(option)
+          endif
+      end select
+      cur_mechanism => cur_mechanism%next
+    enddo
+    pmc_waste_form => PMCThirdPartyCreate()
+    pmc_waste_form%name = 'WASTE_FORM_GENERAL'
+    pmc_waste_form%option => option
+    pmc_waste_form%checkpoint_option => simulation%checkpoint_option
+    pmc_waste_form%pm_list => pm_waste_form
+    pmc_waste_form%pm_ptr%pm => pm_waste_form
+    pmc_waste_form%realization => realization
     ! set up logging stage
-    string = pm_waste_form%name
-    call LoggingCreateStage(string,pmc_third_party%stage)
-    if (associated(simulation%rt_process_model_coupler%child)) then
-      simulation%rt_process_model_coupler%child%peer => pmc_third_party
-    else
-      simulation%rt_process_model_coupler%child => pmc_third_party
+    string = 'WASTE_FORM_GENERAL'
+    call LoggingCreateStage(string,pmc_waste_form%stage)
+    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_waste_form),PM_CHILD, &
+                        PMCCastToBase(simulation%rt_process_model_coupler), &
+                        pmc_dummy,PM_APPEND)
+  endif
+  
+  if (associated(pm_wipp_srcsink)) then
+    if (.not.associated(simulation%flow_process_model_coupler)) then
+      option%io_buffer = 'The WIPP_SOURCE_SINK process model requires &
+      &the FLOW process model.'
+      call printErrMsg(option)
     endif
-    nullify(pmc_third_party)
+    pmc_wipp_srcsink => PMCThirdPartyCreate()
+    pmc_wipp_srcsink%name = 'WIPP_SRCSINK'
+    pmc_wipp_srcsink%option => option
+    pmc_wipp_srcsink%checkpoint_option => simulation%checkpoint_option
+    pmc_wipp_srcsink%waypoint_list => simulation%waypoint_list_subsurface
+    pmc_wipp_srcsink%pm_list => pm_wipp_srcsink
+    pmc_wipp_srcsink%pm_ptr%pm => pm_wipp_srcsink
+    pmc_wipp_srcsink%realization => realization
+    ! set up logging stage
+    string = 'WIPP_SOURCE_SINK'
+    call LoggingCreateStage(string,pmc_wipp_srcsink%stage)
+    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_wipp_srcsink),PM_CHILD, &
+                        PMCCastToBase(simulation%flow_process_model_coupler), &
+                        pmc_dummy,PM_APPEND)
   endif
   
   if (associated(pm_ufd_decay)) then
     if (.not.associated(simulation%rt_process_model_coupler)) then
-      option%io_buffer = 'The UFD Decay process model requires reactive ' // &
-        'transport.'
+      option%io_buffer = 'The UFD_DECAY process model requires reactive &
+                         &transport.'
       call printErrMsg(option)
     endif
-    pmc_third_party => PMCThirdPartyCreate()
-    pmc_third_party%option => option
-    pmc_third_party%checkpoint_option => simulation%checkpoint_option
-    pmc_third_party%waypoint_list => simulation%waypoint_list_subsurface
-    pmc_third_party%pm_list => pm_ufd_decay
-    pmc_third_party%pm_ptr%pm => pm_ufd_decay
-    pmc_third_party%realization => realization
+    pmc_ufd_decay => PMCThirdPartyCreate()
+    pmc_ufd_decay%name = 'UFD_DECAY'
+    pmc_ufd_decay%option => option
+    pmc_ufd_decay%checkpoint_option => simulation%checkpoint_option
+    pmc_ufd_decay%waypoint_list => simulation%waypoint_list_subsurface
+    pmc_ufd_decay%pm_list => pm_ufd_decay
+    pmc_ufd_decay%pm_ptr%pm => pm_ufd_decay
+    pmc_ufd_decay%realization => realization
     ! set up logging stage
-    string = pm_ufd_decay%name
-    call LoggingCreateStage(string,pmc_third_party%stage)
-    if (associated(simulation%rt_process_model_coupler%child)) then
-      simulation%rt_process_model_coupler%child%peer => pmc_third_party
-    else
-      simulation%rt_process_model_coupler%child => pmc_third_party
+    string = 'UFD_DECAY'
+    call LoggingCreateStage(string,pmc_ufd_decay%stage)
+    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_ufd_decay),PM_CHILD, &
+                       PMCCastToBase(simulation%rt_process_model_coupler), &
+                       pmc_dummy,PM_APPEND)
+  endif 
+  
+  if (associated(pm_ufd_biosphere)) then
+    if (.not.associated(simulation%rt_process_model_coupler)) then
+      option%io_buffer = 'The UFD_BIOSPHERE process model requires reactive &
+                         &transport.'
+      call printErrMsg(option)
     endif
-    nullify(pmc_third_party)
+    if (.not.associated(pm_ufd_decay)) then
+      option%io_buffer = 'The UFD_BIOSPHERE process model requires the &
+                         &UFD_DECAY process model.'
+      call printErrMsg(option)
+    endif
+    pmc_ufd_biosphere => PMCThirdPartyCreate()
+    pmc_ufd_biosphere%name = 'UFD_BIOSPHERE'
+    pmc_ufd_biosphere%option => option
+    pmc_ufd_biosphere%checkpoint_option => simulation%checkpoint_option
+    pmc_ufd_biosphere%waypoint_list => simulation%waypoint_list_subsurface
+    pmc_ufd_biosphere%pm_list => pm_ufd_biosphere
+    pmc_ufd_biosphere%pm_ptr%pm => pm_ufd_biosphere
+    pmc_ufd_biosphere%realization => realization
+    ! set up logging stage
+    string = 'UFD_BIOSPHERE'
+    call LoggingCreateStage(string,pmc_ufd_biosphere%stage)
+    call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_ufd_biosphere),PM_CHILD, &
+                       PMCCastToBase(simulation%rt_process_model_coupler), &
+                       pmc_dummy,PM_APPEND)
   endif 
   
   if (associated(pm_auxiliary)) then
     string = 'salinity'
     if (StringCompareIgnoreCase(pm_auxiliary%ctype,string)) then
       if (associated(simulation%rt_process_model_coupler)) then
-        auxiliary_process_model_coupler => PMCAuxiliaryCreate()
-        simulation%rt_process_model_coupler%peer => &
-          auxiliary_process_model_coupler
+        pmc_auxiliary => PMCAuxiliaryCreate()
+        call PMCBaseSetChildPeerPtr(PMCCastToBase(pmc_auxiliary),PM_PEER, &
+                           PMCCastToBase(simulation%rt_process_model_coupler), &
+                           pmc_dummy,PM_APPEND)
         pm_auxiliary%realization => realization
-        auxiliary_process_model_coupler%pm_list => pm_auxiliary
-        auxiliary_process_model_coupler%pm_aux => pm_auxiliary
-        auxiliary_process_model_coupler%option => option
+        pmc_auxiliary%pm_list => pm_auxiliary
+        pmc_auxiliary%pm_aux => pm_auxiliary
+        pmc_auxiliary%option => option
       else
         option%io_buffer = 'Reactive transport must be included in the &
           &SIMULATION block in order to use the SALINITY process model.'
         call printErrMsg(option)
       endif
     endif
-    call LoggingCreateStage(string,auxiliary_process_model_coupler%stage)
+    call LoggingCreateStage(string,pmc_auxiliary%stage)
   endif
   
   ! SubsurfaceInitSimulation() must be called after pmc linkages are set above.
@@ -749,6 +846,94 @@ end subroutine SubsurfaceReadUFDDecayPM
 
 ! ************************************************************************** !
 
+subroutine SubsurfaceReadUFDBiospherePM(input, option, pm)
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 03/13/2017
+  !
+  use Input_Aux_module
+  use Option_module
+  use String_module
+  
+  use PM_Base_class
+  use PM_UFD_Biosphere_class
+
+  implicit none
+  
+  type(input_type), pointer :: input
+  type(option_type), pointer :: option
+  class(pm_base_type), pointer :: pm
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  error_string = 'SIMULATION,PROCESS_MODELS,UFD_BIOSPHERE'
+
+  pm => PMUFDBCreate()
+  pm%option => option
+  
+  word = ''
+  do   
+    call InputReadPflotranString(input,option)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    call StringToUpper(word)
+    select case(word)
+      case default
+        option%io_buffer = 'Keyword ' // trim(word) // &
+              ' not recognized for the ' // trim(error_string) // ' block.' 
+        call printErrMsg(option)
+    end select
+  enddo
+  
+end subroutine SubsurfaceReadUFDBiospherePM
+
+! ************************************************************************** !
+
+subroutine SubsurfaceReadWIPPSrcSinkPM(input, option, pm)
+  ! 
+  ! Author: Jenn Frederick
+  ! Date: 02/02/207
+  !
+  use Input_Aux_module
+  use Option_module
+  use String_module
+  
+  use PM_Base_class
+  use PM_WIPP_SrcSink_class
+
+  implicit none
+  
+  type(input_type), pointer :: input
+  type(option_type), pointer :: option
+  class(pm_base_type), pointer :: pm
+  
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: error_string
+  
+  error_string = 'SIMULATION,PROCESS_MODELS,WIPP_SOURCE_SINK'
+
+  pm => PMWSSCreate()
+  pm%option => option
+  
+  word = ''
+  do   
+    call InputReadPflotranString(input,option)
+    if (InputCheckExit(input,option)) exit
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    call StringToUpper(word)
+    select case(word)
+      case default
+        option%io_buffer = 'Keyword ' // trim(word) // &
+              ' not recognized for the ' // trim(error_string) // ' block.' 
+        call printErrMsg(option)
+    end select
+  enddo
+  
+end subroutine SubsurfaceReadWIPPSrcSinkPM
+
+! ************************************************************************** !
+
 subroutine SubsurfaceInitSimulation(simulation)
   ! 
   ! Author: Glenn Hammond
@@ -914,7 +1099,9 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
   use PM_TH_class
   use PM_RT_class
   use PM_Waste_Form_class
+  use PM_WIPP_SrcSink_class
   use PM_UFD_Decay_class
+  use PM_UFD_Biosphere_class
   use PM_TOilIms_class
   use Option_module
   use Simulation_Subsurface_class
@@ -961,8 +1148,14 @@ recursive subroutine SetUpPMApproach(pmc,simulation)
       class is(pm_waste_form_type)
         call cur_pm%PMWFSetRealization(realization)
     !-----------------------------------
+      class is(pm_wipp_srcsink_type)
+        call cur_pm%PMWSSSetRealization(realization)
+    !-----------------------------------
       class is(pm_ufd_decay_type)
         call cur_pm%PMUFDDecaySetRealization(realization)
+    !-----------------------------------
+      class is(pm_ufd_biosphere_type)
+        call cur_pm%PMUFDBSetRealization(realization)
     !-----------------------------------
     end select
     ! set time stepper
@@ -2076,7 +2269,7 @@ subroutine SubsurfaceReadInput(simulation)
 
         material_property => MaterialPropertyCreate()
         call InputReadWord(input,option,material_property%name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'name','MATERIAL_PROPERTY')        
+        call InputErrorMsg(input,option,'name','MATERIAL_PROPERTY')
         option%io_buffer = '  Name :: ' // trim(material_property%name)
         call printMsg(option)
         call MaterialPropertyRead(material_property,input,option)

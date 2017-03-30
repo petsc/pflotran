@@ -231,12 +231,12 @@ subroutine DatasetMapHDF5ReadData(this,option)
   integer(HID_T) :: prop_id
   integer(HID_T) :: grp_id
   integer(HID_T) :: attribute_id
-  integer(HID_T) :: ndims_h5
   integer(HID_T) :: atype_id
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
   integer(HSIZE_T) :: attribute_dim(3)
   integer(HSIZE_T) :: offset(4), length(4), stride(4)
   integer(HSIZE_T) :: num_data_values
+  integer :: ndims_h5
   PetscInt :: i, temp_array(4)
   PetscInt :: time_dim, num_times
   PetscInt :: num_dims_in_h5_file, num_times_in_h5_file
@@ -436,9 +436,9 @@ subroutine DatasetMapHDF5ReadMap(this,option)
   integer(HID_T) :: dataset_id
   integer(HID_T) :: prop_id
   integer(HID_T) :: grp_id
-  integer(HID_T) :: ndims_hdf5
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
   integer(HSIZE_T) :: offset(2), length(2)
+  integer :: ndims_hdf5
   PetscInt :: i
   PetscMPIInt :: array_rank_mpi
   PetscMPIInt :: hdf5_err

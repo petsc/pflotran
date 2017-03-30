@@ -277,8 +277,7 @@ subroutine PMTOilImsPreSolve(this)
 
   class(pm_toil_ims_type) :: this
 
-  ! currently does nothing - could add here explicit iitialization
-  ! for highly het. problems
+  call PMSubsurfaceFlowPreSolve(this)
 
 end subroutine PMTOilImsPreSolve
 
